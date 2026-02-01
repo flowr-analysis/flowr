@@ -8,6 +8,7 @@ import { label } from '../../../_helper/label';
 import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retriever';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe, assert, test, expect } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 describe.sequential('CSV parsing', withShell(shell => {
 	test('simple', async() => {
@@ -104,10 +105,9 @@ describe.sequential('Constant Parsing', withShell(shell => {
 				assertAst(label(symbol.str, ['name-normal', ...mapped]),
 					shell, symbol.str, exprList({
 						type:     RType.Symbol,
-						ns:       symbol.namespace,
 						location: range,
 						lexeme:   symbol.val,
-						content:  symbol.val,
+						content:  Identifier.make(symbol.val, symbol.namespace, symbol.internal),
 						info:     {}
 					})
 				);

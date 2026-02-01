@@ -19,7 +19,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -37,7 +36,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -68,7 +66,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -82,7 +79,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					value:    {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 3, 1, 3),
-						ns:       undefined,
 						lexeme:   'x',
 						content:  'x',
 						info:     {}
@@ -100,7 +96,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -120,7 +115,6 @@ describe.sequential('Parse value access', withShell(shell => {
 						lhs:      {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 3, 1, 3),
-							ns:       undefined,
 							lexeme:   'x',
 							content:  'x',
 							info:     {}
@@ -146,7 +140,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -190,7 +183,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -233,7 +225,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -258,7 +249,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					name:     {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 5, 1, 9),
-						ns:       undefined,
 						lexeme:   'super',
 						content:  'super',
 						info:     {}
@@ -290,7 +280,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					accessed: {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 1, 1, 1),
-						ns:       undefined,
 						lexeme:   'a',
 						content:  'a',
 						info:     {}
@@ -338,7 +327,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -356,7 +344,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -387,7 +374,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -431,7 +417,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -464,7 +449,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'c',
 					content:  'c',
 					info:     {}
@@ -478,7 +462,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					value:    {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 3, 1, 3),
-						ns:       undefined,
 						lexeme:   'x',
 						content:  'x',
 						info:     {}
@@ -502,7 +485,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					accessed: {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 1, 1, 1),
-						ns:       undefined,
 						lexeme:   'c',
 						content:  'c',
 						info:     {}
@@ -516,7 +498,6 @@ describe.sequential('Parse value access', withShell(shell => {
 						value:    {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 3, 1, 3),
-							ns:       undefined,
 							lexeme:   'x',
 							content:  'x',
 							info:     {}
@@ -532,7 +513,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					value:    {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 5, 1, 5),
-						ns:       undefined,
 						lexeme:   'y',
 						content:  'y',
 						info:     {}
@@ -550,7 +530,6 @@ describe.sequential('Parse value access', withShell(shell => {
 				accessed: {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'd',
 					content:  'd',
 					info:     {}
@@ -564,7 +543,6 @@ describe.sequential('Parse value access', withShell(shell => {
 					value:    {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 3, 1, 3),
-						ns:       undefined,
 						lexeme:   'y',
 						content:  'y',
 						info:     {}

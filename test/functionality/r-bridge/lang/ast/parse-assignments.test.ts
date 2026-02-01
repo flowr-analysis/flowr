@@ -22,7 +22,6 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 					lhs:      {
 						type:     RType.Symbol,
 						location: rangeFrom(1, 1, 1, 1),
-						ns:       undefined,
 						lexeme:   'x',
 						content:  'x',
 						info:     {}
@@ -51,7 +50,6 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 				lhs:      {
 					type:     RType.String,
 					location: rangeFrom(1, 1, 1, 3),
-					ns:       undefined,
 					lexeme:   "'a'",
 					content:  {
 						quotes: "'",
@@ -81,7 +79,6 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 				lhs:      {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'x',
 					content:  'x',
 					info:     {}
@@ -96,14 +93,12 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
-						ns:       undefined,
 						location: rangeFrom(1, 6, 1, 6)
 					}, {
 						type:     RType.Symbol,
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
-						ns:       undefined,
 						location: rangeFrom(1, 14, 1, 14)
 					}],
 					children: [{

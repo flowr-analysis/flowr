@@ -9,6 +9,7 @@ import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-
 import { BuiltInProcName } from './built-in';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 import { KnownHooks } from '../hooks';
+import { Identifier } from './identifier';
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -147,7 +148,7 @@ export const DefaultBuiltinConfig = [
 				type:     'link-to-last-call',
 				ignoreIf: (source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(source.name[0]) && getValueOfArgument(graph, source, {
+					return (PlotFunctionsWithAddParam.has(Identifier.getName(source.name)) && getValueOfArgument(graph, source, {
 						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content === true);
@@ -169,14 +170,14 @@ export const DefaultBuiltinConfig = [
 					const sourceVertex = graph.getVertex(source) as DataflowGraphVertexFunctionCall;
 
 					/* map with add = true appends to an existing plot */
-					return (PlotFunctionsWithAddParam.has(sourceVertex.name[0] ?? '') && getValueOfArgument(graph, sourceVertex, {
+					return (PlotFunctionsWithAddParam.has(Identifier.getName(sourceVertex.name)) && getValueOfArgument(graph, sourceVertex, {
 						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content !== true);
 				},
 				cascadeIf: (target: DataflowGraphVertexFunctionCall, _: NodeId, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
-					return target.name[0] === 'map' ? (getValueOfArgument(graph, target, {
+					return Identifier.getName(target.name) ? (getValueOfArgument(graph, target, {
 						index: 11,
 						name:  'add'
 					}, [RType.Logical])?.content === true ? CascadeAction.Continue : CascadeAction.Stop) : CascadeAction.Stop;

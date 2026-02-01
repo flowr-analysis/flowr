@@ -31,7 +31,6 @@ max
 				lhs:      {
 					type:     RType.Symbol,
 					lexeme:   'a',
-					ns:       undefined,
 					content:  'a',
 					location: rangeFrom(2, 1, 2, 1),
 					info:     {}
@@ -53,7 +52,6 @@ max
 				lhs:      {
 					type:     RType.Symbol,
 					lexeme:   'b',
-					ns:       undefined,
 					content:  'b',
 					location: rangeFrom(3, 1, 3, 1),
 					info:     {}
@@ -80,7 +78,6 @@ max
 					lhs:      {
 						type:     RType.Symbol,
 						lexeme:   'a',
-						ns:       undefined,
 						content:  'a',
 						location: rangeFrom(4, 5, 4, 5),
 						info:     {}
@@ -88,7 +85,6 @@ max
 					rhs: {
 						type:     RType.Symbol,
 						lexeme:   'b',
-						ns:       undefined,
 						content:  'b',
 						location: rangeFrom(4, 8, 4, 8),
 						info:     {}
@@ -102,14 +98,12 @@ max
 						location: rangeFrom(4, 11, 4, 11),
 						content:  '{',
 						info:     {},
-						ns:       undefined
 					}, {
 						type:     RType.Symbol,
 						lexeme:   '}',
 						location: rangeFrom(7, 1, 7, 1),
 						content:  '}',
 						info:     {},
-						ns:       undefined
 					}],
 					lexeme:   undefined,
 					location: undefined,
@@ -124,7 +118,6 @@ max
 							lhs:      {
 								type:     RType.Symbol,
 								lexeme:   'max',
-								ns:       undefined,
 								content:  'max',
 								location: rangeFrom(5, 3, 5, 5),
 								info:     {}
@@ -132,7 +125,6 @@ max
 							rhs: {
 								type:     RType.Symbol,
 								lexeme:   'a',
-								ns:       undefined,
 								content:  'a',
 								location: rangeFrom(5, 11, 5, 11),
 								info:     {}
@@ -147,7 +139,6 @@ max
 							lhs:      {
 								type:     RType.Symbol,
 								lexeme:   'i',
-								ns:       undefined,
 								content:  'i',
 								location: rangeFrom(6, 3, 6, 3),
 								info:     {}
@@ -173,14 +164,12 @@ max
 						location: rangeFrom(7, 8, 7, 8),
 						content:  '{',
 						info:     {},
-						ns:       undefined
 					}, {
 						type:     RType.Symbol,
 						lexeme:   '}',
 						location: rangeFrom(9, 1, 9, 1),
 						content:  '}',
 						info:     {},
-						ns:       undefined
 					}],
 					children: [{
 						type:     RType.BinaryOp,
@@ -191,7 +180,6 @@ max
 						lhs:      {
 							type:     RType.Symbol,
 							lexeme:   'b',
-							ns:       undefined,
 							content:  'b',
 							location: rangeFrom(8, 3, 8, 3),
 							info:     {}
@@ -199,7 +187,6 @@ max
 						rhs: {
 							type:     RType.Symbol,
 							lexeme:   'max',
-							ns:       undefined,
 							content:  'max',
 							location: rangeFrom(8, 9, 8, 11),
 							info:     {}
@@ -211,7 +198,6 @@ max
 				type:     RType.Symbol,
 				lexeme:   'max',
 				content:  'max',
-				ns:       undefined,
 				location: rangeFrom(10, 1, 10, 3),
 				info:     {}
 			}

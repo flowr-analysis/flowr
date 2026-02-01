@@ -1,6 +1,6 @@
 import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { type Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
+import { Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 
 
@@ -25,30 +25,37 @@ const TargetTypePredicate = {
 /**
  * Resolves a given identifier name to a list of its possible definition location using R scoping and resolving rules.
  * If the type you want to reference is unknown, please use {@link resolveByNameAnyType} instead.
- * @param name               - The name of the identifier to resolve
+ * @param id                 - The identifier to resolve (optionally namespaced)
  * @param environment        - The current environment used for name resolution
  * @param target             - The target (meta) type of the identifier to resolve
  * @returns A list of possible identifier definitions (one if the definition location is exactly and always known), or `undefined`
  *          if the identifier is undefined in the current scope/with the current environment information.
  */
-export function resolveByName(name: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
-	console.log('Resolving', name, 'as', ReferenceType[target]);
+export function resolveByName(id: Identifier, environment: REnvironmentInformation, target: ReferenceType): readonly IdentifierDefinition[] | undefined {
 	if(target === ReferenceType.Unknown) {
-		return resolveByNameAnyType(name, environment);
+		return resolveByNameAnyType(id, environment);
 	}
+	const [name, ns, internal] = Identifier.toArray(id);
 	let current: Environment = environment.current;
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
+		if(ns && current.n !== ns) {
+			current = current.parent;
+			continue;
+		}
 		let definition: IdentifierDefinition[] | undefined;
 		if(target === ReferenceType.S3MethodPrefix) {
-			// S3 method prefixes only resolve to functions
+			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
 			definition = current.memory.entries()
 				.filter(([defName]) => defName.startsWith(name + '.'))
 				.flatMap(([, defs]) => defs)
 				.toArray();
 		} else {
 			definition = current.memory.get(name);
+			if(internal === false) {
+				definition = definition?.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
+			}
 		}
 		if(definition !== undefined && definition.length > 0) {
 			const filtered = definition.filter(wantedType);
@@ -76,16 +83,25 @@ export function resolveByName(name: Identifier, environment: REnvironmentInforma
 /**
  * The more performant version of {@link resolveByName} when the target type is unknown.
  */
-export function resolveByNameAnyType(name: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
+export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: Environment = environment.current;
-	const g = current.cache?.get(name);
+	const g = current.cache?.get(id);
 	if(g !== undefined) {
 		return g;
 	}
+	const [name, ns, internal] = Identifier.toArray(id);
+
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{
-		const definition = current.memory.get(name);
+		if(ns && current.n !== ns) {
+			current = current.parent;
+			continue;
+		}
+		let definition = current.memory.get(name);
 		if(definition) {
+			if(internal === false) {
+				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
+			}
 			if(definition.every(d => happensInEveryBranch(d.cds))) {
 				environment.current.cache ??= new Map();
 				environment.current.cache?.set(name, definition);
@@ -110,7 +126,7 @@ export function resolveByNameAnyType(name: Identifier, environment: REnvironment
 	}
 	if(ret) {
 		environment.current.cache ??= new Map();
-		environment.current.cache?.set(name, ret);
+		environment.current.cache?.set(id, ret);
 	}
 	return ret;
 }

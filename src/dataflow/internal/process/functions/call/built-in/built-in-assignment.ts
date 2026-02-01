@@ -322,7 +322,6 @@ function processAssignmentToString<OtherInfo>(
 		content:  removeRQuotes(target.lexeme),
 		lexeme:   target.lexeme,
 		location: target.location,
-		ns:       undefined
 	};
 
 	// treat first argument to Symbol

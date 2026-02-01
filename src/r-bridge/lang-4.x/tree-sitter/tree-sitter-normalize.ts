@@ -253,7 +253,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
-					content:  Identifier.make(lhs.text, rhs.text, int.text === ':::' ),
+					content:  Identifier.make(rhs.text, lhs.text, int.text === ':::' ),
 					lexeme:   rhs.text,
 					...defaultInfo
 				};

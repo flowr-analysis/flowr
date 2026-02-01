@@ -80,7 +80,6 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 				exprList({
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'k',
 					content:  'k',
 					info:     {

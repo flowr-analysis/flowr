@@ -32,7 +32,6 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 	if(isNA(content)) {
 		return {
 			...common,
-			ns:   undefined,
 			type: RType.Symbol,
 			content
 		};

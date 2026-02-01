@@ -5,7 +5,11 @@
  */
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { BrandedNamespace, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type {
+	BrandedNamespace,
+	IdentifierDefinition,
+	InGraphIdentifierDefinition
+} from './identifier';
 import { Identifier } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
@@ -48,7 +52,7 @@ export class Environment implements IEnvironment {
 	private c?:  NodeId;
 	parent:      Environment;
 	memory:      BuiltInMemory;
-	cache?:      BuiltInMemory;
+	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {

@@ -46,7 +46,6 @@ describe.sequential('Parse simple operations', withShell(shell => {
 					location: rangeFrom(1, 3, 1, 3),
 					lexeme:   'x',
 					content:  'x',
-					ns:       undefined,
 					info:     {}
 				}
 			})
@@ -115,7 +114,6 @@ describe.sequential('Parse simple operations', withShell(shell => {
 						type:     RType.Symbol,
 						lexeme:   '%xx%',
 						content:  '%xx%',
-						ns:       undefined,
 						location: rangeFrom(1, 3, 1, 6),
 						info:     {}
 					},
@@ -206,14 +204,12 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
-							ns:       undefined
 						}, {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
-							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -267,14 +263,12 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
-							ns:       undefined
 						}, {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
-							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -309,14 +303,12 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
-							ns:       undefined
 						}, {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
-							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -401,14 +393,12 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
-							ns:       undefined
 						}, {
 							type:     RType.Symbol,
 							location: rangeFrom(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
-							ns:       undefined
 						}],
 						children: [{
 							type:     RType.BinaryOp,

@@ -19,19 +19,20 @@ export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInfor
 	if(symbol.content === RNull || symbol.content === RNa) {
 		return processValue(symbol, data);
 	}
+	const sid = symbol.info.id;
 
 	return {
-		unknownReferences: [ { nodeId: symbol.info.id, name: symbol.ns ? symbol.ns + '::' + symbol.content : symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
+		unknownReferences: [ { nodeId: sid, name: symbol.content, cds: data.cds, type: ReferenceType.Unknown } ],
 		in:                [],
 		out:               [],
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap).addVertex({
 			tag: VertexType.Use,
-			id:  symbol.info.id,
+			id:  sid,
 			cds: data.cds
 		}, data.ctx.env.makeCleanEnv()),
-		entryPoint: symbol.info.id,
-		exitPoints: [{ nodeId: symbol.info.id, type: ExitPointType.Default, cds: data.cds }],
+		entryPoint: sid,
+		exitPoints: [{ nodeId: sid, type: ExitPointType.Default, cds: data.cds }],
 		hooks:      []
 	};
 }

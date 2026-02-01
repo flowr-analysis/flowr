@@ -13,6 +13,7 @@ import { codeBlock } from './doc-util/doc-code';
 import { details, section } from './doc-util/doc-structure';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import { Identifier } from '../dataflow/environments/identifier';
 
 class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
@@ -34,7 +35,7 @@ class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDom
 				return;
 			}
 			// We map the numerical operation to the resulting interval after applying the abstract semantics of the operation
-			switch(call.name[0]) {
+			switch(Identifier.getName(call.name)) {
 				case '+':
 					return this.currentState.set(call.id, left.add(right));
 				case '-':

@@ -84,7 +84,7 @@ print(x)`, emptyGraph()
 \`<-\` <- \`*\`
 x <- 3
 print(y = x)`, emptyGraph()
-			.use('4', '`*`')
+			.use('4', '*')
 			.reads('4', builtInId('*'))
 			.use('6', 'x')
 			.reads('6', '0')
@@ -109,7 +109,7 @@ print(y = x)`, emptyGraph()
 			.calls('13', builtInId('print'))
 			.constant('1')
 			.defineVariable('0', 'x', { definedBy: ['1', '2'] })
-			.defineVariable('3', '`<-`', { definedBy: ['4', '5'] })
+			.defineVariable('3', '<-', { definedBy: ['4', '5'] })
 			.constant('7')
 			.markIdForUnknownSideEffects('13'));
 	assertDataflow(label('<- in function', ['name-normal', 'name-escaped', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', ...OperatorDatabase['*'].capabilities, 'call-normal', 'unnamed-arguments']),

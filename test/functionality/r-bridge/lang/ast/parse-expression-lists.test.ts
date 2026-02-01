@@ -32,7 +32,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(2, 1, 2, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -48,13 +47,11 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					location: rangeFrom(1, 1, 1, 1),
 					lexeme:   'a',
 					content:  'a',
-					ns:       undefined,
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(2, 1, 2, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -64,7 +61,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					location: rangeFrom(3, 1, 3, 1),
 					lexeme:   'c',
 					content:  'c',
-					ns:       undefined,
 					info:     {}
 				},
 			)
@@ -76,7 +72,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(1, 1, 1, 1),
-					ns:       undefined,
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -84,7 +79,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(2, 1, 2, 1),
-					ns:       undefined,
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
@@ -92,7 +86,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(3, 1, 3, 1),
-					ns:       undefined,
 					lexeme:   'c',
 					content:  'c',
 					info:     {}
@@ -100,7 +93,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(4, 1, 4, 1),
-					ns:       undefined,
 					lexeme:   'd',
 					content:  'd',
 					info:     {}
@@ -108,7 +100,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(5, 1, 5, 2),
-					ns:       undefined,
 					lexeme:   'n2',
 					content:  'n2',
 					info:     {}
@@ -116,7 +107,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				{
 					type:     RType.Symbol,
 					location: rangeFrom(6, 1, 6, 1),
-					ns:       undefined,
 					lexeme:   'z',
 					content:  'z',
 					info:     {}
@@ -135,7 +125,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
-						ns:       undefined
 					},
 					{
 						type:     RType.Symbol,
@@ -143,7 +132,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
-						ns:       undefined
 					}
 				],
 				lexeme:   undefined,
@@ -159,7 +147,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					{
 						type:     RType.Symbol,
 						location: rangeFrom(2, 1, 2, 1),
-						ns:       undefined,
 						lexeme:   'a',
 						content:  'a',
 						info:     {}
@@ -181,7 +168,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 							lexeme:   '{',
 							content:  '{',
 							info:     {},
-							ns:       undefined
 						},
 						{
 							type:     RType.Symbol,
@@ -189,7 +175,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 							lexeme:   '}',
 							content:  '}',
 							info:     {},
-							ns:       undefined
 						}
 					],
 					lexeme:   undefined,
@@ -205,7 +190,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						{
 							type:     RType.Symbol,
 							location: rangeFrom(2, 1, 2, 1),
-							ns:       undefined,
 							lexeme:   'a',
 							content:  'a',
 							info:     {}
@@ -224,7 +208,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 							lexeme:   '{',
 							content:  '{',
 							info:     {},
-							ns:       undefined
 						},
 						{
 							type:     RType.Symbol,
@@ -232,12 +215,10 @@ describe.sequential('Parse expression lists', withShell(shell => {
 							lexeme:   '}',
 							content:  '}',
 							info:     {},
-							ns:       undefined
 						}],
 					children: [{
 						type:     RType.Symbol,
 						location: rangeFrom(3, 3, 3, 3),
-						ns:       undefined,
 						lexeme:   'x',
 						content:  'x',
 						info:     {}
@@ -266,7 +247,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					{
 						type:     RType.Symbol,
 						location: rangeFrom(1, 4, 1, 4),
-						ns:       undefined,
 						lexeme:   'a',
 						content:  'a',
 						info:     {}
@@ -288,7 +268,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
-						ns:       undefined
 					},
 					{
 						type:     RType.Symbol,
@@ -296,7 +275,6 @@ describe.sequential('Parse expression lists', withShell(shell => {
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
-						ns:       undefined
 					}
 				],
 				children: [{

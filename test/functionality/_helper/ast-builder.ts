@@ -38,7 +38,6 @@ export function parameter(name: string, location: SourceRange, defaultValue?: RN
 			location,
 			lexeme:  name,
 			content: name,
-			ns:      undefined,
 			info:    emptyInfo
 		},
 		info: emptyInfo

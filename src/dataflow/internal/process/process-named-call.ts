@@ -23,6 +23,5 @@ export function processAsNamedCall<OtherInfo>(
 		content: name,
 		lexeme,
 		location,
-		ns:      undefined
 	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), info.id, data);
 }

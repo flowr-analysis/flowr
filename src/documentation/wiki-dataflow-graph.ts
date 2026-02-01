@@ -271,7 +271,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name[0] === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -344,7 +344,7 @@ ${await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']) });
 
 		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name[0] === 'foo');
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 

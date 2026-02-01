@@ -12,7 +12,7 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import { type BrandedNamespace,
+import {
 	type BrandedIdentifier, Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
@@ -166,7 +166,6 @@ function defaultBuiltInProcessor<OtherInfo>(
 				const rhs = arg.value;
 				let fnName: Identifier | undefined;
 				let fnId: NodeId | undefined;
-				let ns: BrandedNamespace | undefined;
 				if(rhs.type === RType.String) {
 					fnName = rhs.content.str;
 					fnId = rhs.info.id;

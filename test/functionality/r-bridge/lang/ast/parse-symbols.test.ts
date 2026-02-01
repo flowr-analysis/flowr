@@ -4,13 +4,13 @@ import { rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 describe.sequential('Parse symbols', withShell(shell => {
 	assertAst(label('Simple Symbol', ['name-normal']),
 		shell, 'a', exprList({
 			type:     RType.Symbol,
 			location: rangeFrom(1, 1, 1, 1),
-			ns:       undefined,
 			lexeme:   'a',
 			content:  'a',
 			info:     {}
@@ -20,9 +20,8 @@ describe.sequential('Parse symbols', withShell(shell => {
 		shell, 'a::b', exprList({
 			type:     RType.Symbol,
 			location: rangeFrom(1, 4, 1, 4),
-			ns:       'a',
 			lexeme:   'b',
-			content:  'b',
+			content:  Identifier.make('b', 'a'),
 			info:     {}
 		})
 	);
@@ -30,9 +29,8 @@ describe.sequential('Parse symbols', withShell(shell => {
 		shell, 'a::"b"', exprList({
 			type:     RType.Symbol,
 			location: rangeFrom(1, 4, 1, 6),
-			ns:       'a',
 			lexeme:   '"b"',
-			content:  '"b"',
+			content:  Identifier.make('"b"', 'a'),
 			info:     {}
 		})
 	);

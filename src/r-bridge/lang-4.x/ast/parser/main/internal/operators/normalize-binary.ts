@@ -61,7 +61,6 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 				location,
 				lexeme: content,
 				content,
-				ns:     undefined,
 				info:   {}
 			},
 			arguments: [

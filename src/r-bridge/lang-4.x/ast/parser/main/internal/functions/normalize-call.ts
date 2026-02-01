@@ -123,7 +123,6 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 		const stringBase = normalizeString(data, symbolContent[0].content);
 		functionName = {
 			type:     RType.Symbol,
-			ns:       undefined,
 			lexeme:   stringBase.lexeme,
 			info:     stringBase.info,
 			location: stringBase.location,

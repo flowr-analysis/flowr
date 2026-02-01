@@ -13,8 +13,29 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			mustNotHaveEdges:      [['2@x', '1@x']]
 		} as const
 	);
+	assertDataflow(label('Double Base', ['namespaces', 'lexicographic-scope']), ts,
+		'base::x <- 42\nprint(base::x)',
+		emptyGraph()
+			.reads('2@x', '1@x'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
 		'x <- 42\nprint(base::x)',
+		emptyGraph()
+			.reads('2@x', '1@x'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			modifyAnalyzer:        a => {
+				a.context().meta.setNamespace('base');
+			}
+		} as const
+	);
+	assertDataflow(label('Double Base in Base CTX', ['namespaces', 'lexicographic-scope']), ts,
+		'base::x <- 42\nprint(base::x)',
 		emptyGraph()
 			.reads('2@x', '1@x'),
 		{

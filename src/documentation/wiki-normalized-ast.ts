@@ -2,7 +2,7 @@ import { codeBlock, codeInline } from './doc-util/doc-code';
 import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
-import { details } from './doc-util/doc-structure';
+import { block, details } from './doc-util/doc-structure';
 import { requestFromInput } from '../r-bridge/retriever';
 import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
@@ -182,6 +182,13 @@ We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [F
 Please note, that they usually operate on the ${ctx.link('RExpressionList')} level, and it is up to
 you to decide how you want to traverse multiple files with a ${ctx.link('RProject')} in the AST (you can, for example, simplify flat-map over the files).
 The ${ctx.link('RProject')} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${ctx.link('RProject')}.
+
+${
+	block({
+		type:    'TIP',
+		content: 'When working with names and identifiers, consider using the utilities provided with the ' + ctx.link('Identifier', undefined, { type: 'variable' }) + ' object.',
+	})
+}
 
 ### Visitors
 

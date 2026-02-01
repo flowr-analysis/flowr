@@ -431,14 +431,6 @@ interface Query {
 	query: FlowrSearchLike;
 }
 
-type FromQueryParam =
-  | {
-  	nodeId: NodeId;
-  }
-  | Query;
+type FromQueryParam = { nodeId: NodeId; } | Query;
 
-type ToQueryParam =
-  | {
-  	target: DataflowGraphEdgeTarget;
-  }
-  | Query;
+type ToQueryParam = { target: DataflowGraphEdgeTarget; } | Query;

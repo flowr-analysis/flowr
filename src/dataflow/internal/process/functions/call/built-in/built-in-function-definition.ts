@@ -23,7 +23,12 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
@@ -46,7 +51,7 @@ export function processFunctionDefinition<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length < 1) {
-		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
+		dataflowLogger.warn(`Function Definition ${Identifier.toString(name.content)} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -64,7 +69,7 @@ export function processFunctionDefinition<OtherInfo>(
 	let readInParameters: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
 	for(const param of parameters) {
-		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${name.content}, ${JSON.stringify(args)}`);
+		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
 		if(param.value?.type === RType.Parameter) {
 			paramIds.push(param.value.name.info.id);

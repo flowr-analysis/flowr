@@ -2,6 +2,7 @@ import { type GenericDifferenceInformation, type WriteableDifferenceReport, setD
 import { type IEnvironment, type REnvironmentInformation, builtInEnvJsonReplacer } from './environment';
 import { jsonReplacer } from '../../util/json';
 import type { IdentifierReference } from './identifier';
+import { Identifier } from './identifier';
 import { diffControlDependencies } from '../info';
 
 /**
@@ -15,7 +16,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 		return;
 	}
 	if(a.name !== b.name) {
-		info.report.addComment(`${info.position}Different identifier names: ${info.leftname}: ${a.name} vs. ${info.rightname}: ${b.name}`);
+		info.report.addComment(`${info.position}Different identifier names: ${info.leftname}: ${a.name ? Identifier.toString(a.name) : 'undefined'} vs. ${info.rightname}: ${b.name ? Identifier.toString(b.name) : 'undefined'}`);
 	}
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${info.leftname}: ${a.nodeId} vs. ${info.rightname}: ${b.nodeId}`);
@@ -39,7 +40,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			const aVal = sorted[i];
 			const bVal = sorted2[i];
 			if(aVal.name !== bVal.name) {
-				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name} vs. ${info.rightname}: ${bVal.name}`);
+				info.report.addComment(`${info.position}Different names for ${key}. ${info.leftname}: ${aVal.name ? Identifier.toString(aVal.name) : 'undefined'} vs. ${info.rightname}: ${bVal.name ? Identifier.toString(bVal.name) : undefined}`);
 			}
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`);

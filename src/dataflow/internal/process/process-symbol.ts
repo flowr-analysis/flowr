@@ -13,7 +13,6 @@ import { ReferenceType } from '../../environments/identifier';
  * Process a symbol node in the AST for dataflow analysis.
  * If the symbol is `NULL` or `NA`, it is processed as a value.
  * Otherwise, it is treated as an unknown reference.
- * TODO: also check againts currnt namespace anme in context to still resolve ggplot2::... in the ggplot2 namespace etc.
  */
 export function processSymbol<OtherInfo>(symbol: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
 	if(symbol.content === RNull || symbol.content === RNa) {

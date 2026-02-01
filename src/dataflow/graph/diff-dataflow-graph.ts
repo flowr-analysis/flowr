@@ -6,6 +6,7 @@ import { VertexType } from './vertex';
 import { type DataflowGraphEdge, edgeTypesToNames, splitEdgeTypes } from './edge';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
@@ -321,9 +322,10 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	const aSorted = [...a].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	const bSorted = [...b].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	for(let i = 0; i < aSorted.length; ++i) {
+		const inam = aSorted[i].name;
 		diffIdentifierReferences(aSorted[i], bSorted[i], {
 			...ctx,
-			position: `${ctx.position}In reference #${i} ("${aSorted[i].name ?? '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
+			position: `${ctx.position}In reference #${i} ("${inam ? Identifier.toString(inam) : '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
 		});
 	}
 }

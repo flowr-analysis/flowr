@@ -82,7 +82,6 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
 
-				// TODO: maybe get name?
 				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
 			}
 		} else if(handled.has(s.id)) {

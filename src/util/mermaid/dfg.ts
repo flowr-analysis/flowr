@@ -9,6 +9,7 @@ import {
 } from '../../dataflow/graph/graph';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
+	Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
 	ReferenceTypeReverseMapping
@@ -148,7 +149,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
  * Prints an identifier definition in a human-readable format.
  */
 export function printIdentifier(id: IdentifierDefinition): string {
-	return `**${id.name}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {

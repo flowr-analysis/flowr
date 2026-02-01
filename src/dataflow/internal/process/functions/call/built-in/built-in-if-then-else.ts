@@ -10,7 +10,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import { appendEnvironment } from '../../../../../environments/append';
-import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
@@ -67,14 +67,14 @@ export function processIfThenElse<OtherInfo>(
 	config?: IfThenElseConfig
 ): DataflowInformation {
 	if(args.length !== 2 && args.length !== 3) {
-		dataflowLogger.warn(`If-then-else ${name.content} has something different from 2 or 3 arguments, skipping`);
+		dataflowLogger.warn(`If-then-else ${Identifier.toString(name.content)} has something different from 2 or 3 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const { condArg, thenArg, otherwiseArg } = getArguments(config, args);
 
 	if(condArg === undefined || thenArg === undefined) {
-		dataflowLogger.warn(`If-then-else ${name.content} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
+		dataflowLogger.warn(`If-then-else ${Identifier.toString(name.content)} has empty condition or then case in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 

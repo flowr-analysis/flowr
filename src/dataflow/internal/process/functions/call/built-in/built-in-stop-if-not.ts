@@ -14,6 +14,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -37,7 +38,7 @@ export function processStopIfNot<OtherInfo>(
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.StopIfNot }).information;
 	if(args.length === 0) {
-		dataflowLogger.warn(`stopifnot (${name.content}) has no argument, assuming trivially true and skipping`);
+		dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) has no argument, assuming trivially true and skipping`);
 		return res;
 	}
 
@@ -62,7 +63,7 @@ export function processStopIfNot<OtherInfo>(
 		const localVal = resolveIdToValue(localArg?.value?.info.id, resolveArgs);
 		const alwaysTrue = valueSetGuard(localVal)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
-			dataflowLogger.warn(`stopifnot (${name.content}) with non-true 'local' argument is not yet supported, over-approximate`);
+			dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) with non-true 'local' argument is not yet supported, over-approximate`);
 			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
 				id:   r,
 				when: false
@@ -102,7 +103,7 @@ export function processStopIfNot<OtherInfo>(
 	}
 
 	if(cds.length === 0) {
-		dataflowLogger.warn(`stopifnot (${name.content}) has no unknown expressions to evaluate, assuming trivially true and skipping`);
+		dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) has no unknown expressions to evaluate, assuming trivially true and skipping`);
 		return res;
 	}
 

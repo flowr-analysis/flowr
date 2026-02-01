@@ -259,7 +259,6 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 		}
 
-		// TODO: support namespaces
 		const n = Identifier.getName(info.name);
 		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(n) : q.callName.has(n)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;

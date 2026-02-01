@@ -20,7 +20,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { EdgeType } from '../../../../../graph/edge';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
@@ -37,14 +37,14 @@ export function processWhileLoop<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 2 || args[1] === EmptyArgument) {
-		dataflowLogger.warn(`While-Loop ${name.content} does not have 2 arguments, skipping`);
+		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} does not have 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const unpackedArgs = args.map(e => unpackNonameArg(e));
 
 	if(unpackedArgs.some(isUndefined)) {
-		dataflowLogger.warn(`While-Loop ${name.content} has empty arguments in ${JSON.stringify(args)}, skipping`);
+		dataflowLogger.warn(`While-Loop ${Identifier.toString(name.content)} has empty arguments in ${JSON.stringify(args)}, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -87,7 +87,7 @@ export function processWhileLoop<OtherInfo>(
 		};
 	}
 
-	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`);
+	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 
 	if(alwaysExits(condition)) {

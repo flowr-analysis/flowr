@@ -31,6 +31,7 @@ import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-e
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
+import type { FlowrAnalyzer } from '../flowr-analyzer';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -81,6 +82,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	private _analyzer:     FlowrAnalyzer | undefined;
 
 	public readonly config: FlowrConfigOptions;
 
@@ -93,6 +95,19 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.meta = new FlowrAnalyzerMetaContext();
+	}
+
+	/**
+	 * Provides the analyzer associated with this context, if any.
+	 * This is usually set when the context is used within an analyzer instance.
+	 * Please note, that this may be `undefined` if the context is used standalone (e.g., during setup or in plugins that do not have access to the analyzer).
+	 */
+	get analyzer(): FlowrAnalyzer | undefined {
+		return this._analyzer;
+	}
+
+	setAnalyzer(analyzer: FlowrAnalyzer) {
+		this._analyzer = analyzer;
 	}
 
 	/** delegate request addition */

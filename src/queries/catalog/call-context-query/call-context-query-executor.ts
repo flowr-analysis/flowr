@@ -21,6 +21,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -258,7 +259,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
+		// TODO: support namespaces
+		const n = Identifier.getName(info.name);
+		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(n) : q.callName.has(n)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;

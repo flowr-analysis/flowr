@@ -13,6 +13,7 @@ import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/vis
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
+import { Identifier } from '../../../../dataflow/environments/identifier';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -111,7 +112,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 					node.functionName.lexeme,
 					getRangeStart(node.location),
 					node.arguments.length,
-					node.functionName.namespace ?? '',
+					Identifier.getNamespace(node.functionName.content) ?? '',
 					hasCallsEdge ? 1 : 0
 				]);
 			}

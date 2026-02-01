@@ -8,6 +8,7 @@ import { type EdgeTypeBits, edgeDoesNotIncludeType, edgeIncludesType, EdgeType }
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import { isBuiltIn } from '../environments/built-in';
+import type { Identifier } from '../environments/identifier';
 
 
 export const enum OriginType {
@@ -71,8 +72,7 @@ export interface BuiltInFunctionOrigin {
 
 
 interface OriginIdentifier {
-	readonly name:       string;
-	readonly namespace?: string;
+	readonly name: Identifier;
 }
 
 export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;

@@ -29,6 +29,7 @@ import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r
 import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
+import { Identifier } from '../dataflow/environments/identifier';
 
 interface Selection {
 	/**
@@ -46,8 +47,8 @@ interface PrettyPrintLine {
 	indent: number
 }
 
-function plain(text: string): [PrettyPrintLine] {
-	return [{ line: text, indent: 0 }];
+function plain(text: string | Identifier): [PrettyPrintLine] {
+	return [{ line: Identifier.toString(text), indent: 0 }];
 }
 
 type Code = PrettyPrintLine[];
@@ -89,8 +90,8 @@ function reconstructExpressionList(exprList: RExpressionList<ParentInformation>,
 		if(g && fst.length > 0) {
 			const start = g[0].content;
 			const end = g[1].content;
-			fst[0].line = `${start}${start === '{' ? ' ' : ''}${fst[0].line}`;
-			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${end}`;
+			fst[0].line = `${Identifier.toString(start)}${start === '{' ? ' ' : ''}${fst[0].line}`;
+			fst[fst.length - 1].line = `${fst[fst.length - 1].line}${end === '}' ? ' ' : ''}${Identifier.toString(end)}`;
 		}
 		return fst;
 	} else {
@@ -367,12 +368,12 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
 		if(rhs !== EmptyArgument && rhs.length > 0) {
 			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
-			return plain(`${lhsText} ${call.functionName.content} ${rhsText}`);
+			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${rhsText}`);
 		} else {
 			return plain(lhsText);
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${call.functionName.content} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
+	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${Identifier.toString(call.functionName.content)} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
 }
 
 function reconstructFunctionCall(

@@ -19,6 +19,7 @@ import { CfgKind } from '../../project/cfg-kind';
 import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -126,7 +127,7 @@ export const Enrichments = {
 										node: n.idMap.get(o.id) as RNodeWithParent,
 									} satisfies FlowrSearchElement<ParentInformation>;
 								case OriginType.BuiltInFunctionOrigin:
-									return o.fn.name;
+									return Identifier.toString(o.fn.name);
 								default:
 									return undefined;
 							}

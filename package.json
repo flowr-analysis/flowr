@@ -166,7 +166,7 @@
   "devDependencies": {
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-angular": "^19.7.1",
-    "@eagleoutice/eslint-config-flowr": "^1.0.35",
+    "@eagleoutice/eslint-config-flowr": "^1.0.36",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@j-ulrich/release-it-regex-bumper": "^5.3.0",

@@ -8,7 +8,6 @@ import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processi
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import {
 	type IdentifierReference,
-	type InGraphIdentifierDefinition,
 	isReferenceType,
 	ReferenceType
 } from '../../../../environments/identifier';
@@ -16,7 +15,6 @@ import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import {
-	type ContainerIndicesCollection,
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
 	type FunctionOriginInformation,
@@ -156,12 +154,7 @@ export function processAllArguments<OtherInfo>(
 					if(happensInEveryBranch(resolved.cds) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
-					// When only a single index is referenced, we don't need to reference the whole object
-					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
-					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
-					if(isContainer !== false) {
-						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
-					}
+					finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
 				}
 				if(assumeItMayHaveAHigherTarget) {
 					remainingReadInArgs.push(ingoing);
@@ -216,14 +209,4 @@ export function patchFunctionCall<OtherInfo>(
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
-}
-
-/**
- * Check whether passed {@link indices} are containers or whether their sub-indices are containers.
- */
-function checkForContainer(indices: ContainerIndicesCollection): boolean | undefined {
-	return indices?.every((indices) => {
-		const areSubIndicesContainers = indices.indices.every(index => 'subIndices' in index && checkForContainer(index.subIndices));
-		return indices.isContainer || areSubIndicesContainers;
-	});
 }

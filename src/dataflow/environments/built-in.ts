@@ -164,7 +164,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
 				const rhs = arg.value;
-				let fnName: BrandedIdentifier | undefined;
+				let fnName: Identifier | undefined;
 				let fnId: NodeId | undefined;
 				let ns: BrandedNamespace | undefined;
 				if(rhs.type === RType.String) {
@@ -173,14 +173,13 @@ function defaultBuiltInProcessor<OtherInfo>(
 				} else if(rhs.type === RType.Symbol) {
 					fnName = rhs.content;
 					fnId = rhs.info.id;
-					ns = rhs.ns;
 				} else {
 					continue;
 				}
 				res.graph.updateToFunctionCall({
 					tag:         VertexType.FunctionCall,
 					id:          fnId,
-					name:        Identifier.make(fnName, ns),
+					name:        fnName,
 					args:        [],
 					environment: data.environment,
 					onlyBuiltin: false,

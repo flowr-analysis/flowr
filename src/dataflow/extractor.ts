@@ -26,6 +26,7 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
+import { Identifier } from './environments/identifier';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -80,7 +81,9 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			cf = extractCfgQuick(ast);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
-				allCallNames = Array.from(new Set(knownCalls.values().map(c => c.name)));
+
+				// TODO: maybe get name?
+				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
 			}
 		} else if(handled.has(s.id)) {
 			continue;

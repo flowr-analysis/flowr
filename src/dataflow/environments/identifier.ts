@@ -1,7 +1,6 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
-import type { ContainerIndicesCollection } from '../graph/vertex';
 import { startAndEndsWith } from '../../util/text/strings';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
@@ -41,7 +40,7 @@ export const Identifier = {
 	 * Create an identifier from its name and optional namespace.
 	 * Please note that for `internal` to count, a namespace must be provided!
 	 */
-	make(name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
+	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
 			name = name.substring(1, name.length - 1) as BrandedIdentifier;
 		}
@@ -56,7 +55,7 @@ export const Identifier = {
 	 * Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkag::a` and NOT to the namespaced identifier `a` in package `pkg`.
 	 * In this scenario, see {@link Identifier.make} instead.
 	 */
-	parse(str: string): Identifier {
+	parse(this: void, str: string): Identifier {
 		const internal = str.includes(':::');
 		const parts = str.split(internal ? ':::' : '::');
 		if(parts.length === 2) {
@@ -67,21 +66,22 @@ export const Identifier = {
 	/**
 	 * Get the name part of the identifier
 	 */
-	getName(id: Identifier): BrandedIdentifier {
+	getName(this: void, id: Identifier): BrandedIdentifier {
 		return Array.isArray(id) ? id[0] : id;
 	},
 	/**
 	 * Get the namespace part of the identifier, undefined if there is none
 	 */
-	getNamespace(id: Identifier): BrandedNamespace | undefined {
+	getNamespace(this: void, id: Identifier): BrandedNamespace | undefined {
 		return Array.isArray(id) ? id[1] : undefined;
 	},
 	/**
 	 * Check if the identifier accesses internal objects (`:::`)
 	 */
-	accessesInternal(id: Identifier): boolean | undefined {
+	accessesInternal(this: void, id: Identifier): boolean | undefined {
 		return Array.isArray(id) ? id[2] : undefined;
 	},
+
 	/**
 	 * Convert the identifier to a **valid R** string representation,
 	 * this will properly quote namespaces that contain `::` to avoid confusion.
@@ -92,7 +92,7 @@ export const Identifier = {
 	 * Identifier.toString(['a', 'pkg:::internal', true]) // '"pkg:::internal":::a'
 	 * ```
 	 */
-	toString(id: Identifier): string {
+	toString(this: void, id: Identifier): string {
 		if(Array.isArray(id)) {
 			if(id[1].includes('::')) {
 				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
@@ -112,7 +112,7 @@ export const Identifier = {
 	 * If we search for S3 methods (s3=true), the target may have an additional suffix after a dot.
 	 * If the first identifier is internal, it will match any target (internal or not).
 	 */
-	matches(id: Identifier, target: Identifier, s3: boolean = false): boolean {
+	matches(this: void, id: Identifier, target: Identifier, s3: boolean = false): boolean {
 		// TODO: support replacement methods like `<-a::b`
 		const idName = Identifier.getName(id);
 		const targetName = Identifier.getName(target);
@@ -135,20 +135,20 @@ export const Identifier = {
 		return idInternal === targetInternal;
 	},
 	/** Special identifier for the `...` argument */
-	dotdotdot(): BrandedIdentifier {
+	dotdotdot(this: void): BrandedIdentifier {
 		return '...' as BrandedIdentifier;
 	},
 	/**
 	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
 	 * This always returns false for namespaced identifiers.
 	 */
-	isDotDotDotAccess(id: Identifier): boolean {
+	isDotDotDotAccess(this: void, id: Identifier): boolean {
 		return !Array.isArray(id) && (dotDotDotAccess.test(id) || id === '...');
 	},
 	/**
 	 * Functor over the name of the identifier
 	 */
-	mapName(id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
+	mapName(this: void, id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
 		if(Array.isArray(id)) {
 			return [fn(id[0]), id[1], id[2]];
 		} else {
@@ -158,11 +158,21 @@ export const Identifier = {
 	/**
 	 * Functor over the namespace of the identifier
 	 */
-	mapNamespace(id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
+	mapNamespace(this: void, id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
 		if(Array.isArray(id)) {
 			return [id[0], fn(id[1]), id[2]];
 		} else {
 			return id;
+		}
+	},
+	/**
+	 * Convert the identifier to its array representation
+	 */
+	toArray(this: void, id: Identifier): [BrandedIdentifier, BrandedNamespace | undefined, boolean | undefined] {
+		if(Array.isArray(id)) {
+			return [id[0], id[1], id[2]];
+		} else {
+			return [id, undefined, undefined];
 		}
 	}
 };
@@ -272,10 +282,6 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
 	readonly value?:    NodeId[]
-	/**
-	 * this attribute links a definition to indices (pointer links) it may be affected by or related to
-	 */
-	indicesCollection?: ContainerIndicesCollection
 }
 
 /**

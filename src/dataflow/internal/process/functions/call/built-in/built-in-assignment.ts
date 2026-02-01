@@ -397,7 +397,7 @@ export function markAsAssignment<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {

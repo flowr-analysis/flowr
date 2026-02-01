@@ -13,7 +13,7 @@ import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
-import { identifier2str } from '../../../src/dataflow/environments/identifier';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	const config = defaultConfigOptions;
@@ -139,11 +139,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 
 		protected onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(identifier2str(data.call.name));
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		protected onAssignmentCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(identifier2str(data.call.name));
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		public getLexemes(): string[] {

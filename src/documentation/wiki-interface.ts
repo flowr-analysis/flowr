@@ -261,10 +261,9 @@ ${codeBlock('json', JSON.stringify(
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
-				variables:       VariableResolve.Alias,
-				evalStrings:     true,
-				pointerTracking: true,
-				resolveSource:   {
+				variables:     VariableResolve.Alias,
+				evalStrings:   true,
+				resolveSource: {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,

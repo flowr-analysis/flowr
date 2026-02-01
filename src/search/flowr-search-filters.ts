@@ -6,7 +6,7 @@ import type { CallTargetsContent } from './search-executor/search-enrichers';
 import { Enrichment, enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
-import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { Identifier } from '../dataflow/environments/identifier';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -51,7 +51,7 @@ export const FlowrFilters = {
 				if(typeof fn === 'string' && args.test.test(fn)) {
 					return true;
 				}
-				if(typeof fn === 'object' && 'node' in fn && fn.node.type === RType.FunctionCall && fn.node.named && args.test.test((fn.node.functionName as RSymbol).content)) {
+				if(typeof fn === 'object' && 'node' in fn && fn.node.type === RType.FunctionCall && fn.node.named && args.test.test(Identifier.getName(fn.node.functionName.content))) {
 					return true;
 				}
 			}

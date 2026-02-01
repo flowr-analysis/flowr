@@ -28,7 +28,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 		const wid = writtenNode.nodeId;
 		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
 		graph.setDefinitionOfVertex(writtenNode);
-		environment = define(writtenNode, false, environment, data.ctx.config);
+		environment = define(writtenNode, false, environment);
 
 		if(defaultValue !== undefined) {
 			if(parameter.defaultValue?.type === RType.FunctionDefinition) {

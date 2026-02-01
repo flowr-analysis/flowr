@@ -23,6 +23,7 @@ import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/a
 import { getRangeEnd } from '../../../../src/util/range';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -273,7 +274,7 @@ export function testDataFrameDomainAgainstReal(
 		const lines = code.split('\n');
 
 		for(const { criterion, node, lineNumber } of testEntries) {
-			const outputCode = createCodeForOutput(criterion, node.content);
+			const outputCode = createCodeForOutput(criterion, Identifier.toString(node.content));
 			lines.splice(lineNumber, 0, outputCode);
 		}
 		shell.clearEnvironment();

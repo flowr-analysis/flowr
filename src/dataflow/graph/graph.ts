@@ -11,7 +11,11 @@ import {
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type {
+	BrandedIdentifier,
+	IdentifierDefinition,
+	IdentifierReference
+} from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -524,7 +528,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 export interface IEnvironmentJson {
 	readonly id: number;
 	parent:      IEnvironmentJson;
-	memory:      Record<Identifier, IdentifierDefinition[]>;
+	memory:      Record<BrandedIdentifier, IdentifierDefinition[]>;
 	builtInEnv:  true | undefined;
 }
 
@@ -537,10 +541,10 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
-		memory.set(key as Identifier, value);
+		memory.set(key as BrandedIdentifier, value);
 	}
 	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
-	obj.id = json.id;
+	(obj as { id: NodeId }).id = json.id;
 	obj.memory = memory;
 	return obj as Environment;
 }

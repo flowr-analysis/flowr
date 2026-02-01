@@ -4,7 +4,7 @@ import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
-import { ReferenceType } from '../../../dataflow/environments/identifier';
+import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { isBuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
@@ -151,8 +151,8 @@ export function identifyLinkToLastCallRelationSync(
 		return [];
 	}
 	const found: NodeId[] = [];
-	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(name)
-		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(name);
+	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(Identifier.getName(name))
+		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(Identifier.getName(name));
 
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :

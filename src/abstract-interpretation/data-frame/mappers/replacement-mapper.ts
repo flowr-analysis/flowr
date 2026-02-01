@@ -17,6 +17,7 @@ import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {
@@ -72,9 +73,9 @@ export function mapDataFrameReplacementFunction(
 			return mapDataFrameIndexColRowAssignment(node, expression, inference, resolveInfo);
 		}
 	} else if(node.type === RType.FunctionCall && node.named && node.arguments.length === 1 && node.arguments[0] !== EmptyArgument) {
-		if(isDataFrameReplacement(node.functionName.content)) {
-			const functionName = node.functionName.content;
-			const mapper = DataFrameReplacementFunctionMapper[functionName];
+		const n = Identifier.getName(node.functionName.content);
+		if(isDataFrameReplacement(n)) {
+			const mapper = DataFrameReplacementFunctionMapper[n];
 
 			return mapper(node.arguments[0], expression, inference, resolveInfo, parent);
 		} else {
@@ -234,7 +235,7 @@ function mapDataFrameColNamesAssignment(
 
 function mapDataFrameRowNamesAssignment(
 	operand: RArgument<ParentInformation>,
-	expression: RNode<ParentInformation>,
+	_expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
 ): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
@@ -249,7 +250,7 @@ function mapDataFrameRowNamesAssignment(
 
 function mapDataFrameDimNamesAssignment(
 	operand: RArgument<ParentInformation>,
-	expression: RNode<ParentInformation>,
+	_expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
 ): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {
@@ -264,7 +265,7 @@ function mapDataFrameDimNamesAssignment(
 
 function mapDataFrameUnknownAssignment(
 	operand: RArgument<ParentInformation>,
-	expression: RNode<ParentInformation>,
+	_expression: RNode<ParentInformation>,
 	inference: DataFrameShapeInferenceVisitor
 ): DataFrameOperations {
 	if(!isDataFrameArgument(operand, inference)) {

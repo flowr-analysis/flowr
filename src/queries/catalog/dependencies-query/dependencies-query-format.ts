@@ -18,6 +18,8 @@ import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 export const Unknown = 'unknown';
 
@@ -47,13 +49,14 @@ export const DefaultDependencyCategories = {
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
 				visitAst((await data.analyzer.normalize()).ast.files.map(f => f.root), n => {
-					if(n.type === RType.Symbol && n.ns) {
-						const dep = data.analyzer.inspectContext().deps.getDependency(n.ns);
+					let ns: BrandedNamespace | undefined;
+					if(n.type === RType.Symbol && (ns = Identifier.getNamespace(n.content)) !== undefined) {
+						const dep = data.analyzer.inspectContext().deps.getDependency(ns);
 						/* we should improve the identification of ':::' */
 						result.push({
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-							value:              n.ns,
+							value:              ns,
 							versionConstraints: dep?.versionConstraints,
 							derivedVersion:     dep?.derivedVersion,
 							namespaceInfo:      dep?.namespaceInfo

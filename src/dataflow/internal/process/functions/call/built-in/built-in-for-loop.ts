@@ -20,7 +20,7 @@ import { appendEnvironment } from '../../../../../environments/append';
 import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 
@@ -39,7 +39,7 @@ export function processForLoop<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 3) {
-		dataflowLogger.warn(`For-Loop ${name.content} does not have three arguments, skipping`);
+		dataflowLogger.warn(`For-Loop ${Identifier.toString(name.content)} does not have three arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -62,7 +62,7 @@ export function processForLoop<OtherInfo>(
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
 	for(const write of writtenVariable) {
-		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments, data.ctx.config);
+		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 	data = { ...data, cds: [...data.cds ?? [], { id: name.info.id, when: true }], environment: headEnvironments };
 

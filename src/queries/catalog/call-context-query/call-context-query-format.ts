@@ -11,6 +11,7 @@ import type { DataflowGraphVertexInfo } from '../../../dataflow/graph/vertex';
 import type { CascadeAction } from './cascade-action';
 import type { NoInfo } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { Identifier } from '../../../dataflow/environments/identifier';
 
 export interface FileFilter<FilterType> {
 	/**
@@ -101,7 +102,7 @@ export interface CallContextQuerySubKindResult {
 	/** The id of the call vertex identified within the supplied dataflow graph */
 	readonly id:          NodeId;
 	/** The name of the function call */
-	readonly name:        string;
+	readonly name:        Identifier;
 	/**
 	 * Ids of functions which are called by the respective function call,
 	 * this will only be populated whenever you explicitly state the {@link DefaultCallContextQueryFormat#callTargets}.

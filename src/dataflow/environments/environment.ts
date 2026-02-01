@@ -5,12 +5,11 @@
  */
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type { BrandedNamespace, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import { Identifier } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
-import type { FlowrConfigOptions } from '../../config';
-import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -103,29 +102,21 @@ export class Environment implements IEnvironment {
 	/**
 	 * Define a new identifier definition within this environment.
 	 * @param definition  - The definition to add.
-	 * @param config      - The flowr configuration options.
 	 */
-	public define(definition: IdentifierDefinition & { name: Identifier }, { solver: { pointerTracking } }: FlowrConfigOptions): Environment {
-		const { name } = definition;
+	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
+		const [name, ns] = Identifier.toArray(definition.name);
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
-		if(definition.cds === undefined && !pointerTracking) {
+		if(definition.cds === undefined) {
 			newEnvironment.memory.set(name, [definition]);
 		} else {
 			const existing = newEnvironment.memory.get(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
 			if(
-				pointerTracking &&
-                existing !== undefined &&
+				existing !== undefined &&
                 inGraphDefinition.cds === undefined
 			) {
-				if(inGraphDefinition.indicesCollection !== undefined) {
-					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
-					newEnvironment.memory.set(name, defs);
-				} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
-					// When indices couldn't be resolved, but indices where defined before, just add the definition
-					existing.push(definition);
-				}
+				newEnvironment.memory.set(name, [inGraphDefinition]);
 			} else if(existing === undefined || definition.cds === undefined) {
 				newEnvironment.memory.set(name, [definition]);
 			} else {
@@ -133,6 +124,12 @@ export class Environment implements IEnvironment {
 			}
 		}
 		return newEnvironment;
+	}
+
+	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {
+		if(this.n === ns) {
+			return this.define(definition);
+		}
 	}
 
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {

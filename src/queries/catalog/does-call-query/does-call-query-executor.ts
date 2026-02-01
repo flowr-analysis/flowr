@@ -6,6 +6,7 @@ import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { dropBuiltInPrefix, isBuiltIn } from '../../../dataflow/environments/built-in';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -37,7 +38,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 	};
 }
 
-type CheckCallMatch = (vtx: { id: NodeId, name?: string }, cg: CallGraph) => boolean;
+type CheckCallMatch = (vtx: { id: NodeId, name?: Identifier }, cg: CallGraph) => boolean;
 
 function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 	switch(constraint.type) {
@@ -48,7 +49,7 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 				return (vtx) => vtx.name === constraint.name;
 			} else {
 				const regex = new RegExp(constraint.name);
-				return (vtx) => 'name' in vtx && vtx.name ? regex.test(vtx.name) : false;
+				return (vtx) => 'name' in vtx && vtx.name ? regex.test(Identifier.getName(vtx.name)) : false;
 			}
 		case 'and': {
 			let matchersAndRemain = constraint.calls.map(makeCallMatcher);

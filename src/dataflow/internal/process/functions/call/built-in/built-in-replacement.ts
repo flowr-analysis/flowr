@@ -11,7 +11,7 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { type DataflowGraphVertexInfo ,
+import {
 	VertexType
 } from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
@@ -21,7 +21,6 @@ import { symbolArgumentsToStrings } from './built-in-access';
 import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
-import type { DeepWritable } from 'ts-essentials';
 
 
 /**
@@ -63,7 +62,7 @@ export function processReplacementFunction<OtherInfo>(
 	}
 	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
 	if(targetVert?.tag === VertexType.VariableDefinition) {
-		(targetVert as DeepWritable<DataflowGraphVertexInfo>).par = true;
+		(targetVert as { par: boolean }).par = true;
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
@@ -116,7 +115,7 @@ export function processReplacementFunction<OtherInfo>(
 
 
 	const fa = unpackNonameArg(args[0]);
-	if(!data.ctx.config.solver.pointerTracking && fa) {
+	if(fa) {
 		res = {
 			...res,
 			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, cds: data.cds }]

@@ -21,7 +21,6 @@ export interface BenchmarkCliOptions {
 	seed?:                       string
 	parser:                      KnownParserName
 	'dataframe-shape-inference': boolean
-	'enable-pointer-tracking':   boolean
 	'max-file-slices':           number
 	threshold?:                  number
 	'per-file-time-limit'?:      number
@@ -102,7 +101,6 @@ async function benchmark() {
 		'--slice', options.slice, ...verboseAdd,
 		'--parser', options.parser,
 		...(options['dataframe-shape-inference'] ? ['--dataframe-shape-inference'] : []),
-		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),
 		'--sampling-strategy', options['sampling-strategy'],

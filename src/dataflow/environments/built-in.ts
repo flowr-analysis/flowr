@@ -12,7 +12,7 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import type { BrandedNamespace ,
+import { type BrandedNamespace,
 	type BrandedIdentifier, Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
@@ -159,7 +159,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 		}
 	}
 
-	const fnCallNames = treatAsFnCall?.[name.content];
+	const fnCallNames = treatAsFnCall?.[Identifier.getName(name.content)];
 	if(fnCallNames) {
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {

@@ -15,13 +15,7 @@ import type { ForceArguments } from '../common';
 import { builtInId, BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import {
-	type ContainerIndicesCollection,
-	type ContainerParentIndex,
-	isParentContainerIndex
-} from '../../../../../graph/vertex';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 
 interface TableAssignmentProcessorMarker {
@@ -157,10 +151,6 @@ function processNumberBasedAccess<OtherInfo>(
 		);
 	}
 
-	if(data.ctx.config.solver.pointerTracking) {
-		referenceAccessedIndices(args, data, fnCall, rootId, true);
-	}
-
 	return fnCall;
 }
 
@@ -208,88 +198,12 @@ function processStringBasedAccess<OtherInfo>(
 	rootId: NodeId,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ) {
-	const newArgs = symbolArgumentsToStrings(args);
-
-	const fnCall = processKnownFunctionCall({
+	return processKnownFunctionCall({
 		name,
-		args:      newArgs,
+		args:      symbolArgumentsToStrings(args),
 		rootId,
 		data,
 		forceArgs: config.forceArgs,
 		origin:    BuiltInProcName.Access
 	});
-
-	if(data.ctx.config.solver.pointerTracking) {
-		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
-	}
-
-	return fnCall;
-}
-
-function referenceAccessedIndices<OtherInfo>(
-	newArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	fnCall: ProcessKnownFunctionCallResult,
-	rootId: NodeId,
-	isIndexBasedAccess: boolean,
-) {
-	// Resolve access on the way up the fold
-	const { accessedArg, accessArg } = getAccessOperands(newArgs);
-
-	if(accessedArg === undefined || accessArg === undefined) {
-		return;
-	}
-
-	let accessedIndicesCollection: ContainerIndicesCollection;
-	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
-	if(accessedArg.value?.type === RType.Symbol) {
-		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, isIndexBasedAccess);
-	} else {
-		// Higher access call
-		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
-		const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
-		const subIndices = vertex?.indicesCollection
-			?.flatMap(indices => indices.indices)
-			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
-		if(subIndices) {
-			accessedIndicesCollection = filterIndices(subIndices, accessArg, isIndexBasedAccess);
-		}
-	}
-
-	// Add indices to vertex afterward
-	if(accessedIndicesCollection) {
-		const vertex = fnCall.information.graph.getVertex(rootId);
-		if(vertex) {
-			vertex.indicesCollection = accessedIndicesCollection;
-		}
-
-		// When access has no access as parent, it's the top most
-		const rootNode = data.completeAst.idMap.get(rootId);
-		const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
-		if(parentNode?.type !== RType.Access) {
-			// Only reference indices in top most access
-			referenceIndices(accessedIndicesCollection, fnCall, rootId);
-		}
-	}
-}
-
-/**
- * Creates edges of type {@link EdgeType.Reads} to the accessed Indices and their sub-indices starting from
- * the node with {@link parentNodeId}.
- * @param accessedIndicesCollection - All indices that were accessed by the access operation
- * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
- * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts
- */
-function referenceIndices(
-	accessedIndicesCollection: ContainerIndicesCollection,
-	fnCall: ProcessKnownFunctionCallResult,
-	parentNodeId: NodeId,
-) {
-	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
-
-	for(const accessedIndex of accessedIndices ?? []) {
-		fnCall.information.graph.addEdge(parentNodeId, accessedIndex.nodeId, EdgeType.Reads);
-		const accessedSubIndices = isParentContainerIndex(accessedIndex) ? accessedIndex.subIndices : undefined;
-		referenceIndices(accessedSubIndices, fnCall, accessedIndex.nodeId);
-	}
 }

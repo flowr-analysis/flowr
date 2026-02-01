@@ -135,22 +135,11 @@ export interface FlowrConfigOptions extends MergeableRecord {
 		/**
 		 * How to resolve variables and their values
 		 */
-		readonly variables:       VariableResolve,
+		readonly variables:   VariableResolve,
 		/**
 		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
 		 */
-		readonly evalStrings:     boolean
-		/**
-		 * Whether to track pointers in the dataflow graph,
-		 * if not, the graph will be over-approximated wrt.
-		 * containers and accesses
-		 */
-		readonly pointerTracking: boolean | {
-			/**
-			 * The maximum number of indices tracked per obj with the pointer analysis (currently this focuses on initialization)
-			 */
-			readonly maxIndexCount: number
-		},
+		readonly evalStrings: boolean
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -261,10 +250,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	engines:       [],
 	defaultEngine: 'tree-sitter',
 	solver:        {
-		variables:       VariableResolve.Alias,
-		evalStrings:     true,
-		pointerTracking: false,
-		resolveSource:   {
+		variables:     VariableResolve.Alias,
+		evalStrings:   true,
+		resolveSource: {
 			dropPaths:             DropPathsOption.No,
 			ignoreCapitalization:  true,
 			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
@@ -321,15 +309,9 @@ export const flowrConfigFileSchema = Joi.object({
 	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 	solver:        Joi.object({
-		variables:       Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-		evalStrings:     Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
-		pointerTracking: Joi.alternatives(
-			Joi.boolean(),
-			Joi.object({
-				maxIndexCount: Joi.number().required().description('The maximum number of indices tracked per object with the pointer analysis.')
-			})
-		).description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
-		instrument: Joi.object({
+		variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+		evalStrings: Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+		instrument:  Joi.object({
 			dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 		}),
 		resolveSource: Joi.object({

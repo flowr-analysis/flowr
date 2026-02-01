@@ -20,7 +20,7 @@ import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
-import type { IdentifierReference } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
 import { isReferenceType , ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { expensiveTrace } from '../../../../../../util/log';
@@ -48,9 +48,10 @@ export function processTryCatch<OtherInfo>(
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args: args.map(tryUnpackNoNameArg), rootId, data, origin: BuiltInProcName.Try, forceArgs: 'all' });
 	if(args.length < 1 || args[0] === EmptyArgument) {
-		dataflowLogger.warn(`TryCatch Handler ${name.content} does not have 1 argument, skipping`);
+		dataflowLogger.warn(`TryCatch Handler ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return res.information;
 	}
+
 	// artificial ids :)
 	const params = {
 		[config.block]: 'block',
@@ -117,7 +118,7 @@ export function processTryCatch<OtherInfo>(
 
 function promoteCallToFunction<OtherInfo>(call: NodeId, arg: NodeId, info: DataflowInformation, data: DataflowProcessorInformation<ParentInformation & OtherInfo>): NodeId | undefined {
 	let functionId: NodeId | undefined = undefined;
-	let functionName: string | undefined = undefined;
+	let functionName: Identifier | undefined = undefined;
 	let anonymous: boolean = false;
 	const argNode = data.completeAst.idMap.get(arg);
 	if(!argNode) {

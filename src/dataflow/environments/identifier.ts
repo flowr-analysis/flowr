@@ -83,7 +83,7 @@ export const Identifier = {
 		return Array.isArray(id) ? id[2] : undefined;
 	},
 	/**
-	 * Convert the identifier to a string representation,
+	 * Convert the identifier to a **valid R** string representation,
 	 * this will properly quote namespaces that contain `::` to avoid confusion.
 	 * @example
 	 * ```ts

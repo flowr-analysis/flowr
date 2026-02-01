@@ -8,7 +8,7 @@ import { type SamplingStrategy , BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { amendConfig, getConfig } from '../config';
+import { getConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
 	verbose:                     boolean
@@ -20,7 +20,6 @@ export interface SingleBenchmarkCliOptions {
 	output?:                     string
 	parser:                      KnownParserName
 	'dataframe-shape-inference': boolean
-	'enable-pointer-tracking':   boolean
 	'max-slices':                number
 	'cfg':                       boolean
 	threshold?:                  number
@@ -60,11 +59,7 @@ async function benchmark() {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
-	// Enable pointer analysis if requested, otherwise disable it
-	const config = amendConfig(getConfig(), c => {
-		c.solver.pointerTracking = options['enable-pointer-tracking'];
-		return c;
-	});
+	const config = getConfig();
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);

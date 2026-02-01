@@ -27,14 +27,13 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type ContainerIndicesCollection, VertexType } from '../../../../../graph/vertex';
+import { VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -91,7 +90,7 @@ function tryReplacement<OtherInfo>(
 	rootId: NodeId,
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: string,
+	name: Identifier,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
@@ -172,7 +171,7 @@ export function processAssignment<OtherInfo>(
 	config: AssignmentConfiguration
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
-		dataflowLogger.warn(`Assignment ${Identifier.getName(name.content)} has something else than 2 arguments, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
@@ -180,7 +179,7 @@ export function processAssignment<OtherInfo>(
 	const { target, source } = extractSourceAndTarget(effectiveArgs);
 
 	if(target === undefined || source === undefined) {
-		dataflowLogger.warn(`Assignment ${Identifier.getName(name.content)} has an undefined target or source, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const { type, named } = target;
@@ -237,11 +236,11 @@ export function processAssignment<OtherInfo>(
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
-		dataflowLogger.debug(`Assignment ${Identifier.getName(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
 		return tryReplacement(rootId, replacement, data, replacement.content, [...target.arguments, source]);
 	} else if(config.canBeReplacement && type === RType.Access) {
-		dataflowLogger.debug(`Assignment ${Identifier.getName(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
 		return tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 	} else if(type === RType.Access) {
@@ -272,7 +271,7 @@ export function processAssignment<OtherInfo>(
 		return processAssignmentToString(target, args, name, rootId, data, config, source);
 	}
 
-	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
+	dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an unknown target type ${target.type} => unknown impact`);
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
@@ -392,42 +391,12 @@ export function markAsAssignment<OtherInfo>(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: InGraphIdentifierDefinition & { name: string},
+	nodeToDefine: InGraphIdentifierDefinition & { name: Identifier },
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(data.ctx.config.solver.pointerTracking) {
-		let indicesCollection: ContainerIndicesCollection = undefined;
-		if(sourceIds.length === 1) {
-			// support for tracking indices.
-			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
-			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
-
-			// support assignment of container e.g. container1 <- container2
-			// defined indices are passed
-			if(!indicesCollection) {
-				const node = information.graph.idMap?.get(sourceIds[0]);
-				if(node && node.type === RType.Symbol) {
-					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
-				}
-			}
-		}
-		// Indices defined by replacement operation e.g. $<-
-		if(assignmentConfig?.indicesCollection !== undefined) {
-			// If there were indices stored in the vertex, then a container was defined
-			// and assigned to the index of another container e.g. a$b <- list(c = 1)
-			if(indicesCollection) {
-				indicesCollection = addSubIndicesToLeafIndices(assignmentConfig.indicesCollection, indicesCollection);
-			} else {
-				// No indices were defined for the vertex e.g. a$b <- 2
-				indicesCollection = assignmentConfig.indicesCollection;
-			}
-		}
-		nodeToDefine.indicesCollection ??= indicesCollection;
-	}
-
 	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
 	const nid = nodeToDefine.nodeId;
@@ -462,7 +431,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		definedAt: rootId,
 		cds:       data.cds ?? (makeMaybe ? [] : undefined),
 		value:     aliases
-	} satisfies InGraphIdentifierDefinition & { name: string }]
+	} satisfies InGraphIdentifierDefinition & { name: Identifier }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {

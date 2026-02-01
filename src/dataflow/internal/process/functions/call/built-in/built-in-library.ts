@@ -11,6 +11,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
 
 /**
  * Process a library call like `library` or `require`
@@ -23,13 +24,16 @@ export function processLibrary<OtherInfo>(
 ): DataflowInformation {
 	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
 	if(args.length !== 1) {
-		dataflowLogger.warn(`Currently only one-arg library-likes are allows (for ${name.content}), skipping`);
+		dataflowLogger.warn(`Currently only one-arg library-likes are allows (for ${Identifier.toString(name.content)}), skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
 	const nameToLoad = unpackNonameArg(args[0]);
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol) {
 		dataflowLogger.warn('No library name provided, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
+	}
+	if(Identifier.getNamespace(nameToLoad.content) !== undefined) {
+		dataflowLogger.warn('Namespaced library names are not supported, ignoring namespace');
 	}
 
 	// treat as a function call but convert the first argument to a string
@@ -40,7 +44,7 @@ export function processLibrary<OtherInfo>(
 		location: nameToLoad.location,
 		content:  {
 			quotes: 'none',
-			str:    nameToLoad.content
+			str:    Identifier.getName(nameToLoad.content)
 		}
 	};
 	return processKnownFunctionCall({

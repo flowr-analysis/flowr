@@ -39,8 +39,6 @@ export interface NamespaceFormat {
 	[packageName: string]: NamespaceInfo;
 }
 
-// TODO: add export etc. from others, support at least R version resolve usw.
-
 /**
  * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
  * Namespace files can be parsed in a simple mode which is much quicker, but does not support `if`/other R-constructs!

@@ -8,7 +8,7 @@ import { Identifier, type IdentifierDefinition } from './identifier';
 export function define(definition: IdentifierDefinition & { name: Identifier }, superAssign: boolean | undefined, { level, current }: REnvironmentInformation): REnvironmentInformation {
 	const newEnv = superAssign ? current.defineSuper(definition) : current.define(definition);
 	return {
-		level:   Identifier.getNamespace(definition.name) === null ? level : recalculateLevel(newEnv),
+		level:   Identifier.getNamespace(definition.name) === undefined ? level : recalculateLevel(newEnv),
 		current: newEnv,
 	};
 }

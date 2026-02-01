@@ -31,7 +31,7 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const readId = readName?.[0];
+	const readId = readName ? Identifier.getName(readName) : undefined;
 
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 

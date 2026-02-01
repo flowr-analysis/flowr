@@ -180,7 +180,7 @@ export const ABSOLUTE_PATH = {
 				} else {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
-						const handler = PathFunctions.get(dfNode.name ?? '');
+						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({

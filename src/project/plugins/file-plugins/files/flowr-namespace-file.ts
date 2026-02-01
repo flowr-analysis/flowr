@@ -19,35 +19,39 @@ export interface NamespaceFormat {
 
 /**
  * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
+ * Namespace files can be parsed in a simple mode which is much quicker, but does not support `if`/other R-constructs!
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider;
+	private readonly simple:  boolean;
 
 	/**
 	 * Prefer the static {@link FlowrNamespaceFile.from} method to create instances of this class as it will not re-create if already a namespace file
 	 * and handle role assignments.
 	 */
-	constructor(file: FlowrFileProvider) {
+	constructor(file: FlowrFileProvider, simple = false) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
+		this.simple = simple;
 	}
 
 	/**
 	 * Loads and parses the content of the wrapped file in the {@link NamespaceFormat}.
-	 * @see {@link parseNamespace} for details on the parsing logic.
+	 * @see {@link parseNamespaceSimple} for details on the parsing logic.
 	 */
 	protected loadContent(): NamespaceFormat {
-		return parseNamespace(this.wrapped);
+		// TODO: complex R parser with tree-sitter
+		return this.simple ? parseNamespaceSimple(this.wrapped) : parseNamespaceSimple(this.wrapped);
 	}
 
 	/**
 	 * Namespace file lifter, this does not re-create if already a namespace file
 	 */
-	public static from(file: FlowrFileProvider | FlowrNamespaceFile, role?: FileRole): FlowrNamespaceFile {
+	public static from(file: FlowrFileProvider | FlowrNamespaceFile, simple = false, role?: FileRole): FlowrNamespaceFile {
 		if(role) {
 			file.assignRole(role);
 		}
-		return file instanceof FlowrNamespaceFile ? file : new FlowrNamespaceFile(file);
+		return file instanceof FlowrNamespaceFile ? file : new FlowrNamespaceFile(file, simple);
 	}
 }
 
@@ -57,7 +61,7 @@ const cleanLineCommentRegex = /^#.*$/gm;
 /**
  * Parses the given NAMESPACE file
  */
-function parseNamespace(file: FlowrFileProvider): NamespaceFormat {
+function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 	const result = {
 		current: {
 			exportedSymbols:      [] as string[],

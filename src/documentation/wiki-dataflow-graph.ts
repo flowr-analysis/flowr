@@ -4,7 +4,7 @@ import {
 	type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from '../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
@@ -119,11 +119,11 @@ ${subExplanations.length > 0 ? await printAllSubExplanations(parser, subExplanat
 }
 
 function edgeTypeToId(edgeType: EdgeType): string {
-	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
+	return DfEdge.typeToName(edgeType).toLowerCase().replaceAll(' ', '-');
 }
 
 function linkEdgeName(edgeType: EdgeType, page = ''): string {
-	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
+	return `[\`${DfEdge.typeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDocContext): Promise<string> {
@@ -1158,7 +1158,8 @@ Depending on what you are interested in, there exists a plethora of functions an
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
 * ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
-* ${ctx.link(edgeIncludesType)} to check if an edge includes a specific type and ${ctx.link(splitEdgeTypes)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
+* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
 * ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
 * ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
@@ -1201,8 +1202,8 @@ ${await(async() => {
 			}
 			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
-You can use ${ctx.link(splitEdgeTypes.name)} to get the individual bitmasks of all included types, and 
-${ctx.link(edgeIncludesType.name)} to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use ${ctx.link('DfEdge::splitTypes')} to get the individual bitmasks of all included types, and 
+${ctx.link('DfEdge::includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
 
 ${section('Handling Origins', 3, 'dfg-handling-origins')}
 

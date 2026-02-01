@@ -9,7 +9,7 @@ import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
 import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './printer';
-import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
 import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
@@ -88,7 +88,7 @@ class DataflowBuilderPrinter {
 		const map: DefaultMap<EdgeType, NodeId[]> = new DefaultMap<EdgeType, NodeId[]>(() => []);
 		if(outgoing) {
 			for(const [target, edge] of outgoing) {
-				for(const type of splitEdgeTypes(edge.types)) {
+				for(const type of DfEdge.splitTypes(edge)) {
 					map.get(type).push(target);
 				}
 			}

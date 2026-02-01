@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge, EdgeType } from './edge';
+import type { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -88,12 +88,12 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 /**
  * Maps the edges target to the edge information
  */
-export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>;
+export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 /**
  * Similar to {@link OutgoingEdges}, but inverted regarding the edge direction.
  * In other words, it maps the source to the edge information.
  */
-export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>;
+export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -101,7 +101,7 @@ export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = M
 export interface DataflowGraphJson {
 	readonly rootVertices:        NodeId[],
 	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
-	readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][]
+	readonly edgeInformation:     [NodeId, [NodeId, DfEdge][]][]
 	readonly _unknownSideEffects: UnknownSideEffect[]
 }
 
@@ -130,7 +130,7 @@ export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
-	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+	Edge   extends DfEdge       = DfEdge
 > {
 	private _idMap: AstIdMap | undefined;
 
@@ -501,7 +501,7 @@ export class DataflowGraph<
 				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
 			}
 		}
-		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
+		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 		for(const unknown of data._unknownSideEffects) {
 			graph._unknownSideEffects.add(unknown);
 		}

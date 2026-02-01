@@ -173,7 +173,7 @@ export const Identifier = {
 			return [id, undefined, undefined];
 		}
 	}
-};
+} as const;
 
 
 

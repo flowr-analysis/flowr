@@ -6,7 +6,7 @@ import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { FlowrFilterCombinator } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -35,7 +35,7 @@ const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls;// include read
 const InterestingEdgesTargets = EdgeType.SideEffectOnCall;
 
 function getDefinitionArguments(def: NodeId, dfg: DataflowGraph) {
-	return [...dfg.outgoingEdges(def) ?? []].filter(([,{ types }]) => edgeIncludesType(types, EdgeType.DefinedBy))
+	return [...dfg.outgoingEdges(def) ?? []].filter(([,e]) => DfEdge.includesType(e, EdgeType.DefinedBy))
 		.map(([target]) => target);
 }
 
@@ -51,8 +51,8 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
 		|| definedBys.flatMap(e => [...dfg.outgoingEdges(e) ?? []])
-			.some(([target, { types }]) => {
-				return edgeIncludesType(types, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
+			.some(([target, e]) => {
+				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});
 
 	if(hasImportantArgs) {
@@ -113,7 +113,7 @@ export const UNUSED_DEFINITION = {
 				const ingoingEdges = data.dataflow.graph.ingoingEdges(dfgVertex.id);
 
 				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
-				const ingoingInteresting = ingoingEdges?.values().some(e => edgeIncludesType(e.types, interestedIn));
+				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
 
 				if(ingoingInteresting) {
 					return undefined;

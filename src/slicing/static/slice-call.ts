@@ -17,7 +17,7 @@ import {
 } from '../../dataflow/graph/graph';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
 import {
@@ -44,7 +44,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => !isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
-		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
+		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
 			functionCallDefs.push(target);
 		}
 	}
@@ -114,7 +114,7 @@ const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCal
 /** Returns true if we found at least one return edge */
 export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	const e = Array.from(currentEdges.entries());
-	const found = e.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Returns));
+	const found = e.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
 	if(found.length === 0) {
 		return false;
 	}
@@ -122,9 +122,9 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 	}
 	for(const [target, edge] of e) {
-		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
+		if(DfEdge.includesType(edge, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-		} else if(edgeIncludesType(edge.types, PotentialFollowOnReturn)) {
+		} else if(DfEdge.includesType(edge, PotentialFollowOnReturn)) {
 			updatePotentialAddition(queue, from, target, baseEnvironment, baseEnvFingerprint);
 		}
 	}

@@ -8,7 +8,7 @@ import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-param
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import { DfEdge, EdgeType } from '../graph/edge';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -52,8 +52,8 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 			nonLocalReads.push({ name, nodeId, type });
 			continue;
 		}
-		for(const [target, { types }] of outgoing) {
-			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
+		for(const [target, e] of outgoing) {
+			if(DfEdge.includesType(e, EdgeType.Reads) && !ids.has(target)) {
 				nonLocalReads.push({ name,  nodeId,  type });
 				break;
 			}
@@ -313,8 +313,8 @@ function linkFunctionCall(
 	}
 
 	const functionDefinitionReadIds = new Set<NodeId>();
-	for(const [t, { types }] of edges.entries()) {
-		if(!isBuiltIn(t) && edgeDoesNotIncludeType(types, EdgeType.Argument) && edgeIncludesType(types, FCallLinkReadBits)) {
+	for(const [t, e] of edges.entries()) {
+		if(!isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
 			functionDefinitionReadIds.add(t);
 		}
 	}
@@ -325,7 +325,7 @@ function linkFunctionCall(
 	for(const def of functionDefs.values()) {
 		// we can skip this if we already linked it
 		const oEdge = graph.outgoingEdges(id)?.get(def.id);
-		if(oEdge && edgeIncludesType(oEdge.types, EdgeType.Calls)) {
+		if(oEdge && DfEdge.includesType(oEdge, EdgeType.Calls)) {
 			continue;
 		}
 		for(const ep of linkFunctionCallWithSingleTarget(graph, def, info, idMap)) {
@@ -382,7 +382,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 			)?.map(d => d.nodeId) ?? [];
 		}
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
-			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
+			if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
 				functionCallDefs.push(target);
 			}
 		}
@@ -455,8 +455,8 @@ export function getAllLinkedFunctionDefinitions(
 		}
 
 		let hasReturnEdge = false;
-		for(const [target, { types }] of edges) {
-			if(edgeIncludesType(types, EdgeType.Returns)) {
+		for(const [target, e] of edges) {
+			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				hasReturnEdge = true;
 				if(!visited.has(target)) {
 					potential.push(target);
@@ -468,8 +468,8 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		for(const [target, { types }] of edges) {
-			if(edgeIncludesType(types, LinkedFnFollowBits) && !visited.has(target)) {
+		for(const [target, e] of edges) {
+			if(DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
 				potential.push(target);
 			}
 		}

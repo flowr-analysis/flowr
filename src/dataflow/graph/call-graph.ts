@@ -9,7 +9,7 @@ import {
 import type { REnvironmentInformation } from '../environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from './edge';
+import { DfEdge, EdgeType } from './edge';
 import { builtInId, BuiltInProcName, isBuiltIn } from '../environments/built-in';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
@@ -48,8 +48,8 @@ export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): Cal
 			continue;
 		}
 		result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
-		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, EdgeType.Calls)) {
+		for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+			if(DfEdge.includesType(e, EdgeType.Calls)) {
 				result.addEdge(currentId, tar, EdgeType.Calls);
 				toVisit.push(tar);
 			}
@@ -178,8 +178,8 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 			continue;
 		}
 		let addedNew = false;
-		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, UntargetedCallFollow) && edgeDoesNotIncludeType(types, UntargetedCallAvoid)) {
+		for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+			if(DfEdge.includesType(e, UntargetedCallFollow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)) {
 				addedNew = true;
 				toVisit.push(tar);
 			}
@@ -257,8 +257,8 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges
-	for(const [tar, { types }] of graph.outgoingEdges(vtx.id) ?? []) {
-		if(edgeDoesNotIncludeType(types, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
+	for(const [tar, e] of graph.outgoingEdges(vtx.id) ?? []) {
+		if(DfEdge.doesNotIncludeType(e, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
 			continue;
 		}
 		const tVtx = graph.getVertex(tar);

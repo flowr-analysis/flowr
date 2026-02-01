@@ -686,9 +686,11 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
+ * @param fuzzy     - Whether to use fuzzy matching when searching for the type
+ * @param type      - Optionally restrict to a certain type of element
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
-	const res = retrieveNode(name, hierarchy);
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
+	const res = retrieveNode(name, hierarchy, fuzzy, type);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';

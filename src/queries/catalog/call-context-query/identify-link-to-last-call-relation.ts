@@ -2,7 +2,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { type DataflowGraph, getReferenceOfArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { isBuiltIn } from '../../../dataflow/environments/built-in';
@@ -39,7 +39,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 		return 'no';
 	}
 	const callTargets = outgoing.entries()
-		.filter(([, { types }]) => edgeIncludesType(types, EdgeType.Calls))
+		.filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls))
 		.map(([t]) => t)
 		.toArray()
     ;

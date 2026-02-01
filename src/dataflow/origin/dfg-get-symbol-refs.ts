@@ -1,5 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
 import { happensInEveryBranch } from '../info';
 import { getOriginInDfg } from './dfg-get-origin';
@@ -40,11 +40,11 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 		res.add(origin.id);
 		graph.ingoingEdges(origin.id)
 			?.entries()
-			.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Reads))
+			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Reads))
 			.forEach(([node, _]) => res.add(node));
 		graph.outgoingEdges(origin.id)
 			?.entries()
-			.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.DefinedByOnCall))
+			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.DefinedByOnCall))
 			.forEach(([node, _]) => res.add(node));
 	}
 

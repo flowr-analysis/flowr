@@ -15,7 +15,7 @@ import {
 	ReferenceTypeReverseMapping
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EdgeType, edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
+import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -217,12 +217,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 		const originalTarget = target;
 		target = escapeId(target);
-		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
+		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge as DfEdge)) : edge.types;
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
 			const style = isBuiltIn(target) ? '-.->' : '-->';
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);

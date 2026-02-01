@@ -277,8 +277,8 @@ export function makeDocContextForTypes(
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
 		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
-			guard(filter === undefined, 'ElementFilter is not yet supported for link');
-			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper);
+			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
+			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
 		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
 			const className = cls.prototype.constructor.name;

@@ -4,7 +4,7 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexVariableDefinition
 	, VertexType } from '../graph/vertex';
-import { type EdgeTypeBits, edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
+import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import { isBuiltIn } from '../environments/built-in';
@@ -116,8 +116,8 @@ const UnwantedVariableTypes: EdgeTypeBits = EdgeType.NonStandardEvaluation;
 function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[] | undefined {
 	// to identify the origins we have to track read edges and definitions on function calls
 	const origins: Origin[] = [];
-	for(const [target, { types }] of dfg.outgoingEdges(use.id) ?? []) {
-		if(edgeDoesNotIncludeType(types, WantedVariableTypes) || edgeIncludesType(types, UnwantedVariableTypes)) {
+	for(const [target, e] of dfg.outgoingEdges(use.id) ?? []) {
+		if(DfEdge.doesNotIncludeType(e, WantedVariableTypes) || DfEdge.includesType(e, UnwantedVariableTypes)) {
 			continue;
 		}
 
@@ -140,8 +140,8 @@ function getVariableDefinitionOrigin(dfg: DataflowGraph, vtx: DataflowGraphVerte
 	const pool: Origin[] = [{ type: OriginType.WriteVariableOrigin, id: vtx.id }];
 
 	const outgoingReads = dfg.outgoingEdges(vtx.id) ?? [];
-	for(const [target, { types }] of outgoingReads) {
-		if(edgeIncludesType(types, EdgeType.Reads)) {
+	for(const [target, e] of outgoingReads) {
+		if(DfEdge.includesType(e, EdgeType.Reads)) {
 			const targetVtx = dfg.getVertex(target);
 			if(!targetVtx) {
 				continue;

@@ -11,7 +11,7 @@ import type {
 } from './call-context-query-format';
 import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
@@ -29,7 +29,7 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 	if(vertex === undefined) {
 		return false;
 	}
-	return vertex.values().some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
+	return vertex.values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation));
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
@@ -150,7 +150,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 		if(info.tag !== VertexType.FunctionCall) {
 			const x = outgoing.entries()
-				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
+				.filter(([,e]) => DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
@@ -163,7 +163,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 			track |= EdgeType.Returns;
 		}
 		const out = outgoing.entries()
-			.filter(([, e]) => edgeIncludesType(e.types, track) && (nodeId !== id || !edgeIncludesType(e.types, EdgeType.Argument)))
+			.filter(([, e]) => DfEdge.includesType(e, track) && (nodeId !== id || DfEdge.doesNotIncludeType(e, EdgeType.Argument)))
 			.map(([t]) => t)
 		;
 

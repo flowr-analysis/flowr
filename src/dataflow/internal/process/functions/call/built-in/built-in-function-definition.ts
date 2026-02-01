@@ -34,7 +34,7 @@ import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { edgeIncludesType, EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -151,7 +151,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const readParams: Record<NodeId, boolean> = {};
 	for(const paramId of paramIds) {
 		const ingoing = subgraph.ingoingEdges(paramId);
-		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
+		readParams[paramId] = ingoing?.values().some(e => DfEdge.includesType(e, EdgeType.Reads)) ?? false;
 	}
 
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];

@@ -22,7 +22,7 @@ import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-vi
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -537,13 +537,13 @@ ${
 
 ${section('Working With Exit Points', 3, 'cfg-exit-points')}
 
-With the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) you already get a \`${edgeTypeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
+With the ${ctx.linkPage('wiki/Dataflow Graph')} you already get a \`${DfEdge.typeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
 (given that this function call does neither transform nor create a value).
 But the control flow perspective gives you more! Given a simple addition like \`x + 1\`, the CFG looks like this:
 
 ${await (async function() {
 	const cfg = await getCfg(shell, 'x + 1');
-	const [plusVertexId, plusVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === '+')[0];
+	const [plusVertexId, plusVertex] = cfg.info.graph.vertices().entries().filter(([n]) => recoverName(n, cfg.ast.idMap) === '+').toArray()[0];
 	guard(plusVertex.type === CfgVertexType.Expression);
 	const numOfExits
 		= plusVertex.end?.length ?? 0;

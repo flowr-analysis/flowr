@@ -12,7 +12,7 @@ import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/pr
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
-import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
 import { Identifier } from '../../../../dataflow/environments/identifier';
 
 const initialFunctionUsageInfo = {
@@ -94,7 +94,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			const dataflowNode = input.dataflow.graph.get(node.info.id);
 			let hasCallsEdge = false;
 			if(dataflowNode) {
-				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls));
+				hasCallsEdge = dataflowNode[1].values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 			}
 
 			if(!node.named) {

@@ -7,7 +7,7 @@ import {
 	isFunctionDefinitionVertex
 } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { DfEdge, EdgeType } from '../graph/edge';
 import { resolveIdToValue } from '../eval/resolve/alias-tracking';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -27,8 +27,8 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			return true;
 		}
 		const next = graph.outgoingEdges(current.id) ?? [];
-		for(const [t, { types }] of next) {
-			if(edgeIncludesType(types, EdgeType.Returns)) {
+		for(const [t, e] of next) {
+			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				const v = graph.getVertex(t);
 				if(v) {
 					workingQueue.push(v);
@@ -42,8 +42,8 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
 	const callSites = graph.ingoingEdges(def.id);
 
-	for(const [callerId, { types }] of callSites ?? []) {
-		if(!edgeIncludesType(types, EdgeType.Calls)) {
+	for(const [callerId, e] of callSites ?? []) {
+		if(!DfEdge.includesType(e, EdgeType.Calls)) {
 			continue;
 		}
 		const caller = graph.getVertex(callerId);

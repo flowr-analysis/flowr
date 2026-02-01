@@ -24,7 +24,7 @@ const initialLoopInfo = {
 	deepestExplicitNesting: 0
 };
 
-export type LoopInfo = Writable<typeof initialLoopInfo>
+export type LoopInfo = Writable<typeof initialLoopInfo>;
 
 
 const isImplicitLoop = /[lsvmt]?apply/;

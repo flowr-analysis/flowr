@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../info';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -45,7 +45,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 /**
  * Marks the given function call node as only calling built-in functions.
  */
-export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
 	const v = graph.getVertex(rootId);
 	if(v?.tag === VertexType.FunctionCall) {
 		v.onlyBuiltin = true;

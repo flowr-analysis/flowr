@@ -115,7 +115,7 @@ class GuardError extends Error {
 	}
 }
 
-export type GuardMessage = string | (() => string)
+export type GuardMessage = string | (() => string);
 
 /**
  * @param assertion   - will be asserted

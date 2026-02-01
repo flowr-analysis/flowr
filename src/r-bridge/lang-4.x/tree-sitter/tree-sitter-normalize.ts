@@ -19,6 +19,7 @@ import { log } from '../../../util/log';
 import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
 import { parseLog } from '../ast/parser/json/parser';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 export interface TreeSitterInfo {
 	treeSitterId: number
@@ -138,18 +139,16 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					children: body.map(n => n[1]),
 					grouping: [
 						{
-							type:      RType.Symbol,
-							location:  makeSourceRange(opening),
-							content:   removeRQuotes(opening.text),
-							lexeme:    opening.text,
-							namespace: undefined,
+							type:     RType.Symbol,
+							location: makeSourceRange(opening),
+							content:  removeRQuotes(opening.text),
+							lexeme:   opening.text,
 							...defaultInfo
 						}, {
-							type:      RType.Symbol,
-							location:  makeSourceRange(closing),
-							content:   removeRQuotes(closing.text),
-							lexeme:    closing.text,
-							namespace: undefined,
+							type:     RType.Symbol,
+							location: makeSourceRange(closing),
+							content:  removeRQuotes(closing.text),
+							lexeme:   closing.text,
 							...defaultInfo
 						}
 					],
@@ -182,12 +181,11 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						location:     opSource,
 						lexeme:       node.text,
 						functionName: {
-							type:      RType.Symbol,
-							location:  opSource,
-							lexeme:    op.text,
-							content:   op.text,
-							namespace: undefined,
-							info:      {
+							type:     RType.Symbol,
+							location: opSource,
+							lexeme:   op.text,
+							content:  op.text,
+							info:     {
 								treeSitterId: op.id
 							}
 						},
@@ -251,13 +249,12 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				};
 			}
 			case TreeSitterType.NamespaceOperator: {
-				const [lhs, /* :: or ::: */, rhs] = nonErrorChildren(node);
+				const [lhs, int, rhs] = nonErrorChildren(node);
 				return {
-					type:      RType.Symbol,
-					location:  makeSourceRange(rhs),
-					content:   rhs.text,
-					lexeme:    rhs.text,
-					namespace: lhs.text,
+					type:     RType.Symbol,
+					location: makeSourceRange(rhs),
+					content:  Identifier.make(rhs.text, lhs.text, int.text === ':::' ),
+					lexeme:   rhs.text,
 					...defaultInfo
 				};
 			}
@@ -270,15 +267,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.Identifier:
 			case TreeSitterType.Return:
 				return {
-					type:      RType.Symbol,
-					location:  range,
-					content:   startAndEndsWith(node.text, '`') ? node.text.slice(1, -1) : removeRQuotes(node.text),
-					lexeme:    node.text,
-					namespace: undefined,
+					type:     RType.Symbol,
+					location: range,
+					content:  startAndEndsWith(node.text, '`') ? node.text.slice(1, -1) : removeRQuotes(node.text),
+					lexeme:   node.text,
 					...defaultInfo
 				};
 			case TreeSitterType.IfStatement: {
-				const [ifNode, /* ( */, condition,/* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
+				const [ifNode, /* ( */, condition, /* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
 				const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
 				return {
 					type:      RType.IfThenElse,
@@ -301,12 +297,11 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.ForLoop,
 					variable: {
-						type:      RType.Symbol,
-						location:  makeSourceRange(variableNode),
-						content:   removeRQuotes(variableNode.text),
-						lexeme:    variableNode.text,
-						namespace: undefined,
-						info:      {
+						type:     RType.Symbol,
+						location: makeSourceRange(variableNode),
+						content:  removeRQuotes(variableNode.text),
+						lexeme:   variableNode.text,
+						info:     {
 							fullRange:        undefined,
 							additionalTokens: [],
 							fullLexeme:       undefined,
@@ -375,9 +370,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					if(funcNode.type === RType.String) {
 						funcNode = {
 							...funcNode,
-							type:      RType.Symbol,
-							namespace: undefined,
-							content:   removeRQuotes(func.text)
+							type:    RType.Symbol,
+							content: removeRQuotes(func.text)
 						};
 					}
 					return {
@@ -550,15 +544,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					};
 				} else {
 					const [nameNode, /* = */, valueNode] = children;
-					let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo>;
+					let name = convertTreeNode(nameNode) as RString<TreeSitterInfo> | RSymbol<TreeSitterInfo, string>;
 
 					// unescape argument names
 					if(name.type === RType.String) {
 						name = {
 							...name,
-							type:      RType.Symbol,
-							content:   name.content.str,
-							namespace: undefined
+							type:    RType.Symbol,
+							content: name.content.str
 						};
 					} else if(startAndEndsWith(name.content, '`')) {
 						name.content = name.content.slice(1, -1);

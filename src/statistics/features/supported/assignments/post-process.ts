@@ -1,6 +1,6 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -48,7 +48,7 @@ function appendOperators(base: SummarizedAssignmentInfo<number[][], Set<string>>
 
 // returns a map that for each combination of operators found (like `<-,=`) returns the number of projects and files
 // that use both of them
-function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<number[][], Set<string>>): Map<string, {uniqueProjects: number, uniqueFiles: number}> {
+function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<number[][], Set<string>>): Map<string, { uniqueProjects: number, uniqueFiles: number }> {
 	const ops = Object.keys(collected.assignmentOperator);
 	if(ops.length < 1) {
 		return new Map();
@@ -74,7 +74,7 @@ function retrieveUsageCombinationCounts(collected: SummarizedAssignmentInfo<numb
 		store.set(newKey, { uniqueProjects: newUniqueProjects, uniqueFiles: newUniqueFiles });
 	}
 
-	const result = new Map<string, {uniqueProjects: number, uniqueFiles: number}>();
+	const result = new Map<string, { uniqueProjects: number, uniqueFiles: number }>();
 	for(const [key, val] of store.entries()) {
 		result.set(key, { uniqueProjects: val.uniqueProjects.size, uniqueFiles: val.uniqueFiles.size });
 	}

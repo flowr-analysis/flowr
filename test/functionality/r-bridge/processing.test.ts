@@ -1,7 +1,7 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell';
 import { numVal } from '../_helper/ast-builder';
 import { rangeFrom } from '../../../src/util/range';
-import { type RNodeWithParent , decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type RNodeWithParent, decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect';
@@ -78,12 +78,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 			);
 			assertDecorated('Symbol', 'k',
 				exprList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					namespace: undefined,
-					lexeme:    'k',
-					content:   'k',
-					info:      {
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'k',
+					content:  'k',
+					info:     {
 						parent:  '1',
 						id:      '0',
 						nesting: 0,

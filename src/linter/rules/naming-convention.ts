@@ -7,31 +7,31 @@ import { assertUnreachable } from '../../util/assert';
 import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
 import type { SourceRange } from '../../util/range';
-import { type LintingResult, type LintingRule, type LintQuickFixReplacement , LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 
 export enum CasingConvention {
-    CamelCase       = 'camelCase',
-    PascalCase      = 'PascalCase',
-    SnakeCase       = 'snake_case',
-    ConstantCase    = 'CONSTANT_CASE',
-    CamelSnakeCase  = 'camel_Snake_Case',
-    PascalSnakeCase = 'Pascal_Snake_Case',
-    Unknown         = 'unknown'
+	CamelCase       = 'camelCase',
+	PascalCase      = 'PascalCase',
+	SnakeCase       = 'snake_case',
+	ConstantCase    = 'CONSTANT_CASE',
+	CamelSnakeCase  = 'camel_Snake_Case',
+	PascalSnakeCase = 'Pascal_Snake_Case',
+	Unknown         = 'unknown'
 }
 
 export interface NamingConventionResult extends LintingResult {
-    name:           string,
-    detectedCasing: CasingConvention,
-    range:          SourceRange,
+	name:           string,
+	detectedCasing: CasingConvention,
+	range:          SourceRange,
 }
 
 /**
  * It is planned to have a config like ESLint
  */
 export interface NamingConventionConfig extends MergeableRecord {
-    /** which casing convention to enforce */
+	/** which casing convention to enforce */
 	caseing: CasingConvention | 'auto'
 
 	/** if true non alphabetic characters are ignored */
@@ -40,7 +40,7 @@ export interface NamingConventionConfig extends MergeableRecord {
 
 export interface NamingConventionMetadata extends MergeableRecord {
 	/** number of symbols matching the casing convetion */
-    numMatches: number
+	numMatches: number
 
 	/** number of symbols breaking the casing convetion */
 	numBreak: number;

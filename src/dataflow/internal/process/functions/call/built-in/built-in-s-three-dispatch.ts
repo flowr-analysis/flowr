@@ -84,12 +84,11 @@ export function processS3Dispatch<OtherInfo>(
 	}
 	const dfGeneric = processDataflowFor(generic, data);
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      generic.info,
-		content:   accessedIdentifiers[0],
-		lexeme:    accessedIdentifiers[0],
-		location:  generic.location ?? invalidRange(),
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     generic.info,
+		content:  accessedIdentifiers[0],
+		lexeme:   accessedIdentifiers[0],
+		location: generic.location ?? invalidRange()
 	};
 
 	patchFunctionCall({

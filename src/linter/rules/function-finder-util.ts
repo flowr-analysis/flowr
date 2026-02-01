@@ -2,7 +2,6 @@ import { Q } from '../../search/flowr-search-builder';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -15,15 +14,16 @@ import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
 export interface FunctionsResult extends LintingResult {
-    function: string
-    range:    SourceRange
+	function: string
+	range:    SourceRange
 }
 
 export interface FunctionsMetadata extends MergeableRecord {
-    totalCalls:               number;
-    totalFunctionDefinitions: number;
+	totalCalls:               number;
+	totalFunctionDefinitions: number;
 }
 
 export interface FunctionsToDetectConfig extends MergeableRecord {
@@ -70,7 +70,7 @@ export const functionFinderUtil = {
 					return {
 						node:   element.node,
 						range:  element.node.info.fullRange as SourceRange,
-						target: target as Identifier
+						target: target as BrandedIdentifier
 					};
 				});
 			});
@@ -86,7 +86,7 @@ export const functionFinderUtil = {
 			'.meta': metadata
 		};
 	},
-	prettyPrint: (functionType: string) =>{
+	prettyPrint: (functionType: string) => {
 		return {
 			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
 			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
@@ -95,7 +95,7 @@ export const functionFinderUtil = {
 	requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: readonly FunctionInfo[],
-		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider},
+		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider },
 		requireValue: RegExp | string | undefined
 	): boolean {
 		const info = pool.find(f => f.name === element.node.lexeme);

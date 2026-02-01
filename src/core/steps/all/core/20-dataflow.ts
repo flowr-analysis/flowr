@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import {
 	dataflowGraphToJson,
 	dataflowGraphToMermaid,

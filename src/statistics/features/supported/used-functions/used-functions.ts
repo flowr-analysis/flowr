@@ -1,7 +1,7 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -12,7 +12,8 @@ import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/pr
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
-import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
+import { Identifier } from '../../../../dataflow/environments/identifier';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -27,7 +28,7 @@ const initialFunctionUsageInfo = {
 	unnamedCalls:        0
 };
 
-export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
+export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>;
 
 export const AllCallsFileBase = 'all-calls';
 
@@ -72,7 +73,7 @@ export type FunctionCallInformation = [
 	/** whether this was called from a namespace, like `a::b()` */
 	namespace:             string | undefined,
 	knownDefinitionInFile: 0 | 1
-]
+];
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = [];
@@ -93,7 +94,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			const dataflowNode = input.dataflow.graph.get(node.info.id);
 			let hasCallsEdge = false;
 			if(dataflowNode) {
-				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls));
+				hasCallsEdge = dataflowNode[1].values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 			}
 
 			if(!node.named) {
@@ -111,7 +112,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 					node.functionName.lexeme,
 					getRangeStart(node.location),
 					node.arguments.length,
-					node.functionName.namespace ?? '',
+					Identifier.getNamespace(node.functionName.content) ?? '',
 					hasCallsEdge ? 1 : 0
 				]);
 			}

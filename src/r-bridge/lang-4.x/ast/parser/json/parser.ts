@@ -1,12 +1,12 @@
 import { convertPreparedParsedData, prepareParsedData } from './format';
 import { log } from '../../../../../util/log';
-import { type IdGenerator, type NormalizedAst , decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
+import { type IdGenerator, type NormalizedAst, decorateAst, deterministicCountingIdGenerator } from '../../model/processing/decorate';
 import type { NoInfo } from '../../model/model';
 import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root';
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../parser';
-import { type FlowrConfigOptions , getEngineConfig } from '../../../../../config';
+import { type FlowrConfigOptions, getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
 import type { RProject } from '../../model/nodes/r-project';
 import { mergeProjects } from '../../model/nodes/r-project';

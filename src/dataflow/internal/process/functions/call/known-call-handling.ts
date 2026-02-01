@@ -7,12 +7,12 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
-import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
-import { type ContainerIndicesCollection, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
+import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in';
@@ -80,13 +80,13 @@ export function markNonStandardEvaluationEdges(
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
-	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`);
+	expensiveTrace(dataflowLogger, () => `Processing known function call ${Identifier.toString(functionCallName)} with ${args.length} arguments`);
 
 	const processArgs = reverseOrder ? args.toReversed() : args;
 
@@ -101,16 +101,15 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		environment:       data.environment,
-		name:              functionCallName,
+		tag:         VertexType.FunctionCall,
+		id:          rootId,
+		environment: data.environment,
+		name:        functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		cds:               data.cds,
-		args:              reverseOrder ? callArgs.toReversed() : callArgs,
-		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? [BuiltInProcName.Function] : [origin]
+		onlyBuiltin: false,
+		cds:         data.cds,
+		args:        reverseOrder ? callArgs.toReversed() : callArgs,
+		origin:      origin === 'default' ? [BuiltInProcName.Function] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {

@@ -21,7 +21,6 @@ export interface BenchmarkCliOptions {
 	seed?:                       string
 	parser:                      KnownParserName
 	'dataframe-shape-inference': boolean
-	'enable-pointer-tracking':   boolean
 	'max-file-slices':           number
 	threshold?:                  number
 	'per-file-time-limit'?:      number
@@ -29,7 +28,7 @@ export interface BenchmarkCliOptions {
 	cfg?:                        boolean
 }
 
-const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [],{
+const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 	subtitle: 'Slice given files with additional benchmark information',
 	examples: [
 		'{italic example-folder/}',
@@ -95,14 +94,13 @@ async function benchmark() {
 	const limit = options.limit ?? files.length;
 
 	const verboseAdd = options.verbose ? ['--verbose'] : [];
-	const args = files.map((f,i) => [
+	const args = files.map((f, i) => [
 		'--input', f.request.content,
 		'--file-id', `${i}`,
 		'--output', path.join(options.output, path.relative(f.baseDir, `${f.request.content}.json`)),
 		'--slice', options.slice, ...verboseAdd,
 		'--parser', options.parser,
 		...(options['dataframe-shape-inference'] ? ['--dataframe-shape-inference'] : []),
-		...(options['enable-pointer-tracking'] ? ['--enable-pointer-tracking'] : []),
 		'--max-slices', `${options['max-file-slices']}`,
 		...(options.threshold ? ['--threshold', `${options.threshold}`] : []),
 		'--sampling-strategy', options['sampling-strategy'],

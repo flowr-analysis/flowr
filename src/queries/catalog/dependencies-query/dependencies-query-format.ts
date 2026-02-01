@@ -18,14 +18,16 @@ import type { Range } from 'semver';
 import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
 import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { TestFunctions } from './function-info/test-functions';
+import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 export const Unknown = 'unknown';
 
 export interface DependencyCategorySettings {
-    queryDisplayName?:   string
-    functions:           FunctionInfo[]
+	queryDisplayName?:   string
+	functions:           FunctionInfo[]
 	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
-    defaultValue?:       string
+	defaultValue?:       string
 	/**
 	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
 	 * To add or modify dependency info entries, simply modify the `result` array.
@@ -35,7 +37,7 @@ export interface DependencyCategorySettings {
 	 * @param queryResults - The results of the call context query.
 	 * @param result - The current result array to which additional dependency info can be added.
 	 */
-    additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
+	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
 export const DefaultDependencyCategories = {
@@ -47,13 +49,14 @@ export const DefaultDependencyCategories = {
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
 				visitAst((await data.analyzer.normalize()).ast.files.map(f => f.root), n => {
-					if(n.type === RType.Symbol && n.namespace) {
-						const dep = data.analyzer.inspectContext().deps.getDependency(n.namespace);
+					let ns: BrandedNamespace | undefined;
+					if(n.type === RType.Symbol && (ns = Identifier.getNamespace(n.content)) !== undefined) {
+						const dep = data.analyzer.inspectContext().deps.getDependency(ns);
 						/* we should improve the identification of ':::' */
 						result.push({
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-							value:              n.namespace,
+							value:              ns,
 							versionConstraints: dep?.versionConstraints,
 							derivedVersion:     dep?.derivedVersion,
 							namespaceInfo:      dep?.namespaceInfo
@@ -91,23 +94,23 @@ export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCatego
 export type DependencyCategoryName = DefaultDependencyCategoryName | string;
 
 export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${DefaultDependencyCategoryName}Functions`, FunctionInfo[]>> {
-    readonly type:                    'dependencies'
-    readonly enabledCategories?:      DependencyCategoryName[]
-    readonly ignoreDefaultFunctions?: boolean
-    readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
+	readonly type:                    'dependencies'
+	readonly enabledCategories?:      DependencyCategoryName[]
+	readonly ignoreDefaultFunctions?: boolean
+	readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
 }
 
-export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] }
+export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] };
 
 
 export interface DependencyInfo extends Record<string, unknown>{
-    nodeId:           NodeId
-    functionName:     string
-    linkedIds?:       readonly NodeId[]
+	nodeId:              NodeId
+	functionName:        string
+	linkedIds?:          readonly NodeId[]
 	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
 	lexemeOfArgument?:   string;
-    /** The library name, file, source, destination etc. being sourced, read from, or written to. */
-    value?:           string
+	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
+	value?:              string
 	versionConstraints?: Range[],
 	derivedVersion?:     Range,
 	namespaceInfo?:      NamespaceInfo,

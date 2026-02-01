@@ -8,6 +8,7 @@ import { label } from '../../../_helper/label';
 import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retriever';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe, assert, test, expect } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 describe.sequential('CSV parsing', withShell(shell => {
 	test('simple', async() => {
@@ -24,12 +25,12 @@ describe.sequential('CSV parsing', withShell(shell => {
 			content: 'x <- 1'
 		}, shell);
 		const parsed = prepareParsedData(code);
-		const one = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 1,'parent': 3,'token': 'SYMBOL','terminal': true,'text': 'x' };
-		const two = { 'line1': 1,'col1': 3,'line2': 1,'col2': 4,'id': 2,'parent': 7,'token': 'LEFT_ASSIGN','terminal': true,'text': '<-' };
-		const three = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 3,'parent': 7,'token': 'expr','terminal': false,'text': 'x','children': [one] };
-		const four = { 'line1': 1,'col1': 6,'line2': 1,'col2': 6,'id': 4,'parent': 5,'token': 'NUM_CONST','terminal': true,'text': '1' };
-		const five = { 'line1': 1,'col1': 6,'line2': 1,'col2': 6,'id': 5,'parent': 7,'token': 'expr','terminal': false,'text': '1','children': [four] };
-		assert.deepEqual(parsed, [{ 'line1': 1,'col1': 1,'line2': 1,'col2': 6,'id': 7,'parent': 0,'token': 'expr','terminal': false,'text': 'x <- 1','children': [three,two,five] }]);
+		const one = { 'line1': 1, 'col1': 1, 'line2': 1, 'col2': 1, 'id': 1, 'parent': 3, 'token': 'SYMBOL', 'terminal': true, 'text': 'x' };
+		const two = { 'line1': 1, 'col1': 3, 'line2': 1, 'col2': 4, 'id': 2, 'parent': 7, 'token': 'LEFT_ASSIGN', 'terminal': true, 'text': '<-' };
+		const three = { 'line1': 1, 'col1': 1, 'line2': 1, 'col2': 1, 'id': 3, 'parent': 7, 'token': 'expr', 'terminal': false, 'text': 'x', 'children': [one] };
+		const four = { 'line1': 1, 'col1': 6, 'line2': 1, 'col2': 6, 'id': 4, 'parent': 5, 'token': 'NUM_CONST', 'terminal': true, 'text': '1' };
+		const five = { 'line1': 1, 'col1': 6, 'line2': 1, 'col2': 6, 'id': 5, 'parent': 7, 'token': 'expr', 'terminal': false, 'text': '1', 'children': [four] };
+		assert.deepEqual(parsed, [{ 'line1': 1, 'col1': 1, 'line2': 1, 'col2': 6, 'id': 7, 'parent': 0, 'token': 'expr', 'terminal': false, 'text': 'x <- 1', 'children': [three, two, five] }]);
 	});
 
 
@@ -39,10 +40,10 @@ describe.sequential('CSV parsing', withShell(shell => {
 			content: '5\nb'
 		}, shell);
 		const parsed = prepareParsedData(code);
-		const one = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 1,'parent': 2,'token': 'NUM_CONST','terminal': true,'text': '5' };
-		const exprOne = { 'line1': 1,'col1': 1,'line2': 1,'col2': 1,'id': 2,'parent': 0,'token': 'expr','terminal': false,'text': '5','children': [one] };
-		const two = { 'line1': 2,'col1': 1,'line2': 2,'col2': 1,'id': 6,'parent': 8,'token': 'SYMBOL','terminal': true,'text': 'b' };
-		const exprTwo = { 'line1': 2,'col1': 1,'line2': 2,'col2': 1,'id': 8,'parent': 0,'token': 'expr','terminal': false,'text': 'b','children': [two] };
+		const one = { 'line1': 1, 'col1': 1, 'line2': 1, 'col2': 1, 'id': 1, 'parent': 2, 'token': 'NUM_CONST', 'terminal': true, 'text': '5' };
+		const exprOne = { 'line1': 1, 'col1': 1, 'line2': 1, 'col2': 1, 'id': 2, 'parent': 0, 'token': 'expr', 'terminal': false, 'text': '5', 'children': [one] };
+		const two = { 'line1': 2, 'col1': 1, 'line2': 2, 'col2': 1, 'id': 6, 'parent': 8, 'token': 'SYMBOL', 'terminal': true, 'text': 'b' };
+		const exprTwo = { 'line1': 2, 'col1': 1, 'line2': 2, 'col2': 1, 'id': 8, 'parent': 0, 'token': 'expr', 'terminal': false, 'text': 'b', 'children': [two] };
 		assert.deepEqual(parsed, [exprOne, exprTwo]);
 	});
 }));
@@ -103,12 +104,11 @@ describe.sequential('Constant Parsing', withShell(shell => {
 				const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
 				assertAst(label(symbol.str, ['name-normal', ...mapped]),
 					shell, symbol.str, exprList({
-						type:      RType.Symbol,
-						namespace: symbol.namespace,
-						location:  range,
-						lexeme:    symbol.val,
-						content:   symbol.val,
-						info:      {}
+						type:     RType.Symbol,
+						location: range,
+						lexeme:   symbol.val,
+						content:  Identifier.make(symbol.val, symbol.namespace, symbol.internal),
+						info:     {}
 					})
 				);
 			}

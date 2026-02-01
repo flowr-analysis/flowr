@@ -55,7 +55,7 @@ ${v}
 		}
 	});
 	describe('Exceptions must propagate through functions', () => {
-		for(const [stopName, callArgs] of [['stop',''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
+		for(const [stopName, callArgs] of [['stop', ''], ['stopifnot', 'FALSE'], ['abort', '']] as const) {
 			checkDfContains(`1
 indirect <- function() { ${stopName}(${callArgs}) }
 indirect()
@@ -76,7 +76,7 @@ indirect()
 			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
 			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) { stop("another") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 			checkDfContains('1\ntryCatch({ if(u) stop("error") }, error=function(e) {  })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
-			checkDfContains('1\ntryCatch({ x }, error=function(e) { stop("x") })\n3', { hasVertices: ['1@1','3@3'], doesNotHaveVertices: [] });
+			checkDfContains('1\ntryCatch({ x }, error=function(e) { stop("x") })\n3', { hasVertices: ['1@1', '3@3'], doesNotHaveVertices: [] });
 			checkDfContains('1\ntryCatch({ stop(x) }, error=function(e) { stop("x") })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 			checkDfContains('1\nstop();tryCatch({ x }, error=function(e) {  })\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });
 			checkDfContains('1\ntryCatch({ stop("error") }, error=function(e) {  });stop()\n3', { hasVertices: ['1@1'], doesNotHaveVertices: ['3@3'] });

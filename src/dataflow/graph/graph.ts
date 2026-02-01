@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge , EdgeType } from './edge';
+import type { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -11,7 +11,11 @@ import {
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import type {
+	BrandedIdentifier,
+	IdentifierDefinition,
+	IdentifierReference
+} from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -26,7 +30,7 @@ import type { BuiltInMemory } from '../environments/built-in';
  * Describes the information we store per function body.
  * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
 /**
  * A reference with a name, e.g. `a` and `b` in the following function call:
@@ -55,7 +59,7 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 }
 
 /** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
 /**
  * Check if the given argument is a {@link PositionalFunctionArgument}.
@@ -84,12 +88,12 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 /**
  * Maps the edges target to the edge information
  */
-export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 /**
  * Similar to {@link OutgoingEdges}, but inverted regarding the edge direction.
  * In other words, it maps the source to the edge information.
  */
-export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -97,7 +101,7 @@ export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = M
 export interface DataflowGraphJson {
 	readonly rootVertices:        NodeId[],
 	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
-	readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][]
+	readonly edgeInformation:     [NodeId, [NodeId, DfEdge][]][]
 	readonly _unknownSideEffects: UnknownSideEffect[]
 }
 
@@ -107,7 +111,7 @@ export interface DataflowGraphJson {
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
+export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
@@ -126,7 +130,7 @@ export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
-	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+	Edge   extends DfEdge       = DfEdge
 > {
 	private _idMap: AstIdMap | undefined;
 
@@ -497,7 +501,7 @@ export class DataflowGraph<
 				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
 			}
 		}
-		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
+		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 		for(const unknown of data._unknownSideEffects) {
 			graph._unknownSideEffects.add(unknown);
 		}
@@ -522,10 +526,10 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 }
 
 export interface IEnvironmentJson {
-    readonly id: number;
-    parent:      IEnvironmentJson;
-    memory:      Record<Identifier, IdentifierDefinition[]>;
-    builtInEnv:  true | undefined;
+	readonly id: number;
+	parent:      IEnvironmentJson;
+	memory:      Record<BrandedIdentifier, IdentifierDefinition[]>;
+	builtInEnv:  true | undefined;
 }
 
 interface REnvironmentInformationJson {
@@ -537,10 +541,10 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
-		memory.set(key as Identifier, value);
+		memory.set(key as BrandedIdentifier, value);
 	}
 	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
-	obj.id = json.id;
+	(obj as { id: NodeId }).id = json.id;
 	obj.memory = memory;
 	return obj as Environment;
 }

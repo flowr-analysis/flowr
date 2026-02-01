@@ -27,27 +27,27 @@ const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
  * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
  */
 export interface RProjectAnalysisRequest {
-    readonly request: 'project';
-    /**
-     * The path to the root folder (an absolute path is probably best here).
-     */
-    readonly content: string;
+	readonly request: 'project';
+	/**
+	 * The path to the root folder (an absolute path is probably best here).
+	 */
+	readonly content: string;
 }
 
-export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
+export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
 	[FileRole.Description]: FlowrDescriptionFile[];
 	[FileRole.News]:        FlowrNewsFile[];
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
-    /* currently no special support */
+	/* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];
 	[FileRole.License]:     FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];
 	[FileRole.Data]:        FlowrFileProvider[];
 	[FileRole.Other]:       FlowrFileProvider[];
-}
+};
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
 	if(typeof file === 'string') {

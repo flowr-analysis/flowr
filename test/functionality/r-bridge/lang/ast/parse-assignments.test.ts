@@ -13,19 +13,18 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 			const opOffset = op.length - 1;
 			const data = OperatorDatabase[op];
 			assertAst(label(`x ${op} 5`, ['binary-operator', 'infix-calls', 'function-calls', ...data.capabilities]),
-				shell, `x ${op} 5`,exprList({
+				shell, `x ${op} 5`, exprList({
 					type:     RType.BinaryOp,
 					location: rangeFrom(1, 3, 1, 3 + opOffset),
 					lexeme:   op,
 					operator: op,
 					info:     {},
 					lhs:      {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 1),
-						namespace: undefined,
-						lexeme:    'x',
-						content:   'x',
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   'x',
+						content:  'x',
+						info:     {}
 					},
 					rhs: {
 						type:     RType.Number,
@@ -49,11 +48,10 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 				operator: '<-',
 				info:     {},
 				lhs:      {
-					type:      RType.String,
-					location:  rangeFrom(1, 1, 1, 3),
-					namespace: undefined,
-					lexeme:    "'a'",
-					content:   {
+					type:     RType.String,
+					location: rangeFrom(1, 1, 1, 3),
+					lexeme:   "'a'",
+					content:  {
 						quotes: "'",
 						str:    'a'
 					},
@@ -79,12 +77,11 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 				operator: '<-',
 				info:     {},
 				lhs:      {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					namespace: undefined,
-					lexeme:    'x',
-					content:   'x',
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'x',
+					content:  'x',
+					info:     {}
 				},
 				rhs: {
 					type:     RType.ExpressionList,
@@ -92,19 +89,17 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 					location: undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined,
-						location:  rangeFrom(1, 6, 1, 6)
+						type:     RType.Symbol,
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						location: rangeFrom(1, 6, 1, 6)
 					}, {
-						type:      RType.Symbol,
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined,
-						location:  rangeFrom(1, 14, 1, 14)
+						type:     RType.Symbol,
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						location: rangeFrom(1, 14, 1, 14)
 					}],
 					children: [{
 						type:     RType.BinaryOp,

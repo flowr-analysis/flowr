@@ -5,7 +5,7 @@ import { splitArrayOn } from '../../../../../../../util/collections/arrays';
 import { guard } from '../../../../../../../util/assert';
 import { tryToNormalizeArgument } from './normalize-argument';
 import type { SourceRange } from '../../../../../../../util/range';
-import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall , EmptyArgument } from '../../../../model/nodes/r-function-call';
+import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall, EmptyArgument } from '../../../../model/nodes/r-function-call';
 import type { RNext } from '../../../../model/nodes/r-next';
 import type { RBreak } from '../../../../model/nodes/r-break';
 import { RawRType, RType } from '../../../../model/type';
@@ -122,12 +122,11 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content);
 		functionName = {
-			type:      RType.Symbol,
-			namespace: undefined,
-			lexeme:    stringBase.lexeme,
-			info:      stringBase.info,
-			location:  stringBase.location,
-			content:   stringBase.content.str
+			type:     RType.Symbol,
+			lexeme:   stringBase.lexeme,
+			info:     stringBase.info,
+			location: stringBase.location,
+			content:  stringBase.content.str
 		};
 	} else {
 		functionName = tryNormalizeSymbol(data, symbolContent);

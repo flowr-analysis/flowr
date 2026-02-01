@@ -1,6 +1,6 @@
 import { withShell } from '../../../_helper/shell';
 import { describe, expect, test } from 'vitest';
-import type { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
@@ -35,7 +35,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		const result = await runPipeline(code, shell, ctx);
 		const values = trackAliasInEnvironments(
 			defaultConfigOptions.solver.variables,
-			identifier as Identifier,
+			Identifier.make(identifier),
 			result.dataflow.environment,
 			ctx,
 			result.dataflow.graph,

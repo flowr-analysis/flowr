@@ -36,7 +36,7 @@ print(2)
 				{ certainty: LintingResultCertainty.Certain, range: [6, 3, 6, 8] }
 			]);
 			assertLinter('return', parser, 'return(); 2', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, range: [1,11,1,11] }
+				{ certainty: LintingResultCertainty.Certain, range: [1, 11, 1, 11] }
 			]);
 			assertLinter('try', parser, 'try(stop(1)); 2', 'dead-code', []);
 			assertLinter('try complex', parser, 'f <- function() { try(stop(1)); 2 }; f(); stop(1); 2', 'dead-code', [

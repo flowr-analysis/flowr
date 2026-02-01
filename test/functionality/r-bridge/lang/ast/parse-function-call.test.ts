@@ -5,6 +5,7 @@ import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 describe.sequential('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
@@ -16,12 +17,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {},
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {},
 				},
 				arguments: [],
 			})
@@ -36,12 +36,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
 				},
 				arguments: [
 					{
@@ -82,12 +81,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
 				},
 				arguments: [
 					{
@@ -116,24 +114,22 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
 				},
 				arguments: [
 					{
 						type:     RType.Argument,
 						location: rangeFrom(1, 3, 1, 3),
 						name:     {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 3, 1, 3),
-							lexeme:    'x',
-							content:   'x',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
 						},
 						info:   {},
 						lexeme: 'x',
@@ -150,12 +146,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
 				},
 				arguments: [
 					{
@@ -175,12 +170,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 						type:     RType.Argument,
 						location: rangeFrom(1, 6, 1, 6),
 						name:     {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 6, 1, 6),
-							lexeme:    'x',
-							content:   'x',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 6, 1, 6),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
 						},
 						lexeme: 'x',
 						info:   {},
@@ -208,12 +202,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 						type:     RType.Argument,
 						location: rangeFrom(1, 14, 1, 14),
 						name:     {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 14, 1, 14),
-							lexeme:    'y',
-							content:   'y',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 14, 1, 14),
+							lexeme:   'y',
+							content:  'y',
+							info:     {}
 						},
 						lexeme: 'y',
 						info:   {},
@@ -242,24 +235,22 @@ describe.sequential('Parse function calls', withShell(shell => {
 							lexeme:       'f',
 							info:         {},
 							functionName: {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 1, 1, 1),
-								lexeme:    'f',
-								content:   'f',
-								namespace: undefined,
-								info:      {}
+								type:     RType.Symbol,
+								location: rangeFrom(1, 1, 1, 1),
+								lexeme:   'f',
+								content:  'f',
+								info:     {}
 							},
 							arguments: [
 								{
 									type:     RType.Argument,
 									location: rangeFrom(1, 3, 1, 4 + argLength),
 									name:     {
-										type:      RType.Symbol,
-										location:  rangeFrom(1, 3, 1, 4 + argLength),
-										lexeme:    arg,
-										content:   firstArgName,
-										namespace: undefined,
-										info:      {}
+										type:     RType.Symbol,
+										location: rangeFrom(1, 3, 1, 4 + argLength),
+										lexeme:   arg,
+										content:  firstArgName,
+										info:     {}
 									},
 									lexeme: arg,
 									info:   {},
@@ -291,19 +282,17 @@ describe.sequential('Parse function calls', withShell(shell => {
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 1),
-						lexeme:    '(',
-						content:   '(',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   '(',
+						content:  '(',
+						info:     {},
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 19, 1, 19),
-						lexeme:    ')',
-						content:   ')',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 19, 1, 19),
+						lexeme:   ')',
+						content:  ')',
+						info:     {},
 					}],
 					children: [{
 						type:       RType.FunctionDefinition,
@@ -316,12 +305,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 							lexeme:       'x',
 							defaultValue: undefined,
 							name:         {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 11, 1, 11),
-								lexeme:    'x',
-								content:   'x',
-								namespace: undefined,
-								info:      {}
+								type:     RType.Symbol,
+								location: rangeFrom(1, 11, 1, 11),
+								lexeme:   'x',
+								content:  'x',
+								info:     {}
 							},
 							info: {},
 						}],
@@ -331,27 +319,24 @@ describe.sequential('Parse function calls', withShell(shell => {
 							lexeme:   undefined,
 							info:     {},
 							grouping: [{
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 14, 1, 14),
-								lexeme:    '{',
-								content:   '{',
-								info:      {},
-								namespace: undefined
+								type:     RType.Symbol,
+								location: rangeFrom(1, 14, 1, 14),
+								lexeme:   '{',
+								content:  '{',
+								info:     {},
 							}, {
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 18, 1, 18),
-								lexeme:    '}',
-								content:   '}',
-								info:      {},
-								namespace: undefined
+								type:     RType.Symbol,
+								location: rangeFrom(1, 18, 1, 18),
+								lexeme:   '}',
+								content:  '}',
+								info:     {},
 							}],
 							children: [{
-								type:      RType.Symbol,
-								location:  rangeFrom(1, 16, 1, 16),
-								lexeme:    'x',
-								content:   'x',
-								namespace: undefined,
-								info:      {}
+								type:     RType.Symbol,
+								location: rangeFrom(1, 16, 1, 16),
+								lexeme:   'x',
+								content:  'x',
+								info:     {}
 							}]
 						},
 						info: {}
@@ -388,12 +373,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 					type:         RType.FunctionCall,
 					named:        true,
 					functionName: {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 1, 1, 1),
-						lexeme:    'a',
-						content:   'a',
-						namespace: undefined,
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 1, 1, 1),
+						lexeme:   'a',
+						content:  'a',
+						info:     {}
 					},
 					location:  rangeFrom(1, 1, 1, 1),
 					lexeme:    'a',
@@ -442,12 +426,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       'x::f',
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 4, 1, 4),
-					lexeme:    'f',
-					content:   'f',
-					namespace: 'x',
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 4, 1, 4),
+					lexeme:   'f',
+					content:  Identifier.make('f', 'x'),
+					info:     {}
 				},
 				arguments: [],
 			})
@@ -463,12 +446,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 				lexeme:       "'f'",
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 3),
-					lexeme:    "'f'",
-					content:   'f',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 3),
+					lexeme:   "'f'",
+					content:  'f',
+					info:     {}
 				},
 				arguments: [],
 			})
@@ -491,24 +473,22 @@ describe.sequential('Parse function calls', withShell(shell => {
 					}]
 				},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 10),
-					lexeme:    'data.frame',
-					content:   'data.frame',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 10),
+					lexeme:   'data.frame',
+					content:  'data.frame',
+					info:     {}
 				},
 				arguments: [
 					{
 						type:     RType.Argument,
 						location: rangeFrom(1, 12, 1, 12),
 						name:     {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 12, 1, 12),
-							lexeme:    'A',
-							content:   'A',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 12, 1, 12),
+							lexeme:   'A',
+							content:  'A',
+							info:     {}
 						},
 						info:   {},
 						lexeme: 'A',
@@ -523,12 +503,11 @@ describe.sequential('Parse function calls', withShell(shell => {
 						type:     RType.Argument,
 						location: rangeFrom(2, 17, 2, 17),
 						name:     {
-							type:      RType.Symbol,
-							location:  rangeFrom(2, 17, 2, 17),
-							lexeme:    'B',
-							content:   'B',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(2, 17, 2, 17),
+							lexeme:   'B',
+							content:  'B',
+							info:     {}
 						},
 						lexeme: 'B',
 						info:   {},

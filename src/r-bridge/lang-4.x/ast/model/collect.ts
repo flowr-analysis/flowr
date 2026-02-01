@@ -10,7 +10,7 @@ import { RType } from './type';
  * @param nodes - The root id nodes to start collecting from
  * @param stop  - A function that determines whether to stop collecting at a given node, does not stop by default
  */
-export function collectAllIds<OtherInfo>(nodes: RProject<OtherInfo & ParentInformation> | RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined, stop: (node: RNode<OtherInfo & ParentInformation>)  => boolean = () => false): Set<NodeId> {
+export function collectAllIds<OtherInfo>(nodes: RProject<OtherInfo & ParentInformation> | RNode<OtherInfo & ParentInformation> | (RNode<OtherInfo & ParentInformation> | null | undefined)[] | undefined, stop: (node: RNode<OtherInfo & ParentInformation>) => boolean = () => false): Set<NodeId> {
 	if(nodes && 'type' in nodes && nodes.type === RType.Project) {
 		nodes = nodes.files.map(f => f.root);
 	}

@@ -1,4 +1,4 @@
-import { type Lift, type Value, type ValueVector , isBottom, isTop , isValue, Top } from '../r-value';
+import { type Lift, type Value, type ValueVector, isBottom, isTop, isValue, Top } from '../r-value';
 import { guard } from '../../../../util/assert';
 import { bottomTopGuard } from '../general';
 

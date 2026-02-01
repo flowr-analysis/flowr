@@ -3,8 +3,8 @@ import { type AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../../util/assert';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../slicing/criterion/parse';
-import { splitEdgeTypes } from './edge';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { DfEdge } from './edge';
 
 /**
  * Resolves the dataflow graph ids from slicing criterion form to ids.
@@ -46,7 +46,7 @@ export function resolveDataflowGraph(graph: DataflowGraph, ctx: ReadOnlyFlowrAna
 	/* recreate edges */
 	for(const [from, targets] of graph.edges()) {
 		for(const [to, info] of targets) {
-			for(const type of splitEdgeTypes(info.types)) {
+			for(const type of DfEdge.splitTypes(info)) {
 				resultGraph.addEdge(
 					resolve(from),
 					resolve(to),

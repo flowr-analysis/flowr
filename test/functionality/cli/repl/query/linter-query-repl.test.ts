@@ -101,7 +101,7 @@ describe('Linter Query REPL Completions', () => {
 		label:               'multiple rules, starting new one',
 		startingNewArg:      false,
 		splitLine:           ['rules:dead-code,file-path-validity,'],
-		expectedCompletions: allRules.filter(l => !['dead-code','file-path-validity'].includes(l))
+		expectedCompletions: allRules.filter(l => !['dead-code', 'file-path-validity'].includes(l))
 	});
 	assertReplCompletions({ completer,
 		label:               'all rules used',

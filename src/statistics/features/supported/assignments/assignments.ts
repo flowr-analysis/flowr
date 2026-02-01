@@ -17,7 +17,7 @@ const initialAssignmentInfo = {
 	nestedOperatorAssignment: 0
 };
 
-export type AssignmentInfo = Writable<typeof initialAssignmentInfo>
+export type AssignmentInfo = Writable<typeof initialAssignmentInfo>;
 
 export const AssignmentOperators: ReadonlySet<string> = new Set(Operators.filter(op => OperatorDatabase[op].usedAs === 'assignment'));
 

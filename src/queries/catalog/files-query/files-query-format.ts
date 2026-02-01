@@ -44,7 +44,7 @@ function summarizeObjectWithLimit(obj: object | string, limitChars = 500, limitL
 }
 
 
-function rolesFromInput(rolesPart: readonly string[]): {valid: FileRole[], invalid: string[]} {
+function rolesFromInput(rolesPart: readonly string[]): { valid: FileRole[], invalid: string[] } {
 	return rolesPart
 		.reduce((acc, roleName) => {
 			roleName = roleName.trim();

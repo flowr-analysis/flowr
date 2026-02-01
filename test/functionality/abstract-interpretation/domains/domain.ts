@@ -5,14 +5,14 @@ import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/
 const ConcretizationLimit = 12;
 
 export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
-    readonly equal:     boolean,
-    readonly leq:       boolean,
-    readonly join:      AbstractValue,
-    readonly meet:      AbstractValue,
-    readonly widen:     AbstractValue,
-    readonly narrow:    AbstractValue,
-    readonly concrete:  ConcreteValue[] | typeof Top,
-    readonly abstract?: AbstractValue
+	readonly equal:     boolean,
+	readonly leq:       boolean,
+	readonly join:      AbstractValue,
+	readonly meet:      AbstractValue,
+	readonly widen:     AbstractValue,
+	readonly narrow:    AbstractValue,
+	readonly concrete:  ConcreteValue[] | typeof Top,
+	readonly abstract?: AbstractValue
 }
 
 

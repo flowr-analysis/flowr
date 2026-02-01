@@ -17,13 +17,13 @@ const initialVariableInfo = {
 	unknownVariables:      0
 };
 
-export type VariableInfo = Writable<typeof initialVariableInfo>
+export type VariableInfo = Writable<typeof initialVariableInfo>;
 
 
 export type DefinedVariableInformation = [
 	name: string,
 	location: [line: number, character: number]
-]
+];
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
 	visitAst(input.normalizedRAst.ast.files.map(f => f.root),

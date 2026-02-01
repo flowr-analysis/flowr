@@ -1,8 +1,8 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { graphlib, layout } from 'dagre';
-import { edgeTypesToNames } from '../../dataflow/graph/edge';
 import { normalizeIdToNumberIfPossible, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
+import { DfEdge } from '../../dataflow/graph/edge';
 
 function combineAscii(has: string, add: string): string {
 	if(has === ' ' || has === add) {
@@ -99,12 +99,12 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 	let longestId = 0;
 	for(const [from, edges] of dfg.edges()) {
 		longestId = Math.max(longestId, String(from).length);
-		for(const [to, { types }] of edges) {
+		for(const [to, e] of edges) {
 			if(!g.hasNode(String(from)) || !g.hasNode(String(to)) || edgesDone.has(`${to}-${from}`)) {
 				continue;
 			}
 			longestId = Math.max(longestId, String(to).length);
-			g.setEdge(String(from), String(to), edgeTypesToNames(types));
+			g.setEdge(String(from), String(to), DfEdge.typesToNames(e));
 			edgesDone.add(`${from}-${to}`);
 		}
 	}
@@ -118,11 +118,11 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 	const edgeLines: string[] = [];
 	// add all edges
 	for(const [from, edges] of dfg.edges()) {
-		for(const [to, { types }] of edges) {
+		for(const [to, e] of edges) {
 			if(!g.hasNode(String(from)) || !g.hasNode(String(to))) {
 				continue;
 			}
-			edgeLines.push(`${from.toString().padStart(longestId, ' ')} -> ${to.toString().padStart(longestId, ' ')}: ${Array.from(edgeTypesToNames(types)).join(', ')}`);
+			edgeLines.push(`${from.toString().padStart(longestId, ' ')} -> ${to.toString().padStart(longestId, ' ')}: ${Array.from(DfEdge.typesToNames(e)).join(', ')}`);
 		}
 	}
 	// always merge two edgelines with padding

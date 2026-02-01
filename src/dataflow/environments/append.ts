@@ -19,10 +19,10 @@ export function uniqueMergeValuesInDefinitions(old: IdentifierDefinition[], valu
 /**
  * Adds all writes of `next` to `base` (i.e., the operations of `next` *might* happen).
  */
-export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation
-export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation
-export function appendEnvironment(base: undefined, next: undefined): undefined
-export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined
+export function appendEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined): REnvironmentInformation;
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation): REnvironmentInformation;
+export function appendEnvironment(base: undefined, next: undefined): undefined;
+export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined;
 export function appendEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined): REnvironmentInformation | undefined {
 	if(base === undefined) {
 		return next;

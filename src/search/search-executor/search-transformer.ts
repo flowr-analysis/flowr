@@ -1,13 +1,13 @@
 import type { FlowrSearchElement, FlowrSearchElements, FlowrSearchTransformerNodeBase } from '../flowr-search';
 import type { LastOfArray, Tail2TypesOrUndefined, TailOfArray } from '../../util/collections/arrays';
-import { type FlowrFilterExpression , evalFilter } from '../flowr-search-filters';
+import { type FlowrFilterExpression, evalFilter } from '../flowr-search-filters';
 import type { FlowrSearchGeneratorNode } from './search-generators';
 import { runSearch } from '../flowr-search-executor';
 import type { FlowrSearch } from '../flowr-search-builder';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { isNotUndefined } from '../../util/assert';
-import { type Enrichment, type EnrichmentElementArguments , enrichElement } from './search-enrichers';
-import { type Mapper, type MapperArguments , map } from './search-mappers';
+import { type Enrichment, type EnrichmentElementArguments, enrichElement } from './search-enrichers';
+import { type Mapper, type MapperArguments, map } from './search-mappers';
 import type { ElementOf } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 
@@ -16,15 +16,15 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
  * This is a union of all possible transformer node types
  */
 export type FlowrSearchTransformerNode = {
-    [K in TransformerNames]:
+	[K in TransformerNames]:
 	FlowrSearchTransformerNodeBase<K,
 		Tail2TypesOrUndefined<Parameters<typeof transformers[K]>>
-    >
-}[TransformerNames]
+	>
+}[TransformerNames];
 
 export type TransformerNames = keyof typeof transformers;
 
-export type GetTransformer<Name extends TransformerNames> = FlowrSearchTransformerNode & { name: Name }
+export type GetTransformer<Name extends TransformerNames> = FlowrSearchTransformerNode & { name: Name };
 
 export type GetOutputOfTransformer<Name extends TransformerNames> = ReturnType<typeof transformers[Name]>;
 

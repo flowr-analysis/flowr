@@ -1,10 +1,10 @@
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell';
 import { normalizeIdToNumberIfPossible } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type TestLabel , label , decorateLabelContext } from '../../../_helper/label';
+import { type TestLabel, label, decorateLabelContext } from '../../../_helper/label';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
-import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../../../../../src/slicing/criterion/parse';
+import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
+import { type SlicingCriteria, convertAllSlicingCriteriaToIds } from '../../../../../src/slicing/criterion/parse';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
@@ -50,7 +50,7 @@ u <<- function(a = NULL, b = NA, c, d=7, e=x, f=TRUE, g=FALSE, ...) {
   g <- 12 * NaN - Inf
   h <- function(x) { x + 1 }
   return(h(a + b))
-}`,[...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
+}`, [...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
 		[ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4:22' ], [ '5@a' ], [ '5@b' ]);
 	});
 }));

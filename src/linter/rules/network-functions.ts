@@ -5,10 +5,10 @@ import { ReadFunctions } from '../../queries/catalog/dependencies-query/function
 import type { MergeableRecord } from '../../util/objects';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
-    /** The list of function names that should be marked in the given context if their arguments match. */
-    fns:                      readonly string[]
-    /** only trigger if the function's read argument is linked to a value that matches this pattern */
-    onlyTriggerWithArgument?: RegExp | string
+	/** The list of function names that should be marked in the given context if their arguments match. */
+	fns:                      readonly string[]
+	/** only trigger if the function's read argument is linked to a value that matches this pattern */
+	onlyTriggerWithArgument?: RegExp | string
 }
 
 export const NETWORK_FUNCTIONS = {
@@ -30,7 +30,7 @@ export const NETWORK_FUNCTIONS = {
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: {
-			fns:                     ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback','VERB', 'fread', 'gzcon', 'readlines', 'source', 'load', 'curl_download', 'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get', 's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub'],
+			fns:                     ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'source', 'load', 'curl_download', 'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get', 's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub'],
 			onlyTriggerWithArgument: /^(https?|ftps?|file):\/\//
 		}
 	}

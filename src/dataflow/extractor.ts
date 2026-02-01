@@ -26,6 +26,7 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
+import { Identifier } from './environments/identifier';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -55,12 +56,12 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.ExpressionList]:     ({ grouping, info, children, location }, d) => {
 		const groupStart = grouping?.[0];
 		return processNamedCall({
-			type:      RType.Symbol,
-			info:      info,
-			content:   groupStart?.content ?? '{',
-			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? invalidRange(),
-			namespace: groupStart?.content ? undefined : 'base'
+			type:     RType.Symbol,
+			info:     info,
+			content:  groupStart?.content ?? '{',
+			lexeme:   groupStart?.lexeme ?? '{',
+			location: location ?? invalidRange(),
+			ns:       groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
 };
@@ -80,7 +81,8 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			cf = extractCfgQuick(ast);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
-				allCallNames = Array.from(new Set(knownCalls.values().map(c => c.name)));
+
+				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
 			}
 		} else if(handled.has(s.id)) {
 			continue;
@@ -125,10 +127,13 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
+	const env = ctx.env.makeCleanEnv();
+	env.current.n = ctx.meta.getNamespace();
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:    ctx.env.makeCleanEnv(),
+		environment:    env,
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],

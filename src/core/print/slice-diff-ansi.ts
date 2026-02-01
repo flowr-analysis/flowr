@@ -1,4 +1,4 @@
-import { type SourceRange , mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
+import { type SourceRange, mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

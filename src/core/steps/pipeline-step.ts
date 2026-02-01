@@ -19,7 +19,7 @@ import type { FlowrConfigOptions } from '../../config';
  * already covered transitively.
  */
 export type StepProcessingFunction =
-	(results: Record<string, unknown>, input: Record<string, unknown>, config: FlowrConfigOptions) => unknown
+	(results: Record<string, unknown>, input: Record<string, unknown>, config: FlowrConfigOptions) => unknown;
 /**
  * This represents the required execution frequency of a step.
  */
@@ -31,7 +31,7 @@ export const enum PipelineStepStage {
 }
 
 /** Name of a single {@link IPipelineStep|step} in a pipeline (branded to avoid type-mishaps). */
-export type PipelineStepName = string & { __brand?: 'StepName' }
+export type PipelineStepName = string & { __brand?: 'StepName' };
 
 /**
  * Contains the data to specify the order of {@link IPipelineStep|steps} in a pipeline.

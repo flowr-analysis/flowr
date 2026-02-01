@@ -1,12 +1,12 @@
 import type * as Joi from 'joi';
 import { sendMessage } from './send';
-import { type FlowrMessage, type IdMessageBase, type MessageDefinition , baseMessage } from './messages/all-messages';
+import { type FlowrMessage, type IdMessageBase, type MessageDefinition, baseMessage } from './messages/all-messages';
 import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 
 export interface ValidationErrorResult { type: 'error', reason: Joi.ValidationError | Error }
 export interface SuccessValidationResult<T extends IdMessageBase> { type: 'success', message: T }
-export type ValidationResult<T extends IdMessageBase> = SuccessValidationResult<T> | ValidationErrorResult
+export type ValidationResult<T extends IdMessageBase> = SuccessValidationResult<T> | ValidationErrorResult;
 
 /**
  * Check that the serialized input is a valid base message.

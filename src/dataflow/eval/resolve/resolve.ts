@@ -16,6 +16,7 @@ import { resolveIdToValue } from './alias-tracking';
 import type { VariableResolve } from '../../../config';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { Identifier } from '../../environments/identifier';
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
@@ -50,7 +51,7 @@ export function resolveNode(resolve: VariableResolve, a: RNodeWithParent, ctx: R
 		if(isBuiltIn(origin.proc)) {
 			builtInName = origin.proc;
 		} else if(a.type === RType.FunctionCall && a.named) {
-			builtInName = builtInId(a.functionName.content);
+			builtInName = builtInId(Identifier.getName(a.functionName.content));
 		} else if(a.type === RType.BinaryOp || a.type === RType.UnaryOp) {
 			builtInName = builtInId(a.operator);
 		} else {
@@ -96,9 +97,10 @@ export function resolveAsVector(resolve: VariableResolve, node: RNodeWithParent,
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the sequence operator to resolve
- * @param env      - Environment to use
  * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
+ * @param ctx      - Analyzer context
+ * @param idMap    - Id map of the dataflow graph
+ * @param environment - Environment to use
  * @returns ValueVector of ValueNumbers or Top
  */
 export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueVector<Lift<ValueNumber[]>> | typeof Top {
@@ -125,9 +127,10 @@ export function resolveAsSeq(resolve: VariableResolve, operator: RNodeWithParent
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the plus operator to resolve
- * @param env      - Environment to use
  * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
+ * @param ctx      - Analyzer context
+ * @param idMap    - Id map of the dataflow graph
+ * @param environment - Environment to use
  * @returns ValueNumber, ValueVector of ValueNumbers, or Top
  */
 export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {
@@ -154,9 +157,10 @@ export function resolveAsPlus(resolve: VariableResolve, operator: RNodeWithParen
  * by recursively resolving the values of the arguments by calling {@link resolveIdToValue}
  * @param resolve  - Variable resolve mode
  * @param operator - Node of the minus operator to resolve
- * @param env      - Environment to use
  * @param graph    - Dataflow graph
- * @param map      - Id map of the dataflow graph
+ * @param ctx      - Analyzer context
+ * @param idMap    - Id map of the dataflow graph
+ * @param environment - Environment to use
  * @returns ValueNumber, ValueVector of ValueNumbers, or Top
  */
 export function resolveAsMinus(resolve: VariableResolve, operator: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, environment?: REnvironmentInformation, graph?: DataflowGraph, idMap?: AstIdMap): ValueNumber | ValueVector<Lift<ValueNumber[]>> | typeof Top {

@@ -1,5 +1,5 @@
 import type { QueryArgumentsWithType, SupportedQueryTypes } from '../query';
-import { type CompoundQueryFormat, type VirtualCompoundConstraint , executeCompoundQueries } from './compound-query';
+import { type CompoundQueryFormat, type VirtualCompoundConstraint, executeCompoundQueries } from './compound-query';
 import type { BaseQueryFormat } from '../base-query-format';
 
 /** A query that does not perform a search but may perform (e.g., convenience) modifications of other queries */
@@ -14,7 +14,7 @@ export type VirtualQueryExecutor<Query extends BaseQueryFormat, Result extends B
 
 type SupportedVirtualQueries = {
 	[QueryType in VirtualQueryArgumentsWithType<SupportedQueryTypes>['type']]: VirtualQueryExecutor<QueryArgumentsWithType<QueryType>, BaseQueryFormat[]>
-}
+};
 
 export const SupportedVirtualQueries = {
 	'compound': executeCompoundQueries

@@ -15,7 +15,7 @@ describe('R license parsing', () => {
 				}
 			}
 			// we have to ignore 'raw' because they are the exact string parts
-			assert.strictEqual(JSON.stringify(parse,ignoreRawStringifier), JSON.stringify(expected,ignoreRawStringifier));
+			assert.strictEqual(JSON.stringify(parse, ignoreRawStringifier), JSON.stringify(expected, ignoreRawStringifier));
 		});
 	}
 

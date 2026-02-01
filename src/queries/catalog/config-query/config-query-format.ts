@@ -11,8 +11,8 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
 export interface ConfigQuery extends BaseQueryFormat {
-    readonly type:    'config';
-    readonly update?: DeepPartial<FlowrConfigOptions>
+	readonly type:    'config';
+	readonly update?: DeepPartial<FlowrConfigOptions>
 }
 
 export interface ConfigQueryResult extends BaseQueryResult {
@@ -35,14 +35,14 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 		if(subConfig && !((subConfig as Record<string, unknown>)[lastPath] !== undefined && typeof (subConfig as Record<string, unknown>)[lastPath] !== 'object')) {
 			const have = Object.keys(subConfig)
 				.filter(k => k.startsWith(lastPath) && k !== lastPath)
-				.map(k => `${partialLine[0].slice(0,1)}${[...path, k].join('.')}`);
+				.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
 				return { completions: have };
 			} else if(lastPath.length > 0) {
-				return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`] };
+				return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}.`] };
 			}
 		}
-		return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`] };
+		return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}=`] };
 	}
 
 	return { completions: [] };

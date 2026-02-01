@@ -172,7 +172,7 @@ export class DataflowGraphBuilder<
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name?: string,
-		info?: { cds?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		info?: { cds?: ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  normalizeIdToNumberIfPossible(id),
@@ -431,14 +431,6 @@ interface Query {
 	query: FlowrSearchLike;
 }
 
-type FromQueryParam =
-  | {
-      nodeId: NodeId;
-    }
-  | Query;
+type FromQueryParam = { nodeId: NodeId; } | Query;
 
-type ToQueryParam =
-  | {
-      target: DataflowGraphEdgeTarget;
-    }
-  | Query;
+type ToQueryParam = { target: DataflowGraphEdgeTarget; } | Query;

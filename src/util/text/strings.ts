@@ -11,7 +11,7 @@ export function startAndEndsWith(str: string, letter: string): boolean {
  * Removes all whitespace in the given string
  */
 export function withoutWhitespace(output: string): string {
-	return output.replace(/\s/g,'');
+	return output.replace(/\s/g, '');
 }
 
 /**

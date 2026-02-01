@@ -1,5 +1,5 @@
 import { assert, describe, it } from 'vitest';
-import { type BasicCfgGuidedVisitorConfiguration , BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from '../../../src/control-flow/basic-cfg-guided-visitor';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';

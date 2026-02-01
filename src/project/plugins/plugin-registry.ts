@@ -15,6 +15,9 @@ import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
+import {
+	FlowrAnalyzerMetaDescriptionFilePlugin
+} from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -23,6 +26,7 @@ export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
+	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
 	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
@@ -53,8 +57,8 @@ export function registerPluginMaker(plugin: PluginProducer, name: Exclude<string
 	PluginRegistry.set(name, plugin);
 }
 
-export function getPlugin(name: BuiltInFlowrPluginName, args: BuiltInFlowrPluginArgs<typeof name>): FlowrAnalyzerPlugin
-export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin | undefined
+export function getPlugin(name: BuiltInFlowrPluginName, args: BuiltInFlowrPluginArgs<typeof name>): FlowrAnalyzerPlugin;
+export function getPlugin(name: string, args?: unknown[]): FlowrAnalyzerPlugin | undefined;
 /**
  * Retrieve a registered Flowr Analyzer plugin by its name.
  * @see {@link PluginToRegister}

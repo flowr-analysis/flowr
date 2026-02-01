@@ -2,11 +2,12 @@
  * Defines the type of syntax constructs that we track (e.g., true, false, 0, 1, T, F, conditions...)
  */
 import { bigint2number } from '../../util/numbers';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../util/summarizer';
 import { RFalse, RTrue } from '../../r-bridge/lang-4.x/convert-values';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { RArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 export interface CommonSyntaxTypeCounts<Measurement=bigint> {
 	// just a helper to collect all as well (could be derived from sum)
@@ -96,7 +97,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 			incrementEntry(current.string, node.content.str);
 			break;
 		case RType.Symbol:
-			incrementEntry(current.singleVar, node.content);
+			incrementEntry(current.singleVar, Identifier.getName(node.content));
 			break;
 		case RType.Logical:
 			incrementEntry(current.logical, node.content ? RTrue : RFalse);
@@ -114,7 +115,7 @@ export function updateCommonSyntaxTypeCounts(current: CommonSyntaxTypeCounts, ..
 			if(!node.named) {
 				current.unnamedCall++;
 			} else {
-				incrementEntry(current.call, node.functionName.content);
+				incrementEntry(current.call, Identifier.getName(node.functionName.content));
 			}
 			break;
 		case RType.BinaryOp:

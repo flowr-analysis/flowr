@@ -28,6 +28,7 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { Identifier } from '../../dataflow/environments/identifier';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -91,8 +92,8 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 type PathFunction = (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext) => string[] | undefined;
 
 /** return all strings constructable by these functions */
-const PathFunctions: Record<string, PathFunction> = {
-	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
+const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
+	['file.path', (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
 		const fsep = getArgumentStringValue(ctx.config.solver.variables,
 			df, vtx, undefined, 'fsep', true, ctx
 		);
@@ -113,8 +114,8 @@ const PathFunctions: Record<string, PathFunction> = {
 			results.push(argValues.join(val));
 		}
 		return results;
-	}
-};
+	}]
+]);
 
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
@@ -179,7 +180,7 @@ export const ABSOLUTE_PATH = {
 				} else {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
-						const handler = PathFunctions[dfNode.name ?? ''];
+						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({

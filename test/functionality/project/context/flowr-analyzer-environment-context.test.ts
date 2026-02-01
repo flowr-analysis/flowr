@@ -11,7 +11,7 @@ describe('Initialization', () => {
 
 	test(label('Clean creation should have no info but the default information', ['global-scope'], ['other']), () => {
 		const clean = ctx.makeCleanEnv();
-		assert.isDefined(clean.current,'there should be a current environment');
+		assert.isDefined(clean.current, 'there should be a current environment');
 		expect(clean.current.memory.size, 'the current environment should have no memory').to.be.equal(0);
 		expect(clean.level, 'the level of the clean environment is predefined as 0').to.be.equal(0);
 		expect(clean.current.parent.builtInEnv, 'the parent environment is the built-in environment').to.be.equal(true);

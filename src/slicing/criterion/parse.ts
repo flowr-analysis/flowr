@@ -9,8 +9,8 @@ import { slicerLogger } from '../static/static-slicer';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
-export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`
-export type SlicingCriteria = SingleSlicingCriterion[]
+export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`;
+export type SlicingCriteria = SingleSlicingCriterion[];
 
 /**
  * Thrown if the given slicing criteria can not be found
@@ -78,7 +78,7 @@ function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdM
 	}
 	const id = candidate?.info.id;
 	if(id) {
-		expensiveTrace(slicerLogger, () =>`resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`);
+		expensiveTrace(slicerLogger, () => `resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`);
 	}
 	return id;
 }
@@ -110,7 +110,7 @@ export interface DecodedCriterion {
 	id:        NodeId
 }
 
-export type DecodedCriteria = ReadonlyArray<DecodedCriterion>
+export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
 
 /**
  * Converts all slicing criteria to their corresponding node ids

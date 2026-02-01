@@ -1,5 +1,5 @@
 import path from 'path';
-import { type Arguments , LimitedThreadPool } from '../../util/parallel';
+import { type Arguments, LimitedThreadPool } from '../../util/parallel';
 import { allRFilesFrom } from '../../util/files';
 import { retrieveArchiveName, validateFeatures } from '../common/features';
 import fs from 'fs';
@@ -45,7 +45,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 			skipped++;
 			continue;
 		}
-		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson]);
+		files.push(['--input', f.content, '--output-dir', outputDir, '--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson]);
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`);
 			if(counter >= 10 * presentSteps) {

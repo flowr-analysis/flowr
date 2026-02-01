@@ -11,6 +11,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import { isFunctionCallVertex } from '../../../../../graph/vertex';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { Identifier } from '../../../../../environments/identifier';
 
 
 /**
@@ -46,7 +47,7 @@ export function processRecall<OtherInfo>(
 		// also kill the name of the recall function
 		const r = information.graph.getVertex(rootId);
 		if(isFunctionCallVertex(r)){
-			(r as { name: string }).name = UnnamedFunctionCallPrefix + rootId + '-' + r.name;
+			(r as { name: string }).name = UnnamedFunctionCallPrefix + rootId + '-' + Identifier.toString(r.name);
 			(r as { environment: REnvironmentInformation }).environment = information.environment;
 		}
 	} else {

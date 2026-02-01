@@ -114,7 +114,7 @@ export type QueryExecutor<Query extends BaseQueryFormat, Result extends Promise<
 
 type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
-}
+};
 
 /**
  * The result of parsing a query line from, e.g., the repl.
@@ -128,9 +128,9 @@ export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
-    /** optional completion in, e.g., the repl */
+	/** optional completion in, e.g., the repl */
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
-    /** optional query construction from an, e.g., repl line */
+	/** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
@@ -223,12 +223,12 @@ function groupQueriesByType<
 /* a record mapping the query type present to its respective result */
 export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes> = {
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
-} & BaseQueryResult
+} & BaseQueryResult;
 
 
 type OmitFromValues<T, K extends string | number | symbol> = {
 	[P in keyof T]?: Omit<T[P], K>
-}
+};
 
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 

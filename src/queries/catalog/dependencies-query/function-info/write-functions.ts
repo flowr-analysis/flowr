@@ -11,8 +11,8 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
-	{ package: 'utils',name: 'write.table', argIdx: 1, argName: 'file',    resolveValue: true },
-	{ package: 'utils',name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'utils', name: 'write.table', argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'utils', name: 'write.csv',   argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'saveRDS',     argIdx: 1, argName: 'file',    resolveValue: true },
 	{
 		package:        'base',

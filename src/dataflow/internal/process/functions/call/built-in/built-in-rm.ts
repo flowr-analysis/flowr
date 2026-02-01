@@ -11,6 +11,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import type { Identifier } from '../../../../../environments/identifier';
 
 /**
  * Process an `rm` call.
@@ -27,7 +28,7 @@ export function processRm<OtherInfo>(
 	}
 	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Rm }).information;
 
-	const names: string[] = [];
+	const names: Identifier[] = [];
 
 	for(const arg of args) {
 		if(arg === EmptyArgument) {

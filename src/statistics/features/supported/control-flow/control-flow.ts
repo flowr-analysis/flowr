@@ -21,7 +21,7 @@ const initialControlflowInfo = {
 	switchCase:       emptyCommonSyntaxTypeCounts()
 };
 
-export type ControlflowInfo = Writable<typeof initialControlflowInfo>
+export type ControlflowInfo = Writable<typeof initialControlflowInfo>;
 
 function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): void {
 	const ifThenElseStack: RNodeWithParent[] = [];

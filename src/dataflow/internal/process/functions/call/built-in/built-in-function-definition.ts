@@ -23,13 +23,18 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { edgeIncludesType, EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
@@ -46,7 +51,7 @@ export function processFunctionDefinition<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length < 1) {
-		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
+		dataflowLogger.warn(`Function Definition ${Identifier.toString(name.content)} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -64,7 +69,7 @@ export function processFunctionDefinition<OtherInfo>(
 	let readInParameters: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
 	for(const param of parameters) {
-		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${name.content}, ${JSON.stringify(args)}`);
+		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
 		if(param.value?.type === RType.Parameter) {
 			paramIds.push(param.value.name.info.id);
@@ -72,7 +77,7 @@ export function processFunctionDefinition<OtherInfo>(
 		subgraph.mergeWith(processed.graph);
 		const read = processed.in.concat(processed.unknownReferences);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		(data as { environment: REnvironmentInformation}).environment = overwriteEnvironment(data.environment, processed.environment);
+		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -146,7 +151,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const readParams: Record<NodeId, boolean> = {};
 	for(const paramId of paramIds) {
 		const ingoing = subgraph.ingoingEdges(paramId);
-		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
+		readParams[paramId] = ingoing?.values().some(e => DfEdge.includesType(e, EdgeType.Reads)) ?? false;
 	}
 
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];

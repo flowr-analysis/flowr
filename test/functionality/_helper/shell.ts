@@ -1,6 +1,6 @@
 import { deepMergeObject, type MergeableRecord } from '../../../src/util/objects';
 import { NAIVE_RECONSTRUCT } from '../../../src/core/steps/all/static-slicing/10-reconstruct';
-import { guard, isNotUndefined } from '../../../src/util/assert';
+import { guard } from '../../../src/util/assert';
 import { PipelineExecutor } from '../../../src/core/pipeline-executor';
 import { decorateLabelContext, dropTestLabel, modifyLabelName, type TestLabel, type TestLabelContext } from './label';
 import { printAsBuilder } from './dataflow/dataflow-builder-printer';
@@ -39,17 +39,13 @@ import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
-import type { FlowrSearchLike } from '../../../src/search/flowr-search-builder';
-import type { ContainerIndex } from '../../../src/dataflow/graph/vertex';
-import type { REnvironmentInformation } from '../../../src/dataflow/environments/environment';
-import { resolveByNameAnyType } from '../../../src/dataflow/environments/resolve-by-name';
 import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/util/diff-graph';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
 import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
-import type { ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
+import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
@@ -342,7 +338,7 @@ export function assertOutput(name: string | TestLabel, parser: KnownParser, inpu
 		if(typeof expected === 'string') {
 			assert.strictEqual(lines.join('\n'), expected, `for input ${input}`);
 		} else {
-			assert.match(lines.join('\n'), expected,`, for input ${input}`);
+			assert.match(lines.join('\n'), expected, `, for input ${input}`);
 		}
 	});
 }
@@ -376,7 +372,13 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	/** The collection of edges that should not exist */
 	mustNotHaveEdges:      [NodeId, NodeId][]
 	/** Whether to test the call graph instead of the dataflow graph */
-	context:               'dataflow' | 'call-graph'
+	context:               'dataflow' | 'call-graph',
+	/**
+	 * Allows you to modify the analyzer before running the test.
+	 * (assumes side-effects and reuses the same object if you return undefined)
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	modifyAnalyzer:        (analyzer: FlowrAnalyzer) => FlowrAnalyzer | undefined | void
 }
 
 function cropIfTooLong(str: string): string {
@@ -403,7 +405,7 @@ export function assertDataflow(
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder()
+		let analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(startIndexForDeterministicIds)
 			})
@@ -415,6 +417,9 @@ export function assertDataflow(
 			analyzer.addFile(...userConfig.addFiles);
 		}
 
+		if(userConfig?.modifyAnalyzer) {
+			analyzer = userConfig.modifyAnalyzer(analyzer) ?? analyzer;
+		}
 		if(typeof expected === 'function') {
 			expected = await expected(analyzer);
 		}
@@ -678,96 +683,4 @@ export function assertSliced(
 		}
 		handleAssertOutput(name, shell, input, testConfig);
 	});
-}
-
-function findInDfg(id: NodeId, dfg: DataflowGraph): ContainerIndex[] | undefined {
-	const vertex = dfg.getVertex(id);
-	return vertex?.indicesCollection?.flatMap(collection => collection.indices);
-}
-
-function findInEnv(id: NodeId, ast: NormalizedAst, dfg: DataflowGraph, env: REnvironmentInformation): ContainerIndex[] | undefined {
-	const name = ast.idMap.get(id)?.lexeme;
-	if(!name) {
-		return undefined;
-	}
-	const mayVertex = dfg.getVertex(id);
-	const useEnv = mayVertex?.environment ?? env;
-	const result = resolveByNameAnyType(name, useEnv)?.flatMap(f => {
-		if('indicesCollection' in f) {
-			return f.indicesCollection?.flatMap(collection => collection.indices);
-		} else {
-			return undefined;
-		}
-	});
-	if(result?.every(s => s === undefined)) {
-		return undefined;
-	} else {
-		return result?.filter(isNotUndefined);
-	}
-}
-
-
-/**
- *
- */
-export function assertContainerIndicesDefinition(
-	name: TestLabel,
-	shell: RShell,
-	input: string,
-	search: FlowrSearchLike,
-	expectedIndices: ContainerIndex[] | undefined,
-	userConfig: Partial<TestConfiguration> & { searchIn: 'dfg' | 'env' | 'both' } = { searchIn: 'both' },
-	config = cloneConfig(defaultConfigOptions),
-) {
-	const effectiveName = decorateLabelContext(name, ['dataflow']);
-	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setConfig(config)
-			.setParser(shell)
-			.build();
-		analyzer.addRequest(input);
-		const dataflow = await analyzer.dataflow();
-		const normalize = await analyzer.normalize();
-		const result = (await analyzer.runSearch(search)).getElements();
-		let findIndices: (id: NodeId) => ContainerIndex[] | undefined;
-		if(userConfig.searchIn === 'dfg') {
-			findIndices = id => findInDfg(id, dataflow.graph);
-		} else if(userConfig.searchIn === 'env') {
-			findIndices = id => findInEnv(id, normalize, dataflow.graph, dataflow.environment);
-		} else {
-			findIndices = id => findInDfg(id, dataflow.graph) ?? findInEnv(id, normalize, dataflow.graph, dataflow.environment);
-		}
-
-
-		assert(result.length > 0, 'The result of the search was empty');
-
-		for(const element of result) {
-			const id = element.node.info.id;
-
-			const actualIndices = findIndices(id);
-			if(expectedIndices === undefined) {
-				assert(actualIndices === undefined, `indices collection for vertex with id ${id} exists`);
-				continue;
-			}
-			assert(actualIndices !== undefined, `indices collection for id ${id} doesn't exist`);
-
-			const actual = stringifyIndices(actualIndices);
-			const expected = stringifyIndices(expectedIndices);
-
-			try {
-				assert.strictEqual(
-					actual, expected,
-					`got: ${actual}, vs. expected: ${expected}, for input ${input}, url: ${graphToMermaidUrl(dataflow.graph, true)}`
-				);
-			} /* v8 ignore start */ catch(e) {
-				console.error(`got:\n${actual}\nvs. expected:\n${expected}`);
-				console.error(normalizedAstToMermaidUrl(normalize.ast));
-				throw e;
-			} /* v8 ignore stop */
-		}
-	});
-}
-
-function stringifyIndices(indices: ContainerIndex[]): string {
-	return `[\n${indices.map(i => '  ' + JSON.stringify(i)).join('\n')}\n]`;
 }

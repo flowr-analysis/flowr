@@ -1,10 +1,10 @@
 import type { MetaStatistics } from '../meta-statistics';
 import { ColorEffect, Colors, formatter } from '../../util/text/ansi';
 import { jsonReplacer } from '../../util/json';
-import { type FeatureKey, type FeatureStatistics , ALL_FEATURES } from '../features/feature';
+import { type FeatureKey, type FeatureStatistics, ALL_FEATURES } from '../features/feature';
 import { arraySum } from '../../util/collections/arrays';
 
-interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number}
+interface MinMaxAvgMedian { sum: number, min: number, max: number, avg: number, median: number }
 
 /**
  * Calculates the min, max, average and median of the given data set.
@@ -35,7 +35,7 @@ export function statsString(data: MinMaxAvgMedian, suffix = ''): string {
 /**
  * Prints the given feature statistics to the console.
  */
-export function printFeatureStatistics(statistics: {features: FeatureStatistics, meta: MetaStatistics}, features: 'all' | Set<FeatureKey> = 'all'): void {
+export function printFeatureStatistics(statistics: { features: FeatureStatistics, meta: MetaStatistics }, features: 'all' | Set<FeatureKey> = 'all'): void {
 	for(const feature of Object.keys(statistics.features) as FeatureKey[]) {
 		if(features !== 'all' && !features.has(feature)) {
 			continue;
@@ -56,7 +56,7 @@ export function printFeatureStatistics(statistics: {features: FeatureStatistics,
 \t\tprocessing time range: ${statsString(processingTimesPerFile, ' ms')}
 \ttotal number of lines: ${lineLengths.sum}
 \t\tline range: ${statsString(linesPerFile)}
-\t\tline length range: ${statsString(lineLengths,' chars')}
+\t\tline length range: ${statsString(lineLengths, ' chars')}
   `);
 }
 

@@ -3,16 +3,15 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type MergeableRecord , deepMergeObject } from '../../util/objects';
+import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
-import { type CfgSimplificationPassName , cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
@@ -20,6 +19,7 @@ import { CfgKind } from '../../project/cfg-kind';
 import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -54,7 +54,7 @@ export interface CallTargetsContent extends MergeableRecord {
 	 * The call targets of the function call.
 	 * For identifier call targets, the identifier is the name of the library function being called.
 	 */
-	targets: (FlowrSearchElement<ParentInformation> | Identifier)[];
+	targets: (FlowrSearchElement<ParentInformation> | string)[];
 }
 
 export interface LastCallContent extends MergeableRecord {
@@ -116,7 +116,7 @@ export const Enrichments = {
 			if(callVertex?.tag === VertexType.FunctionCall) {
 				const origins = getOriginInDfg(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
 					// find call targets in user code (which have ids!)
 					content.targets = content.targets.concat(
@@ -127,14 +127,14 @@ export const Enrichments = {
 										node: n.idMap.get(o.id) as RNodeWithParent,
 									} satisfies FlowrSearchElement<ParentInformation>;
 								case OriginType.BuiltInFunctionOrigin:
-									return o.fn.name;
+									return Identifier.toString(o.fn.name);
 								default:
 									return undefined;
 							}
 						}).filter(isNotUndefined)
 					);
 					if(content.targets.length === 0) {
-						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | Identifier)[];
+						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 					}
 				}
 			}
@@ -151,7 +151,7 @@ export const Enrichments = {
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
-	} satisfies EnrichmentData<CallTargetsContent, {onlyBuiltin?: boolean}>,
+	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean }>,
 	[Enrichment.LastCall]: {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);

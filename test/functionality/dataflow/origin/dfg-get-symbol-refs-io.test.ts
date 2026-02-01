@@ -65,7 +65,7 @@ describe.sequential('Get Symbol Refs IO Tests (1)', withShell(shell => {
 
 describe.sequential('Get Symbol Refs IO Tests (2)', withShell(shell => {
 	testRename(shell, 'Inside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '2@y',    ['2@y', '3@y']);
-	testRename(shell, 'Outside Scope','y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
+	testRename(shell, 'Outside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
 }));
 
 describe.sequential('Get Symbol Refs IO Tests (3)', withShell(shell => {

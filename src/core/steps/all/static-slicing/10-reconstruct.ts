@@ -1,5 +1,5 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
-import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { SliceResult } from '../../../../slicing/static/slicer-types';
 import { reconstructToCode } from '../../../../reconstruct/reconstruct';

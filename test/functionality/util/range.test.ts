@@ -1,4 +1,4 @@
-import { type SourceRange , rangeIsSubsetOf, addRanges, mergeRanges, rangeCompare, rangeFrom, rangesOverlap, rangeStartsCompletelyBefore } from '../../../src/util/range';
+import { type SourceRange, rangeIsSubsetOf, addRanges, mergeRanges, rangeCompare, rangeFrom, rangesOverlap, rangeStartsCompletelyBefore } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { formatRange } from '../../../src/util/mermaid/dfg';
 import { describe, assert, test } from 'vitest';
@@ -88,9 +88,9 @@ describe('Range', () => {
 		}
 
 		assertSubset('identical ranges', rangeFrom(1, 1, 1, 1), rangeFrom(1, 1, 1, 1), true, true);
-		assertSubset('unrelated ranges', rangeFrom(1,2,3,4), rangeFrom(5,6,7,8), false, false);
+		assertSubset('unrelated ranges', rangeFrom(1, 2, 3, 4), rangeFrom(5, 6, 7, 8), false, false);
 		assertSubset('encompasses columns', rangeFrom(1, 5, 1, 10), rangeFrom(1, 1, 1, 20), true);
-		assertSubset('encompasses lines', rangeFrom(2,1,5,2), rangeFrom(1,10,20, 10), true);
+		assertSubset('encompasses lines', rangeFrom(2, 1, 5, 2), rangeFrom(1, 10, 20, 10), true);
 	});
 	describe('mergeRanges', () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {

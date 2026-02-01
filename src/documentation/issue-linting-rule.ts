@@ -1,7 +1,7 @@
 import { LintingRuleTag } from '../linter/linter-tags';
 import { prefixLines } from './doc-util/doc-general';
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
-import { type LintingRuleNames , LintingRules } from '../linter/linter-rules';
+import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 

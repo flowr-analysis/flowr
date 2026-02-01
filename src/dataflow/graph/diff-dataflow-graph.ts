@@ -1,15 +1,16 @@
-import { type FunctionArgument, type OutgoingEdges , isNamedArgument } from './graph';
-import { type GenericDiffConfiguration, type GenericDifferenceInformation , setDifference } from '../../util/diff';
+import { type FunctionArgument, type OutgoingEdges, isNamedArgument } from './graph';
+import { type GenericDiffConfiguration, type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
-import { type DataflowGraphEdge , edgeTypesToNames, splitEdgeTypes } from './edge';
-import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { DfEdge } from './edge';
+import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
-import { type GraphDiffContext, type NamedGraph , initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 
 /**
@@ -321,9 +322,10 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	const aSorted = [...a].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	const bSorted = [...b].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	for(let i = 0; i < aSorted.length; ++i) {
+		const inam = aSorted[i].name;
 		diffIdentifierReferences(aSorted[i], bSorted[i], {
 			...ctx,
-			position: `${ctx.position}In reference #${i} ("${aSorted[i].name ?? '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
+			position: `${ctx.position}In reference #${i} ("${inam ? Identifier.toString(inam) : '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
 		});
 	}
 }
@@ -354,9 +356,9 @@ function diffHooks(left: HookInformation[], right: HookInformation[], ctx: Graph
 	}
 }
 
-function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: GraphDiffContext, id: NodeId, target: NodeId) {
-	const edgeTypes = splitEdgeTypes(edge.types);
-	const otherEdgeTypes = splitEdgeTypes(otherEdge.types);
+function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: NodeId, target: NodeId) {
+	const edgeTypes = DfEdge.splitTypes(edge);
+	const otherEdgeTypes = DfEdge.splitTypes(otherEdge);
 	if((edgeTypes.length < otherEdgeTypes.length && !ctx.config.leftIsSubgraph) || (edgeTypes.length > otherEdgeTypes.length && !ctx.config.rightIsSubgraph)) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in number of edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
@@ -365,7 +367,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 	}
 	if(edge.types !== otherEdge.types) {
 		ctx.report.addComment(
-			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypesToNames(edge.types)])} vs ${JSON.stringify([...edgeTypesToNames(otherEdge.types)])}`,
+			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...DfEdge.typesToNames(edge)])} vs ${JSON.stringify([...DfEdge.typesToNames(otherEdge)])}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}

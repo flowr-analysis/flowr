@@ -11,10 +11,17 @@ import { autoGenHeader } from '../doc-util/doc-auto-gen';
 import type { RShell } from '../../r-bridge/shell';
 import type { ValidWikiDocumentTargetsNoSuffix } from '../../cli/wiki';
 import type { PathLike } from 'fs';
-import { FlowrGithubRef } from '../doc-util/doc-files';
+import {
+	FlowrDockerRef,
+	FlowrGithubRef,
+	FlowrNpmRef,
+	FlowrPositron, FlowrRAdapter, FlowrRStudioAddin,
+	FlowrVsCode,
+	FlowrWikiBaseRef
+} from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand , getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
@@ -60,6 +67,17 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
 type NamedPrototype = { prototype: { constructor: { name: string } } };
 type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
 type StaticKeys<T> = T extends { prototype: infer P } ? Exclude<keyof T, keyof P> : never;
+
+export const ConstantWikiLinkInfo = {
+	'flowr:npm':           FlowrNpmRef,
+	'flowr:github':        FlowrGithubRef,
+	'flowr:wiki':          FlowrWikiBaseRef,
+	'flowr:docker':        FlowrDockerRef,
+	'flowr:vscode':        FlowrVsCode,
+	'flowr:positron':      FlowrPositron,
+	'flowr:rstudio-addin': FlowrRStudioAddin,
+	'flowr:radapter':      FlowrRAdapter
+} as const;
 
 /**
  * Provides methods to generate links, code snippets, and documentation for code elements.
@@ -204,11 +222,12 @@ export interface GeneralDocContext {
 	 * linkWikiPage('wiki/Setup')
 	 * ```
 	 * Creates a link to the `wiki/Setup` wiki page with the link text `Setup`.
+	 * This also supports a select subset of external pages in the context of flowR
 	 * @param pageName - The name of the wiki page to link to.
 	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
 	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
 	 */
-	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string;
+	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string;
 
 	/**
 	 * Generates a link to a code file in the code base.
@@ -277,8 +296,8 @@ export function makeDocContextForTypes(
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
 		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
-			guard(filter === undefined, 'ElementFilter is not yet supported for link');
-			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper);
+			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
+			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
 		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
 			const className = cls.prototype.constructor.name;
@@ -314,10 +333,15 @@ export function makeDocContextForTypes(
 				...options
 			}) as string;
 		},
-		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string {
+		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			const text = linkText ?? pageName.split('/').pop() ?? pageName;
-			const link = pageName.toLowerCase().replace(/ /g, '-');
-			return `[${text}](${FlowrGithubRef}/${link}${segment ? `#${segment}` : ''})`;
+			let link: string;
+			if(pageName in ConstantWikiLinkInfo) {
+				link = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
+			} else {
+				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replace(/ /g, '-')}`;
+			}
+			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
 		},
 		linkCode(path: PathLike, lineNumber?: number): string {
 			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();

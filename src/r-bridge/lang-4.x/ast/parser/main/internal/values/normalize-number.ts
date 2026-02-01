@@ -1,5 +1,5 @@
 import type { NormalizerData } from '../../normalizer-data';
-import { type RNa , number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values';
+import { type RNa, number2ts, boolean2ts, isBoolean, isNA } from '../../../../../convert-values';
 import { retrieveMetaStructure } from '../../normalize-meta';
 import type { RNumber } from '../../../../model/nodes/r-number';
 import type { RLogical } from '../../../../model/nodes/r-logical';
@@ -32,8 +32,7 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 	if(isNA(content)) {
 		return {
 			...common,
-			namespace: undefined,
-			type:      RType.Symbol,
+			type: RType.Symbol,
 			content
 		};
 	} else if(isBoolean(content)) {

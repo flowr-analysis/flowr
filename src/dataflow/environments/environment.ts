@@ -5,14 +5,18 @@
  */
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type {
+	BrandedNamespace,
+	IdentifierDefinition,
+	InGraphIdentifierDefinition
+} from './identifier';
+import { Identifier } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
-import type { FlowrConfigOptions } from '../../config';
-import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { log } from '../../util/log';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -49,7 +53,7 @@ export class Environment implements IEnvironment {
 	private c?:  NodeId;
 	parent:      Environment;
 	memory:      BuiltInMemory;
-	cache?:      BuiltInMemory;
+	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
@@ -103,29 +107,24 @@ export class Environment implements IEnvironment {
 	/**
 	 * Define a new identifier definition within this environment.
 	 * @param definition  - The definition to add.
-	 * @param config      - The flowr configuration options.
 	 */
-	public define(definition: IdentifierDefinition & { name: Identifier }, { solver: { pointerTracking } }: FlowrConfigOptions): Environment {
-		const { name } = definition;
+	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
+		const [name, ns] = Identifier.toArray(definition.name);
+		if(ns !== undefined && this.n !== ns) {
+			return this.defineInNamespace(definition, ns);
+		}
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
-		if(definition.cds === undefined && !pointerTracking) {
+		if(definition.cds === undefined) {
 			newEnvironment.memory.set(name, [definition]);
 		} else {
 			const existing = newEnvironment.memory.get(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
 			if(
-				pointerTracking &&
-                existing !== undefined &&
+				existing !== undefined &&
                 inGraphDefinition.cds === undefined
 			) {
-				if(inGraphDefinition.indicesCollection !== undefined) {
-					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
-					newEnvironment.memory.set(name, defs);
-				} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
-					// When indices couldn't be resolved, but indices where defined before, just add the definition
-					existing.push(definition);
-				}
+				newEnvironment.memory.set(name, [inGraphDefinition]);
 			} else if(existing === undefined || definition.cds === undefined) {
 				newEnvironment.memory.set(name, [definition]);
 			} else {
@@ -135,9 +134,39 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
+	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {
+		if(this.n === ns) {
+			return this.define(definition);
+		}
+		// navigate to parent until either before built-in or matching namespace
+		const newEnvironment = this.clone(false);
+		const current = newEnvironment;
+		do{
+			if(current.n === ns) {
+				current.define(definition);
+				return newEnvironment;
+			} else if(current.parent && !current.parent.builtInEnv) {
+				// clone parent
+				current.parent = current.parent.clone(false);
+			} else {
+				break;
+			}
+		} while(current.n !== ns);
+		// we did not find the namespace, so we inject a new environment here
+		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
+		const env = new Environment(current.parent);
+		env.n = ns;
+		current.parent = env.define(definition);
+		return newEnvironment;
+	}
+
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
-		const { name } = definition;
-		const newEnvironment = this.clone(true);
+		const [name, ns] = Identifier.toArray(definition.name);
+		const newEnvironment = this.clone(false);
+		if(ns !== undefined && this.n !== ns) {
+			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
+			return newEnvironment;
+		}
 		let current = newEnvironment;
 		let last = undefined;
 		let found = false;
@@ -148,6 +177,7 @@ export class Environment implements IEnvironment {
 				break;
 			}
 			last = current;
+			current.parent = current.parent.clone(false);
 			current = current.parent;
 		} while(!current.builtInEnv);
 		if(!found) {
@@ -224,8 +254,13 @@ export class Environment implements IEnvironment {
 		return out;
 	}
 
-	public remove(name: Identifier) {
+	public remove(id: Identifier) {
 		if(this.builtInEnv) {
+			return this;
+		}
+		const [name, ns] = Identifier.toArray(id);
+		if(ns !== undefined && this.n !== ns) {
+			this.parent.remove(id);
 			return this;
 		}
 		const definition = this.memory.get(name);

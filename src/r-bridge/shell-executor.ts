@@ -1,4 +1,4 @@
-import { type RShellExecutionOptions , getDefaultRShellOptions } from './shell';
+import { type RShellExecutionOptions, getDefaultRShellOptions } from './shell';
 import { deepMergeObject } from '../util/objects';
 import { spawnSync } from 'child_process';
 import type { SemVer } from 'semver';

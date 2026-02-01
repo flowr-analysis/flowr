@@ -5,6 +5,7 @@ import type { ParentInformation } from '../processing/decorate';
 import type { NodeId } from '../processing/node-id';
 import type { RFunctionArgument } from './r-function-call';
 import { EmptyArgument } from './r-function-call';
+import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 
 /**
  * Represents a named or unnamed argument of a function definition in R.
@@ -12,7 +13,7 @@ import { EmptyArgument } from './r-function-call';
 export interface RArgument<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.Argument;
 	/* the name is represented as a symbol to additionally get location information */
-	name:          RSymbol<Info> | undefined;
+	name:          RSymbol<Info, BrandedIdentifier> | undefined;
 	value:         RNode<Info> | undefined;
 }
 

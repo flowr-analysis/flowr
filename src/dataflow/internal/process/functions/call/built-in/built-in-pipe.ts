@@ -11,7 +11,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
@@ -26,7 +26,7 @@ export function processPipe<OtherInfo>(
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
 	if(args.length !== 2) {
-		dataflowLogger.warn(`Pipe ${name.content} has something else than 2 arguments, skipping`);
+		dataflowLogger.warn(`Pipe ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
 		return information;
 	}
 

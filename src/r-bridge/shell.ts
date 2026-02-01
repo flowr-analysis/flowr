@@ -12,7 +12,7 @@ import { initCommand } from './init';
 import type { RShellEngineConfig } from '../config';
 import { ts2r } from './lang-4.x/convert-values';
 import type { AsyncParser, RShellInformation } from './parser';
-import { type RParseRequest , retrieveParseDataFromRCode } from './retriever';
+import { type RParseRequest, retrieveParseDataFromRCode } from './retriever';
 
 
 export type OutputStreamSelector = 'stdout' | 'stderr' | 'both';

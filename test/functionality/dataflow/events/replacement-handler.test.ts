@@ -2,7 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { RShell } from '../../../../src/r-bridge/shell';
-import { type ReplacementOperatorHandlerArgs , handleReplacementOperator, onReplacementOperator } from '../../../../src/dataflow/graph/unknown-replacement';
+import { type ReplacementOperatorHandlerArgs, handleReplacementOperator, onReplacementOperator } from '../../../../src/dataflow/graph/unknown-replacement';
 import { handleUnknownSideEffect, onUnknownSideEffect } from '../../../../src/dataflow/graph/unknown-side-effect';
 import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Environment } from '../../../../src/dataflow/environments/environment';

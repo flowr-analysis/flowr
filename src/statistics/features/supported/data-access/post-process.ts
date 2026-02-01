@@ -1,10 +1,10 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
-import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject, emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import type { DataAccessInfo } from './data-access';
 import fs from 'fs';
 import path from 'path';
@@ -12,7 +12,7 @@ import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summ
 import { bigint2number } from '../../../../util/numbers';
 import type { MergeableRecord } from '../../../../util/objects';
 import {
-	type SummarizedMeasurement ,
+	type SummarizedMeasurement,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader, summarizeMeasurement
 } from '../../../../util/summarizer';

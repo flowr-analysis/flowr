@@ -29,12 +29,11 @@ max
 				location: rangeFrom(2, 3, 2, 4),
 				info:     {},
 				lhs:      {
-					type:      RType.Symbol,
-					lexeme:    'a',
-					namespace: undefined,
-					content:   'a',
-					location:  rangeFrom(2, 1, 2, 1),
-					info:      {}
+					type:     RType.Symbol,
+					lexeme:   'a',
+					content:  'a',
+					location: rangeFrom(2, 1, 2, 1),
+					info:     {}
 				},
 				rhs: {
 					type:     RType.Number,
@@ -51,12 +50,11 @@ max
 				location: rangeFrom(3, 3, 3, 3),
 				info:     {},
 				lhs:      {
-					type:      RType.Symbol,
-					lexeme:    'b',
-					namespace: undefined,
-					content:   'b',
-					location:  rangeFrom(3, 1, 3, 1),
-					info:      {}
+					type:     RType.Symbol,
+					lexeme:   'b',
+					content:  'b',
+					location: rangeFrom(3, 1, 3, 1),
+					info:     {}
 				},
 				rhs: {
 					type:     RType.Number,
@@ -78,38 +76,34 @@ max
 					location: rangeFrom(4, 7, 4, 7),
 					info:     {},
 					lhs:      {
-						type:      RType.Symbol,
-						lexeme:    'a',
-						namespace: undefined,
-						content:   'a',
-						location:  rangeFrom(4, 5, 4, 5),
-						info:      {}
+						type:     RType.Symbol,
+						lexeme:   'a',
+						content:  'a',
+						location: rangeFrom(4, 5, 4, 5),
+						info:     {}
 					},
 					rhs: {
-						type:      RType.Symbol,
-						lexeme:    'b',
-						namespace: undefined,
-						content:   'b',
-						location:  rangeFrom(4, 8, 4, 8),
-						info:      {}
+						type:     RType.Symbol,
+						lexeme:   'b',
+						content:  'b',
+						location: rangeFrom(4, 8, 4, 8),
+						info:     {}
 					},
 				},
 				then: {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:      RType.Symbol,
-						lexeme:    '{',
-						location:  rangeFrom(4, 11, 4, 11),
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						lexeme:   '{',
+						location: rangeFrom(4, 11, 4, 11),
+						content:  '{',
+						info:     {},
 					}, {
-						type:      RType.Symbol,
-						lexeme:    '}',
-						location:  rangeFrom(7, 1, 7, 1),
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						lexeme:   '}',
+						location: rangeFrom(7, 1, 7, 1),
+						content:  '}',
+						info:     {},
 					}],
 					lexeme:   undefined,
 					location: undefined,
@@ -122,20 +116,18 @@ max
 							location: rangeFrom(5, 7, 5, 9),
 							info:     {},
 							lhs:      {
-								type:      RType.Symbol,
-								lexeme:    'max',
-								namespace: undefined,
-								content:   'max',
-								location:  rangeFrom(5, 3, 5, 5),
-								info:      {}
+								type:     RType.Symbol,
+								lexeme:   'max',
+								content:  'max',
+								location: rangeFrom(5, 3, 5, 5),
+								info:     {}
 							},
 							rhs: {
-								type:      RType.Symbol,
-								lexeme:    'a',
-								namespace: undefined,
-								content:   'a',
-								location:  rangeFrom(5, 11, 5, 11),
-								info:      {}
+								type:     RType.Symbol,
+								lexeme:   'a',
+								content:  'a',
+								location: rangeFrom(5, 11, 5, 11),
+								info:     {}
 							},
 						},
 						{
@@ -145,12 +137,11 @@ max
 							location: rangeFrom(6, 5, 6, 6),
 							info:     {},
 							lhs:      {
-								type:      RType.Symbol,
-								lexeme:    'i',
-								namespace: undefined,
-								content:   'i',
-								location:  rangeFrom(6, 3, 6, 3),
-								info:      {}
+								type:     RType.Symbol,
+								lexeme:   'i',
+								content:  'i',
+								location: rangeFrom(6, 3, 6, 3),
+								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
@@ -168,19 +159,17 @@ max
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						lexeme:    '{',
-						location:  rangeFrom(7, 8, 7, 8),
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						lexeme:   '{',
+						location: rangeFrom(7, 8, 7, 8),
+						content:  '{',
+						info:     {},
 					}, {
-						type:      RType.Symbol,
-						lexeme:    '}',
-						location:  rangeFrom(9, 1, 9, 1),
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						lexeme:   '}',
+						location: rangeFrom(9, 1, 9, 1),
+						content:  '}',
+						info:     {},
 					}],
 					children: [{
 						type:     RType.BinaryOp,
@@ -189,31 +178,28 @@ max
 						location: rangeFrom(8, 5, 8, 7),
 						info:     {},
 						lhs:      {
-							type:      RType.Symbol,
-							lexeme:    'b',
-							namespace: undefined,
-							content:   'b',
-							location:  rangeFrom(8, 3, 8, 3),
-							info:      {}
+							type:     RType.Symbol,
+							lexeme:   'b',
+							content:  'b',
+							location: rangeFrom(8, 3, 8, 3),
+							info:     {}
 						},
 						rhs: {
-							type:      RType.Symbol,
-							lexeme:    'max',
-							namespace: undefined,
-							content:   'max',
-							location:  rangeFrom(8, 9, 8, 11),
-							info:      {}
+							type:     RType.Symbol,
+							lexeme:   'max',
+							content:  'max',
+							location: rangeFrom(8, 9, 8, 11),
+							info:     {}
 						},
 					}]
 				},
 			},
 			{
-				type:      RType.Symbol,
-				lexeme:    'max',
-				content:   'max',
-				namespace: undefined,
-				location:  rangeFrom(10, 1, 10, 3),
-				info:      {}
+				type:     RType.Symbol,
+				lexeme:   'max',
+				content:  'max',
+				location: rangeFrom(10, 1, 10, 3),
+				info:     {}
 			}
 		), {
 			ignoreAdditionalTokens: true

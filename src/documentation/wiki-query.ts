@@ -634,7 +634,7 @@ registerQueryDocumentation('static-slice', {
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
-		const criteria = ['3@z','4@x'] as SlicingCriteria;
+		const criteria = ['3@z', '4@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
@@ -850,7 +850,7 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1\nx * 2';
-		const criteria = ['1@x','2@x'] as SlicingCriteria;
+		const criteria = ['1@x', '2@x'] as SlicingCriteria;
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
@@ -967,9 +967,9 @@ Just as an example, the following ${linkToQueryOfName('call-context')} finds all
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
 
-${await explainQueries(shell, ctx,'active')}
+${await explainQueries(shell, ctx, 'active')}
 
-${await explainQueries(shell, ctx,'virtual')}
+${await explainQueries(shell, ctx, 'virtual')}
 `;
 	}
 }

@@ -11,7 +11,7 @@ import type {
 } from './call-context-query-format';
 import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
@@ -21,6 +21,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -28,7 +29,7 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 	if(vertex === undefined) {
 		return false;
 	}
-	return vertex.values().some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
+	return vertex.values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation));
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
@@ -71,15 +72,15 @@ export function promoteCallName(callName: CallNameTypes, exact = false): RegExp 
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
-    callName:    RegExp | Set<string>,
-    fileFilter?: FileFilter<RegExp | Set<string>>,
-    linkTo?:     PromotedLinkTo | PromotedLinkTo[]
+	callName:    RegExp | Set<string>,
+	fileFilter?: FileFilter<RegExp | Set<string>>,
+	linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
-export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & {callName: RegExp | Set<string>}
+export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: RegExp | Set<string> };
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
-    promotedQueries: PromotedQuery[],
-    requiresCfg:     boolean
+	promotedQueries: PromotedQuery[],
+	requiresCfg:     boolean
 } {
 	let requiresCfg = false;
 	const promotedQueries: PromotedQuery[] = queries.map(q => {
@@ -149,7 +150,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 		if(info.tag !== VertexType.FunctionCall) {
 			const x = outgoing.entries()
-				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
+				.filter(([,e]) => DfEdge.includesType(e, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
@@ -162,7 +163,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 			track |= EdgeType.Returns;
 		}
 		const out = outgoing.entries()
-			.filter(([, e]) => edgeIncludesType(e.types, track) && (nodeId !== id || !edgeIncludesType(e.types, EdgeType.Argument)))
+			.filter(([, e]) => DfEdge.includesType(e, track) && (nodeId !== id || DfEdge.doesNotIncludeType(e, EdgeType.Argument)))
 			.map(([t]) => t)
 		;
 
@@ -258,7 +259,8 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
+		const n = Identifier.getName(info.name);
+		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(n) : q.callName.has(n)))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;

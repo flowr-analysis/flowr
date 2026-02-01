@@ -3,7 +3,7 @@ import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';

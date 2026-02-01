@@ -3,7 +3,7 @@ import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
-import type { FlowrAnalyzerPlugin , PluginType } from './plugins/flowr-analyzer-plugin';
+import type { FlowrAnalyzerPlugin, PluginType } from './plugins/flowr-analyzer-plugin';
 import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize';
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';

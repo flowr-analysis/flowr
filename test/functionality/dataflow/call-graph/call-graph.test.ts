@@ -85,7 +85,7 @@ describe('Call Graph Generation', withTreeSitter(ts => {
 				in:                [],
 				unknownReferences: [],
 				entryPoint:        '2@if',
-				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
+				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])
@@ -271,7 +271,7 @@ f.numeric <- function(x) {
 				in:                [],
 				unknownReferences: [],
 				entryPoint:        '2@if',
-				graph:             new Set([1,5,6,7,11,13,14,15,18,19,20,22,24,25,26,28,29,31,32]),
+				graph:             new Set([1, 5, 6, 7, 11, 13, 14, 15, 18, 19, 20, 22, 24, 25, 26, 28, 29, 31, 32]),
 				environment:       defaultEnv().pushEnv().defineParameter('n', '1@n', '1@n')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', ['3@return', '5@return', 7, 14, 15, 20, 22, 26, 28, 29, 32])

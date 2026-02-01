@@ -41,7 +41,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 		.filter(([,v]) => filterFor.size === 0 || filterFor.has(v.id));
 
 	const result: Record<NodeId, boolean> = {};
-	for(const [id,] of fns) {
+	for(const [id] of fns) {
 		result[id] = isFunctionHigherOrder(id, graph, analyzer.inspectContext());
 	}
 

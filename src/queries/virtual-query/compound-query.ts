@@ -3,7 +3,7 @@ import type { BaseQueryFormat } from '../base-query-format';
 import type { StrictOmit } from 'ts-essentials';
 
 /** @see CompoundQueryFormat */
-export type VirtualCompoundConstraint<SubQueryType extends SupportedQueryTypes> = keyof StrictOmit<QueryArgumentsWithType<SubQueryType>, 'type'>
+export type VirtualCompoundConstraint<SubQueryType extends SupportedQueryTypes> = keyof StrictOmit<QueryArgumentsWithType<SubQueryType>, 'type'>;
 
 /**
  * Virtual Query Format.

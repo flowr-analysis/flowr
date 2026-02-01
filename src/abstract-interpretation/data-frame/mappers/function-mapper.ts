@@ -604,8 +604,9 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
-	if(isDataFrameFunction(Identifier.getName(node.functionName.content))) {
-		const functionName = node.functionName.content as Name;
+	const n = Identifier.getName(node.functionName.content);
+	if(isDataFrameFunction(n)) {
+		const functionName = n as Name;
 		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
 		const args = getFunctionArguments(node, dfg);

@@ -34,12 +34,11 @@ export function processGet<OtherInfo>(
 	}
 
 	const treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      retrieve.info,
-		content:   removeRQuotes(retrieve.lexeme),
-		lexeme:    retrieve.lexeme,
-		location:  retrieve.location,
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     retrieve.info,
+		content:  removeRQuotes(retrieve.lexeme),
+		lexeme:   retrieve.lexeme,
+		location: retrieve.location
 	};
 
 	const { information, processedArguments } = processKnownFunctionCall({

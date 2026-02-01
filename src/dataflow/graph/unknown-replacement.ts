@@ -1,8 +1,9 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
+import type { Identifier } from '../environments/identifier';
 
 export type ReplacementOperatorHandlerArgs = {
-    operator: string,
+    operator: Identifier,
     target:   string | undefined,
     env:      REnvironmentInformation,
     id:       NodeId

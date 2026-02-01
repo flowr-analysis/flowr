@@ -122,12 +122,12 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 	if(symbolContent.length === 1 && symbolContent[0].name === RawRType.StringConst) {
 		const stringBase = normalizeString(data, symbolContent[0].content);
 		functionName = {
-			type:      RType.Symbol,
-			namespace: undefined,
-			lexeme:    stringBase.lexeme,
-			info:      stringBase.info,
-			location:  stringBase.location,
-			content:   stringBase.content.str
+			type:     RType.Symbol,
+			ns:       undefined,
+			lexeme:   stringBase.lexeme,
+			info:     stringBase.info,
+			location: stringBase.location,
+			content:  stringBase.content.str
 		};
 	} else {
 		functionName = tryNormalizeSymbol(data, symbolContent);

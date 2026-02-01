@@ -78,12 +78,12 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 			);
 			assertDecorated('Symbol', 'k',
 				exprList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					namespace: undefined,
-					lexeme:    'k',
-					content:   'k',
-					info:      {
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					ns:       undefined,
+					lexeme:   'k',
+					content:  'k',
+					info:     {
 						parent:  '1',
 						id:      '0',
 						nesting: 0,

@@ -2,7 +2,6 @@ import { Q } from '../../search/flowr-search-builder';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { SourceRange } from '../../util/range';
-import type { Identifier } from '../../dataflow/environments/identifier';
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -15,6 +14,7 @@ import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 
 export interface FunctionsResult extends LintingResult {
     function: string
@@ -70,7 +70,7 @@ export const functionFinderUtil = {
 					return {
 						node:   element.node,
 						range:  element.node.info.fullRange as SourceRange,
-						target: target as Identifier
+						target: target as BrandedIdentifier
 					};
 				});
 			});

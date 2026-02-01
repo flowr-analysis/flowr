@@ -17,6 +17,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
+	Identifier,
 	type IdentifierReference,
 	type InGraphIdentifierDefinition,
 	type InGraphReferenceType,
@@ -40,15 +41,14 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 
-function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
+function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
-		type:      RType.Symbol,
-		info:      target.info,
+		type:     RType.Symbol,
+		info:     target.info,
 		/* they are all mapped to `<-` in R, but we mark super as well */
-		content:   `${prefix}${superAssignment ? '<<-' : '<-'}`,
-		lexeme:    target.lexeme,
-		location:  target.location,
-		namespace: undefined
+		content:  `${Identifier.toString(prefix)}${superAssignment ? '<<-' : '<-'}`,
+		lexeme:   target.lexeme,
+		location: target.location
 	};
 }
 
@@ -67,7 +67,6 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
-	readonly indicesCollection?:   ContainerIndicesCollection
 	readonly mayHaveMoreArgs?:     boolean
 }
 
@@ -88,13 +87,12 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 	}
 }
 
-function tryReplacementPassingIndices<OtherInfo>(
+function tryReplacement<OtherInfo>(
 	rootId: NodeId,
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: string,
-	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
-	indices: ContainerIndicesCollection
+	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
 
@@ -105,20 +103,18 @@ function tryReplacementPassingIndices<OtherInfo>(
 
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{
-			type:      RType.Symbol,
-			info:      functionName.info,
-			content:   name,
-			lexeme:    functionName.lexeme,
-			location:  functionName.location,
-			namespace: undefined
+			type:     RType.Symbol,
+			info:     functionName.info,
+			content:  name,
+			lexeme:   functionName.lexeme,
+			location: functionName.location
 		},
 		wrapArgumentsUnnamed(args, data.completeAst.idMap),
 		functionName.info.id,
 		data,
 		{
 			...resolved[0].config,
-			activeIndices: indices,
-			assignRootId:  rootId
+			assignRootId: rootId
 		}
 	);
 
@@ -176,7 +172,7 @@ export function processAssignment<OtherInfo>(
 	config: AssignmentConfiguration
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
-		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.getName(name.content)} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
@@ -184,7 +180,7 @@ export function processAssignment<OtherInfo>(
 	const { target, source } = extractSourceAndTarget(effectiveArgs);
 
 	if(target === undefined || source === undefined) {
-		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.getName(name.content)} has an undefined target or source, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const { type, named } = target;
@@ -241,13 +237,13 @@ export function processAssignment<OtherInfo>(
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
-		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.getName(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [...target.arguments, source], config.indicesCollection);
+		return tryReplacement(rootId, replacement, data, replacement.content, [...target.arguments, source]);
 	} else if(config.canBeReplacement && type === RType.Access) {
-		dataflowLogger.debug(`Assignment ${name.content} has an access-type node as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.getName(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.indicesCollection);
+		return tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -322,12 +318,12 @@ function processAssignmentToString<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>
 ) {
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      target.info,
-		content:   removeRQuotes(target.lexeme),
-		lexeme:    target.lexeme,
-		location:  target.location,
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     target.info,
+		content:  removeRQuotes(target.lexeme),
+		lexeme:   target.lexeme,
+		location: target.location,
+		ns:       undefined
 	};
 
 	// treat first argument to Symbol
@@ -371,12 +367,12 @@ function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInf
 }
 
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
-	readonly nameOfAssignmentFunction: string
+	readonly nameOfAssignmentFunction: Identifier
 	readonly source:                   RNode<OtherInfo & ParentInformation>
 	readonly args:                     [DataflowInformation, DataflowInformation]
 	readonly targetId:                 NodeId
 	/** pass only if the assignment target differs from normal R assignments (i.e., if the symbol is to be resolved) */
-	readonly targetName?:              string
+	readonly targetName?:              Identifier
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>
 	readonly information:              DataflowInformation

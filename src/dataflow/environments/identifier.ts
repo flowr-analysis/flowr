@@ -2,27 +2,172 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import type { ContainerIndicesCollection } from '../graph/vertex';
+import { startAndEndsWith } from '../../util/text/strings';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' }
+/** this is just a safe-guard type to prevent mixing up branded namespaces with normal strings */
+export type BrandedNamespace = string & { __brand?: 'namespace' }
 
 /**
  * Refers to an identifier by its name.
  * This can either be a simple name like `a` or a namespaced name like `pkg::a` (stored as ['a', 'pkg']).
  * By storing the namespace second, you can easily access the actual name via `id[0]`.
  * This represents the fundamental way to represent binding names in R.
- * @see {@link identifier2str} - to convert an {@link Identifier|identifier} to a string representation
+ * @see {@link Identifier.getName} - to get the name part
+ * @see {@link Identifier.getNamespace} - to get the namespace part
+ * @see {@link Identifier.accessesInternal} - to check if the identifier accesses internal objects (`:::`)
+ * @see {@link Identifier.toString} - to convert the identifier to a string representation
  */
-export type Identifier = [id: BrandedIdentifier, namespace?: BrandedIdentifier]
+export type Identifier = BrandedIdentifier | [id: BrandedIdentifier, namespace: BrandedNamespace, internal?: boolean]
 
-// TODO: explain identifier
+const dotDotDotAccess = /^\.\.\d+$/;
 
 /**
- * Convert an {@link Identifier|identifier} to a string representation.
+ * Helper functions to work with {@link Identifier|identifiers}.
+ * Use {@link Identifier.matches} to check if two identifiers match according to R's scoping rules!
+ * @example
+ * ```ts
+ * const id1 = Identifier.make('a', 'pkg');
+ * const id2 = Identifier.parse('pkg::a');
+ * const id3 = Identifier.parse('a');
+ * Identifier.matches(id1, id2); // true
+ * Identifier.matches(id3, id2); // true, as id3 has no namespace
+ * ```
+ * // TODO: use this pattern more often!
  */
-export function identifier2str(id: Identifier): string {
-	return id[1] ? `${id[1]}::${id[0]}` : id[0];
-}
+export const Identifier = {
+	/**
+	 * Create an identifier from its name and optional namespace.
+	 * Please note that for `internal` to count, a namespace must be provided!
+	 */
+	make(name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
+		if(startAndEndsWith(name, '`')) {
+			name = name.substring(1, name.length - 1) as BrandedIdentifier;
+		}
+		if(namespace) {
+			return [name, namespace, internal];
+		} else {
+			return name;
+		}
+	},
+	/**
+	 * Parse an identifier from its string representation,
+	 * Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkag::a` and NOT to the namespaced identifier `a` in package `pkg`.
+	 * In this scenario, see {@link Identifier.make} instead.
+	 */
+	parse(str: string): Identifier {
+		const internal = str.includes(':::');
+		const parts = str.split(internal ? ':::' : '::');
+		if(parts.length === 2) {
+			return [parts[1] as BrandedIdentifier, parts[0] as BrandedNamespace, internal];
+		}
+		return parts[0] as BrandedIdentifier;
+	},
+	/**
+	 * Get the name part of the identifier
+	 */
+	getName(id: Identifier): BrandedIdentifier {
+		return Array.isArray(id) ? id[0] : id;
+	},
+	/**
+	 * Get the namespace part of the identifier, undefined if there is none
+	 */
+	getNamespace(id: Identifier): BrandedNamespace | undefined {
+		return Array.isArray(id) ? id[1] : undefined;
+	},
+	/**
+	 * Check if the identifier accesses internal objects (`:::`)
+	 */
+	accessesInternal(id: Identifier): boolean | undefined {
+		return Array.isArray(id) ? id[2] : undefined;
+	},
+	/**
+	 * Convert the identifier to a string representation,
+	 * this will properly quote namespaces that contain `::` to avoid confusion.
+	 * @example
+	 * ```ts
+	 * Identifier.toString('a') // 'a'
+	 * Identifier.toString(['a', 'pkg']) // 'pkg::a'
+	 * Identifier.toString(['a', 'pkg:::internal', true]) // '"pkg:::internal":::a'
+	 * ```
+	 */
+	toString(id: Identifier): string {
+		if(Array.isArray(id)) {
+			if(id[1].includes('::')) {
+				return `${JSON.stringify(id[1])}${id[2] ? ':::' : '::'}${id[0]}`;
+			}
+			return `${id[1]}${id[2] ? ':::' : '::'}${id[0]}`;
+		} else {
+			if(id.includes('::')) {
+				return JSON.stringify(id);
+			}
+			return id;
+		}
+	},
+	/**
+	 * Check if two identifiers match.
+	 * This differs from eq!
+	 * If the first identifier is not namespaced, it will match any namespace!
+	 * If we search for S3 methods (s3=true), the target may have an additional suffix after a dot.
+	 * If the first identifier is internal, it will match any target (internal or not).
+	 */
+	matches(id: Identifier, target: Identifier, s3: boolean = false): boolean {
+		// TODO: support replacement methods like `<-a::b`
+		const idName = Identifier.getName(id);
+		const targetName = Identifier.getName(target);
+		if(idName !== targetName) {
+			return s3 ? targetName.startsWith(idName + '.') : false;
+		}
+		const idNs = Identifier.getNamespace(id);
+		if(idNs === undefined) {
+			return true;
+		}
+		const targetNs = Identifier.getNamespace(target);
+		if(idNs !== targetNs) {
+			return false;
+		}
+		const idInternal = Identifier.accessesInternal(id);
+		if(idInternal === true) {
+			return true;
+		}
+		const targetInternal = Identifier.accessesInternal(target);
+		return idInternal === targetInternal;
+	},
+	/** Special identifier for the `...` argument */
+	dotdotdot(): BrandedIdentifier {
+		return '...' as BrandedIdentifier;
+	},
+	/**
+	 * Check if the identifier is the special `...` argument / or one of its accesses like `..1`, `..2`, etc.
+	 * This always returns false for namespaced identifiers.
+	 */
+	isDotDotDotAccess(id: Identifier): boolean {
+		return !Array.isArray(id) && (dotDotDotAccess.test(id) || id === '...');
+	},
+	/**
+	 * Functor over the name of the identifier
+	 */
+	mapName(id: Identifier, fn: (name: BrandedIdentifier) => BrandedIdentifier): Identifier {
+		if(Array.isArray(id)) {
+			return [fn(id[0]), id[1], id[2]];
+		} else {
+			return fn(id);
+		}
+	},
+	/**
+	 * Functor over the namespace of the identifier
+	 */
+	mapNamespace(id: Identifier, fn: (ns: BrandedNamespace) => BrandedNamespace): Identifier {
+		if(Array.isArray(id)) {
+			return [id[0], fn(id[1]), id[2]];
+		} else {
+			return id;
+		}
+	}
+};
+
+
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.

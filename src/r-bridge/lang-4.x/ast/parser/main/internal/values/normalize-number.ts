@@ -32,8 +32,8 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 	if(isNA(content)) {
 		return {
 			...common,
-			namespace: undefined,
-			type:      RType.Symbol,
+			ns:   undefined,
+			type: RType.Symbol,
 			content
 		};
 	} else if(isBoolean(content)) {

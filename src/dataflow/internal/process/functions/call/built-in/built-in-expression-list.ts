@@ -12,7 +12,7 @@ import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import type { Identifier , type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
@@ -28,10 +28,9 @@ import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 
-const dotDotDotAccess = /^\.\.\d+$/;
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = read.name && dotDotDotAccess.test(read.name[0]) ? ['...'] as Identifier : read.name;
+	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const readId = readName?.[0];
 
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;

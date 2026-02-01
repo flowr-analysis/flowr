@@ -35,12 +35,11 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		parsedValue = normalizeSingleNode(data, symbolOrExpr);
 	} else if(symbolOrExpr.name === RawRType.SymbolSub || symbolOrExpr.name === RawRType.StringConst) {
 		name =    {
-			type:      RType.Symbol,
+			type:    RType.Symbol,
 			location,
-			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
-			namespace: undefined,
-			lexeme:    content,
-			info:      {
+			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
+			lexeme:  content,
+			info:    {
 				fullRange:        location,
 				additionalTokens: [],
 				fullLexeme:       content

@@ -15,6 +15,7 @@ import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -168,18 +169,18 @@ export function getFunctionArguments(
 export function getUnresolvedSymbolsInExpression(
 	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
 	dfg?: DataflowGraph
-): string[] {
+): Identifier[] {
 	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
 		return [];
 	}
-	const unresolvedSymbols: string[] = [];
+	const unresolvedSymbols: Identifier[] = [];
 
 	visitAst(expression, node => {
 		if(node.type === RType.Symbol) {
 			const vertex = dfg.get(node.info.id);
 
 			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0) {
-				unresolvedSymbols.push(unquoteArgument(node.content));
+				unresolvedSymbols.push(Identifier.mapName(node.content, unquoteArgument));
 			}
 		}
 	});

@@ -8,32 +8,32 @@ import { describe } from 'vitest';
 describe.sequential('Parse symbols', withShell(shell => {
 	assertAst(label('Simple Symbol', ['name-normal']),
 		shell, 'a', exprList({
-			type:      RType.Symbol,
-			location:  rangeFrom(1, 1, 1, 1),
-			namespace: undefined,
-			lexeme:    'a',
-			content:   'a',
-			info:      {}
+			type:     RType.Symbol,
+			location: rangeFrom(1, 1, 1, 1),
+			ns:       undefined,
+			lexeme:   'a',
+			content:  'a',
+			info:     {}
 		})
 	);
 	assertAst(label('With Namespace', ['name-normal', 'accessing-exported-names']),
 		shell, 'a::b', exprList({
-			type:      RType.Symbol,
-			location:  rangeFrom(1, 4, 1, 4),
-			namespace: 'a',
-			lexeme:    'b',
-			content:   'b',
-			info:      {}
+			type:     RType.Symbol,
+			location: rangeFrom(1, 4, 1, 4),
+			ns:       'a',
+			lexeme:   'b',
+			content:  'b',
+			info:     {}
 		})
 	);
 	assertAst(label('With Quotes and Namespace', ['name-normal', 'name-quoted', 'accessing-exported-names']),
 		shell, 'a::"b"', exprList({
-			type:      RType.Symbol,
-			location:  rangeFrom(1, 4, 1, 6),
-			namespace: 'a',
-			lexeme:    '"b"',
-			content:   '"b"',
-			info:      {}
+			type:     RType.Symbol,
+			location: rangeFrom(1, 4, 1, 6),
+			ns:       'a',
+			lexeme:   '"b"',
+			content:  '"b"',
+			info:     {}
 		})
 	);
 }));

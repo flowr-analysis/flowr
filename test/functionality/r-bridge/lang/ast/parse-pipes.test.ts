@@ -20,12 +20,11 @@ describe.sequential('Parse Pipes', withShell(shell => {
 				lexeme:   'x',
 				info:     {},
 				value:    {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					lexeme:    'x',
-					content:   'x',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 1, 1, 1),
+					lexeme:   'x',
+					content:  'x',
+					info:     {}
 				}
 			},
 			rhs: {
@@ -36,12 +35,11 @@ describe.sequential('Parse Pipes', withShell(shell => {
 				info:         {},
 				arguments:    [],
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 6, 1, 6),
-					lexeme:    'f',
-					content:   'f',
-					namespace: undefined,
-					info:      {},
+					type:     RType.Symbol,
+					location: rangeFrom(1, 6, 1, 6),
+					lexeme:   'f',
+					content:  'f',
+					info:     {},
 				}
 			}
 		}),
@@ -70,12 +68,11 @@ describe.sequential('Parse Pipes', withShell(shell => {
 						lexeme:   'x',
 						name:     undefined,
 						value:    {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 1, 1, 1),
-							lexeme:    'x',
-							content:   'x',
-							namespace: undefined,
-							info:      {},
+							type:     RType.Symbol,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   'x',
+							content:  'x',
+							info:     {},
 						},
 						info: {},
 					},
@@ -86,12 +83,11 @@ describe.sequential('Parse Pipes', withShell(shell => {
 						lexeme:       'f',
 						arguments:    [],
 						functionName: {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 6, 1, 6),
-							lexeme:    'f',
-							content:   'f',
-							namespace: undefined,
-							info:      {},
+							type:     RType.Symbol,
+							location: rangeFrom(1, 6, 1, 6),
+							lexeme:   'f',
+							content:  'f',
+							info:     {},
 						},
 						info: {},
 					}
@@ -105,12 +101,11 @@ describe.sequential('Parse Pipes', withShell(shell => {
 				arguments:    [],
 				info:         {},
 				functionName: {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 13, 1, 13),
-					lexeme:    'g',
-					content:   'g',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 13, 1, 13),
+					lexeme:   'g',
+					content:  'g',
+					info:     {}
 				}
 			}
 		}),

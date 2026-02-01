@@ -12,8 +12,8 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import {
-	type BrandedIdentifier,
+import type { BrandedNamespace ,
+	type BrandedIdentifier, Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
 	ReferenceType
@@ -166,21 +166,21 @@ function defaultBuiltInProcessor<OtherInfo>(
 				const rhs = arg.value;
 				let fnName: BrandedIdentifier | undefined;
 				let fnId: NodeId | undefined;
-				let ns: BrandedIdentifier | undefined;
+				let ns: BrandedNamespace | undefined;
 				if(rhs.type === RType.String) {
 					fnName = rhs.content.str;
 					fnId = rhs.info.id;
 				} else if(rhs.type === RType.Symbol) {
 					fnName = rhs.content;
 					fnId = rhs.info.id;
-					ns = rhs.namespace;
+					ns = rhs.ns;
 				} else {
 					continue;
 				}
 				res.graph.updateToFunctionCall({
 					tag:         VertexType.FunctionCall,
 					id:          fnId,
-					name:        ns ? [fnName, ns] : [fnName],
+					name:        Identifier.make(fnName, ns),
 					args:        [],
 					environment: data.environment,
 					onlyBuiltin: false,
@@ -378,7 +378,7 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:   assignment[1] ? [effectiveName, assignment[1]] : [effectiveName],
+					name:   Identifier.make(effectiveName, assignment[1]),
 					cds:    undefined,
 					nodeId: id
 				}];

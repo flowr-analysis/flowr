@@ -57,12 +57,12 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			lexeme:       data.currentLexeme ?? content,
 			location,
 			functionName: {
-				type:      RType.Symbol,
+				type:   RType.Symbol,
 				location,
-				lexeme:    content,
+				lexeme: content,
 				content,
-				namespace: undefined,
-				info:      {}
+				ns:     undefined,
+				info:   {}
 			},
 			arguments: [
 				{

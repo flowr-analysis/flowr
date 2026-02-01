@@ -18,19 +18,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				body:       {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 12, 1, 12),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 12, 1, 12),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 14, 1, 14),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 14, 1, 14),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					location: undefined,
 					lexeme:   undefined,
@@ -54,19 +54,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 12, 1, 12),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 12, 1, 12),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 24, 1, 24),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 24, 1, 24),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					children: [{
 						type:     RType.BinaryOp,
@@ -75,12 +75,12 @@ describe.sequential('Parse function definitions', withShell(shell => {
 						operator: '+',
 						info:     {},
 						lhs:      {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 14, 1, 14),
-							lexeme:    'x',
-							content:   'x',
-							namespace: undefined,
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 14, 1, 14),
+							lexeme:   'x',
+							content:  'x',
+							ns:       undefined,
+							info:     {}
 						},
 						rhs: {
 							type:     RType.BinaryOp,
@@ -121,19 +121,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				body:       {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 13, 1, 13),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 13, 1, 13),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 15, 1, 15),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					location: undefined,
 					lexeme:   undefined,
@@ -161,27 +161,27 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 19, 1, 19),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 19, 1, 19),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 23, 1, 23),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 23, 1, 23),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					children: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 21, 1, 21),
-						lexeme:    'b',
-						content:   'b',
-						namespace: undefined,
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 21, 1, 21),
+						lexeme:   'b',
+						content:  'b',
+						ns:       undefined,
+						info:     {}
 					}]
 				}
 			}), {
@@ -209,19 +209,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 			body: {
 				type:     RType.ExpressionList,
 				grouping: [{
-					type:      RType.Symbol,
-					location:  rangeFrom(2, 8, 2, 8),
-					lexeme:    '{',
-					content:   '{',
-					info:      {},
-					namespace: undefined
+					type:     RType.Symbol,
+					location: rangeFrom(2, 8, 2, 8),
+					lexeme:   '{',
+					content:  '{',
+					info:     {},
+					ns:       undefined
 				}, {
-					type:      RType.Symbol,
-					location:  rangeFrom(2, 10, 2, 10),
-					lexeme:    '}',
-					content:   '}',
-					info:      {},
-					namespace: undefined
+					type:     RType.Symbol,
+					location: rangeFrom(2, 10, 2, 10),
+					lexeme:   '}',
+					content:  '}',
+					info:     {},
+					ns:       undefined
 				}],
 				location: undefined,
 				lexeme:   undefined,
@@ -231,11 +231,11 @@ describe.sequential('Parse function definitions', withShell(shell => {
 			info: {
 				additionalTokens: [
 					{
-						type:      RType.Comment,
-						location:  rangeFrom(1, 15, 1, 22),
-						lexeme:    '# hehehe',
-						namespace: undefined,
-						info:      {}
+						type:     RType.Comment,
+						location: rangeFrom(1, 15, 1, 22),
+						lexeme:   '# hehehe',
+						ns:       undefined,
+						info:     {}
 					}
 				]
 			},
@@ -255,19 +255,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				body:       {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 15, 1, 15),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 17, 1, 17),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 17, 1, 17),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					location: undefined,
 					lexeme:   undefined,
@@ -293,19 +293,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					type:     RType.ExpressionList,
 					location: undefined,
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 18, 1, 18),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 18, 1, 18),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 20, 1, 20),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 20, 1, 20),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					lexeme:   undefined,
 					children: [],
@@ -333,27 +333,27 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					lexeme:   undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 23, 1, 23),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 23, 1, 23),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 29, 1, 29),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 29, 1, 29),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					children: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 25, 1, 27),
-						lexeme:    '...',
-						content:   '...',
-						namespace: undefined,
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 25, 1, 27),
+						lexeme:   '...',
+						content:  '...',
+						ns:       undefined,
+						info:     {}
 					}]
 				}
 			}), {
@@ -380,19 +380,19 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				body: {
 					type:     RType.ExpressionList,
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 15, 1, 15),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 15, 1, 15),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 17, 1, 17),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 17, 1, 17),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					location: undefined,
 					lexeme:   undefined,
@@ -433,27 +433,27 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					location: undefined,
 					info:     {},
 					grouping: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 31, 1, 31),
-						lexeme:    '{',
-						content:   '{',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 31, 1, 31),
+						lexeme:   '{',
+						content:  '{',
+						info:     {},
+						ns:       undefined
 					}, {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 35, 1, 35),
-						lexeme:    '}',
-						content:   '}',
-						info:      {},
-						namespace: undefined
+						type:     RType.Symbol,
+						location: rangeFrom(1, 35, 1, 35),
+						lexeme:   '}',
+						content:  '}',
+						info:     {},
+						ns:       undefined
 					}],
 					children: [{
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 33, 1, 33),
-						lexeme:    'x',
-						content:   'x',
-						namespace: undefined,
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 33, 1, 33),
+						lexeme:   'x',
+						content:  'x',
+						ns:       undefined,
+						info:     {}
 					}]
 				}
 			}), {

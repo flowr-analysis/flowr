@@ -47,13 +47,13 @@ export const DefaultDependencyCategories = {
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
 				visitAst((await data.analyzer.normalize()).ast.files.map(f => f.root), n => {
-					if(n.type === RType.Symbol && n.namespace) {
-						const dep = data.analyzer.inspectContext().deps.getDependency(n.namespace);
+					if(n.type === RType.Symbol && n.ns) {
+						const dep = data.analyzer.inspectContext().deps.getDependency(n.ns);
 						/* we should improve the identification of ':::' */
 						result.push({
 							nodeId:             n.info.id,
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
-							value:              n.namespace,
+							value:              n.ns,
 							versionConstraints: dep?.versionConstraints,
 							derivedVersion:     dep?.derivedVersion,
 							namespaceInfo:      dep?.namespaceInfo

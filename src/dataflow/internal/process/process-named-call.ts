@@ -17,11 +17,11 @@ export function processAsNamedCall<OtherInfo>(
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	return processNamedCall({
-		type:      RType.Symbol,
+		type:    RType.Symbol,
 		info,
-		content:   name,
+		content: name,
 		lexeme,
 		location,
-		namespace: undefined
+		ns:      undefined
 	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), info.id, data);
 }

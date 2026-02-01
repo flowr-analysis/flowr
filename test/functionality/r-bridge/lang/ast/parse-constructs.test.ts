@@ -93,19 +93,19 @@ function inBrace(start: SourceRange, end: SourceRange, content: RNode): RExpress
 		lexeme:   undefined,
 		info:     {},
 		grouping: [{
-			type:      RType.Symbol,
-			lexeme:    '{',
-			content:   '{',
-			info:      {},
-			namespace: undefined,
-			location:  start
+			type:     RType.Symbol,
+			lexeme:   '{',
+			content:  '{',
+			info:     {},
+			ns:       undefined,
+			location: start
 		}, {
-			type:      RType.Symbol,
-			lexeme:    '}',
-			content:   '}',
-			info:      {},
-			namespace: undefined,
-			location:  end
+			type:     RType.Symbol,
+			lexeme:   '}',
+			content:  '}',
+			info:     {},
+			ns:       undefined,
+			location: end
 		}],
 		children: [content]
 	};
@@ -265,12 +265,12 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 					lexeme:   'for',
 					info:     {},
 					variable: {
-						type:      RType.Symbol,
-						location:  rangeFrom(1, 5, 1, 5),
-						namespace: undefined,
-						lexeme:    'i',
-						content:   'i',
-						info:      {}
+						type:     RType.Symbol,
+						location: rangeFrom(1, 5, 1, 5),
+						ns:       undefined,
+						lexeme:   'i',
+						content:  'i',
+						info:     {}
 					},
 					vector: {
 						type:     RType.BinaryOp,
@@ -315,12 +315,12 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 				lexeme:   'for',
 				info:     {},
 				variable: {
-					type:      RType.Symbol,
-					location:  rangeFrom(2, 33, 2, 33),
-					namespace: undefined,
-					lexeme:    'i',
-					content:   'i',
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(2, 33, 2, 33),
+					ns:       undefined,
+					lexeme:   'i',
+					content:  'i',
+					info:     {}
 				},
 				vector: {
 					type:     RType.BinaryOp,
@@ -384,35 +384,35 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						location: undefined,
 						lexeme:   undefined,
 						grouping: [{
-							type:      RType.Symbol,
-							lexeme:    '{',
-							content:   '{',
-							info:      {},
-							namespace: undefined,
-							location:  rangeFrom(1, 8, 1, 8)
+							type:     RType.Symbol,
+							lexeme:   '{',
+							content:  '{',
+							info:     {},
+							ns:       undefined,
+							location: rangeFrom(1, 8, 1, 8)
 						}, {
-							type:      RType.Symbol,
-							lexeme:    '}',
-							content:   '}',
-							info:      {},
-							namespace: undefined,
-							location:  rangeFrom(1, 15, 1, 15)
+							type:     RType.Symbol,
+							lexeme:   '}',
+							content:  '}',
+							info:     {},
+							ns:       undefined,
+							location: rangeFrom(1, 15, 1, 15)
 						}],
 						info:     {},
 						children: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 10, 1, 10),
-							namespace: undefined,
-							lexeme:    'x',
-							content:   'x',
-							info:      {},
+							type:     RType.Symbol,
+							location: rangeFrom(1, 10, 1, 10),
+							ns:       undefined,
+							lexeme:   'x',
+							content:  'x',
+							info:     {},
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 13, 1, 13),
-							namespace: undefined,
-							lexeme:    'y',
-							content:   'y',
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 13, 1, 13),
+							ns:       undefined,
+							lexeme:   'y',
+							content:  'y',
+							info:     {}
 						}]
 					}
 				}), {
@@ -462,35 +462,35 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						location: undefined,
 						lexeme:   undefined,
 						grouping: [{
-							type:      RType.Symbol,
-							lexeme:    '{',
-							content:   '{',
-							info:      {},
-							namespace: undefined,
-							location:  rangeFrom(1, 15, 1, 15)
+							type:     RType.Symbol,
+							lexeme:   '{',
+							content:  '{',
+							info:     {},
+							ns:       undefined,
+							location: rangeFrom(1, 15, 1, 15)
 						}, {
-							type:      RType.Symbol,
-							lexeme:    '}',
-							content:   '}',
-							info:      {},
-							namespace: undefined,
-							location:  rangeFrom(1, 22, 1, 22)
+							type:     RType.Symbol,
+							lexeme:   '}',
+							content:  '}',
+							info:     {},
+							ns:       undefined,
+							location: rangeFrom(1, 22, 1, 22)
 						}],
 						info:     {},
 						children: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 17, 1, 17),
-							namespace: undefined,
-							lexeme:    'x',
-							content:   'x',
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 17, 1, 17),
+							ns:       undefined,
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 20, 1, 20),
-							namespace: undefined,
-							lexeme:    'y',
-							content:   'y',
-							info:      {}
+							type:     RType.Symbol,
+							location: rangeFrom(1, 20, 1, 20),
+							ns:       undefined,
+							lexeme:   'y',
+							content:  'y',
+							info:     {}
 						}]
 					}
 				}), {

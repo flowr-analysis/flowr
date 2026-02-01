@@ -42,12 +42,12 @@ describe.sequential('Parse simple operations', withShell(shell => {
 				lexeme:   '?',
 				info:     {},
 				operand:  {
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 3, 1, 3),
-					lexeme:    'x',
-					content:   'x',
-					namespace: undefined,
-					info:      {}
+					type:     RType.Symbol,
+					location: rangeFrom(1, 3, 1, 3),
+					lexeme:   'x',
+					content:  'x',
+					ns:       undefined,
+					info:     {}
 				}
 			})
 		);
@@ -112,12 +112,12 @@ describe.sequential('Parse simple operations', withShell(shell => {
 					info:         {},
 					lexeme:       '1 %xx% 2',
 					functionName: {
-						type:      RType.Symbol,
-						lexeme:    '%xx%',
-						content:   '%xx%',
-						namespace: undefined,
-						location:  rangeFrom(1, 3, 1, 6),
-						info:      {}
+						type:     RType.Symbol,
+						lexeme:   '%xx%',
+						content:  '%xx%',
+						ns:       undefined,
+						location: rangeFrom(1, 3, 1, 6),
+						info:     {}
 					},
 					location:  rangeFrom(1, 3, 1, 6),
 					arguments: [
@@ -201,19 +201,19 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						type:     RType.ExpressionList,
 						location: undefined,
 						grouping: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 1, 1, 1),
-							lexeme:    '(',
-							content:   '(',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '(',
+							content:  '(',
+							info:     {},
+							ns:       undefined
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
-							lexeme:    ')',
-							content:   ')',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							lexeme:   ')',
+							content:  ')',
+							info:     {},
+							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -262,19 +262,19 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						type:     RType.ExpressionList,
 						location: undefined,
 						grouping: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 1, 1, 1),
-							lexeme:    '(',
-							content:   '(',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 1, 1, 1),
+							lexeme:   '(',
+							content:  '(',
+							info:     {},
+							ns:       undefined
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
-							lexeme:    ')',
-							content:   ')',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							lexeme:   ')',
+							content:  ')',
+							info:     {},
+							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -304,19 +304,19 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						type:     RType.ExpressionList,
 						location: undefined,
 						grouping: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
-							lexeme:    '(',
-							content:   '(',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
+							lexeme:   '(',
+							content:  '(',
+							info:     {},
+							ns:       undefined
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
-							lexeme:    ')',
-							content:   ')',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
+							lexeme:   ')',
+							content:  ')',
+							info:     {},
+							ns:       undefined
 						}],
 						lexeme:   undefined,
 						info:     {},
@@ -396,19 +396,19 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						lexeme:   undefined,
 						info:     {},
 						grouping: [{
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
-							lexeme:    '(',
-							content:   '(',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+							lexeme:   '(',
+							content:  '(',
+							info:     {},
+							ns:       undefined
 						}, {
-							type:      RType.Symbol,
-							location:  rangeFrom(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
-							lexeme:    ')',
-							content:   ')',
-							info:      {},
-							namespace: undefined
+							type:     RType.Symbol,
+							location: rangeFrom(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
+							lexeme:   ')',
+							content:  ')',
+							info:     {},
+							ns:       undefined
 						}],
 						children: [{
 							type:     RType.BinaryOp,

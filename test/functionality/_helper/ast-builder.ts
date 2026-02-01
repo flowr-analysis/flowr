@@ -34,12 +34,12 @@ export function parameter(name: string, location: SourceRange, defaultValue?: RN
 		lexeme: name,
 		defaultValue,
 		name:   {
-			type:      RType.Symbol,
+			type:    RType.Symbol,
 			location,
-			lexeme:    name,
-			content:   name,
-			namespace: undefined,
-			info:      emptyInfo
+			lexeme:  name,
+			content: name,
+			ns:      undefined,
+			info:    emptyInfo
 		},
 		info: emptyInfo
 	};

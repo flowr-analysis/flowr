@@ -14,7 +14,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { builtInId, BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import {
 	type ContainerIndicesCollection,
 	type ContainerParentIndex,
@@ -58,7 +58,7 @@ export function processAccess<OtherInfo>(
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 1) {
-		dataflowLogger.warn(`Access ${name.content} has less than 1 argument, skipping`);
+		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const head = args[0];
@@ -126,7 +126,7 @@ export function processAccess<OtherInfo>(
  */
 function processNumberBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
+	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	config: ForceArguments,
@@ -204,7 +204,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgu
 function processStringBasedAccess<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
+	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ) {

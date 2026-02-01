@@ -23,7 +23,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.calls('3', builtInId('{'))
 				.defineFunction('4', ['2'], {
 					out:               [],
-					in:                [{ nodeId: '2', name: ['x'], cds: [], type: ReferenceType.Unknown }, { nodeId: 3, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+					in:                [{ nodeId: '2', name: 'x', cds: [], type: ReferenceType.Unknown }, { nodeId: 3, name: '{', cds: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['2', '3']),
@@ -41,7 +41,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: [] }, false)
 				.defineFunction('6', ['4'], {
 					out:               [],
-					in:                [{ nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+					in:                [{ nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
 					entryPoint:        '5',
 					graph:             new Set(['0', '4', '5']),
@@ -61,7 +61,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: [] }, false)
 				.defineFunction('9', [{ nodeId: '7', type: ExitPointType.Return }], {
 					out:               [],
-					in:                [{ nodeId: 7, name: ['return'], cds: undefined, type: ReferenceType.Function }, { nodeId: 8, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+					in:                [{ nodeId: 7, name: 'return', cds: undefined, type: ReferenceType.Function }, { nodeId: 8, name: '{', cds: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
 					entryPoint:        '8',
 					graph:             new Set(['0', '5', '7', '8']),
@@ -84,7 +84,7 @@ describe.sequential('Function Definition', withShell(shell => {
 					.defineVariable('0', 'x', { definedBy: [] }, false)
 					.defineFunction('10', [{ nodeId: '8', type: ExitPointType.Return }], {
 						out:               [],
-						in:                [{ nodeId: 8, name: ['return'], cds: undefined, type: ReferenceType.Function }, { nodeId: 9, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+						in:                [{ nodeId: 8, name: 'return', cds: undefined, type: ReferenceType.Function }, { nodeId: 9, name: '{', cds: undefined, type: ReferenceType.Function }],
 						unknownReferences: [],
 						entryPoint:        '9',
 						graph:             new Set(['0', '6', '7', '8', '9']),
@@ -130,7 +130,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineFunction('7', ['5'], {
 					out:               [],
-					in:                [{ nodeId: '5', name: ['x'], cds: [], type: ReferenceType.Unknown }, { nodeId: 6, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+					in:                [{ nodeId: '5', name: 'x', cds: [], type: ReferenceType.Unknown }, { nodeId: 6, name: '{', cds: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
 					entryPoint:        '6',
 					graph:             new Set(['5', '6']),
@@ -148,7 +148,7 @@ describe.sequential('Function Definition', withShell(shell => {
 				.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
 				.defineFunction('6', ['4'], {
 					out:               [],
-					in:                [{ nodeId: 4, name: ['<-'], cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+					in:                [{ nodeId: 4, name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 					unknownReferences: [],
 					entryPoint:        '5',
 					graph:             new Set(['3', '2', '4', '5']),
@@ -165,7 +165,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: 4, name: ['='], cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: 4, name: '=', cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['3', '2', '4', '5']),
@@ -183,7 +183,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: 4, name: ['->'], cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: 4, name: '->', cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['2', '3', '4', '5']),
@@ -200,7 +200,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('2', 'x', { definedBy: ['3', '4'] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: 4, name: ['<<-'], cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: 4, name: '<<-', cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['3', '2', '4', '5']),
@@ -217,7 +217,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('3', 'x', { definedBy: ['2', '4'] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: 4, name: ['->>'], cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: 4, name: '->>', cds: undefined, type: ReferenceType.Function }, { nodeId: 5, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['2', '3', '4', '5']),
@@ -241,7 +241,7 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineVariable('5', 'x', { definedBy: ['6', '7'] }, false)
 			.defineFunction('10', ['8'], {
 				out:               [],
-				in:                [{ nodeId: 7, name: ['<-'], cds: undefined, type: ReferenceType.Function }, { nodeId: 9, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: 7, name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: 9, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '9',
 				graph:             new Set(['6', '5', '7', '8', '9']),
@@ -266,9 +266,9 @@ describe.sequential('Function Definition', withShell(shell => {
 			.defineFunction('10', ['8'], {
 				out: [],
 				in:  [
-					{ nodeId: 7, name: ['<-'], cds: undefined, type: ReferenceType.Function },
-					{ nodeId: 6, name: ['x'], cds: [], type: ReferenceType.Argument },
-					{ nodeId: 9, name: ['{'], cds: undefined, type: ReferenceType.Function }
+					{ nodeId: 7, name: '<-', cds: undefined, type: ReferenceType.Function },
+					{ nodeId: 6, name: 'x', cds: [], type: ReferenceType.Argument },
+					{ nodeId: 9, name: '{', cds: undefined, type: ReferenceType.Function }
 				],
 				unknownReferences: [],
 				entryPoint:        '9',
@@ -303,7 +303,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('3', 'x', { definedBy: [] }, false)
 			.defineFunction('9', ['7'], {
 				out:               [],
-				in:                [{ nodeId: 8, name: ['{'], type: ReferenceType.Function, cds: undefined }],
+				in:                [{ nodeId: 8, name: '{', type: ReferenceType.Function, cds: undefined }],
 				unknownReferences: [],
 				entryPoint:        '8',
 				graph:             new Set(['3', '7', '8']),
@@ -321,7 +321,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('0', '...', { definedBy: [] }, false)
 			.defineFunction('6', ['4'], {
 				out:               [],
-				in:                [{ nodeId: '4', name: ['..11'], cds: [], type: ReferenceType.Unknown }, { nodeId: 5, name: ['{'], type: ReferenceType.Function, cds: undefined }],
+				in:                [{ nodeId: '4', name: '..11', cds: [], type: ReferenceType.Unknown }, { nodeId: 5, name: '{', type: ReferenceType.Function, cds: undefined }],
 				unknownReferences: [],
 				entryPoint:        '5',
 				graph:             new Set(['0', '4', '5']),
@@ -342,7 +342,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('3', 'b', { definedBy: ['4'] }, false)
 			.defineFunction('10', ['8'], {
 				out:               [],
-				in:                [{ nodeId: 9, name: ['{'], type: ReferenceType.Function, cds: undefined }],
+				in:                [{ nodeId: 9, name: '{', type: ReferenceType.Function, cds: undefined }],
 				unknownReferences: [],
 				entryPoint:        '9',
 				graph:             new Set(['0', '1', '3', '4', '8', '9']),
@@ -377,10 +377,10 @@ print(x)`,  emptyGraph()
 			.defineFunction('19', ['17'], {
 				out: [],
 				in:  [
-					{ nodeId: 10, name: ['<-'], cds: undefined, type: ReferenceType.Function },
-					{ nodeId: 14, name: ['<-'], cds: undefined, type: ReferenceType.Function },
-					{ nodeId: 17, name: ['+'], cds: undefined, type: ReferenceType.Function },
-					{ nodeId: 18, name: ['{'], cds: undefined, type: ReferenceType.Function }
+					{ nodeId: 10, name: '<-', cds: undefined, type: ReferenceType.Function },
+					{ nodeId: 14, name: '<-', cds: undefined, type: ReferenceType.Function },
+					{ nodeId: 17, name: '+', cds: undefined, type: ReferenceType.Function },
+					{ nodeId: 18, name: '{', cds: undefined, type: ReferenceType.Function }
 				],
 				unknownReferences: [],
 				entryPoint:        '18',
@@ -402,7 +402,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('2', '...', { definedBy: [] }, false)
 			.defineFunction('11', ['9'], {
 				out:               [],
-				in:                [{ nodeId: '9', name: ['foo'], cds: [], type: ReferenceType.Function }, { nodeId: 10, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '9', name: 'foo', cds: [], type: ReferenceType.Function }, { nodeId: 10, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '10',
 				graph:             new Set(['0', '2', '7', '9', '10']),
@@ -443,7 +443,7 @@ print(x)`,  emptyGraph()
 			.returns('23', '16')
 			.defineFunction('7', ['5'], {
 				out:               [],
-				in:                [{ nodeId: 6, name: ['{'], type: ReferenceType.Function, cds: undefined }],
+				in:                [{ nodeId: 6, name: '{', type: ReferenceType.Function, cds: undefined }],
 				unknownReferences: [],
 				entryPoint:        '6',
 				graph:             new Set(['5', '6']),
@@ -457,13 +457,13 @@ print(x)`,  emptyGraph()
 			.defineFunction('24', [{ nodeId: '16', type: ExitPointType.Return, cds: [{ id: 18, when: true }] }, { nodeId: '22', type: ExitPointType.Default }], {
 				out: [],
 				in:  [
-					{ nodeId: 8, name: ['<-'], type: ReferenceType.Function, cds: undefined },
-					{ nodeId: 11, name: ['<-'], type: ReferenceType.Function, cds: undefined },
-					{ nodeId: 21, name: ['<-'], type: ReferenceType.Function, cds: [{ id: 18, when: false }] },
-					{ nodeId: 18, name: ['if'], type: ReferenceType.Function, cds: undefined },
-					{ nodeId: 16, name: ['return'], type: ReferenceType.Function, cds: [{ id: '18', when: true }] },
-					{ nodeId: 12, name: ['z'], type: ReferenceType.Unknown, cds: [] },
-					{ nodeId: 23, name: ['{'], cds: undefined, type: ReferenceType.Function }
+					{ nodeId: 8, name: '<-', type: ReferenceType.Function, cds: undefined },
+					{ nodeId: 11, name: '<-', type: ReferenceType.Function, cds: undefined },
+					{ nodeId: 21, name: '<-', type: ReferenceType.Function, cds: [{ id: 18, when: false }] },
+					{ nodeId: 18, name: 'if', type: ReferenceType.Function, cds: undefined },
+					{ nodeId: 16, name: 'return', type: ReferenceType.Function, cds: [{ id: '18', when: true }] },
+					{ nodeId: 12, name: 'z', type: ReferenceType.Unknown, cds: [] },
+					{ nodeId: 23, name: '{', cds: undefined, type: ReferenceType.Function }
 				],
 				unknownReferences: [],
 				entryPoint:        '23',
@@ -481,7 +481,7 @@ print(x)`,  emptyGraph()
 			.calls('7', builtInId('<-'))
 			.defineFunction('4', ['2'], {
 				out:               [],
-				in:                [{ nodeId: '2', name: ['x'], cds: [], type: ReferenceType.Unknown }, { nodeId: 3, name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '2', name: 'x', cds: [], type: ReferenceType.Unknown }, { nodeId: 3, name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '3',
 				graph:             new Set(['2', '3']),
@@ -515,7 +515,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('8', 'x', { definedBy: ['9', '10'] }, false)
 			.defineFunction('12', ['10'], {
 				out:               [],
-				in:                [{ nodeId: '10', name: ['<-'], cds: undefined, type: ReferenceType.Function }, { nodeId: '9', name: 'b', cds: [], type: ReferenceType.Argument }, { nodeId: '11', name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '10', name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: '9', name: 'b', cds: [], type: ReferenceType.Argument }, { nodeId: '11', name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '11',
 				graph:             new Set(['4', '9', '8', '10', '11']),
@@ -524,7 +524,7 @@ print(x)`,  emptyGraph()
 			.defineVariable('3', 'x', { definedBy: ['12', '13'] }, false)
 			.defineFunction('16', ['14'], {
 				out:               [],
-				in:                [{ nodeId: '13', name: ['<-'], cds: undefined, type: ReferenceType.Function }, { nodeId: '15', name: ['{'], cds: undefined, type: ReferenceType.Function }],
+				in:                [{ nodeId: '13', name: '<-', cds: undefined, type: ReferenceType.Function }, { nodeId: '15', name: '{', cds: undefined, type: ReferenceType.Function }],
 				unknownReferences: [],
 				entryPoint:        '15',
 				graph:             new Set(['12', '3', '13', '14', '15']),

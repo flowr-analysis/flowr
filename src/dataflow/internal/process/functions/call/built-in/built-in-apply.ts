@@ -14,7 +14,12 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import {
+	type Identifier,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
@@ -93,7 +98,7 @@ export function processApply<OtherInfo>(
 	}
 
 	let functionId: NodeId | undefined = undefined;
-	let functionName: string | undefined = undefined;
+	let functionName: Identifier | undefined = undefined;
 	let anonymous: boolean = false;
 
 	const val = arg.value;

@@ -103,18 +103,6 @@ export interface Location {
  */
 export type NamespaceIdentifier = string
 
-/**
- * Similar to {@link Location} this is an interface that indicates that
- * the respective {@link RAstNodeBase} node has a respective property (a namespace).
- */
-export interface Namespace {
-	/**
-	 * The namespace attached to the given node
-	 * (e.g., a namespaced symbol in `x::y`).
-	 */
-	namespace?: NamespaceIdentifier
-}
-
 
 /**
  * This subtype of {@link RNode} represents all types of constants

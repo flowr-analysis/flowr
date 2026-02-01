@@ -15,6 +15,7 @@ import { type MergeableRecord } from '../../util/objects';
 import { rangeFrom, type SourceRange } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
@@ -64,7 +65,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			...ctx,
 			config: amendConfig(data.analyzer.flowrConfig, flowrConfig => {
 				if(config.readLoadedData !== undefined) {
-					flowrConfig.abstractInterpretation.dataFrame.readLoadedData.readExternalFiles = config.readLoadedData;
+					(flowrConfig.abstractInterpretation.dataFrame.readLoadedData as { readExternalFiles: boolean }).readExternalFiles = config.readLoadedData;
 				}
 				return flowrConfig;
 			})
@@ -117,7 +118,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				...accessed,
 				involvedId: node?.info.id,
 				access:     node?.lexeme ?? '???',
-				...(operand?.type === RType.Symbol ? { operand: operand.content } : {}),
+				...(operand?.type === RType.Symbol ? { operand: Identifier.getName(operand.content) } : {}),
 				range:      node?.info.fullRange ?? node?.location ?? rangeFrom(-1, -1, -1, -1),
 				certainty:  LintingResultCertainty.Certain
 			}));

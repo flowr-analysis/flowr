@@ -103,12 +103,12 @@ describe.sequential('Constant Parsing', withShell(shell => {
 				const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
 				assertAst(label(symbol.str, ['name-normal', ...mapped]),
 					shell, symbol.str, exprList({
-						type:      RType.Symbol,
-						namespace: symbol.namespace,
-						location:  range,
-						lexeme:    symbol.val,
-						content:   symbol.val,
-						info:      {}
+						type:     RType.Symbol,
+						ns:       symbol.namespace,
+						location: range,
+						lexeme:   symbol.val,
+						content:  symbol.val,
+						info:     {}
 					})
 				);
 			}

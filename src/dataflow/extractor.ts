@@ -55,12 +55,12 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.ExpressionList]:     ({ grouping, info, children, location }, d) => {
 		const groupStart = grouping?.[0];
 		return processNamedCall({
-			type:      RType.Symbol,
-			info:      info,
-			content:   groupStart?.content ?? '{',
-			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? invalidRange(),
-			namespace: groupStart?.content ? undefined : 'base'
+			type:     RType.Symbol,
+			info:     info,
+			content:  groupStart?.content ?? '{',
+			lexeme:   groupStart?.lexeme ?? '{',
+			location: location ?? invalidRange(),
+			ns:       groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
 };

@@ -33,7 +33,6 @@ const dotDotDotAccess = /^\.\.\d+$/;
  * Identifier.matches(id1, id2); // true
  * Identifier.matches(id3, id2); // true, as id3 has no namespace
  * ```
- * // TODO: use this pattern more often!
  */
 export const Identifier = {
 	/**

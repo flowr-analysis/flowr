@@ -131,7 +131,6 @@ export const DefaultBuiltinConfig = [
 		config:          { readAllArguments: true },
 		assumePrimitive: false
 	},
-	// TODO: support register for package
 	{ type: 'function', names: ['rm'],                                          processor: BuiltInProcName.Rm,                  config: {},                                                                           assumePrimitive: true  },
 	{ type: 'function', names: ['options'],                                     processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                            assumePrimitive: false },
 	{ type: 'function', names: ['mapply', 'Mapply'],                            processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },

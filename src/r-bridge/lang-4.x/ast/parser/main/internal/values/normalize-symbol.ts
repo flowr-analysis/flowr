@@ -16,15 +16,16 @@ import type { SourceRange } from '../../../../../../../util/range';
  */
 export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJsonEntry[]): RSymbol | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!');
-
 	let content: Identifier, location: SourceRange;
 
+	let meta: { location: SourceRange, content: string };
+
 	if(objs.length === 1 && isSymbol(objs[0].name)) {
-		const meta  = retrieveMetaStructure(objs[0].content);
+		meta  = retrieveMetaStructure(objs[0].content);
 		location    = meta.location;
 		content     = Identifier.make(meta.content);
 	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
-		const meta  = retrieveMetaStructure(objs[2].content);
+		meta  = retrieveMetaStructure(objs[2].content);
 		location    = meta.location;
 		const namespace   = objs[0].content.text;
 		const internal =  objs[1].content.text === ':::';
@@ -38,7 +39,7 @@ export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJso
 		location,
 		// remove backticks from symbol
 		content,
-		lexeme: Identifier.getName(content),
+		lexeme: meta.content,
 		info:   {
 			fullRange:        data.currentRange,
 			additionalTokens: [],

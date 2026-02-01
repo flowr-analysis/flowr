@@ -16,6 +16,7 @@ import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { log } from '../../util/log';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -151,8 +152,12 @@ export class Environment implements IEnvironment {
 				break;
 			}
 		} while(current.n !== ns);
-		// we did not find the namespace, so we define it in the current environment
-		current.define(definition);
+		// TODO: move link of parent chain into here to avoid REnvironment blocks
+		// we did not find the namespace, so we inject a new environment here
+		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
+		const env = new Environment(current.parent);
+		env.n = ns;
+		current.parent = env.define(definition);
 		return newEnvironment;
 	}
 

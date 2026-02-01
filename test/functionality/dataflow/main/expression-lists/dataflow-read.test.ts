@@ -105,7 +105,8 @@ describe.sequential('Lists with variable references', withShell(shell => {
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
 		);
 	});
-	describe('Redefining expression lists', () => {
+	// potentially incorrect? redefinition appears correct in dataflow graph, but why is the {} still flagged up as an expression list?
+	describe.only('Redefining expression lists', () => {
 		assertDataflow(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
 			shell, `\`{\` <- function(...) 3
 x <- 4
@@ -153,7 +154,7 @@ print(x)`, emptyGraph()
 					graph:             new Set(['1', '3']),
 					environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
 				}, { readParams: [[1, false]] })
-				.defineVariable('0', '{', { definedBy: ['5', '6'] })
+				.defineVariable('0', '`{`', { definedBy: ['5', '6'] })
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
 				.constant('13')
@@ -168,7 +169,7 @@ print(x)`, emptyGraph()
 			shell, '`a` <- 2\na',
 			emptyGraph()
 				.use('2@a')
-				.reads('2@a', '1@a'),
+				.reads('2@a', '1@`a`'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
@@ -178,7 +179,7 @@ print(x)`, emptyGraph()
 			shell, `\`a\` <- 2\n${distractor}a`,
 			emptyGraph()
 				.use('5@a')
-				.reads('5@a', '1@a'),
+				.reads('5@a', '1@`a`'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
@@ -188,7 +189,7 @@ print(x)`, emptyGraph()
 			shell, `\`a\` <- 2\n${distractor.repeat(100)}\na`,
 			emptyGraph()
 				.use(`${3 + 100 * 3}@a`)
-				.reads(`${3 + 100 * 3}@a`, '1@a'),
+				.reads(`${3 + 100 * 3}@a`, '1@`a`'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

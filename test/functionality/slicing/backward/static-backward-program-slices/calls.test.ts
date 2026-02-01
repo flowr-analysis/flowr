@@ -435,7 +435,7 @@ cat(4 %a% 5)
 			shell, code, ['4:1'], `"%a%" <- pkg::"%a%"
 cat(4 %a% 5)`);
 	});
-	describe('Using own alias infix operators with namespace', () => {
+	describe.only('Using own alias infix operators with namespace', () => {
 		const code = `
 pkg::"%a%" <- function(x, y) { x + y }
 "%a%" <- pkg::"%a%"

@@ -106,7 +106,7 @@ describe.sequential('Lists with variable references', withShell(shell => {
 		);
 	});
 	// potentially incorrect? redefinition appears correct in dataflow graph, but why is the {} still flagged up as an expression list?
-	describe.only('Redefining expression lists', () => {
+	describe('Redefining expression lists', () => {
 		assertDataflow(label('redefining {', ['name-escaped', ...OperatorDatabase['<-'].capabilities, 'formals-dot-dot-dot', 'implicit-return', 'numbers', 'newlines']),
 			shell, `\`{\` <- function(...) 3
 x <- 4

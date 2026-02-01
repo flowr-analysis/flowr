@@ -2,6 +2,8 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
+import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 
 describe('Resolve for Namespaces', withTreeSitter(ts => {
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
@@ -44,6 +46,24 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			modifyAnalyzer:        a => {
 				a.context().meta.setNamespace('base');
 			}
+		} as const
+	);
+	assertDataflow(label('Access base even if overwritten', ['namespaces', 'lexicographic-scope']), ts,
+		'library <- function() {}\nbase::library()',
+		emptyGraph()
+			.addEdge('2@base::library', builtInId('library'), EdgeType.Reads | EdgeType.Calls),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
+	assertDataflow(label('But still relink if not directly!', ['namespaces', 'lexicographic-scope']), ts,
+		'library <- function() {}\nlibrary()',
+		emptyGraph()
+			.addEdge('2@library', '1@library', EdgeType.Reads),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
 		} as const
 	);
 }));

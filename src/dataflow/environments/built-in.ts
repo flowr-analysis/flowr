@@ -364,8 +364,9 @@ export class BuiltIns {
 		const replacer = BuiltInProcessorMapper[BuiltInProcName.Replacement];
 		guard(replacer !== undefined, () => `Processor for ${BuiltInProcName.Replacement} is undefined!`);
 		for(const assignment of names) {
+			const i = Identifier.parse(assignment);
 			for(const suffix of suffixes) {
-				const effectiveName = `${assignment[0]}${suffix}`;
+				const effectiveName = `${Identifier.getName(i)}${suffix}`;
 				const id = builtInId(effectiveName);
 				const d: IdentifierDefinition[] = [{
 					type:      ReferenceType.BuiltInFunction,
@@ -376,7 +377,7 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:   Identifier.make(effectiveName, assignment[1]),
+					name:   i,
 					cds:    undefined,
 					nodeId: id
 				}];

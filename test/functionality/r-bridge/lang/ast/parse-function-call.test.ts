@@ -5,6 +5,7 @@ import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 describe.sequential('Parse function calls', withShell(shell => {
 	describe('functions without arguments', () => {
@@ -428,7 +429,7 @@ describe.sequential('Parse function calls', withShell(shell => {
 					type:     RType.Symbol,
 					location: rangeFrom(1, 4, 1, 4),
 					lexeme:   'f',
-					content:  'f',
+					content:  Identifier.make('f', 'x'),
 					info:     {}
 				},
 				arguments: [],

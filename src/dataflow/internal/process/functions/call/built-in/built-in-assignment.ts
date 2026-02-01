@@ -45,7 +45,7 @@ function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & Pare
 		type:     RType.Symbol,
 		info:     target.info,
 		/* they are all mapped to `<-` in R, but we mark super as well */
-		content:  `${Identifier.toString(prefix)}${superAssignment ? '<<-' : '<-'}`,
+		content:  Identifier.mapName(prefix, n => n + (superAssignment ? '<<-' : '<-')),
 		lexeme:   target.lexeme,
 		location: target.location
 	};

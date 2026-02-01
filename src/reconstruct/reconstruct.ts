@@ -48,7 +48,7 @@ interface PrettyPrintLine {
 }
 
 function plain(text: string | Identifier): [PrettyPrintLine] {
-	return [{ line: Identifier.toString(text), indent: 0 }];
+	return [{ line: Array.isArray(text) ? Identifier.toString(text) : text, indent: 0 }];
 }
 
 type Code = PrettyPrintLine[];

@@ -31,7 +31,8 @@ import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-reg
 import type { REnvironmentInformation } from './environments/environment';
 import { linkInputs } from './internal/linker';
 import type { IdentifierReference } from './environments/identifier';
-import { ReferenceType } from './environments/identifier';
+import { isReferenceType, ReferenceType } from './environments/identifier';
+import { resolveByName } from './environments/resolve-by-name';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -146,6 +147,57 @@ function resolveCrossFileReferences(
 	console.log('Found following unresolved references: ', unresolved);
 
 	linkInputs(unresolved, environment, [], graph, false);
+
+	/** resolve vertices with only builtins again and update if placeholder */
+    /** why do i need to do this? */
+	for(const [nodeId,] of graph.verticesOfType(VertexType.Use)) {
+		const name = recoverName(nodeId, graph.idMap);
+		if(!name) continue;
+		
+		const type = ReferenceType.Variable;
+		const outgoing = graph.outgoingEdges(nodeId);
+		
+		/* Check if this node currently only has built-in edges */
+		const allEdgesAreBuiltIns = outgoing !== undefined && [...outgoing.entries()].every(([target]) =>
+			typeof target === 'string' && target.includes('built-in')
+		);
+		
+		if(allEdgesAreBuiltIns) {
+			/* Try to resolve in the merged environment */
+			const targets = resolveByName(name, environment, type);
+			if(targets && targets.length > 0) {
+				// Get user-defined targets only
+				const userDefinedTargets = targets.filter(t =>
+					!isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)
+				);
+				
+				if(userDefinedTargets.length > 0) {
+					/* Check if targets only includes user-defined (no built-in fallbacks) */
+					const onlyUserDefined = userDefinedTargets.length === targets.length;
+					
+					if(onlyUserDefined) {
+						/* Remove placeholder built-in edges since we have pure user-defined targets */
+						if(outgoing) {
+							for(const [target] of outgoing) {
+								if(typeof target === 'string' && target.includes('built-in')) {
+									graph.removeEdge(nodeId, target);
+								}
+							}
+						}
+					}
+					
+					/* Add edges to user-defined targets (whether or not we removed built-ins) */
+					for(const target of userDefinedTargets) {
+						const outgoing = graph.outgoingEdges(nodeId);
+						const alreadyLinked = outgoing?.has(target.nodeId);
+						if(!alreadyLinked) {
+							graph.addEdge(nodeId, target.nodeId, EdgeType.Reads);
+						}
+					}
+				}
+			}
+		}
+	}
 
 	if(unresolved.length > 0){
 		console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` +

@@ -417,6 +417,22 @@ export class DataflowGraph<
 	}
 
 	/**
+	 * Removes an edge from the graph.
+	 * @param from - The source node ID
+	 * @param to   - The target node ID
+	 */
+	public removeEdge(from: NodeId, to: NodeId): this {
+		const edges = this.edgeInformation.get(from);
+		if(edges !== undefined) {
+			edges.delete(to);
+			if(edges.size === 0) {
+				this.edgeInformation.delete(from);
+			}
+		}
+		return this;
+	}
+
+	/**
 	 * Merges the other graph into *this* one (in-place). The return value is only for convenience.
 	 * @param otherGraph        - The graph to merge into this one
 	 * @param mergeRootVertices - If false, this will only merge the vertices and edges but exclude the root vertices this is probably only of use

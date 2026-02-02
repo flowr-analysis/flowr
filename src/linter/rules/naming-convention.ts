@@ -74,7 +74,7 @@ export function detectPotentialCasings(identifier: string): CasingConvention[] {
 		matches.push(CasingConvention.CamelCase); // camelCase
 	}
 	if(!hasUnderscores && identifier[0] === upper[0] && !isAllUpper) {
-		matches.push(CasingConvention.PascalCase); // PascalCase
+		matches.push(CasingConvention.PascalCase); // PascalCase or Pascalcase
 	}
 	if(isAllUpper) {
 		matches.push(CasingConvention.ConstantCase); // CONSTANT_CASE or CONSTANTCASE
@@ -86,7 +86,7 @@ export function detectPotentialCasings(identifier: string): CasingConvention[] {
 		matches.push(CasingConvention.CamelSnakeCase); // camel_Snake_Case or camelsnakecase or camelsnakecase_
 	}
 	if(upperAfterAllScores && identifier[0] === upper[0] && !isAllUpper && !hasAnyUpperAfterLower) {
-		matches.push(CasingConvention.PascalSnakeCase); // Pascal_Snake_Case
+		matches.push(CasingConvention.PascalSnakeCase); // Pascal_Snake_Case or Pascalsnakecase
 	}
 	return matches;
 }

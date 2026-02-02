@@ -63,6 +63,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ name: '__foo',            conventions: [CasingConvention.SnakeCase] },
 			{ name: 'JUSTFOO',          conventions: [CasingConvention.ConstantCase] },
 			{ name: 'JUSTFOO_',         conventions: [CasingConvention.ConstantCase] },
+			{ name: 'Foo',              conventions: [CasingConvention.PascalCase, CasingConvention.PascalSnakeCase] },
 		];
 
 		describe('detect casing (static string)', () => {

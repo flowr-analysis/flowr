@@ -36,6 +36,8 @@ export interface NamingConventionConfig extends MergeableRecord {
 
 	/** if true non alphabetic characters are ignored */
 	ignoreNonAlpha: boolean;
+	/** optional prefix to ignore on all identifiers, which is interpreted as a regular expression fragment (meaning special characters have to be escaped) */
+	ignorePrefix?:  string;
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -53,9 +55,12 @@ function containsAlpha(s: string): boolean {
 /**
  * Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct.
  */
-export function detectPotentialCasings(identifier: string): CasingConvention[] {
+export function detectPotentialCasings(identifier: string, ignorePrefix?: string): CasingConvention[] {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
 		return [];
+	}
+	if(ignorePrefix) {
+		identifier = identifier.replace(new RegExp(`^${ignorePrefix}`), '');
 	}
 
 	const upper = identifier.toUpperCase();
@@ -95,8 +100,8 @@ export function detectPotentialCasings(identifier: string): CasingConvention[] {
  * Attempts to detect the possible casing conventions used in the given identifier and returns the first result.
  * The function {@link detectPotentialCasings} is generally preferred, as it returns all potential casings and not just the first one.
  */
-export function detectCasing(identifier: string): CasingConvention {
-	const casings = detectPotentialCasings(identifier);
+export function detectCasing(identifier: string, ignorePrefix?:  string): CasingConvention {
+	const casings = detectPotentialCasings(identifier, ignorePrefix);
 	return casings.length > 0 ? casings[0] : CasingConvention.Unknown;
 }
 
@@ -201,7 +206,7 @@ export const NAMING_CONVENTION = {
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingResultCertainty.Certain,
-				detectedCasing: detectCasing(m.node.lexeme as string),
+				detectedCasing: detectCasing(m.node.lexeme as string, config.ignorePrefix),
 				name:           m.node.lexeme as string,
 				range:          m.node.info.fullRange as SourceRange,
 				id:             m.node.info.id

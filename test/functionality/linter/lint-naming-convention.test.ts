@@ -85,6 +85,15 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
+		describe('ignore prefix', () => {
+			test('none', () => assert.equal(CasingConvention.SnakeCase, detectCasing('_foo')));
+			test('string', () => {
+				assert.equal(CasingConvention.CamelCase, detectCasing('_foo', '_'));
+				assert.equal(CasingConvention.SnakeCase, detectCasing('__foo', '_'));
+			});
+			test('regex', () => assert.equal(CasingConvention.CamelCase, detectCasing('__foo', '_*')));
+		});
+
 		describe('detect casing (multiple options)', () => {
 			test.each(casings)('detect casing $name as $conventions', ({ name, conventions }) => {
 				const detected = detectPotentialCasings(name);
@@ -186,5 +195,13 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		assertLinter('empty string', parser, '', 'naming-convention', [], undefined, { caseing: CasingConvention.SnakeCase });
 		assertLinter('empty string (auto detect)', parser, '', 'naming-convention', [], undefined, { caseing: 'auto' });
+
+		assertLinter('ignore leading underscores', parser, '_testVar <- 5', 'naming-convention', [{
+			name:           '_testVar',
+			detectedCasing: CasingConvention.CamelCase,
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 8], description: 'Rename to match naming convention PascalCase' } as const],
+			range:          [1, 1, 1, 8],
+			certainty:      LintingResultCertainty.Certain,
+		}], undefined, { caseing: CasingConvention.PascalCase, ignorePrefix: '_' });
 	});
 }));

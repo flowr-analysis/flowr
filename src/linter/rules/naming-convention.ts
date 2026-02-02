@@ -60,7 +60,7 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
 		return [];
 	}
 	if(ignorePrefix) {
-		identifier = identifier.replace(new RegExp(`^${ignorePrefix}`), '');
+		identifier = identifier.replace(new RegExp(`^(${ignorePrefix})`), '');
 	}
 
 	const upper = identifier.toUpperCase();

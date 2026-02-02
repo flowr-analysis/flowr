@@ -64,10 +64,22 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ name: 'JUSTFOO',          conventions: [CasingConvention.ConstantCase] },
 			{ name: 'JUSTFOO_',         conventions: [CasingConvention.ConstantCase] },
 			{ name: 'Foo',              conventions: [CasingConvention.PascalCase, CasingConvention.PascalSnakeCase] },
+
+			// below test cases adapted from caseutil rules
+			// see https://github.com/makukha/caseutil/blob/79b91361862dc1af6a9bb6643dcb4b07fce9684f/tests/data.py
+			{ name: 'MyVar_name',       conventions: [] },
+			{ name: 'lower',            conventions: [CasingConvention.CamelCase, CasingConvention.SnakeCase, CasingConvention.CamelSnakeCase] },
+			{ name: 'Title',            conventions: [CasingConvention.PascalCase, CasingConvention.PascalSnakeCase] },
+			{ name: 'UPPER',            conventions: [CasingConvention.ConstantCase] },
+			{ name: 'l',                conventions: [CasingConvention.CamelCase, CasingConvention.SnakeCase, CasingConvention.CamelSnakeCase] },
+			{ name: 'U',                conventions: [CasingConvention.PascalCase, CasingConvention.ConstantCase, CasingConvention.PascalSnakeCase] },
 		];
 
 		describe('detect casing (static string)', () => {
-			test.each(casings.map(c => ({ name: c.name, convention: c.conventions[0] })))('detect casing $name as $convention', ({ name, convention }) => {
+			test.each(casings.map(c => ({
+				name:       c.name,
+				convention: c.conventions.length > 0 ? c.conventions[0] : CasingConvention.Unknown
+			})))('detect casing $name as $convention', ({ name, convention }) => {
 				const detected = detectCasing(name);
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
 			});

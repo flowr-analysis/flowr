@@ -25,6 +25,8 @@ async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunct
 
 	console.log(graphdiff.comments());
 	console.log(graphdiff.problematic());
+    console.log('Sequential Graph: ', syncDf.graph);
+    console.log('Parallel Graph: ', df.graph);
 	assert.isTrue(graphdiff.isEqual(), `Dataflow graphs should be equal for testCase ${testCaseName}`);
 }
 

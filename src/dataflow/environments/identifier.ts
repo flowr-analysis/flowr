@@ -51,7 +51,7 @@ export const Identifier = {
 	},
 	/**
 	 * Parse an identifier from its string representation,
-	 * Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkag::a` and NOT to the namespaced identifier `a` in package `pkg`.
+	 * Please note, that in R if one writes `"pkg::a"` this refers to a symbol named `pkg::a` and NOT to the namespaced identifier `a` in package `pkg`.
 	 * In this scenario, see {@link Identifier.make} instead.
 	 */
 	parse(this: void, str: string): Identifier {
@@ -174,8 +174,6 @@ export const Identifier = {
 		}
 	}
 } as const;
-
-
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.

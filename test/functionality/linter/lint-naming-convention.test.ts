@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import { CasingConvention, detectCasing, fixCasing } from '../../../src/linter/rules/naming-convention';
+import { CasingConvention, detectCasing, detectPotentialCasings, fixCasing } from '../../../src/linter/rules/naming-convention';
 import { assertUnreachable } from '../../../src/util/assert';
 
 function genName(convention: CasingConvention): string {
@@ -50,17 +50,32 @@ describe('flowR linter', withTreeSitter(parser => {
 			});
 		});
 
+		const casings = [
+			{ name: 'fooBar',           conventions: [CasingConvention.CamelCase] },
+			{ name: 'FooBar',           conventions: [CasingConvention.PascalCase] },
+			{ name: 'are_we_in_c',      conventions: [CasingConvention.SnakeCase] },
+			{ name: 'THIS_IS_CONSTANT', conventions: [CasingConvention.ConstantCase] },
+			{ name: 'my_Cool_Var',      conventions: [CasingConvention.CamelSnakeCase] },
+			{ name: 'My_Cooler_Var',    conventions: [CasingConvention.PascalSnakeCase] },
+			{ name: 'justfoo',          conventions: [CasingConvention.CamelCase, CasingConvention.SnakeCase, CasingConvention.CamelSnakeCase] },
+			{ name: 'foo_',             conventions: [CasingConvention.SnakeCase, CasingConvention.CamelSnakeCase] },
+			{ name: '_foo',             conventions: [CasingConvention.SnakeCase] },
+			{ name: '__foo',            conventions: [CasingConvention.SnakeCase] },
+			{ name: 'JUSTFOO',          conventions: [CasingConvention.ConstantCase] },
+			{ name: 'JUSTFOO_',         conventions: [CasingConvention.ConstantCase] },
+		];
+
 		describe('detect casing (static string)', () => {
-			test.each([
-				{ name: 'fooBar',           convention: CasingConvention.CamelCase },
-				{ name: 'FooBar',           convention: CasingConvention.PascalCase },
-				{ name: 'are_we_in_c',      convention: CasingConvention.SnakeCase },
-				{ name: 'THIS_IS_CONSTANT', convention: CasingConvention.ConstantCase },
-				{ name: 'my_Cool_Var',      convention: CasingConvention.CamelSnakeCase },
-				{ name: 'My_Cooler_Var',    convention: CasingConvention.PascalSnakeCase },
-			])('detect casing $name as $convention', ({ name, convention }) => {
+			test.each(casings.map(c => ({ name: c.name, convention: c.conventions[0] })))('detect casing $name as $convention', ({ name, convention }) => {
 				const detected = detectCasing(name);
 				assert.equal(detected, convention, `Expected to detect ${name} as ${convention}, but detected ${detected}`);
+			});
+		});
+
+		describe('detect casing (multiple options)', () => {
+			test.each(casings)('detect casing $name as $conventions', ({ name, conventions }) => {
+				const detected = detectPotentialCasings(name);
+				assert.deepEqual(detected, conventions, `Expected to detect ${name} as ${JSON.stringify(conventions)}, but detected ${JSON.stringify(detected)}`);
 			});
 		});
 

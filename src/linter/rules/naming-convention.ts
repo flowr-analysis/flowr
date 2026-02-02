@@ -93,6 +93,7 @@ export function detectPotentialCasings(identifier: string): CasingConvention[] {
 
 /**
  * Attempts to detect the possible casing conventions used in the given identifier and returns the first result.
+ * The function {@link detectPotentialCasings} is generally preferred, as it returns all potential casings and not just the first one.
  */
 export function detectCasing(identifier: string): CasingConvention {
 	const casings = detectPotentialCasings(identifier);

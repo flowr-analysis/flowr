@@ -14,8 +14,8 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { SerializedREnvironmentInformation , Environment, fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
-import { RNodeWithParent , type AstIdMap, type SerializableAstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type SerializedREnvironmentInformation , Environment, fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import type { RNodeWithParent , AstIdMap, SerializableAstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
 import { dataflowLogger } from '../logger';
@@ -36,25 +36,30 @@ export type DataflowFunctionFlowInformationSerialized = Omit<DataflowFunctionFlo
     environment: SerializedREnvironmentInformation | undefined;
 }
 
+/**
+ *
+ */
 export function serializeSubflow(subflow: DataflowFunctionFlowInformation): DataflowFunctionFlowInformationSerialized {
-    const serializedEnv = subflow.environment ? toSerializedREnvironmentInformation(subflow.environment)
-        : undefined;
-    return {
-        ...subflow,
-        environment: serializedEnv,
-    };
+	const serializedEnv = subflow.environment ? toSerializedREnvironmentInformation(subflow.environment)
+		: undefined;
+	return {
+		...subflow,
+		environment: serializedEnv,
+	};
 }
 
+/**
+ *
+ */
 export function deserializeSubflow(
-    subflow: DataflowFunctionFlowInformationSerialized,
-    ctx?: FlowrAnalyzerContext)
-: DataflowFunctionFlowInformation {
-    const env = subflow.environment ? fromSerializedREnvironmentInformation(subflow.environment, ctx) 
-        : undefined;
-    return {
-        ...subflow,
-        environment: env,
-    } as DataflowFunctionFlowInformation;
+	subflow: DataflowFunctionFlowInformationSerialized,
+	ctx?: FlowrAnalyzerContext): DataflowFunctionFlowInformation {
+	const env = subflow.environment ? fromSerializedREnvironmentInformation(subflow.environment, ctx)
+		: undefined;
+	return {
+		...subflow,
+		environment: env,
+	} as DataflowFunctionFlowInformation;
 }
 
 /**
@@ -130,12 +135,29 @@ export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = M
  * The structure of the serialized {@link DataflowGraph}.
  */
 export interface DataflowGraphJson {
-    readonly rootVertices:        NodeId[],
-    readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
-    readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][]
-    readonly _unknownSideEffects: UnknownSideEffect[]
-    readonly idMap?:              SerializableAstIdMap
+    readonly rootVertices:        NodeId[];
+    readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][];
+    readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][];
+    readonly _unknownSideEffects: UnknownSideEffect[];
 }
+
+/**
+ * The serialized form of a {@link DataflowGraph}.
+ * Includes the json representation as well as an optional id-map to the normalized AST.
+ */
+interface SerializableDataflowGraph {
+    json:   DataflowGraphJson;
+    idMap?: SerializableAstIdMap;
+}
+
+type PersistedVertex = Omit<DataflowGraphVertexInfo, 'environment'> & {
+    environment?: SerializedREnvironmentInformation;
+    subflow?:     DataflowFunctionFlowInformationSerialized;
+};
+
+type PersistedVertexEntry = [NodeId, PersistedVertex];
+
+
 
 /**
  * An unknown side effect describes something that we cannot handle correctly (in all cases).
@@ -189,32 +211,13 @@ export class DataflowGraph<
 
 	toJSON(): DataflowGraphJson {
 		return {
-			rootVertices:      Array.from(this.rootVertices),
-			vertexInformation: Array.from(this.vertexInformation.entries()).map(
-				([id, vertex]) => {
-					const serializedEnv = vertex.environment ? toSerializedREnvironmentInformation(vertex.environment) : undefined;
-
-                    if(vertex.tag === VertexType.FunctionDefinition) {
-                        const functionVertex = vertex as unknown as DataflowGraphVertexFunctionDefinition;
-                        return [id, {
-                            ...vertex,
-                            environment: serializedEnv as unknown as REnvironmentInformation | undefined,
-                            subflow: serializeSubflow(functionVertex.subflow)
-                        } as unknown as DataflowGraphVertexInfo]
-                    }
-
-					const copy: Vertex = {
-						...vertex,
-						environment: serializedEnv as unknown as REnvironmentInformation | undefined
-					};
-					return [id, copy];
-				}
-			),
+			rootVertices:        Array.from(this.rootVertices),
+			vertexInformation:   Array.from(this.vertexInformation.entries()),
 			edgeInformation:     Array.from(this.edgeInformation.entries()).map(([id, edges]) => [id, Array.from(edges.entries())]),
-			_unknownSideEffects: Array.from(this._unknownSideEffects),
-			idMap:               this._idMap?.toSerializable()
+			_unknownSideEffects: Array.from(this._unknownSideEffects)
 		};
 	}
+
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a node as well as all outgoing edges.
@@ -551,47 +554,14 @@ export class DataflowGraph<
 	 * This can be useful for data sent by the flowR server when analyzing it further.
 	 * @param data - The JSON data to construct the graph from
 	 */
-	public static fromJson(data: DataflowGraphJson, ctx?: FlowrAnalyzerContext): DataflowGraph {
+	public static fromJson(data: DataflowGraphJson): DataflowGraph {
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
-
-		/** rebuild the internal types from deserialized vertices */
-		const types = new Map<string, NodeId[]>();
-		for(const [id, vertex] of graph.vertexInformation) {
-			const tag = vertex.tag;
-			if(!types.has(tag)) {
-				types.set(tag, []);
-			}
-			let bucket = types.get(tag);
-			if(!bucket){
-				bucket = [];
-				types.set(tag, bucket);
-			}
-			bucket?.push(id);
-		}
-		/** unsafe access to private variable */
-		(graph as any).types = types;
-
-		/** rebuild idMap */
-		if(data.idMap){
-			(graph as any)._idMap = BiMap.fromSerializable<NodeId, RNodeWithParent>(data.idMap);
-		}
-
-		/** rebuild vertex information */
 		for(const [, vertex] of graph.vertexInformation) {
 			if(vertex.environment) {
-				const serialized = vertex.environment as unknown as SerializedREnvironmentInformation;
-				(vertex.environment as Writable<REnvironmentInformation>) = fromSerializedREnvironmentInformation(serialized, ctx);
+				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
 			}
-
-            /** if function def, deserialie the subflow */
-            if(vertex.tag === VertexType.FunctionDefinition){
-                const functionVertex = vertex as unknown as DataflowGraphVertexFunctionDefinition;
-                if(functionVertex.subflow.environment){
-                    functionVertex.subflow = deserializeSubflow(functionVertex.subflow as unknown as DataflowFunctionFlowInformationSerialized, ctx);
-                }
-            }
 		}
 		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
 		for(const unknown of data._unknownSideEffects) {
@@ -600,38 +570,144 @@ export class DataflowGraph<
 		return graph;
 	}
 
+	private static serializeVerticesForPersistence(
+		vertices: [NodeId, DataflowGraphVertexInfo][]
+	): PersistedVertexEntry[] {
+		return vertices.map(([id, vertex]) => {
+			const serializedEnv = vertex.environment
+				? toSerializedREnvironmentInformation(vertex.environment)
+				: undefined;
+
+			if(vertex.tag === VertexType.FunctionDefinition) {
+				const fn = vertex as DataflowGraphVertexFunctionDefinition;
+				return [id, {
+					...vertex,
+					environment: serializedEnv,
+					subflow:     serializeSubflow(fn.subflow)
+				}];
+			}
+
+			return [id, {
+				...vertex,
+				environment: serializedEnv
+			}];
+		});
+	}
+
+
+	private static stripSerializedEnvironments(
+		json: DataflowGraphJson
+	): DataflowGraphJson {
+		return {
+			...json,
+			vertexInformation: json.vertexInformation.map(([id, v]) => [
+				id,
+				({ ...v, environment: undefined } as unknown as DataflowGraphVertexInfo)
+			])
+		};
+	}
+
+	private static reattachSerializedVertexState(
+		graph: DataflowGraph,
+		serializedVertices: PersistedVertexEntry[],
+		ctx?: FlowrAnalyzerContext
+	): void {
+		for(const [id, serializedVertex] of serializedVertices) {
+			const vertex = graph.getVertex(id, true);
+			if(!vertex) {
+				continue;
+			}
+
+			// Restore environment
+			if(serializedVertex.environment) {
+				(vertex.environment as Writable<REnvironmentInformation>) =
+                    fromSerializedREnvironmentInformation(serializedVertex.environment, ctx);
+			}
+
+			// Restore subflow for function definitions
+			if(
+				vertex.tag === VertexType.FunctionDefinition &&
+                serializedVertex.subflow
+			) {
+				(vertex as DataflowGraphVertexFunctionDefinition).subflow =
+                    deserializeSubflow(serializedVertex.subflow, ctx);
+			}
+		}
+	}
+
+
 	/**
 	 * Serializes the DataflowGraüh into simple Byte Data
 	 * @returns Buffer containing the unsigned data bytes
 	 */
 	public toSerializable(): Uint8Array {
 		try {
-			return v8.serialize(this.toJSON());
+			const json = this.toJSON();
+
+			const persistedVertices = DataflowGraph.serializeVerticesForPersistence(json.vertexInformation);
+
+			const payload: SerializableDataflowGraph = {
+				json: {
+					...json,
+					vertexInformation: persistedVertices as unknown as [NodeId, DataflowGraphVertexInfo][]
+				},
+				idMap: this._idMap?.toSerializable()
+			};
+
+
+			return v8.serialize(payload);
 		} catch(err: unknown) {
-			// return empty buffer as call failed
 			console.log('Failed to serialize dataflow graph, err: ', err);
 			return new Uint8Array();
 		}
 	}
+
 
 	/**
 	 * Deserializes from byte data into identical DataflowGraph
 	 * @param buffer - Buffer to reconstruct DataflowGraph from
 	 * @returns DataflowGraph Instance
 	 */
-	public static fromSerializable(buffer: Uint8Array, ctx?: FlowrAnalyzerContext): DataflowGraph {
+	public static fromSerializable(
+		buffer: Uint8Array,
+		ctx?: FlowrAnalyzerContext
+	): DataflowGraph {
 		if(buffer.length === 0) {
 			dataflowLogger.warn('DataflowGraph: deserialize called with empty buffer.');
 			return new DataflowGraph(undefined);
 		}
+
 		try {
-			const json = v8.deserialize(buffer) as DataflowGraphJson;
-			return DataflowGraph.fromJson(json, ctx);
+			const payload = v8.deserialize(buffer) as SerializableDataflowGraph;
+
+			const serializedJson = payload.json;
+
+			// Prevent fromJson from seeing binary envs
+			const json = this.stripSerializedEnvironments(serializedJson);
+
+			// legacy reconstruction only
+			const graph = DataflowGraph.fromJson(json);
+
+			// restore AstIdMap
+			if(payload.idMap) {
+				(graph as unknown as { _idMap: AstIdMap | undefined })._idMap = BiMap.fromSerializable<NodeId, RNodeWithParent>(payload.idMap);
+			}
+
+			// reattach semantic state to actual graph vertices
+			DataflowGraph.reattachSerializedVertexState(
+				graph,
+                serializedJson.vertexInformation as unknown as PersistedVertexEntry[],
+                ctx
+			);
+
+
+			return graph;
 		} catch{
 			dataflowLogger.warn('DataflowGraph: deserialize failed on parsing');
 			return new DataflowGraph(undefined);
 		}
 	}
+
 
 }
 

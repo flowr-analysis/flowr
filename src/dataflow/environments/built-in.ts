@@ -45,7 +45,6 @@ import type {
 	BuiltInReplacementDefinition
 } from './built-in-config';
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
-import { DEFAULT_R_PATH } from '../../r-bridge/shell';
 
 export type BuiltIn = `built-in:${string}`;
 

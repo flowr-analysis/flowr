@@ -149,19 +149,21 @@ function resolveCrossFileReferences(
 	linkInputs(unresolved, environment, [], graph, false);
 
 	/** resolve vertices with only builtins again and update if placeholder */
-    /** why do i need to do this? */
+	/** why do i need to do this? */
 	for(const [nodeId,] of graph.verticesOfType(VertexType.Use)) {
 		const name = recoverName(nodeId, graph.idMap);
-		if(!name) continue;
-		
+		if(!name) {
+			continue;
+		}
+
 		const type = ReferenceType.Variable;
 		const outgoing = graph.outgoingEdges(nodeId);
-		
+
 		/* Check if this node currently only has built-in edges */
 		const allEdgesAreBuiltIns = outgoing !== undefined && [...outgoing.entries()].every(([target]) =>
 			typeof target === 'string' && target.includes('built-in')
 		);
-		
+
 		if(allEdgesAreBuiltIns) {
 			/* Try to resolve in the merged environment */
 			const targets = resolveByName(name, environment, type);
@@ -170,11 +172,11 @@ function resolveCrossFileReferences(
 				const userDefinedTargets = targets.filter(t =>
 					!isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)
 				);
-				
+
 				if(userDefinedTargets.length > 0) {
 					/* Check if targets only includes user-defined (no built-in fallbacks) */
 					const onlyUserDefined = userDefinedTargets.length === targets.length;
-					
+
 					if(onlyUserDefined) {
 						/* Remove placeholder built-in edges since we have pure user-defined targets */
 						if(outgoing) {
@@ -185,7 +187,7 @@ function resolveCrossFileReferences(
 							}
 						}
 					}
-					
+
 					/* Add edges to user-defined targets (whether or not we removed built-ins) */
 					for(const target of userDefinedTargets) {
 						const outgoing = graph.outgoingEdges(nodeId);

@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import type { AnalyzerSetupCluster, AnalyzerSetupFunction } from './analyzer-test-data';
-import { complexDataflowTests, ConditionalDefinitions, FunctionDefinition, LoopsWithCrossFile, NestedFunctions, simpleDataflowTests, sourceBasedDataflowTests, VariableShadowing } from './analyzer-test-data';
+import { complexDataflowTests, LoopsWithCrossFile, simpleDataflowTests, sourceBasedDataflowTests } from './analyzer-test-data';
 
 async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunction) {
 	console.log(`\n► Running test case: ${testCaseName}`);
@@ -25,8 +25,8 @@ async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunct
 
 	console.log(graphdiff.comments());
 	console.log(graphdiff.problematic());
-    console.log('Sequential Graph: ', syncDf.graph);
-    console.log('Parallel Graph: ', df.graph);
+	console.log('Sequential Graph: ', syncDf.graph);
+	console.log('Parallel Graph: ', df.graph);
 	assert.isTrue(graphdiff.isEqual(), `Dataflow graphs should be equal for testCase ${testCaseName}`);
 }
 
@@ -46,9 +46,9 @@ async function checkGraphEqualityForCluster(clusterName: string, testCluster: An
 
 describe.sequential('Parallel Dataflow test', () => {
 
-    test('some test test', async () => {
-        await checkGraphEquality('LoopsWithCrossFile', LoopsWithCrossFile);
-    })
+	test('some test test', async() => {
+		await checkGraphEquality('LoopsWithCrossFile', LoopsWithCrossFile);
+	});
 
 	test('Simple File Analysis', async() => {
 		await checkGraphEqualityForCluster('Simple File Analysis', simpleDataflowTests);

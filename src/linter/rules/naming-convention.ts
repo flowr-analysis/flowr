@@ -36,6 +36,8 @@ export interface NamingConventionConfig extends MergeableRecord {
 
 	/** if true non alphabetic characters are ignored */
 	ignoreNonAlpha: boolean;
+	/** optional prefix to ignore on all identifiers, which is interpreted as a regular expression fragment (meaning special characters have to be escaped) */
+	ignorePrefix?:  string;
 }
 
 export interface NamingConventionMetadata extends MergeableRecord {
@@ -51,52 +53,56 @@ function containsAlpha(s: string): boolean {
 }
 
 /**
- * Attempts to detect the casing convention used in the given identifier.
+ * Attempts to detect the possible casing conventions used in the given identifier and returns an array ordered by likelihood of the casing convention being correct.
  */
-export function detectCasing(identifier: string): CasingConvention {
+export function detectPotentialCasings(identifier: string, ignorePrefix?: string): CasingConvention[] {
 	if(identifier.trim() === '' || !containsAlpha(identifier)) {
-		return CasingConvention.Unknown;
+		return [];
+	}
+	if(ignorePrefix) {
+		identifier = identifier.replace(new RegExp(`^(${ignorePrefix})`), '');
 	}
 
 	const upper = identifier.toUpperCase();
 	const lower = identifier.toLowerCase();
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
+	const hasUnderscores = identifier.includes('_');
+	const upperAfterAllScores = Array(identifier.length-1).keys().every(i =>
+		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
+	const hasAnyUpperAfterLower = Array(identifier.length-1).keys().some(i =>
+		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
+		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
 
-	if(identifier.includes('_')) {
-		if(isAllUpper) { // CONSTANT_CASE
-			return CasingConvention.ConstantCase;
-		} else if(isAllLower) { // snake_case
-			return CasingConvention.SnakeCase;
-		}
-
-		// Returns true if the letter after an _ is uppercase
-		function expectUpperAfterScore(identifier: string) {
-			for(let i = 0; i < identifier.length - 1; i++) {
-				if(identifier[i] === '_') {
-					if(identifier[i+1] !== upper[i+1]) {
-						return false;
-					}
-				}
-			}
-
-			return true;
-		}
-
-		if(identifier[0] === lower[0] && expectUpperAfterScore(identifier)) {  // camel_Snake_Case
-			return CasingConvention.CamelSnakeCase;
-		} else if(identifier[0] === upper[0] && expectUpperAfterScore(identifier)) { // Pascal_Snake_Case
-			return CasingConvention.PascalSnakeCase;
-		}
-	} else {
-		if(identifier[0] === lower[0]) { // camelCase
-			return CasingConvention.CamelCase;
-		} else if(identifier[0] === upper[0]) { // PascalCase
-			return CasingConvention.PascalCase;
-		}
+	const matches: CasingConvention[] = [];
+	if(!hasUnderscores && identifier[0] === lower[0]) {
+		matches.push(CasingConvention.CamelCase); // camelCase
 	}
+	if(!hasUnderscores && identifier[0] === upper[0] && (identifier.length === 1 || !isAllUpper)) {
+		matches.push(CasingConvention.PascalCase); // PascalCase or Pascalcase
+	}
+	if(isAllUpper) {
+		matches.push(CasingConvention.ConstantCase); // CONSTANT_CASE or CONSTANTCASE
+	}
+	if(isAllLower) {
+		matches.push(CasingConvention.SnakeCase); // snake_case or snakecase or snakecase_
+	}
+	if(upperAfterAllScores && identifier[0] === lower[0] && !isAllUpper && hasUnderscores || (!hasUnderscores && isAllLower)) {
+		matches.push(CasingConvention.CamelSnakeCase); // camel_Snake_Case or camelsnakecase or camelsnakecase_
+	}
+	if(upperAfterAllScores && identifier[0] === upper[0] && (identifier.length === 1 || !isAllUpper) && !hasAnyUpperAfterLower) {
+		matches.push(CasingConvention.PascalSnakeCase); // Pascal_Snake_Case or Pascalsnakecase
+	}
+	return matches;
+}
 
-	return CasingConvention.Unknown;
+/**
+ * Attempts to detect the possible casing conventions used in the given identifier and returns the first result.
+ * The function {@link detectPotentialCasings} is generally preferred, as it returns all potential casings and not just the first one.
+ */
+export function detectCasing(identifier: string, ignorePrefix?:  string): CasingConvention {
+	const casings = detectPotentialCasings(identifier, ignorePrefix);
+	return casings.length > 0 ? casings[0] : CasingConvention.Unknown;
 }
 
 /**
@@ -200,7 +206,7 @@ export const NAMING_CONVENTION = {
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingResultCertainty.Certain,
-				detectedCasing: detectCasing(m.node.lexeme as string),
+				detectedCasing: detectCasing(m.node.lexeme as string, config.ignorePrefix),
 				name:           m.node.lexeme as string,
 				range:          m.node.info.fullRange as SourceRange,
 				id:             m.node.info.id

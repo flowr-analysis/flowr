@@ -9,6 +9,7 @@ import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { defaultConfigOptions } from '../../../../src/config';
+import { isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 
 
 describe('NAMESPACE-file', function() {
@@ -44,7 +45,7 @@ export(coord_cartesian)
 export(ggsave)
 export(fortify)
 export(scale_type)
-exportPattern("^[^\\.].*")
+exportPattern("^[^\\.]\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
@@ -83,7 +84,14 @@ importFrom(stats,setNames)`));
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.length, 1);
-			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.].*');
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.]\\.*$');
+		});
+
+		test('isExported', () => {
+			const deps = ctx.deps.getDependency('current');
+			assert.isDefined(deps?.namespaceInfo);
+			assert.isFalse(isExportedInInfo('ggplot2', deps?.namespaceInfo));
+			assert.isTrue(isExportedInInfo('ggplot', deps?.namespaceInfo));
 		});
 	});
 

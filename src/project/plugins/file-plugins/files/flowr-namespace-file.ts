@@ -31,7 +31,7 @@ export interface NamespaceInfo {
 	 * This will only be present in complex parsed NAMESPACE files and tell you
 	 * about which parts are only active with given conditions!
 	 */
-	conditional?:         Map<RNode, NamespaceInfo>;
+	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
 }
 
 export interface NamespaceFormat {
@@ -67,6 +67,17 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/**
+	 * Either returns whether the given symbol/function is exported from the given package
+	 * or the list of (`and`) conditions under which it is exported.
+	 * @param name - The name of the symbol/function to check
+	 * @param pkg - The package to check in
+	 */
+	public isExported(name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+		const fmt = this.content();
+		return isExportedInNamespaceFormat(fmt, name, pkg);
+	}
+
+	/**
 	 * Namespace file lifter, this does not re-create if already a namespace file
 	 * and handles role assignments.
 	 * @param file - The file to lift or return if already a namespace file
@@ -80,6 +91,58 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 		return file instanceof FlowrNamespaceFile ? file : new FlowrNamespaceFile(file, ctx);
 	}
 }
+
+
+/**
+ * Either returns whether the given symbol/function is exported from the given package
+ * or the list of (`and`) conditions under which it is exported.
+ * @param fmt  - The namespace format to check in
+ * @param name - The name of the symbol/function to check
+ * @param pkg  - The package to check in
+ */
+export function isExportedInNamespaceFormat(this: void, fmt: NamespaceFormat, name: string, pkg: string = 'current'): boolean | RNode<ParentInformation>[] {
+	const nsInfo: NamespaceInfo | undefined = pkg === 'current' ? fmt.current : fmt[pkg];
+	return nsInfo ? isExportedInInfo(name, nsInfo) : false;
+}
+
+/**
+ * Either returns whether the given symbol/function is exported from the given namespace info,
+ * or the list of (`and`) conditions under which it is exported.
+ * @param name   - The name of the symbol/function to check
+ * @param nsInfo - The namespace info to check in
+ */
+export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo): boolean | RNode<ParentInformation>[] {
+	if(nsInfo.exportedSymbols.includes(name) || nsInfo.exportedFunctions.includes(name)) {
+		return true;
+	}
+	if(name.includes('.')) {
+		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
+			if(m.map(m => `${k}.${m}`).includes(name)) {
+				return true;
+			}
+		}
+	}
+	// pattern
+	for(const pattern of nsInfo.exportedPatterns) {
+		const regex = new RegExp(pattern);
+		if(regex.test(name)) {
+			return true;
+		}
+	}
+	if(nsInfo.conditional) {
+		// nested with recursion
+		for(const [cond, info] of nsInfo.conditional) {
+			const res = isExportedInInfo(name, info);
+			if(res === true) {
+				return [cond];
+			} else if(Array.isArray(res)) {
+				return [cond, ...res];
+			}
+		}
+	}
+	return false;
+}
+
 
 function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContext): NamespaceFormat {
 	const analyzer = ctx.analyzer;
@@ -161,7 +224,7 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 
 function handleConditionCall(idMap: AstIdMap, cond: RNode<ParentInformation>, thenBranch: NamespaceFormat, elseBranch: NamespaceFormat | undefined): NamespaceFormat {
 	const g = getEmptyNamespaceFormat();
-	const condMap = g.current.conditional ?? new Map<RNode, NamespaceInfo>();
+	const condMap = g.current.conditional ?? new Map<RNode<ParentInformation>, NamespaceInfo>();
 	condMap.set(cond, thenBranch.current);
 	if(elseBranch) {
 		condMap.set(wrapRNodeInNotCall(cond, idMap), elseBranch.current);
@@ -309,7 +372,7 @@ function mergeNamespaceFormat(target: NamespaceFormat, source: NamespaceFormat):
 }
 
 function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): NamespaceInfo {
-	const mergedConditional = new Map<RNode, NamespaceInfo>();
+	const mergedConditional = new Map<RNode<ParentInformation>, NamespaceInfo>();
 	if(target.conditional) {
 		for(const [key, value] of target.conditional) {
 			mergedConditional.set(key, value);

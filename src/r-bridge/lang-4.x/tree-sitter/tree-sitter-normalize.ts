@@ -91,7 +91,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			children: [],
 			grouping: undefined,
 			info:     {
-				fullRange:    invalidRange(),
+				fullRange:    undefined,
 				adToks:       [],
 				treeSitterId: -1,
 			}
@@ -600,7 +600,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 		children: [],
 		grouping: undefined,
 		info:     {
-			fullRange:    invalidRange(),
+			fullRange:    undefined,
 			adToks:       [],
 			treeSitterId: -1,
 		}

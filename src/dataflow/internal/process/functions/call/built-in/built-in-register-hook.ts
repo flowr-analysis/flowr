@@ -71,7 +71,7 @@ export function processRegisterHook<OtherInfo>(
 			wrappedFunctions.add(wrapId);
 			const wrapped = {
 				type:       RType.FunctionDefinition,
-				location:   val.location ?? invalidRange(),
+				location:   val.location ?? name.location ?? invalidRange(),
 				parameters: [],
 				body:       val,
 				lexeme:     'function',

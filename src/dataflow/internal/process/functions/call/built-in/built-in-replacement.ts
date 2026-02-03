@@ -57,7 +57,7 @@ export function processReplacementFunction<OtherInfo>(
 			type:     RType.Symbol,
 			info:     uArg.info,
 			lexeme:   tarName,
-			location: uArg.location ?? invalidRange()
+			location: uArg.location ?? targetArg.location ?? name.location ?? invalidRange()
 		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
 

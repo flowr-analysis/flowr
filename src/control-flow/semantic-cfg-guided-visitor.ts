@@ -302,6 +302,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onLocalCall({ call });
 			case BuiltInProcName.S3Dispatch:
 				return this.onS3DispatchCall({ call });
+			case BuiltInProcName.S3DispatchNext:
+				return this.onS3DispatchNextCall({ call });
 			case BuiltInProcName.Break:
 				return this.onBreakCall({ call });
 			case BuiltInProcName.Return:
@@ -656,9 +658,19 @@ export class SemanticCfgGuidedVisitor<
 	 * This event triggers for every call to a function that performs an S3-like dispatch.
 	 *
 	 * For example, this triggers for `UseMethod` in `UseMethod("print")`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchNextCall|`onS3DispatchNextCall`} for `NextMethod` calls.
 	 * @protected
 	 */
 	protected onS3DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs an S3-like *next* dispatch.
+	 *
+	 * For example, this triggers for `NextMethod`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchCall|`onS3DispatchCall`} for `UseMethod` calls.
+	 * @protected
+	 */
+	protected onS3DispatchNextCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.

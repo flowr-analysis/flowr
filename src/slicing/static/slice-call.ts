@@ -30,7 +30,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
@@ -94,7 +94,7 @@ function linkCallTargets(
 
 /** returns the new threshold hit count */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(graph, callerInfo, current.baseEnvironment, queue, ctx);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, queue, ctx);
 
 	if(functionCallTargets.size === 0) {
 		/*

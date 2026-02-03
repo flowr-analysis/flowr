@@ -51,10 +51,7 @@ export function processS3Dispatch<OtherInfo>(
 	};
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
 	const generic = unpackArg(getArgumentWithId(args, argMaps.get('generic')?.[0]));
-	if(!generic) {
-		if(config.inferFromClosure) {
-			console.log('Trying to infer from closure!');
-		}
+	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = unpackArg(getArgumentWithId(args, argMaps.get('object')?.[0]));
@@ -70,6 +67,29 @@ export function processS3Dispatch<OtherInfo>(
 			origin:                BuiltInProcName.S3Dispatch
 		});
 		return dfObj;
+	}
+
+	if(!generic) {
+		patchFunctionCall({
+			nextGraph:             dfObj.graph,
+			rootId,
+			name,
+			data,
+			argumentProcessResult: [dfObj],
+			origin:                BuiltInProcName.S3DispatchNext
+		});
+		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
+		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		return {
+			hooks:             dfObj.hooks,
+			environment:       dfObj.environment,
+			exitPoints:        dfObj.exitPoints,
+			graph:             dfObj.graph,
+			entryPoint:        rootId,
+			in:                ingoing,
+			out:               dfObj.out,
+			unknownReferences: []
+		};
 	}
 
 	const n = resolveIdToValue(generic.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });

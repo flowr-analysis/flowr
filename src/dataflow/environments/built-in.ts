@@ -252,6 +252,8 @@ export enum BuiltInProcName {
 	Rm                  = 'builtin:rm',
 	/** for `UseMethod` calls, see {@link processS3Dispatch} */
 	S3Dispatch         = 'builtin:s3-dispatch',
+	/** for `NextMethod` calls, see {@link processS3Dispatch} */
+	S3DispatchNext     = 'builtin:s3-dispatch-next',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */

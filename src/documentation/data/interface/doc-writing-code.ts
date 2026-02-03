@@ -2,7 +2,6 @@ import { RShell } from '../../../r-bridge/shell';
 import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 import { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import { codeBlock, codeInline } from '../../doc-util/doc-code';
-import { FlowrWikiBaseRef } from '../../doc-util/doc-files';
 import { PipelineExecutor } from '../../../core/pipeline-executor';
 import { requestFromInput } from '../../../r-bridge/retriever';
 import { block, details } from '../../doc-util/doc-structure';
@@ -83,7 +82,7 @@ See the in-code documentation for more information.
 ### Using the ${ctx.link(RShell)} to Interact with R
 
 The ${ctx.link(RShell)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
-Please have a look at [flowR's engines](${FlowrWikiBaseRef}/Engines) for more information on alterantives (for example, the ${ctx.link(TreeSitterExecutor)}).
+Please have a look at ${ctx.linkPage('wiki/Engines', 'flowR\'s Engines')} for more information on alternatives (for example, the ${ctx.link(TreeSitterExecutor)}).
 
 ${
 	block({

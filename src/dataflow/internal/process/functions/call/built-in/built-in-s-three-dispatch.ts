@@ -4,9 +4,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { alwaysExits, initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -26,7 +24,9 @@ interface S3DispatchConfig {
 	args: {
 		generic: string,
 		object:  string
-	}
+	},
+	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
+	inferFromClosure?: boolean
 }
 
 /**
@@ -39,7 +39,7 @@ export function processS3Dispatch<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
-	if(args.length === 0) {
+	if(args.length === 0 && !config.inferFromClosure) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -52,6 +52,9 @@ export function processS3Dispatch<OtherInfo>(
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
 	const generic = unpackArg(getArgumentWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic) {
+		if(config.inferFromClosure) {
+			console.log('Trying to infer from closure!');
+		}
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = unpackArg(getArgumentWithId(args, argMaps.get('object')?.[0]));

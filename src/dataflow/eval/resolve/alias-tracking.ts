@@ -409,6 +409,9 @@ export function resolveToConstants(name: Identifier | undefined, environment: RE
 	}
 
 	const values: Set<Value> = new Set<Value>();
-	definitions.forEach(def => values.add(valueFromTsValue((def as BuiltInIdentifierConstant).value ?? Top)));
+	definitions.forEach(def => {
+		const d = (def as BuiltInIdentifierConstant).value;
+		values.add(d === undefined ? Top : valueFromTsValue(d));
+	});
 	return setFrom(...values);
 }

@@ -290,7 +290,7 @@
             'Last Week': 7,
             'Last Day': 1,
         }
-        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
+        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)]\s*)(?<version>\d+\.\d+\.\d+)/;
 
         const data = ensureEveryElementHasAllKeys(window.BENCHMARK_DATA);
 
@@ -380,7 +380,7 @@
             };
 
             // Prepare data points for charts
-            return Object.keys(data.entries).map(name => ({
+            return Object.keys(data.entries).reverse()  .map(name => ({
                 name,
                 dataSet: collectBenchesPerTestCase(data.entries[name]),
             }));

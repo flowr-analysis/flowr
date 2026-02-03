@@ -279,7 +279,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['do.call'],                                    processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, unquoteFunction: true },                                 assumePrimitive: true  },
 	{ type: 'function', names: ['UseMethod'],                                  processor: BuiltInProcName.S3Dispatch,          config: { args: { generic: 'generic', object: 'object' } }, assumePrimitive: true },
 	{ type: 'function', names: ['NextMethod'],                                 processor: BuiltInProcName.S3Dispatch,          config: { args: { generic: 'generic', object: 'object' }, inferFromClosure: true }, assumePrimitive: true },
-	{ type: 'function', names: ['new_generic'],                                processor: BuiltInProcName.S7NewGeneric,        config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
+	{ type: 'function', names: ['new_generic', 'setGeneric'],                  processor: BuiltInProcName.S7NewGeneric,        config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
+	{ type: 'function', names: ['S7_dispatch'],                                processor: BuiltInProcName.S7Dispatch,          config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
 	{ type: 'function', names: ['.Primitive', '.Internal'],                    processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true  },
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
@@ -344,6 +345,15 @@ export const DefaultBuiltinConfig = [
 		names:    ['[', '[[', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals'],
 		config:   {
 			readIndices: true
+		}
+	},
+	{
+		type:     'replacement',
+		suffixes: ['<-', '<<-'],
+		names:    ['method'],
+		config:   {
+			readIndices:   true,
+			constructName: 's7'
 		}
 	},
 	{

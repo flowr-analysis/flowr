@@ -23,7 +23,7 @@ interface S7GenericDispatchConfig {
 }
 
 /**
- * Process an S7 new generic dispatch call like `new_generic`.
+ * Process an S7 new generic dispatch call like `new_generic` or `setGeneric`.
  */
 export function processS7NewGeneric<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -32,7 +32,7 @@ export function processS7NewGeneric<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S7GenericDispatchConfig
 ): DataflowInformation {
-	if(args.length < 2) {
+	if(args.length < 1) {
 		dataflowLogger.warn('empty s7 new_generic, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -44,8 +44,7 @@ export function processS7NewGeneric<OtherInfo>(
 	};
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
 	const genName = unpackArg(getArgumentWithId(args, argMaps.get('name')?.[0]));
-	const dispatchArg = unpackArg(getArgumentWithId(args, argMaps.get('dispatchArg')?.[0]));
-	if(!genName || !dispatchArg) {
+	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const info = processKnownFunctionCall({ name, forceArgs: 'all', args, rootId, data, origin: BuiltInProcName.S7NewGeneric }).information;
@@ -56,5 +55,10 @@ export function processS7NewGeneric<OtherInfo>(
 	// else we treat it as a generic function with the S7 dispatch mechanism only
 	// TODO TODO TODO
 
+	// TODO: check fir setGeneric
+
+	// TODO: also define and mark as a function definition in and of itself to allow linking calls to the generic!
+
+	// TODO: also support S4 `standardGeneric`
 	return info;
 }

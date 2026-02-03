@@ -31,7 +31,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -41,10 +41,17 @@ export function processReplacementFunction<OtherInfo>(
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${Identifier.getName(name.content)} with ${JSON.stringify(args)}, processing`);
 
+	const targetArg = args[0];
+	if(config.constructName === 's7') {
+		console.log(`S7 replacement ${Identifier.getName(name.content)} not yet implemented`);
+		console.log(targetArg);
+
+	}
+
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
-		[args[0], args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
+		[targetArg, args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{

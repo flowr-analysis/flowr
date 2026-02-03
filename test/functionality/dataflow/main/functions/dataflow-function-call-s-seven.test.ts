@@ -13,4 +13,14 @@ describe('S7 Function Calls', withTreeSitter(ts => {
 		,
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
+	assertDataflow(label('Simple S7 Generic Method  and Call', ['function-definitions', 'oop-r7-s7']), ts,
+		`sample <- new_generic("sample", dispatch_args="x")
+		method(sample, class_numeric) <- function(x, ..., na.rm = FALSE) {
+		   sum(x) / length(x)
+		}
+		sample(42)`, emptyGraph()
+			.addEdge('1@new_generic', '1@function', EdgeType.Returns | EdgeType.Argument)
+		,
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+	);
 }));

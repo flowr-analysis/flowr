@@ -60,6 +60,7 @@ import { processLocal } from '../internal/process/functions/call/built-in/built-
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
 import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
 import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
+import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -257,6 +258,8 @@ export enum BuiltInProcName {
 	S3DispatchNext      = 'builtin:s3-dispatch-next',
 	/** for `new.generic` calls, see {@link processS7NewGeneric} */
 	S7NewGeneric        = 'builtin:s7-new-generic',
+	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
+	S7Dispatch          = 'builtin:s7-dispatch',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
@@ -302,6 +305,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Rm]:                 processRm,
 	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
 	[BuiltInProcName.S7NewGeneric]:       processS7NewGeneric,
+	[BuiltInProcName.S7Dispatch]:         processS7Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,

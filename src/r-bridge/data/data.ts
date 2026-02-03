@@ -590,7 +590,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 										{
 											name:        'Evaluation',
 											id:          'built-in-evaluation',
-											supported:   'not',
+											supported:   'partially',
 											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
 										},
 										{
@@ -835,7 +835,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 		{
 			name:        'Pre-Processors/external Tooling',
 			id:          'pre-processors-external-tooling',
-			supported:   'not',
+			supported:   'fully',
 			description: '_Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)'
 		}
 	]

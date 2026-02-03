@@ -306,6 +306,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onS3DispatchNextCall({ call });
 			case BuiltInProcName.S7NewGeneric:
 				return this.onS7NewGenericCall({ call });
+			case BuiltInProcName.S7Dispatch:
+				return this.onS7DispatchCall({ call });
 			case BuiltInProcName.Break:
 				return this.onBreakCall({ call });
 			case BuiltInProcName.Return:
@@ -679,6 +681,12 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onS7NewGenericCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs an S7 dispatch, such as `S7_dispatch`.
+	 * @protected
+	 */
+	protected onS7DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.

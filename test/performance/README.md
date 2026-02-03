@@ -12,11 +12,11 @@
 All of these benchmarks are meant to be executed on a linux machine, preferably the continuous integration environment. Hence, all scripts are written in bash and allowed to use tools to symlink etc.
 
 Currently, tests are not repeated, so all results are subject to the variations in the CI environment. For the results, see: <https://flowr-analysis.github.io/flowr/wiki/stats/benchmark>.
+We update this test suite from time to time (e.g., [#2295](https://github.com/flowr-analysis/flowr/pull/2295)), so please take this into account when running (historical) benchmarks.
 
 ## How to Run?
 
 Simply start the [run-all-suites.sh](run-all-suites.sh) or the [run-suite.sh](run-suite.sh) script. However, please keep in mind, that the benchmarks are intended to be run within the continuous integration environment (or retroactively to create more plots for each commit).
-
 
 ## Structure
 

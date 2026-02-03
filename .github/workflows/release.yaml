@@ -286,7 +286,7 @@ jobs:
             any::readr
 
       - name: "⏱️ Run the performance benchmarks"
-        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
+        run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 2 "${{ matrix.name }}" "${{ matrix.parser }}"
 
       - name: "⬆️ Upload Benchmark Results"
         uses: actions/upload-artifact@v4

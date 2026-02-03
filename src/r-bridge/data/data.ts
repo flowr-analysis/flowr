@@ -760,12 +760,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						},
 						{
 							name: 'R7/S7',
-							id:   'r7-s7',
+							id:   'oop-r7-s7',
 							url:  [
 								{ name: 'R7', href: 'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/' },
 								{ name: 'S7', href: 'https://cran.r-project.org/web/packages/S7/index.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
 						}
 					]

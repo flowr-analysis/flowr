@@ -14,7 +14,7 @@ import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
-import { type DataflowGraph, getReferenceOfArgument } from '../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { LintingRuleTag } from '../linter-tags';
@@ -123,7 +123,7 @@ export const SEEDED_RANDOMNESS = {
 					// assignments have to be queried for their destination
 					for(const a of assignment ?? []) {
 						const argIdx = assignmentArgIndexes.get(Identifier.getName(a.name)) as number;
-						const dest = getReferenceOfArgument(a.args[argIdx]);
+						const dest = FunctionArgument.getReference(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
 							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, analyzer.inspectContext())) {
@@ -182,7 +182,7 @@ function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assi
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
+	const args = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
 	const values = valueSetGuard(resolveIdToValue(args[argIndex], { graph: graph, resolve: VariableResolve.Alias, ctx }));
 	return values?.elements.every(v =>
 		v.type === 'number' ||

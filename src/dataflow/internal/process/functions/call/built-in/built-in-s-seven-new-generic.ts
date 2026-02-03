@@ -96,6 +96,7 @@ export function processS7NewGeneric<OtherInfo>(
 // 'function([dispatch_args],...) S7_dispatch()'; returns the value id
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const argNameId = rootId + '-s7-new-generic-fun-arg-name';
+	const r = name.location ?? invalidRange();
 	const argName = {
 		type:    RType.Symbol,
 		lexeme:  'fun',
@@ -104,13 +105,13 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			id:        argNameId,
 			nesting:   name.info.nesting,
 			role:      RoleInParent.ArgumentName,
-			fullRange: invalidRange(),
+			fullRange: r,
 			adToks:    undefined,
 			file:      name.info.file,
 			parent:    rootId,
 			index:     0
 		},
-		location: invalidRange(),
+		location: r,
 	} satisfies RSymbol<ParentInformation, string>;
 	idMap.set(argNameId, argName);
 	const funcNameId = rootId + '-s7-new-generic-fun-name';
@@ -121,18 +122,18 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			id:        funcNameId,
 			nesting:   name.info.nesting,
 			role:      RoleInParent.FunctionCallName,
-			fullRange: invalidRange(),
+			fullRange: r,
 			adToks:    undefined,
 			file:      name.info.file,
 			parent:    rootId,
 			index:     0
 		},
-		location: invalidRange(),
+		location: r,
 		content:  Identifier.make('S7_dispatch', 's7'),
 	} satisfies RSymbol<ParentInformation>;
 	const funcBody = {
 		type:         RType.FunctionCall,
-		location:     invalidRange(),
+		location:     r,
 		lexeme:       'S7_dispatch',
 		named:        true,
 		functionName: funcName,
@@ -141,7 +142,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			id:        rootId + '-s7-new-generic-fun-body',
 			nesting:   name.info.nesting,
 			role:      RoleInParent.FunctionDefinitionBody,
-			fullRange: invalidRange(),
+			fullRange: r,
 			adToks:    undefined,
 			file:      name.info.file,
 			parent:    rootId,
@@ -159,10 +160,10 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 			parent:    rootId,
 			index:     args + 1,
 			adToks:    undefined,
-			fullRange: invalidRange(),
+			fullRange: r,
 		},
 		lexeme:     'function',
-		location:   invalidRange(),
+		location:   r,
 		parameters: [...names.filter(isNotUndefined), '...'].map((n, i) => {
 			const paramId = fdefId + `-param-${i}`;
 			const paramNameId = paramId + '-name';
@@ -174,17 +175,17 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 					id:        paramNameId,
 					nesting:   name.info.nesting,
 					role:      RoleInParent.ParameterName,
-					fullRange: invalidRange(),
+					fullRange: r,
 					adToks:    undefined,
 					file:      name.info.file,
 					index:     i,
 					parent:    paramId
 				},
-				location: invalidRange(),
+				location: r,
 			} satisfies RSymbol<ParentInformation, string>;
 			const param = {
 				type:         RType.Parameter,
-				location:     invalidRange(),
+				location:     r,
 				lexeme:       n,
 				name:         paramName,
 				defaultValue: undefined,
@@ -197,7 +198,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 					index:     i,
 					adToks:    undefined,
 					file:      name.info.file,
-					fullRange: invalidRange(),
+					fullRange: r,
 				}
 			} satisfies RParameter<ParentInformation>;
 			idMap.set(paramNameId, paramName);
@@ -213,12 +214,12 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 	const argument: RArgument<ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   'fun',
-		location: invalidRange(),
+		location: r,
 		info:     {
 			id:        argId,
 			nesting:   name.info.nesting,
 			role:      RoleInParent.FunctionCallArgument,
-			fullRange: invalidRange(),
+			fullRange: r,
 			adToks:    undefined,
 			file:      name.info.file,
 			parent:    rootId,

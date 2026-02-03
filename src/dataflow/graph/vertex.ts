@@ -102,9 +102,13 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	 * Please be aware that this name can differ from the lexeme.
 	 * For example, if the function is a replacement function, in this case, the actually called fn will
 	 * have the compound name (e.g., `[<-`).
+	 * @see {@link Identifier} - for more information on identifiers
 	 */
 	readonly name: Identifier
-	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
+	/**
+	 * The arguments of the function call, in order (as they are passed to the respective call if executed in R.
+	 * @see {@link FunctionArgument} - for more information on function arguments
+	 */
 	args:          FunctionArgument[]
 	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
 	onlyBuiltin:   boolean

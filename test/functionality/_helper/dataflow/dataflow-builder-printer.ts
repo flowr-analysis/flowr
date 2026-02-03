@@ -10,7 +10,7 @@ import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
 import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './printer';
 import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
-import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -19,7 +19,6 @@ import {
 	type DataflowGraphVertexUse,
 	VertexType
 } from '../../../../src/dataflow/graph/vertex';
-import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
@@ -126,9 +125,9 @@ class DataflowBuilderPrinter {
 	}
 
 	private processArgumentInCall(fn: NodeId, arg: FunctionArgument | undefined): string {
-		if(arg === undefined || arg === EmptyArgument) {
+		if(arg === undefined || FunctionArgument.isEmpty(arg)) {
 			return 'EmptyArgument';
-		} else if(isPositionalArgument(arg)) {
+		} else if(FunctionArgument.isPositional(arg)) {
 			const suffix = this.getControlDependencySuffix(this.controlDependenciesForArgument(arg.nodeId), ', { ') ?? '';
 			this.handleArgumentArgLinkage(fn, arg.nodeId);
 			return `argumentInCall('${arg.nodeId}'${suffix})`;

@@ -9,7 +9,7 @@ import {
 	isReferenceType,
 	ReferenceType
 } from '../environments/identifier';
-import { type DataflowGraph, type FunctionArgument, isNamedArgument } from '../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { dataflowLogger } from '../logger';
@@ -89,7 +89,7 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
  * If you just want to match by name, use {@link pMatch}.
  */
 export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
-	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
 	const nameParamMap = new Map<string, RParameter<ParentInformation>>(
 		params.filter(p => p?.name?.content !== undefined)
 			.map(p => [p.name.content, p]));
@@ -119,7 +119,7 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 	}
 
 	const remainingParameter = params.filter(p => !p?.name || !matchedParameters.has(p.name.content));
-	const remainingArguments = args.filter(a => !isNamedArgument(a));
+	const remainingArguments = args.filter(FunctionArgument.isUnnamed);
 
 	for(let i = 0; i < remainingArguments.length; i++) {
 		const arg = remainingArguments[i];
@@ -180,7 +180,7 @@ export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targ
  * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
  */
 export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
-	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
 
 	const maps = new Map<NodeId, Targets>();
 
@@ -203,7 +203,7 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 	}
 
 	const remainingParameter = paramNames.filter(p => !matchedParameters.has(p));
-	const remainingArguments = args.filter(a => !isNamedArgument(a));
+	const remainingArguments = args.filter(FunctionArgument.isUnnamed);
 
 	for(let i = 0; i < remainingArguments.length; i++) {
 		const arg = remainingArguments[i];

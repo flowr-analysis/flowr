@@ -1,5 +1,5 @@
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowGraph, getReferenceOfArgument } from '../../../dataflow/graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
@@ -95,14 +95,14 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 	if(!call) {
 		return undefined;
 	}
-	const totalIndex = argument.name ? call.args.findIndex(arg => arg !== EmptyArgument && arg.name === argument.name) : -1;
+	const totalIndex = argument.name ? call.args.findIndex(arg => FunctionArgument.hasName(arg, argument.name)) : -1;
 	let refAtIndex: NodeId | undefined;
 	if(totalIndex < 0) {
-		const references = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
+		const references = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
 		refAtIndex = references[argument.index];
 	} else {
 		const arg = call.args[totalIndex];
-		refAtIndex = getReferenceOfArgument(arg);
+		refAtIndex = FunctionArgument.getReference(arg);
 	}
 	if(refAtIndex === undefined) {
 		return undefined;

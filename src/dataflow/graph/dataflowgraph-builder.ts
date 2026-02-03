@@ -4,8 +4,7 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import {
 	type DataflowFunctionFlowInformation,
 	DataflowGraph,
-	type FunctionArgument,
-	isPositionalArgument
+	FunctionArgument
 } from './graph';
 import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import {
@@ -147,10 +146,10 @@ export class DataflowGraphBuilder<
 	/** automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
-			if(arg === EmptyArgument) {
+			if(FunctionArgument.isEmpty(arg)) {
 				continue;
 			}
-			if(isPositionalArgument(arg)) {
+			if(FunctionArgument.isPositional(arg)) {
 				this.argument(id, arg.nodeId);
 				if(typeof arg.nodeId === 'string' && arg.nodeId.endsWith('-arg')) {
 					const withoutSuffix = arg.nodeId.slice(0, -4);

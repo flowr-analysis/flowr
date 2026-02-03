@@ -11,8 +11,7 @@ import type {
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import {
 	type DataflowGraph,
-	type FunctionArgument,
-	getReferenceOfArgument,
+	FunctionArgument,
 	type OutgoingEdges
 } from '../../dataflow/graph/graph';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
@@ -54,7 +53,7 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 }
 
 function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
-	const valueRoot = getReferenceOfArgument(arg);
+	const valueRoot = FunctionArgument.getReference(arg);
 	if(!valueRoot) {
 		return;
 	}

@@ -12,7 +12,6 @@ import {
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { VertexType } from '../../../../../graph/vertex';
-import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
@@ -23,6 +22,7 @@ import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { invalidRange } from '../../../../../../util/range';
+import { FunctionArgument } from '../../../../../graph/graph';
 
 
 /**
@@ -125,7 +125,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	/* a replacement reads all of its call args as well, at least as far as I am aware of */
 	for(const arg of callArgs) {
-		const ref = getReferenceOfArgument(arg);
+		const ref = FunctionArgument.getReference(arg);
 		if(ref !== undefined) {
 			res.graph.addEdge(rootId, ref, EdgeType.Reads);
 		}

@@ -3,9 +3,7 @@ import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import {
 	type DataflowFunctionFlowInformation,
 	type DataflowGraph,
-	type FunctionArgument,
-	isNamedArgument,
-	isPositionalArgument
+	FunctionArgument
 } from '../../dataflow/graph/graph';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
@@ -104,10 +102,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 		return '??';
 	} else if(arg === EmptyArgument) {
 		return '[empty]';
-	} else if(isNamedArgument(arg)) {
+	} else if(FunctionArgument.isNamed(arg)) {
 		const deps = arg.cds ? ', :may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		return `${arg.name} (${arg.nodeId}${deps})`;
-	} else if(isPositionalArgument(arg)) {
+	} else if(FunctionArgument.isPositional(arg)) {
 		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': '';
 		return `${arg.nodeId}${deps}`;
 	} else {
@@ -122,7 +120,7 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
-	return `${from}->${to}["${[...types].join(':')}"]`;
+	return `${from}->${to}["${Array.from(types).join(':')}"]`;
 }
 
 

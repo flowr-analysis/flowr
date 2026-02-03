@@ -1,4 +1,4 @@
-import { type FunctionArgument, type OutgoingEdges, isNamedArgument } from './graph';
+import { FunctionArgument, type OutgoingEdges } from './graph';
 import { type GenericDiffConfiguration, type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
@@ -124,10 +124,10 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg !== bArg) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, empty) the argument differs: ${JSON.stringify(aArg)} vs ${JSON.stringify(bArg)}.`);
 			}
-		} else if(isNamedArgument(aArg) && isNamedArgument(bArg)) {
+		} else if(FunctionArgument.isNamed(aArg) && FunctionArgument.isNamed(bArg)) {
 			// must have the same name
 			if(aArg.name !== bArg.name) {
-				ctx.report.addComment(`${ctx.position }In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg.name} vs ${bArg.name}.`);
+				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg.name} vs ${bArg.name}.`);
 				continue;
 			}
 			diffFunctionArgumentsReferences(fn, aArg, bArg, {

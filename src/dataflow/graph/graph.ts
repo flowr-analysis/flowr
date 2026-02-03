@@ -58,32 +58,94 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 	readonly name?: undefined
 }
 
-/** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
+/**
+ * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
+ * See the {@link FunctionArgument} helper functions to check for the specific types.
+ * @see {@link FunctionArgument.isNamed|`FunctionArgument.isNamed`} - to check for named arguments
+ * @see {@link FunctionArgument.isPositional|`FunctionArgument.isPositional`} - to check for positional arguments
+ * @see {@link FunctionArgument.isEmpty|`FunctionArgument.isEmpty`} - to check for empty arguments
+ */
 export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
 /**
- * Check if the given argument is a {@link PositionalFunctionArgument}.
+ * Helper functions to work with {@link FunctionArgument}s.
+ * @see {@link EmptyArgument} - the marker for empty arguments
  */
-export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {
-	return arg !== EmptyArgument && arg.name === undefined;
-}
-
-/**
- * Check if the given argument is a {@link NamedFunctionArgument}.
- */
-export function isNamedArgument(arg: FunctionArgument): arg is NamedFunctionArgument {
-	return arg !== EmptyArgument && arg.name !== undefined;
-}
-
-/**
- * Returns the reference of a non-empty argument.
- */
-export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefined {
-	if(arg !== EmptyArgument) {
-		return arg?.nodeId;
+export const FunctionArgument = {
+	/**
+	 * Checks whether the given argument is a positional argument.
+	 * @example
+	 * ```r
+	 * foo(b=3, 2) # the second argument is positional
+	 * ```
+	 */
+	isPositional(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument {
+		return arg !== EmptyArgument && arg.name === undefined;
+	},
+	/**
+	 * Checks whether the given argument is a named argument.
+	 * @example
+	 * ```r
+	 * foo(b=3, 2) # the first argument is named
+	 * ```
+	 * @see {@link isPositional}
+	 * @see {@link isEmpty}
+	 * @see {@link hasName}
+	 */
+	isNamed(this: void, arg: FunctionArgument): arg is NamedFunctionArgument {
+		return arg !== EmptyArgument && arg.name !== undefined;
+	},
+	/**
+	 * Checks whether the given argument is an unnamed argument (either positional or empty).
+	 * @example
+	 * ```r
+	 * foo(, 2)   # the first argument is unnamed (empty)
+	 * foo(3, 2)  # both arguments are unnamed (positional)
+	 * ```
+	 * @see {@link isNamed}
+	 */
+	isUnnamed(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument | typeof EmptyArgument {
+		return arg === EmptyArgument || arg.name === undefined;
+	},
+	/**
+	 * Checks whether the given argument is an empty argument.
+	 * @example
+	 * ```r
+	 * foo(, 2) # the first argument is empty
+	 * ```
+	 * @see {@link isNotEmpty}
+	 */
+	isEmpty(this: void, arg: FunctionArgument): arg is typeof EmptyArgument {
+		return arg === EmptyArgument;
+	},
+	/**
+	 * Checks whether the given argument is not an empty argument.
+	 * @see {@link isEmpty}
+	 */
+	isNotEmpty(this: void, arg: FunctionArgument): arg is NamedFunctionArgument | PositionalFunctionArgument {
+		return arg !== EmptyArgument;
+	},
+	/**
+	 * Returns the reference of a non-empty argument.
+	 * @example
+	 * ```r
+	 * foo(a=3, 2) # returns the node id of either `3` or `2`, but skips a
+	 * ```
+	 */
+	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
+		if(arg !== EmptyArgument) {
+			return arg?.nodeId;
+		}
+		return undefined;
+	},
+	/**
+	 * Checks whether the given argument is a named argument with the specified name.
+	 * @see {@link isNamed}
+	 */
+	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
+		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}
-	return undefined;
-}
+} as const;
 
 /**
  * Maps the edges target to the edge information

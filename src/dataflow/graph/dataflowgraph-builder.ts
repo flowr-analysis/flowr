@@ -7,7 +7,7 @@ import {
 	FunctionArgument
 } from './graph';
 import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
-import {
+import { type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexInfo,
@@ -70,7 +70,7 @@ export class DataflowGraphBuilder<
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
@@ -83,8 +83,9 @@ export class DataflowGraphBuilder<
 				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				hooks:             subflow.hooks ?? []
+				hooks:             subflow.hooks ?? [],
 			} as DataflowFunctionFlowInformation,
+			mode:       info?.mode,
 			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
 				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, cds: undefined })
 			),

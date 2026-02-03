@@ -323,6 +323,10 @@ export function updateNestedFunctionCalls(
 				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
 			}
 			if(treatAsS3) {
+				targetVertex.mode ??= [];
+				if(!targetVertex.mode.includes('s3')) {
+					targetVertex.mode.push('s3');
+				}
 				// collect all next method calls to link them to the same targets!
 				for(const s of targetVertex.subflow.graph) {
 					const v = graph.getVertex(s);

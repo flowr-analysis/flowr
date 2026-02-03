@@ -3,8 +3,8 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
-	type RFunctionCall,
-	type RFunctionArgument
+	type RFunctionArgument,
+	type RFunctionCall
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -25,6 +25,7 @@ import type { RParameter } from '../../../../../../r-bridge/lang-4.x/ast/model/n
 import { Identifier } from '../../../../../environments/identifier';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
+import { VertexType } from '../../../../../graph/vertex';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -90,6 +91,10 @@ export function processS7NewGeneric<OtherInfo>(
 
 	info.graph.addEdge(rootId, funArg, EdgeType.Returns);
 	info.entryPoint = funArg;
+	const fArg = info.graph.getVertex(funArg);
+	if(fArg?.tag === VertexType.FunctionDefinition) {
+		fArg.mode ??= ['s4', 's7'];
+	}
 	return info;
 }
 

@@ -154,6 +154,12 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	params:       Record<NodeId, boolean>
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
 	environment?: REnvironmentInformation
+	/**
+	 * If the function is a (potential) S3/S4/S7 dispatch
+	 * Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3).
+	 * This is more of a convenience flag for later processing.
+	 */
+	mode?:        ('s3' | 's4' | 's7')[];
 }
 
 /**

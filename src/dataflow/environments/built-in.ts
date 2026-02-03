@@ -280,7 +280,6 @@ export enum BuiltInProcName {
 	WhileLoop           = 'builtin:while-loop',
 }
 
-
 export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Access]:             processAccess,
 	[BuiltInProcName.Apply]:              processApply,

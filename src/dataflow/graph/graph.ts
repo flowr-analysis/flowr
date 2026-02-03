@@ -11,11 +11,7 @@ import {
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type {
-	BrandedIdentifier,
-	IdentifierDefinition,
-	IdentifierReference
-} from '../environments/identifier';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -582,6 +578,14 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 	} else if(current.tag === VertexType.FunctionDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);
+		if(next.tag === VertexType.FunctionDefinition && next.mode && next.mode.length > 0) {
+			current.mode ??= [];
+			for(const m of next.mode) {
+				if(!current.mode.includes(m)) {
+					current.mode.push(m);
+				}
+			}
+		}
 	}
 
 	return current;

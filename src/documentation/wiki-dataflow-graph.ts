@@ -1158,13 +1158,17 @@ Depending on what you are interested in, there exists a plethora of functions an
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
 * ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
-* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
-* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
 * ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
 * ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
-Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow-Graph) and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
+FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
+
+* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
+* ${ctx.link('FunctionArgument', undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+
+Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 

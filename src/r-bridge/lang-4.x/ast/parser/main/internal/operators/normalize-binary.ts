@@ -100,9 +100,9 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			rhs:    parsedRhs,
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: data.currentLexeme
 			}
 		};
 	} else {
@@ -114,9 +114,9 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			operator: operationName,
 			lexeme:   content,
 			info:     {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: data.currentLexeme
 			}
 		};
 	}

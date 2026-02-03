@@ -7,6 +7,9 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 
+/** Used to separate S7 dispatch info in identifiers */
+export const S7DispatchSeparator = '﹕s3﹕';
+
 /**
  * Process an S7 generic dispatch call like `S7_dispatch`.
  */

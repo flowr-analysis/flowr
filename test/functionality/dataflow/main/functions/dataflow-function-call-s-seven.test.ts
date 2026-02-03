@@ -19,8 +19,10 @@ describe('S7 Function Calls', withTreeSitter(ts => {
 		   sum(x) / length(x)
 		}
 		sample(42)`, emptyGraph()
-			.addEdge('1@new_generic', '1@function', EdgeType.Returns | EdgeType.Argument)
+			.addEdge('5@sample', '1@function', EdgeType.Returns | EdgeType.Argument)
 		,
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
+
+	// TODO: setGeneric which must define to
 }));

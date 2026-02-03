@@ -114,7 +114,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
 		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
 			return undefined;
-		} else if(key === 'additionalTokens' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
+		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
 			value = [value[0], 0, value[2], 0];
@@ -241,9 +241,9 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
-	ignoreAdditionalTokens: boolean,
-	ignoreColumns:          boolean,
-	skipTreeSitter:         boolean
+	ignoreadToks:   boolean,
+	ignoreColumns:  boolean,
+	skipTreeSitter: boolean
 }>) {
 	const skip = skipTestBecauseConfigNotMet(userConfig);
 	const labelContext: TestLabelContext[] = skip ? [] : ['desugar-shell'];
@@ -264,11 +264,11 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 		afterAll(() => ts?.close());
 		test('shell', function() {
-			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreadToks, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('tree-sitter', function() {
-			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreAdditionalTokens, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreadToks, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('compare', function() {

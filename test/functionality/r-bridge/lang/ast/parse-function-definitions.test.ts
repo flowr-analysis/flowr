@@ -36,7 +36,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
@@ -101,7 +101,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 	});
@@ -134,7 +134,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 		assertAst(label('Multiple parameters', ['normal-definition', 'name-normal', 'formals-named', 'grouping']),
@@ -175,7 +175,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 	});
@@ -217,7 +217,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				info:     {}
 			},
 			info: {
-				additionalTokens: [
+				adToks: [
 					{
 						type:     RType.Comment,
 						location: rangeFrom(1, 15, 1, 22),
@@ -227,7 +227,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				]
 			},
 		}), {
-			ignoreAdditionalTokens: false
+			ignoreadToks: false
 		}
 	);
 
@@ -260,7 +260,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 
@@ -295,7 +295,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 
@@ -337,7 +337,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 	});
@@ -378,7 +378,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 
@@ -432,7 +432,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 	});

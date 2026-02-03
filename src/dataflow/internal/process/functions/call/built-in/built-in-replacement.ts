@@ -19,6 +19,10 @@ import { symbolArgumentsToStrings } from './built-in-access';
 import { builtInId, BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
+import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
+import { toUnnamedArgument } from '../argument/make-argument';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { invalidRange } from '../../../../../../util/range';
 
 
 /**
@@ -41,11 +45,20 @@ export function processReplacementFunction<OtherInfo>(
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${Identifier.getName(name.content)} with ${JSON.stringify(args)}, processing`);
 
-	const targetArg = args[0];
-	if(config.constructName === 's7') {
-		console.log(`S7 replacement ${Identifier.getName(name.content)} not yet implemented`);
-		console.log(targetArg);
-
+	let targetArg = args[0];
+	if(config.constructName === 's7' && targetArg !== EmptyArgument) {
+		let tarName = targetArg.lexeme;
+		if(args.length > 2 && args[1] !== EmptyArgument) {
+			tarName += S7DispatchSeparator + args[1].lexeme;
+		}
+		const uArg = unpackArg(targetArg) ?? targetArg;
+		targetArg = toUnnamedArgument({
+			content:  tarName,
+			type:     RType.Symbol,
+			info:     uArg.info,
+			lexeme:   tarName,
+			location: uArg.location ?? invalidRange()
+		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */

@@ -41,9 +41,9 @@ export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJso
 		content,
 		lexeme: meta.content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	} satisfies RSymbol;
 }

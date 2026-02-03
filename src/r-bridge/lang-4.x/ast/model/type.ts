@@ -204,7 +204,7 @@ export enum RType {
 	/**
 	 * {@link RDelimiter}.
 	 * Is not part of the normalized AST but can be found in
-	 * {@link Source#additionalTokens}.
+	 * {@link Source#adToks}.
 	 */
 	Delimiter = 'RDelimiter',
 }

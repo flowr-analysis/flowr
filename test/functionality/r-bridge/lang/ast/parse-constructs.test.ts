@@ -211,7 +211,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 							},
 							then: ensureExpressionList(variant.then)
 						}), {
-							ignoreAdditionalTokens: true
+							ignoreadToks: true
 						});
 					}
 				});
@@ -245,7 +245,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 									then:      ensureExpressionList(ifThenVariant.then),
 									otherwise: ensureExpressionList(elseVariant.otherwise(ifThenVariant.end))
 								}), {
-									ignoreAdditionalTokens: true
+									ignoreadToks: true
 								});
 							}
 						}
@@ -298,7 +298,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				}
 			);
 			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'comments', 'newlines']), shell, `for(#a
@@ -347,8 +347,8 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 					info:     {}
 				})
 			}), {
-				ignoreAdditionalTokens: true,
-				ignoreColumns:          true
+				ignoreadToks:  true,
+				ignoreColumns: true
 			}
 			);
 		});
@@ -367,7 +367,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 			assertAst(label('Two Statement Repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
 				shell, 'repeat { x; y }', exprList({
@@ -408,7 +408,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						}]
 					}
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 		});
 		describe('while', () => {
@@ -433,7 +433,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 
 			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping', 'semicolons']),
@@ -482,7 +482,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						}]
 					}
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 		});
 		describe('break', () => {

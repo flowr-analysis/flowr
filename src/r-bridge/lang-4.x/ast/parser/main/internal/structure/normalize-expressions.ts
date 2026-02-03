@@ -142,7 +142,7 @@ function processBraces([start, end]: [start: NamedJsonEntry, end: NamedJsonEntry
 		lexeme:   undefined,
 		location: undefined,
 		info:     {
-			additionalTokens: comments,
+			adToks: comments,
 		}
 	};
 }
@@ -178,8 +178,8 @@ export function normalizeExpressions(
 				return [processBraces(braces, processed, parsedComments, data)];
 			} else if(processed.length > 0) {
 				if(parsedComments) {
-					processed[0].info.additionalTokens ??= [];
-					processed[0].info.additionalTokens.push(...parsedComments);
+					processed[0].info.adToks ??= [];
+					processed[0].info.adToks.push(...parsedComments);
 				}
 				return processed;
 			} else {

@@ -359,7 +359,7 @@ describe.sequential('Parse function calls', withShell(shell => {
 					}
 				]
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
@@ -465,7 +465,7 @@ describe.sequential('Parse function calls', withShell(shell => {
 				location: rangeFrom(1, 1, 1, 10),
 				lexeme:   'data.frame',
 				info:     {
-					additionalTokens: [{
+					adToks: [{
 						type:     RType.Comment,
 						location: rangeFrom(1, 19, 1, 37),
 						lexeme:   '# this is a comment',

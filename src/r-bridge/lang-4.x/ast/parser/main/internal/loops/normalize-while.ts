@@ -56,9 +56,9 @@ export function tryNormalizeWhile(
 		lexeme:    content,
 		location,
 		info:      {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

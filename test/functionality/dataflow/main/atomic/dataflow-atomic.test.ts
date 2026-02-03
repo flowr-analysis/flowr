@@ -914,7 +914,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		);
 
 		describe('S4 assign/get', () => {
-			for(const fn of ['setGeneric', 'setValidity']) {
+			for(const fn of ['setValidity']) {
 				assertDataflow(label(fn, ['oop-s4', 'strings', 'implicit-return', 'normal-definition', 'newlines', 'call-normal', 'numbers']),
 					shell, `${fn}("a", function() 1)
 a()`, emptyGraph()

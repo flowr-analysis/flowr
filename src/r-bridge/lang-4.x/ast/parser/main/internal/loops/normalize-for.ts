@@ -61,9 +61,9 @@ export function tryNormalizeFor(
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
 		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: comments,
-			fullLexeme:       data.currentLexeme,
+			fullRange:  data.currentRange,
+			adToks:     comments,
+			fullLexeme: data.currentLexeme,
 		},
 		location
 	};

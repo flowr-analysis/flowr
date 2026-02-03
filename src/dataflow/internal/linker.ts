@@ -2,7 +2,13 @@ import { DefaultMap } from '../../util/collections/defaultmap';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Identifier, type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
+import {
+	type InGraphIdentifierDefinition,
+	Identifier,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../environments/identifier';
 import { type DataflowGraph, type FunctionArgument, isNamedArgument } from '../graph/graph';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -255,10 +261,16 @@ export function linkFunctionCallWithSingleTarget(
 			if(defs === undefined) {
 				continue;
 			}
-			for(const { nodeId } of defs) {
+			for(const { nodeId, type, value } of defs as InGraphIdentifierDefinition[]) {
 				if(!isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
+					if(type === ReferenceType.Function && ingoing.type === ReferenceType.S7MethodPrefix && Array.isArray(value)) {
+						for(const v of value) {
+							graph.addEdge(id, v, EdgeType.Calls);
+							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
+						}
+					}
 				}
 			}
 		}
@@ -376,9 +388,11 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	if(environment !== undefined || info.environment !== undefined) {
 		let functionCallDefs: NodeId[] = [];
+		const refType = info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix :
+			info.origin.includes(BuiltInProcName.S7Dispatch) ? ReferenceType.S7MethodPrefix : ReferenceType.Function;
 		if(info.name !== undefined && !Identifier.getName(info.name).startsWith(UnnamedFunctionCallPrefix)) {
 			functionCallDefs = resolveByName(
-				info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
+				info.name, environment ?? info.environment as REnvironmentInformation, refType
 			)?.map(d => d.nodeId) ?? [];
 		}
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {

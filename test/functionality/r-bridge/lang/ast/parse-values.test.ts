@@ -132,7 +132,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 				{
 					...exprList(),
 					info: {
-						additionalTokens: [
+						adToks: [
 							{
 								type:     RType.Comment,
 								location: rangeFrom(1, 1, 1, 13),

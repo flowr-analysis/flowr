@@ -22,9 +22,9 @@ export function normalizeNumber(data: NormalizerData, obj: JsonEntry): RNumber |
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 

@@ -82,9 +82,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 				lexeme: content,
 				location,
 				info:   {
-					fullRange:        data.currentRange,
-					additionalTokens: [],
-					fullLexeme:       data.currentLexeme
+					fullRange:  data.currentRange,
+					adToks:     [],
+					fullLexeme: data.currentLexeme
 				}
 			};
 		} else if(calledFunction.type === RType.Break) {
@@ -93,9 +93,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 				lexeme: content,
 				location,
 				info:   {
-					fullRange:        data.currentRange,
-					additionalTokens: [],
-					fullLexeme:       data.currentLexeme
+					fullRange:  data.currentRange,
+					adToks:     [],
+					fullLexeme: data.currentLexeme
 				}
 			};
 		}
@@ -109,9 +109,9 @@ function tryParseUnnamedFunctionCall(data: NormalizerData, mappedWithName: reado
 		calledFunction: calledFunction,
 		arguments:      parsedArguments.map(x => x ?? EmptyArgument),
 		info:           {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }
@@ -144,9 +144,9 @@ function parseNamedFunctionCall(data: NormalizerData, symbolContent: readonly Na
 		functionName,
 		arguments: parsedArguments.map(x => x ?? EmptyArgument),
 		info:      {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

@@ -38,6 +38,9 @@ export interface ValueString<Str extends Lift<RStringValue> = Lift<RStringValue>
 	type:  'string'
 	value: Str
 }
+export interface ValueNull {
+	type: 'null'
+}
 export interface ValueFunctionDefinition {
 	type: 'function-definition'
 }
@@ -59,6 +62,7 @@ export type Value = Lift<
         | ValueLogical
 		| ValueMissing
         | ValueFunctionDefinition
+	    | ValueNull
 >;
 export type ValueType<V> = V extends { type: infer T } ? T : never;
 export type ValueTypes = ValueType<Value>;
@@ -140,6 +144,8 @@ export function stringifyValue(value: Lift<Value>): string {
 	return tryStringifyBoTop(value, v => {
 		const t = v.type;
 		switch(t) {
+			case 'null':
+				return 'NULL';
 			case 'interval':
 				return `${v.startInclusive ? '[' : '('}${stringifyValue(v.start)}, ${stringifyValue(v.end)}${v.endInclusive ? ']' : ')'}`;
 			case 'vector':

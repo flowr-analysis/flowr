@@ -217,7 +217,7 @@ export class BenchmarkSlicer {
 		let commentCharsNoWhitespace = 0;
 		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
 			nodes++;
-			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
+			const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
 			if(comments && comments.length > 0) {
 				const content = comments.map(c => c.lexeme ?? '').join('');
 				commentChars += content.length;

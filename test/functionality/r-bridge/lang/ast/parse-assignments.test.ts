@@ -124,7 +124,7 @@ describe.sequential('Parse simple assignments', withShell(shell => {
 					}]
 				},
 			}), {
-				ignoreAdditionalTokens: true
+				ignoreadToks: true
 			}
 		);
 	});

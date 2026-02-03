@@ -351,8 +351,8 @@ function processAssignmentToString<OtherInfo>(
 	});
 }
 
-function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation): InGraphReferenceType {
-	const vert = sourceInfo.graph.getVertex(source.info.id);
+function checkTargetReferenceType(sourceInfo: DataflowInformation): InGraphReferenceType {
+	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
 			return ReferenceType.Function;
@@ -420,9 +420,10 @@ export function markAsAssignment<OtherInfo>(
  */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
-	const referenceType = checkTargetReferenceType(source, sourceArg);
+	const referenceType = checkTargetReferenceType(sourceArg);
+	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
-	const aliases = getAliases([source.info.id], information.graph, information.environment);
+	const aliases = getAliases(useSourceIds, information.graph, information.environment);
 	const writeNodes = targetName ? [{
 		nodeId:    targetId,
 		name:      targetName,
@@ -452,7 +453,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data, config);
+		markAsAssignment(information, write, useSourceIds, rootId, data, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

@@ -17,6 +17,23 @@ f <- function(x) {
 		,
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
+	assertDataflow(label('Simple S3 dispatch with NextMethod', ['function-calls', 'oop-s3']), ts,
+		`
+f.default <- function(x) {
+    length(x)
+}
+f.foo <- function(x) {
+	NextMethod()
+}
+f <- function(x) {
+    UseMethod("f")
+}
+`, emptyGraph()
+			.calls('9@"f"', ['2@function', '5@function'])
+			.calls('6@NextMethod', ['2@function', '5@function'])
+		,
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+	);
 	assertDataflow(label('Two-Targets S3 dispatch', ['function-calls', 'oop-s3']), ts,
 		`
 f.default <- function(x) {

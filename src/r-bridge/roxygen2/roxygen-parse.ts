@@ -35,7 +35,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
 	do{
-		comments = cur?.info.additionalTokens
+		comments = cur?.info.adToks
 			?.filter(isRComment).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);

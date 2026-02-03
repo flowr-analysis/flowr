@@ -202,7 +202,7 @@ max
 				info:     {}
 			}
 		), {
-			ignoreAdditionalTokens: true
+			ignoreadToks: true
 		}
 		);
 	});

@@ -35,7 +35,7 @@ export function valueFromTsValue(a: unknown): Value {
 	if(a === undefined) {
 		return Bottom;
 	} else if(a === null) {
-		return Top;
+		return { type: 'null' };
 	} else if(typeof a === 'string') {
 		return stringFrom(a);
 	} else if(typeof a === 'number') {

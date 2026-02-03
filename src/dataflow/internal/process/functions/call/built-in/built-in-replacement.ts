@@ -19,6 +19,10 @@ import { symbolArgumentsToStrings } from './built-in-access';
 import { builtInId, BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
+import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
+import { toUnnamedArgument } from '../argument/make-argument';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { invalidRange } from '../../../../../../util/range';
 
 
 /**
@@ -31,7 +35,7 @@ export function processReplacementFunction<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: { makeMaybe?: boolean, assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
+	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 2) {
 		dataflowLogger.warn(`Replacement ${Identifier.getName(name.content)} has less than 2 arguments, skipping`);
@@ -41,10 +45,26 @@ export function processReplacementFunction<OtherInfo>(
 	/* we only get here if <-, <<-, ... or whatever is part of the replacement is not overwritten */
 	expensiveTrace(dataflowLogger, () => `Replacement ${Identifier.getName(name.content)} with ${JSON.stringify(args)}, processing`);
 
+	let targetArg = args[0];
+	if(config.constructName === 's7' && targetArg !== EmptyArgument) {
+		let tarName = targetArg.lexeme;
+		if(args.length > 2 && args[1] !== EmptyArgument) {
+			tarName += S7DispatchSeparator + args[1].lexeme;
+		}
+		const uArg = unpackArg(targetArg) ?? targetArg;
+		targetArg = toUnnamedArgument({
+			content:  tarName,
+			type:     RType.Symbol,
+			info:     uArg.info,
+			lexeme:   tarName,
+			location: uArg.location ?? invalidRange()
+		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
+	}
+
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
-		[args[0], args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
+		[targetArg, args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{

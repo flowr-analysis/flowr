@@ -137,7 +137,7 @@ export async function summarizeSlicerStats(
 			let commentCharsNoWhitespace = 0;
 			visitAst(reParsed.ast.files.map(f => f.root), t => {
 				numberOfNormalizedTokens++;
-				const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
+				const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
 				if(comments && comments.length > 0) {
 					const content = comments.map(c => c.lexeme ?? '').join('');
 					commentChars += content.length;

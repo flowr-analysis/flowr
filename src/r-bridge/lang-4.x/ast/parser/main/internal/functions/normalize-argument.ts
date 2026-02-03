@@ -40,9 +40,9 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
 			lexeme:  content,
 			info:    {
-				fullRange:        location,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  location,
+				adToks:     [],
+				fullLexeme: content
 			}
 		};
 		parsedValue = parseWithValue(data, objs);
@@ -60,9 +60,9 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name,
 		value:  parsedValue ?? undefined,
 		info:   {
-			fullRange:        location,
-			fullLexeme:       content,
-			additionalTokens: []
+			fullRange:  location,
+			fullLexeme: content,
+			adToks:     []
 		}
 	};
 }

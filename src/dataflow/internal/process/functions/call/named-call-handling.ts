@@ -55,6 +55,7 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
 
 /**
  * Processes a named function call within the dataflow analysis.
+ * For example, `myFunction(arg1, arg2)`, resolves against the environment.
  */
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

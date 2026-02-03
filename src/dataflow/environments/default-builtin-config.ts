@@ -261,7 +261,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: [Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='],                                    processor: BuiltInProcName.Assignment,          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
 	{ type: 'function', names: [':='],                                         processor: BuiltInProcName.Assignment,          config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['assign', 'setGeneric', 'setValidity'],        processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
+	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
 	{ type: 'function', names: ['setMethod'],                                  processor: BuiltInProcName.AssignmentLike,     config: { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['delayedAssign'],                              processor: BuiltInProcName.Assignment,          config: { quoteSource: true, targetVariable: true },                                   assumePrimitive: true  },
 	{ type: 'function', names: ['<<-'],                                        processor: BuiltInProcName.Assignment,          config: { superAssignment: true, canBeReplacement: true },                             assumePrimitive: true  },
@@ -277,8 +277,11 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['repeat'],                                     processor: BuiltInProcName.RepeatLoop,         config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['while'],                                      processor: BuiltInProcName.WhileLoop,          config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['do.call'],                                    processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, unquoteFunction: true },                                 assumePrimitive: true  },
-	{ type: 'function', names: ['NextMethod'],                                 processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true  },
 	{ type: 'function', names: ['UseMethod'],                                  processor: BuiltInProcName.S3Dispatch,          config: { args: { generic: 'generic', object: 'object' } }, assumePrimitive: true },
+	{ type: 'function', names: ['NextMethod'],                                 processor: BuiltInProcName.S3Dispatch,          config: { args: { generic: 'generic', object: 'object' }, inferFromClosure: true }, assumePrimitive: true },
+	{ type: 'function', names: ['new_generic'],                                processor: BuiltInProcName.S7NewGeneric,        config: { args: { name: 'name', dispatchArg: 'dispatch_args', fun: 'fun' } }, assumePrimitive: true },
+	{ type: 'function', names: ['setGeneric'],                                 processor: BuiltInProcName.S7NewGeneric,        config: { args: { name: 'name', dispatchArg: undefined, fun: 'fun' } }, assumePrimitive: true },
+	{ type: 'function', names: ['S7_dispatch'],                                processor: BuiltInProcName.S7Dispatch,          config: { libFn: true }, assumePrimitive: true },
 	{ type: 'function', names: ['.Primitive', '.Internal'],                    processor: BuiltInProcName.Apply,               config: { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true  },
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
@@ -343,6 +346,15 @@ export const DefaultBuiltinConfig = [
 		names:    ['[', '[[', 'names', 'dimnames', 'attributes', 'attr', 'class', 'levels', 'rownames', 'colnames', 'body', 'environment', 'formals'],
 		config:   {
 			readIndices: true
+		}
+	},
+	{
+		type:     'replacement',
+		suffixes: ['<-', '<<-'],
+		names:    ['method'],
+		config:   {
+			readIndices:   true,
+			constructName: 's7'
 		}
 	},
 	{

@@ -2,10 +2,7 @@
 /* this is a test-only utility */
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { wrap, wrapControlDependencies } from './printer';
-import type {
-	IEnvironment,
-	REnvironmentInformation
-} from '../../../../src/dataflow/environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 
 export class EnvironmentBuilderPrinter {
@@ -79,6 +76,7 @@ export class EnvironmentBuilderPrinter {
 				]);
 				break;
 			case ReferenceType.S3MethodPrefix:
+			case ReferenceType.S7MethodPrefix:
 				// unsupported
 				break;
 			default:

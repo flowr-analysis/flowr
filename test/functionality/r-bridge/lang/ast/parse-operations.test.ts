@@ -69,7 +69,7 @@ describe.sequential('Parse simple operations', withShell(shell => {
 						{
 							type: RType.BinaryOp,
 							info: {
-								additionalTokens: [
+								adToks: [
 									{
 										type:     RType.Comment,
 										lexeme:   '# comment',
@@ -98,7 +98,7 @@ describe.sequential('Parse simple operations', withShell(shell => {
 						}
 					]
 				}, {
-					ignoreAdditionalTokens: false
+					ignoreadToks: false
 				}
 			);
 		});
@@ -243,7 +243,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						info:     {}
 					}
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 
 			([offsetL, offsetC, offsetR] = [1, 2, 3]);
@@ -321,7 +321,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						}]
 					}
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 
 			// exponentiation and assignments has a different behavior when nested without parenthesis
@@ -364,7 +364,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							info:     {}
 						}
 					}), {
-						ignoreAdditionalTokens: true
+						ignoreadToks: true
 					});
 			}
 
@@ -423,7 +423,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						}]
 					}
 				}), {
-					ignoreAdditionalTokens: true
+					ignoreadToks: true
 				});
 		}
 	});

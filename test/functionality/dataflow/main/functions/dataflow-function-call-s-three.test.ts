@@ -2,6 +2,8 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
+import { pushLocalEnvironment } from '../../../../../src/dataflow/environments/scoping';
+import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 
 describe('S3 Function Calls', withTreeSitter(ts => {
 	assertDataflow(label('Simple S3 dispatch', ['function-calls', 'oop-s3']), ts,
@@ -14,6 +16,15 @@ f <- function(x) {
 }
 `, emptyGraph()
 			.calls('6@"f"', '2@function')
+			.defineFunction('2@function', [8], {
+				in:                [],
+				entryPoint:        '2@{',
+				graph:             new Set([]),
+				environment:       pushLocalEnvironment(defaultEnv()),
+				out:               [],
+				hooks:             [],
+				unknownReferences: []
+			}, { mode: ['s3'] })
 		,
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);

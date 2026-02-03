@@ -27,6 +27,7 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
@@ -67,6 +68,7 @@ export interface AssignmentConfiguration extends ForceArguments {
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
 	readonly mayHaveMoreArgs?:     boolean
+	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
@@ -351,10 +353,18 @@ function processAssignmentToString<OtherInfo>(
 	});
 }
 
-function checkTargetReferenceType(sourceInfo: DataflowInformation): InGraphReferenceType {
+function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: DataflowGraphVertexFunctionDefinition['mode'] | undefined): InGraphReferenceType {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
+			if(fnModes && fnModes.length > 0) {
+				vert.mode ??= [];
+				for(const m of fnModes) {
+					if(!vert.mode.includes(m)) {
+						vert.mode.push(m);
+					}
+				}
+			}
 			return ReferenceType.Function;
 		case VertexType.Use:
 		case VertexType.FunctionCall:
@@ -420,7 +430,7 @@ export function markAsAssignment<OtherInfo>(
  */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
-	const referenceType = checkTargetReferenceType(sourceArg);
+	const referenceType = checkTargetReferenceType(sourceArg, config.modesForFn);
 	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
 	const aliases = getAliases(useSourceIds, information.graph, information.environment);

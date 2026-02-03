@@ -269,6 +269,14 @@ export function linkFunctionCallWithSingleTarget(
 						for(const v of value) {
 							graph.addEdge(id, v, EdgeType.Calls);
 							graph.addEdge(ingoing.nodeId, v, EdgeType.Calls);
+							// add s7 to vertex
+							const vInfo = graph.getVertex(v);
+							if(vInfo && vInfo.tag === VertexType.FunctionDefinition) {
+								vInfo.mode ??= [];
+								if(!vInfo.mode.includes('s7')) {
+									vInfo.mode.push('s7');
+								}
+							}
 						}
 					}
 				}

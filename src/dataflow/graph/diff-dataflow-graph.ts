@@ -253,6 +253,10 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow in-read-parameters. `
 				});
+				setDifference(new Set(rInfo.mode ?? []), new Set(lInfo.mode ?? []), {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in function definition mode. `
+				});
 				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `

@@ -1,10 +1,6 @@
 import type { SourceRange } from '../range';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
-import {
-	type DataflowFunctionFlowInformation,
-	type DataflowGraph,
-	FunctionArgument
-} from '../../dataflow/graph/graph';
+import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	Identifier,
@@ -115,7 +111,7 @@ function printArg(arg: FunctionArgument | undefined): string {
 function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): string {
 	const result = [];
 	for(const arg of argMapping) {
-		result.push(printArg(arg));
+		result.push(escapeMarkdown(printArg(arg)));
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
 }
@@ -191,7 +187,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
-			fCall ? displayFunctionArgMapping(info.args) : ''
+			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? escapeMarkdown(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}
 	if(mark?.has(id)) {

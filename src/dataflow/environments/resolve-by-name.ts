@@ -2,7 +2,7 @@ import type { Environment, REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
 import { Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
-
+import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -20,6 +20,7 @@ const TargetTypePredicate = {
 	[ReferenceType.BuiltInConstant]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInConstantTargetTypes),
 	[ReferenceType.BuiltInFunction]: ({ type }: IdentifierDefinition) => isReferenceType(type, BuiltInFunctionTargetTypes),
 	[ReferenceType.S3MethodPrefix]:  ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
+	[ReferenceType.S7MethodPrefix]:  ({ type }: IdentifierDefinition) => isReferenceType(type, FunctionTargetTypes),
 } as const satisfies Record<ReferenceType, (t: IdentifierDefinition) => boolean>;
 
 /**
@@ -45,10 +46,11 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 			continue;
 		}
 		let definition: IdentifierDefinition[] | undefined;
-		if(target === ReferenceType.S3MethodPrefix) {
+		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
+			const infix = target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator;
 			definition = current.memory.entries()
-				.filter(([defName]) => defName.startsWith(name + '.'))
+				.filter(([defName]) => defName.startsWith(name + infix))
 				.flatMap(([, defs]) => defs)
 				.toArray();
 		} else {

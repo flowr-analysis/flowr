@@ -16,6 +16,7 @@ export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
 /**
  * Processes an unnamed function call.
+ * For example `(function(x) { x + 1 })(5)`
  */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);

@@ -206,6 +206,8 @@ export enum ReferenceType {
 	BuiltInFunction = 128,
 	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
 	S3MethodPrefix = 256,
+	/** Prefix to identify S7 methods, use this, to for example dispatch a call to `f` which will then link to `f<7>*` */
+	S7MethodPrefix = 512
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */

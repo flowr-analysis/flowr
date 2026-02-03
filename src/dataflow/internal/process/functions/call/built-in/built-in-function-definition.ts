@@ -134,7 +134,7 @@ export function processFunctionDefinition<OtherInfo>(
 		hooks:             compactedHooks
 	};
 
-	updateS3Dispatches(subgraph, parameters.map<FunctionArgument>(p => {
+	updateDispatches(subgraph, parameters.map<FunctionArgument>(p => {
 		if(p === EmptyArgument) {
 			return EmptyArgument;
 		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
@@ -216,9 +216,9 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 	return overwriteEnvironment(baseEnvironment, callerEnvironment);
 }
 
-function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
+function updateDispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
 	for(const [, info] of graph.vertices(false)) {
-		if(info.tag !== VertexType.FunctionCall || !info.origin.includes(BuiltInProcName.S3Dispatch)) {
+		if(info.tag !== VertexType.FunctionCall || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
 			continue;
 		}
 		if(info.args.length === 0) {

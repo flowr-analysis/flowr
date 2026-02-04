@@ -2,7 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
-import { type SatisfiableDomain, NumericalComparator } from './satisfiable-domain';
+import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -28,7 +28,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	constructor(value: Value) {
 		if(Array.isArray(value)) {
-			if(value.some(isNaN) || value[0] > value[1] || value[0] === +Infinity || value[1] === -Infinity) {
+			if(value.some(isNaN) || value[0] > value[1]) {
 				super(Bottom as Value);
 			} else {
 				super([value[0], value[1]] as const as Value);
@@ -276,7 +276,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return `[${isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
+		return `[${isFinite(this.value[0]) ? this.value[0] : (Math.sign(this.value[0]) === 1 ? '+∞' : '-∞')}, ${isFinite(this.value[1]) ? this.value[1] : (Math.sign(this.value[1]) === 1 ? '+∞' : '-∞')}]`;
 	}
 
 	public isTop(): this is IntervalDomain<IntervalTop> {

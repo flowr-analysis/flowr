@@ -76,13 +76,13 @@ function inferWd(file: string | undefined, wd: SupportedWd): string | undefined 
 }
 
 // this can be improved by respecting raw strings and supporting more scenarios
-function buildQuickFix(elem: RNode, str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
 	if(!wd || !isRString(str)) {
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		loc:         SourceLocation.fromNode(elem) ?? SourceLocation.invalid(),
+		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
 		description: `Replace with a relative path to \`${filePath}\``,
 		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
 	}];
@@ -154,7 +154,7 @@ export const ABSOLUTE_PATH = {
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  node.content.str,
 							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-							quickFix:  buildQuickFix(element.node, node, node.content.str, wd)
+							quickFix:  buildQuickFix(node, node.content.str, wd)
 						}];
 					} else {
 						return [];
@@ -166,8 +166,8 @@ export const ABSOLUTE_PATH = {
 						return {
 							certainty: LintingResultCertainty.Certain,
 							filePath:  r.value,
-							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-							quickFix:  buildQuickFix(node, elem, r.value as string, wd)
+							loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
+							quickFix:  buildQuickFix(elem, r.value as string, wd)
 						};
 					});
 					if(mappedStrings.length > 0) {

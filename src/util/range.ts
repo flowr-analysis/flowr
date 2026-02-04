@@ -109,7 +109,7 @@ export const SourceRange = {
 	 * @param el - end line
 	 * @param ec - end column
 	 */
-	from(this: void, sl: number | string, sc: number | string, el: number | string = sl, ec: number | string = el): SourceRange {
+	from(this: void, sl: number | string, sc: number | string, el: number | string = sl, ec: number | string = sc): SourceRange {
 		return [Number(sl), Number(sc), Number(el), Number(ec)];
 	},
 	/**

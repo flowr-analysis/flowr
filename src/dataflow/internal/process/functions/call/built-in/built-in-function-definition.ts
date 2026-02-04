@@ -45,7 +45,19 @@ export function processFunctionDefinition<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	if(args.length < 1) {
+	return processFunctionDefinitionEagerly(name, args, rootId, data);
+}
+
+/**
+ * Process a function definition, i.e., `function(a, b) { ... }`
+ */
+export function processFunctionDefinitionEagerly<OtherInfo>(
+    name: RSymbol<OtherInfo & ParentInformation>,
+    args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+    rootId: NodeId,
+    data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+){
+    if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}

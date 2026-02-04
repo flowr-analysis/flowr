@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770233875829,
+  "lastUpdate": 1770233878175,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -10507,102 +10507,6 @@ window.BENCHMARK_DATA = {
             "username": "EagleoutIce"
           },
           "distinct": true,
-          "id": "266b087710648b96b1779436aee32a0c47ac80cd",
-          "message": "[release:patch] Robustness against encoding errors (Release v1.3.2)",
-          "timestamp": "2023-11-03T20:54:13+01:00",
-          "tree_id": "c245f343a8ef43765a4f36f2aad48763dc77d6b3",
-          "url": "https://github.com/flowr-analysis/flowr/commit/266b087710648b96b1779436aee32a0c47ac80cd"
-        },
-        "date": 1699043094505,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Total per-file",
-            "value": 6628.01911806,
-            "unit": "ms",
-            "range": 7920.64451462989,
-            "extra": "median: 3245.55ms"
-          },
-          {
-            "name": "Retrieve AST from R code",
-            "value": 99.94474708,
-            "unit": "ms",
-            "range": 91.9298826769113,
-            "extra": "median: 49.64ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 145.95498125999998,
-            "unit": "ms",
-            "range": 97.05366533791602,
-            "extra": "median: 107.15ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 202.67506718,
-            "unit": "ms",
-            "range": 350.35799969129454,
-            "extra": "median: 57.78ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 11.209356158365976,
-            "unit": "ms",
-            "range": 19.217066969533313,
-            "extra": "median: 8.28ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 10.588980339286781,
-            "unit": "ms",
-            "range": 19.12716492275005,
-            "extra": "median: 7.68ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.6050062891914059,
-            "unit": "ms",
-            "range": 0.3596537358962295,
-            "extra": "median: 0.54ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 9,
-            "unit": "#",
-            "extra": "out of 11316 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 967,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.8987761232201357,
-            "unit": "#",
-            "extra": "std: 0.08614052435714427"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8582032343145828,
-            "unit": "#",
-            "extra": "std: 0.11575735009565753"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
           "id": "243959c2f01ddf928c85ee4905105307971ad19b",
           "message": "[release:patch] Robustify Quad Export Against Cyclic Structures (Release v1.3.3)",
           "timestamp": "2023-11-10T18:59:51+01:00",
@@ -20936,6 +20840,116 @@ window.BENCHMARK_DATA = {
             "range": "4.7831325830300395",
             "unit": "ms",
             "extra": "median: 0.91ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 10243 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8929170578543022,
+            "unit": "#",
+            "extra": "std: 0.0956359146509202"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8701954703386395,
+            "unit": "#",
+            "extra": "std: 0.1180600353934118"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 93.91532939189189,
+            "range": "81.90689023123913",
+            "unit": "KiB",
+            "extra": "median: 57.01"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "98f8614d4b4bd9d8fd7212a89c02b525ca474307",
+          "message": "[release:patch] 2.9.3 Linter Fixes, Multi-File Promotion, more Helper-Objects",
+          "timestamp": "2026-02-04T20:10:19+01:00",
+          "tree_id": "87247bb7028512e4ca13741ba077bd36c957dcd0",
+          "url": "https://github.com/flowr-analysis/flowr/commit/98f8614d4b4bd9d8fd7212a89c02b525ca474307"
+        },
+        "date": 1770233878166,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 245.9355922162162,
+            "range": "42.27130120891552",
+            "unit": "ms",
+            "extra": "median: 228.42ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 21.205077783783786,
+            "range": "13.171797100466815",
+            "unit": "ms",
+            "extra": "median: 16.35ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 75.07585658108108,
+            "range": "55.41421092031889",
+            "unit": "ms",
+            "extra": "median: 55.71ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1599.117455608108,
+            "range": "2411.7055870623135",
+            "unit": "ms",
+            "extra": "median: 587.83ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 9.989392391891894,
+            "range": "6.480001100012214",
+            "unit": "ms",
+            "extra": "median: 8.04ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.6410298258649947,
+            "range": "4.787721017984102",
+            "unit": "ms",
+            "extra": "median: 0.73ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24972188711549365,
+            "range": "0.161161315357288",
+            "unit": "ms",
+            "extra": "median: 0.18ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.8975779092018863,
+            "range": "4.813174779111373",
+            "unit": "ms",
+            "extra": "median: 0.95ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

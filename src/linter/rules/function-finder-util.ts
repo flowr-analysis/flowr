@@ -56,7 +56,7 @@ export const functionFinderUtil = {
 		elements: FlowrSearchElements<ParentInformation, T>,
 		_config: unknown,
 		_data: unknown,
-		refineSearch: (elements: T) => T = e => e,
+		refineSearch: (elements: T) => (T[number] & { certainty?: LintingResultCertainty })[] = e => e,
 	) => {
 		const metadata: FunctionsMetadata = {
 			totalCalls:               0,
@@ -69,9 +69,10 @@ export const functionFinderUtil = {
 				return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
 					metadata.totalFunctionDefinitions++;
 					return {
-						node:   element.node,
-						range:  element.node.info.fullRange as SourceRange,
-						target: target as BrandedIdentifier
+						node:      element.node,
+						range:     element.node.info.fullRange as SourceRange,
+						target:    target as BrandedIdentifier,
+						certainty: element.certainty
 					};
 				});
 			});
@@ -79,7 +80,7 @@ export const functionFinderUtil = {
 		return {
 			results:
 				results.map(element => ({
-					certainty:  LintingResultCertainty.Certain,
+					certainty:  element.certainty ?? LintingResultCertainty.Certain,
 					involvedId: element.node.info.id,
 					function:   element.target,
 					range:      element.range
@@ -102,7 +103,7 @@ export const functionFinderUtil = {
 		const info = pool.find(f => f.name === element.node.lexeme);
 		/* if we have no additional info, we assume they always access the network */
 		if(info === undefined) {
-			return Ternary.Maybe;
+			return Ternary.Always;
 		}
 		const vert = data.dataflow.graph.getVertex(element.node.info.id);
 		if(isFunctionCallVertex(vert)){
@@ -118,8 +119,10 @@ export const functionFinderUtil = {
 			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
 			if(argValues.length === 0){
 				return Ternary.Maybe;
-			} else if(argValues.some(v => v === Unknown || (requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue))){
+			} else if(argValues.some(v => requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue)){
 				return Ternary.Always;
+			} else if(argValues.some(v => v === Unknown)) {
+				return Ternary.Maybe;
 			}
 		}
 		return Ternary.Never;

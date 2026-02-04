@@ -1,8 +1,11 @@
-import { type LintingRule, LintingRuleCertainty } from '../linter-format';
+import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
 import { functionFinderUtil, type FunctionsMetadata, type FunctionsResult } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
-import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { MergeableRecord } from '../../util/objects';
+import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
+import type { FlowrSearchElement } from '../../search/flowr-search';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { Ternary } from '../../util/logic';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/** The list of function names that should be marked in the given context if their arguments match. */
@@ -14,13 +17,24 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
 	processSearchResult: (e, c, d) => functionFinderUtil.processSearchResult(e, c, d,
-		es =>
-			es.filter(e => functionFinderUtil.requireArgumentValue(
-				e,
-				ReadFunctions,
-				{ analyzer: d.analyzer, dataflow: d.dataflow, normalize: d.normalize },
-				c.onlyTriggerWithArgument
-			))
+		es => {
+			const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
+			for(const e of es) {
+				const val = functionFinderUtil.requireArgumentValue(
+					e,
+					ReadFunctions,
+					d,
+					c.onlyTriggerWithArgument
+				);
+				if(val === Ternary.Never) {
+					continue;
+				}
+				const x = e as unknown as FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty };
+				x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
+				res.push(x);
+			}
+			return res;
+		}
 	),
 	prettyPrint: functionFinderUtil.prettyPrint('network operations'),
 	info:        {

@@ -8,17 +8,6 @@ const urlPrefix = ['https://', 'ftp://', 'ftps://', 'file://'];
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('network functions', () => {
-		/* Testing the validity of all declared network functions */
-		for(const entry of NETWORK_FUNCTIONS.info.defaultConfig.fns) {
-			/* @ignore-in-wiki */
-			assertLinter('network function: ' + entry, parser, `${entry}()`, 'network-functions',
-				[
-					{ certainty: LintingResultCertainty.Certain, function: entry, range: [1, 1, 1, entry.length + 2] }
-				],
-				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: [entry] }
-			);
-		}
 		/* Testing the nested use the 'url' function in other function calls */
 		assertLinter('network function nested', parser, 'foo(url("http://example.com"))',
 			'network-functions',

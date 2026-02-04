@@ -7,7 +7,7 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
-import type { SourceRange } from '../util/range';
+import type { SourceLocation } from '../util/range';
 import type { DataflowInformation } from '../dataflow/info';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
@@ -75,7 +75,7 @@ interface BaseQuickFix {
 	/**
 	 * The range of the text that should be replaced.
 	 */
-	readonly range:       SourceRange
+	readonly loc:         SourceLocation
 }
 
 export interface LintQuickFixReplacement extends BaseQuickFix {

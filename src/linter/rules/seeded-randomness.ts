@@ -5,10 +5,9 @@ import {
 	type LintingRule,
 	LintingRuleCertainty
 } from '../linter-format';
-import type { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { formatRange } from '../../util/mermaid/dfg';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
@@ -33,7 +32,7 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
-	range:    SourceRange
+	loc:      SourceLocation
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {
@@ -88,7 +87,7 @@ export const SEEDED_RANDOMNESS = {
 					metadata.consumerCalls++;
 					return {
 						involvedId:    element.node.info.id,
-						range:         element.node.info.fullRange as SourceRange,
+						loc:           SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
 						target:        target as BrandedIdentifier,
 						searchElement: element
 					};
@@ -154,7 +153,7 @@ export const SEEDED_RANDOMNESS = {
 						involvedId: element.involvedId,
 						certainty:  cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 						function:   element.target,
-						range:      element.range
+						loc:        element.loc
 					}];
 				}),
 			'.meta': metadata
@@ -172,8 +171,8 @@ export const SEEDED_RANDOMNESS = {
 		description: 'Checks whether randomness-based function calls are preceded by a random seed generation function. For consistent reproducibility, functions that use randomness should only be called after a constant random seed is set using a function like `set.seed`.'
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  (result, _meta) => `Function \`${result.function}\` at ${formatRange(result.range)} is called without a preceding random seed function like \`set.seed\``
+		[LintingPrettyPrintContext.Query]: (result, _meta) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  (result, _meta) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)} is called without a preceding random seed function like \`set.seed\``
 	}
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 

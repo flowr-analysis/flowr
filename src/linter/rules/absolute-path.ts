@@ -8,8 +8,7 @@ import {
 } from '../linter-format';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { rangeFrom, type SourceRange } from '../../util/range';
-import { formatRange } from '../../util/mermaid/dfg';
+import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath } from '../../util/text/strings';
@@ -32,7 +31,7 @@ import type { Identifier } from '../../dataflow/environments/identifier';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
-	range:    SourceRange
+	loc:      SourceLocation
 }
 
 type SupportedWd = '@script' | '@home' | string;
@@ -77,13 +76,13 @@ function inferWd(file: string | undefined, wd: SupportedWd): string | undefined 
 }
 
 // this can be improved by respecting raw strings and supporting more scenarios
-function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
+function buildQuickFix(elem: RNode, str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
 	if(!wd || !isRString(str)) {
 		return undefined;
 	}
 	return [{
 		type:        'replace',
-		range:       str.location,
+		loc:         SourceLocation.fromNode(elem) ?? SourceLocation.invalid(),
 		description: `Replace with a relative path to \`${filePath}\``,
 		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
 	}];
@@ -154,8 +153,8 @@ export const ABSOLUTE_PATH = {
 						return [{
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  node.content.str,
-							range:     node.info.fullRange ?? node.location,
-							quickFix:  buildQuickFix(node, node.content.str, wd)
+							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+							quickFix:  buildQuickFix(element.node, node, node.content.str, wd)
 						}];
 					} else {
 						return [];
@@ -167,8 +166,8 @@ export const ABSOLUTE_PATH = {
 						return {
 							certainty: LintingResultCertainty.Certain,
 							filePath:  r.value,
-							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
-							quickFix:  buildQuickFix(elem, r.value as string, wd)
+							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
+							quickFix:  buildQuickFix(node, elem, r.value as string, wd)
 						};
 					});
 					if(mappedStrings.length > 0) {
@@ -186,7 +185,7 @@ export const ABSOLUTE_PATH = {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
-								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
+								loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
 								quickFix:  undefined
 							}));
 						}
@@ -201,8 +200,8 @@ export const ABSOLUTE_PATH = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is absolute`
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} is absolute`
 	},
 	info: {
 		name:          'Absolute Paths',

@@ -3,10 +3,9 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import { getAllRefsToSymbol } from '../../dataflow/origin/dfg-get-symbol-refs';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Q } from '../../search/flowr-search-builder';
-import { assertUnreachable } from '../../util/assert';
-import { formatRange } from '../../util/mermaid/dfg';
+import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
-import type { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
@@ -24,7 +23,7 @@ export enum CasingConvention {
 export interface NamingConventionResult extends LintingResult {
 	name:           string,
 	detectedCasing: CasingConvention,
-	range:          SourceRange,
+	loc:            SourceLocation
 }
 
 /**
@@ -179,17 +178,17 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 			continue;
 		}
 
-		const range = node.info.fullRange;
-		if(range) {
+		const loc = SourceLocation.fromNode(node);
+		if(loc) {
 			// In case of a function call we only need to include the name, not the '()'
-			range[3] = range[1] + (node.lexeme as string).length - 1;
+			loc[3] = loc[1] + (node.lexeme as string).length - 1;
 
 			result.push(
 				{
 					type:        'replace',
 					replacement: replacement,
 					description: `Rename to match naming convention ${conv}`,
-					range:       range
+					loc:         loc
 				} satisfies LintQuickFixReplacement
 			);
 		}
@@ -197,7 +196,7 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 
 	return result.length === 0 ?
 		undefined : // We sort so that when applied in order the fixes will start from the end of the line to avoid conflicts
-		result.sort((a, b) => a.range[0] == b.range[0] ? b.range[1] - a.range[1] : b.range[0] - a.range[0]);
+		result.sort((a, b) => SourceLocation.compare(b.loc, a.loc));
 }
 
 export const NAMING_CONVENTION = {
@@ -208,9 +207,9 @@ export const NAMING_CONVENTION = {
 				certainty:      LintingResultCertainty.Certain,
 				detectedCasing: detectCasing(m.node.lexeme as string, config.ignorePrefix),
 				name:           m.node.lexeme as string,
-				range:          m.node.info.fullRange as SourceRange,
+				loc:            SourceLocation.fromNode(m.node),
 				id:             m.node.info.id
-			}));
+			})).filter(e => isNotUndefined(e.loc));
 		const casing = config.caseing === 'auto' ? getMostUsedCasing(symbols) : config.caseing;
 		const results = symbols
 			.filter(m => (m.detectedCasing !== casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
@@ -220,7 +219,7 @@ export const NAMING_CONVENTION = {
 					...m,
 					involvedId: id,
 					quickFix:   fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
-				};
+				} as NamingConventionResult;
 			});
 		return {
 			results: results,
@@ -231,8 +230,8 @@ export const NAMING_CONVENTION = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${formatRange(result.range)} (${result.detectedCasing})`,
-		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${formatRange(result.range)} follows wrong convention: ${result.detectedCasing}`
+		[LintingPrettyPrintContext.Query]: result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} (${result.detectedCasing})`,
+		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
 	},
 	info: {
 		name:          'Naming Convention',

@@ -1,4 +1,3 @@
-import type { SourceRange } from '../range';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -15,6 +14,7 @@ import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
+import { SourceRange } from '../range';
 
 interface MermaidGraph {
 	nodeLines:           string[]
@@ -31,21 +31,6 @@ interface MermaidGraph {
 	simplified?:         boolean
 }
 
-/**
- * Prints a {@link SourceRange|range} as a human-readable string.
- */
-export function formatRange(range: SourceRange | undefined): string {
-	if(range === undefined) {
-		return '??-??';
-	} else if(range[0] === range[2]) {
-		if(range[1] === range[3]) {
-			return `${range[0]}.${range[1]}`;
-		} else {
-			return `${range[0]}.${range[1]}-${range[3]}`;
-		}
-	}
-	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`;
-}
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
@@ -186,7 +171,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${SourceRange.format(n)}*${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? escapeMarkdown(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}

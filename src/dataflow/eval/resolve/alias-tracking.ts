@@ -148,7 +148,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param full               - Whether to track aliases on resolve
  * @param resolve            - Variable resolve mode
  * @param ctx                - Context used for clean environment
- * @param blocked            - If set, the ids that should not be considered during resolution (~>top)
+ * @param blocked            - If set, the ids that should not be considered during resolution (=&gt;top)
  */
 export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx, blocked }: ResolveInfo): ResolveResult {
 	const variableResolve = resolve ?? ctx.config.solver.variables;

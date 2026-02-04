@@ -1,12 +1,11 @@
 import { Q } from '../../search/flowr-search-builder';
 import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
-import type { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
-import { formatRange } from '../../util/mermaid/dfg';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../dataflow/info';
@@ -19,7 +18,7 @@ import { Ternary } from '../../util/logic';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
-	range:    SourceRange
+	loc:      SourceLocation
 }
 
 export interface FunctionsMetadata extends MergeableRecord {
@@ -70,7 +69,7 @@ export const functionFinderUtil = {
 					metadata.totalFunctionDefinitions++;
 					return {
 						node:      element.node,
-						range:     element.node.info.fullRange as SourceRange,
+						loc:       SourceLocation.fromNode(element.node),
 						target:    target as BrandedIdentifier,
 						certainty: element.certainty
 					};
@@ -83,15 +82,15 @@ export const functionFinderUtil = {
 					certainty:  element.certainty ?? LintingResultCertainty.Certain,
 					involvedId: element.node.info.id,
 					function:   element.target,
-					range:      element.range
-				})),
+					loc:        element.loc
+				})).filter(e => isNotUndefined(e.loc)) as FunctionsResult[],
 			'.meta': metadata
 		};
 	},
 	prettyPrint: (functionType: string) => {
 		return {
-			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${formatRange(result.range)}`,
-			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${formatRange(result.range)} is related to ${functionType}`
+			[LintingPrettyPrintContext.Query]: (result: FunctionsResult) => `Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+			[LintingPrettyPrintContext.Full]:  (result: FunctionsResult) => `Function \`${result.function}\` called at ${SourceLocation.format(result.loc)} is related to ${functionType}`
 		};
 	},
 	requireArgumentValue(

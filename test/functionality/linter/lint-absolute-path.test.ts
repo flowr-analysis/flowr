@@ -24,11 +24,11 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('is relative to home', parser, '"/home/me/foo.bar"', 'absolute-file-paths', [{
 			certainty: LintingResultCertainty.Uncertain,
 			filePath:  '/home/me/foo.bar',
-			range:     [1, 1, 1, 18],
+			loc:       [1, 1, 1, 18, '/home/me'],
 			quickFix:  [{
 				type:          'replace',
 				'description': 'Replace with a relative path to `/home/me/foo.bar`',
-				range:         [1, 1, 1, 18],
+				loc:           [1, 1, 1, 18, '/home/me'],
 				replacement:   `".${path.sep}foo.bar"`
 			}]
 		}], { totalConsidered: 1, totalUnknown: 0 }, {
@@ -41,11 +41,11 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('is relative to home', parser, 'read.csv("/home/me/foo.bar")', 'absolute-file-paths', [{
 			certainty: LintingResultCertainty.Uncertain,
 			filePath:  '/home/me/foo.bar',
-			range:     [1, 10, 1, 27],
+			loc:       [1, 10, 1, 27, '/home/me'],
 			quickFix:  [{
 				type:          'replace',
 				'description': 'Replace with a relative path to `/home/me/foo.bar`',
-				range:         [1, 10, 1, 27],
+				loc:           [1, 10, 1, 27, '/home/me'],
 				replacement:   `".${path.sep}foo.bar"`
 			}]
 		}], { totalConsidered: 1, totalUnknown: 0 }, {
@@ -90,7 +90,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						{
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  absPath,
-							range:     [1, 6, 1, absPath.length + 2 + 3 + 2] // +2 for the quotes and the assignment
+							loc:       [1, 6, 1, absPath.length + 2 + 3 + 2] // +2 for the quotes and the assignment
 						}
 					], { totalConsidered: 1, totalUnknown: 0 }, {
 						include: {
@@ -134,7 +134,7 @@ describe('flowR linter', withTreeSitter(parser => {
 							{
 								certainty: LintingResultCertainty.Certain,
 								filePath:  absPath,
-								range:     [1, 1, 1, absPath.length + 2 + fn.length + 2] // +2 for the quotes and the parentheses
+								loc:       [1, 1, 1, absPath.length + 2 + fn.length + 2] // +2 for the quotes and the parentheses
 							}
 						], { totalConsidered: 1, totalUnknown: 0 });
 					}
@@ -143,7 +143,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						assertLinter('R()', parser, `${fn}(R"(/x/y)")`, 'absolute-file-paths', [{
 							certainty: LintingResultCertainty.Certain,
 							filePath:  '/x/y',
-							range:     [1, 1, 1, 11 + fn.length] // length of the string + function name + parentheses
+							loc:       [1, 1, 1, 11 + fn.length] // length of the string + function name + parentheses
 						}], {
 							totalConsidered: 1,
 							totalUnknown:    0
@@ -152,7 +152,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						assertLinter('--[]--', parser, `${fn}(R"--[C:\\hello.txt]--")`, 'absolute-file-paths', [{
 							certainty: LintingResultCertainty.Certain,
 							filePath:  'C:\\hello.txt',
-							range:     [1, 1, 1, fn.length + 23] // length of the string + function name + parentheses
+							loc:       [1, 1, 1, fn.length + 23] // length of the string + function name + parentheses
 						}], {
 							totalConsidered: 1,
 							totalUnknown:    0
@@ -190,7 +190,7 @@ describe('flowR linter', withTreeSitter(parser => {
 							{
 								certainty: LintingResultCertainty.Uncertain,
 								filePath:  components.join(path.sep),
-								range:     [1, 1, 1, command.length]
+								loc:       [1, 1, 1, command.length]
 							}
 						], { totalConsidered: 1, totalUnknown: 0 });
 					}
@@ -198,7 +198,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						{
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  'C:\\\\b',
-							range:     [1, 1, 1, 31]
+							loc:       [1, 1, 1, 31]
 						}
 					], { totalConsidered: 1, totalUnknown: 0 });
 					/* If someone constructs an absolute path due to a (cursed) fsep, we should still be able to detect it */
@@ -206,7 +206,7 @@ describe('flowR linter', withTreeSitter(parser => {
 						{
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  'C:/b',
-							range:     [1, 1, 1, 30]
+							loc:       [1, 1, 1, 30]
 						}
 					], { totalConsidered: 1, totalUnknown: 0 });
 				});

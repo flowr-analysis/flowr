@@ -1,7 +1,6 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { RNumberPool, RStringPool, RSymbolPool } from '../../../_helper/provider';
 import { exprList } from '../../../_helper/ast-builder';
-import { rangeFrom } from '../../../../../src/util/range';
 import { MIN_VERSION_RAW_STABLE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { prepareParsedData } from '../../../../../src/r-bridge/lang-4.x/ast/parser/json/format';
 import { label } from '../../../_helper/label';
@@ -9,6 +8,7 @@ import { retrieveParseDataFromRCode } from '../../../../../src/r-bridge/retrieve
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe, assert, test, expect } from 'vitest';
 import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { SourceRange } from '../../../../../src/util/range';
 
 describe.sequential('CSV parsing', withShell(shell => {
 	test('simple', async() => {
@@ -63,7 +63,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 		);
 		describe('numbers', () => {
 			for(const number of RNumberPool) {
-				const range = rangeFrom(1, 1, 1, number.str.length);
+				const range = SourceRange.from(1, 1, 1, number.str.length);
 				assertAst(label(number.str, ['numbers']),
 					shell, number.str, exprList({
 						type:     RType.Number,
@@ -80,7 +80,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 		});
 		describe('strings', () => {
 			for(const string of RStringPool) {
-				const range = rangeFrom(1, 1, 1, string.str.length);
+				const range = SourceRange.from(1, 1, 1, string.str.length);
 				const raw = string.str.startsWith('r') || string.str.startsWith('R');
 				assertAst(label(string.str, ['strings', ...(raw ? ['raw-strings' as const] : [])]),
 					shell, string.str, exprList({
@@ -99,7 +99,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 		});
 		describe('Symbols', () => {
 			for(const symbol of RSymbolPool) {
-				const range = rangeFrom(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1);
+				const range = SourceRange.from(1, symbol.symbolStart, 1, symbol.symbolStart + symbol.val.length - 1);
 				const exported = symbol.namespace !== undefined;
 				const mapped = exported && !symbol.internal ? ['accessing-exported-names' as const] : [];
 				assertAst(label(symbol.str, ['name-normal', ...mapped]),
@@ -118,7 +118,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 				assertAst(label(`${lexeme} as ${JSON.stringify(content)}`, ['logical']),
 					shell, lexeme, exprList({
 						type:     RType.Logical,
-						location: rangeFrom(1, 1, 1, lexeme.length),
+						location: SourceRange.from(1, 1, 1, lexeme.length),
 						lexeme,
 						content,
 						info:     {}
@@ -135,7 +135,7 @@ describe.sequential('Constant Parsing', withShell(shell => {
 						adToks: [
 							{
 								type:     RType.Comment,
-								location: rangeFrom(1, 1, 1, 13),
+								location: SourceRange.from(1, 1, 1, 13),
 								lexeme:   '# Hello World',
 								info:     {}
 							}

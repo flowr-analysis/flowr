@@ -12,6 +12,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isNotUndefined } from '../util/assert';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -127,23 +128,40 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 }
 
 /**
- * Checks whether the given linting results represent an error.
- * @see {@link isLintingResultsSuccess}
+ * The results of executing a linting rule.
+ * @see {@link LintingResults.isError} and {@link LintingResults.isSuccess} to differentiate between success and error results.
  */
-export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
-	return 'error' in o;
-}
-
-/**
- * Checks whether the given linting results represent a successful linting result.
- * @see {@link isLintingResultsError}
- */
-export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
-	return 'results' in o;
-}
-
 export type LintingResults<Name extends LintingRuleNames> = LintingResultsSuccess<Name> | LintingResultsError;
 
+/**
+ * Helper functions for working with {@link LintingResults}.
+ */
+export const LintingResults = {
+	/**
+	 * Checks whether the given linting results represent an error.
+	 * @see {@link LintingResultsError}
+	 */
+	isError<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsError {
+		return 'error' in o;
+	},
+	/**
+	 * Checks whether the given linting results represent a successful execution.
+	 * @see {@link LintingResultsSuccess}
+	 */
+	isSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
+		return 'results' in o;
+	},
+	/**
+	 * Gets all involved node IDs from the given linting results.
+	 * If the results represent an error, an empty set is returned.
+	 */
+	allInvolvedIds<L extends LintingRuleNames>(this: void, res: LintingResults<L> | undefined): Set<NodeId> {
+		if(!res || LintingResults.isError(res)) {
+			return new Set();
+		}
+		return new Set(res.results.flatMap(r => r.involvedId).filter(isNotUndefined));
+	}
+} as const;
 
 export enum LintingResultCertainty {
 	/**

@@ -11,10 +11,9 @@ import {
 } from '../../../linter/linter-rules';
 import {
 	type ConfiguredLintingRule,
-	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingResultCertainty,
-	type LintingResults,
+	LintingResults,
 	type LintingRule
 } from '../../../linter/linter-format';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
@@ -111,7 +110,7 @@ export const LinterQueryDefinition = {
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
 			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
@@ -143,12 +142,9 @@ export const LinterQueryDefinition = {
 	}).description('The linter query lints for the given set of rules and returns the result.'),
 	flattenInvolvedNodes: (queryResults) => {
 		const out = queryResults as LinterQueryResult;
-		return Object.values(out.results).flatMap(v => {
-			if(isLintingResultsError(v)) {
-				return [];
-			}
-			return v.results.flatMap(v => Array.isArray(v.involvedId) ? v.involvedId : [v.involvedId]);
-		}).filter(isNotUndefined);
+		return Object.values(out.results).flatMap(v =>
+			Array.from(LintingResults.allInvolvedIds(v))
+		).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;
 
@@ -156,7 +152,7 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
-	if(isLintingResultsError(results)) {
+	if(LintingResults.isError(results)) {
 		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
 		result.push(`       ╰ ${error}`);
 		return;

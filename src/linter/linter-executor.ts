@@ -40,9 +40,8 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 			}
 		};
 	} catch(e) {
-		const msg = typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e);
 		return {
-			error: msg
+			error: e
 		};
 	}
 }

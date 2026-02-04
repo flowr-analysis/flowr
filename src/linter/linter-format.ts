@@ -118,7 +118,8 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
  * For when a linting rule throws an error during execution
  */
 export interface LintingResultsError {
-	readonly error: string
+	/** the error thrown */
+	readonly error: unknown
 }
 
 
@@ -140,6 +141,7 @@ export const LintingResults = {
 	/**
 	 * Checks whether the given linting results represent an error.
 	 * @see {@link LintingResultsError}
+	 * @see {@link LintingResults.isSuccess}
 	 */
 	isError<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsError {
 		return 'error' in o;
@@ -147,9 +149,20 @@ export const LintingResults = {
 	/**
 	 * Checks whether the given linting results represent a successful execution.
 	 * @see {@link LintingResultsSuccess}
+	 * @see {@link LintingResults.isError}
+	 * @see {@link LintingResults.unpackSuccess}
 	 */
 	isSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
 		return 'results' in o;
+	},
+	/**
+	 * Unpacks the given linting results, throwing an error if they represent an error.
+	 */
+	unpackSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): LintingResultsSuccess<Name> {
+		if(LintingResults.isSuccess(o)) {
+			return o;
+		}
+		throw new Error(LintingResults.stringifyError(o));
 	},
 	/**
 	 * Gets all involved node IDs from the given linting results.
@@ -160,13 +173,29 @@ export const LintingResults = {
 			return new Set();
 		}
 		return new Set(res.results.flatMap(r => r.involvedId).filter(isNotUndefined));
+	},
+	/**
+	 * Stringifies the error contained in the given linting results error.
+	 */
+	stringifyError(this: void, { error }: LintingResultsError): string {
+		if(error instanceof Error) {
+			return error.message;
+		}
+		if(typeof error === 'string') {
+			return error;
+		}
+		try {
+			return JSON.stringify(error);
+		} catch{
+			return String(error);
+		}
 	}
 } as const;
 
 export enum LintingResultCertainty {
 	/**
 	 * The linting rule cannot say for sure whether the result is correct or not.
-	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side-effects, reflection, etc.
+	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side effects, reflection, etc.
 	 */
 	Uncertain  = 'uncertain',
 	/**

@@ -153,7 +153,7 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
 	if(LintingResults.isError(results)) {
-		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+		const error = LintingResults.stringifyError(results).includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
 		result.push(`       ╰ ${error}`);
 		return;
 	}

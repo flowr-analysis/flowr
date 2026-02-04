@@ -106,11 +106,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		);
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);
-
-		if(LintingResults.isError(results)) {
-			throw new Error(results.error);
-		}
+		const results = LintingResults.unpackSuccess(await executeLintingRule(ruleName, analyzer, lintingRuleConfig));
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint[LintingPrettyPrintContext.Query](result, metadata)} (${result.certainty})${result.quickFix ? ` (${result.quickFix.length} quick fix(es) available)` : ''}`,

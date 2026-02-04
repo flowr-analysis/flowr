@@ -42,6 +42,6 @@ describe('flowR linter', withTreeSitter(parser => {
 		const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
 
 		assert(LintingResults.isError(result), 'Dummy Rule should always return Error');
-		assert(result.error === 'Hello World');
+		assert(LintingResults.stringifyError(result).includes('Hello World'));
 	});
 }));

@@ -1,8 +1,7 @@
 import { LintingResultCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import { type SourceRange, rangeIsSubsetOf } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { formatRange } from '../../util/mermaid/dfg';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
@@ -10,7 +9,7 @@ import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '.
 import type { Writable } from 'ts-essentials';
 
 export interface DeadCodeResult extends LintingResult {
-	readonly range: SourceRange
+	readonly loc: SourceLocation
 }
 
 export interface DeadCodeConfig extends MergeableRecord {
@@ -45,16 +44,16 @@ export const DEAD_CODE = {
 					.map(element => ({
 						certainty:  LintingResultCertainty.Certain,
 						involvedId: element.node.info.id,
-						range:      (element.node.info.fullRange ?? element.node.location) as SourceRange
+						loc:        SourceLocation.fromNode(element.node)
 					}))
-					.filter(element => isNotUndefined(element.range))
+					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
 			),
 			'.meta': meta
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Code at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Code at ${formatRange(result.range)} can never be executed`,
+		[LintingPrettyPrintContext.Query]: result => `Code at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Code at ${SourceLocation.format(result.loc)} can never be executed`,
 	},
 	info: {
 		name:          'Dead Code',
@@ -69,7 +68,7 @@ export const DEAD_CODE = {
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
 	for(let i = results.length-1; i >= 0; i--){
 		const result = results[i];
-		const other = results.find(other => result !== other && rangeIsSubsetOf(result.range, other.range));
+		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc, other.loc));
 		if(other !== undefined) {
 			if(!Array.isArray(other.involvedId)) {
 				other.involvedId = other.involvedId !== undefined ? [other.involvedId] : [];

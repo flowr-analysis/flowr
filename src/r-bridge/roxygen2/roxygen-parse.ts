@@ -6,7 +6,7 @@ import type { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isRComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { mergeRanges } from '../../util/range';
+import { SourceRange } from '../../util/range';
 
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
@@ -49,7 +49,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 		attachedTo:  cur?.info.id,
 		requestNode: node.info.id,
 		range:       [
-			...mergeRanges(comments.map(c => c.location)),
+			...SourceRange.merge(comments.map(c => c.location)),
 			comments.find(c => c.info.file)?.info.file
 		]
 	};

@@ -2,7 +2,7 @@ import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
 import type { MergeableRecord } from '../../../../util/objects';
-import { type SourcePosition, getRangeStart } from '../../../../util/range';
+import { SourcePosition, SourceRange } from '../../../../util/range';
 import { guard, isNotUndefined } from '../../../../util/assert';
 import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -53,13 +53,13 @@ function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefin
 		}
 		const loc = input.normalizedRAst.idMap.get(target)?.location;
 		if(loc) {
-			callsites.push(getRangeStart(loc));
+			callsites.push(SourceRange.getStart(loc));
 		}
 	}
 	for(const call of recursiveCalls) {
 		const loc = call.location;
 		if(loc) {
-			callsites.push(getRangeStart(loc));
+			callsites.push(SourceRange.getStart(loc));
 		}
 	}
 	return callsites;
@@ -88,7 +88,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 				.map(([vertex]) => {
 					const l = graph.idMap?.get(vertex.id)?.location;
 					return {
-						location: l ? getRangeStart(l) : [-1, -1] satisfies SourcePosition
+						location: l ? SourceRange.getStart(l) : SourcePosition.invalid()
 					};
 				});
 
@@ -147,7 +147,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const lexemeSplit= lexeme?.split('\n');
 
 			allDefinitions.push({
-				location:           getRangeStart(node.location),
+				location:           SourceRange.getStart(node.location),
 				callsites:          retrieveAllCallsites(input, node, recursiveCalls),
 				numberOfParameters: node.parameters.length,
 				returns:            returnTypes,

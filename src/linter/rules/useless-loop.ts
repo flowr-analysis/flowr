@@ -2,15 +2,14 @@ import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
 import type { BuiltInProcName } from '../../dataflow/environments/built-in';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
-import { formatRange } from '../../util/mermaid/dfg';
 import type { MergeableRecord } from '../../util/objects';
-import type { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
 export interface UselessLoopResult extends LintingResult {
-	name:  string,
-	range: SourceRange
+	name: string,
+	loc:  SourceLocation
 }
 
 export interface UselessLoopConfig extends MergeableRecord {
@@ -36,7 +35,7 @@ export const USELESS_LOOP = {
 		).map(res => ({
 			certainty:  LintingResultCertainty.Certain,
 			name:       res.node.lexeme as string,
-			range:      res.node.info.fullRange as SourceRange,
+			loc:        SourceLocation.fromNode(res.node) ?? SourceLocation.invalid(),
 			involvedId: res.node.info.id
 		} satisfies UselessLoopResult));
 
@@ -48,8 +47,8 @@ export const USELESS_LOOP = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${formatRange(result.range)} only loops once`,
-		[LintingPrettyPrintContext.Full]:  result => `${result.name}-loop at ${formatRange(result.range)} only loops once`
+		[LintingPrettyPrintContext.Query]: result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`,
+		[LintingPrettyPrintContext.Full]:  result => `${result.name}-loop at ${SourceLocation.format(result.loc)} only loops once`
 	},
 	info: {
 		name:          'Useless Loops',

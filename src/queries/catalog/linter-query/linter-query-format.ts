@@ -9,12 +9,11 @@ import {
 	type LintingRuleResult,
 	LintingRules
 } from '../../../linter/linter-rules';
-import {
+import { type LintingResultsError,
 	type ConfiguredLintingRule,
-	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingResultCertainty,
-	type LintingResults,
+	LintingResults,
 	type LintingRule
 } from '../../../linter/linter-format';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
@@ -111,7 +110,7 @@ export const LinterQueryDefinition = {
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
 			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
@@ -121,7 +120,17 @@ export const LinterQueryDefinition = {
 				result.push(
 					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
 				);
+			} else if(Object.values(out.results).length === 1) {
+				const fst = Object.values(out.results)[0] as LintingResultsError;
+				result.push('Error: ' + LintingResults.stringifyError(fst));
+				if(fst.error instanceof Error) {
+					// print stack
+					result.push('Stack Trace:\n' + fst.error.stack);
+				}
 			}
+			result.push(
+				'If you consider this an error that should be fixed, please report a bug: ' + getGuardIssueUrl('linting rule threw an error')
+			);
 			return true;
 		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
@@ -143,12 +152,9 @@ export const LinterQueryDefinition = {
 	}).description('The linter query lints for the given set of rules and returns the result.'),
 	flattenInvolvedNodes: (queryResults) => {
 		const out = queryResults as LinterQueryResult;
-		return Object.values(out.results).flatMap(v => {
-			if(isLintingResultsError(v)) {
-				return [];
-			}
-			return v.results.flatMap(v => Array.isArray(v.involvedId) ? v.involvedId : [v.involvedId]);
-		}).filter(isNotUndefined);
+		return Object.values(out.results).flatMap(v =>
+			Array.from(LintingResults.allInvolvedIds(v))
+		).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;
 
@@ -156,8 +162,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
-	if(isLintingResultsError(results)) {
-		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+	if(LintingResults.isError(results)) {
+		const error = LintingResults.stringifyError(results).includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + LintingResults.stringifyError(results);
 		result.push(`       ╰ ${error}`);
 		return;
 	}

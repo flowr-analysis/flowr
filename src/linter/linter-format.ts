@@ -7,11 +7,12 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
-import type { SourceRange } from '../util/range';
+import type { SourceLocation } from '../util/range';
 import type { DataflowInformation } from '../dataflow/info';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isNotUndefined } from '../util/assert';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
@@ -74,7 +75,7 @@ interface BaseQuickFix {
 	/**
 	 * The range of the text that should be replaced.
 	 */
-	readonly range:       SourceRange
+	readonly loc:         SourceLocation
 }
 
 export interface LintQuickFixReplacement extends BaseQuickFix {
@@ -117,7 +118,8 @@ export interface ConfiguredLintingRule<Name extends LintingRuleNames = LintingRu
  * For when a linting rule throws an error during execution
  */
 export interface LintingResultsError {
-	readonly error: string
+	/** the error thrown */
+	readonly error: unknown
 }
 
 
@@ -127,28 +129,73 @@ export interface LintingResultsSuccess<Name extends LintingRuleNames> {
 }
 
 /**
- * Checks whether the given linting results represent an error.
- * @see {@link isLintingResultsSuccess}
+ * The results of executing a linting rule.
+ * @see {@link LintingResults.isError} and {@link LintingResults.isSuccess} to differentiate between success and error results.
  */
-export function isLintingResultsError<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsError {
-	return 'error' in o;
-}
-
-/**
- * Checks whether the given linting results represent a successful linting result.
- * @see {@link isLintingResultsError}
- */
-export function isLintingResultsSuccess<Name extends LintingRuleNames>(o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
-	return 'results' in o;
-}
-
 export type LintingResults<Name extends LintingRuleNames> = LintingResultsSuccess<Name> | LintingResultsError;
 
+/**
+ * Helper functions for working with {@link LintingResults}.
+ */
+export const LintingResults = {
+	/**
+	 * Checks whether the given linting results represent an error.
+	 * @see {@link LintingResultsError}
+	 * @see {@link LintingResults.isSuccess}
+	 */
+	isError<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsError {
+		return 'error' in o;
+	},
+	/**
+	 * Checks whether the given linting results represent a successful execution.
+	 * @see {@link LintingResultsSuccess}
+	 * @see {@link LintingResults.isError}
+	 * @see {@link LintingResults.unpackSuccess}
+	 */
+	isSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): o is LintingResultsSuccess<Name> {
+		return 'results' in o;
+	},
+	/**
+	 * Unpacks the given linting results, throwing an error if they represent an error.
+	 */
+	unpackSuccess<Name extends LintingRuleNames>(this: void, o: LintingResults<Name>): LintingResultsSuccess<Name> {
+		if(LintingResults.isSuccess(o)) {
+			return o;
+		}
+		throw new Error(LintingResults.stringifyError(o));
+	},
+	/**
+	 * Gets all involved node IDs from the given linting results.
+	 * If the results represent an error, an empty set is returned.
+	 */
+	allInvolvedIds<L extends LintingRuleNames>(this: void, res: LintingResults<L> | undefined): Set<NodeId> {
+		if(!res || LintingResults.isError(res)) {
+			return new Set();
+		}
+		return new Set(res.results.flatMap(r => r.involvedId).filter(isNotUndefined));
+	},
+	/**
+	 * Stringifies the error contained in the given linting results error.
+	 */
+	stringifyError(this: void, { error }: LintingResultsError): string {
+		if(error instanceof Error) {
+			return error.message;
+		}
+		if(typeof error === 'string') {
+			return error;
+		}
+		try {
+			return JSON.stringify(error);
+		} catch{
+			return String(error);
+		}
+	}
+} as const;
 
 export enum LintingResultCertainty {
 	/**
 	 * The linting rule cannot say for sure whether the result is correct or not.
-	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side-effects, reflection, etc.
+	 * This linting certainty should be used for linting results whose calculations are based on estimations involving unknown side effects, reflection, etc.
 	 */
 	Uncertain  = 'uncertain',
 	/**

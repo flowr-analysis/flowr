@@ -1,10 +1,10 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { type LintingRuleNames, LintingRules } from '../../../src/linter/linter-rules';
-import { type LintingResult, type LintingRule,
-	isLintingResultsError,
+import {
+	type LintingResult, type LintingRule,
 	LintingPrettyPrintContext,
-	LintingRuleCertainty
+	LintingRuleCertainty, LintingResults
 } from '../../../src/linter/linter-format';
 import type { MergeableRecord } from '../../../src/util/objects';
 import { Q } from '../../../src/search/flowr-search-builder';
@@ -41,7 +41,7 @@ describe('flowR linter', withTreeSitter(parser => {
 
 		const result = await executeLintingRule('dummy' as unknown as LintingRuleNames, analyzer, undefined);
 
-		assert(isLintingResultsError(result), 'Dummy Rule should always return Error');
-		assert(result.error === 'Hello World');
+		assert(LintingResults.isError(result), 'Dummy Rule should always return Error');
+		assert(LintingResults.stringifyError(result).includes('Hello World'));
 	});
 }));

@@ -125,8 +125,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('simple', parser, 'testVar <- 5', 'naming-convention', [{
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7], description: 'Rename to match naming convention PascalCase' } as const],
-			range:          [1, 1, 1, 7],
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', loc: [1, 1, 1, 7], description: 'Rename to match naming convention PascalCase' } as const],
+			loc:            [1, 1, 1, 7],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
@@ -135,10 +135,10 @@ describe('flowR linter', withTreeSitter(parser => {
 			name:           'testVar',
 			detectedCasing: CasingConvention.CamelCase,
 			quickFix:       [
-				{ type: 'replace', replacement: 'TestVar', range: [2, 7, 2, 13], description: 'Rename to match naming convention PascalCase' } as const,
-				{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
+				{ type: 'replace', replacement: 'TestVar', loc: [2, 7, 2, 13], description: 'Rename to match naming convention PascalCase' } as const,
+				{ type: 'replace', replacement: 'TestVar', loc: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
 			],
-			range:     [1, 1, 1, 7],
+			loc:       [1, 1, 1, 7],
 			certainty: LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase });
 
@@ -148,20 +148,20 @@ describe('flowR linter', withTreeSitter(parser => {
 				name:           'foo_Bar',
 				detectedCasing: CasingConvention.CamelSnakeCase,
 				quickFix:       [
-					{ type: 'replace', replacement: 'FooBar', range: [2, 1, 2, 7], description: 'Rename to match naming convention PascalCase' } as const,
-					{ type: 'replace', replacement: 'FooBar', range: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
+					{ type: 'replace', replacement: 'FooBar', loc: [2, 1, 2, 7], description: 'Rename to match naming convention PascalCase' } as const,
+					{ type: 'replace', replacement: 'FooBar', loc: [1, 1, 1, 7],   description: 'Rename to match naming convention PascalCase' } as const
 				],
-				range:     [1, 1, 1, 7],
+				loc:       [1, 1, 1, 7],
 				certainty: LintingResultCertainty.Certain,
 			},
 			{
 				name:           'arg',
 				detectedCasing: CasingConvention.CamelCase,
 				quickFix:       [
-					{ type: 'replace', replacement: 'Arg', range: [1, 26, 1, 28], description: 'Rename to match naming convention PascalCase' } as const,
-					{ type: 'replace', replacement: 'Arg', range: [1, 21, 1, 23],   description: 'Rename to match naming convention PascalCase' } as const
+					{ type: 'replace', replacement: 'Arg', loc: [1, 26, 1, 28], description: 'Rename to match naming convention PascalCase' } as const,
+					{ type: 'replace', replacement: 'Arg', loc: [1, 21, 1, 23],   description: 'Rename to match naming convention PascalCase' } as const
 				],
-				range:     [1, 21, 1, 23],
+				loc:       [1, 21, 1, 23],
 				certainty: LintingResultCertainty.Certain,
 			},
 		], undefined, { caseing: CasingConvention.PascalCase });
@@ -170,8 +170,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('detect casing', parser, 'testVar <- 5\ntestVarTwo <- 5\ntest_var <- 5\n', 'naming-convention', [{
 			name:           'test_var',
 			detectedCasing: CasingConvention.SnakeCase,
-			quickFix:       [{ type: 'replace', replacement: 'testVar', range: [3, 1, 3, 8], description: 'Rename to match naming convention camelCase' } as const],
-			range:          [3, 1, 3, 8],
+			quickFix:       [{ type: 'replace', replacement: 'testVar', loc: [3, 1, 3, 8], description: 'Rename to match naming convention camelCase' } as const],
+			loc:            [3, 1, 3, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: 'auto' });
 
@@ -186,7 +186,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			certainty:      LintingResultCertainty.Certain,
 			detectedCasing: CasingConvention.Unknown,
 			name:           '._',
-			range:          [ 1, 1, 1, 2],
+			loc:            [ 1, 1, 1, 2],
 			quickFix:       undefined
 		}], undefined, {
 			caseing:        CasingConvention.SnakeCase,
@@ -199,8 +199,8 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('ignore leading underscores', parser, '_testVar <- 5', 'naming-convention', [{
 			name:           '_testVar',
 			detectedCasing: CasingConvention.CamelCase,
-			quickFix:       [{ type: 'replace', replacement: 'TestVar', range: [1, 1, 1, 8], description: 'Rename to match naming convention PascalCase' } as const],
-			range:          [1, 1, 1, 8],
+			quickFix:       [{ type: 'replace', replacement: 'TestVar', loc: [1, 1, 1, 8], description: 'Rename to match naming convention PascalCase' } as const],
+			loc:            [1, 1, 1, 8],
 			certainty:      LintingResultCertainty.Certain,
 		}], undefined, { caseing: CasingConvention.PascalCase, ignorePrefix: '_' });
 	});

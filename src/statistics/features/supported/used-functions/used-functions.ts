@@ -6,7 +6,6 @@ import {
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
 import { postProcess } from './post-process';
-import { getRangeStart } from '../../../../util/range';
 import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
@@ -14,6 +13,7 @@ import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
 import { Identifier } from '../../../../dataflow/environments/identifier';
+import { SourceRange } from '../../../../util/range';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -102,7 +102,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath);
 				allCalls.push([
 					undefined,
-					getRangeStart(node.location),
+					SourceRange.getStart(node.location),
 					node.arguments.length,
 					'',
 					hasCallsEdge ? 1 : 0
@@ -110,7 +110,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
-					getRangeStart(node.location),
+					SourceRange.getStart(node.location),
 					node.arguments.length,
 					Identifier.getNamespace(node.functionName.content) ?? '',
 					hasCallsEdge ? 1 : 0

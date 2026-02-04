@@ -9,7 +9,6 @@ import { processAsNamedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
-import { invalidRange } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
@@ -27,6 +26,7 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
+import { SourceRange } from '../util/range';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -60,7 +60,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 			info:     info,
 			content:  groupStart?.content ?? '{',
 			lexeme:   groupStart?.lexeme ?? '{',
-			location: location ?? invalidRange(),
+			location: location ?? SourceRange.invalid(),
 			ns:       groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}

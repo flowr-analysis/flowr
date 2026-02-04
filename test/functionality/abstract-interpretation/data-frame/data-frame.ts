@@ -20,10 +20,10 @@ import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
-import { getRangeEnd } from '../../../../src/util/range';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { SourceRange } from '../../../../src/util/range';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -263,7 +263,8 @@ export function testDataFrameDomainAgainstReal(
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to an R symbol`);
 			}
-			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
+			const range = SourceRange.fromNode(node);
+			const lineNumber = range ? SourceRange.getEndLine(range) : undefined;
 
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);

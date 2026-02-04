@@ -18,7 +18,7 @@ import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
-import { invalidRange } from '../../../../util/range';
+import { SourceRange } from '../../../../util/range';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -243,9 +243,9 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 			info:     node.info,
 			lexeme:   'not',
 			content:  Identifier.make('not'),
-			location: node.location ?? invalidRange(),
+			location: node.location ?? SourceRange.invalid(),
 		},
-		location:  node.location ?? invalidRange(),
+		location:  node.location ?? SourceRange.invalid(),
 		lexeme:    'not',
 		arguments: [toUnnamedArgument(node, idMap)]
 	};

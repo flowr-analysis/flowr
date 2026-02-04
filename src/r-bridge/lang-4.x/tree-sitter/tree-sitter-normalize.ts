@@ -3,8 +3,7 @@ import type { RNode } from '../ast/model/model';
 import { ParseError } from '../ast/parser/main/normalizer-data';
 import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
-import type { SourceRange } from '../../../util/range';
-import { invalidRange } from '../../../util/range';
+import { SourceRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
 import { boolean2ts, number2ts, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
@@ -609,7 +608,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 
 function makeSourceRange(node: SyntaxNode | undefined): SourceRange {
 	if(!node) {
-		return invalidRange();
+		return SourceRange.invalid();
 	}
 	if(node.startPosition && node.endPosition) {
 		return [

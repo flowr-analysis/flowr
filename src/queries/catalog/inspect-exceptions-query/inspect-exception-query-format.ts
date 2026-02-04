@@ -4,11 +4,10 @@ import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
-import type { SourceRange } from '../../../util/range';
+import { SourceLocation } from '../../../util/range';
 import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
@@ -48,16 +47,17 @@ export const InspectExceptionQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];
 		result.push(`Query: ${bold('inspect-exception', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		const n = await processed.normalize();
-		function getLoc(r: NodeId): SourceRange | undefined {
-			return n.idMap.get(normalizeIdToNumberIfPossible(r))?.location ?? undefined;
+		function getLoc(r: NodeId): SourceLocation | undefined {
+			const node = n.idMap.get(normalizeIdToNumberIfPossible(r));
+			return node ? SourceLocation.fromNode(node) : undefined;
 		}
 		function getLexeme(r: NodeId): string {
 			return n.idMap.get(normalizeIdToNumberIfPossible(r))?.lexeme ?? String(r);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
-			result.push(`  - Function ${bold(r, formatter)} (${formatRange(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
+			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);
 			for(const { id: ex, cds } of v) {
-				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${getLexeme(ex)}" (${formatRange(getLoc(ex))}, cds: ${cds?.map(c => c.when + ':' + formatRange(getLoc(c.id))).join(', ') ?? 'none'})`);
+				result.push(`      - Exception ${happensInEveryBranch(cds) ? 'always ' : 'maybe '}thrown at id ${bold(String(ex), formatter)} "${getLexeme(ex)}" (${SourceLocation.format(getLoc(ex))}, cds: ${cds?.map(c => c.when + ':' + SourceLocation.format(getLoc(c.id))).join(', ') ?? 'none'})`);
 			}
 		}
 		return true;

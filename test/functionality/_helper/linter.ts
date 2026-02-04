@@ -9,7 +9,7 @@ import { assert, test } from 'vitest';
 import { fileProtocol, requestFromInput } from '../../../src/r-bridge/retriever';
 import { type NormalizedAst, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import { type LintingRule, isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
+import { type LintingRule, LintingPrettyPrintContext, LintingResults } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -106,11 +106,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		);
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);
-
-		if(isLintingResultsError(results)) {
-			throw new Error(results.error);
-		}
+		const results = LintingResults.unpackSuccess(await executeLintingRule(ruleName, analyzer, lintingRuleConfig));
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint[LintingPrettyPrintContext.Query](result, metadata)} (${result.certainty})${result.quickFix ? ` (${result.quickFix.length} quick fix(es) available)` : ''}`,

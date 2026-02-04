@@ -17,7 +17,7 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { invalidRange } from '../../../../../../util/range';
+import { SourceRange } from '../../../../../../util/range';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -111,7 +111,7 @@ export function processS3Dispatch<OtherInfo>(
 		info:     generic.info,
 		content:  accessedIdentifiers[0],
 		lexeme:   accessedIdentifiers[0],
-		location: generic.location ?? invalidRange()
+		location: generic.location ?? SourceRange.invalid()
 	};
 
 	patchFunctionCall({

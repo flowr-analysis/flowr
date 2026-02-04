@@ -6,12 +6,12 @@ import { ReferenceType } from '../../../../src/dataflow/environments/identifier'
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RParameter } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
-import { rangeFrom } from '../../../../src/util/range';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { EdgeType } from '../../../../src/dataflow/graph/edge';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../_helper/label';
+import { SourceRange } from '../../../../src/util/range';
 
 describe('Dataflow Linker - Argument Matching', () => {
 	/**
@@ -46,7 +46,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 					type:     RType.Symbol,
 					content:  name,
 					lexeme:   name,
-					location: rangeFrom(0, 0, 0, 0),
+					location: SourceRange.from(0, 0, 0, 0),
 					info:     {
 						id:      'param-' + idx,
 						role:    RoleInParent.ParameterName,
@@ -62,7 +62,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 					nesting: 1,
 					index:   idx
 				},
-				location:     rangeFrom(0, 0, 0, 0),
+				location:     SourceRange.from(0, 0, 0, 0),
 				lexeme:       name,
 				special:      name === '...',
 				defaultValue: undefined

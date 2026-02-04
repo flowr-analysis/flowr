@@ -17,7 +17,6 @@ import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { invalidRange } from '../../../../../../util/range';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { RFunctionDefinition } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { isNotUndefined } from '../../../../../../util/assert';
@@ -26,6 +25,7 @@ import { Identifier } from '../../../../../environments/identifier';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
+import { SourceRange } from '../../../../../../util/range';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -101,7 +101,7 @@ export function processS7NewGeneric<OtherInfo>(
 // 'function([dispatch_args],...) S7_dispatch()'; returns the value id
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const argNameId = rootId + '-s7-new-generic-fun-arg-name';
-	const r = name.location ?? invalidRange();
+	const r = name.location ?? SourceRange.invalid();
 	const argName = {
 		type:    RType.Symbol,
 		lexeme:  'fun',

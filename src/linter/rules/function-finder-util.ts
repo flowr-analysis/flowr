@@ -15,6 +15,7 @@ import type { FunctionInfo } from '../../queries/catalog/dependencies-query/func
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { Ternary } from '../../util/logic';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
@@ -97,11 +98,11 @@ export const functionFinderUtil = {
 		pool: readonly FunctionInfo[],
 		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider },
 		requireValue: RegExp | string | undefined
-	): boolean {
+	): Ternary {
 		const info = pool.find(f => f.name === element.node.lexeme);
 		/* if we have no additional info, we assume they always access the network */
 		if(info === undefined) {
-			return true;
+			return Ternary.Maybe;
 		}
 		const vert = data.dataflow.graph.getVertex(element.node.info.id);
 		if(isFunctionCallVertex(vert)){
@@ -115,11 +116,13 @@ export const functionFinderUtil = {
 				data.analyzer.inspectContext());
 			// we obtain all values, at least one of them has to trigger for the request
 			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
-
-			/* if there are no arguments we assume they may access the network, otherwise we check for the flag */
-			return argValues.length === 0 || argValues.some(v => v === Unknown || (requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue));
+			if(argValues.length === 0){
+				return Ternary.Maybe;
+			} else if(argValues.some(v => v === Unknown || (requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue))){
+				return Ternary.Always;
+			}
 		}
-		return false;
+		return Ternary.Never;
 	}
 };
 

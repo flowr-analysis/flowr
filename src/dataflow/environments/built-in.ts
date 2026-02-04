@@ -127,9 +127,16 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	 */
 	readonly useAsProcessor?:        BuiltInProcName
 }
-
-
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export interface BuiltInEvalHandlerArgs {
+	resolve:      VariableResolve,
+	node:         RNodeWithParent,
+	ctx:          ReadOnlyFlowrAnalyzerContext,
+	environment?: REnvironmentInformation,
+	graph?:       DataflowGraph,
+	idMap?:       AstIdMap
+	blocked?:     Set<NodeId>
+}
+export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,

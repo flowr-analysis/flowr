@@ -194,7 +194,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
-		if(this.builtInEnv || this === other || !other) {
+		if(this.builtInEnv || this === other || !other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -241,7 +241,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
-		if(!other || this.builtInEnv) {
+		if(!other || this.builtInEnv || this === other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);

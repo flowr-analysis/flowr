@@ -140,7 +140,7 @@ export class Environment implements IEnvironment {
 		}
 		// navigate to parent until either before built-in or matching namespace
 		const newEnvironment = this.clone(false);
-		const current = newEnvironment;
+		let current = newEnvironment;
 		do{
 			if(current.n === ns) {
 				current.define(definition);
@@ -148,6 +148,7 @@ export class Environment implements IEnvironment {
 			} else if(current.parent && !current.parent.builtInEnv) {
 				// clone parent
 				current.parent = current.parent.clone(false);
+				current = current.parent;
 			} else {
 				break;
 			}

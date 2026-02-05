@@ -82,7 +82,6 @@ export function processAccess<OtherInfo>(
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
-
 	return {
 		...info,
 		/*

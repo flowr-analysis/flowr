@@ -24,6 +24,15 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		} as const
 	);
+	assertDataflow(label('Double Base with existing env', ['namespaces', 'lexicographic-scope']), ts,
+		'base::x <- 42\nbase::y <- 3\nprint(base::y)',
+		emptyGraph()
+			.reads('3@y', '2@y'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
 		'x <- 42\nprint(base::x)',
 		emptyGraph()

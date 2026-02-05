@@ -6,7 +6,10 @@
 \usepackage{anysize}
 
 \begin{document}
-
+<<a, fig=TRUE>>=
+print("hi")
+print("how are you")
+@
 
 <<fig=TRUE>>=
 plot(waterstriders, main="")
@@ -19,14 +22,18 @@ Test A B C 123
 fit <- mppm(P ~ x, hyperframe(P=waterstriders))
 res <- residuals(fit)
 totres <- sapply(res, integral.msr)
+<<a>>
+<<a>>
 @
 
 test test test
 1 2 3
 
 <<eval=FALSE>>=
+<<a>>
 subfits <- subfits.new
+<<a>>
 @
 
-
+<<a>>
 \end{document}

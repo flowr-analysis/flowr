@@ -42,20 +42,54 @@ This hyperframe has 3 rows and 6 columns.
 `;
 			const result = parseSweave(input);
 			assert(result.blocks.length === 1);
-			assert.equal(result.blocks[0].content, `${block}\n`);
+			assert(result.blocks[0].type === 'content');
+			assert.equal(result.blocks[0].content, block);
 			assert(result.blocks[0].options.name === undefined);
 			assert(result.blocks[0].options.eval === undefined);
 		});
 	});
 
 	describe('Parse Entire File', async() => {
-		const exampleWithoutLatex = `plot(waterstriders, main="")
+		const exampleWithoutLatex = `
+
+
+
+
+
+
+
+
+print("hi")
+print("how are you")
+
+
+
+plot(waterstriders, main="")
+
+
+
+
 
 
 fit <- mppm(P ~ x, hyperframe(P=waterstriders))
 res <- residuals(fit)
 totres <- sapply(res, integral.msr)
-`;
+print("hi")
+print("how are you")
+print("hi")
+print("how are you")
+
+
+
+
+
+
+
+
+
+
+print("hi")
+print("how are you")`;
 
 		await testFileLoadPlugin(FlowrAnalyzerSweaveFilePlugin, FlowrSweaveFile, 'test/testfiles/notebook/example.Rnw', exampleWithoutLatex);
 	});

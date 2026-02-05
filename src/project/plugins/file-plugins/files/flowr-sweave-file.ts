@@ -160,6 +160,8 @@ export function parseSweave(raw: string): SweaveInfo {
 	};
 }
 
+const evalWithFlagPattern = /eval\s*=\s*(TRUE|FALSE)/i;
+
 /**
  * Parses a Sweave Code Block Start if it can find one
  * @param line - the line to ParserState
@@ -192,10 +194,9 @@ export function parseSweaveCodeblockStart(line: string): SweaveBlockOptions | Sw
 		// Search for eval option
 		for(let i = name ? 1 : 0; i < options.length; i++) {
 			const opt = options[i].trim();
-			if(opt === 'eval=TRUE') {
-				evalOpt = true;
-			} else if(opt === 'eval=FALSE') {
-				evalOpt = false;
+			const evalMatch = opt.match(evalWithFlagPattern);
+			if(evalMatch) {
+				evalOpt = evalMatch[1].toUpperCase() === 'TRUE';
 			}
 		}
 

@@ -284,7 +284,12 @@ ${codeBlock('json', JSON.stringify(
 						maxReadLines:      1_000_000
 					}
 				}
-			}
+			},
+            optimizations: {
+                fileParallelization: false,
+                dataflowOperationParallelization: false,
+                deferredFunctionEvaluation: false
+            }
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }

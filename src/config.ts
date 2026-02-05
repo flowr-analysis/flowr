@@ -207,6 +207,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+    readonly optimizations: {
+        readonly fileParallelization: boolean;
+
+        readonly dataflowOperationParallelization: boolean;
+
+        readonly deferredFunctionEvaluation: boolean;
+    }
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -287,7 +294,12 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 				maxReadLines:      1e6
 			}
 		}
-	}
+	},
+    optimizations: {
+        fileParallelization: false,
+        dataflowOperationParallelization: false,
+        deferredFunctionEvaluation: true
+    }
 };
 
 export const flowrConfigFileSchema = Joi.object({

@@ -25,6 +25,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
+import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexLazyFunctionDefinition } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
@@ -38,6 +39,7 @@ import { compactHookStates, getHookInformation, KnownHooks } from '../../../../.
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
+ * If `deferredFunctionEvaluation` is enabled in the config, a lazy function definition vertex is created instead of eagerly analyzing the function body.
  */
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -45,19 +47,75 @@ export function processFunctionDefinition<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
-	return processFunctionDefinitionEagerly(name, args, rootId, data);
+	if(data.ctx.config.optimizations.deferredFunctionEvaluation) {
+		/** create layz vertex stub */
+		const graph = new DataflowGraph(data.completeAst.idMap);
+
+		/** get function body and guard against existence */
+		const functionBody = args.at(-1);
+		guard(functionBody !== undefined, () => `Function Definition ${name.content} has no body! This is bad!`);
+
+		graph.addVertex({
+			tag:           VertexType.FunctionDefinition,
+			id:            name.info.id,
+			cds:           data.cds,
+			lazy:          true,
+			name,
+			args,
+			rootId,
+			processorData: data
+		} as unknown as DataflowGraphVertexArgument, data.ctx.env.makeCleanEnv());
+		return {
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			exitPoints:        [],
+			entryPoint:        name.info.id,
+			graph,
+			environment:       data.environment,
+			hooks:             []
+		};
+
+	} else {
+		/** analyze eagerly */
+		return processFunctionDefinitionEagerly(name, args, rootId, data);
+	}
 }
+
+/**
+ *
+ */
+export function materializeLazyFunctionDefinitionVertex(
+	graph: DataflowGraph,
+	vertex: DataflowGraphVertexLazyFunctionDefinition
+): DataflowGraphVertexFunctionDefinition {
+	const { name, args, rootId, processorData, id } = vertex;
+
+	const info = processFunctionDefinitionEagerly(name, args, rootId, processorData);
+
+	const realVertex = info.graph.getVertex(id);
+	guard(
+		realVertex !== undefined && realVertex.tag === VertexType.FunctionDefinition,
+		() => `Failed to materialize lazy function definition for id=${id}`
+	);
+
+	// Merge the produced graph into the current one
+	graph.mergeWith(info.graph, false);
+
+	return realVertex as DataflowGraphVertexFunctionDefinition;
+}
+
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
  */
 export function processFunctionDefinitionEagerly<OtherInfo>(
-    name: RSymbol<OtherInfo & ParentInformation>,
-    args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-    rootId: NodeId,
-    data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ){
-    if(args.length < 1) {
+	if(args.length < 1) {
 		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}

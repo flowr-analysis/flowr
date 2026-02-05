@@ -285,11 +285,11 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-            optimizations: {
-                fileParallelization: false,
-                dataflowOperationParallelization: false,
-                deferredFunctionEvaluation: false
-            }
+			optimizations: {
+				fileParallelization:              false,
+				dataflowOperationParallelization: false,
+				deferredFunctionEvaluation:       false
+			}
 		} satisfies FlowrConfigOptions,
 		null, 2))
 }

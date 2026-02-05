@@ -1,26 +1,27 @@
 import { guard } from '../../util/assert';
 import type { DataflowGraphEdge , EdgeType } from './edge';
-import type { DataflowInformation } from '../info';
+import type { DataflowInformation, ExitPoint } from '../info';
 import {
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
 	type DataflowGraphVertices,
+	isLazyFunctionDefinitionVertex,
 	VertexType
 } from './vertex';
-import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import { jsonReplacer } from '../../util/json';
 import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
+import { materializeLazyFunctionDefinitionVertex } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 /**
  * Describes the information we store per function body.
@@ -150,6 +151,25 @@ export class DataflowGraph<
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
+	/**
+	 * Materializes a lazy function definition vertex if it hasn't been materialized yet.
+	 * This converts a lazy stub into a fully analyzed function definition with its complete subflow.
+	 * @param id - The node id of the lazy vertex
+	 * @param lazyVertex - The lazy function definition vertex
+	 */
+	private materializeIfLazy(id: NodeId, lazyVertex: unknown): void {
+		if(!isLazyFunctionDefinitionVertex<ParentInformation>(lazyVertex)) {
+			return;
+		}
+		// Materialize the lazy vertex by calling the materialization function
+		// This will merge the fully analyzed function definition into this graph
+		materializeLazyFunctionDefinitionVertex(this, lazyVertex);
+		// After materialization, the vertex should no longer be lazy
+		// If it still is, something went wrong
+		const newVertex = this.vertexInformation.get(id);
+		guard(newVertex !== undefined && !isLazyFunctionDefinitionVertex(newVertex),
+			() => `Materialization of vertex ${id} failed: vertex is still lazy after materialization`);
+	}
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -181,7 +201,16 @@ export class DataflowGraph<
 	 * @see #getRootVertex
 	 */
 	public getVertex(id: NodeId): Vertex | undefined {
-		return this.vertexInformation.get(id);
+		const vertex = this.vertexInformation.get(id);
+		if(vertex !== undefined && isLazyFunctionDefinitionVertex(vertex)) {
+			this.materializeIfLazy(id, vertex);
+			const materialized = this.vertexInformation.get(id);
+			// Verify it's no longer lazy
+			guard(!isLazyFunctionDefinitionVertex(materialized),
+				() => `Vertex ${id} is still lazy after materialization`);
+			return materialized;
+		}
+		return vertex;
 	}
 
 	/**
@@ -195,7 +224,36 @@ export class DataflowGraph<
 		if(!this.rootVertices.has(id)) {
 			return undefined;
 		}
+		const vertex = this.vertexInformation.get(id);
+		if(vertex !== undefined && isLazyFunctionDefinitionVertex(vertex)) {
+			this.materializeIfLazy(id, vertex);
+			return this.vertexInformation.get(id);
+		}
+		return vertex;
+	}
+
+	/**
+	 * Peek at a vertex WITHOUT materializing it if it's lazy.
+	 * This is useful for tests and debugging to check the current state of a vertex without triggering materialization.
+	 * WARNING: If the vertex is lazy, the returned object will be incomplete (missing subflow, params, exitPoints).
+	 * For production code, use {@link getVertex} instead.
+	 * @param id - The id of the node to peek at
+	 * @returns the node info for the given id (if it exists), potentially a lazy stub
+	 * @see #getVertex
+	 */
+	public peekVertex(id: NodeId): Vertex | undefined {
 		return this.vertexInformation.get(id);
+	}
+
+	/**
+	 * Check if a vertex is lazy (not yet materialized).
+	 * Useful for tests and debugging to verify lazy evaluation behavior.
+	 * @param id - The id of the node to check
+	 * @returns true if the vertex exists and is a lazy function definition vertex
+	 */
+	public isVertexLazy(id: NodeId): boolean {
+		const vertex = this.vertexInformation.get(id);
+		return vertex !== undefined && isLazyFunctionDefinitionVertex(vertex);
 	}
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
@@ -257,9 +315,18 @@ export class DataflowGraph<
 	 */
 	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
-			yield* this.vertexInformation.entries();
+			for(const [id, vertex] of this.vertexInformation.entries()) {
+				if(isLazyFunctionDefinitionVertex(vertex)) {
+					this.materializeIfLazy(id, vertex);
+				}
+				yield [id, this.vertexInformation.get(id) as Vertex];
+			}
 		} else {
 			for(const id of this.rootVertices) {
+				const vertex = this.vertexInformation.get(id) as Vertex;
+				if(isLazyFunctionDefinitionVertex(vertex)) {
+					this.materializeIfLazy(id, vertex);
+				}
 				yield [id, this.vertexInformation.get(id) as Vertex];
 			}
 		}
@@ -268,6 +335,10 @@ export class DataflowGraph<
 	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
 		const ids = this.types.get(type) ?? [];
 		for(const id of ids) {
+			const vertex = this.vertexInformation.get(id) as Vertex & { tag: T };
+			if(isLazyFunctionDefinitionVertex(vertex)) {
+				this.materializeIfLazy(id, vertex);
+			}
 			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
 		}
 	}
@@ -514,11 +585,47 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 	if(current.tag === VertexType.VariableDefinition) {
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 	} else if(current.tag === VertexType.FunctionDefinition) {
+		// If the current vertex is a lazy vertex, replace it with the next (materialized) one.
+		// IMPORTANT: We do NOT materialize here to avoid infinite recursion during mergeWith() operations.
+		if(isLazyFunctionDefinitionVertex(current)) {
+			const result = next as DataflowGraphVertexFunctionDefinition;
+			// Merge exit points in case both have relevant ones
+			result.exitPoints = mergeExitPoints(current.exitPoints ?? [], result.exitPoints);
+			return result as Vertex;
+		}
+
 		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
-		current.exitPoints = uniqueArrayMerge(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);
+		// Normal case: merge exit points from both materialized vertices
+		(current as DataflowGraphVertexFunctionDefinition).exitPoints = mergeExitPoints((current as DataflowGraphVertexFunctionDefinition).exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);
 	}
 
 	return current;
+}
+
+/**
+ * Merge two arrays of exit points, removing duplicates based on value equality (nodeId and type)
+ */
+function mergeExitPoints(left: readonly ExitPoint[], right: readonly ExitPoint[]): ExitPoint[] {
+	const seen = new Set<string>();
+	const result: ExitPoint[] = [];
+
+	for(const point of left) {
+		const key = `${point.nodeId}:${point.type}`;
+		if(!seen.has(key)) {
+			seen.add(key);
+			result.push(point);
+		}
+	}
+
+	for(const point of right) {
+		const key = `${point.nodeId}:${point.type}`;
+		if(!seen.has(key)) {
+			seen.add(key);
+			result.push(point);
+		}
+	}
+
+	return result;
 }
 
 export interface IEnvironmentJson {

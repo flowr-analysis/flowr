@@ -4,10 +4,10 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { BuiltInProcName } from '../environments/built-in';
-import { DataflowProcessorInformation } from '../processor';
-import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { DataflowProcessorInformation } from '../processor';
+import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { guard } from '../../util/assert';
 
 
@@ -300,21 +300,24 @@ export interface DataflowGraphVertexLazyFunctionDefinition<OtherInfo = ParentInf
  extends Omit<DataflowGraphVertexFunctionDefinition, 'subflow' | 'exitPoints' | 'params'> {
     readonly lazy: true;
 
-    readonly id: NodeId;
-    readonly name: RSymbol<OtherInfo & ParentInformation>;
-    readonly args: readonly RFunctionArgument<OtherInfo & ParentInformation>[];
-    rootId: NodeId;
+    readonly id:            NodeId;
+    readonly name:          RSymbol<OtherInfo & ParentInformation>;
+    readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[];
+    rootId:                 NodeId;
     readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
 }
 
-export function isLazyFunctionDefinitionVertex(
+/**
+ *
+ */
+export function isLazyFunctionDefinitionVertex<T>(
 	v: unknown
-): v is DataflowGraphVertexLazyFunctionDefinition<any> {
-	if (typeof v !== 'object' || v === null) {
+): v is DataflowGraphVertexLazyFunctionDefinition<T> {
+	if(typeof v !== 'object' || v === null) {
 		return false;
 	}
 
-	const obj = v as Partial<DataflowGraphVertexLazyFunctionDefinition<any>>;
+	const obj = v as Partial<DataflowGraphVertexLazyFunctionDefinition<T>>;
 
 	return obj.tag === VertexType.FunctionDefinition
 		&& obj.lazy === true
@@ -324,10 +327,13 @@ export function isLazyFunctionDefinitionVertex(
 		&& typeof obj.rootId !== 'undefined';
 }
 
+/**
+ *
+ */
 export function assertNotLazyFunctionDefinitionVertex(
 	v: DataflowGraphVertexFunctionDefinition
-): asserts v is DataflowGraphVertexFunctionDefinition & { lazy?: false } {
-	guard(!(v as any).lazy, () => `Expected eager function definition vertex, got lazy one (id=${(v as any).id})`);
+): asserts v is DataflowGraphVertexFunctionDefinition {
+	guard(!isLazyFunctionDefinitionVertex<ParentInformation>(v), () => `Expected eager function definition vertex, got lazy one (id=${v.id})`);
 }
 
 

@@ -49,6 +49,7 @@ export function visitCfgInReverseOrder(
  * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
+ * @param invertedCfg  - Optionally provide an inverted control flow graph, if not provided the function will create one by inverting the given graph, which can be expensive for large graphs.
  *
  * This function is of type {@link SimpleCfgVisitor}.
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
@@ -57,12 +58,13 @@ export function visitCfgInOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
-	visitor: (node: NodeId) => boolean | void
+	visitor: (node: NodeId) => boolean | void,
+	invertedCfg?: ControlFlowGraph
 ): Set<NodeId> {
 	const visited = new Set<NodeId>();
 	let queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
-	const g = invertCfg(graph);
+	const g = invertedCfg ?? invertCfg(graph);
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {

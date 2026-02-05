@@ -39,8 +39,8 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const callSites = graph.ingoingEdges(def.id);
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 
 	for(const [callerId, e] of callSites ?? []) {
 		if(!DfEdge.includesType(e, EdgeType.Calls)) {
@@ -68,8 +68,9 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
  * either takes a function as an argument or (may) returns a function.
  * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
  * if no function is passed as an argument.
+ * Please note that inspecting higher order functions can be sped up (if queries multiple times) by providing an inverted graph as well!
  */
-export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !isFunctionDefinitionVertex(vert)) {
 		return false;
@@ -81,5 +82,5 @@ export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: Rea
 	}
 
 	// 2. check whether any of the callsites passes a function
-	return inspectCallSitesArgumentsFns(vert, graph, ctx);
+	return inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
 }

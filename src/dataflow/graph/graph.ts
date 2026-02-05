@@ -265,8 +265,9 @@ export class DataflowGraph<
 	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
 		const edges = new Map<NodeId, Edge>();
 		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			if(outgoing.has(id)) {
-				edges.set(source, outgoing.get(id) as Edge);
+			const o = outgoing.get(id);
+			if(o) {
+				edges.set(source, o);
 			}
 		}
 		return edges;

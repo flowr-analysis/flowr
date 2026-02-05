@@ -4,6 +4,11 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { BuiltInProcName } from '../environments/built-in';
+import { DataflowProcessorInformation } from '../processor';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { guard } from '../../util/assert';
 
 
 export enum VertexType {
@@ -290,6 +295,41 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
 	environment?: REnvironmentInformation
 }
+
+export interface DataflowGraphVertexLazyFunctionDefinition<OtherInfo = ParentInformation>
+ extends Omit<DataflowGraphVertexFunctionDefinition, 'subflow' | 'exitPoints' | 'params'> {
+    readonly lazy: true;
+
+    readonly id: NodeId;
+    readonly name: RSymbol<OtherInfo & ParentInformation>;
+    readonly args: readonly RFunctionArgument<OtherInfo & ParentInformation>[];
+    rootId: NodeId;
+    readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
+}
+
+export function isLazyFunctionDefinitionVertex(
+	v: unknown
+): v is DataflowGraphVertexLazyFunctionDefinition<any> {
+	if (typeof v !== 'object' || v === null) {
+		return false;
+	}
+
+	const obj = v as Partial<DataflowGraphVertexLazyFunctionDefinition<any>>;
+
+	return obj.tag === VertexType.FunctionDefinition
+		&& obj.lazy === true
+		&& typeof obj.name !== 'undefined'
+		&& typeof obj.processorData !== 'undefined'
+		&& typeof obj.args !== 'undefined'
+		&& typeof obj.rootId !== 'undefined';
+}
+
+export function assertNotLazyFunctionDefinitionVertex(
+	v: DataflowGraphVertexFunctionDefinition
+): asserts v is DataflowGraphVertexFunctionDefinition & { lazy?: false } {
+	guard(!(v as any).lazy, () => `Expected eager function definition vertex, got lazy one (id=${(v as any).id})`);
+}
+
 
 /**
  * What is to be passed to construct a vertex in the {@link DataflowGraph|dataflow graph}

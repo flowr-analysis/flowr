@@ -20,7 +20,7 @@ export class FlowrAnalyzerSweaveFilePlugin extends FlowrAnalyzerFilePlugin {
 
 	/**
 	 * Creates a new instance of the Sweave file plugin.
-	 * @param filePattern - The pattern to identify R Markdown files, see {@link SweavePattern} for the default pattern.
+	 * @param filePattern - The pattern to identify Sweave files, see {@link SweavePattern} for the default pattern.
 	 */
 	constructor(filePattern: RegExp = SweavePattern) {
 		super();

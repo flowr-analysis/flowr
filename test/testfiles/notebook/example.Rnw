@@ -1,0 +1,32 @@
+\documentclass[11pt]{article}
+
+\usepackage{graphicx}
+\usepackage{Sweave}
+\usepackage{bm}
+\usepackage{anysize}
+
+\begin{document}
+
+
+<<fig=TRUE>>=
+plot(waterstriders, main="")
+@
+
+
+Test A B C 123
+
+<<>>=
+fit <- mppm(P ~ x, hyperframe(P=waterstriders))
+res <- residuals(fit)
+totres <- sapply(res, integral.msr)
+@
+
+test test test
+1 2 3
+
+<<eval=FALSE>>=
+subfits <- subfits.new
+@
+
+
+\end{document}

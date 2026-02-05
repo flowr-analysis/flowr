@@ -17,6 +17,7 @@ import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-li
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
+import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
 
 /**
  * Provides the default set of Flowr Analyzer plugins.
@@ -31,6 +32,7 @@ export function FlowrAnalyzerPluginDefaults(): FlowrAnalyzerPlugin[] {
 		new FlowrAnalyzerMetaDescriptionFilePlugin(),
 		new FlowrAnalyzerRmdFilePlugin(),
 		new FlowrAnalyzerQmdFilePlugin(),
+		new FlowrAnalyzerSweaveFilePlugin(),
 		new FlowrAnalyzerLicenseFilePlugin(),
 		new FlowrAnalyzerJupyterFilePlugin(),
 		new FlowrAnalyzerNamespaceFilesPlugin(),

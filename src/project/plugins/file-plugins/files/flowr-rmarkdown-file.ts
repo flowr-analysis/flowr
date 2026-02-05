@@ -21,6 +21,9 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		this.wrapped = file;
 	}
 
+	/**
+	 * Gets the parsed R Markdown information
+	 */
 	get rmd(): RmdInfo {
 		if(!this.data) {
 			this.loadContent();

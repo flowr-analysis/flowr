@@ -54,23 +54,24 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected override startVisitor(): void {
-		this.invertedCfg = invertCfg(this.config.controlFlow.graph);
-		for(const [from, targets] of this.config.controlFlow.graph.edges()) {
+		const cfg = this.config.controlFlow.graph;
+		this.invertedCfg = invertCfg(cfg);
+		for(const [from, targets] of cfg.edges()) {
 			for(const [target, edge] of targets) {
 				if(edge.label === CfgEdgeType.Cd) {
 					const og = this.getValue(edge.caused);
 
 					if(og === Ternary.Always && edge.when === 'FALSE') {
-						this.config.controlFlow.graph.removeEdge(from, target);
+						cfg.removeEdge(from, target);
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
-						this.config.controlFlow.graph.removeEdge(from, target);
+						cfg.removeEdge(from, target);
 					}
 				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
 					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
 					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
 						for(const [target, edge] of this.invertedCfg.outgoingEdges(end) ?? []) {
 							if(edge.label === CfgEdgeType.Fd) {
-								this.config.controlFlow.graph.removeEdge(target, end);
+								cfg.removeEdge(target, end);
 							}
 						}
 					}
@@ -80,6 +81,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
+		if(this.cachedConditions.has(id)) {
+			return;
+		}
 		const values = valueSetGuard(resolveIdToValue(valueId, {
 			graph:   this.config.dfg,
 			full:    true,
@@ -135,6 +139,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		if(this.cachedStatements.has(data.call.id)) {
+			return;
+		}
 		const arg = this.getBoolArgValue(data);
 		if(arg !== undefined) {
 			this.cachedStatements.set(data.call.id, !arg);

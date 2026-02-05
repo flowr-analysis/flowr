@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1770317635215,
+  "lastUpdate": 1770317638196,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -27336,6 +27336,116 @@ window.BENCHMARK_DATA = {
             "extra": "median: 30.93"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "3aade9d9e5a61cb17cb23c4448a22117510a3c68",
+          "message": "[release:patch] 2.9.6 R Sweave File Support",
+          "timestamp": "2026-02-05T19:24:07+01:00",
+          "tree_id": "fe7bbeae0d44c799347c36bfcdc8e2484e719d55",
+          "url": "https://github.com/flowr-analysis/flowr/commit/3aade9d9e5a61cb17cb23c4448a22117510a3c68"
+        },
+        "date": 1770317636532,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.528079613636363,
+            "range": "15.794138748175461",
+            "unit": "ms",
+            "extra": "median: 10.22ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 14.880233136363637,
+            "range": "19.408138747452632",
+            "unit": "ms",
+            "extra": "median: 11.19ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 46.60308513636364,
+            "range": "83.17155937719124",
+            "unit": "ms",
+            "extra": "median: 24.03ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 420.3020836590909,
+            "range": "1049.3889867060193",
+            "unit": "ms",
+            "extra": "median: 126.69ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.615178795454547,
+            "range": "17.466146316647304",
+            "unit": "ms",
+            "extra": "median: 3.32ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4556699489989834,
+            "range": "0.5366358674706584",
+            "unit": "ms",
+            "extra": "median: 0.18ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2602710778310713,
+            "range": "0.20558366934576155",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.729890721242473,
+            "range": "0.7056110542202169",
+            "unit": "ms",
+            "extra": "median: 0.41ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.3524502840909,
+            "range": "267.8756605806822",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -33574,6 +33684,116 @@ window.BENCHMARK_DATA = {
             "range": "6.345390749237025",
             "unit": "ms",
             "extra": "median: 0.88ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8794482495645868,
+            "unit": "#",
+            "extra": "std: 0.09422741370180349"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8326854366187506,
+            "unit": "#",
+            "extra": "std: 0.13976550150874015"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 100.02176150760135,
+            "range": "111.40962434493183",
+            "unit": "KiB",
+            "extra": "median: 56.85"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "3aade9d9e5a61cb17cb23c4448a22117510a3c68",
+          "message": "[release:patch] 2.9.6 R Sweave File Support",
+          "timestamp": "2026-02-05T19:24:07+01:00",
+          "tree_id": "fe7bbeae0d44c799347c36bfcdc8e2484e719d55",
+          "url": "https://github.com/flowr-analysis/flowr/commit/3aade9d9e5a61cb17cb23c4448a22117510a3c68"
+        },
+        "date": 1770317638186,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 20.877233371621625,
+            "range": "11.787107415365439",
+            "unit": "ms",
+            "extra": "median: 17.76ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 23.650765466216214,
+            "range": "12.826591680580774",
+            "unit": "ms",
+            "extra": "median: 20.94ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 72.14214347297298,
+            "range": "56.00282274457537",
+            "unit": "ms",
+            "extra": "median: 57.21ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1959.2034132297297,
+            "range": "5008.686006329808",
+            "unit": "ms",
+            "extra": "median: 368.08ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 12.009462810810811,
+            "range": "10.195970032349116",
+            "unit": "ms",
+            "extra": "median: 8.35ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 3.252436781127861,
+            "range": "6.844862947393986",
+            "unit": "ms",
+            "extra": "median: 0.67ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.3487820147591876,
+            "range": "0.22018717549300082",
+            "unit": "ms",
+            "extra": "median: 0.22ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 3.610308021588904,
+            "range": "6.913799101372674",
+            "unit": "ms",
+            "extra": "median: 0.98ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

@@ -183,10 +183,11 @@ export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof 
  */
 export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
+	const qzt = queries[0].type;
 	/* every query must have the same type */
-	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
-	const query = SupportedQueries[queries[0].type];
-	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
+	guard(queries.every(q => q.type === qzt), 'All queries must have the same type');
+	const query = SupportedQueries[qzt];
+	guard(query !== undefined, `Unsupported query type: ${qzt}`);
 	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 

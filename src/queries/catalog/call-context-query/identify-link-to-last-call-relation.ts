@@ -152,7 +152,7 @@ export function identifyLinkToLastCallRelationSync(
 	}
 	const found: NodeId[] = [];
 	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(Identifier.getName(name))
-		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(Identifier.getName(name));
+		: ({ name }: DataflowGraphVertexFunctionCall) => callName(Identifier.getName(name));
 
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :

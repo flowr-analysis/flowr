@@ -3,6 +3,7 @@ import type { SweaveBlockOptions } from '../../../../src/project/plugins/file-pl
 import { FlowrSweaveFile, parseSweave, parseSweaveCodeblockStart } from '../../../../src/project/plugins/file-plugins/files/flowr-sweave-file';
 import { testFileLoadPlugin } from './plugin-test-helper';
 import { FlowrAnalyzerSweaveFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
+import { label } from '../../_helper/label';
 
 describe('sweave file', () => {
 	describe('parse code block start', () => {
@@ -16,6 +17,7 @@ describe('sweave file', () => {
 			['Eval False',      '<<eval=FALSE>>=',       { name: undefined, eval: false }],
 			['Eval With Name',  '<<test, eval=FALSE>>=', { name: 'test', eval: false }],
 		] satisfies [string, string, SweaveBlockOptions | undefined][])('$0', (_, line, expected) => {
+			label(line, ['file:rnw'], ['other']);
 			const result = parseSweaveCodeblockStart(line);
 			assert.deepEqual(result, expected);
 		});
@@ -24,6 +26,7 @@ describe('sweave file', () => {
 
 	describe('parse code block', () => {
 		test('parse unnamed', () => {
+			label('unnamed', ['file:rnw'], ['other']);
 			const block = `G <- hyperframe(X=1:3, Y=letters[1:3], Z=factor(letters[1:3]),
                 W=list(rpoispp(100),rpoispp(100), rpoispp(100)),
                 U=42,
@@ -91,6 +94,6 @@ print("how are you")
 print("hi")
 print("how are you")`;
 
-		await testFileLoadPlugin(FlowrAnalyzerSweaveFilePlugin, FlowrSweaveFile, 'test/testfiles/notebook/example.Rnw', exampleWithoutLatex);
+		await testFileLoadPlugin(FlowrAnalyzerSweaveFilePlugin, FlowrSweaveFile, 'test/testfiles/notebook/example.Rnw', exampleWithoutLatex, ['file:rnw']);
 	});
 });

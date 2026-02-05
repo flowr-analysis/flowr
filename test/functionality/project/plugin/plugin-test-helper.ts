@@ -5,6 +5,8 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
 import type { FlowrAnalyzerFilePlugin } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-file-plugin';
+import { label } from '../../_helper/label';
+import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 
 export type TestPluginFileType = new (file: FlowrFileProvider<string>) => FlowrFile;
 type LoadFn = (analyzer: FlowrAnalyzer) => void;
@@ -18,8 +20,10 @@ type ConstructTo<T> = new (...args: any) => T;
  * @param pluginType - The Plugin to test
  * @param pluginFileType - The File that should be created by the plugin
  * @param testFilePath - The path to the file to test
+ * @param expectedContent - The expected content of the file, as returned by the `content()` method of the file created by the plugin
+ * @param supp - The capabilities that the plugin being tested supports, used for labeling the test cases
  */
-export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P extends ConstructTo<FlowrAnalyzerFilePlugin>>(pluginType: P, pluginFileType: F, testFilePath: string, expectedContent: string) {
+export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P extends ConstructTo<FlowrAnalyzerFilePlugin>>(pluginType: P, pluginFileType: F, testFilePath: string, expectedContent: string, supp: SupportedFlowrCapabilityId[]) {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
 		.registerPlugins(new pluginType())
@@ -37,6 +41,7 @@ export async function testFileLoadPlugin<F extends ConstructTo<FlowrFile>, P ext
 			analyzer.addRequest(testFilePath);
 		}],
 	] satisfies TestCaseEntries)('load via $0', async(_, loadFn: LoadFn) => {
+		label(testFilePath, supp, ['other']);
 		loadFn(analyzer);
 		await analyzer.parse();
 

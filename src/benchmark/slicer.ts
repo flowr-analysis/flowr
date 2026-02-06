@@ -116,7 +116,6 @@ export class BenchmarkSlicer {
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
-	private config:              FlowrConfigOptions | undefined;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           KnownParserType[] | undefined;
@@ -141,7 +140,6 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
-		this.config = config;
 
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
@@ -329,13 +327,10 @@ export class BenchmarkSlicer {
 
 		this.guardActive();
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
-		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
-		guard(this.config !== undefined, 'config should be defined for control flow extraction');
 
 		const ast = this.normalizedAst;
-		const dfg = this.dataflow.graph;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
 	}
 
 	/**
@@ -373,6 +368,7 @@ export class BenchmarkSlicer {
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
 		stats.numberOfResultConstraints = result.value.size;
+		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
 
 		for(const value of result.value.values()) {
 			if(value.isTop()) {
@@ -393,11 +389,9 @@ export class BenchmarkSlicer {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getAbstractState(node.info.id);
-			stats.sizeOfInfo += safeSizeOf([state]);
 
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.value.size ?? 0
+				numberOfEntries: inference.getAbstractState(node.info.id)?.value.size ?? 0
 			};
 
 			if(operations !== undefined) {

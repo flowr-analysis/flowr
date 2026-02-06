@@ -19,7 +19,6 @@ import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { Tree } from 'web-tree-sitter';
-import { normalize } from '../r-bridge/lang-4.x/ast/parser/json/parser';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 

@@ -4,6 +4,7 @@ import { IntervalDomain } from '../abstract-interpretation/domains/interval-doma
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
+import { CfgKind } from '../project/cfg-kind';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
@@ -27,8 +28,8 @@ class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDom
 		super.onFunctionCall({ call });
 
 		if(call.args.length === 2 && call.args.every(arg => arg !== EmptyArgument)) {
-			const left = this.getAbstractValue(call.args[0].nodeId);
-			const right = this.getAbstractValue(call.args[1].nodeId);
+			const left = this.getAbstractValue(call.args[0].nodeId, this.currentState);
+			const right = this.getAbstractValue(call.args[1].nodeId, this.currentState);
 
 			if(left === undefined || right === undefined) {
 				// If an operand does not have an inferred interval, this might not be a numerical operation
@@ -58,7 +59,7 @@ async function inferIntervals(): Promise<string> {
 
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow();
+	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
 	const ctx = analyzer.inspectContext();
 	const domain = new StateAbstractDomain<IntervalDomain>(new Map());
 

@@ -6,7 +6,6 @@ import {
 	, CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';
-import { invertCfg } from './invert-cfg';
 
 export interface BasicCfgGuidedVisitorConfiguration<
 	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
@@ -52,8 +51,7 @@ export class BasicCfgGuidedVisitor<
 		const graph = this.config.controlFlow.graph;
 		let getNext: (node: NodeId) => MapIterator<NodeId> | NodeId[] | undefined;
 		if(this.config.defaultVisitingOrder === 'forward') {
-			const inverseGraph = invertCfg(graph);
-			getNext = (node: NodeId) => inverseGraph.outgoingEdges(node)?.keys().toArray().reverse();
+			getNext = (node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().reverse();
 		} else {
 			getNext = (node: NodeId) => graph.outgoingEdges(node)?.keys();
 		}

@@ -13,7 +13,6 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
-import { invertCfg } from './invert-cfg';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -55,7 +54,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	protected override startVisitor(): void {
 		const cfg = this.config.controlFlow.graph;
-		this.invertedCfg = invertCfg(cfg);
 		for(const [from, targets] of cfg.edges()) {
 			for(const [target, edge] of targets) {
 				if(edge.label === CfgEdgeType.Cd) {
@@ -69,7 +67,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
 					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
 					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
-						for(const [target, edge] of this.invertedCfg.outgoingEdges(end) ?? []) {
+						for(const [target, edge] of cfg.ingoingEdges(end) ?? []) {
 							if(edge.label === CfgEdgeType.Fd) {
 								cfg.removeEdge(target, end);
 							}
@@ -162,7 +160,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			}
 			this.inTry.add(n);
 			return false;
-		}, this.invertedCfg);
+		});
 	}
 }
 

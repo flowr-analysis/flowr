@@ -216,6 +216,8 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	private readonly bbChildren:        Map<NodeId, NodeId> = new Map<NodeId, NodeId>();
 	/** basic block agnostic edges */
 	private readonly edgeInformation:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
+	/** reverse edges for bidirectional mapping */
+	private readonly reverseEdgeInfo:   Map<NodeId, Map<NodeId, CfgEdge>> = new Map<NodeId, Map<NodeId, CfgEdge>>();
 	/** used as an optimization to avoid unnecessary lookups */
 	private _mayHaveBasicBlocks = false;
 
@@ -256,6 +258,12 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 			this.edgeInformation.set(from, edgesFrom);
 		}
 		edgesFrom.set(to, edge);
+
+		const edgesTo = this.reverseEdgeInfo.get(to) ?? new Map<NodeId, CfgEdge>();
+		if(!this.reverseEdgeInfo.has(to)) {
+			this.reverseEdgeInfo.set(to, edgesTo);
+		}
+		edgesTo.set(from, edge);
 		return this;
 	}
 
@@ -263,12 +271,8 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	 * Add multiple edges from a given source vertex to the control flow graph.
 	 */
 	addEdges(from: NodeId, to: Map<NodeId, CfgEdge>): this {
-		const edgesFrom = this.edgeInformation.get(from) ?? new Map<NodeId, CfgEdge>();
-		if(!this.edgeInformation.has(from)) {
-			this.edgeInformation.set(from, edgesFrom);
-		}
-		for(const [toId, edge] of to) {
-			edgesFrom.set(toId, edge);
+		for(const [toNode, edge] of to) {
+			this.addEdge(from, toNode, edge);
 		}
 		return this;
 	}
@@ -277,15 +281,8 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 		return this.edgeInformation.get(node);
 	}
 
-	ingoingEdges(id: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
-		const edges = new Map<NodeId, CfgEdge>();
-		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			const o = outgoing.get(id);
-			if(o) {
-				edges.set(source, o);
-			}
-		}
-		return edges;
+	ingoingEdges(node: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
+		return this.reverseEdgeInfo.get(node);
 	}
 
 	rootIds(): ReadonlySet<NodeId> {
@@ -363,6 +360,7 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	removeVertex(id: NodeId): this {
 		this.vertexInformation.delete(id);
 		this.edgeInformation.delete(id);
+		this.reverseEdgeInfo.delete(id);
 		this.bbChildren.delete(id);
 		// remove all bbChildren with id as target
 		for(const [a, b] of this.bbChildren.entries()) {
@@ -371,6 +369,9 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 			}
 		}
 		for(const edges of this.edgeInformation.values()) {
+			edges.delete(id);
+		}
+		for(const edges of this.reverseEdgeInfo.values()) {
 			edges.delete(id);
 		}
 		this.rootVertices.delete(id);
@@ -383,11 +384,18 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	 * @see {@link ControlFlowGraph#removeVertex|removeVertex()} - to remove a vertex and all its edges
 	 */
 	removeEdge(from: NodeId, to: NodeId): this {
-		const edges = this.edgeInformation.get(from);
-		if(edges) {
-			edges.delete(to);
-			if(edges.size === 0) {
+		const edgesFrom = this.edgeInformation.get(from);
+		if(edgesFrom) {
+			edgesFrom.delete(to);
+			if(edgesFrom.size === 0) {
 				this.edgeInformation.delete(from);
+			}
+		}
+		const edgesTo = this.reverseEdgeInfo.get(to);
+		if(edgesTo) {
+			edgesTo.delete(from);
+			if(edgesTo.size === 0) {
+				this.reverseEdgeInfo.delete(to);
 			}
 		}
 		return this;

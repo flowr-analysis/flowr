@@ -1,6 +1,5 @@
 import { type ControlFlowGraph, CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { invertCfg } from './invert-cfg';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
@@ -37,9 +36,11 @@ export function visitCfgInReverseOrder(
 				queue = queue.concat(get.elems.toReversed().map(e => e.id));
 			}
 		}
-		const incoming = graph.outgoingEdges(current) ?? [];
-		for(const c of incoming.keys()) {
-			queue.push(c);
+		const incoming = graph.outgoingEdges(current);
+		if(incoming) {
+			for(const c of incoming.keys()) {
+				queue.push(c);
+			}
 		}
 	}
 }
@@ -49,7 +50,6 @@ export function visitCfgInReverseOrder(
  * @param graph      - The control flow graph.
  * @param startNodes - The nodes to start the traversal from.
  * @param visitor    - The visitor function to call for each node, if you return true the traversal from this node will be stopped.
- * @param invertedCfg  - Optionally provide an inverted control flow graph, if not provided the function will create one by inverting the given graph, which can be expensive for large graphs.
  *
  * This function is of type {@link SimpleCfgVisitor}.
  * @see {@link visitCfgInReverseOrder} for a traversal in reversed order
@@ -58,13 +58,11 @@ export function visitCfgInOrder(
 	graph: ControlFlowGraph,
 	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
-	visitor: (node: NodeId) => boolean | void,
-	invertedCfg?: ControlFlowGraph
+	visitor: (node: NodeId) => boolean | void
 ): Set<NodeId> {
 	const visited = new Set<NodeId>();
 	let queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
-	const g = invertedCfg ?? invertCfg(graph);
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {
@@ -74,12 +72,12 @@ export function visitCfgInOrder(
 		if(visitor(current)) {
 			continue;
 		} else if(hasBb) {
-			const get = g.getVertex(current);
+			const get = graph.getVertex(current);
 			if(get?.type === CfgVertexType.Block) {
 				queue = queue.concat(get.elems.map(e => e.id));
 			}
 		}
-		const outgoing = g.outgoingEdges(current) ?? [];
+		const outgoing = graph.ingoingEdges(current) ?? [];
 		for(const [to] of outgoing) {
 			queue.push(to);
 		}

@@ -1,4 +1,4 @@
-import { type QuadSerializationConfiguration , serialize2quads } from '../../util/quads';
+import { type QuadSerializationConfiguration, serialize2quads } from '../../util/quads';
 import { convertPreparedParsedData, prepareParsedData } from '../../r-bridge/lang-4.x/ast/parser/json/format';
 
 /**

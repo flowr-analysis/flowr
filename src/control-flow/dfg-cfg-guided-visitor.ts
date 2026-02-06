@@ -3,9 +3,9 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexUse,
-	type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition , VertexType
+	type DataflowGraphVertexValue, type DataflowGraphVertexVariableDefinition, VertexType
 } from '../dataflow/graph/vertex';
-import { type BasicCfgGuidedVisitorConfiguration , BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
+import { type BasicCfgGuidedVisitorConfiguration, BasicCfgGuidedVisitor } from './basic-cfg-guided-visitor';
 import { assertUnreachable } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 
@@ -23,7 +23,7 @@ export interface DataflowCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class DataflowAwareCfgGuidedVisitor<
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Dfg extends DataflowGraph                  = DataflowGraph,
 	Config extends DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg> = DataflowCfgGuidedVisitorConfiguration<ControlFlow, Dfg>
 > extends BasicCfgGuidedVisitor<ControlFlow, Config> {

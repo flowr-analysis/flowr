@@ -24,4 +24,4 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
  * @template StateDomain - The state abstract domain to get the value abstract domain type for
  */
 export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
-    StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;
+	StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;

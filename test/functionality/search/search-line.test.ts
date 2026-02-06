@@ -4,7 +4,7 @@ import { FlowrSearchGenerator as Q } from '../../../src/search/flowr-search-buil
 import { assertSearch, assertSearchEnrichment } from '../_helper/search';
 import { VertexType } from '../../../src/dataflow/graph/vertex';
 import { FlowrFilter } from '../../../src/search/flowr-search-filters';
-import { type CfgInformationArguments , Enrichment } from '../../../src/search/search-executor/search-enrichers';
+import { type CfgInformationArguments, Enrichment } from '../../../src/search/search-executor/search-enrichers';
 import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
@@ -44,19 +44,19 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('call-targets (none)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"print"/
+					test:       /print/
 				} })
 			);
 			assertSearch('call-targets (other)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"library"/
+					test:       /library/
 				} })
 			);
 			assertSearch('call-targets (match)', parser, "cat('hello')\nprint('world')", ['2@print'],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /"print"/
+					test:       /print/
 				} })
 			);
 		});

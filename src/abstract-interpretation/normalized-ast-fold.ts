@@ -1,6 +1,6 @@
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionCall, EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
@@ -35,7 +35,7 @@ export type FoldableRType = Exclude<RType, RType.Delimiter | RType.Project>;
  */
 export type NormalizedAstFold<Returns = void, Info = NoInfo> = {
 	[K in FoldableRType as `fold${Capitalize<K>}`]: FoldOfType<K, Returns, Info>;
-}
+};
 
 /**
  * Describes the type of a mapping object,
@@ -43,7 +43,7 @@ export type NormalizedAstFold<Returns = void, Info = NoInfo> = {
  */
 export type FittingNormalizedAstFold<Returns = void, Info = NoInfo> = Readonly<{
 	[K in FoldableRType]: FoldOfType<K, Returns, Info>;
-}>
+}>;
 
 export type SingleOrArrayOrNothing<T> = T | readonly (T | null | undefined)[] | null | undefined;
 

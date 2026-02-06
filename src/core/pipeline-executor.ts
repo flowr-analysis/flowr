@@ -1,5 +1,5 @@
 import { guard } from '../util/assert';
-import { type PipelineStepName , PipelineStepStage } from './steps/pipeline-step';
+import { type PipelineStepName, PipelineStepStage } from './steps/pipeline-step';
 import type {
 	Pipeline,
 	PipelineInput,
@@ -150,9 +150,9 @@ export class PipelineExecutor<P extends Pipeline> {
 	}
 
 
-	public getResults(intermediate?: false): PipelineOutput<P>
-	public getResults(intermediate: true): Partial<PipelineOutput<P>>
-	public getResults(intermediate: boolean): PipelineOutput<P>
+	public getResults(intermediate?: false): PipelineOutput<P>;
+	public getResults(intermediate: true): Partial<PipelineOutput<P>>;
+	public getResults(intermediate: boolean): PipelineOutput<P>;
 	/**
 	 * Returns the results of the pipeline.
 	 * @param intermediate - Normally you can only receive the results *after* the stepper completed the step of interested.
@@ -230,9 +230,9 @@ export class PipelineExecutor<P extends Pipeline> {
 		}
 	}
 
-	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>
-	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>
-	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P>>
+	public async allRemainingSteps(canSwitchStage: false): Promise<Partial<PipelineOutput<P>>>;
+	public async allRemainingSteps(canSwitchStage?: true): Promise<PipelineOutput<P>>;
+	public async allRemainingSteps(canSwitchStage: boolean): Promise<PipelineOutput<P>>;
 	/**
 	 * Execute all remaining steps and automatically call {@link switchToRequestStage} if necessary.
 	 * @param canSwitchStage - If true, automatically switch to the request stage if necessary

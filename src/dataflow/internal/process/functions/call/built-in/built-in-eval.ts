@@ -31,6 +31,7 @@ import { cartesianProduct } from '../../../../../../util/collections/arrays';
 import type { FlowrConfigOptions } from '../../../../../../config';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
 
 
 /**
@@ -126,7 +127,7 @@ function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInfo
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
-		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(arg.value.functionName.content)) {
+		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
 			return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
 		}
 		return undefined;

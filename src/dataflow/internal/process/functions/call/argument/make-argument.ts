@@ -1,11 +1,10 @@
-import { rangeFrom } from '../../../../../../util/range';
+import { SourceRange } from '../../../../../../util/range';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 
-const voidRange = rangeFrom(-1, -1, -1, -1);
 
 
 /**
@@ -21,7 +20,7 @@ export function toUnnamedArgument<OtherInfo>(
 	const arg: RUnnamedArgument<OtherInfo & ParentInformation> = {
 		type:     RType.Argument,
 		lexeme:   node.lexeme ?? '',
-		location: node.location ?? voidRange,
+		location: node.location ?? SourceRange.invalid(),
 		info:     {
 			...node.info,
 			id: node.info.id + '-arg'

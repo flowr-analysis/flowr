@@ -19,7 +19,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
  */
 export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
-		super('wiki/Linting and Testing.md', module.filename,'linting and testing definitions');
+		super('wiki/Linting and Testing.md', module.filename, 'linting and testing definitions');
 	}
 
 	protected text({ ctx }: DocMakerArgs): string {

@@ -1,7 +1,7 @@
-import { type FlowrConfigOptions , defaultConfigOptions } from '../../../src/config';
+import { type FlowrConfigOptions, defaultConfigOptions } from '../../../src/config';
 import type { CommandCompletions } from '../../../src/cli/repl/core';
 import { assert, expect, test } from 'vitest';
-import { type ReplOutput , standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
+import { type ReplOutput, standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
 import type { ParsedQueryLine } from '../../../src/queries/query';
 import type { BaseQueryFormat } from '../../../src/queries/base-query-format';
 

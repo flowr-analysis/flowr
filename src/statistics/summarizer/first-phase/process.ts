@@ -7,7 +7,7 @@ export class FileMigrator {
 	private readonly writeHandles = new Map<string, fs.WriteStream>();
 	private finished = false;
 
-	public async migrate(sourceFolderContent: Map<string,string>, targetFolder: string, originalFile: string | undefined): Promise<void> {
+	public async migrate(sourceFolderContent: Map<string, string>, targetFolder: string, originalFile: string | undefined): Promise<void> {
 		guard(!this.finished, () => 'migrator is already marked as finished!');
 		if(!fs.existsSync(targetFolder)) {
 			fs.mkdirSync(targetFolder, { recursive: true });

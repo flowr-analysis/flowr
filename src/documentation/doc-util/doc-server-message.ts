@@ -2,7 +2,7 @@ import { getFilePathMd } from './doc-files';
 import { describeSchema } from '../../util/schema';
 import { markdownFormatter } from '../../util/text/ansi';
 import type { FlowrMessage, IdMessageBase, MessageDefinition } from '../../cli/repl/server/messages/all-messages';
-import { type FakeServer, type FakeSocket , withSocket } from '../../../test/functionality/_helper/net';
+import { type FakeServer, type FakeSocket, withSocket } from '../../../test/functionality/_helper/net';
 import { jsonWithLimit } from './doc-code';
 import { guard } from '../../util/assert';
 import { printAsMs } from '../../util/text/time';

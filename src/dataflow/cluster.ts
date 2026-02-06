@@ -1,6 +1,6 @@
 import type { DataflowGraph } from './graph/graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { edgeDoesNotIncludeType, EdgeType } from './graph/edge';
+import { DfEdge, EdgeType } from './graph/edge';
 import { VertexType } from './graph/vertex';
 import { guard } from '../util/assert';
 
@@ -56,9 +56,9 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	}
 
 	// cluster adjacent edges
-	for(const [dest, { types }] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
+	for(const [dest, e] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		// don't cluster for function content if it isn't returned
-		if(edgeDoesNotIncludeType(types, EdgeType.Returns) && info.onlyBuiltin && info.name == '{'){
+		if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name == '{'){
 			continue;
 		}
 		if(notReached.delete(dest)) {

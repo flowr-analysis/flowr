@@ -394,7 +394,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -481,9 +481,9 @@ export interface TypeReport {
 	program: ts.Program
 }
 
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport;
 /**
  * Inspect typescript source code for types and return a report.
  */
@@ -528,7 +528,7 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a>)</i>\n`;
 	}
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
-	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t', '    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {
@@ -686,9 +686,11 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
+ * @param fuzzy     - Whether to use fuzzy matching when searching for the type
+ * @param type      - Optionally restrict to a certain type of element
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
-	const res = retrieveNode(name, hierarchy);
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
+	const res = retrieveNode(name, hierarchy, fuzzy, type);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
@@ -725,8 +727,8 @@ export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSou
 }
 
 export interface GetDocumentationForTypeFilters {
-    fuzzy?: boolean;
-    type?:  TypeElementKind;
+	fuzzy?: boolean;
+	type?:  TypeElementKind;
 }
 
 

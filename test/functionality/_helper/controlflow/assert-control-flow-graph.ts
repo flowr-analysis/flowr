@@ -1,11 +1,11 @@
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { diffOfControlFlowGraphs } from '../../../../src/control-flow/diff-cfg';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
-import { type ControlFlowInformation , emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
-import { type CfgProperty , assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
+import { type ControlFlowInformation, emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
+import { type CfgProperty, assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
 import { cloneConfig, defaultConfigOptions } from '../../../../src/config';
 import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg-simplification';
 import type { DataflowInformation } from '../../../../src/dataflow/info';
@@ -36,7 +36,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	// shallow copy is important to avoid killing the CFG :c
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	const effectiveName = label(code, options?.testIds ?? [], ['controlflow']);
-	return test(effectiveName, async()=> {
+	return test(effectiveName, async() => {
 		const config = cloneConfig(defaultConfigOptions);
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)

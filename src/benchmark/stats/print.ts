@@ -177,9 +177,6 @@ Dataflow:
   Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${pad(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${pad(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 
 	if(stats.dataFrameShape !== undefined) {
@@ -285,9 +282,6 @@ Dataflow:
   Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${formatSummarizedMeasure(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${formatSummarizedMeasure(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
 
 	if(stats.dataFrameShape !== undefined) {

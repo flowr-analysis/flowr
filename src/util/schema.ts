@@ -1,5 +1,5 @@
 import type Joi from 'joi';
-import { type OutputFormatter , italic , formatter ,  bold, ColorEffect, Colors } from './text/ansi';
+import { type OutputFormatter, italic, formatter,  bold, ColorEffect, Colors } from './text/ansi';
 
 interface SchemaLine {
 	level: number;

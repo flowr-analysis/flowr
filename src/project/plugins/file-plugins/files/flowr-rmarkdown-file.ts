@@ -1,7 +1,7 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
-import { type Node , Parser } from 'commonmark';
+import { type Node, Parser } from 'commonmark';
 import matter from 'gray-matter';
 
 /**
@@ -21,6 +21,9 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		this.wrapped = file;
 	}
 
+	/**
+	 * Gets the parsed R Markdown information
+	 */
 	get rmd(): RmdInfo {
 		if(!this.data) {
 			this.loadContent();
@@ -50,7 +53,7 @@ export interface CodeBlock {
 
 export type CodeBlockEx = CodeBlock & {
 	startpos: { line: number, col: number }
-}
+};
 
 export interface RmdInfo {
 	content: string

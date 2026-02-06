@@ -20,9 +20,9 @@ import type { CallGraph } from '../../dataflow/graph/call-graph';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
-    parser:  Parser;
-    context: FlowrAnalyzerContext;
-    getId?:  IdGenerator<NoInfo>
+	parser:  Parser;
+	context: FlowrAnalyzerContext;
+	getId?:  IdGenerator<NoInfo>
 }
 
 type AnalyzerPipeline<Parser extends KnownParser> = Parser extends TreeSitterExecutor ?
@@ -31,7 +31,7 @@ type AnalyzerPipelineExecutor<Parser extends KnownParser> = PipelineExecutor<Ana
 
 /* for whatever reason moving the ternary in with `AnalyzerPipeline` just breaks the type system */
 export type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
-    : Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
+	: Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
 
 /**
  * This provides the full analyzer caching layer, please avoid using this directly

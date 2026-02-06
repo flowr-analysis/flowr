@@ -20,9 +20,10 @@ import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
-import { getRangeEnd } from '../../../../src/util/range';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { SourceRange } from '../../../../src/util/range';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -34,8 +35,8 @@ const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solve
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
  */
 export enum DomainMatchingType {
-    Exact = 'exact',
-    Overapproximation = 'overapproximation'
+	Exact = 'exact',
+	Overapproximation = 'overapproximation'
 }
 
 /**
@@ -246,7 +247,7 @@ export function testDataFrameDomainAgainstReal(
 ) {
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
 
-	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip })=> {
+	test.skipIf(skipTestBecauseConfigNotMet(config))(decorateLabelContext(name, ['absint']), async({ skip }) => {
 		if(typeof skipRun === 'boolean' ? skipRun : skipRun()) {
 			skip();
 		}
@@ -262,7 +263,8 @@ export function testDataFrameDomainAgainstReal(
 			if(node.type !== RType.Symbol) {
 				throw new Error(`slicing criterion ${criterion} does not refer to an R symbol`);
 			}
-			const lineNumber = getRangeEnd(node.info.fullRange ?? node.location)?.[0];
+			const range = SourceRange.fromNode(node);
+			const lineNumber = range ? SourceRange.getEndLine(range) : undefined;
 
 			if(lineNumber === undefined) {
 				throw new Error(`cannot resolve line of criterion ${criterion}`);
@@ -273,7 +275,7 @@ export function testDataFrameDomainAgainstReal(
 		const lines = code.split('\n');
 
 		for(const { criterion, node, lineNumber } of testEntries) {
-			const outputCode = createCodeForOutput(criterion, node.content);
+			const outputCode = createCodeForOutput(criterion, Identifier.toString(node.content));
 			lines.splice(lineNumber, 0, outputCode);
 		}
 		shell.clearEnvironment();

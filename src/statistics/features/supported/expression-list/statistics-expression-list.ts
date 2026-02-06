@@ -8,7 +8,7 @@ const initialExpressionListInfo = {
 	allExpressionLists: 0,
 	deepestNesting:     0
 };
-export type ExpressionListInfo = Writable<typeof initialExpressionListInfo>
+export type ExpressionListInfo = Writable<typeof initialExpressionListInfo>;
 
 function visitLists(info: ExpressionListInfo, input: FeatureProcessorInput): void {
 	let nest = -1; // we start with nesting 0

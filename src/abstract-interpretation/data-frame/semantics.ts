@@ -48,7 +48,7 @@ const DataFrameSemanticsMapper = {
 type DataFrameSemanticsMapperInfo<Arguments extends object, Options extends object | undefined> = {
 	readonly apply: DataFrameSemanticsApplier<Arguments, Options>,
 	readonly type:  ConstraintType
-}
+};
 
 /**
  * Data frame semantics applier for applying the abstract semantics of an abstract data frame operation with respect to the data frame shape domain.

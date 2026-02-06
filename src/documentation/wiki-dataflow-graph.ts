@@ -4,7 +4,7 @@ import {
 	type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from '../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
@@ -30,7 +30,7 @@ import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
 import { type NodeId, recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { ReferenceType } from '../dataflow/environments/identifier';
+import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
 	resolveByName,
@@ -119,16 +119,16 @@ ${subExplanations.length > 0 ? await printAllSubExplanations(parser, subExplanat
 }
 
 function edgeTypeToId(edgeType: EdgeType): string {
-	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
+	return DfEdge.typeToName(edgeType).toLowerCase().replaceAll(' ', '-');
 }
 
 function linkEdgeName(edgeType: EdgeType, page = ''): string {
-	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
+	return `[\`${DfEdge.typeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDocContext): Promise<string> {
 	/* we use the map to ensure order easily :D */
-	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const vertexExplanations = new Map<VertexType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	vertexExplanations.set(VertexType.Value, [{
 		name:        'Value Vertex',
@@ -271,7 +271,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -344,7 +344,7 @@ ${await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']) });
 
 		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -421,7 +421,7 @@ Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByNameAnyType(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByNameAnyType(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}
@@ -630,7 +630,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 }
 
 async function getEdgesExplanations(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
-	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const edgeExplanations = new Map<EdgeType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
 		name:        'Reads Edge',
@@ -916,7 +916,7 @@ wiki page if you are unsure.
 >
 > Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
-${await printDfGraphForCode(treeSitter,'x <- 3\ny <- x + 1\ny')}
+${await printDfGraphForCode(treeSitter, 'x <- 3\ny <- x + 1\ny')}
 
 
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
@@ -931,7 +931,7 @@ although they are explicitly no data dependency and relate to the ${ctx.linkPage
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k, v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
@@ -975,7 +975,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 ${section('Vertices', 2, 'vertices')}
 
 1. ${getAllVertices().map(
-	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
+	([k, v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${await getVertexExplanations(treeSitter, ctx)}
@@ -996,7 +996,7 @@ and a boolean flag \`when\` to indicate if the control dependency is active when
 
 As an example, consider the following dataflow graph:
 
-${await printDfGraphForCode(treeSitter,'if(p) a else b')}
+${await printDfGraphForCode(treeSitter, 'if(p) a else b')}
 
 Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a \`CD\` prefix, followed
 by the \`when\` flag.
@@ -1091,7 +1091,7 @@ In case _flowR_ encounters a function call that it cannot handle, it marks the c
 You can find these as part of the dataflow graph, specifically as \`unknownSideEffects\` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the \`load\` call and therefore marks it as such (marked in bright red):
 
-${await printDfGraphForCode(treeSitter,'load("file")\nprint(x + y)')}
+${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
@@ -1158,12 +1158,17 @@ Depending on what you are interested in, there exists a plethora of functions an
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
 * ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
-* ${ctx.link(edgeIncludesType)} to check if an edge includes a specific type and ${ctx.link(splitEdgeTypes)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
 * ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
 * ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
-Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow-Graph) and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
+FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
+
+* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
+* ${ctx.link('FunctionArgument', undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+
+Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
@@ -1201,8 +1206,8 @@ ${await(async() => {
 			}
 			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
-You can use ${ctx.link(splitEdgeTypes.name)} to get the individual bitmasks of all included types, and 
-${ctx.link(edgeIncludesType.name)} to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use ${ctx.link('DfEdge::splitTypes')} to get the individual bitmasks of all included types, and 
+${ctx.link('DfEdge::includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
 
 ${section('Handling Origins', 3, 'dfg-handling-origins')}
 

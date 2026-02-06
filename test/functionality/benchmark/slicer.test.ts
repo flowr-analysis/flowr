@@ -1,8 +1,8 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { type CommonSlicerMeasurements , PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
-import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { type CommonSlicerMeasurements, PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
+import { defaultConfigOptions } from '../../../src/config';
 import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
@@ -56,9 +56,6 @@ describe('Benchmark Slicer', () => {
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
 				sizeOfObject:                196,
-				storedVertexIndices:         0,  // no indices
-				storedEnvIndices:            0,  // no indices
-				overwrittenIndices:          0,  // no indices
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -126,9 +123,6 @@ cat(d)`
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
 				sizeOfObject:                1666,
-				storedVertexIndices:         0,
-				storedEnvIndices:            0,
-				overwrittenIndices:          0,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
@@ -158,46 +152,6 @@ cat(d)`
 				total:  4
 			}, statInfo);
 
-		});
-
-		describe('Slicing with pointer-tracking enabled', () => {
-			test('When indices are stored, then correct values are counted', async() => {
-				const slicer = new BenchmarkSlicer('r-shell');
-				const request = {
-					request: 'text' as const,
-					content: `
-person <- list(firstName = "John", lastName = "Doe", age = 32)
-
-person$firstName <- "Jane"
-person$lastName <- "eoD"
-person$age <- 34
-person$zipCode <- 67890
-person$city <- "other example"
-
-person$city <- list(name = "big-city", lat = 12.345, lon = 67.890, country = "foo")
-
-person$age <- 42
-
-print(person$age)`,
-					pointerTracking: true
-				};
-
-				await slicer.init(request, amendConfig(defaultConfigOptions, c => {
-					c.solver.pointerTracking = true;
-					return c;
-				}));
-				await slicer.slice('14@print');
-
-				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
-
-				// 'storedEnvIndices' are less because indices are overwritten
-				assert.deepStrictEqual(stats.dataflow, {
-					...stats.dataflow,
-					storedVertexIndices: 14,
-					storedEnvIndices:    13,
-					overwrittenIndices:  1,
-				}, statInfo);
-			});
 		});
 
 		describe('Slicing with sampling enabled', () => {

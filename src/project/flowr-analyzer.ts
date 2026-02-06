@@ -3,6 +3,7 @@ import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { decorateAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../dataflow/info';
 import type { CfgSimplificationPassName } from '../control-flow/cfg-simplification';
 import type { PipelinePerStepMetaInformation } from '../core/steps/pipeline/pipeline';
@@ -12,11 +13,15 @@ import { type GetSearchElements, runSearch } from '../search/flowr-search-execut
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { CfgKind } from './cfg-kind';
 import type { RAnalysisRequest } from './context/flowr-analyzer-files-context';
-import type { RParseRequestFromFile } from '../r-bridge/retriever';
-import { fileProtocol, requestFromInput } from '../r-bridge/retriever';
+import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever';
+import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
 import type { CallGraph } from '../dataflow/graph/call-graph';
+import type { Tree } from 'web-tree-sitter';
+import { normalize } from '../r-bridge/lang-4.x/ast/parser/json/parser';
+import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -50,13 +55,14 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 /**
  * Exposes the central analyses and information provided by the {@link FlowrAnalyzer} to the linter, search, and query APIs.
  * This allows us to exchange the underlying implementation of the analyzer without affecting the APIs.
+ * You can also use {@link ReadonlyFlowrAnalysisProvider#parseStandalone|parseStandalone} to parse standalone R code snippets.
  */
 export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = KnownParser> {
-    /**
-     * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
-     * including the parser's {@link BaseParserInformation.name} and corresponding version information.
-     */
-    parserInformation(): KnownParserInformation
+	/**
+	 * Returns a set of additional data and helper functions exposed by the underlying {@link KnownParser},
+	 * including the parser's {@link BaseParserInformation.name} and corresponding version information.
+	 */
+	parserInformation(): KnownParserInformation
 	/**
 	 * Returns a read-only version of the project context information.
 	 * This is the preferred method for users that want to inspect the context.
@@ -69,11 +75,17 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @param force - Do not use the cache, instead force a new parse.
 	 * @see {@link ReadonlyFlowrAnalysisProvider#peekParse} - to get the parse output if already available without triggering a new computation.
 	 */
-    parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
+	parse(force?: boolean): Promise<NonNullable<AnalyzerCacheType<Parser>['parse']>>
 	/**
 	 * Peek at the parse output for the request, if it was already computed.
 	 */
 	peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined;
+	/**
+	 * Parse standalone R code provided as a string or via the `file://` protocol.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
+	 * @param data - The R code to parse, either as a string or as a `file://` URL.
+	 */
+	parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree;
 	/**
 	 * Get the normalized abstract syntax tree for the request.
 	 * @param force - Do not use the cache, instead force new analyses.
@@ -84,6 +96,13 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * Peek at the normalized abstract syntax tree for the request, if it was already computed.
 	 */
 	peekNormalize(): NormalizedAst & PipelinePerStepMetaInformation | undefined;
+
+	/**
+	 * Normalize standalone R code provided as a string or via the `file://` protocol.
+	 * @note this method will always use the {@link TreeSitterExecutor} internally, make sure it is initialized!
+	 * @param data - The R code to normalize, either as a string or as a `file://` URL.
+	 */
+	normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst;
 	/**
 	 * Get the dataflow graph for the request.
 	 * @param force - Do not use the cache, instead force new analyses.
@@ -159,6 +178,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	constructor(parser: Parser, ctx: FlowrAnalyzerContext, cache: FlowrAnalyzerCache<Parser>) {
 		this.parser = parser;
 		this.ctx = ctx;
+		ctx.setAnalyzer(this);
 		this.cache = cache;
 	}
 
@@ -182,6 +202,21 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public reset() {
 		this.ctx.reset();
 		this.cache.reset();
+	}
+
+	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
+		const request = isParseRequest(data) ? data : requestFromInput(data);
+		if(this.parser.name === 'tree-sitter') {
+			return this.parser.parse(request);
+		} else {
+			const ts = new TreeSitterExecutor();
+			return ts.parse(request);
+		}
+	}
+
+	public normalizeStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): NormalizedAst {
+		const parse = this.parseStandalone(data);
+		return decorateAst(normalizeTreeSitterTreeToAst([{ parsed: parse, filePath: undefined }], true), {});
 	}
 
 	public addRequest(...request: (RAnalysisRequest | readonly RAnalysisRequest[] | `${typeof fileProtocol}${string}` | string)[]): this {
@@ -268,14 +303,14 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public async query<
-        Types extends SupportedQueryTypes = SupportedQueryTypes
-    >(query: Queries<Types>): Promise<QueryResults<Types>> {
+		Types extends SupportedQueryTypes = SupportedQueryTypes
+	>(query: Queries<Types>): Promise<QueryResults<Types>> {
 		return executeQueries({ analyzer: this }, query);
 	}
 
 	public async runSearch<
-        Search extends FlowrSearchLike
-    >(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
+		Search extends FlowrSearchLike
+	>(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return runSearch(search, this);
 	}
 

@@ -2,11 +2,11 @@ import { FlowRServerConnection } from './connection';
 import { getUnnamedSocketName, sendMessage } from './send';
 import type { FlowrHelloResponseMessage } from './messages/message-hello';
 import type { FlowrErrorMessage } from './messages/message-error';
-import { type Server, type Socket , NetServer } from './net';
+import { type Server, type Socket, NetServer } from './net';
 import { FlowrLogger } from '../../../util/log';
 import type { FlowrConfigOptions, KnownEngines } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
-import { type VersionInformation , retrieveVersionInformation } from '../../../util/version';
+import { type VersionInformation, retrieveVersionInformation } from '../../../util/version';
 
 // we detach from the main logger so that it can have its own switch
 export const serverLog = new FlowrLogger({ name: 'server' });

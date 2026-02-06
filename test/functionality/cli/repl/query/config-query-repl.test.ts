@@ -68,28 +68,28 @@ describe('Config Query REPL Completions', () => {
 	assertReplCompletions({ completer,
 		label:               'adds dot after full root node',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test', } },
+		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
 		splitLine:           ['+bTopNode'],
 		expectedCompletions: ['+bTopNode.']
 	});
 	assertReplCompletions({ completer,
 		label:               'all second level nodes',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test', } },
+		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
 		splitLine:           ['+bTopNode.'],
 		expectedCompletions: ['+bTopNode.aSecondNode', '+bTopNode.bSecondNode'],
 	});
 	assertReplCompletions({ completer,
 		label:               'provides completion for partial second level node',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test', } },
+		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
 		splitLine:           ['+bTopNode.b'],
 		expectedCompletions: ['+bTopNode.bSecondNode'],
 	});
 	assertReplCompletions({ completer,
 		label:               'adds equals sign after full path',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test', } },
+		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
 		splitLine:           ['+bTopNode.bSecondNode'],
 		expectedCompletions: ['+bTopNode.bSecondNode='],
 	});

@@ -8,7 +8,7 @@ export type AbstractDataFrameShape = {
 	colnames: SetRangeDomain<string>;
 	cols:     PosIntervalDomain;
 	rows:     PosIntervalDomain;
-}
+};
 
 /** The type of abstract values of a sub abstract domain (shape property) of the data frame shape product domain */
 export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> = AbstractDomainValue<AbstractDataFrameShape[Property]>;

@@ -29,9 +29,9 @@ export function normalizeString(data: NormalizerData, obj: JsonEntry): RString {
 		content: string2ts(stringContent),
 		lexeme:  stringContent,
 		info:    {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

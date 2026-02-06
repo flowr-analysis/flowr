@@ -8,17 +8,17 @@ import type { DataflowInformation } from '../../dataflow/info';
 import { cfgToMermaid } from '../../util/mermaid/cfg';
 import { codeBlock } from './doc-code';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
-import { type CfgSimplificationPassName , DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 type GetCfgReturn = {
 	info:      ControlFlowInformation,
 	ast:       NormalizedAst,
 	dataflow?: DataflowInformation
-}
+};
 
-export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: true): Promise<Required<GetCfgReturn>>
-export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: boolean): Promise<GetCfgReturn>
+export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: true): Promise<Required<GetCfgReturn>>;
+export function getCfg(parser: KnownParser, code: string, simplifications?: readonly CfgSimplificationPassName[], useDfg?: boolean): Promise<GetCfgReturn>;
 /**
  * Returns the control flow graph for the given code.
  */
@@ -26,11 +26,11 @@ export async function getCfg(parser: KnownParser, code: string, simplifications:
 	const context = contextFromInput(code);
 	const result = await (useDfg ? createDataflowPipeline(parser, { context })
 		: createNormalizePipeline(parser, { context })).allRemainingSteps();
-	const cfg = extractCfg(result.normalize, context, useDfg ? (result as unknown as {dataflow: DataflowInformation}).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
+	const cfg = extractCfg(result.normalize, context, useDfg ? (result as unknown as { dataflow: DataflowInformation }).dataflow.graph : undefined, [...DefaultCfgSimplificationOrder, ...simplifications]);
 	return {
 		info:     cfg,
 		ast:      result.normalize,
-		dataflow: 'dataflow' in result ? (result as {dataflow: DataflowInformation}).dataflow : undefined
+		dataflow: 'dataflow' in result ? (result as { dataflow: DataflowInformation }).dataflow : undefined
 	};
 }
 

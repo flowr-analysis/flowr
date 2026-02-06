@@ -1,5 +1,5 @@
 import { bottomTopGuard } from '../general';
-import { type Lift, type Value, type ValueSet , Top } from '../r-value';
+import { type Lift, type Value, type ValueSet, Top } from '../r-value';
 
 function flattenSetElements(s: Lift<Value[]>): Lift<Value[]> {
 	return bottomTopGuard(s) ?? (s as Value[]).flatMap(e => {

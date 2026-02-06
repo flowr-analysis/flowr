@@ -8,7 +8,7 @@ import type { ParentInformation, NormalizedAst } from '../../r-bridge/lang-4.x/a
  * @see reconstructToCode
  * @see doNotAutoSelect
  */
-export type AutoSelectPredicate = (node: RNode<ParentInformation>, fullAst: NormalizedAst) => boolean
+export type AutoSelectPredicate = (node: RNode<ParentInformation>, fullAst: NormalizedAst) => boolean;
 
 /**
  * A variant of the {@link AutoSelectPredicate} which does not select any additional statements (~&gt; false)

@@ -3,26 +3,26 @@ import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
-import { type ControlFlowInformation , CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
+import { type ControlFlowInformation, CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
 import { extractCfg, ResolvedCallSuffix } from '../control-flow/extract-cfg';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../r-bridge/lang-4.x/convert-values';
-import { type RNumber , isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { type RNumber, isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { happensBefore } from '../control-flow/happens-before';
 import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
 import { SyntaxAwareCfgGuidedVisitor } from '../control-flow/syntax-cfg-guided-visitor';
 import { diffOfControlFlowGraphs } from '../control-flow/diff-cfg';
-import { type NodeId , recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
 import { DataflowAwareCfgGuidedVisitor } from '../control-flow/dfg-cfg-guided-visitor';
 import type { DataflowGraphVertexValue } from '../dataflow/graph/vertex';
-import { type SemanticCfgGuidedVisitorConfiguration , SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { type SemanticCfgGuidedVisitorConfiguration, SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { NewIssueUrl } from './doc-util/doc-issue';
-import { EdgeType, edgeTypeToName } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { guard } from '../util/assert';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -537,16 +537,16 @@ ${
 
 ${section('Working With Exit Points', 3, 'cfg-exit-points')}
 
-With the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) you already get a \`${edgeTypeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
+With the ${ctx.linkPage('wiki/Dataflow Graph')} you already get a \`${DfEdge.typeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
 (given that this function call does neither transform nor create a value).
 But the control flow perspective gives you more! Given a simple addition like \`x + 1\`, the CFG looks like this:
 
 ${await (async function() {
 	const cfg = await getCfg(shell, 'x + 1');
-	const [plusVertexId, plusVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === '+')[0];
+	const [plusVertexId, plusVertex] = cfg.info.graph.vertices().entries().filter(([n]) => recoverName(n, cfg.ast.idMap) === '+').toArray()[0];
 	guard(plusVertex.type === CfgVertexType.Expression);
 	const numOfExits
-				= plusVertex.end?.length ?? 0;
+		= plusVertex.end?.length ?? 0;
 	guard(plusVertex.end && numOfExits === 1);
 
 	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n' })}
@@ -563,7 +563,7 @@ ${details('Example: Exit Points for an if', await (async function() {
 	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === 'if')[0];
 	guard(ifVertex.type === CfgVertexType.Statement);
 	const numOfExits
-				= ifVertex.end?.length ?? 0;
+		= ifVertex.end?.length ?? 0;
 	guard(ifVertex.end && numOfExits === 1);
 
 	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n' })}

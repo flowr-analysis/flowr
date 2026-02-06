@@ -3,10 +3,10 @@ import { escapeId } from '../../util/mermaid/mermaid';
 import { joinWithLast } from '../../util/text/strings';
 
 export interface DetailsOptions {
-    readonly color?:       string;
-    readonly open?:        boolean;
-    readonly hideIfEmpty?: boolean;
-    readonly prefixInit?:  string;
+	readonly color?:       string;
+	readonly open?:        boolean;
+	readonly hideIfEmpty?: boolean;
+	readonly prefixInit?:  string;
 }
 
 /**
@@ -23,8 +23,8 @@ ${prefixInit}</details>
 }
 
 export interface BlockOptions {
-    readonly type:    'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT';
-    readonly content: string;
+	readonly type:    'NOTE' | 'WARNING' | 'TIP' | 'IMPORTANT';
+	readonly content: string;
 }
 
 /**

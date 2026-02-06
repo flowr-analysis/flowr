@@ -110,8 +110,8 @@ export function staticSlice(
 			}
 		}
 
-		for(const [target, { types }] of currentEdges) {
-			const t = shouldTraverseEdge(types);
+		for(const [target, e] of currentEdges) {
+			const t = shouldTraverseEdge(e);
 			switch(t) {
 				case TraverseEdge.Never:
 					continue;

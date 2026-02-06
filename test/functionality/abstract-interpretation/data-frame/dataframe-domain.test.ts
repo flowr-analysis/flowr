@@ -22,7 +22,7 @@ describe('Data Frame Domains', () => {
 
 	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies ExpectedDataFrameShape;
 	const DataFrameTop = { colnames: [[], Top], cols: PosIntervalTop, rows: PosIntervalTop } satisfies ExpectedDataFrameShape;
-	const DataFrameEmpty = { colnames: [[], []], cols: [0, 0], rows: [0,0] } satisfies ExpectedDataFrameShape;
+	const DataFrameEmpty = { colnames: [[], []], cols: [0, 0], rows: [0, 0] } satisfies ExpectedDataFrameShape;
 
 	const domain1 = { colnames: [['id', 'name'], ['age']], cols: [2, 3], rows: [5, 5] } satisfies ExpectedDataFrameShape;
 	const domain2 = { colnames: [['id', 'category'], []], cols: [2, 2], rows: [0, 6] } satisfies ExpectedDataFrameShape;

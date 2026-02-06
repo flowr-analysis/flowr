@@ -149,7 +149,7 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 			definedAt: normalizeIdToNumberIfPossible(def.definedAt),
 			nodeId:    normalizeIdToNumberIfPossible(def.nodeId),
 			cds:       def.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
-		} as IdentifierDefinition & { name: string }, superAssignment, this, defaultConfigOptions);
+		} as IdentifierDefinition & { name: string }, superAssignment, this);
 		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}
 

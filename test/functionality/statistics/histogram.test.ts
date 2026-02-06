@@ -23,19 +23,19 @@ describe('Histogram', () => {
 			withBins(2, [1], [1, 0]);
 		});
 		describe('for multiple unique values', () => {
-			withBins(1, [1,2,3], [1,0,1,1]);
-			withBins(3, [5,6,7], [1,2]);
-			withBins(4, [1,2,3], [1,2]);
-			withBins(2, [1,2,3], [1,1,1]);
+			withBins(1, [1, 2, 3], [1, 0, 1, 1]);
+			withBins(3, [5, 6, 7], [1, 2]);
+			withBins(4, [1, 2, 3], [1, 2]);
+			withBins(2, [1, 2, 3], [1, 1, 1]);
 		});
 		describe('for multiple repeated values', () => {
-			withBins(1, [1,2,3,1], [2,0,1,1]);
-			withBins(3, [5,6,2,1,3,5,6], [1 /* for the single 1 */,2 /* for 2, 3 */ ,4 /* for 4+ (5, 6, 5, 6) */]);
-			withBins(4, [1,2,3,1,2,3], [2, 4]);
-			withBins(2, [8,1,0], [1,1,0,0,0,1]);
+			withBins(1, [1, 2, 3, 1], [2, 0, 1, 1]);
+			withBins(3, [5, 6, 2, 1, 3, 5, 6], [1 /* for the single 1 */, 2 /* for 2, 3 */, 4 /* for 4+ (5, 6, 5, 6) */]);
+			withBins(4, [1, 2, 3, 1, 2, 3], [2, 4]);
+			withBins(2, [8, 1, 0], [1, 1, 0, 0, 0, 1]);
 		});
 		describe('check differentiation for first bucket', () => {
-			withBins(20, [0,1,15,20,21,22,39,40,41,42,61], [1 /* 0 */,2 /* 1, 15 */,4 /* 20-39 */,3 /* 40-42*/,1 /* 61 */]);
+			withBins(20, [0, 1, 15, 20, 21, 22, 39, 40, 41, 42, 61], [1 /* 0 */, 2 /* 1, 15 */, 4 /* 20-39 */, 3 /* 40-42*/, 1 /* 61 */]);
 		});
 	});
 });

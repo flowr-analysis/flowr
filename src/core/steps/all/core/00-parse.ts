@@ -1,9 +1,9 @@
 import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { parseToQuads } from '../../../print/parse-printer';
-import { type IPipelineStep , PipelineStepStage } from '../../pipeline-step';
+import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { QuadSerializationConfiguration } from '../../../../util/quads';
-import { type ParseRequiredInput , parseRequests } from '../../../../r-bridge/parser';
+import { type ParseRequiredInput, parseRequests } from '../../../../r-bridge/parser';
 
 export const PARSE_WITH_R_SHELL_STEP = {
 	name:              'parse',

@@ -13,7 +13,7 @@ function getLoc({ location, info: { fullRange } }: RNode): SourceRange {
 	return loc;
 }
 
-type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined
+type MagicCommentConsumer = (n: RComment, stack: number[]) => number[] | undefined;
 
 const magicCommentIdMapper: Record<string, MagicCommentConsumer> = {
 	'include_next_line': (n: RComment) => {
@@ -61,7 +61,7 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 			lines = new Set<number>();
 			const startLineStack: number[] = [];
 			visitAst(normalizedAst.ast.files.map(f => f.root), n => {
-				const comments = n.info.additionalTokens;
+				const comments = n.info.adToks;
 				if(!comments) {
 					return;
 				}

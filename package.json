@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.8.14",
+  "version": "2.9.6",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -43,6 +43,7 @@
     "test:full": "npm run test-full",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
+    "test:performance": "npm run performance-test --",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
     "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run gen:readme && npm-run-all wiki:*"
   },
@@ -166,9 +167,9 @@
   "devDependencies": {
     "@commitlint/cli": "^19.7.1",
     "@commitlint/config-angular": "^19.7.1",
-    "@eagleoutice/eslint-config-flowr": "^1.0.27",
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.34.0",
+    "@eagleoutice/eslint-config-flowr": "^1.0.36",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
     "@j-ulrich/release-it-regex-bumper": "^5.3.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
@@ -184,7 +185,7 @@
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@vitest/coverage-v8": "^3.2.4",
     "esbuild": "^0.27.2",
-    "eslint": "^9.34.0",
+    "eslint": "^9.39.2",
     "license-checker-rseidelsohn": "^4.4.2",
     "npm-run-all": "^4.1.5",
     "release-it": "^19.2.3",

@@ -22,7 +22,7 @@ export function emptySummarizedWithProject(): SummarizedWithProject {
 
 export type ReplaceKeysForSummary<Source, Target> = MergeableRecord & {
 	[K in keyof Source]: Target
-}
+};
 
 
 /**

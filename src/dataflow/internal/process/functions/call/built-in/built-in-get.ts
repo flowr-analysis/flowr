@@ -12,6 +12,7 @@ import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
 
 
 /**
@@ -24,22 +25,21 @@ export function processGet<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
 	if(args.length !== 1) {
-		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
+		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const retrieve = unpackNonameArg(args[0]);
 	if(retrieve === undefined || retrieve.type !== RType.String) {
-		dataflowLogger.warn(`symbol access with ${name.content} has not 1 argument, skipping`);
+		dataflowLogger.warn(`symbol access with ${Identifier.toString(name.content)} has not 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
 	const treatTargetAsSymbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      retrieve.info,
-		content:   removeRQuotes(retrieve.lexeme),
-		lexeme:    retrieve.lexeme,
-		location:  retrieve.location,
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     retrieve.info,
+		content:  removeRQuotes(retrieve.lexeme),
+		lexeme:   retrieve.lexeme,
+		location: retrieve.location
 	};
 
 	const { information, processedArguments } = processKnownFunctionCall({

@@ -36,13 +36,13 @@ export abstract class Summarizer<Output, Configuration extends CommonSummarizerC
 	 * benchmark or statistic results. This can write temporary files based on the configuration.
 	 * @param useTypeClassification - Whether to split the analysis based on the detected type (e.g. 'test', 'example', ...)
 	 */
-	public abstract preparationPhase(useTypeClassification: boolean): Promise<void>
+	public abstract preparationPhase(useTypeClassification: boolean): Promise<void>;
 
 	/**
 	 * Second phase of the summary, can be used to combine the data from the first phase
 	 * and produce some kind of "ultimate results".
 	 */
-	public abstract summarizePhase(): Promise<Output>
+	public abstract summarizePhase(): Promise<Output>;
 }
 
 /**

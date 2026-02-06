@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrFile } from '../../../context/flowr-file';
 import { RPunctuationChars, RStandardRegexp } from '../../../../util/r-regex';
 import { compactRecord } from '../../../../util/objects';
 

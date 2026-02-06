@@ -6,12 +6,13 @@ import {
 	, CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';
+import { invertCfg } from './invert-cfg';
 
 export interface BasicCfgGuidedVisitorConfiguration<
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 > {
-    readonly controlFlow:          ControlFlow;
-    readonly defaultVisitingOrder: 'forward' | 'backward';
+	readonly controlFlow:          ControlFlow;
+	readonly defaultVisitingOrder: 'forward' | 'backward';
 }
 
 /**
@@ -22,7 +23,7 @@ export interface BasicCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class BasicCfgGuidedVisitor<
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Config extends BasicCfgGuidedVisitorConfiguration<ControlFlow> = BasicCfgGuidedVisitorConfiguration<ControlFlow>
 > {
 
@@ -49,10 +50,14 @@ export class BasicCfgGuidedVisitor<
 
 	protected startVisitor(start: readonly NodeId[]): void {
 		const graph = this.config.controlFlow.graph;
-		const getNext = this.config.defaultVisitingOrder === 'forward' ?
-			(node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().toReversed() :
-			(node: NodeId) => graph.outgoingEdges(node)?.keys().toArray();
-		const stack = [...start];
+		let getNext: (node: NodeId) => MapIterator<NodeId> | NodeId[] | undefined;
+		if(this.config.defaultVisitingOrder === 'forward') {
+			const inverseGraph = invertCfg(graph);
+			getNext = (node: NodeId) => inverseGraph.outgoingEdges(node)?.keys().toArray().reverse();
+		} else {
+			getNext = (node: NodeId) => graph.outgoingEdges(node)?.keys();
+		}
+		const stack = Array.from(start);
 		while(stack.length > 0) {
 			const current = stack.pop() as NodeId;
 

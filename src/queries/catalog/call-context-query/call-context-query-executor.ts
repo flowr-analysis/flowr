@@ -11,7 +11,7 @@ import type {
 } from './call-context-query-format';
 import { type NodeId, recoverContent } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { TwoLayerCollector } from '../../two-layer-collector';
 import { compactRecord } from '../../../util/objects';
 import type { BasicQueryData } from '../../base-query-format';
@@ -21,6 +21,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -28,7 +29,7 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 	if(vertex === undefined) {
 		return false;
 	}
-	return vertex.values().some(({ types }) => edgeIncludesType(types, EdgeType.NonStandardEvaluation));
+	return vertex.values().some(e => DfEdge.includesType(e, EdgeType.NonStandardEvaluation));
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
@@ -56,30 +57,35 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 	return 'linkTo' in query && query.linkTo !== undefined;
 }
 
+export type PromotedCallTest = (t: string) => boolean;
+
 /**
  *
  */
-export function promoteCallName(callName: CallNameTypes, exact = false): RegExp | Set<string> {
+export function promoteCallName(callName: CallNameTypes, exact = false): PromotedCallTest {
 	if(Array.isArray(callName)) {
-		return new Set<string>(callName);
+		const s = new Set<string>(callName);
+		return (t: string) => s.has(t);
 	} else if(exact) {
-		return new Set([typeof callName === 'string' ? callName : callName.source]);
+		const s = new Set([typeof callName === 'string' ? callName : callName.source]);
+		return (t: string) => s.has(t);
 	} else {
-		return new RegExp(callName);
+		const r = new RegExp(callName);
+		return (t: string) => r.test(t);
 	}
 }
 
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
-    callName:    RegExp | Set<string>,
-    fileFilter?: FileFilter<RegExp | Set<string>>,
-    linkTo?:     PromotedLinkTo | PromotedLinkTo[]
+	callName:    PromotedCallTest,
+	fileFilter?: FileFilter<PromotedCallTest>,
+	linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
-export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & {callName: RegExp | Set<string>}
+export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: PromotedCallTest };
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
-    promotedQueries: PromotedQuery[],
-    requiresCfg:     boolean
+	promotedQueries: PromotedQuery[],
+	requiresCfg:     boolean
 } {
 	let requiresCfg = false;
 	const promotedQueries: PromotedQuery[] = queries.map(q => {
@@ -124,7 +130,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 
 	const visited = new Set<NodeId>();
 	/* we store the current call name */
-	let queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
 
 	while(queue.length > 0) {
 		const [str, id] = queue.shift() as [string, NodeId];
@@ -148,12 +154,13 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		const [info, outgoing] = vertex;
 
 		if(info.tag !== VertexType.FunctionCall) {
+			const wantedTypes = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 			const x = outgoing.entries()
-				.filter(([,{ types }]) => edgeIncludesType(types, EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall))
+				.filter(([,e]) => DfEdge.includesType(e, wantedTypes))
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
-			queue = queue.concat(x);
+			queue.push(...x);
 			continue;
 		}
 
@@ -162,7 +169,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 			track |= EdgeType.Returns;
 		}
 		const out = outgoing.entries()
-			.filter(([, e]) => edgeIncludesType(e.types, track) && (nodeId !== id || !edgeIncludesType(e.types, EdgeType.Argument)))
+			.filter(([, e]) => DfEdge.includesType(e, track) && (nodeId !== id || DfEdge.doesNotIncludeType(e, EdgeType.Argument)))
 			.map(([t]) => t)
 		;
 
@@ -191,14 +198,14 @@ function removeIdenticalDuplicates(collector: TwoLayerCollector<string, string, 
 	}
 }
 
-function doesFilepathMatch(file: string | undefined, filter: FileFilter<RegExp | Set<string>> | undefined): boolean {
+function doesFilepathMatch(file: string | undefined, filter: FileFilter<PromotedCallTest> | undefined): boolean {
 	if(filter === undefined) {
 		return true;
 	}
 	if(file === undefined) {
 		return filter.includeUndefinedFiles ?? true;
 	}
-	return filter.filter instanceof RegExp ? filter.filter.test(file) : filter.filter.has(file);
+	return filter.filter(file);
 }
 
 function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
@@ -207,7 +214,8 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 		if(node.info.role === RoleInParent.ParameterDefaultValue) {
 			return true;
 		}
-		node = node.info.parent ? ast.idMap.get(node.info.parent) : undefined;
+		const nip = node.info.parent;
+		node = nip ? ast.idMap.get(nip) : undefined;
 	}
 	return false;
 }
@@ -235,7 +243,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	let cfg = undefined;
 	if(requiresCfg) {
-		cfg = await analyzer.controlflow([], CfgKind.WithDataflow);
+		cfg = await analyzer.controlflow(undefined, CfgKind.Quick);
 	}
 	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
@@ -251,14 +259,15 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			const targets = retrieveAllCallAliases(nodeId, dataflow.graph);
 			for(const [l, ids] of targets.entries()) {
 				for(const query of queriesWhichWantAliases) {
-					if(query.callName instanceof RegExp ? query.callName.test(l) : query.callName.has(l)) {
+					if(query.callName(l)) {
 						initialIdCollector.add(query.kind ?? '.', query.subkind ?? '.', compactRecord({ id: nodeId, name: info.name, aliasRoots: ids }));
 					}
 				}
 			}
 		}
 
-		for(const query of promotedQueries.filter(q => !q.includeAliases && (q.callName instanceof RegExp ? q.callName.test(info.name) : q.callName.has(info.name)))) {
+		const n = Identifier.getName(info.name);
+		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName(n))) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;

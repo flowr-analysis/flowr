@@ -27,7 +27,7 @@ x`);
 			{ loop: 'repeat', caps: ['repeat-loop'] },
 			{ loop: 'while(TRUE)', caps: ['while-loop', 'logical'] },
 			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
-		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[]}[])('$loop', ({ loop, caps }) => {
+		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
 			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 ${loop} {

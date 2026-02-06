@@ -1,4 +1,4 @@
-import { type StdioProcessor , waitOnScript } from './repl/execute';
+import { type StdioProcessor, waitOnScript } from './repl/execute';
 import { scripts } from './common/scripts-info';
 import path from 'path';
 
@@ -7,5 +7,5 @@ import path from 'path';
  * @see waitOnScript
  */
 export async function runScript(name: keyof typeof scripts, args: readonly string[], io?: StdioProcessor, exitOnError = false): Promise<void> {
-	return waitOnScript(path.resolve(__dirname,scripts[name].target), args, io, exitOnError);
+	return waitOnScript(path.resolve(__dirname, scripts[name].target), args, io, exitOnError);
 }

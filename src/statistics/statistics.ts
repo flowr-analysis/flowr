@@ -1,6 +1,6 @@
 import { DOMParser } from '@xmldom/xmldom';
 import fs from 'fs';
-import { type MetaStatistics , initialMetaStatistics } from './meta-statistics';
+import { type MetaStatistics, initialMetaStatistics } from './meta-statistics';
 import { log } from '../util/log';
 import { jsonReplacer, jsonBigIntRetriever } from '../util/json';
 import { PipelineExecutor } from '../core/pipeline-executor';
@@ -8,7 +8,7 @@ import type { RParseRequestFromFile, RParseRequestFromText, RParseRequest } from
 import type { PipelineOutput } from '../core/steps/pipeline/pipeline';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipelines';
 import type { RShell } from '../r-bridge/shell';
-import { type Feature, type FeatureKey, type FeatureSelection, type FeatureStatistics , ALL_FEATURES , allFeatureNames } from './features/feature';
+import { type Feature, type FeatureKey, type FeatureSelection, type FeatureStatistics, ALL_FEATURES, allFeatureNames } from './features/feature';
 import { ts2r } from '../r-bridge/lang-4.x/convert-values';
 import type { FlowrConfigOptions } from '../config';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
@@ -27,7 +27,7 @@ export function staticRequests(...requests: (RParseRequestFromText | RParseReque
 }
 
 
-type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>
+type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>;
 
 /**
  * Extract all wanted statistic information from a set of requests using the presented R session.
@@ -95,7 +95,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser();
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfigOptions): Promise<{ stats: FeatureStatistics, output: DataflowResult}> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfigOptions): Promise<{ stats: FeatureStatistics, output: DataflowResult }> {
 	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		context: contextFromInput(request, config), parser: shell
 	}).allRemainingSteps();

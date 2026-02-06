@@ -10,9 +10,9 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 		label: string,
 		code: string,
 		expect: {
-            pos?: SingleSlicingCriterion[]
-            neg?: SingleSlicingCriterion[]
-        }
+			pos?: SingleSlicingCriterion[]
+			neg?: SingleSlicingCriterion[]
+		}
 	) {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
 			for(const c of crit ?? []) {
@@ -33,9 +33,9 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 	}
 
 	describe('function definitions', () => {
-		testHigherOrder('identity, no calls','f <- function(x) x', { neg: ['1@function'] });
+		testHigherOrder('identity, no calls', 'f <- function(x) x', { neg: ['1@function'] });
 		testHigherOrder('returning fn', 'f <- function()\n    function(x) x', { pos: ['1@function'], neg: ['2@function'] });
-		testHigherOrder('maybe returning fn','f <- function() {\nif(u) 42 else { function(x) x }}', {
+		testHigherOrder('maybe returning fn', 'f <- function() {\nif(u) 42 else { function(x) x }}', {
 			pos: ['1@function'],
 			neg: ['2@function']
 		}); // function maybe returning another function

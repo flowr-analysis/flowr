@@ -3,12 +3,12 @@ import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { SourceLocation } from '../../../util/range';
 
 /**
  * Either returns all function definitions alongside whether they are higher-order functions,
@@ -23,7 +23,7 @@ export interface InspectHigherOrderQueryResult extends BaseQueryResult {
 	readonly higherOrder: Record<NodeId, boolean>;
 }
 
-function inspectHoLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-higher-order'> {
+function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-higher-order'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {
@@ -40,8 +40,9 @@ export const InspectHigherOrderQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-higher-order'>['inspect-higher-order'];
 		result.push(`Query: ${bold('inspect-higher-order', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		for(const [r, v] of Object.entries(out.higherOrder)) {
-			const loc = (await processed.normalize()).idMap.get(normalizeIdToNumberIfPossible(r))?.location ?? undefined;
-			result.push(`  - Function ${bold(r, formatter)} (${formatRange(loc)}) is ${v ? '' : 'not '}a higher-order function`);
+			const node = (await processed.normalize()).idMap.get(normalizeIdToNumberIfPossible(r));
+			const loc = node ? SourceLocation.fromNode(node) : undefined;
+			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(loc)}) is ${v ? '' : 'not '}a higher-order function`);
 		}
 		return true;
 	},

@@ -2,9 +2,11 @@ import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import { type Enrichment , enrichmentContent } from './search-executor/search-enrichers';
+import type { CallTargetsContent } from './search-executor/search-enrichers';
+import { Enrichment, enrichmentContent } from './search-executor/search-enrichers';
 import type { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
+import { Identifier } from '../dataflow/environments/identifier';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -30,7 +32,7 @@ export enum FlowrFilter {
 	 */
 	OriginKind = 'origin-kind'
 }
-export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: {dataflow: DataflowInformation}) => boolean;
+export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
@@ -40,8 +42,24 @@ export const FlowrFilters = {
 		return e.node.type !== RType.Argument || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
-		const content = JSON.stringify(enrichmentContent(e, args.enrichment));
-		return content !== undefined && args.test.test(content);
+		if(args.enrichment === Enrichment.CallTargets) {
+			const c: CallTargetsContent = enrichmentContent(e, Enrichment.CallTargets);
+			if(c === undefined || c.targets === undefined) {
+				return false;
+			}
+			for(const fn of c.targets) {
+				if(typeof fn === 'string' && args.test.test(fn)) {
+					return true;
+				}
+				if(typeof fn === 'object' && 'node' in fn && fn.node.type === RType.FunctionCall && fn.node.named && args.test.test(Identifier.getName(fn.node.functionName.content))) {
+					return true;
+				}
+			}
+			return false;
+		} else {
+			const content = JSON.stringify(enrichmentContent(e, args.enrichment));
+			return content !== undefined && args.test.test(content);
+		}
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);
@@ -71,7 +89,7 @@ export interface OriginKindArgs {
  * Helper to create a regular expression that matches function names, ignoring their package.
  */
 export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
-	return new RegExp(`"(.+:::?)?(${functions.join('|')})"`);
+	return new RegExp(`^(.+:::?)?(${functions.join('|')})$`);
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;
@@ -102,7 +120,7 @@ type BooleanNode = BooleanBinaryNode<BooleanNode>
 	| Leaf;
 
 
-type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator
+type BooleanNodeOrCombinator = BooleanNode | FlowrFilterCombinator;
 
 /**
  * @see {@link FlowrFilterCombinator.is}
@@ -255,7 +273,17 @@ function evalTree(tree: BooleanNode, data: FilterData): boolean {
  * Evaluates the given filter expression against the provided data.
  */
 export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
-	/* common lift, this can be improved easily :D */
-	const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
-	return evalTree(tree.get(), data);
+	if(filter instanceof FlowrFilterCombinator) {
+		return evalTree(filter.get(), data);
+	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
+		const handler = FlowrFilters[filter as FlowrFilter];
+		return handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
+	} else if(typeof filter === 'object' && 'name' in filter) {
+		const handler = FlowrFilters[filter.name];
+		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
+		return handler(data.element, args, data.data);
+	} else {
+		const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
+		return evalTree(tree.get(), data);
+	}
 }

@@ -21,9 +21,10 @@ const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> =
 
 /**
  * Maps a concrete data frame access operation to abstract data frame operations.
- * @param node - The R node of the access
- * @param dfg  - The data flow graph for resolving the arguments
- * @param ctx  - The current flowR analyzer context
+ * @param node      - The R node of the access
+ * @param inference - The data frame shape inference visitor
+ * @param dfg       - The data flow graph for resolving the arguments
+ * @param ctx       - The current flowR analyzer context
  * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
  */
 export function mapDataFrameAccess(
@@ -179,7 +180,9 @@ function getAccessArgs(
 ): readonly RFunctionArgument<ParentInformation>[] {
 	const specialArgs = SpecialAccessArgumentsMapper[operator];
 
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
+	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(
+		arg.name.content
+	)));
 }
 
 /**

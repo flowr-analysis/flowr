@@ -7,7 +7,7 @@ import {
 	isFunctionDefinitionVertex
 } from '../graph/vertex';
 import { isNotUndefined } from '../../util/assert';
-import { edgeIncludesType, EdgeType } from '../graph/edge';
+import { DfEdge, EdgeType } from '../graph/edge';
 import { resolveIdToValue } from '../eval/resolve/alias-tracking';
 import { VariableResolve } from '../../config';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -15,7 +15,7 @@ import { valueSetGuard } from '../eval/values/general';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph): boolean {
-	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId, true)).filter(isNotUndefined);
+	const workingQueue: DataflowGraphVertexArgument[] = def.exitPoints.map(d => graph.getVertex(d.nodeId)).filter(isNotUndefined);
 	const seen = new Set<NodeId>();
 	while(workingQueue.length > 0) {
 		const current = workingQueue.pop() as DataflowGraphVertexArgument;
@@ -27,9 +27,9 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 			return true;
 		}
 		const next = graph.outgoingEdges(current.id) ?? [];
-		for(const [t, { types }] of next) {
-			if(edgeIncludesType(types, EdgeType.Returns)) {
-				const v = graph.getVertex(t, true);
+		for(const [t, e] of next) {
+			if(DfEdge.includesType(e, EdgeType.Returns)) {
+				const v = graph.getVertex(t);
 				if(v) {
 					workingQueue.push(v);
 				}
@@ -39,14 +39,14 @@ function isAnyReturnAFunction(def: DataflowGraphVertexFunctionDefinition, graph:
 	return false;
 }
 
-function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
-	const callSites = graph.ingoingEdges(def.id);
+function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
+	const callSites = invertedGraph?.outgoingEdges(def.id) ?? graph.ingoingEdges(def.id);
 
-	for(const [callerId, { types }] of callSites ?? []) {
-		if(!edgeIncludesType(types, EdgeType.Calls)) {
+	for(const [callerId, e] of callSites ?? []) {
+		if(!DfEdge.includesType(e, EdgeType.Calls)) {
 			continue;
 		}
-		const caller = graph.getVertex(callerId, true);
+		const caller = graph.getVertex(callerId);
 		if(!caller || !isFunctionCallVertex(caller)) {
 			continue;
 		}
@@ -68,8 +68,9 @@ function inspectCallSitesArgumentsFns(def: DataflowGraphVertexFunctionDefinition
  * either takes a function as an argument or (may) returns a function.
  * If the return is an identity, e.g., `function(x) x`, this is not considered higher-order,
  * if no function is passed as an argument.
+ * Please note that inspecting higher order functions can be sped up (if queries multiple times) by providing an inverted graph as well!
  */
-export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, invertedGraph?: DataflowGraph): boolean {
 	const vert = graph.getVertex(id);
 	if(!vert || !isFunctionDefinitionVertex(vert)) {
 		return false;
@@ -81,5 +82,5 @@ export function isFunctionHigherOrder(id: NodeId, graph: DataflowGraph, ctx: Rea
 	}
 
 	// 2. check whether any of the callsites passes a function
-	return inspectCallSitesArgumentsFns(vert, graph, ctx);
+	return inspectCallSitesArgumentsFns(vert, graph, ctx, invertedGraph);
 }

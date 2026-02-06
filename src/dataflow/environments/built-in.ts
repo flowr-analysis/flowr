@@ -12,7 +12,12 @@ import { processPipe } from '../internal/process/functions/call/built-in/built-i
 import { processForLoop } from '../internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
-import { type Identifier, type IdentifierDefinition, type IdentifierReference, ReferenceType } from './identifier';
+import {
+	type BrandedIdentifier, Identifier,
+	type IdentifierDefinition,
+	type IdentifierReference,
+	ReferenceType
+} from './identifier';
 import { guard } from '../../util/assert';
 import { processReplacementFunction } from '../internal/process/functions/call/built-in/built-in-replacement';
 import { processQuote } from '../internal/process/functions/call/built-in/built-in-quote';
@@ -53,6 +58,9 @@ import { processTryCatch } from '../internal/process/functions/call/built-in/bui
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
+import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
+import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
+import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -83,7 +91,7 @@ export type BuiltInIdentifierProcessor = <OtherInfo>(
 	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
-) => DataflowInformation
+) => DataflowInformation;
 
 export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -91,7 +99,7 @@ export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: Config
-) => DataflowInformation
+) => DataflowInformation;
 
 export interface BuiltInIdentifierDefinition extends IdentifierReference {
 	type:      ReferenceType.BuiltInFunction
@@ -119,9 +127,16 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	 */
 	readonly useAsProcessor?:        BuiltInProcName
 }
-
-
-export type BuiltInEvalHandler = (resolve: VariableResolve, a: RNodeWithParent, ctx: ReadOnlyFlowrAnalyzerContext, env?: REnvironmentInformation, graph?: DataflowGraph, map?: AstIdMap) => Value;
+export interface BuiltInEvalHandlerArgs {
+	resolve:      VariableResolve,
+	node:         RNodeWithParent,
+	ctx:          ReadOnlyFlowrAnalyzerContext,
+	environment?: REnvironmentInformation,
+	graph?:       DataflowGraph,
+	idMap?:       AstIdMap
+	blocked?:     Set<NodeId>
+}
+export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -153,12 +168,12 @@ function defaultBuiltInProcessor<OtherInfo>(
 		}
 	}
 
-	const fnCallNames = treatAsFnCall?.[name.content];
+	const fnCallNames = treatAsFnCall?.[Identifier.getName(name.content)];
 	if(fnCallNames) {
 		for(const arg of args) {
 			if(arg !== EmptyArgument && arg.value && fnCallNames.includes(arg.name?.content as string)) {
 				const rhs = arg.value;
-				let fnName: string | undefined;
+				let fnName: Identifier | undefined;
 				let fnId: NodeId | undefined;
 				if(rhs.type === RType.String) {
 					fnName = rhs.content.str;
@@ -230,6 +245,10 @@ export enum BuiltInProcName {
 	Pipe                = 'builtin:pipe',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote               = 'builtin:quote',
+	/**
+	 * for `recall` calls, see {@link processRecall}
+	 */
+	Recall              = 'builtin:recall',
 	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
 	RegisterHook        = 'builtin:register-hook',
 	/** for `repeat` loops, see {@link processRepeatLoop} */
@@ -241,7 +260,13 @@ export enum BuiltInProcName {
 	/** for `rm` calls, see {@link processRm} */
 	Rm                  = 'builtin:rm',
 	/** for `UseMethod` calls, see {@link processS3Dispatch} */
-	S3Dispatch         = 'builtin:s3-dispatch',
+	S3Dispatch          = 'builtin:s3-dispatch',
+	/** for `NextMethod` calls, see {@link processS3Dispatch} */
+	S3DispatchNext      = 'builtin:s3-dispatch-next',
+	/** for `new.generic` calls, see {@link processS7NewGeneric} */
+	S7NewGeneric        = 'builtin:s7-new-generic',
+	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
+	S7Dispatch          = 'builtin:s7-dispatch',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source              = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
@@ -262,7 +287,6 @@ export enum BuiltInProcName {
 	WhileLoop           = 'builtin:while-loop',
 }
 
-
 export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Access]:             processAccess,
 	[BuiltInProcName.Apply]:              processApply,
@@ -280,11 +304,14 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.Quote]:              processQuote,
+	[BuiltInProcName.Recall]:             processRecall,
 	[BuiltInProcName.RegisterHook]:       processRegisterHook,
 	[BuiltInProcName.RepeatLoop]:         processRepeatLoop,
 	[BuiltInProcName.Replacement]:        processReplacementFunction,
 	[BuiltInProcName.Rm]:                 processRm,
 	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
+	[BuiltInProcName.S7NewGeneric]:       processS7NewGeneric,
+	[BuiltInProcName.S7Dispatch]:         processS7Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,
@@ -302,7 +329,7 @@ export const BuiltInEvalHandlerMapper = {
 
 export type ConfigOfBuiltInMappingName<N extends keyof typeof BuiltInProcessorMapper> = Parameters<typeof BuiltInProcessorMapper[N]>[4];
 
-export type BuiltInMemory = Map<Identifier, IdentifierDefinition[]>
+export type BuiltInMemory = Map<BrandedIdentifier, IdentifierDefinition[]>;
 
 export class BuiltIns {
 	/**
@@ -310,7 +337,8 @@ export class BuiltIns {
 	 */
 	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 		for(const name of names) {
-			const id = builtInId(name);
+			const n = Identifier.getName(name);
+			const id = builtInId(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInConstant,
 				definedAt: id,
@@ -319,7 +347,7 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(name, d, assumePrimitive);
+			this.set(n, d, assumePrimitive);
 		}
 	}
 
@@ -331,7 +359,8 @@ export class BuiltIns {
 		const mappedProcessor = BuiltInProcessorMapper[processor];
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		for(const name of names) {
-			const id = builtInId(name);
+			const n = Identifier.getName(name);
+			const id = builtInId(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInFunction,
 				definedAt: id,
@@ -342,7 +371,7 @@ export class BuiltIns {
 				name,
 				nodeId:    id
 			}];
-			this.set(name, d, assumePrimitive);
+			this.set(n, d, assumePrimitive);
 		}
 	}
 
@@ -354,7 +383,7 @@ export class BuiltIns {
 		guard(replacer !== undefined, () => `Processor for ${BuiltInProcName.Replacement} is undefined!`);
 		for(const assignment of names) {
 			for(const suffix of suffixes) {
-				const effectiveName = `${assignment}${suffix}`;
+				const effectiveName = `${Identifier.getName(assignment)}${suffix}`;
 				const id = builtInId(effectiveName);
 				const d: IdentifierDefinition[] = [{
 					type:      ReferenceType.BuiltInFunction,
@@ -365,7 +394,7 @@ export class BuiltIns {
 						assignmentOperator: suffix,
 						makeMaybe:          true
 					},
-					name:   effectiveName,
+					name:   assignment,
 					cds:    undefined,
 					nodeId: id
 				}];
@@ -394,16 +423,16 @@ export class BuiltIns {
 	 * For its default content (when not overwritten by a flowR config),
 	 * see the {@link DefaultBuiltinConfig}.
 	 */
-	builtInMemory:      BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	builtInMemory:      BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 	/**
 	 * The twin of the {@link builtInMemory} but with less built ins defined for
 	 * cases in which we want some commonly overwritten variables to remain open.
 	 * If you do not know if you need the empty environment, you do not need the empty environment (right now).
 	 * @see {@link builtInMemory}
 	 */
-	emptyBuiltInMemory: BuiltInMemory = new Map<Identifier, IdentifierDefinition[]>();
+	emptyBuiltInMemory: BuiltInMemory = new Map<BrandedIdentifier, IdentifierDefinition[]>();
 
-	set(identifier: Identifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
+	set(identifier: BrandedIdentifier, definition: IdentifierDefinition[], includeInEmptyMemory: boolean | undefined): void {
 		this.builtInMemory.set(identifier, definition);
 		if(includeInEmptyMemory) {
 			this.emptyBuiltInMemory.set(identifier, definition);

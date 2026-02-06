@@ -4,9 +4,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { alwaysExits, initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -19,14 +17,16 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { invalidRange } from '../../../../../../util/range';
+import { SourceRange } from '../../../../../../util/range';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
 	args: {
 		generic: string,
 		object:  string
-	}
+	},
+	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
+	inferFromClosure?: boolean
 }
 
 /**
@@ -39,7 +39,7 @@ export function processS3Dispatch<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
-	if(args.length === 0) {
+	if(args.length === 0 && !config.inferFromClosure) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -51,7 +51,7 @@ export function processS3Dispatch<OtherInfo>(
 	};
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
 	const generic = unpackArg(getArgumentWithId(args, argMaps.get('generic')?.[0]));
-	if(!generic) {
+	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = unpackArg(getArgumentWithId(args, argMaps.get('object')?.[0]));
@@ -69,6 +69,29 @@ export function processS3Dispatch<OtherInfo>(
 		return dfObj;
 	}
 
+	if(!generic) {
+		patchFunctionCall({
+			nextGraph:             dfObj.graph,
+			rootId,
+			name,
+			data,
+			argumentProcessResult: [dfObj],
+			origin:                BuiltInProcName.S3DispatchNext
+		});
+		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
+		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		return {
+			hooks:             dfObj.hooks,
+			environment:       dfObj.environment,
+			exitPoints:        dfObj.exitPoints,
+			graph:             dfObj.graph,
+			entryPoint:        rootId,
+			in:                ingoing,
+			out:               dfObj.out,
+			unknownReferences: []
+		};
+	}
+
 	const n = resolveIdToValue(generic.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
 	const accessedIdentifiers: string[] = [];
 	if(n.type === 'set') {
@@ -84,12 +107,11 @@ export function processS3Dispatch<OtherInfo>(
 	}
 	const dfGeneric = processDataflowFor(generic, data);
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      generic.info,
-		content:   accessedIdentifiers[0],
-		lexeme:    accessedIdentifiers[0],
-		location:  generic.location ?? invalidRange(),
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     generic.info,
+		content:  accessedIdentifiers[0],
+		lexeme:   accessedIdentifiers[0],
+		location: generic.location ?? SourceRange.invalid()
 	};
 
 	patchFunctionCall({

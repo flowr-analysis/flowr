@@ -20,7 +20,7 @@ import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domai
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 
 export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
-extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
+	extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
 	readonly domain: StateAbstractDomain<Domain>;
 }
 

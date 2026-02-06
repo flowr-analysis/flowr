@@ -10,7 +10,7 @@ import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
 import { requestSliceMessage, responseSliceMessage } from '../../../cli/repl/server/messages/message-slice';
-import { type ExecuteIntermediateResponseMessage ,
+import { type ExecuteIntermediateResponseMessage,
 	requestExecuteReplExpressionMessage,
 	responseExecuteReplEndMessage,
 	responseExecuteReplIntermediateMessage

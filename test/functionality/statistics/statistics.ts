@@ -1,10 +1,10 @@
 import { assert } from 'chai';
 import type { DeepPartial } from 'ts-essentials';
 import { jsonBigIntRetriever, jsonReplacer } from '../../../src/util/json';
-import { type TestConfiguration , skipTestBecauseConfigNotMet } from '../_helper/shell';
+import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../_helper/shell';
 import { deepMergeObject } from '../../../src/util/objects';
 import { extractUsageStatistics, staticRequests } from '../../../src/statistics/statistics';
-import { type FeatureKey, type FeatureValue , ALL_FEATURES } from '../../../src/statistics/features/feature';
+import { type FeatureKey, type FeatureValue, ALL_FEATURES } from '../../../src/statistics/features/feature';
 import type { RShell } from '../../../src/r-bridge/shell';
 import type { AppendFnType, DummyAppendMemoryMap } from '../../../src/statistics/output/file-provider';
 import { initDummyFileProvider } from '../../../src/statistics/output/statistics-file';

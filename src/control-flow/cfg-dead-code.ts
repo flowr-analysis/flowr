@@ -1,5 +1,5 @@
 /* currently this does not do work on function definitions */
-import type { ControlFlowInformation } from './control-flow-graph';
+import type { ControlFlowGraph, ControlFlowInformation } from './control-flow-graph';
 import { CfgEdgeType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
@@ -13,6 +13,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
+import { invertCfg } from './invert-cfg';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -21,6 +22,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly inTry:            Set<NodeId> = new Set<NodeId>();
+	private invertedCfg:               ControlFlowGraph | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -52,22 +54,24 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	protected override startVisitor(): void {
-		for(const [from, targets] of this.config.controlFlow.graph.edges()) {
+		const cfg = this.config.controlFlow.graph;
+		this.invertedCfg = invertCfg(cfg);
+		for(const [from, targets] of cfg.edges()) {
 			for(const [target, edge] of targets) {
 				if(edge.label === CfgEdgeType.Cd) {
 					const og = this.getValue(edge.caused);
 
 					if(og === Ternary.Always && edge.when === 'FALSE') {
-						this.config.controlFlow.graph.removeEdge(from, target);
+						cfg.removeEdge(from, target);
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
-						this.config.controlFlow.graph.removeEdge(from, target);
+						cfg.removeEdge(from, target);
 					}
 				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
 					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
 					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
-						for(const [target, edge] of this.config.controlFlow.graph.ingoingEdges(end) ?? []) {
+						for(const [target, edge] of this.invertedCfg.outgoingEdges(end) ?? []) {
 							if(edge.label === CfgEdgeType.Fd) {
-								this.config.controlFlow.graph.removeEdge(target, end);
+								cfg.removeEdge(target, end);
 							}
 						}
 					}
@@ -77,6 +81,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private handleValuesFor(id: NodeId, valueId: NodeId): void {
+		if(this.cachedConditions.has(id)) {
+			return;
+		}
 		const values = valueSetGuard(resolveIdToValue(valueId, {
 			graph:   this.config.dfg,
 			full:    true,
@@ -127,15 +134,14 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleWithCondition(data);
 	}
 
-	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall }): void {
-		this.cachedStatements.set(data.call.id, true);
-	}
-
 	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall }): void {
 		this.cachedStatements.set(data.call.id, true);
 	}
 
 	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		if(this.cachedStatements.has(data.call.id)) {
+			return;
+		}
 		const arg = this.getBoolArgValue(data);
 		if(arg !== undefined) {
 			this.cachedStatements.set(data.call.id, !arg);
@@ -156,7 +162,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			}
 			this.inTry.add(n);
 			return false;
-		});
+		}, this.invertedCfg);
 	}
 }
 
@@ -172,7 +178,7 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		normalizedAst:        info.ast,
 		dfg:                  info.dfg,
 		ctx:                  info.ctx,
-		defaultVisitingOrder: 'forward',
+		defaultVisitingOrder: 'backward'
 	});
 	visitor.start();
 	return cfg;

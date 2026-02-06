@@ -114,6 +114,17 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addEdge('7-exit', '6-exit', { label: CfgEdgeType.Fd })
 					.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
 			});
+
+			assertCfg(parser, 'f <- function() if (u) return(42) else return(1)', {
+				entryPoints: [ '4' ],
+				exitPoints:  [ '4-exit' ],
+				graph:       new ControlFlowGraph()
+					.addVertex({ id: 5, type: CfgVertexType.Statement, end: ['5-exit'] }, false)
+					.addVertex({ id: 10, type: CfgVertexType.Statement, end: ['10-exit'] }, false)
+					.addEdge('14-exit', '5-exit', { label: CfgEdgeType.Fd })
+					.addEdge('14-exit', '10-exit', { label: CfgEdgeType.Fd })
+			}, { simplificationPasses: ['analyze-dead-code'], expectIsSubgraph: true });
+
 		});
 
 		describe('loops', () => {

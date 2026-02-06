@@ -8,8 +8,7 @@ import {
 } from '../linter-format';
 import { compactRecord, type MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { rangeFrom, type SourceRange } from '../../util/range';
-import { formatRange } from '../../util/mermaid/dfg';
+import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath } from '../../util/text/strings';
@@ -28,10 +27,11 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { Identifier } from '../../dataflow/environments/identifier';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
-	range:    SourceRange
+	loc:      SourceLocation
 }
 
 type SupportedWd = '@script' | '@home' | string;
@@ -82,7 +82,7 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 	}
 	return [{
 		type:        'replace',
-		range:       str.location,
+		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
 		description: `Replace with a relative path to \`${filePath}\``,
 		replacement: str.content.quotes + '.' + path.sep + path.relative(wd, filePath) + str.content.quotes
 	}];
@@ -91,8 +91,8 @@ function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | un
 type PathFunction = (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext) => string[] | undefined;
 
 /** return all strings constructable by these functions */
-const PathFunctions: Record<string, PathFunction> = {
-	'file.path': (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
+const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
+	['file.path', (df: DataflowGraph, vtx: DataflowGraphVertexFunctionCall, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined => {
 		const fsep = getArgumentStringValue(ctx.config.solver.variables,
 			df, vtx, undefined, 'fsep', true, ctx
 		);
@@ -113,8 +113,8 @@ const PathFunctions: Record<string, PathFunction> = {
 			results.push(argValues.join(val));
 		}
 		return results;
-	}
-};
+	}]
+]);
 
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
@@ -153,7 +153,7 @@ export const ABSOLUTE_PATH = {
 						return [{
 							certainty: LintingResultCertainty.Uncertain,
 							filePath:  node.content.str,
-							range:     node.info.fullRange ?? node.location,
+							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 							quickFix:  buildQuickFix(node, node.content.str, wd)
 						}];
 					} else {
@@ -166,7 +166,7 @@ export const ABSOLUTE_PATH = {
 						return {
 							certainty: LintingResultCertainty.Certain,
 							filePath:  r.value,
-							range:     elem?.info.fullRange ?? elem?.location ?? rangeFrom(-1, -1, -1, -1),
+							loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
 							quickFix:  buildQuickFix(elem, r.value as string, wd)
 						};
 					});
@@ -179,13 +179,13 @@ export const ABSOLUTE_PATH = {
 				} else {
 					const dfNode = data.dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
-						const handler = PathFunctions[dfNode.name ?? ''];
+						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
 						if(strings) {
 							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
-								range:     node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
+								loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
 								quickFix:  undefined
 							}));
 						}
@@ -200,8 +200,8 @@ export const ABSOLUTE_PATH = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} is absolute`
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} is absolute`
 	},
 	info: {
 		name:          'Absolute Paths',

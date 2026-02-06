@@ -1,8 +1,8 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import { type Origin , getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
-import { type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type Origin, getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
+import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';

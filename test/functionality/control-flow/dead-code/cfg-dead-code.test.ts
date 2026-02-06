@@ -21,7 +21,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			expectIsSubgraph:     true,
 			simplificationPasses: ['analyze-dead-code'],
 			/** we break unreachable edges for this test, the whole point is for not all of them being reachable */
-			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all'],
+			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all', 'single-entry-and-exit'],
 			testIds:              ids,
 			additionalAsserts:    (cfg, ast) => {
 				for(const [n, i] of [...reachableFromStart.map(n => [n, false] as const), ...unreachableFromStart.map(n => [n, true] as const)]) {

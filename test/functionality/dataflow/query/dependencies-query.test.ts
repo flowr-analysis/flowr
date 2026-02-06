@@ -219,7 +219,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'source_url',
 			'source_gist'
 		] as const) {
-			testQuery(`${sourceFn}`, `${sourceFn}("a")` , { source: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, value: 'a' }] });
+			testQuery(`${sourceFn}`, `${sourceFn}("a")`, { source: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, value: 'a' }] });
 		}
 
 		testQuery('Single source', 'source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
@@ -252,14 +252,14 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'read_html_live',
 			'read.ftable',
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}("a")` , { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}("a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 
 		for(const readFn of [
 			'dbReadTable',
 			'dbReadTableArrow'
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}(obj, "a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
@@ -273,7 +273,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
-			testQuery('parse text', 'parse(text="test.R")', { });
+			testQuery('parse text', 'parse(text="test.R")', {});
 		});
 
 		describe('Custom', () => {
@@ -301,12 +301,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'Export',
 			'windows'
 		]) {
-			testQuery(`${writeFn}`, `${writeFn}("a")` , { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
+			testQuery(`${writeFn}`, `${writeFn}("a")`, { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
 		}
 
-		testQuery('visSave', 'visSave(obj, "a")' , { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
-		testQuery('save_graph', 'save_graph(obj, "a")' , { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
-		testQuery('export_graph', 'export_graph(file_name = "a")' , { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
+		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
+		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
+		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
@@ -354,7 +354,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Visualize', () => {
 		describe('Creation', () => {
 			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
-				testQuery(f, `${f}()` , { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
+				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
 		});
 		describe('Modification', () => {
@@ -383,7 +383,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				read: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
 		}
-		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at',] as const) {
+		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at'] as const) {
 			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
 				write: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
@@ -458,7 +458,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				/* { nodeId: '2@expect_equal', functionName: 'expect_equal' },
 				{ nodeId: '3@expect_equal', functionName: 'expect_equal' },
 				{ nodeId: '4@expect_equal', functionName: 'expect_equal' }, */
-				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47,36,20] }
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47, 36, 20] }
 			]
 		});
 	});

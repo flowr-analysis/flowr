@@ -1,25 +1,20 @@
-import type { SourceRange } from '../range';
 import { escapeId, escapeMarkdown, mermaidCodeToUrl } from './mermaid';
-import {
-	type DataflowFunctionFlowInformation,
-	type DataflowGraph,
-	type FunctionArgument,
-	isNamedArgument,
-	isPositionalArgument
-} from '../../dataflow/graph/graph';
+import { type DataflowFunctionFlowInformation, type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
+	Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
 	ReferenceTypeReverseMapping
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type EdgeType, edgeTypeToName, splitEdgeTypes } from '../../dataflow/graph/edge';
+import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
+import { SourceRange } from '../range';
 
 interface MermaidGraph {
 	nodeLines:           string[]
@@ -36,21 +31,6 @@ interface MermaidGraph {
 	simplified?:         boolean
 }
 
-/**
- * Prints a {@link SourceRange|range} as a human-readable string.
- */
-export function formatRange(range: SourceRange | undefined): string {
-	if(range === undefined) {
-		return '??-??';
-	} else if(range[0] === range[2]) {
-		if(range[1] === range[3]) {
-			return `${range[0]}.${range[1]}`;
-		} else {
-			return `${range[0]}.${range[1]}-${range[3]}`;
-		}
-	}
-	return `${range[0]}.${range[1]}-${range[2]}.${range[3]}`;
-}
 
 function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformation | undefined, mermaid: MermaidGraph, idPrefix = ''): void {
 	if(subflow === undefined) {
@@ -103,10 +83,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 		return '??';
 	} else if(arg === EmptyArgument) {
 		return '[empty]';
-	} else if(isNamedArgument(arg)) {
+	} else if(FunctionArgument.isNamed(arg)) {
 		const deps = arg.cds ? ', :may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		return `${arg.name} (${arg.nodeId}${deps})`;
-	} else if(isPositionalArgument(arg)) {
+	} else if(FunctionArgument.isPositional(arg)) {
 		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': '';
 		return `${arg.nodeId}${deps}`;
 	} else {
@@ -116,12 +96,12 @@ function printArg(arg: FunctionArgument | undefined): string {
 function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): string {
 	const result = [];
 	for(const arg of argMapping) {
-		result.push(printArg(arg));
+		result.push(escapeMarkdown(printArg(arg)));
 	}
 	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
-	return `${from}->${to}["${[...types].join(':')}"]`;
+	return `${from}->${to}["${Array.from(types).join(':')}"]`;
 }
 
 
@@ -148,7 +128,7 @@ function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: strin
  * Prints an identifier definition in a human-readable format.
  */
 export function printIdentifier(id: IdentifierDefinition): string {
-	return `**${id.name}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
@@ -191,8 +171,8 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${formatRange(n)}*${
-			fCall ? displayFunctionArgMapping(info.args) : ''
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks})\n      *${SourceRange.format(n)}*${
+			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? escapeMarkdown(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}
 	if(mark?.has(id)) {
@@ -216,12 +196,12 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 		const originalTarget = target;
 		target = escapeId(target);
-		const edgeTypes = typeof edge.types == 'number' ? new Set(splitEdgeTypes(edge.types)) : edge.types;
+		const edgeTypes = typeof edge.types == 'number' ? new Set(DfEdge.splitTypes(edge as DfEdge)) : edge.types;
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
 			const style = isBuiltIn(target) ? '-.->' : '-->';
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? edgeTypeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);

@@ -1,15 +1,15 @@
-import type { BuiltInProcessorMapper , ConfigOfBuiltInMappingName } from './built-in';
+import type { BuiltInProcessorMapper, ConfigOfBuiltInMappingName } from './built-in';
 import { BuiltIns } from './built-in';
-import type { Identifier } from './identifier';
 import { DefaultBuiltinConfig } from './default-builtin-config';
+import type { Identifier } from './identifier';
 
 export interface BaseBuiltInDefinition {
-    /** The type of the built-in configuration */
-    readonly type:             string;
-    /** The function name to define to the given configuration */
-    readonly names:            Identifier[];
-    /** Should we assume that the value is a primitive? */
-    readonly assumePrimitive?: boolean;
+	/** The type of the built-in configuration */
+	readonly type:             string;
+	/** The function name to define to the given configuration */
+	readonly names:            Identifier[];
+	/** Should we assume that the value is a primitive? */
+	readonly assumePrimitive?: boolean;
 }
 
 /**
@@ -17,9 +17,9 @@ export interface BaseBuiltInDefinition {
  * @template Value - The type of the constant value
  */
 export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition {
-    readonly type:  'constant';
-    /** The constant value to define */
-    readonly value: Value;
+	readonly type:  'constant';
+	/** The constant value to define */
+	readonly value: Value;
 }
 
 /**
@@ -27,9 +27,9 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
  * @template BuiltInProcessor - The processor to use for this function
  */
 export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
-    readonly type:      'function';
-    readonly processor: BuiltInProcessor;
-    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
+	readonly type:         'function';
+	readonly processor:    BuiltInProcessor;
+	readonly config?:      ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
 	readonly evalHandler?: string
 }
 
@@ -38,16 +38,16 @@ export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof
  * This is a convenience for manually combined replacement function calls.
  */
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
-    readonly type:     'replacement';
-    readonly suffixes: ('<<-' | '<-')[];
-    readonly config:   { readIndices: boolean }
+	readonly type:     'replacement';
+	readonly suffixes: ('<<-' | '<-')[];
+	readonly config:   { readIndices: boolean, constructName?: 's7' };
 }
 
 export type BuiltInDefinition<T extends keyof typeof BuiltInProcessorMapper = keyof typeof BuiltInProcessorMapper> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;
 /**
  * @see DefaultBuiltinConfig
  */
-export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }]
+export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }];
 
 
 /**

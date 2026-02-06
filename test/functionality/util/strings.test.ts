@@ -62,7 +62,7 @@ describe('Strings', () => {
 				assert.equal(dropRawStringSurround(input), input);
 			});
 		};
-		for(const [open, close] of [['(', ')'], ['[', ']'], ['{','}']] as const) {
+		for(const [open, close] of [['(', ')'], ['[', ']'], ['{', '}']] as const) {
 			describe(open + ' and ' + close, () => {
 				for(let dashes = 0; dashes < 5; ++dashes) {
 					describe(`with ${'-'.repeat(dashes)}`, () => {

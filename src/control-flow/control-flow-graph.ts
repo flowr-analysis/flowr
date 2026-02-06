@@ -4,12 +4,12 @@ import type { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { guard } from '../util/assert';
 
 export enum CfgVertexType {
-    /** The explicit exit-nodes to ensure the hammock property */
-    EndMarker   = 'end',
-    /** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
-    Statement   = 'stm',
-    /** something like an addition, ... */
-    Expression  = 'expr',
+	/** The explicit exit-nodes to ensure the hammock property */
+	EndMarker   = 'end',
+	/** something like an if, assignment, ... even though in the classical sense of R they are still expressions */
+	Statement   = 'stm',
+	/** something like an addition, ... */
+	Expression  = 'expr',
 	/** a (as far as R allows this) 'basic' block */
 	Block       = 'blk',
 }
@@ -83,7 +83,7 @@ export interface CfgBasicBlockVertex extends CfgBaseVertex {
 /**
  * A vertex in the {@link ControlFlowGraph}.
  */
-export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgEndMarkerVertex
+export type CfgSimpleVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgEndMarkerVertex;
 
 /**
  * Checks whether two vertices are equal.
@@ -115,18 +115,18 @@ export function getVertexRootId(vertex: CfgSimpleVertex): NodeId {
 }
 
 interface CfgFlowDependencyEdge extends MergeableRecord {
-    label: CfgEdgeType.Fd
+	label: CfgEdgeType.Fd
 }
 
 export interface CfgControlDependencyEdge extends MergeableRecord {
-    label:  CfgEdgeType.Cd
-    /** the id which caused the control dependency */
-    caused: NodeId,
+	label:  CfgEdgeType.Cd
+	/** the id which caused the control dependency */
+	caused: NodeId,
 	/** is the control dependency satisfied with a true condition or is it negated (e.g., else-branch)? */
-    when:   typeof RTrue | typeof RFalse
+	when:   typeof RTrue | typeof RFalse
 }
 
-export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge
+export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge;
 
 /**
  * A read-only view of the {@link ControlFlowGraph}.
@@ -474,17 +474,17 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
  */
 export interface ControlFlowInformation<Vertex extends CfgSimpleVertex = CfgSimpleVertex> extends MergeableRecord {
 	/** all active 'return'(-like) unconditional jumps */
-    returns:     NodeId[],
+	returns:     NodeId[],
 	/** all active 'break'(-like) unconditional jumps */
-    breaks:      NodeId[],
+	breaks:      NodeId[],
 	/** all active 'next'(-like) unconditional jumps */
-    nexts:       NodeId[],
-    /** intended to construct a hammock graph, with 0 exit points representing a block that should not be part of the CFG (like a comment) */
-    entryPoints: NodeId[],
-    /** See {@link ControlFlowInformation#entryPoints|entryPoints} */
-    exitPoints:  NodeId[],
+	nexts:       NodeId[],
+	/** intended to construct a hammock graph, with 0 exit points representing a block that should not be part of the CFG (like a comment) */
+	entryPoints: NodeId[],
+	/** See {@link ControlFlowInformation#entryPoints|entryPoints} */
+	exitPoints:  NodeId[],
 	/** the control flow graph summarizing the flow information */
-    graph:       ControlFlowGraph<Vertex>
+	graph:       ControlFlowGraph<Vertex>
 }
 
 /**

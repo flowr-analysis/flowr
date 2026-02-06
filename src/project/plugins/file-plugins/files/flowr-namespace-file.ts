@@ -19,6 +19,7 @@ import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
+import { parseRRegexPattern } from '../../../../util/r-regex';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -124,7 +125,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	// pattern
 	for(const pattern of nsInfo.exportedPatterns) {
-		const regex = new RegExp(pattern);
+		const regex = parseRRegexPattern(pattern);
 		if(regex.test(name)) {
 			return true;
 		}
@@ -157,7 +158,7 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 		return parseNamespaceSimple(file);
 	}
 	const f = nast.ast.files[0];
-	if(!f || !f.root) {
+	if(!f?.root) {
 		return parseNamespaceSimple(file);
 	}
 	const nothing = getEmptyNamespaceFormat;

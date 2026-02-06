@@ -21,8 +21,8 @@ import { handleReplacementOperator } from '../../../../../graph/unknown-replacem
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
 import { toUnnamedArgument } from '../argument/make-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { invalidRange } from '../../../../../../util/range';
 import { FunctionArgument } from '../../../../../graph/graph';
+import { SourceRange } from '../../../../../../util/range';
 
 
 /**
@@ -57,7 +57,7 @@ export function processReplacementFunction<OtherInfo>(
 			type:     RType.Symbol,
 			info:     uArg.info,
 			lexeme:   tarName,
-			location: uArg.location ?? targetArg.location ?? name.location ?? invalidRange()
+			location: uArg.location ?? targetArg.location ?? name.location ?? SourceRange.invalid()
 		} satisfies RSymbol<ParentInformation>, data.completeAst.idMap);
 	}
 

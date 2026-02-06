@@ -829,6 +829,30 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 					id:          'system-calls',
 					supported:   'not',
 					description: '_Handle [`system`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/system), `system.*`, ..._ We do not support system calls but treat them as unknown function calls.'
+				},
+				{
+					name:        'R-Markdown files',
+					id:          'file:rmd',
+					supported:   'fully',
+					description: 'Support R-Markdown files as R sources.'
+				},
+				{
+					name:        'Jupyter Notebook',
+					id:          'file:ipynb',
+					supported:   'partially',
+					description: 'Support Jupyter Notebooks as R sources.'
+				},
+				{
+					name:        'Quarto',
+					id:          'file:qmd',
+					supported:   'partially',
+					description: 'Support Quarto files as R sources.'
+				},
+				{
+					name:        'Sweave',
+					id:          'file:rnw',
+					supported:   'partially',
+					description: 'Support for Sweave files as R sources.'
 				}
 			]
 		},

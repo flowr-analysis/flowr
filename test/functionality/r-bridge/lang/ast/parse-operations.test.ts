@@ -1,13 +1,13 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal } from '../../../_helper/ast-builder';
 import { AssignmentOperators, BinaryOperatorPool, UnaryOperatorPool } from '../../../_helper/provider';
-import { rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { describe } from 'vitest';
+import { SourceRange } from '../../../../../src/util/range';
 
 describe.sequential('Parse simple operations', withShell(shell => {
 	describe('unary operations', () => {
@@ -20,11 +20,11 @@ describe.sequential('Parse simple operations', withShell(shell => {
 					type:     RType.UnaryOp,
 					operator: op,
 					lexeme:   op,
-					location: rangeFrom(1, 1, 1, 1 + opOffset),
+					location: SourceRange.from(1, 1, 1, 1 + opOffset),
 					info:     {},
 					operand:  {
 						type:     RType.Number,
-						location: rangeFrom(1, 2 + opOffset, 1, 3 + opOffset),
+						location: SourceRange.from(1, 2 + opOffset, 1, 3 + opOffset),
 						lexeme:   '42',
 						content:  numVal(42),
 						info:     {}
@@ -37,13 +37,13 @@ describe.sequential('Parse simple operations', withShell(shell => {
 		assertAst(label('? x', ['unary-operator', 'built-in-help', 'name-normal']),
 			shell, '? x', exprList({
 				type:     RType.UnaryOp,
-				location: rangeFrom(1, 1, 1, 1),
+				location: SourceRange.from(1, 1, 1, 1),
 				operator: '?',
 				lexeme:   '?',
 				info:     {},
 				operand:  {
 					type:     RType.Symbol,
-					location: rangeFrom(1, 3, 1, 3),
+					location: SourceRange.from(1, 3, 1, 3),
 					lexeme:   'x',
 					content:  'x',
 					info:     {}
@@ -73,27 +73,27 @@ describe.sequential('Parse simple operations', withShell(shell => {
 									{
 										type:     RType.Comment,
 										lexeme:   '# comment',
-										location: rangeFrom(1, 5, 1, 13),
+										location: SourceRange.from(1, 5, 1, 13),
 										info:     {}
 									}
 								]
 							},
 							lexeme:   '+',
 							operator: '+',
-							location: rangeFrom(1, 3, 1, 3),
+							location: SourceRange.from(1, 3, 1, 3),
 							lhs:      {
 								type:     RType.Number,
 								content:  numVal(1),
 								info:     {},
 								lexeme:   '1',
-								location: rangeFrom(1, 1, 1, 1)
+								location: SourceRange.from(1, 1, 1, 1)
 							},
 							rhs: {
 								type:     RType.Number,
 								content:  numVal(2),
 								info:     {},
 								lexeme:   '2',
-								location: rangeFrom(2, 1, 2, 1)
+								location: SourceRange.from(2, 1, 2, 1)
 							}
 						}
 					]
@@ -114,36 +114,36 @@ describe.sequential('Parse simple operations', withShell(shell => {
 						type:     RType.Symbol,
 						lexeme:   '%xx%',
 						content:  '%xx%',
-						location: rangeFrom(1, 3, 1, 6),
+						location: SourceRange.from(1, 3, 1, 6),
 						info:     {}
 					},
-					location:  rangeFrom(1, 3, 1, 6),
+					location:  SourceRange.from(1, 3, 1, 6),
 					arguments: [
 						{
 							type:     RType.Argument,
 							info:     {},
 							lexeme:   '1',
 							name:     undefined,
-							location: rangeFrom(1, 1, 1, 1),
+							location: SourceRange.from(1, 1, 1, 1),
 							value:    {
 								type:     RType.Number,
 								content:  numVal(1),
 								info:     {},
 								lexeme:   '1',
-								location: rangeFrom(1, 1, 1, 1)
+								location: SourceRange.from(1, 1, 1, 1)
 							}
 						}, {
 							type:     RType.Argument,
 							info:     {},
 							lexeme:   '2',
 							name:     undefined,
-							location: rangeFrom(1, 8, 1, 8),
+							location: SourceRange.from(1, 8, 1, 8),
 							value:    {
 								type:     RType.Number,
 								content:  numVal(2),
 								info:     {},
 								lexeme:   '2',
-								location: rangeFrom(1, 8, 1, 8)
+								location: SourceRange.from(1, 8, 1, 8)
 							}
 						}
 					]
@@ -166,18 +166,18 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 				type:     RType.BinaryOp,
 				operator: op,
 				lexeme:   op,
-				location: rangeFrom(1, 3, 1, 3 + opOffset),
+				location: SourceRange.from(1, 3, 1, 3 + opOffset),
 				info:     {},
 				lhs:      {
 					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 1),
+					location: SourceRange.from(1, 1, 1, 1),
 					lexeme:   '1',
 					content:  numVal(1),
 					info:     {}
 				},
 				rhs: {
 					type:     RType.Number,
-					location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+					location: SourceRange.from(1, 5 + opOffset, 1, 5 + opOffset),
 					lexeme:   '1',
 					content:  numVal(1),
 					info:     {}
@@ -193,20 +193,20 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					type:     RType.BinaryOp,
 					operator: op,
 					lexeme:   op,
-					location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+					location: SourceRange.from(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
 					info:     {},
 					lhs:      {
 						type:     RType.ExpressionList,
 						location: undefined,
 						grouping: [{
 							type:     RType.Symbol,
-							location: rangeFrom(1, 1, 1, 1),
+							location: SourceRange.from(1, 1, 1, 1),
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							location: SourceRange.from(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
@@ -217,18 +217,18 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							type:     RType.BinaryOp,
 							operator: op,
 							lexeme:   op,
-							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							location: SourceRange.from(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
 							info:     {},
 							lhs:      {
 								type:     RType.Number,
-								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								location: SourceRange.from(1, 1 + offsetL, 1, 1 + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
-								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								location: SourceRange.from(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
@@ -237,7 +237,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					},
 					rhs: {
 						type:     RType.Number,
-						location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+						location: SourceRange.from(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
 						lexeme:   '42',
 						content:  numVal(42),
 						info:     {}
@@ -252,20 +252,20 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					type:     RType.BinaryOp,
 					operator: op,
 					lexeme:   op,
-					location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+					location: SourceRange.from(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
 					info:     {},
 					lhs:      {
 						type:     RType.ExpressionList,
 						location: undefined,
 						grouping: [{
 							type:     RType.Symbol,
-							location: rangeFrom(1, 1, 1, 1),
+							location: SourceRange.from(1, 1, 1, 1),
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: rangeFrom(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
+							location: SourceRange.from(1, 6 + opOffset + offsetL, 1, 6 + opOffset + offsetL),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
@@ -276,18 +276,18 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							type:     RType.BinaryOp,
 							operator: op,
 							lexeme:   op,
-							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							location: SourceRange.from(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
 							info:     {},
 							lhs:      {
 								type:     RType.Number,
-								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								location: SourceRange.from(1, 1 + offsetL, 1, 1 + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
-								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								location: SourceRange.from(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
@@ -299,13 +299,13 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						location: undefined,
 						grouping: [{
 							type:     RType.Symbol,
-							location: rangeFrom(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
+							location: SourceRange.from(1, 8 + 2 * opOffset + offsetR, 1, 8 + 2 * opOffset + offsetR),
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: rangeFrom(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
+							location: SourceRange.from(1, 11 + 2 * opOffset + offsetR, 1, 11 + 2 * opOffset + offsetR),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
@@ -314,7 +314,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						info:     {},
 						children: [{
 							type:     RType.Number,
-							location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+							location: SourceRange.from(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
 							lexeme:   '42',
 							content:  numVal(42),
 							info:     {}
@@ -333,24 +333,24 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						type:     RType.BinaryOp,
 						operator: op,
 						lexeme:   op,
-						location: rangeFrom(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
+						location: SourceRange.from(1, 7 + opOffset + offsetC, 1, 7 + 2 * opOffset + offsetC),
 						info:     {},
 						lhs:      {
 							type:     RType.BinaryOp,
 							operator: op,
 							lexeme:   op,
-							location: rangeFrom(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
+							location: SourceRange.from(1, 3 + offsetL, 1, 3 + opOffset + offsetL),
 							info:     {},
 							lhs:      {
 								type:     RType.Number,
-								location: rangeFrom(1, 1 + offsetL, 1, 1 + offsetL),
+								location: SourceRange.from(1, 1 + offsetL, 1, 1 + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
-								location: rangeFrom(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
+								location: SourceRange.from(1, 5 + opOffset + offsetL, 1, 5 + opOffset + offsetL),
 								lexeme:   '1',
 								content:  numVal(1),
 								info:     {}
@@ -358,7 +358,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						},
 						rhs: {
 							type:     RType.Number,
-							location: rangeFrom(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
+							location: SourceRange.from(1, 9 + 2 * opOffset + offsetR, 1, 10 + 2 * opOffset + offsetR),
 							lexeme:   '42',
 							content:  numVal(42),
 							info:     {}
@@ -373,11 +373,11 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 					type:     RType.BinaryOp,
 					operator: op,
 					lexeme:   op,
-					location: rangeFrom(1, 3, 1, 3 + opOffset),
+					location: SourceRange.from(1, 3, 1, 3 + opOffset),
 					info:     {},
 					lhs:      {
 						type:     RType.Number,
-						location: rangeFrom(1, 1, 1, 1),
+						location: SourceRange.from(1, 1, 1, 1),
 						content:  numVal(1),
 						lexeme:   '1',
 						info:     {}
@@ -389,13 +389,13 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						info:     {},
 						grouping: [{
 							type:     RType.Symbol,
-							location: rangeFrom(1, 5 + opOffset, 1, 5 + opOffset),
+							location: SourceRange.from(1, 5 + opOffset, 1, 5 + opOffset),
 							lexeme:   '(',
 							content:  '(',
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: rangeFrom(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
+							location: SourceRange.from(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},
@@ -404,18 +404,18 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							type:     RType.BinaryOp,
 							operator: op,
 							lexeme:   op,
-							location: rangeFrom(1, 8 + opOffset, 1, 8 + 2 * opOffset),
+							location: SourceRange.from(1, 8 + opOffset, 1, 8 + 2 * opOffset),
 							info:     {},
 							lhs:      {
 								type:     RType.Number,
-								location: rangeFrom(1, 6 + opOffset, 1, 6 + opOffset),
+								location: SourceRange.from(1, 6 + opOffset, 1, 6 + opOffset),
 								content:  numVal(1),
 								lexeme:   '1',
 								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
-								location: rangeFrom(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
+								location: SourceRange.from(1, 10 + 2 * opOffset, 1, 11 + 2 * opOffset),
 								content:  numVal(42),
 								lexeme:   '42',
 								info:     {}

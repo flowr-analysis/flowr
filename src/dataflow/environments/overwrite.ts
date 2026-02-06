@@ -1,6 +1,6 @@
-import { guard } from '../../util/assert';
 import { type REnvironmentInformation  } from './environment';
 import type { ControlDependency } from '../info';
+import { pushLocalEnvironment } from './scoping';
 
 export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation;
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, applyCds?: readonly ControlDependency[]): REnvironmentInformation;
@@ -17,7 +17,15 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
 	} else if(next === undefined) {
 		return base;
 	}
-	guard(next.level === base.level, `cannot overwrite environments with differently nested local scopes, base ${base.level} vs. next ${next.level}. This should not happen.`);
+
+	if(base.level !== next.level) {
+		while(next.level < base.level) {
+			next = pushLocalEnvironment(next);
+		}
+		while(next.level > base.level) {
+			base = pushLocalEnvironment(base);
+		}
+	}
 
 	return {
 		current: base.current.overwrite(next.current, applyCds),

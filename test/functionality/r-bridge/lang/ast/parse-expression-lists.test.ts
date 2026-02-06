@@ -1,9 +1,9 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal } from '../../../_helper/ast-builder';
-import { rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { describe } from 'vitest';
+import { SourceRange } from '../../../../../src/util/range';
 
 describe.sequential('Parse expression lists', withShell(shell => {
 	describe('Expression lists with newlines and braces', () => {
@@ -11,7 +11,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 		assertAst(label('single element', ['numbers']),
 			shell, '42', exprList({
 				type:     RType.Number,
-				location: rangeFrom(1, 1, 1, 2),
+				location: SourceRange.from(1, 1, 1, 2),
 				lexeme:   '42',
 				content:  numVal(42),
 				info:     {}
@@ -24,14 +24,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 			exprList(
 				{
 					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 2),
+					location: SourceRange.from(1, 1, 1, 2),
 					lexeme:   '42',
 					content:  numVal(42),
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(2, 1, 2, 1),
+					location: SourceRange.from(2, 1, 2, 1),
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
@@ -44,21 +44,21 @@ describe.sequential('Parse expression lists', withShell(shell => {
 			exprList(
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(1, 1, 1, 1),
+					location: SourceRange.from(1, 1, 1, 1),
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(2, 1, 2, 1),
+					location: SourceRange.from(2, 1, 2, 1),
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(3, 1, 3, 1),
+					location: SourceRange.from(3, 1, 3, 1),
 					lexeme:   'c',
 					content:  'c',
 					info:     {}
@@ -71,42 +71,42 @@ describe.sequential('Parse expression lists', withShell(shell => {
 			exprList(
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(1, 1, 1, 1),
+					location: SourceRange.from(1, 1, 1, 1),
 					lexeme:   'a',
 					content:  'a',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(2, 1, 2, 1),
+					location: SourceRange.from(2, 1, 2, 1),
 					lexeme:   'b',
 					content:  'b',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(3, 1, 3, 1),
+					location: SourceRange.from(3, 1, 3, 1),
 					lexeme:   'c',
 					content:  'c',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(4, 1, 4, 1),
+					location: SourceRange.from(4, 1, 4, 1),
 					lexeme:   'd',
 					content:  'd',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(5, 1, 5, 2),
+					location: SourceRange.from(5, 1, 5, 2),
 					lexeme:   'n2',
 					content:  'n2',
 					info:     {}
 				},
 				{
 					type:     RType.Symbol,
-					location: rangeFrom(6, 1, 6, 1),
+					location: SourceRange.from(6, 1, 6, 1),
 					lexeme:   'z',
 					content:  'z',
 					info:     {}
@@ -121,14 +121,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				grouping: [
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 1, 1, 1),
+						location: SourceRange.from(1, 1, 1, 1),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					},
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(2, 3, 2, 3),
+						location: SourceRange.from(2, 3, 2, 3),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -139,14 +139,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				children: [
 					{
 						type:     RType.Number,
-						location: rangeFrom(1, 3, 1, 4),
+						location: SourceRange.from(1, 3, 1, 4),
 						lexeme:   '42',
 						content:  numVal(42),
 						info:     {}
 					},
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(2, 1, 2, 1),
+						location: SourceRange.from(2, 1, 2, 1),
 						lexeme:   'a',
 						content:  'a',
 						info:     {}
@@ -164,14 +164,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					grouping: [
 						{
 							type:     RType.Symbol,
-							location: rangeFrom(1, 1, 1, 1),
+							location: SourceRange.from(1, 1, 1, 1),
 							lexeme:   '{',
 							content:  '{',
 							info:     {},
 						},
 						{
 							type:     RType.Symbol,
-							location: rangeFrom(2, 3, 2, 3),
+							location: SourceRange.from(2, 3, 2, 3),
 							lexeme:   '}',
 							content:  '}',
 							info:     {},
@@ -182,14 +182,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					children: [
 						{
 							type:     RType.Number,
-							location: rangeFrom(1, 3, 1, 4),
+							location: SourceRange.from(1, 3, 1, 4),
 							lexeme:   '42',
 							content:  numVal(42),
 							info:     {}
 						},
 						{
 							type:     RType.Symbol,
-							location: rangeFrom(2, 1, 2, 1),
+							location: SourceRange.from(2, 1, 2, 1),
 							lexeme:   'a',
 							content:  'a',
 							info:     {}
@@ -204,21 +204,21 @@ describe.sequential('Parse expression lists', withShell(shell => {
 					grouping: [
 						{
 							type:     RType.Symbol,
-							location: rangeFrom(3, 1, 3, 1),
+							location: SourceRange.from(3, 1, 3, 1),
 							lexeme:   '{',
 							content:  '{',
 							info:     {},
 						},
 						{
 							type:     RType.Symbol,
-							location: rangeFrom(3, 5, 3, 5),
+							location: SourceRange.from(3, 5, 3, 5),
 							lexeme:   '}',
 							content:  '}',
 							info:     {},
 						}],
 					children: [{
 						type:     RType.Symbol,
-						location: rangeFrom(3, 3, 3, 3),
+						location: SourceRange.from(3, 3, 3, 3),
 						lexeme:   'x',
 						content:  'x',
 						info:     {}
@@ -239,14 +239,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				children: [
 					{
 						type:     RType.Number,
-						location: rangeFrom(1, 1, 1, 2),
+						location: SourceRange.from(1, 1, 1, 2),
 						lexeme:   '42',
 						content:  numVal(42),
 						info:     {}
 					},
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 4, 1, 4),
+						location: SourceRange.from(1, 4, 1, 4),
 						lexeme:   'a',
 						content:  'a',
 						info:     {}
@@ -264,14 +264,14 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				grouping: [
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 1, 1, 1),
+						location: SourceRange.from(1, 1, 1, 1),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					},
 					{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 6, 1, 6),
+						location: SourceRange.from(1, 6, 1, 6),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -279,7 +279,7 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				],
 				children: [{
 					type:     RType.Number,
-					location: rangeFrom(1, 3, 1, 3),
+					location: SourceRange.from(1, 3, 1, 3),
 					lexeme:   '3',
 					content:  numVal(3),
 					info:     {}
@@ -298,25 +298,25 @@ describe.sequential('Parse expression lists', withShell(shell => {
 				children: [
 					{
 						type:     RType.Number,
-						location: rangeFrom(1, 1, 1, 1),
+						location: SourceRange.from(1, 1, 1, 1),
 						lexeme:   '1',
 						content:  numVal(1),
 						info:     {}
 					}, {
 						type:     RType.Number,
-						location: rangeFrom(2, 1, 2, 1),
+						location: SourceRange.from(2, 1, 2, 1),
 						lexeme:   '2',
 						content:  numVal(2),
 						info:     {}
 					}, {
 						type:     RType.Number,
-						location: rangeFrom(2, 4, 2, 4),
+						location: SourceRange.from(2, 4, 2, 4),
 						lexeme:   '3',
 						content:  numVal(3),
 						info:     {}
 					}, {
 						type:     RType.Number,
-						location: rangeFrom(3, 1, 3, 1),
+						location: SourceRange.from(3, 1, 3, 1),
 						lexeme:   '4',
 						content:  numVal(4),
 						info:     {}

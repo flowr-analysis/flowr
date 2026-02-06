@@ -140,7 +140,7 @@ export class Environment implements IEnvironment {
 		}
 		// navigate to parent until either before built-in or matching namespace
 		const newEnvironment = this.clone(false);
-		const current = newEnvironment;
+		let current = newEnvironment;
 		do{
 			if(current.n === ns) {
 				current.define(definition);
@@ -148,6 +148,7 @@ export class Environment implements IEnvironment {
 			} else if(current.parent && !current.parent.builtInEnv) {
 				// clone parent
 				current.parent = current.parent.clone(false);
+				current = current.parent;
 			} else {
 				break;
 			}
@@ -193,7 +194,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
-		if(!other || this.builtInEnv) {
+		if(this.builtInEnv || this === other || !other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -201,24 +202,28 @@ export class Environment implements IEnvironment {
 			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
 				const old = map.get(key);
+				if(!old && applyCds === undefined) {
+					map.set(key, values);
+					continue;
+				}
 				// we need to make a copy to avoid side effects for old reference in other environments
-				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
+				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
 					const { nodeId, definedAt } = v;
-					const index = updatedOld.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
+					const index = updated.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
 					if(index) {
 						continue;
 					}
 					if(applyCds === undefined) {
-						updatedOld.push(v);
+						updated.push(v);
 					} else {
-						updatedOld.push({
+						updated.push({
 							...v,
 							cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice()
 						});
 					}
 				}
-				map.set(key, updatedOld);
+				map.set(key, updated);
 			} else {
 				map.set(key, values);
 			}
@@ -236,7 +241,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
-		if(!other || this.builtInEnv) {
+		if(!other || this.builtInEnv || this === other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);

@@ -16,8 +16,6 @@ import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
-import { jsonReplacer } from '../../util/json';
-import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
@@ -267,8 +265,9 @@ export class DataflowGraph<
 	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
 		const edges = new Map<NodeId, Edge>();
 		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			if(outgoing.has(id)) {
-				edges.set(source, outgoing.get(id) as Edge);
+			const o = outgoing.get(id);
+			if(o) {
+				edges.set(source, o);
 			}
 		}
 		return edges;
@@ -569,18 +568,13 @@ export class DataflowGraph<
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
-		dataflowLogger.warn(() => `nodes to be joined for the same id should have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs. ${JSON.stringify(next, jsonReplacer)} -- we are currently not handling cases in which vertices may be either! Keeping current.`);
 		return current;
-	}
-
-	if(current.tag === VertexType.VariableDefinition) {
-		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 	} else if(current.tag === VertexType.FunctionDefinition) {
-		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
-		current.exitPoints = uniqueArrayMerge(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);
-		if(next.tag === VertexType.FunctionDefinition && next.mode && next.mode.length > 0) {
+		const n = next as DataflowGraphVertexFunctionDefinition;
+		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
+		if(n.mode && n.mode.length > 0) {
 			current.mode ??= [];
-			for(const m of next.mode) {
+			for(const m of n.mode) {
 				if(!current.mode.includes(m)) {
 					current.mode.push(m);
 				}

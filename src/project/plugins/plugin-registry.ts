@@ -18,6 +18,7 @@ import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-li
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
+import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -31,6 +32,7 @@ export const BuiltInPlugins = [
 	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
+	['file:rnw', FlowrAnalyzerSweaveFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],

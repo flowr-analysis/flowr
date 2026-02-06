@@ -5,6 +5,8 @@ import { isFunctionHigherOrder } from '../../../dataflow/fn/higher-order-functio
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
+import type { DataflowGraph } from '../../../dataflow/graph/graph';
+import { invertDfg } from '../../../dataflow/graph/invert-dfg';
 
 /**
  * Execute higher-order function inspection queries on the given analyzer.
@@ -40,9 +42,14 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 	const fns = graph.verticesOfType(VertexType.FunctionDefinition)
 		.filter(([,v]) => filterFor.size === 0 || filterFor.has(v.id));
 
+	let invertedGraph: DataflowGraph | undefined;
+	if(filterFor.size === 0 || filterFor.size > 10) {
+		invertedGraph = invertDfg(graph, analyzer.inspectContext().env.makeCleanEnv());
+	}
+
 	const result: Record<NodeId, boolean> = {};
 	for(const [id] of fns) {
-		result[id] = isFunctionHigherOrder(id, graph, analyzer.inspectContext());
+		result[id] = isFunctionHigherOrder(id, graph, analyzer.inspectContext(), invertedGraph);
 	}
 
 	return {

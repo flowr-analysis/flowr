@@ -1,8 +1,7 @@
 import { type LintingResult, type LintingRule, type LintQuickFixRemove, LintingResultCertainty, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import { type SourceRange, mergeRanges, rangeCompare, rangeFrom, rangeIsSubsetOf } from '../../util/range';
-import { formatRange } from '../../util/mermaid/dfg';
+import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
@@ -16,7 +15,7 @@ import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role'
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string,
-	range:         SourceRange
+	loc:           SourceLocation
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {
@@ -35,8 +34,8 @@ const InterestingEdgesFunction = EdgeType.Reads | EdgeType.Calls;// include read
 const InterestingEdgesTargets = EdgeType.SideEffectOnCall;
 
 function getDefinitionArguments(def: NodeId, dfg: DataflowGraph) {
-	return [...dfg.outgoingEdges(def) ?? []].filter(([,e]) => DfEdge.includesType(e, EdgeType.DefinedBy))
-		.map(([target]) => target);
+	return dfg.outgoingEdges(def)?.entries().filter(([,e]) => DfEdge.includesType(e, EdgeType.DefinedBy))
+		.map(([target]) => target).toArray() ?? [];
 }
 
 function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, ast: NormalizedAst): LintQuickFixRemove[] | undefined {
@@ -50,7 +49,7 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	const definedBys = getDefinitionArguments(variable.info.id, dfg);
 
 	const hasImportantArgs = definedBys.some(d => dfg.unknownSideEffects.has(d))
-		|| definedBys.flatMap(e => [...dfg.outgoingEdges(e) ?? []])
+		|| definedBys.flatMap(e => Array.from(dfg.outgoingEdges(e) ?? []))
 			.some(([target, e]) => {
 				return DfEdge.includesType(e, InterestingEdgesTargets) || dfg.unknownSideEffects.has(target);
 			});
@@ -59,17 +58,17 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 		return undefined; // we can not remove this definition, it has important arguments
 	}
 
-	const totalRangeToRemove = mergeRanges(
+	const totalRangeToRemove = SourceLocation.merge(
 		[...definedBys.map(d => {
 			const vertex = ast.idMap.get(d);
-			return vertex?.info.fullRange ?? vertex?.location;
+			return vertex ? SourceLocation.fromNode(vertex) : undefined;
 		}),
 		variable.info.fullRange ?? variable.location]
 	);
 
 	return [{
 		type:        'remove',
-		range:       totalRangeToRemove,
+		loc:         totalRangeToRemove ?? SourceLocation.invalid(),
 		description: `Remove unused definition of \`${variable.lexeme}\``
 	}];
 }
@@ -80,13 +79,13 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 function onlyKeepSupersetOfUnused(
 	elements: UnusedDefinitionResult[]
 ): UnusedDefinitionResult[] {
-	const ranges = elements.flatMap(e => e.quickFix?.map(q => q.range) ?? [e.range]);
-	if(ranges.length <= 1) {
+	const locs = elements.flatMap(e => e.quickFix?.map(q => q.loc) ?? [e.loc]);
+	if(locs.length <= 1) {
 		return elements; // nothing to filter, only one element
 	}
 	return elements.filter(e => {
-		const otherRange = mergeRanges((e.quickFix?.map(q => q.range) ?? [e.range]));
-		return !ranges.some(r => rangeCompare(r, otherRange) !== 0 && rangeIsSubsetOf(otherRange, r)); // there is no smaller remove
+		const otherLoc = SourceLocation.merge((e.quickFix?.map(q => q.loc) ?? [e.loc])) ?? SourceLocation.invalid();
+		return !locs.some(r => SourceLocation.compare(r, otherLoc) !== 0 && SourceLocation.isSubsetOf(otherLoc, r)); // there is no smaller remove
 	});
 }
 
@@ -125,7 +124,7 @@ export const UNUSED_DEFINITION = {
 					certainty:  LintingResultCertainty.Uncertain,
 					variableName,
 					involvedId: element.node.info.id,
-					range:      element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
+					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
 					quickFix:   buildQuickFix(element.node, data.dataflow.graph, data.normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
@@ -133,8 +132,8 @@ export const UNUSED_DEFINITION = {
 		};
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${formatRange(result.range)} is unused`
+		[LintingPrettyPrintContext.Query]: result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Definition of \`${result.variableName}\` at ${SourceLocation.format(result.loc)} is unused`
 	},
 	info: {
 		name:          'Unused Definitions',

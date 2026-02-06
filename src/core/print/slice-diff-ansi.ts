@@ -1,4 +1,4 @@
-import { type SourceRange, mergeRanges, rangeCompare, rangesOverlap } from '../../util/range';
+import { SourceRange } from '../../util/range';
 import { isNotUndefined } from '../../util/assert';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -10,11 +10,11 @@ function grayOut(): string {
 
 function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolean }[]) {
 	return loc.reduce((acc, curr) => {
-		if(rangesOverlap(acc[acc.length - 1].location, curr.location)) {
+		if(SourceRange.overlap(acc[acc.length - 1].location, curr.location)) {
 			return [
 				...acc.slice(0, -1), {
 					selected: curr.selected || acc[acc.length - 1].selected,
-					location: mergeRanges([acc[acc.length - 1].location, curr.location])
+					location: SourceRange.merge([acc[acc.length - 1].location, curr.location])
 				}];
 		} else {
 			return [...acc, curr];
@@ -40,7 +40,7 @@ export function sliceDiffAnsi(slice: ReadonlySet<NodeId>, normalized: Normalized
 	}
 
 	// we sort all locations from back to front so that replacements do not screw up the indices
-	importantLocations.sort((a, b) => -rangeCompare(a.location, b.location));
+	importantLocations.sort((a, b) => -SourceRange.compare(a.location, b.location));
 
 	// we need to merge all ranges that overlap, otherwise even reversed traversal can still crew us up
 	importantLocations = mergeJointRangesInSorted(importantLocations);

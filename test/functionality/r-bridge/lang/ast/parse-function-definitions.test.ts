@@ -1,17 +1,17 @@
 import { assertAst, withShell } from '../../../_helper/shell';
 import { exprList, numVal, parameter } from '../../../_helper/ast-builder';
-import { rangeFrom } from '../../../../../src/util/range';
 import { label } from '../../../_helper/label';
 import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { describe } from 'vitest';
+import { SourceRange } from '../../../../../src/util/range';
 
 describe.sequential('Parse function definitions', withShell(shell => {
 	describe('without parameters', () => {
 		assertAst(label('Noop', ['normal-definition', 'grouping']),
 			shell, 'function() { }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [],
 				info:       {},
@@ -19,13 +19,13 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					type:     RType.ExpressionList,
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 12, 1, 12),
+						location: SourceRange.from(1, 12, 1, 12),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 14, 1, 14),
+						location: SourceRange.from(1, 14, 1, 14),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -42,7 +42,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
 			shell, 'function() { x + 2 * 3 }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [],
 				info:       {},
@@ -53,46 +53,46 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {},
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 12, 1, 12),
+						location: SourceRange.from(1, 12, 1, 12),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 24, 1, 24),
+						location: SourceRange.from(1, 24, 1, 24),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
 					}],
 					children: [{
 						type:     RType.BinaryOp,
-						location: rangeFrom(1, 16, 1, 16),
+						location: SourceRange.from(1, 16, 1, 16),
 						lexeme:   '+',
 						operator: '+',
 						info:     {},
 						lhs:      {
 							type:     RType.Symbol,
-							location: rangeFrom(1, 14, 1, 14),
+							location: SourceRange.from(1, 14, 1, 14),
 							lexeme:   'x',
 							content:  'x',
 							info:     {}
 						},
 						rhs: {
 							type:     RType.BinaryOp,
-							location: rangeFrom(1, 20, 1, 20),
+							location: SourceRange.from(1, 20, 1, 20),
 							lexeme:   '*',
 							operator: '*',
 							info:     {},
 							lhs:      {
 								type:     RType.Number,
-								location: rangeFrom(1, 18, 1, 18),
+								location: SourceRange.from(1, 18, 1, 18),
 								lexeme:   '2',
 								content:  numVal(2),
 								info:     {}
 							},
 							rhs: {
 								type:     RType.Number,
-								location: rangeFrom(1, 22, 1, 22),
+								location: SourceRange.from(1, 22, 1, 22),
 								lexeme:   '3',
 								content:  numVal(3),
 								info:     {}
@@ -109,21 +109,21 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('One parameter', ['normal-definition', 'formals-named', 'grouping']),
 			shell, 'function(x) { }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
-				parameters: [parameter('x', rangeFrom(1, 10, 1, 10))],
+				parameters: [parameter('x', SourceRange.from(1, 10, 1, 10))],
 				info:       {},
 				body:       {
 					type:     RType.ExpressionList,
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 13, 1, 13),
+						location: SourceRange.from(1, 13, 1, 13),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 15, 1, 15),
+						location: SourceRange.from(1, 15, 1, 15),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -140,12 +140,12 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('Multiple parameters', ['normal-definition', 'name-normal', 'formals-named', 'grouping']),
 			shell, 'function(a,the,b) { b }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [
-					parameter('a', rangeFrom(1, 10, 1, 10)),
-					parameter('the', rangeFrom(1, 12, 1, 14)),
-					parameter('b', rangeFrom(1, 16, 1, 16))
+					parameter('a', SourceRange.from(1, 10, 1, 10)),
+					parameter('the', SourceRange.from(1, 12, 1, 14)),
+					parameter('b', SourceRange.from(1, 16, 1, 16))
 				],
 				info: {},
 				body: {
@@ -155,20 +155,20 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {},
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 19, 1, 19),
+						location: SourceRange.from(1, 19, 1, 19),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 23, 1, 23),
+						location: SourceRange.from(1, 23, 1, 23),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
 					}],
 					children: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 21, 1, 21),
+						location: SourceRange.from(1, 21, 1, 21),
 						lexeme:   'b',
 						content:  'b',
 						info:     {}
@@ -184,29 +184,29 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		shell, `function(x=3, # hehehe
   foo) { }`, exprList({
 			type:       RType.FunctionDefinition,
-			location:   rangeFrom(1, 1, 1, 8),
+			location:   SourceRange.from(1, 1, 1, 8),
 			lexeme:     'function',
 			parameters: [
-				parameter('x', rangeFrom(1, 10, 1, 10), {
+				parameter('x', SourceRange.from(1, 10, 1, 10), {
 					type:     RType.Number,
-					location: rangeFrom(1, 12, 1, 12),
+					location: SourceRange.from(1, 12, 1, 12),
 					lexeme:   '3',
 					content:  numVal(3),
 					info:     {}
 				}),
-				parameter('foo', rangeFrom(2, 3, 2, 5))
+				parameter('foo', SourceRange.from(2, 3, 2, 5))
 			],
 			body: {
 				type:     RType.ExpressionList,
 				grouping: [{
 					type:     RType.Symbol,
-					location: rangeFrom(2, 8, 2, 8),
+					location: SourceRange.from(2, 8, 2, 8),
 					lexeme:   '{',
 					content:  '{',
 					info:     {},
 				}, {
 					type:     RType.Symbol,
-					location: rangeFrom(2, 10, 2, 10),
+					location: SourceRange.from(2, 10, 2, 10),
 					lexeme:   '}',
 					content:  '}',
 					info:     {},
@@ -220,7 +220,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				adToks: [
 					{
 						type:     RType.Comment,
-						location: rangeFrom(1, 15, 1, 22),
+						location: SourceRange.from(1, 15, 1, 22),
 						lexeme:   '# hehehe',
 						info:     {}
 					}
@@ -235,21 +235,21 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('As Single Argument', ['normal-definition', 'formals-dot-dot-dot', 'grouping']),
 			shell, 'function(...) { }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
-				parameters: [parameter('...', rangeFrom(1, 10, 1, 12), undefined, true)],
+				parameters: [parameter('...', SourceRange.from(1, 10, 1, 12), undefined, true)],
 				info:       {},
 				body:       {
 					type:     RType.ExpressionList,
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 15, 1, 15),
+						location: SourceRange.from(1, 15, 1, 15),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 17, 1, 17),
+						location: SourceRange.from(1, 17, 1, 17),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -267,11 +267,11 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('As first arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named']),
 			shell, 'function(..., a) { }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [
-					parameter('...', rangeFrom(1, 10, 1, 12), undefined, true),
-					parameter('a', rangeFrom(1, 15, 1, 15))
+					parameter('...', SourceRange.from(1, 10, 1, 12), undefined, true),
+					parameter('a', SourceRange.from(1, 15, 1, 15))
 				],
 				info: {},
 				body: {
@@ -279,13 +279,13 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					location: undefined,
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 18, 1, 18),
+						location: SourceRange.from(1, 18, 1, 18),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 20, 1, 20),
+						location: SourceRange.from(1, 20, 1, 20),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -302,12 +302,12 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('As last arg', ['normal-definition', 'formals-dot-dot-dot', 'grouping', 'formals-named', 'name-normal']),
 			shell, 'function(a, the, ...) { ... }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [
-					parameter('a', rangeFrom(1, 10, 1, 10)),
-					parameter('the', rangeFrom(1, 13, 1, 15)),
-					parameter('...', rangeFrom(1, 18, 1, 20), undefined, true)
+					parameter('a', SourceRange.from(1, 10, 1, 10)),
+					parameter('the', SourceRange.from(1, 13, 1, 15)),
+					parameter('...', SourceRange.from(1, 18, 1, 20), undefined, true)
 				],
 				info: {},
 				body: {
@@ -317,20 +317,20 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {},
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 23, 1, 23),
+						location: SourceRange.from(1, 23, 1, 23),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 29, 1, 29),
+						location: SourceRange.from(1, 29, 1, 29),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
 					}],
 					children: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 25, 1, 27),
+						location: SourceRange.from(1, 25, 1, 27),
 						lexeme:   '...',
 						content:  '...',
 						info:     {}
@@ -345,12 +345,12 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('One Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers']),
 			shell, 'function(x=3) { }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [
-					parameter('x', rangeFrom(1, 10, 1, 10), {
+					parameter('x', SourceRange.from(1, 10, 1, 10), {
 						type:     RType.Number,
-						location: rangeFrom(1, 12, 1, 12),
+						location: SourceRange.from(1, 12, 1, 12),
 						lexeme:   '3',
 						content:  numVal(3),
 						info:     {}
@@ -361,13 +361,13 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					type:     RType.ExpressionList,
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 15, 1, 15),
+						location: SourceRange.from(1, 15, 1, 15),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 17, 1, 17),
+						location: SourceRange.from(1, 17, 1, 17),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
@@ -385,20 +385,20 @@ describe.sequential('Parse function definitions', withShell(shell => {
 		assertAst(label('Multiple Parameter', ['normal-definition', 'formals-named', 'formals-default', 'grouping', 'name-normal', 'numbers', 'name-normal', 'strings']),
 			shell, 'function(a, x=3, huhu="hehe") { x }', exprList({
 				type:       RType.FunctionDefinition,
-				location:   rangeFrom(1, 1, 1, 8),
+				location:   SourceRange.from(1, 1, 1, 8),
 				lexeme:     'function',
 				parameters: [
-					parameter('a', rangeFrom(1, 10, 1, 10)),
-					parameter('x', rangeFrom(1, 13, 1, 13), {
+					parameter('a', SourceRange.from(1, 10, 1, 10)),
+					parameter('x', SourceRange.from(1, 13, 1, 13), {
 						type:     RType.Number,
-						location: rangeFrom(1, 15, 1, 15),
+						location: SourceRange.from(1, 15, 1, 15),
 						lexeme:   '3',
 						content:  numVal(3),
 						info:     {}
 					}),
-					parameter('huhu', rangeFrom(1, 18, 1, 21), {
+					parameter('huhu', SourceRange.from(1, 18, 1, 21), {
 						type:     RType.String,
-						location: rangeFrom(1, 23, 1, 28),
+						location: SourceRange.from(1, 23, 1, 28),
 						lexeme:   '"hehe"',
 						content:  { str: 'hehe', quotes: '"' },
 						info:     {}
@@ -412,20 +412,20 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {},
 					grouping: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 31, 1, 31),
+						location: SourceRange.from(1, 31, 1, 31),
 						lexeme:   '{',
 						content:  '{',
 						info:     {},
 					}, {
 						type:     RType.Symbol,
-						location: rangeFrom(1, 35, 1, 35),
+						location: SourceRange.from(1, 35, 1, 35),
 						lexeme:   '}',
 						content:  '}',
 						info:     {},
 					}],
 					children: [{
 						type:     RType.Symbol,
-						location: rangeFrom(1, 33, 1, 33),
+						location: SourceRange.from(1, 33, 1, 33),
 						lexeme:   'x',
 						content:  'x',
 						info:     {}

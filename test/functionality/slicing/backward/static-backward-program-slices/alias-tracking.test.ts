@@ -34,12 +34,14 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		const ctx = contextFromInput(code);
 		const result = await runPipeline(code, shell, ctx);
 		const values = trackAliasInEnvironments(
-			defaultConfigOptions.solver.variables,
 			Identifier.make(identifier),
 			result.dataflow.environment,
-			ctx,
-			result.dataflow.graph,
-			result.dataflow.graph.idMap
+			{
+				resolve: defaultConfigOptions.solver.variables,
+				ctx,
+				graph:   result.dataflow.graph,
+				idMap:   result.dataflow.graph.idMap
+			}
 		);
 		expect(values).toEqual(expectedValues);
 	});

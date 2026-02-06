@@ -280,8 +280,9 @@ export class ControlFlowGraph<Vertex extends CfgSimpleVertex = CfgSimpleVertex> 
 	ingoingEdges(id: NodeId): ReadonlyMap<NodeId, CfgEdge> | undefined {
 		const edges = new Map<NodeId, CfgEdge>();
 		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			if(outgoing.has(id)) {
-				edges.set(source, outgoing.get(id) as CfgEdge);
+			const o = outgoing.get(id);
+			if(o) {
+				edges.set(source, o);
 			}
 		}
 		return edges;

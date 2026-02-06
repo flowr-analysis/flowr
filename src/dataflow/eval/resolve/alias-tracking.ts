@@ -7,7 +7,7 @@ import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
 import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
-import { type Identifier, ReferenceType } from '../../environments/identifier';
+import { Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
 import { EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
@@ -19,6 +19,7 @@ import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../val
 import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -44,6 +45,8 @@ export interface ResolveInfo {
 	resolve?:     VariableResolve;
 	/** Context used for resolving */
 	ctx:          ReadOnlyFlowrAnalyzerContext;
+	/** If set, the ids that should not be considered during resolution (=&gt; top) */
+	blocked?:     Set<NodeId>;
 }
 
 function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environment: REnvironmentInformation): NodeId[] | undefined {
@@ -145,9 +148,11 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param full               - Whether to track aliases on resolve
  * @param resolve            - Variable resolve mode
  * @param ctx                - Context used for clean environment
+ * @param blocked            - If set, the ids that should not be considered during resolution (=&gt;top)
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx }: ResolveInfo): ResolveResult {
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx, blocked }: ResolveInfo): ResolveResult {
 	const variableResolve = resolve ?? ctx.config.solver.variables;
+	blocked ??= new Set<NodeId>();
 
 	if(id === undefined) {
 		return Top;
@@ -155,30 +160,34 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 	idMap ??= graph?.idMap;
 	const node = typeof id === 'object' ? id : idMap?.get(id);
-	if(node === undefined) {
+	if(node === undefined || blocked.has(node.info.id)) {
 		return Top;
 	}
+	blocked.add(node.info.id);
 
 	switch(node.type) {
 		case RType.Argument:
 			if(node.value) {
-				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve: variableResolve, ctx });
+				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve: variableResolve, ctx, blocked });
 			}
 		// eslint-disable-next-line no-fallthrough
 		case RType.Symbol:
-			if(environment) {
-				return full ? trackAliasInEnvironments(variableResolve, node.lexeme, environment, ctx, graph, idMap) : Top;
-			} else if(graph && resolve === VariableResolve.Alias) {
-				return full ? trackAliasesInGraph(node.info.id, graph, ctx, idMap) : Top;
-			} else {
-				return Top;
+			if(full) {
+				if(environment) {
+					return trackAliasInEnvironments(Identifier.toString((node as RSymbol).content), environment, { idMap, resolve: variableResolve, ctx, graph, blocked });
+				} else if(graph && resolve === VariableResolve.Alias) {
+					return trackAliasesInGraph(node.info.id, graph, ctx, idMap);
+				}
 			}
+			return Top;
 		case RType.FunctionDefinition:
 			return setFrom({ type: 'function-definition' });
 		case RType.FunctionCall:
 		case RType.BinaryOp:
 		case RType.UnaryOp:
-			return setFrom(resolveNode(variableResolve, node, ctx, environment, graph, idMap));
+			return setFrom(resolveNode({
+				resolve: variableResolve, node, ctx, environment, graph, idMap, blocked
+			}));
 		case RType.String:
 		case RType.Number:
 		case RType.Logical:
@@ -193,20 +202,17 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
  *
  * Uses the aliases that were tracked in the environments (by the
  * {@link getAliases} function) to resolve a node to a value.
- * @param resolve    - Variable resolve mode
  * @param identifier - Identifier to resolve
- * @param use        - Environment to use
- * @param ctx        - analysis context
- * @param graph      - dataflow graph
- * @param idMap      - id map of Dataflow graph
+ * @param environment - Environment to use
+ * @param r          - Resolve information (env, ctx, ...)
  * @returns Value of Identifier or Top
  */
-export function trackAliasInEnvironments(resolve: VariableResolve, identifier: Identifier | undefined, use: REnvironmentInformation, ctx: ReadOnlyFlowrAnalyzerContext, graph?: DataflowGraph, idMap?: AstIdMap): ResolveResult {
+export function trackAliasInEnvironments(identifier: Identifier | undefined, environment: REnvironmentInformation, { blocked, idMap, resolve = VariableResolve.Alias, ctx, graph }: Omit<ResolveInfo, 'environment'>): ResolveResult {
 	if(identifier === undefined) {
 		return Top;
 	}
 
-	const defs = resolveByNameAnyType(identifier, use);
+	const defs = resolveByNameAnyType(identifier, environment);
 	if(defs === undefined) {
 		return Top;
 	}
@@ -226,7 +232,7 @@ export function trackAliasInEnvironments(resolve: VariableResolve, identifier: I
 			for(const alias of def.value) {
 				const definitionOfAlias = idMap?.get(alias);
 				if(definitionOfAlias !== undefined) {
-					const value = resolveNode(resolve, definitionOfAlias, ctx, use, graph, idMap);
+					const value = resolveNode({ resolve, node: definitionOfAlias, ctx, environment, graph, idMap, blocked });
 					if(isTop(value)) {
 						return Top;
 					}
@@ -296,7 +302,7 @@ function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boole
 		return false;
 	}
 
-	if(parentNode.type === RType.WhileLoop || parentNode.type === RType.RepeatLoop) {
+	if(parentNode.type === RType.WhileLoop || parentNode.type === RType.RepeatLoop || parentNode.type === RType.ForLoop) {
 		return true;
 	}
 
@@ -321,7 +327,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	idMap ??= graph.idMap;
 	guard(idMap !== undefined, 'The ID map is required to get the lineage of a node');
 
-	const queue = new VisitingQueue(25);
+	const queue = new VisitingQueue(10);
 	const clean = ctx.env.makeCleanEnv();
 	const cleanFingerprint = ctx.env.getCleanEnvFingerprint();
 	queue.add(id, clean, cleanFingerprint, false);
@@ -331,11 +337,10 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const resultIds: NodeId[] = [];
 	while(queue.nonEmpty()) {
 		const { id, baseEnvironment } = queue.next();
-		const res = graph.get(id);
-		if(!res) {
+		const vertex = graph.getVertex(id);
+		if(!vertex) {
 			continue;
 		}
-		const [vertex, outgoingEdges] = res;
 		const cds = vertex.cds;
 		for(const cd of cds ?? []) {
 			const target = graph.idMap?.get(cd.id);
@@ -353,27 +358,24 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 		if(forceTop) {
 			break;
 		}
-		if(vertex.tag === VertexType.Value) {
-			resultIds.push(id);
-			continue;
-		} else if(vertex.tag === VertexType.FunctionDefinition) {
+		const t = vertex.tag;
+		if(t === VertexType.Value || t === VertexType.FunctionDefinition) {
 			resultIds.push(id);
 			continue;
 		}
 
-		const isFn = vertex.tag === VertexType.FunctionCall;
-
-
+		const isFn = t === VertexType.FunctionCall;
+		const outgoingEdges = graph.outgoingEdges(id) ?? [];
 		// travel all read and defined-by edges
-		for(const [targetId, edge] of outgoingEdges) {
+		for(const [targetId, { types }] of outgoingEdges) {
 			if(isFn) {
-				if(edge.types === EdgeType.Returns || edge.types === EdgeType.DefinedByOnCall || edge.types ===  EdgeType.DefinedBy) {
+				if(types === EdgeType.Returns || types === EdgeType.DefinedByOnCall || types ===  EdgeType.DefinedBy) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
 				continue;
 			}
 			// currently, they have to be exact!
-			if(edge.types === EdgeType.Reads || edge.types ===  EdgeType.DefinedBy || edge.types === EdgeType.DefinedByOnCall) {
+			if(types === EdgeType.Reads || types ===  EdgeType.DefinedBy || types === EdgeType.DefinedByOnCall) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
 		}

@@ -47,12 +47,7 @@ export function normalizeTreeSitter(
 	config: FlowrConfigOptions
 ): NormalizedAst {
 	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
-	let now = Date.now();
-	const nast = normalizeTreeSitterTreeToAst(parsed.files, lax);
-	console.log(`Normalizing tree-sitter AST took ${Date.now() - now}ms.`);
-	now = Date.now();
-	const result = decorateAst(nast, { getId });
-	console.log(`Decorating tree-sitter AST took ${Date.now() - now}ms.`);
+	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed.files, lax), { getId });
 	result.hasError = parsed.files.some(p => p.parsed.rootNode.hasError);
 	return result;
 }

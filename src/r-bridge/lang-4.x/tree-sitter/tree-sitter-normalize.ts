@@ -649,11 +649,21 @@ function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxN
 	return [comments, others];
 }
 
-function findFirstNonCommentSibling(snode: SyntaxNode): SyntaxNode | null {
+/**
+ * Find the first sibling of the given node that is not a comment, starting from the given node and going to the right.
+ * @param snode - the node for which to find the first non-comment sibling
+ * @param knownNexts - cache map from node id to the id of the first non-comment sibling
+ */
+function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, SyntaxNode | null>): SyntaxNode | null {
+	const cache = knownNexts.get(snode.id);
+	if(cache !== undefined) {
+		return cache;
+	}
 	const cursor = snode.parent?.walk();
 	if(!cursor) {
 		return null;
 	}
+	const linkCaches: number[] = [snode.id];
 	cursor.gotoFirstChild();
 	while(cursor.nodeId !== snode.id && cursor.gotoNextSibling()) {
 		/* skip */
@@ -661,14 +671,19 @@ function findFirstNonCommentSibling(snode: SyntaxNode): SyntaxNode | null {
 	cursor.gotoNextSibling();
 	while(cursor.nodeType === TreeSitterType.Comment && cursor.gotoNextSibling()) {
 		/* skip */
+		linkCaches.push(cursor.nodeId);
 	}
 	const cur = cursor.currentNode;
+	for(const id of linkCaches) {
+		knownNexts.set(id, cur);
+	}
 	cursor.delete();
 	return cur;
 }
 
 function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
 	const remain: SyntaxAndRNode[] = [];
+	const cacheMap = new Map<number, SyntaxNode | null>();
 	for(const [commentSyntaxNode, commentNode] of comments) {
 		let sibling: SyntaxNode | null;
 		const prev = commentSyntaxNode.previousSibling;
@@ -676,7 +691,7 @@ function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNo
 			// if there is a sibling on the same line, we link the comment to that node
 			sibling = prev;
 		} else {
-			sibling = findFirstNonCommentSibling(commentSyntaxNode);
+			sibling = findFirstNonCommentSibling(commentSyntaxNode, cacheMap);
 		}
 		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
 		const [, node] = (sibling ? nodes.find(([s]) => s.id === sibling.id) : undefined) ?? nodes[0] ?? [];

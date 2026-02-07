@@ -5,7 +5,7 @@ import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
 import { SourceRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
-import { boolean2ts, number2ts, string2ts } from '../convert-values';
+import { number2ts, RTrue, string2ts } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
 import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/collections/arrays';
@@ -19,6 +19,7 @@ import type { RProject } from '../ast/model/nodes/r-project';
 import type { ParseStepOutputSingleFile } from '../../parser';
 import { parseLog } from '../ast/parser/json/parser';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import type { RExpressionList } from '../ast/model/nodes/r-expression-list';
 
 export interface TreeSitterInfo {
 	treeSitterId: number
@@ -35,17 +36,17 @@ export function normalizeTreeSitterTreeToAst(tree: ParseStepOutputSingleFile<Tre
 	} else {
 		makeTreeSitterStrict();
 	}
-
-	const files = tree.map(t => {
+	const files: { filePath: string | undefined, root: RExpressionList<TreeSitterInfo> }[] = [];
+	for(const t of tree) {
 		const root = convertTreeNode(t.parsed.rootNode);
 		if(root.type !== RType.ExpressionList) {
 			throw new ParseError(`expected root to resolve to an expression list, got a ${root.type}`);
 		}
-		return {
+		files.push({
 			filePath: t.filePath,
 			root:     root
-		};
-	});
+		});
+	}
 
 	return {
 		type: RType.Project,
@@ -174,7 +175,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						treeSitterId: lhs.info.treeSitterId
 					}
 				};
-				if(op.type == 'special') {
+				if(op.type === 'special') {
 					return {
 						type:         RType.FunctionCall,
 						location:     opSource,
@@ -343,7 +344,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			case TreeSitterType.Call: {
 				const [func, argsParentheses] = nonErrorChildren(node);
 				// tree-sitter wraps next and break in a function call, but we don't, so unwrap
-				if(func.type === TreeSitterType.Next || func.type == TreeSitterType.Break) {
+				if(func.type === TreeSitterType.Next || func.type === TreeSitterType.Break) {
 					return {
 						...convertTreeNode(func),
 						...defaultInfo
@@ -353,7 +354,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [comments, noCommentrawArgs] = splitComments(rawArgs);
 				const args = splitArrayOn(noCommentrawArgs.slice(1, -1), x => x.type === 'comma');
 				const funcRange = makeSourceRange(func);
-				const mappedArgs = args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
+				const mappedArgs = args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>);
 				const call = {
 					arguments: mappedArgs,
 					location:  funcRange,
@@ -438,14 +439,20 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.Logical,
 					location: range,
-					content:  boolean2ts(node.text),
+					content:  node.text === RTrue,
 					lexeme:   node.text,
 					...defaultInfo
 				};
 			case TreeSitterType.Break:
+				return {
+					type:     RType.Break,
+					location: range,
+					lexeme:   node.text,
+					...defaultInfo
+				};
 			case TreeSitterType.Next:
 				return {
-					type:     node.type == TreeSitterType.Break ? RType.Break : RType.Next,
+					type:     RType.Next,
 					location: range,
 					lexeme:   node.text,
 					...defaultInfo
@@ -461,7 +468,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					type:     RType.Access,
 					operator: bracket.text as '[' | '[[',
 					accessed: convertTreeNode(func),
-					access:   args.map(n => n.length == 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
+					access:   args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
 					location: makeSourceRange(bracket),
 					lexeme:   bracket.text,
 					...defaultInfo
@@ -500,7 +507,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const name = children[0];
 				const nameRange = makeSourceRange(name);
 				let defaultValue: RNode<TreeSitterInfo> | undefined = undefined;
-				if(children.length == 3) {
+				if(children.length === 3) {
 					defaultValue = convertTreeNode(children[2]);
 				}
 				return {
@@ -531,7 +538,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			}
 			case TreeSitterType.Argument: {
 				const children = nonErrorChildren(node);
-				if(children.length == 1) {
+				if(children.length === 1) {
 					const [arg] = children;
 					return {
 						type:     RType.Argument,
@@ -610,20 +617,14 @@ function makeSourceRange(node: SyntaxNode | undefined): SourceRange {
 	if(!node) {
 		return SourceRange.invalid();
 	}
-	if(node.startPosition && node.endPosition) {
-		return [
-			// tree-sitter is 0-based but we want 1-based
-			node.startPosition.row + 1, node.startPosition.column + 1,
-			// tree-sitter's end position is one off from ours, so we don't add 1 here
-			node.endPosition.row + 1, node.endPosition.column
-		];
-	} else {
-		return [
-			(node.startPosition?.row ?? -2) + 1, (node.startPosition?.column ?? -2) + 1,
-			// tree-sitter's end position is one off from ours, so we don't add 1 here
-			(node.endPosition?.row ?? -2) + 1, node.endPosition?.column ?? -1
-		];
-	}
+	const s = node.startPosition;
+	const e = node.endPosition;
+	return [
+		// tree-sitter is 0-based but we want 1-based
+		(s?.row ?? -2) + 1, (s?.column ?? -2) + 1,
+		// tree-sitter's end position is one off from ours, so we don't add 1 here
+		(e?.row ?? -2) + 1, e?.column ?? -1
+	];
 }
 
 function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
@@ -648,21 +649,37 @@ function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxN
 	return [comments, others];
 }
 
+function findFirstNonCommentSibling(snode: SyntaxNode): SyntaxNode | null {
+	const cursor = snode.parent?.walk();
+	if(!cursor) {
+		return null;
+	}
+	cursor.gotoFirstChild();
+	while(cursor.nodeId !== snode.id && cursor.gotoNextSibling()) {
+		/* skip */
+	}
+	cursor.gotoNextSibling();
+	while(cursor.nodeType === TreeSitterType.Comment && cursor.gotoNextSibling()) {
+		/* skip */
+	}
+	const cur = cursor.currentNode;
+	cursor.delete();
+	return cur;
+}
+
 function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
 	const remain: SyntaxAndRNode[] = [];
 	for(const [commentSyntaxNode, commentNode] of comments) {
 		let sibling: SyntaxNode | null;
-		if(commentSyntaxNode.previousSibling?.endIndex === commentSyntaxNode.startIndex) {
+		const prev = commentSyntaxNode.previousSibling;
+		if(prev?.endIndex === commentSyntaxNode.startIndex) {
 			// if there is a sibling on the same line, we link the comment to that node
-			sibling = commentSyntaxNode.previousSibling;
+			sibling = prev;
 		} else {
-			sibling = commentSyntaxNode.nextSibling;
-			while(sibling && sibling.type === TreeSitterType.Comment) {
-				sibling = sibling.nextSibling;
-			}
+			sibling = findFirstNonCommentSibling(commentSyntaxNode);
 		}
 		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
-		const [, node] = (sibling ? nodes.find(([s]) => s.equals(sibling)) : undefined) ?? nodes[0] ?? [];
+		const [, node] = (sibling ? nodes.find(([s]) => s.id === sibling.id) : undefined) ?? nodes[0] ?? [];
 		if(node) {
 			node.info.adToks ??= [];
 			node.info.adToks.push(commentNode);

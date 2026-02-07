@@ -3,7 +3,6 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { DataFrameDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
@@ -40,21 +39,21 @@ export type DataFrameOperationType<OperationName extends DataFrameOperationName 
  */
 export type DataFrameOperations<OperationName extends DataFrameOperationName = DataFrameOperationName> = DataFrameOperation<OperationName>[] | undefined;
 
-interface DataFrameShapeInferenceConfiguration extends Omit<AbsintVisitorConfiguration<DataFrameDomain>, 'domain'> {
+interface DataFrameShapeInferenceConfiguration extends AbsintVisitorConfiguration {
 	readonly trackOperations?: boolean;
 }
 
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration & { domain: StateAbstractDomain<DataFrameDomain> }> {
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration> {
 	/**
 	 * The abstract data frame operations the function call nodes are mapped to.
 	 */
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super({ ...config, domain: StateAbstractDomain.bottom() });
+		super(config);
 
 		if(trackOperations) {
 			this.operations = new Map();
@@ -124,13 +123,13 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				this.currentState.set(operand, value);
+				this.updateState(operand, value);
 
 				for(const origin of this.getVariableOrigins(operand)) {
-					this.currentState.set(origin, value);
+					this.updateState(origin, value);
 				}
 			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				this.currentState.set(node.info.id, value);
+				this.updateState(node.info.id, value);
 			}
 		}
 	}

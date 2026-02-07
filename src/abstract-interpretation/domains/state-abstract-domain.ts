@@ -14,8 +14,26 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 		return new StateAbstractDomain(value);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain>(): StateAbstractDomain<Domain> {
-		return new StateAbstractDomain(new Map<NodeId, Domain>());
+	public static top<Domain extends AnyAbstractDomain>(): StateAbstractDomain<Domain> {
+		return new StateAbstractDomain<Domain>(new Map());
+	}
+}
+
+/**
+ * A mutable version of the {@link StateAbstractDomain} with {@link MutableStateAbstractDomain#set|`set`} and {@link MutableStateAbstractDomain#remove|`remove`}.
+ */
+export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain> extends StateAbstractDomain<Domain> {
+	public create(value: ReadonlyMap<NodeId, Domain>): this;
+	public create(value: ReadonlyMap<NodeId, Domain>): MutableStateAbstractDomain<Domain> {
+		return new MutableStateAbstractDomain(value);
+	}
+
+	public set(key: NodeId, value: Domain): void {
+		super.set(key, value);
+	}
+
+	public remove(key: NodeId): void {
+		super.remove(key);
 	}
 }
 

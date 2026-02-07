@@ -1,3 +1,4 @@
+import { log } from '../../util/log';
 import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Top } from './lattice';
 
@@ -10,14 +11,17 @@ type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, Concr
  * @template Key       - Type of the keys of the mapping to abstract values
  * @template Domain    - Type of the abstract domain to map the keys to
  */
-export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
+export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 	extends AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
 
 	constructor(value: ReadonlyMap<Key, Domain>) {
 		super(new Map(value));
 	}
 
-	public abstract create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): MappedAbstractDomain<Key, Domain> {
+		return new MappedAbstractDomain(value);
+	}
 
 	public get(key: Key): Domain | undefined {
 		return this._value.get(key);
@@ -27,7 +31,7 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 		return this._value.has(key);
 	}
 
-	public set(key: Key, value: Domain): void {
+	protected set(key: Key, value: Domain): void {
 		(this._value as Map<Key, Domain>).set(key, value);
 	}
 
@@ -36,16 +40,12 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 	}
 
 	public bottom(): this {
-		return this.create(new Map<Key, Domain>());
+		log.warn('There is no explicit bottom representaton of the mapped abstract domain');
+		return this.top();
 	}
 
 	public top(): this {
-		const result = this.create(this.value);
-
-		for(const [key, value] of result.value) {
-			result.set(key, value.top() as Domain);
-		}
-		return result;
+		return this.create(new Map());
 	}
 
 	public equals(other: this): boolean {
@@ -211,14 +211,32 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 	}
 
 	public isTop(): this is this {
-		return this.value.size > 0 && this.value.values().every(value => value.isTop());
+		return this.value.size === 0;
 	}
 
 	public isBottom(): this is this {
-		return this.value.size === 0;
+		return this.value.values().some(value => value.isBottom());
 	}
 
 	public isValue(): this is this {
 		return true;
+	}
+}
+
+/**
+ * A mutable version of the {@link MappedAbstractDomain} with {@link MutableMappedAbstractDomain#set|`set`} and {@link MutableMappedAbstractDomain#remove|`remove`}.
+ */
+export class MutableMappedAbstractDomain<Key, Domain extends AnyAbstractDomain> extends MappedAbstractDomain<Key, Domain> {
+	public create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): MutableMappedAbstractDomain<Key, Domain> {
+		return new MutableMappedAbstractDomain(value);
+	}
+
+	public set(key: Key, value: Domain): void {
+		super.set(key, value);
+	}
+
+	public remove(key: Key): void {
+		super.remove(key);
 	}
 }

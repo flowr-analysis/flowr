@@ -1,0 +1,39 @@
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { LinkToNestedCall } from './call-context-query-format';
+import type { PromotedLinkTo } from './call-context-query-executor';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { getSubCallGraph } from '../../../dataflow/graph/call-graph';
+import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
+import { Identifier } from '../../../dataflow/environments/identifier';
+
+/**
+ * **Please refer to {@link identifyLinkToRelation}.**
+ *
+ * Links to the nested call context of the current function call.
+ * This is useful for identifying calls made within nested functions
+ * that should be associated with their parent function's call context.
+ */
+export async function identifyLinkToNestedRelation(
+	from: NodeId,
+	analyzer: ReadonlyFlowrAnalysisProvider,
+	{ callName, ignoreIf }: LinkToNestedCall<RegExp> | PromotedLinkTo<LinkToNestedCall<RegExp>>
+): Promise<NodeId[]> {
+	const df = await analyzer.dataflow();
+	if(ignoreIf?.(from, df.graph)) {
+		return [];
+	}
+
+	const test = callName instanceof RegExp ? (t: string) => callName.test(t) : callName;
+	const found: NodeId[] = [];
+	const cg = await analyzer.callGraph();
+	const subCg = getSubCallGraph(cg, new Set([from]));
+	for(const [,t] of subCg.vertices(true)) {
+		if(!isFunctionCallVertex(t)) {
+			continue;
+		}
+		if(test(Identifier.toString(t.name))) {
+			found.push(t.id);
+		}
+	}
+	return found;
+}

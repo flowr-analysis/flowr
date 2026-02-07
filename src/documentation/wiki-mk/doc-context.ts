@@ -76,7 +76,10 @@ export const ConstantWikiLinkInfo = {
 	'flowr:vscode':        FlowrVsCode,
 	'flowr:positron':      FlowrPositron,
 	'flowr:rstudio-addin': FlowrRStudioAddin,
-	'flowr:radapter':      FlowrRAdapter
+	'flowr:radapter':      FlowrRAdapter,
+	'flowr:benchmarks':    'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark',
+	'flowr:docs':          'https://flowr-analysis.github.io/flowr/docs',
+	'flowr:zenodo':        'https://zenodo.org/doi/10.5281/zenodo.13319290'
 } as const;
 
 /**

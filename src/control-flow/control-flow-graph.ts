@@ -11,17 +11,17 @@ import { assertUnreachable, guard } from '../util/assert';
 export enum CfgVertexType {
 	/**
 	 * The explicit exit-nodes to ensure the hammock property.
-	 * @see {@link CfgVertex.makeEndMarker|CfgVertex.makeEndMarker()} - for a helper function to create end marker vertices
+	 * @see {@link CfgVertex.makeMarker|CfgVertex.makeMarker()} - for a helper function to create end marker vertices
 	 */
 	Marker   = 0,
 	/**
 	 * something like an if, assignment, ... even though in the classical sense of R they are still expressions
-	 * @see {@link CfgVertex.makeStm|CfgVertex.makeStm()} - for a helper function to create statement vertices
+	 * @see {@link CfgVertex.makeStatement|CfgVertex.makeStatement()} - for a helper function to create statement vertices
 	 */
 	Statement   = 1,
 	/**
 	 * something like an addition, ...
-	 * @see {@link CfgVertex.makeExpr|CfgVertex.makeExpr()} - for a helper function to create expression vertices
+	 * @see {@link CfgVertex.makeExpression|CfgVertex.makeExpression()} - for a helper function to create expression vertices
 	 */
 	Expression  = 2,
 	/**
@@ -490,7 +490,7 @@ export const CfgEdge = {
 	 * If the edge is not a control dependency edge, this returns undefined.
 	 *
 	 * This is the pendant of {@link CfgEdge#isControlDependency|isControlDependency()} on a {@link CfgEdge}.
-	 * @see {@link CfEdge#unpackCause|unpackCause()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
+	 * @see {@link CfgEdge#unpackCause|unpackCause()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
 	 */
 	getCause(this: void, edge: CfgEdge): NodeId | undefined {
 		if(CfgEdge.isControlDependency(edge)) {
@@ -510,7 +510,7 @@ export const CfgEdge = {
 	 * If the edge is not a control dependency edge, this returns undefined.
 	 *
 	 * This is the pendant of {@link CfgEdge#isControlDependency|isControlDependency()} on a {@link CfgEdge}.
-	 * @see {@link CfEdge#unpackWhenTrue|unpackWhenTrue()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
+	 * @see {@link CfgEdge#unpackWhen|unpackWhen()} - for a version of this function that assumes the edge is a control dependency edge and hence does not return undefined
 	 */
 	getWhen(this: void, edge: CfgEdge): typeof RTrue | typeof RFalse | undefined {
 		if(CfgEdge.isControlDependency(edge)) {
@@ -563,7 +563,7 @@ export const CfgEdge = {
 	},
 	/**
 	 * Provide a string representation of the given edge, including its details (e.g., cause and condition for control dependency edges), e.g., for debugging or visualization purposes.
-	 * @see {@link CfgEdge#type2String|type2String()} - for a version of this function that only includes the type of the edge
+	 * @see {@link CfgEdge#typeToString|typeToString()} - for a version of this function that only includes the type of the edge
 	 */
 	toString(this: void, edge: CfgEdge): string {
 		if(CfgEdge.isFlowDependency(edge)) {

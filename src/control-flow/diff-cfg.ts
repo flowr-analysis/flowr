@@ -108,7 +108,7 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 
 		setDifference(new Set(CfgVertex.getChildren(lInfo)), new Set(CfgVertex.getChildren(rInfo)), {
 			...ctx,
-			position: `${ctx.position}Vertex ${id} differs in chilren. `
+			position: `${ctx.position}Vertex ${id} differs in children. `
 		});
 	}
 }

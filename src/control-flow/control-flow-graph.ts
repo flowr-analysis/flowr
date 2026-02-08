@@ -173,7 +173,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#makeMarker|makeMarker()} - for a way to create end marker vertices with a custom id
 	 */
 	makeExitMarker(this: void, id: NodeId): CfgMarkerVertex {
-		return CfgVertex.makeMarker(CfgVertex.toExitId(id), id);
+		return CfgVertex.toExitId(id);
 	},
 	/**
 	 * Create a new basic block vertex with the given id, elements, children, and call targets.
@@ -889,6 +889,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	}
 
 	/**
+	 * **This Operation is in-place and modifies the current graph.**
 	 * Merge another control flow graph into this one.
 	 * @param other - the other control flow graph to merge into this one
 	 * @param forceNested - should the other graph be assumed to be fully nested (e.g., within a function definition).

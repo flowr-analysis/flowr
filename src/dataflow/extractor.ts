@@ -78,9 +78,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			continue;
 		}
 		if(cf === undefined) {
-			console.log(`Resolving unknown side effects, starting with ${graph.unknownSideEffects.size} unknown side effects...`);
 			cf = extractCfgQuick(ast);
-			console.log(`Initially, we have ${graph.unknownSideEffects.size} unknown side effects.`);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
 

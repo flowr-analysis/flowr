@@ -73,7 +73,7 @@ export type CfgBasicBlockVertex = [CfgVertexType.Block, ...a: unknown[]] & [type
 export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlockVertex | CfgMarkerVertex;
 
 /**
- * Helper object for {@link CfgVertex}.
+ * Helper object for {@link CfgVertex} - a vertex in the {@link ControlFlowGraph} that may have markers attached to it (e.g., for function calls).
  */
 export const CfgVertex = {
 	/**
@@ -162,7 +162,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#makeExitMarker|makeExitMarker()} - for a helper function to create end marker vertices with a canonical id
 	 */
 	makeMarker(this: void, id: NodeId, rootId: NodeId): CfgMarkerVertex {
-		if(id === CfgVertex.toExitId(rootId)) {
+		if(CfgVertex.fromExitId(id) === rootId) {
 			return id;
 		} else {
 			return [CfgVertexType.Marker, id, rootId];
@@ -438,7 +438,7 @@ type CfgControlDependencyEdge = [c: NodeId, w: typeof RTrue | typeof RFalse];
 export type CfgEdge = CfgFlowDependencyEdge | CfgControlDependencyEdge;
 
 /**
- * Helper object for {@link CfgEdge}.
+ * Helper object for {@link CfgEdge} - an edge in the {@link ControlFlowGraph}.
  */
 export const CfgEdge = {
 	/**

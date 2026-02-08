@@ -69,7 +69,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 
 			assertCfg(parser, 'if(TRUE) {}', {
 				entryPoints: [ '5' ],
-				exitPoints:  [ '5-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(5) ],
 				graph:       new ControlFlowGraph()
 					.addVertex(CfgVertex.makeExpression(0))
 					.addVertex(CfgVertex.makeStatementWithEnd(4, { mid: [0] }))

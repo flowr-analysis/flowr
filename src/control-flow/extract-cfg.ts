@@ -429,7 +429,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	return info;
 }
 
-export const ResolvedCallSuffix = '-resolved-call-exit';
+export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
 const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: FoldFunctions<ParentInformation, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
 	[BuiltInProcName.IfThenElse]: (folds, call, args) => {
@@ -553,7 +553,7 @@ function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformati
 		graph.addEdge(entryPoint, binId, CfgEdge.makeFd());
 	}
 	for(const exitPoint of rhs.exitPoints) {
-		graph.addEdge(binId + '-exit', exitPoint, CfgEdge.makeFd());
+		graph.addEdge(CfgVertex.toExitId(binId), exitPoint, CfgEdge.makeFd());
 	}
 
 	return result;

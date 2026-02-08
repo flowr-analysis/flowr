@@ -59,7 +59,7 @@ export type CfgExpressionVertex = [CfgVertexType.Expression, ...a: unknown[]] & 
  * The root id is only stored if it is not derivable from the canonical id
  * @see {@link CfgBaseVertexWithMarker}
  */
-export type CfgMarkerVertex = [CfgVertexType.Marker, ...a: unknown[]] & [type: CfgVertexType, id: NodeId, rootId?: NodeId];
+export type CfgMarkerVertex = NodeId | [CfgVertexType.Marker, ...a: unknown[]] & [type: CfgVertexType, id: NodeId, rootId?: NodeId];
 /**
  * A basic block vertex in the {@link ControlFlowGraph}.
  * Contains the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.
@@ -164,7 +164,7 @@ export const CfgVertex = {
 	 */
 	makeMarker(this: void, id: NodeId, rootId: NodeId): CfgMarkerVertex {
 		if(id === CfgVertex.toExitId(rootId)) {
-			return [CfgVertexType.Marker, id];
+			return id;
 		} else {
 			return [CfgVertexType.Marker, id, rootId];
 		}
@@ -191,7 +191,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex instead of checking against a given type
 	 */
 	isExpression(this: void, vertex: CfgVertex | undefined): vertex is CfgExpressionVertex {
-		return vertex?.[0] === CfgVertexType.Expression;
+		return Array.isArray(vertex) && vertex[0] === CfgVertexType.Expression;
 	},
 	/**
 	 * Check whether the given vertex is a statement vertex.
@@ -199,7 +199,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex instead of checking against a given type
 	 */
 	isStatement(this: void, vertex: CfgVertex | undefined): vertex is CfgStatementVertex {
-		return vertex?.[0] === CfgVertexType.Statement;
+		return Array.isArray(vertex) && vertex[0] === CfgVertexType.Statement;
 	},
 	/**
 	 * Check whether the given vertex is an end marker vertex.
@@ -207,7 +207,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex instead of checking against a given type
 	 */
 	isMarker(this: void, vertex: CfgVertex | undefined): vertex is CfgMarkerVertex {
-		return vertex?.[0] === CfgVertexType.Marker;
+		return vertex !== undefined && (!Array.isArray(vertex) || vertex[0] === CfgVertexType.Marker);
 	},
 	/**
 	 * Check whether the given vertex is a basic block vertex.
@@ -215,7 +215,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getType|getType()} - for a way to get the type of a vertex instead of checking against a given type
 	 */
 	isBlock(this: void, vertex: CfgVertex | undefined): vertex is CfgBasicBlockVertex {
-		return vertex?.[0] === CfgVertexType.Block;
+		return Array.isArray(vertex) && vertex[0] === CfgVertexType.Block;
 	},
 	/**
 	 * Get the type of the given vertex.
@@ -228,8 +228,8 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getId|getId()} - for a way to get the id of a vertex
 	 * @see {@link CfgVertex#typeToString|typeToString()} - for a way to convert the type of a vertex to a string for easier debugging and visualization
 	 */
-	getType<V extends CfgVertex>(this: void, vertex: V): V[0] {
-		return vertex[0];
+	getType(this: void, vertex: CfgVertex): CfgVertexType {
+		return Array.isArray(vertex) ? vertex[0] : CfgVertexType.Marker;
 	},
 	/**
 	 * Convert the given vertex type to a string for easier debugging and visualization.
@@ -261,13 +261,17 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getRootId|getRootId()} - for a way to get the root id of a vertex
 	 */
 	getId<T extends CfgVertex | undefined>(this: void, vertex: T): T extends undefined ? NodeId | undefined : NodeId {
-		return vertex === undefined ? undefined as never: vertex[1];
+		return vertex === undefined ? undefined as never : (Array.isArray(vertex) ? vertex[1] : vertex as never);
 	},
 	/**
 	 * Check whether two vertices are equal, i.e., they have the same type, id, and if they are basic block vertices, they also have the same elements in the same order.
 	 */
 	equal(this: void, a: CfgVertex, b: CfgVertex): boolean {
-		if(a[0] !== b[0] || a[1] !== b[1]) {
+		if(!Array.isArray(a) || !Array.isArray(b)) {
+			return a === b;
+		} else if(a === b) {
+			return true;
+		} else if(a[0] !== b[0] || a[1] !== b[1]) {
 			return false;
 		} else if(a[0] === CfgVertexType.Block && b[0] === CfgVertexType.Block) {
 			return a[2].length === b[2].length && a[2].every((e, i) => CfgVertex.equal(e, b[2][i]));
@@ -289,7 +293,7 @@ export const CfgVertex = {
 	 * @see {@link CfgVertex#getRootId|getRootId()} - for a way to get the root id of a vertex, which uses this function for marker vertices
 	 */
 	unpackRootId(this: void, vertex: CfgMarkerVertex): NodeId {
-		return vertex[2] ?? CfgVertex.fromExitId(vertex[1]);
+		return Array.isArray(vertex) ? vertex[2] ?? CfgVertex.fromExitId(vertex[1]) : CfgVertex.fromExitId(vertex);
 	},
 	/**
 	 * Get the elements of a basic block vertex, i.e., the vertices that are part of this block, only connected by FDs, vertices should never occur in multiple bbs.
@@ -363,16 +367,16 @@ export const CfgVertex = {
 	 * Converts the given id to a canonical, end marker lift (i.e., it adds '-end' as a suffix).
 	 * @see {@link CfgVertex#fromExitId|fromExitId()} - for a way to convert the given id from a canonical end marker lift to the original id (i.e., it removes '-end' as a suffix if it is present)
 	 */
-	toExitId<Id extends NodeId>(this: void, id: Id): `${Id}-exit` {
-		return `${id}-exit`;
+	toExitId<Id extends NodeId>(this: void, id: Id): `${Id}-e` {
+		return `${id}-e`;
 	},
 	/**
 	 * Converts the given id from a canonical end marker lift to the original id (i.e., it removes '-end' as a suffix if it is present).
 	 * @see {@link CfgVertex#toExitId|toExitId()} - for a way to convert the given id to a canonical end marker lift (i.e., it adds '-end' as a suffix)
 	 */
 	fromExitId(this: void, exitId: NodeId): NodeId {
-		if(typeof exitId === 'string' && exitId.endsWith('-exit')) {
-			return normalizeIdToNumberIfPossible(exitId.slice(0, -5));
+		if(typeof exitId === 'string' && exitId.endsWith('-e')) {
+			return normalizeIdToNumberIfPossible(exitId.slice(0, -2));
 		} else {
 			return exitId;
 		}

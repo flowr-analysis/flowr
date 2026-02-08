@@ -1,6 +1,6 @@
 /* currently this does not do work on function definitions */
 import type { ControlFlowGraph, ControlFlowInformation } from './control-flow-graph';
-import { CfgEdge } from './control-flow-graph';
+import { CfgVertex, CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
@@ -67,7 +67,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					}
 				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(target)) {
 					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
-					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
+					for(const end of CfgVertex.getEnd(this.getCfgVertex(target)) as NodeId[] ?? []) {
 						for(const [target, edge] of cfg.ingoingEdges(end) ?? []) {
 							if(CfgEdge.isFlowDependency(edge)) {
 								cfg.removeEdge(target, end);
@@ -155,8 +155,8 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(!body) {
 			return;
 		}
-		visitCfgInOrder(this.config.controlFlow.graph, [body.id], n => {
-			if((body.end as NodeId[])?.includes(n)) {
+		visitCfgInOrder(this.config.controlFlow.graph, [CfgVertex.getId(body)], n => {
+			if(CfgVertex.getEnd(body)?.includes(n)) {
 				return true;
 			}
 			this.inTry.add(n);

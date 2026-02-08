@@ -2,7 +2,7 @@ import { jsonReplacer } from '../util/json';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
 import { type GenericDiffConfiguration, setDifference } from '../util/diff';
-import { CfgEdge, type CfgSimpleVertex, type ControlFlowGraph, equalVertex } from './control-flow-graph';
+import { CfgEdge, CfgVertex, type ControlFlowGraph } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
 
@@ -36,8 +36,8 @@ function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	const lVert = [...ctx.left.vertices(false)].map(([id, info]) => ([id, info] as const));
-	const rVert = [...ctx.right.vertices(false)].map(([id, info]) => ([id, info] as const));
+	const lVert = ctx.left.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
+	const rVert = ctx.right.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
         || lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {
@@ -52,25 +52,21 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			}
 			continue;
 		}
-		if(lInfo.type !== rInfo.type) {
-			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${lInfo.type} vs. ${ctx.rightname}: ${rInfo.type}`, {
+		const lType = CfgVertex.getType(lInfo);
+		const rType = CfgVertex.getType(rInfo);
+		if(lType !== rType) {
+			ctx.report.addComment(`Vertex ${id} differs in tags. ${ctx.leftname}: ${CfgVertex.typeToString(lType)} vs. ${ctx.rightname}: ${CfgVertex.typeToString(rType)}`, {
 				tag: 'vertex',
 				id
 			});
 		}
 
-		if(lInfo.kind !== undefined || rInfo.kind !== undefined) {
-			if(lInfo.kind !== rInfo.kind) {
-				ctx.report.addComment(`Vertex ${id} differs in kinds. ${ctx.leftname}: ${String(lInfo.kind)} vs ${ctx.rightname}: ${String(rInfo.kind)}`, {
-					tag: 'vertex',
-					id
-				});
-			}
-		}
-		if(lInfo.callTargets !== undefined || rInfo.callTargets !== undefined) {
+		const lCt = CfgVertex.getCallTargets(lInfo);
+		const rCt = CfgVertex.getCallTargets(rInfo);
+		if(lCt !== undefined || rCt !== undefined) {
 			setDifference(
-				new Set(lInfo.callTargets ?? []),
-				new Set(rInfo.callTargets ?? []),
+				new Set(lCt ?? []),
+				new Set(rCt ?? []),
 				{
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in call targets. `
@@ -78,35 +74,39 @@ function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 			);
 		}
 
-		if(lInfo.elems !== undefined || rInfo.elems !== undefined) {
+		const lElems = CfgVertex.isBlock(lInfo) ? CfgVertex.getBasicBlockElements(lInfo) : undefined;
+		const rElems = CfgVertex.isBlock(rInfo) ? CfgVertex.getBasicBlockElements(rInfo) : undefined;
+		if(lElems !== undefined || rElems !== undefined) {
 			if(!arrayEqual(
-				(lInfo.elems ?? []) as CfgSimpleVertex[],
-				(rInfo.elems ?? []) as CfgSimpleVertex[],
-				equalVertex,
+				(lElems ?? []) as CfgVertex[],
+				(rElems ?? []) as CfgVertex[],
+				CfgVertex.equal
 			)) {
 				ctx.report.addComment(
-					`Vertex ${id} differs in elems.\n  ${ctx.leftname}: ${JSON.stringify(lInfo.elems)}\n  vs\n  ${ctx.rightname}: ${JSON.stringify(rInfo.elems)}`,
+					`Vertex ${id} differs in elems.\n  ${ctx.leftname}: ${JSON.stringify(lElems)}\n  vs\n  ${ctx.rightname}: ${JSON.stringify(rElems)}`,
 					{ tag: 'vertex', id }
 				);
 			}
 		}
-		setDifference(new Set(lInfo.mid as NodeId[] | undefined ?? []), new Set(rInfo.mid as NodeId[] | undefined ?? []), {
+		setDifference(new Set(CfgVertex.getMid(lInfo) ?? []), new Set(CfgVertex.getMid(rInfo) ?? []), {
 			...ctx,
 			position: `${ctx.position}Vertex ${id} differs in attached mid markers. `
 		});
-		setDifference(new Set(lInfo.end as NodeId[] | undefined ?? []), new Set(rInfo.end as NodeId[] | undefined ?? []), {
+		setDifference(new Set(CfgVertex.getEnd(lInfo) ?? []), new Set(CfgVertex.getEnd(rInfo) ?? []), {
 			...ctx,
 			position: `${ctx.position}Vertex ${id} differs in attached end markers. `
 		});
 
-		if(lInfo.root !== rInfo.root) {
-			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lInfo.root)} vs ${ctx.rightname}: ${JSON.stringify(rInfo.root)}`, {
+		const lRoot = CfgVertex.getRootId(lInfo);
+		const rRoot = CfgVertex.getRootId(rInfo);
+		if(lRoot !== rRoot) {
+			ctx.report.addComment(`Vertex ${id} differs in root. ${ctx.leftname}: ${JSON.stringify(lRoot)} vs ${ctx.rightname}: ${JSON.stringify(rRoot)}`, {
 				tag: 'vertex',
 				id
 			});
 		}
 
-		setDifference(new Set(lInfo.children), new Set(rInfo.children), {
+		setDifference(new Set(CfgVertex.getChildren(lInfo)), new Set(CfgVertex.getChildren(rInfo)), {
 			...ctx,
 			position: `${ctx.position}Vertex ${id} differs in chilren. `
 		});

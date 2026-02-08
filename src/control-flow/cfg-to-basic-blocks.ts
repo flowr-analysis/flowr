@@ -1,5 +1,6 @@
-import { CfgEdge, type ControlFlowInformation, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import { CfgEdge, type ControlFlowInformation, ControlFlowGraph, CfgVertex } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { isUndefined } from '../util/assert';
 
 /** if true, return the target */
 function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): NodeId | undefined {
@@ -25,7 +26,7 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 	}
 
 	for(const [id, vtx] of newCfg.vertices(false)) {
-		if(vtx.type !== CfgVertexType.Block) {
+		if(!CfgVertex.isBlock(vtx)) {
 			continue;
 		}
 
@@ -47,10 +48,10 @@ export function convertCfgToBasicBlocks(cfInfo: ControlFlowInformation): Control
 		}
 	}
 
-	const findEntries = cfInfo.entryPoints.map(e => newCfg.getBasicBlock(e)?.id);
-	const findExits = cfInfo.exitPoints.map(e => newCfg.getBasicBlock(e)?.id);
+	const findEntries = cfInfo.entryPoints.map(e => CfgVertex.getId(newCfg.getBasicBlock(e)));
+	const findExits = cfInfo.exitPoints.map(e => CfgVertex.getId(newCfg.getBasicBlock(e)));
 
-	if(findEntries.some(f => f === undefined) || findExits.some(f => f === undefined)) {
+	if(findEntries.some(isUndefined) || findExits.some(isUndefined)) {
 		/* something went wrong */
 		return cfInfo;
 	}
@@ -69,20 +70,16 @@ function wrapEveryVertexInBasicBlock(existing: ControlFlowGraph): ControlFlowGra
 	const newGraph = new ControlFlowGraph();
 
 	for(const [id, vertex] of existing.vertices(false)) {
-		if(vertex.type === CfgVertexType.Block) {
+		if(CfgVertex.isBlock(vertex)) {
 			return undefined;
 		}
-		newGraph.addVertex({
-			type:  CfgVertexType.Block,
-			elems: [vertex],
-			id:    'bb-' + id,
-		});
+		newGraph.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(id), [vertex]));
 	}
 
 	// promote all edges
 	for(const [from, outgoing] of existing.edges().entries()) {
 		for(const [to, edge] of outgoing.entries()) {
-			newGraph.addEdge('bb-' + from, 'bb-' + to, edge);
+			newGraph.addEdge(CfgVertex.toBasicBlockId(from), CfgVertex.toBasicBlockId(to), edge);
 		}
 	}
 

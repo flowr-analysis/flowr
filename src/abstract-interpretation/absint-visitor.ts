@@ -4,7 +4,7 @@ import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/sema
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, VertexType } from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -88,7 +88,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return state.get(node.info.id);
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = vertex?.tag === VertexType.FunctionCall ? vertex : undefined;
+		const call = isFunctionCallVertex(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
@@ -161,25 +161,25 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	protected override visitNode(vertexId: NodeId): boolean {
 		const vertex = this.getCfgVertex(vertexId);
 
-		if(vertex === undefined) {
+		// skip exit vertices of widening points and entry vertices of complex nodes
+		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
+		}
+		const predecessors = this.getPredecessorNodes(vertex.id);
+		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
+
+		// retrieve new abstract state by joining states of predecessor nodes
+		if(predecessorStates.length === 1) {
+			this._currentState = predecessorStates[0];
+		} else {
+			this._currentState = AbstractDomain.joinAll(predecessorStates, this._currentState.top());
+			this.stateCopied = true;
 		}
 		const nodeId = getVertexRootId(vertex);
 
 		if(this.isWideningPoint(nodeId)) {
-			// only check widening points at the entry vertex
-			if(vertex.type === CfgVertexType.EndMarker) {
-				return true;
-			}
 			const oldState = this.trace.get(nodeId) ?? this._currentState.top();
-			const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.trace.get(pred)).filter(isNotUndefined);
 
-			if(predecessorDomains.length === 1) {
-				this._currentState = predecessorDomains[0];
-			} else {
-				this._currentState = AbstractDomain.joinAll(predecessorDomains, this._currentState.top());
-				this.stateCopied = true;
-			}
 			if(this.shouldWiden(vertex)) {
 				this._currentState = oldState.widen(this._currentState);
 				this.stateCopied = true;
@@ -187,29 +187,29 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this.trace.set(nodeId, this._currentState);
 			this.stateCopied = false;
 
-			return this.shouldContinueVisiting(vertex, oldState);
-		} else if(this.shouldSkipVertex(vertex)) {
-			return true;
-		}
-		const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.trace.get(pred)).filter(isNotUndefined);
+			const visitedCount = this.visited.get(nodeId) ?? 0;
+			this.visited.set(nodeId, visitedCount + 1);
 
-		if(predecessorDomains.length === 1) {
-			this._currentState = predecessorDomains[0];
+			// continue visiting after widening point if visited for the first time or the state changed
+			return visitedCount === 0 || !oldState.equals(this._currentState);
 		} else {
-			this._currentState = AbstractDomain.joinAll(predecessorDomains, this._currentState.top());
-			this.stateCopied = true;
-		}
-		this.onVisitNode(vertexId);
+			this.onVisitNode(vertexId);
 
-		// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
-		if(this.config.dfg.unknownSideEffects.has(nodeId)) {
-			this._currentState = this._currentState.top();
-			this.stateCopied = true;
-		}
-		this.trace.set(nodeId, this._currentState);
-		this.stateCopied = false;
+			// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
+			if(this.config.dfg.unknownSideEffects.has(nodeId)) {
+				this._currentState = this._currentState.top();
+				this.stateCopied = true;
+			}
+			this.trace.set(nodeId, this._currentState);
+			this.stateCopied = false;
 
-		return true;
+			const predecessorVisits = predecessors.map(pred => this.visited.get(pred) ?? 0);
+			const visitedCount = this.visited.get(nodeId) ?? 0;
+			this.visited.set(nodeId, visitedCount + 1);
+
+			// continue visiting if vertex is not a join vertex or number of visits of predecessors is the same
+			return predecessors.length <= 1 || predecessorVisits.every(visits => visits === predecessorVisits[0]);
+		}
 	}
 
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
@@ -321,27 +321,20 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	/**
-	 * Checks whether to continue visiting the control flow graph after a widening point.
-	 * By default, we only continue visiting if the widening point is visited for the first time or the abstract state at the widening point changed.
-	 */
-	protected shouldContinueVisiting(wideningPoint: CfgSimpleVertex, oldState: StateAbstractDomain<Domain>) {
-		const visitedCount = this.visited.get(wideningPoint.id) ?? 0;
-		this.visited.set(wideningPoint.id, visitedCount + 1);
-
-		return visitedCount === 0 || !oldState.equals(this.currentState);
-	}
-
-	/**
 	 * Checks whether a control flow graph vertex should be skipped during visitation.
-	 * By default, we only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes).
+	 * By default, we only process entry vertices of widening points, vertices of leaf nodes, and exit vertices (no entry nodes of complex nodes).
 	 */
 	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
+		if(this.isWideningPoint(getVertexRootId(vertex))) {
+			// skip exit vertices of widening points
+			return vertex.type === CfgVertexType.EndMarker;
+		}
 		return vertex.type !== CfgVertexType.EndMarker && vertex.end !== undefined;
 	}
 
 	/**
 	 * Whether widening should be performed at a widening point.
-	 * By default, we perform widening when the number of visitation of the widening point reaches the widening threshold of the config.
+	 * By default, we perform widening when the number of visits of the widening point reaches the widening threshold of the config.
 	 */
 	protected shouldWiden(wideningPoint: CfgSimpleVertex): boolean {
 		return (this.visited.get(wideningPoint.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;

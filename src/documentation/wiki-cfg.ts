@@ -180,6 +180,14 @@ For readability, we structure this wiki page into various segments:
 	- [Sophisticated CFG Traversal](#cfg-traversal)
 	- [Working With Exit Points](#cfg-exit-points)
 
+${
+	block({
+		type:    'TIP',
+		content: `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
+		which you can use to easily access the properties of the CFG and its vertices and edges.`
+	})
+}
+
 ${section('Initial Overview', 2, 'cfg-overview')}
 
 For now, let's look at a CFG for a program without any branching:
@@ -391,7 +399,13 @@ And again it should be noted that even though the example code is more complicat
 ${section('Working with the CFG', 2, 'cfg-working')}
 
 There is a plethora of functions that you can use the traverse the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) and the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph). 
-Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph.
+Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph:
+
+* ${ctx.link(visitCfgInOrder)} and ${ctx.link(visitCfgInReverseOrder)} for simple traversals
+* ${ctx.link(BasicCfgGuidedVisitor)}, ${ctx.link(SyntaxAwareCfgGuidedVisitor)}, ${ctx.link(DataflowAwareCfgGuidedVisitor)}, and ${ctx.link(SemanticCfgGuidedVisitor)} for more sophisticated traversals
+* ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })} for easy access to the properties of the CFG and its vertices and edges
+* ${ctx.link(assertCfgSatisfiesProperties)} and ${ctx.link('CfgProperties')} to check for properties of the CFG
+* ${ctx.link(diffOfControlFlowGraphs)} to diff two CFGs
 
 ${section('Simple Traversal', 3, 'cfg-simple-traversal')}
 

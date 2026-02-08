@@ -74,7 +74,6 @@ export type CfgVertex = CfgStatementVertex | CfgExpressionVertex | CfgBasicBlock
 
 /**
  * Helper object for {@link CfgVertex}.
- * // TODO: document CfgVertex and CfgEdge in the wiki
  */
 export const CfgVertex = {
 	/**

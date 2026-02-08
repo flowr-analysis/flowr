@@ -123,7 +123,6 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const compactedHooks = compactHookStates(body.hooks);
 	const exitHooks = getHookInformation(compactedHooks, KnownHooks.OnFnExit);
-
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,

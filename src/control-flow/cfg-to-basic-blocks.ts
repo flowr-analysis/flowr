@@ -1,4 +1,4 @@
-import { type CfgEdge, type ControlFlowInformation, CfgEdgeType, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
+import { CfgEdge, type ControlFlowInformation, CfgVertexType, ControlFlowGraph } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** if true, return the target */
@@ -8,7 +8,7 @@ function singleOutgoingFd(outgoing: ReadonlyMap<NodeId, CfgEdge> | undefined): N
 	}
 
 	const next = outgoing.entries().next().value;
-	if(next?.[1].label === CfgEdgeType.Fd) {
+	if(CfgEdge.isFlowDependency(next?.[1])) {
 		return next[0];
 	} else {
 		return undefined;

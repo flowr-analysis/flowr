@@ -2,11 +2,10 @@ import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
-	CfgEdgeType,
+	CfgEdge,
 	type CfgSimpleVertex,
 	CfgVertexType,
-	type ControlFlowInformation,
-	edgeTypeToString
+	type ControlFlowInformation
 } from '../../control-flow/control-flow-graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
@@ -163,9 +162,10 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				continue;
 			}
 
-			const edgeType = edge.label === CfgEdgeType.Cd ? '-->' : '-.->';
-			const edgeSuffix = edge.label === CfgEdgeType.Cd ? ` (${edge.when})` : '';
-			output += `    n${from} ${edgeType}|"${escapeMarkdown(edgeTypeToString(edge.label))}${edgeSuffix}"| n${to}\n`;
+			const isCd = CfgEdge.isControlDependency(edge);
+			const edgeType = isCd ? '-->' : '-.->';
+			const edgeSuffix = isCd ? ` (${CfgEdge.unpackWhen(edge)})` : '';
+			output += `    n${from} ${edgeType}|"${escapeMarkdown(CfgEdge.typeToString(edge))}${edgeSuffix}"| n${to}\n`;
 		}
 	}
 

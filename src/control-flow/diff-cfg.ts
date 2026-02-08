@@ -2,7 +2,7 @@ import { jsonReplacer } from '../util/json';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../util/diff-graph';
 import { type GenericDiffConfiguration, setDifference } from '../util/diff';
-import { type CfgEdge, type CfgSimpleVertex, type ControlFlowGraph, equalVertex } from './control-flow-graph';
+import { CfgEdge, type CfgSimpleVertex, type ControlFlowGraph, equalVertex } from './control-flow-graph';
 import { arrayEqual } from '../util/collections/arrays';
 
 
@@ -149,21 +149,27 @@ function diffOutgoingEdges(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffEdge(edge: CfgEdge, otherEdge: CfgEdge, ctx: GraphDiffContext<ControlFlowGraph>, id: NodeId, target: NodeId) {
-	if(edge.label !== otherEdge.label) {
+	const el = CfgEdge.getType(edge);
+	const ol = CfgEdge.getType(otherEdge);
+	if(el !== ol) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in labels. ${ctx.leftname}: ${edge.label} vs ${ctx.rightname}: ${otherEdge.label}`,
+			`Edge ${id}->${target} differs in labels. ${ctx.leftname}: ${el} vs ${ctx.rightname}: ${ol}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.caused !== otherEdge.caused) {
+	const ec = CfgEdge.getCause(edge);
+	const oc = CfgEdge.getCause(otherEdge);
+	if(ec !== oc) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in caused. ${ctx.leftname}: ${JSON.stringify(edge.caused)} vs ${ctx.rightname}: ${JSON.stringify(otherEdge.caused)}`,
+			`Edge ${id}->${target} differs in caused. ${ctx.leftname}: ${JSON.stringify(ec)} vs ${ctx.rightname}: ${JSON.stringify(oc)}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.when !== otherEdge.when) {
+	const ew = CfgEdge.getWhen(edge);
+	const ow = CfgEdge.getWhen(otherEdge);
+	if(ew !== ow) {
 		ctx.report.addComment(
-			`Edge ${id}->${target} differs in when. ${ctx.leftname}: ${JSON.stringify(edge.when)} vs ${ctx.rightname}: ${JSON.stringify(otherEdge.when)}`,
+			`Edge ${id}->${target} differs in when. ${ctx.leftname}: ${JSON.stringify(ew)} vs ${ctx.rightname}: ${JSON.stringify(ow)}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}

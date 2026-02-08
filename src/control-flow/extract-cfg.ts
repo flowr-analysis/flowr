@@ -7,7 +7,6 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
-import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
@@ -21,8 +20,8 @@ import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import {
-	CfgEdgeType,
+import { type CfgExpressionVertex,
+	CfgEdge, CfgVertex,
 	CfgVertexType,
 	ControlFlowGraph,
 	type ControlFlowInformation,
@@ -134,38 +133,63 @@ function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<
 	} else if(proj.files.length === 1) {
 		return foldAst(proj.files[0].root, folds);
 	}
-	const perProject = proj.files.map(file => foldAst(file.root, folds));
-	const finalGraph = perProject[0].graph;
-	for(let i = 1; i < perProject.length; i++) {
-		finalGraph.mergeWith(perProject[i].graph);
-		for(const exitPoint of perProject[i - 1].exitPoints) {
-			for(const entryPoint of perProject[i].entryPoints) {
-				finalGraph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Fd });
+
+	/* for many files, it is too expensive to keep all asts at once, hence we create and merge them incrementally */
+	let exitPoints: NodeId[];
+	let finalGraph: ControlFlowGraph;
+	let firstEntryPoints: NodeId[];
+	let breaks: NodeId[];
+	let nexts: NodeId[];
+	let returns: NodeId[];
+	{
+		const firstInfo = foldAst(proj.files[0].root, folds);
+		exitPoints = firstInfo.exitPoints;
+		finalGraph = firstInfo.graph;
+		firstEntryPoints = firstInfo.entryPoints;
+		breaks = firstInfo.breaks;
+		nexts = firstInfo.nexts;
+		returns = firstInfo.returns;
+	}
+	for(let i = 1; i < proj.files.length; i++) {
+		const nextInfo = foldAst(proj.files[i].root, folds);
+		finalGraph.mergeWith(nextInfo.graph);
+		for(const exitPoint of exitPoints) {
+			for(const entryPoint of nextInfo.entryPoints) {
+				finalGraph.addEdge(entryPoint, exitPoint, CfgEdge.makeFd());
 			}
 		}
+		exitPoints = nextInfo.exitPoints;
+		breaks.push(...nextInfo.breaks);
+		nexts.push(...nextInfo.nexts);
+		returns.push(...nextInfo.returns);
 	}
+
 	return {
-		breaks:      perProject.flatMap(e => e.breaks),
-		nexts:       perProject.flatMap(e => e.nexts),
-		returns:     perProject.flatMap(e => e.returns),
-		exitPoints:  (perProject.at(-1) as ControlFlowInformation).exitPoints,
-		entryPoints: perProject[0].entryPoints,
+		breaks,
+		nexts,
+		returns,
+		exitPoints,
+		entryPoints: firstEntryPoints,
 		graph:       finalGraph
 	};
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {
-	return ({ info: { id } }: { info: { id: NodeId } }) => {
-		return { graph: new ControlFlowGraph().addVertex({ id, type }), breaks: [], nexts: [], returns: [], exitPoints: [id], entryPoints: [id] };
+	return type === CfgVertexType.Expression ? ({ info: { id } }: { info: { id: NodeId } }) => {
+		return { graph: new ControlFlowGraph().addVertex(CfgVertex.makeExpression(id)), breaks: [], nexts: [], returns: [], exitPoints: [id], entryPoints: [id] };
+	} : ({ info: { id } }: { info: { id: NodeId } }) => {
+		return { graph: new ControlFlowGraph().addVertex(CfgVertex.makeStatement(id)), breaks: [], nexts: [], returns: [], exitPoints: [id], entryPoints: [id] };
 	};
 }
 
+const cfgLeafStatement = cfgLeaf(CfgVertexType.Statement);
+
 function cfgBreak(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), breaks: [leaf.info.id], exitPoints: [] };
+	return { ...cfgLeafStatement(leaf), breaks: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgNext(leaf: RNodeWithParent): ControlFlowInformation {
-	return { ...cfgLeaf(CfgVertexType.Statement)(leaf), nexts: [leaf.info.id], exitPoints: [] };
+	return { ...cfgLeafStatement(leaf), nexts: [leaf.info.id], exitPoints: [] };
 }
 
 function cfgIgnore(_leaf: RNodeWithParent): ControlFlowInformation {
@@ -179,35 +203,37 @@ function identifyMayStatementType(node: RNodeWithParent) {
 function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
 	const ifId = ifNode.info.id;
 	const graph = new ControlFlowGraph();
-	graph.addVertex({ id: ifId, type: identifyMayStatementType(ifNode), mid: condition.exitPoints, end: [ifId + '-exit'] });
-	graph.addVertex({ id: ifId + '-exit', type: CfgVertexType.EndMarker, root: ifId });
+	graph.addVertex(CfgVertex.makeExprOrStm(ifId, identifyMayStatementType(ifNode), { mid: condition.exitPoints, end: [CfgVertex.toExitId(ifId)] }));
+	graph.addVertex(CfgVertex.makeExitMarker(ifId));
 	graph.mergeWith(condition.graph);
 	graph.mergeWith(then.graph);
 	if(otherwise) {
 		graph.mergeWith(otherwise.graph);
 	}
 
+	const cdTrue = CfgEdge.makeCdTrue(ifId);
+	const cdFalse = CfgEdge.makeCdFalse(ifId);
 	for(const e of condition.exitPoints) {
 		for(const entryPoint of then.entryPoints) {
-			graph.addEdge(entryPoint, e, { label: CfgEdgeType.Cd, when: RTrue, caused: ifId });
+			graph.addEdge(entryPoint, e, cdTrue);
 		}
 		for(const entryPoint of otherwise?.entryPoints ?? []) {
-			graph.addEdge(entryPoint, e, { label: CfgEdgeType.Cd, when: RFalse, caused: ifId });
+			graph.addEdge(entryPoint, e, cdFalse);
 		}
 	}
 
 	for(const entryPoint of condition.entryPoints) {
-		graph.addEdge(entryPoint, ifId, { label: CfgEdgeType.Fd });
+		graph.addEdge(entryPoint, ifId, CfgEdge.makeFd());
 	}
 
 	for(const exits of [then.exitPoints, otherwise?.exitPoints ?? []]) {
 		for(const exit of exits) {
-			graph.addEdge(ifId + '-exit', exit, { label: CfgEdgeType.Fd });
+			graph.addEdge(CfgVertex.toExitId(ifId), exit, CfgEdge.makeFd());
 		}
 	}
 	if(!otherwise) {
 		for(const e of condition.exitPoints) {
-			graph.addEdge(ifId + '-exit', e, { label: CfgEdgeType.Cd, when: RFalse, caused: ifId });
+			graph.addEdge(CfgVertex.toExitId(ifId), e, CfgEdge.makeCdFalse(ifId));
 		}
 	}
 
@@ -216,130 +242,123 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 		breaks:      then.breaks.concat(otherwise?.breaks ?? []),
 		nexts:       then.nexts.concat(otherwise?.nexts ?? []),
 		returns:     then.returns.concat(otherwise?.returns ?? []),
-		exitPoints:  [ifId + '-exit'],
+		exitPoints:  [CfgVertex.toExitId(ifId)],
 		entryPoints: [ifId]
 	};
 }
 
 function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInformation): ControlFlowInformation {
 	const graph = body.graph;
-	graph.addVertex({ id: repeat.info.id, type: identifyMayStatementType(repeat), end: [repeat.info.id + '-exit'] });
-	graph.addVertex({ id: repeat.info.id + '-exit', type: CfgVertexType.EndMarker, root: repeat.info.id });
+	const rid = repeat.info.id;
+	graph.addVertex(CfgVertex.makeExprOrStm(rid, identifyMayStatementType(repeat), { end: [CfgVertex.toExitId(rid)] }));
+	graph.addVertex(CfgVertex.makeExitMarker(rid));
 
 	for(const entryPoint of body.entryPoints) {
-		graph.addEdge(entryPoint, repeat.info.id, { label: CfgEdgeType.Fd });
+		graph.addEdge(entryPoint, rid, CfgEdge.makeFd());
 	}
 
 	// loops automatically
 	for(const nexts of [body.nexts, body.exitPoints]) {
 		for(const next of nexts) {
-			graph.addEdge(repeat.info.id, next, { label: CfgEdgeType.Fd });
+			graph.addEdge(rid, next, CfgEdge.makeFd());
 		}
 	}
 
 	for(const breakPoint of body.breaks) {
-		graph.addEdge(repeat.info.id + '-exit', breakPoint, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(rid), breakPoint, CfgEdge.makeFd());
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [repeat.info.id + '-exit'], entryPoints: [repeat.info.id] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [CfgVertex.toExitId(rid)], entryPoints: [rid] };
 }
 
 function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const whileId = whileLoop.info.id;
 	const graph = condition.graph;
-	graph.addVertex({ id: whileId, type: identifyMayStatementType(whileLoop), mid: condition.exitPoints, end: [whileId + '-exit'] });
-	graph.addVertex({ id: whileId + '-exit', type: CfgVertexType.EndMarker, root: whileId });
+	graph.addVertex(CfgVertex.makeExprOrStm(whileId, identifyMayStatementType(whileLoop), { mid: condition.exitPoints, end: [CfgVertex.toExitId(whileId)] }));
+	graph.addVertex(CfgVertex.makeExitMarker(whileId));
 
 	graph.mergeWith(body.graph);
 
 	for(const entry of condition.entryPoints) {
-		graph.addEdge(entry, whileId, { label: CfgEdgeType.Fd });
+		graph.addEdge(entry, whileId, CfgEdge.makeFd());
 	}
 
 	for(const e of condition.exitPoints) {
 		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, e, { label: CfgEdgeType.Cd, when: RTrue, caused: whileId });
+			graph.addEdge(entry, e, CfgEdge.makeCdTrue(whileId));
 		}
 	}
 
 	for(const nexts of [body.nexts, body.exitPoints]) {
 		for(const next of nexts) {
-			graph.addEdge(whileId, next, { label: CfgEdgeType.Fd });
+			graph.addEdge(whileId, next, CfgEdge.makeFd());
 		}
 	}
 
 	for(const breakPoint of body.breaks) {
-		graph.addEdge(whileId + '-exit', breakPoint, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(whileId), breakPoint, CfgEdge.makeFd());
 	}
 	// while can break on the condition as well
 	for(const e of condition.exitPoints) {
-		graph.addEdge(whileId + '-exit', e, {
-			label:  CfgEdgeType.Cd,
-			when:   RFalse,
-			caused: whileId
-		});
+		graph.addEdge(CfgVertex.toExitId(whileId), e, CfgEdge.makeCdFalse(whileId));
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [whileId + '-exit'], entryPoints: [whileId] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [CfgVertex.toExitId(whileId)], entryPoints: [whileId] };
 }
 
 
 function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInformation, vector: ControlFlowInformation, body: ControlFlowInformation): ControlFlowInformation {
 	const forLoopId = forLoop.info.id;
 	const graph = variable.graph;
-	graph.addVertex({ id: forLoopId, type: identifyMayStatementType(forLoop), end: [forLoopId + '-exit'], mid: variable.exitPoints });
+	graph.addVertex(CfgVertex.makeExprOrStm(forLoopId, identifyMayStatementType(forLoop), { mid: variable.exitPoints, end: [CfgVertex.toExitId(forLoopId)] }));
 
 	graph.mergeWith(vector.graph);
 	graph.mergeWith(body.graph);
 
 	for(const entry of vector.entryPoints) {
-		graph.addEdge(entry, forLoopId, { label: CfgEdgeType.Fd });
+		graph.addEdge(entry, forLoopId, CfgEdge.makeFd());
 	}
 
 	for(const exit of vector.exitPoints) {
 		for(const entry of variable.entryPoints) {
-			graph.addEdge(entry, exit, { label: CfgEdgeType.Fd });
+			graph.addEdge(entry, exit, CfgEdge.makeFd());
 		}
 	}
 
 	for(const e of variable.exitPoints) {
 		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, e, { label: CfgEdgeType.Cd, when: RTrue, caused: forLoopId });
+			graph.addEdge(entry, e, CfgEdge.makeCdTrue(forLoopId));
 		}
 	}
 
 	for(const points of [body.nexts, body.exitPoints]) {
 		for(const next of points) {
-			graph.addEdge(forLoopId, next, { label: CfgEdgeType.Fd });
+			graph.addEdge(forLoopId, next, CfgEdge.makeFd());
 		}
 	}
 
 	for(const breakPoint of body.breaks) {
-		graph.addEdge(forLoopId + '-exit', breakPoint, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(forLoopId), breakPoint, CfgEdge.makeFd());
 	}
 
 	const isNotEndless = body.exitPoints.length > 0 || body.breaks.length > 0;
 	if(isNotEndless) {
-		graph.addVertex({
-			id:   forLoopId + '-exit',
-			type: CfgVertexType.EndMarker,
-			root: forLoopId
-		});
+		graph.addVertex(CfgVertex.makeExitMarker(forLoopId));
 		for(const e of variable.exitPoints) {
-			graph.addEdge(forLoopId + '-exit', e, { label: CfgEdgeType.Cd, when: RFalse, caused: forLoopId });
+			graph.addEdge(CfgVertex.toExitId(forLoopId), e, CfgEdge.makeCdFalse(forLoopId));
 		}
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: isNotEndless ? [forLoopId + '-exit'] : [], entryPoints: [forLoopId] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: isNotEndless ? [CfgVertex.toExitId(forLoopId)] : [], entryPoints: [forLoopId] };
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {
 	const fnId = fn.info.id;
 	const graph = new ControlFlowGraph();
 	let paramExits = params.flatMap(e => e.exitPoints);
-	const children: NodeId[] = [...paramExits, fnId + '-exit'];
-	graph.addVertex({ id: fnId + '-exit', type: CfgVertexType.EndMarker, root: fnId }, false);
-	graph.addVertex({ id: fnId, children, type: identifyMayStatementType(fn), mid: paramExits, end: [fnId + '-exit'] });
+	const children: NodeId[] = [...paramExits, CfgVertex.toExitId(fnId)];
+	graph.addVertex(CfgVertex.makeExitMarker(fnId), false);
+	graph.addVertex(CfgVertex.makeExprOrStm(fnId, identifyMayStatementType(fn), { children, mid: paramExits, end: [CfgVertex.toExitId(fnId)] }));
 
 	graph.mergeWith(body.graph, true);
 	for(const r of body.graph.rootIds()) {
@@ -352,7 +371,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 			children.push(r);
 		}
 		for(const entry of param.entryPoints) {
-			graph.addEdge(entry, fnId, { label: CfgEdgeType.Fd });
+			graph.addEdge(entry, fnId, CfgEdge.makeFd());
 		}
 	}
 	if(paramExits.length === 0) {
@@ -361,19 +380,19 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 
 	for(const e of paramExits) {
 		for(const entry of body.entryPoints) {
-			graph.addEdge(entry, e, { label: CfgEdgeType.Fd });
+			graph.addEdge(entry, e, CfgEdge.makeFd());
 		}
 	}
 
 	// breaks and nexts should be illegal but safe is safe, I guess
 	for(const next of body.returns.concat(body.breaks, body.nexts, body.exitPoints)) {
-		graph.addEdge(fnId + '-exit', next, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(fnId), next, CfgEdge.makeFd());
 	}
 
 	return { graph: graph, breaks: [], nexts: [], returns: [], exitPoints: [fnId], entryPoints: [fnId] };
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], exit = 'exit'): ControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	if(call.named && call.functionName.content === 'ifelse') {
 		// special built-in handling for ifelse as it is an expression that does not short-circuit
 		return cfgIfThenElse(
@@ -390,17 +409,17 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 		breaks:      Array.from(name.breaks),
 		nexts:       Array.from(name.nexts),
 		returns:     Array.from(name.returns),
-		exitPoints:  [callId + '-' + exit],
+		exitPoints:  [CfgVertex.toExitId(callId)],
 		entryPoints: [callId]
 	};
 
-	graph.addVertex({ id: callId, type: identifyMayStatementType(call), mid: name.exitPoints, end: [callId + '-' + exit] });
+	graph.addVertex(CfgVertex.makeExprOrStm(callId, identifyMayStatementType(call), { mid: name.exitPoints, end: [CfgVertex.toExitId(callId)] }));
 
 	for(const entryPoint of name.entryPoints) {
-		graph.addEdge(entryPoint, callId, { label: CfgEdgeType.Fd });
+		graph.addEdge(entryPoint, callId, CfgEdge.makeFd());
 	}
 
-	graph.addVertex({ id: callId + '-' + exit, type: CfgVertexType.EndMarker, root: callId });
+	graph.addVertex(CfgVertex.makeExitMarker(callId));
 
 	let lastArgExits: NodeId[] = name.exitPoints;
 
@@ -415,7 +434,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 		for(const entry of arg.entryPoints) {
 			for(const exit of lastArgExits) {
-				graph.addEdge(entry, exit, { label: CfgEdgeType.Fd });
+				graph.addEdge(entry, exit, CfgEdge.makeFd());
 			}
 		}
 
@@ -423,11 +442,11 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	}
 
 	for(const exit of lastArgExits) {
-		graph.addEdge(callId + '-exit', exit, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(callId), exit, CfgEdge.makeFd());
 	}
 
 	if(call.named && call.functionName.content === 'return') {
-		info.returns.push(callId + '-exit');
+		info.returns.push(CfgVertex.toExitId(callId));
 		info.exitPoints.length = 0;
 	}
 
@@ -435,7 +454,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	return info;
 }
 
-export const ResolvedCallSuffix = '-resolved-call-exit';
+export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
 const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: FoldFunctions<ParentInformation, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
 	[BuiltInProcName.IfThenElse]: (folds, call, args) => {
@@ -469,22 +488,25 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: FoldFunctions<
 		for(const target of targets) {
 			// we have to filter out non-func-call targets as the call targets contains names and call ids
 			if(isFunctionDefinitionVertex(graph.getVertex(target))) {
-				callVertex.callTargets ??= new Set();
-				callVertex.callTargets.add(target);
-				exits.push(target + '-exit');
+				const ct = CfgVertex.getCallTargets(callVertex);
+				if(!ct) {
+					CfgVertex.setCallTargets(callVertex as CfgExpressionVertex, new Set([target]));
+				} else {
+					ct.add(target);
+				}
+				exits.push(CfgVertex.toExitId(target));
 			}
 		}
 
 		if(exits.length > 0) {
-			baseCfg.graph.addVertex({
-				id:   call.info.id + ResolvedCallSuffix,
-				type: CfgVertexType.EndMarker,
-				root: call.info.id
-			});
+			baseCfg.graph.addVertex(CfgVertex.makeMarker(
+				call.info.id + ResolvedCallSuffix,
+				call.info.id
+			));
 
 			for(const col of [baseCfg.exitPoints, exits]) {
 				for(const exit of col) {
-					baseCfg.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
+					baseCfg.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, CfgEdge.makeFd());
 				}
 			}
 
@@ -500,10 +522,11 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: FoldFunctions<
 
 function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformation | undefined, value: ControlFlowInformation | undefined): ControlFlowInformation {
 	const graph = new ControlFlowGraph();
-	const info: ControlFlowInformation = { graph, breaks: [], nexts: [], returns: [], exitPoints: [node.info.id + '-exit'], entryPoints: [node.info.id] };
+	const nodeId = node.info.id;
+	const info: ControlFlowInformation = { graph, breaks: [], nexts: [], returns: [], exitPoints: [CfgVertex.toExitId(nodeId)], entryPoints: [nodeId] };
 
-	let currentExitPoints = name?.exitPoints ?? [node.info.id];
-	graph.addVertex({ id: node.info.id, type: CfgVertexType.Expression, mid: currentExitPoints, end: [node.info.id + '-exit'] });
+	let currentExitPoints = name?.exitPoints ?? [nodeId];
+	graph.addVertex(CfgVertex.makeExpressionWithEnd(nodeId, { mid: currentExitPoints }));
 
 	if(name) {
 		graph.mergeWith(name.graph);
@@ -512,7 +535,7 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 		info.returns = info.returns.concat(name.returns);
 
 		for(const entry of name.entryPoints) {
-			graph.addEdge(entry, node.info.id, { label: CfgEdgeType.Fd });
+			graph.addEdge(entry, nodeId, CfgEdge.makeFd());
 		}
 	}
 
@@ -524,50 +547,53 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 
 		for(const exitPoint of currentExitPoints) {
 			for(const entry of value.entryPoints) {
-				graph.addEdge(entry, exitPoint, { label: CfgEdgeType.Fd });
+				graph.addEdge(entry, exitPoint, CfgEdge.makeFd());
 			}
 		}
 		currentExitPoints = value.exitPoints;
 	}
 
-	graph.addVertex({ id: node.info.id + '-exit', type: CfgVertexType.EndMarker, root: node.info.id });
+	graph.addVertex(CfgVertex.makeExitMarker(nodeId));
 	for(const exit of currentExitPoints) {
-		graph.addEdge(node.info.id + '-exit', exit, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(nodeId), exit, CfgEdge.makeFd());
 	}
 
 	return info;
 }
 
 function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
-	const graph = new ControlFlowGraph().mergeWith(lhs.graph).mergeWith(rhs.graph);
-	const result: ControlFlowInformation = { graph, breaks: lhs.breaks.concat(rhs.breaks), nexts: lhs.nexts.concat(rhs.nexts), returns: lhs.returns.concat(rhs.returns), entryPoints: [binOp.info.id], exitPoints: [binOp.info.id + '-exit'] };
+	const graph = lhs.graph.mergeWith(rhs.graph);
+	const binId = binOp.info.id;
+	const binExit = CfgVertex.toExitId(binId);
+	const result: ControlFlowInformation = { graph, breaks: lhs.breaks.concat(rhs.breaks), nexts: lhs.nexts.concat(rhs.nexts), returns: lhs.returns.concat(rhs.returns), entryPoints: [binId], exitPoints: [binExit] };
 
-	graph.addVertex({ id: binOp.info.id, type: binOp.flavor === 'assignment' ? CfgVertexType.Statement : CfgVertexType.Expression, end: [binOp.info.id + '-exit'] });
-	graph.addVertex({ id: binOp.info.id + '-exit', type: CfgVertexType.EndMarker, root: binOp.info.id });
+	graph.addVertex(CfgVertex.makeExprOrStm(binId, binOp.flavor === 'assignment' ? CfgVertexType.Statement : CfgVertexType.Expression, { end: [binExit] }));
+	graph.addVertex(CfgVertex.makeExitMarker(binId));
 
+	const fd = CfgEdge.makeFd();
 	for(const exitPoint of lhs.exitPoints) {
 		for(const entryPoint of rhs.entryPoints) {
-			result.graph.addEdge(entryPoint, exitPoint, { label: CfgEdgeType.Fd });
+			result.graph.addEdge(entryPoint, exitPoint, fd);
 		}
 	}
 	for(const entryPoint of lhs.entryPoints) {
-		graph.addEdge(entryPoint, binOp.info.id, { label: CfgEdgeType.Fd });
+		graph.addEdge(entryPoint, binId, fd);
 	}
 	for(const exitPoint of rhs.exitPoints) {
-		graph.addEdge(binOp.info.id + '-exit', exitPoint, { label: CfgEdgeType.Fd });
+		graph.addEdge(binExit, exitPoint, fd);
 	}
-
 	return result;
 }
 
 function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformation, accessors: readonly (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
 	const result = { ...name };
 	const graph = result.graph;
-	graph.addVertex({ id: access.info.id, type: CfgVertexType.Expression, mid: name.exitPoints, end: [access.info.id + '-exit'] });
-	result.entryPoints = [access.info.id];
+	const accessId = access.info.id;
+	graph.addVertex(CfgVertex.makeExpressionWithEnd(accessId, { mid: name.exitPoints }));
+	result.entryPoints = [accessId];
 
 	for(const entry of name.entryPoints) {
-		graph.addEdge(entry, access.info.id, { label: CfgEdgeType.Fd });
+		graph.addEdge(entry, accessId, CfgEdge.makeFd());
 	}
 
 	result.exitPoints = name.exitPoints;
@@ -579,7 +605,7 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 		graph.mergeWith(accessor.graph);
 		for(const exitPoint of result.exitPoints) {
 			for(const entry of accessor.entryPoints) {
-				graph.addEdge(entry, exitPoint, { label: CfgEdgeType.Fd });
+				graph.addEdge(entry, exitPoint, CfgEdge.makeFd());
 			}
 		}
 		result.exitPoints = accessor.exitPoints;
@@ -588,64 +614,63 @@ function cfgAccess(access: RAccess<ParentInformation>, name: ControlFlowInformat
 		result.returns = result.returns.concat(accessor.returns);
 	}
 	for(const exitPoint of result.exitPoints) {
-		graph.addEdge(access.info.id + '-exit', exitPoint, { label: CfgEdgeType.Fd });
+		graph.addEdge(CfgVertex.toExitId(accessId), exitPoint, CfgEdge.makeFd());
 	}
-	graph.addVertex({ id: access.info.id + '-exit', type: CfgVertexType.EndMarker, root: access.info.id });
-	result.exitPoints = [access.info.id + '-exit'];
+	graph.addVertex(CfgVertex.makeExitMarker(accessId));
+	result.exitPoints = [CfgVertex.toExitId(accessId)];
 	return result;
 }
 
 function cfgUnaryOp(unary: RNodeWithParent, operand: ControlFlowInformation): ControlFlowInformation {
 	const graph = operand.graph;
-	graph.addVertex({ id: unary.info.id, type: CfgVertexType.EndMarker, root: unary.info.id });
+	const unaryId = unary.info.id;
+	graph.addVertex(CfgVertex.makeMarker(unaryId, unaryId));
+	const fd = CfgEdge.makeFd();
 	for(const entry of operand.exitPoints) {
-		graph.addEdge(unary.info.id, entry, { label: CfgEdgeType.Fd });
+		graph.addEdge(unaryId, entry, fd);
 	}
 
-	return { ...operand, graph, exitPoints: [unary.info.id] };
+	return { ...operand, graph, exitPoints: [unaryId] };
 }
 
 
 function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknown, expressions: ControlFlowInformation[]): ControlFlowInformation {
+	const nodeId = node.info.id;
 	const result: ControlFlowInformation = {
 		graph:       new ControlFlowGraph(),
 		breaks:      [],
 		nexts:       [],
 		returns:     [],
-		exitPoints:  [node.info.id],
-		entryPoints: [node.info.id]
+		exitPoints:  [nodeId],
+		entryPoints: [nodeId]
 	};
-	const vtx = { id: node.info.id, type: CfgVertexType.Expression as const, end: [] as NodeId[] | undefined };
+	const vtx = CfgVertex.makeExpression(nodeId);
 	result.graph.addVertex(vtx);
 
+	const fd = CfgEdge.makeFd();
 	for(const expression of expressions) {
 		for(const previousExitPoint of result.exitPoints) {
 			for(const entryPoint of expression.entryPoints) {
-				result.graph.addEdge(entryPoint, previousExitPoint, { label: CfgEdgeType.Fd });
+				result.graph.addEdge(entryPoint, previousExitPoint, fd);
 			}
 		}
 		result.graph.mergeWith(expression.graph);
-		result.breaks = result.breaks.concat(expression.breaks);
-		result.nexts = result.nexts.concat(expression.nexts);
-		result.returns = result.returns.concat(expression.returns);
+		result.breaks.push(...expression.breaks);
+		result.nexts.push(...expression.nexts);
+		result.returns.push(...expression.returns);
 		result.exitPoints = expression.exitPoints;
 	}
 
+	const exitId = CfgVertex.toExitId(nodeId);
 	if(result.exitPoints.length > 0) {
-		result.graph.addVertex({
-			id:   node.info.id + '-exit',
-			type: CfgVertexType.EndMarker,
-			root: node.info.id
-		});
-		vtx.end = [node.info.id + '-exit'];
-	} else {
-		vtx.end = undefined;
+		result.graph.addVertex(CfgVertex.makeExitMarker(nodeId));
+		CfgVertex.setEnd(vtx, [exitId]);
 	}
 
 	for(const exit of result.exitPoints) {
-		result.graph.addEdge(node.info.id + '-exit', exit, { label: CfgEdgeType.Fd });
+		result.graph.addEdge(exitId, exit, fd);
 	}
-	result.exitPoints = result.exitPoints.length > 0 ? [node.info.id + '-exit'] : [];
+	result.exitPoints = result.exitPoints.length > 0 ? [exitId] : [];
 	return result;
 }
 
@@ -662,14 +687,14 @@ export function cfg2quads(cfg: ControlFlowInformation, config: QuadSerialization
 		vertices: [...cfg.graph.vertices().entries()]
 			.map(([id, v]) => ({
 				id,
-				children: v.children
+				children: CfgVertex.getChildren(v)
 			})),
 		edges: [...cfg.graph.edges()].flatMap(([fromId, targets]) =>
 			[...targets].map(([toId, info]) => ({
 				from: fromId,
 				to:   toId,
-				type: info.label,
-				when: info.when
+				type: CfgEdge.getType(info),
+				when: CfgEdge.getWhen(info)
 			}))
 		),
 		entryPoints: cfg.entryPoints,

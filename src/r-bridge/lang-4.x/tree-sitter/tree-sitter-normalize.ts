@@ -22,7 +22,8 @@ import { Identifier } from '../../../dataflow/environments/identifier';
 import type { RExpressionList } from '../ast/model/nodes/r-expression-list';
 
 export interface TreeSitterInfo {
-	treeSitterId: number
+	/** id of the tree-sitter node this AST node was created from, used for traceability and linking back to tree-sitter nodes */
+	tsId: number
 }
 type SyntaxAndRNode = [SyntaxNode, RNode<TreeSitterInfo>];
 
@@ -91,9 +92,9 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 			children: [],
 			grouping: undefined,
 			info:     {
-				fullRange:    undefined,
-				adToks:       [],
-				treeSitterId: -1,
+				fullRange: undefined,
+				adToks:    [],
+				tsId:      -1,
 			}
 		} as RNode<TreeSitterInfo>;
 	}
@@ -103,10 +104,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 		const range = makeSourceRange(node);
 		const defaultInfo = {
 			info: {
-				fullRange:    range,
-				adToks:       [],
-				fullLexeme:   node.text,
-				treeSitterId: node.id
+				fullRange:  range,
+				adToks:     [],
+				fullLexeme: node.text,
+				tsId:       node.id
 			}
 		};
 		switch(node.type as TreeSitterType) {
@@ -120,8 +121,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					grouping: undefined,
 					lexeme:   undefined,
 					info:     {
-						adToks:       remainingComments.map(c => c[1]),
-						treeSitterId: node.id
+						adToks: remainingComments.map(c => c[1]),
+						tsId:   node.id
 					}
 				};
 			}
@@ -153,8 +154,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						}
 					],
 					info: {
-						adToks:       remainingComments.map(c => c[1]),
-						treeSitterId: node.id
+						adToks: remainingComments.map(c => c[1]),
+						tsId:   node.id
 					}
 				};
 			}
@@ -172,7 +173,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					name:     undefined,
 					lexeme:   lhs.lexeme as string,
 					info:     {
-						treeSitterId: lhs.info.treeSitterId
+						tsId: lhs.info.tsId
 					}
 				};
 				if(op.type === 'special') {
@@ -186,7 +187,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 							lexeme:   op.text,
 							content:  op.text,
 							info:     {
-								treeSitterId: op.id
+								tsId: op.id
 							}
 						},
 						arguments: [lhsAsArg, {
@@ -196,14 +197,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 							name:     undefined,
 							lexeme:   rhs.lexeme as string,
 							info:     {
-								treeSitterId: rhs.info.treeSitterId
+								tsId: rhs.info.tsId
 							}
 						}],
 						named:        true,
 						infixSpecial: true,
 						info:         {
-							adToks:       comments,
-							treeSitterId: node.id
+							adToks: comments,
+							tsId:   node.id
 						}
 					};
 				} else if(op.text === '|>') {
@@ -215,10 +216,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						lexeme:   op.text,
 						...defaultInfo,
 						info:     {
-							fullRange:    range,
-							adToks:       comments,
-							fullLexeme:   node.text,
-							treeSitterId: node.id
+							fullRange:  range,
+							adToks:     comments,
+							fullLexeme: node.text,
+							tsId:       node.id
 						}
 					};
 				} else {
@@ -229,10 +230,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						operator: op.text,
 						lexeme:   op.text,
 						info:     {
-							fullRange:    range,
-							adToks:       comments,
-							fullLexeme:   node.text,
-							treeSitterId: node.id
+							fullRange:  range,
+							adToks:     comments,
+							fullLexeme: node.text,
+							tsId:       node.id
 						}
 					};
 				}
@@ -302,10 +303,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						content:  removeRQuotes(variableNode.text),
 						lexeme:   variableNode.text,
 						info:     {
-							fullRange:    undefined,
-							adToks:       [],
-							fullLexeme:   undefined,
-							treeSitterId: variableNode.id
+							fullRange:  undefined,
+							adToks:     [],
+							fullLexeme: undefined,
+							tsId:       variableNode.id
 						}
 					},
 					vector:   convertTreeNode(sequenceNode),
@@ -313,10 +314,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					location: makeSourceRange(forNode),
 					lexeme:   forNode.text,
 					info:     {
-						fullRange:    range,
-						adToks:       variableComments.concat(sequenceComments).map(c => c[1]),
-						fullLexeme:   node.text,
-						treeSitterId: node.id
+						fullRange:  range,
+						adToks:     variableComments.concat(sequenceComments).map(c => c[1]),
+						fullLexeme: node.text,
+						tsId:       node.id
 					}
 				};
 			}
@@ -380,10 +381,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						functionName: {
 							...funcNode,
 							info: {
-								fullRange:    range,
-								adToks:       [],
-								fullLexeme:   node.text,
-								treeSitterId: node.id
+								fullRange:  range,
+								adToks:     [],
+								fullLexeme: node.text,
+								tsId:       node.id
 							}
 						},
 						named: true
@@ -491,10 +492,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						location: rhsRange,
 						lexeme:   rhs?.text,
 						info:     {
-							fullRange:    rhsRange,
-							adToks:       [],
-							fullLexeme:   rhs?.text,
-							treeSitterId: rhs?.id
+							fullRange:  rhsRange,
+							adToks:     [],
+							fullLexeme: rhs?.text,
+							tsId:       rhs?.id
 						}
 					}],
 					location: makeSourceRange(operator),
@@ -518,10 +519,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						content:  name.text,
 						lexeme:   name.text,
 						info:     {
-							fullRange:    range,
-							adToks:       [],
-							fullLexeme:   name.text,
-							treeSitterId: name.id
+							fullRange:  range,
+							adToks:     [],
+							fullLexeme: name.text,
+							tsId:       name.id
 						}
 					},
 					special:  name.text === '...',
@@ -529,10 +530,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					location: nameRange,
 					lexeme:   name.text,
 					info:     {
-						fullRange:    range,
-						adToks:       [],
-						fullLexeme:   name.text,
-						treeSitterId: name.id
+						fullRange:  range,
+						adToks:     [],
+						fullLexeme: name.text,
+						tsId:       name.id
 					}
 				};
 			}
@@ -571,10 +572,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						location: nameRange,
 						lexeme:   nameNode.text,
 						info:     {
-							fullRange:    nameRange,
-							adToks:       [],
-							fullLexeme:   nameNode.text,
-							treeSitterId: nameNode.id
+							fullRange:  nameRange,
+							adToks:     [],
+							fullLexeme: nameNode.text,
+							tsId:       nameNode.id
 						}
 					};
 				}
@@ -606,9 +607,9 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 		children: [],
 		grouping: undefined,
 		info:     {
-			fullRange:    undefined,
-			adToks:       [],
-			treeSitterId: -1,
+			fullRange: undefined,
+			adToks:    [],
+			tsId:      -1,
 		}
 	} as RNode<TreeSitterInfo>;
 }
@@ -637,9 +638,9 @@ function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxN
 				location: makeSourceRange(node),
 				lexeme:   node.text,
 				info:     {
-					adToks:       [],
-					fullLexeme:   node.text,
-					treeSitterId: node.id
+					adToks:     [],
+					fullLexeme: node.text,
+					tsId:       node.id
 				}
 			}]);
 		} else {

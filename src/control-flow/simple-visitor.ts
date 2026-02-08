@@ -1,4 +1,4 @@
-import { type ControlFlowGraph, CfgVertexType } from './control-flow-graph';
+import { type ControlFlowGraph, CfgVertex } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -32,9 +32,10 @@ export function visitCfgInReverseOrder(
 			continue;
 		} else if(hasBb) {
 			const get = graph.getVertex(current);
-			if(get?.type === CfgVertexType.Block) {
-				for(const e of get.elems.toReversed()) {
-					queue.push(e.id);
+			if(CfgVertex.isBlock(get)) {
+				const elems = CfgVertex.getBasicBlockElements(get);
+				for(const e of elems.toReversed()) {
+					queue.push(CfgVertex.getId(e));
 				}
 			}
 		}
@@ -75,9 +76,10 @@ export function visitCfgInOrder(
 			continue;
 		} else if(hasBb) {
 			const get = graph.getVertex(current);
-			if(get?.type === CfgVertexType.Block) {
-				for(const e of get.elems.toReversed()) {
-					queue.push(e.id);
+			if(CfgVertex.isBlock(get)) {
+				const elems = CfgVertex.getBasicBlockElements(get);
+				for(const e of elems.toReversed()) {
+					queue.push(CfgVertex.getId(e));
 				}
 			}
 		}

@@ -3,7 +3,12 @@ import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
 import { visitCfgInOrder, visitCfgInReverseOrder } from '../control-flow/simple-visitor';
-import { type ControlFlowInformation, CfgVertexType, ControlFlowGraph } from '../control-flow/control-flow-graph';
+import {
+	type ControlFlowInformation,
+	CfgVertexType,
+	ControlFlowGraph,
+	CfgVertex
+} from '../control-flow/control-flow-graph';
 import { simplifyControlFlowInformation } from '../control-flow/cfg-simplification';
 import { extractCfg, ResolvedCallSuffix } from '../control-flow/extract-cfg';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -174,6 +179,14 @@ For readability, we structure this wiki page into various segments:
 	- [Diffing and Testing](#cfg-diff-and-test)
 	- [Sophisticated CFG Traversal](#cfg-traversal)
 	- [Working With Exit Points](#cfg-exit-points)
+
+${
+	block({
+		type:    'TIP',
+		content: `FlowR provides you with various helper objects to work with the CFG, such as ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })}, 
+		which you can use to easily access the properties of the CFG and its vertices and edges.`
+	})
+}
 
 ${section('Initial Overview', 2, 'cfg-overview')}
 
@@ -386,7 +399,13 @@ And again it should be noted that even though the example code is more complicat
 ${section('Working with the CFG', 2, 'cfg-working')}
 
 There is a plethora of functions that you can use the traverse the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) and the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph). 
-Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph.
+Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph:
+
+* ${ctx.link(visitCfgInOrder)} and ${ctx.link(visitCfgInReverseOrder)} for simple traversals
+* ${ctx.link(BasicCfgGuidedVisitor)}, ${ctx.link(SyntaxAwareCfgGuidedVisitor)}, ${ctx.link(DataflowAwareCfgGuidedVisitor)}, and ${ctx.link(SemanticCfgGuidedVisitor)} for more sophisticated traversals
+* ${ctx.link('CfgEdge', undefined, { type: 'variable' })} and ${ctx.link('CfgVertex', undefined, { type: 'variable' })} for easy access to the properties of the CFG and its vertices and edges
+* ${ctx.link(assertCfgSatisfiesProperties)} and ${ctx.link('CfgProperties')} to check for properties of the CFG
+* ${ctx.link(diffOfControlFlowGraphs)} to diff two CFGs
 
 ${section('Simple Traversal', 3, 'cfg-simple-traversal')}
 
@@ -544,14 +563,14 @@ But the control flow perspective gives you more! Given a simple addition like \`
 ${await (async function() {
 	const cfg = await getCfg(shell, 'x + 1');
 	const [plusVertexId, plusVertex] = cfg.info.graph.vertices().entries().filter(([n]) => recoverName(n, cfg.ast.idMap) === '+').toArray()[0];
-	guard(plusVertex.type === CfgVertexType.Expression);
+	guard(CfgVertex.isExpression(plusVertex));
 	const numOfExits
-		= plusVertex.end?.length ?? 0;
-	guard(plusVertex.end && numOfExits === 1);
+		= CfgVertex.getEnd(plusVertex)?.length ?? 0;
+	guard(numOfExits === 1);
 
 	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n' })}
 	
-Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${plusVertex.end[0]}\`.
+Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${CfgVertex.getEnd(plusVertex)?.[0] ?? '??'}\`.
 Checking this vertex essentially reveals all exit points of the expression &dash; in this case, this simply refers to the operands of the addition.
 However, the idea transfers to more complex expressions as well...
 	`;
@@ -561,14 +580,14 @@ ${details('Example: Exit Points for an if', await (async function() {
 	const expr = 'if(u) 3 else 2';
 	const cfg = await getCfg(shell, expr);
 	const [ifVertexId, ifVertex] = [...cfg.info.graph.vertices()].filter(([n]) => recoverName(n, cfg.ast.idMap) === 'if')[0];
-	guard(ifVertex.type === CfgVertexType.Statement);
+	guard(CfgVertex.isStatement(ifVertex));
 	const numOfExits
-		= ifVertex.end?.length ?? 0;
-	guard(ifVertex.end && numOfExits === 1);
+		=  CfgVertex.getEnd(ifVertex)?.length ?? 0;
+	guard(numOfExits === 1);
 
 	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n' })}
 	
-Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${ifVertex.end[0]}\`.
+Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${CfgVertex.getEnd(ifVertex)?.[0] ?? '??'}\`.
 Yet, now this exit vertex is linked to the two branches of the if statement (the \`then\` and \`else\` branch).
 	`;
 })())}

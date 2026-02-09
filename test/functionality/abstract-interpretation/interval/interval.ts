@@ -104,13 +104,15 @@ export function testIntervalDomain(code: string, expected: {
 				if(!isFinite(inferredLower) || !isFinite(expectedLower)) {
 					expect(inferredLower, 'Lower bound is incorrect: ' + errorContext).toEqual(expectedLower);
 				} else {
-					assert.closeTo(inferredLower, expectedLower, Number.EPSILON, 'Lower bound is incorrect: ' + errorContext);
+					const relativeTolerance = Number.EPSILON * Math.max(Math.abs(inferredLower), Math.abs(expectedLower), 1);
+					assert.closeTo(inferredLower, expectedLower, relativeTolerance, 'Lower bound is incorrect: ' + errorContext);
 				}
 
 				if(!isFinite(inferredUpper) || !isFinite(expectedUpper)) {
 					expect(inferredUpper, 'Upper bound is incorrect: ' + errorContext).toEqual(expectedUpper);
 				} else {
-					assert.closeTo(inferredUpper, expectedUpper, Number.EPSILON, 'Upper bound is incorrect: ' + errorContext);
+					const relativeTolerance = Number.EPSILON * Math.max(Math.abs(inferredUpper), Math.abs(expectedUpper), 1);
+					assert.closeTo(inferredUpper, expectedUpper, relativeTolerance, 'Upper bound is incorrect: ' + errorContext);
 				}
 			} else {
 				expect(

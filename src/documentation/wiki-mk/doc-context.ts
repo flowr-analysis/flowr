@@ -9,7 +9,6 @@ import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
 import type { RShell } from '../../r-bridge/shell';
-import type { ValidWikiDocumentTargetsNoSuffix } from '../../cli/wiki';
 import type { PathLike } from 'fs';
 import {
 	FlowrDockerRef,
@@ -23,6 +22,7 @@ import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
 import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
+import type { DocMakerLike } from './doc-maker';
 
 /**
  * Context available when generating documentation for a wiki in markdown format
@@ -67,6 +67,9 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
 type NamedPrototype = { prototype: { constructor: { name: string } } };
 type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
 type StaticKeys<T> = T extends { prototype: infer P } ? Exclude<keyof T, keyof P> : never;
+
+export type ValidWikiDocumentTargets<T extends DocMakerLike[]> = ReturnType<T[number]['getTarget']>;
+export type ValidWikiDocumentTargetsNoSuffix<T extends DocMakerLike[]> = ValidWikiDocumentTargets<T> extends `${infer Name}.${string}` ? Name : never;
 
 export const ConstantWikiLinkInfo = {
 	'flowr:npm':           FlowrNpmRef,
@@ -230,7 +233,7 @@ export interface GeneralDocContext {
 	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
 	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
 	 */
-	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string;
+	linkPage<T extends DocMakerLike[]>(pageName: ValidWikiDocumentTargetsNoSuffix<T> | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string;
 
 	/**
 	 * Generates a link to a code file in the code base.
@@ -274,8 +277,19 @@ export interface GeneralDocContext {
 }
 
 /**
+ * Various references used to link code elements, other Wiki pages, etc.
+ */
+export interface DocRefs {
+	GitHub: {
+		Ref:         string;
+		FileBaseRef: string;
+	};
+}
+
+/**
  * Creates a wiki context for generating documentation for code elements.
  * This context provides methods to create links, code snippets, and documentation for code elements.
+ * @param refs        - Various references used to link code elements, other Wiki pages, etc.
  * @param shell       - An optional RShell instance to retrieve the R version for the auto-generation header.
  * @param rootFolders - The root folder(s) of the code base to analyze. Defaults to flower's `src/` **and** `test/` folder.
  * @example
@@ -286,12 +300,15 @@ export interface GeneralDocContext {
  * ```
  */
 export function makeDocContextForTypes(
+	refs: DocRefs,
 	shell?: RShell,
 	...rootFolders: string[]
 ): GeneralDocContext {
 	if(rootFolders.length === 0) {
-		rootFolders.push(path.resolve(__dirname, '../../../src'));
-		rootFolders.push(path.resolve(__dirname, '../../../test/functionality'));
+		rootFolders.push(
+			path.resolve(__dirname, '../../../src'),
+			path.resolve(__dirname, '../../../test/functionality')
+		);
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {
@@ -300,7 +317,7 @@ export function makeDocContextForTypes(
 		},
 		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
-			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
+			return shortLink(getNameFromElementIdOrRef(element), refs.GitHub.FileBaseRef, info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
 		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
 			const className = cls.prototype.constructor.name;
@@ -309,7 +326,7 @@ export function makeDocContextForTypes(
 			return this.link(fullName, fmt, filter);
 		},
 		linkFile(element: ElementIdOrRef): string {
-			return shortLinkFile(getNameFromElementIdOrRef(element), info);
+			return shortLinkFile(getNameFromElementIdOrRef(element), refs.GitHub.FileBaseRef, info);
 		},
 		hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
@@ -336,13 +353,13 @@ export function makeDocContextForTypes(
 				...options
 			}) as string;
 		},
-		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
+		linkPage<T extends DocMakerLike[]>(pageName: ValidWikiDocumentTargetsNoSuffix<T> | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			const text = linkText ?? pageName.split('/').pop() ?? pageName;
 			let link: string;
 			if(pageName in ConstantWikiLinkInfo) {
 				link = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
 			} else {
-				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replace(/ /g, '-')}`;
+				link = `${refs.GitHub.Ref}/${pageName.toLowerCase().replace(/ /g, '-')}`;
 			}
 			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
 		},

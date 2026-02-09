@@ -353,7 +353,7 @@ function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'fileP
 
 /**
  * Return the link to the type in the source code.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  */
 export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, prefix = RemoteFlowrFilePathBaseRef): string {
 	const fromSource = getTypePathForTypeScript(elem);
@@ -683,13 +683,14 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
  * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
+ * @param prefix    - Prefix to put before the actual path to the code (e.g., link to the root of the code tree on GitHub)
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
  * @param fuzzy     - Whether to use fuzzy matching when searching for the type
  * @param type      - Optionally restrict to a certain type of element
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
+export function shortLink(name: string, prefix: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
 	const res = retrieveNode(name, hierarchy, fuzzy, type);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
@@ -701,7 +702,7 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 		pkg = undefined;
 	}
 	const comments = node.comments?.join('\n').replace(/\\?\n|```[a-zA-Z]*|\s\s*/g, ' ').replace(/<\/?code>|`/g, '').replace(/<\/?p\/?>/g, ' ').replace(/"/g, '\'') ?? '';
-	return `<a href="${getTypePathLink(node)}">${codeStyle ? '<code>' : ''}${
+	return `<a href="${getTypePathLink(node, prefix)}">${codeStyle ? '<code>' : ''}${
 		(node.comments?.length ?? 0) > 0 ?
 			textWithTooltip(pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName, comments.length > 400 ? comments.slice(0, 400) + '...' : comments) :
 			pkg ? `${pkg}::<${realNameWrapper}>${mainName}</${realNameWrapper}>` : mainName
@@ -711,19 +712,20 @@ export function shortLink(name: string, hierarchy: readonly TypeElementInSource[
 
 /**
  * Create a short link to a type in the documentation.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in
+ * @param prefix    - Prefix to put before the actual path to the code (e.g., link to the root of the code tree on GitHub)
  */
-export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSource[]): string {
+export function shortLinkFile(name: string, prefix: string, hierarchy: readonly TypeElementInSource[]): string {
 	const res = retrieveNode(name, hierarchy);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
 	}
 	const [,, node] = res;
-	return `<a href="${getTypePathLink(node)}">${getTypePathForTypeScript(node)}</a>`;
+	return `<a href="${getTypePathLink(node, prefix)}">${getTypePathForTypeScript(node)}</a>`;
 }
 
 export interface GetDocumentationForTypeFilters {
@@ -734,7 +736,7 @@ export interface GetDocumentationForTypeFilters {
 
 /**
  * Retrieve documentation comments for a type.
- * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralDocContext}.
  * @param name      - The name of the type, e.g. `MyType`, may include a container, e.g.,`MyContainer::MyType` (this works with function nestings too)
  *                    Use `:::` if you want to access a scoped function, but the name should be displayed without the scope
  * @param hierarchy - The hierarchy of types to search in

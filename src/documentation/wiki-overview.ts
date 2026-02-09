@@ -4,6 +4,7 @@ import { FlowrGithubBaseRef, FlowrPositron, FlowrRAdapter, FlowrRStudioAddin, Fl
 import { RShell } from '../r-bridge/shell';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Overview
@@ -16,7 +17,7 @@ export class WikiOverview extends DocMaker<'wiki/Overview.md'> {
 	public text({ ctx }: DocMakerArgs): string {
 		return `
 First of all, if you have never used _flowR_ before,
-please refer to the ${ctx.linkPage('wiki/Setup')} wiki page first, 
+please refer to the ${ctx.linkPage<AllWikiDocuments>('wiki/Setup')} wiki page first, 
 for instructions on how to install _flowR_.
 
 <!-- TOC -->
@@ -48,7 +49,7 @@ It is available with the [\`benchmark\`](#benchmark-the-slicer) script.
 The statistics module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [\`statistics\`](#generate-usage-statistics-of-r-code) script.
 
 The [core](https://github.com/flowr-analysis/flowr/tree/main/src/core) module contains _flowR_'s read-eval-print loop (REPL) and 
-_flowR_'s server. Furthermore, it contains the root definitions of how _flowR_ slices (see the ${ctx.linkPage('wiki/Interface')} wiki page for more information).
+_flowR_'s server. Furthermore, it contains the root definitions of how _flowR_ slices (see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page for more information).
 
 The [utility](https://github.com/flowr-analysis/flowr/tree/main/src/util) module is of no further interest for the usage of _flowR_
 
@@ -68,14 +69,14 @@ Similarly, we offer an [Addin for RStudio](${FlowrRStudioAddin}), as well as an 
 ⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by the main script \`npm run flowr\` or in the development mode \`npm run main-dev\`.
 
 Independent of your way of launching *flowr*, we will write simply \`flowr\` for either (🐳️)&nbsp;\`docker run -it --rm eagleoutice/flowr:latest\` or (⚒️)&nbsp;\`npm run flowr\`.
-See the ${ctx.linkPage('wiki/Setup')} wiki page for more information on how to get _flowR_ running.
+See the ${ctx.linkPage<AllWikiDocuments>('wiki/Setup')} wiki page for more information on how to get _flowR_ running.
 
 ### The Read-Eval-Print Loop (REPL)
 
 Once you launched _flowR_, you should see a small&nbsp;\`R>\` prompt. Use \`:help\` to receive instructions on how to use the REPL and what features are available (most prominently, you can access all [scripts](#calling-the-scripts-directly) simply by adding a colon before them).
 In general, all commands start with a colon (\`:\`), everything else is interpreted as a&nbsp;R expression which is directly evaluated by the underlying R shell 
-(however, due to security concerns, you need to start _flowR_ with ${ctx.cliOption('flowr', 'r-session-access')} and use the \`r-shell\` ${ctx.linkPage('wiki/Engines', 'engine')} to allow this).
-See the ${ctx.linkPage('wiki/Interface')} wiki page for more information on usage and the available commands.
+(however, due to security concerns, you need to start _flowR_ with ${ctx.cliOption('flowr', 'r-session-access')} and use the \`r-shell\` ${ctx.linkPage<AllWikiDocuments>('wiki/Engines', 'engine')} to allow this).
+See the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page for more information on usage and the available commands.
 The following GIF showcases a simple example session:
 
 ![Example of a simple REPL session](gif/repl-demo-opt.gif)
@@ -110,7 +111,7 @@ Sleep 20000ms
 ### The Server
 
 Instead of the REPL, you can start _flowR_ in "([TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)) server-mode" using \`flowr --server\` (write \`flowr --help\` to find out more). Together with the server option, you can configure the port with ${ctx.cliOption('flowr', 'port')}.
-The supported requests are documented alongside the internal documentation, see the ${ctx.linkPage('wiki/Interface')} wiki page for more information.
+The supported requests are documented alongside the internal documentation, see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page for more information.
 
 <details>
     <summary>Small demonstration using netcat</summary>
@@ -153,7 +154,7 @@ Sleep 200ms
 </details>
 
 The server allows accessing the REPL as well
-(see the ${ctx.linkPage('wiki/Interface')} wiki page for more information).
+(see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page for more information).
 
 ## Calling the Scripts Directly
 

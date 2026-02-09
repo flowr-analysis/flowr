@@ -1,4 +1,5 @@
-import fs from 'fs';
+import fs from 'node:fs';
+import type { DocRefs } from './doc-refs';
 
 export const FlowrGithubGroupName = 'flowr-analysis';
 export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
@@ -13,6 +14,14 @@ export const FlowrVsCode = 'https://marketplace.visualstudio.com/items?itemName=
 export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode-flowr';
 export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
 export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
+
+export const FlowrRefs: DocRefs = {
+	GitHub: {
+		Ref:         FlowrGithubRef,
+		FileBaseRef: RemoteFlowrFilePathBaseRef
+	}
+};
+
 /**
  * Returns a markdown link to the given file path relative to the project root.
  */

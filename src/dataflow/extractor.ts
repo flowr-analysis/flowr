@@ -150,6 +150,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	updateNestedFunctionCalls(df.graph, df.environment);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
 }

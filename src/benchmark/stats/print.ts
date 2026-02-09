@@ -293,6 +293,7 @@ Dataframe shape inference:
   Number of abstract value nodes: ${formatSummarizedMeasure(stats.dataFrameShape.numberOfValueNodes)}
   Number of entries per node:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfEntriesPerNode)}
   Number of operations:           ${formatSummarizedMeasure(stats.dataFrameShape.numberOfOperations)}
+  Number of total exact:          ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalExact)}
   Number of total values:         ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalValues)}
   Number of total top:            ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColNames)}

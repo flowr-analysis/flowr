@@ -1,5 +1,5 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
@@ -119,7 +119,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	public getEndState(): StateAbstractDomain<Domain> {
 		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
-		const exitNodes = exitPoints.map(vertex => getVertexRootId(vertex)).filter(isNotUndefined);
+		const exitNodes = exitPoints.map(vertex => CfgVertex.getRootId(vertex)).filter(isNotUndefined);
 		const states = exitNodes.map(node => this.getAbstractState(node)).filter(isNotUndefined);
 
 		return this.config.domain.bottom().joinAll(states);
@@ -145,15 +145,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(vertex === undefined) {
 			return true;
 		}
-		const nodeId = getVertexRootId(vertex);
+		const nodeId = CfgVertex.getRootId(vertex);
 
 		if(this.isWideningPoint(nodeId)) {
 			// only check widening points at the entry vertex
-			if(vertex.type === CfgVertexType.EndMarker) {
+			if(CfgVertex.isMarker(vertex)) {
 				return true;
 			}
 			const oldState = this.getAbstractState(nodeId) ?? this.config.domain.bottom();
-			const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
+			const predecessorDomains = this.getPredecessorNodes(CfgVertex.getId(vertex)).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
 			this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
 
 			if(this.shouldWiden(vertex)) {
@@ -165,7 +165,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		} else if(this.shouldSkipVertex(vertex)) {
 			return true;
 		}
-		const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
+		const predecessorDomains = this.getPredecessorNodes(CfgVertex.getId(vertex)).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
 		this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
 
 		this.onVisitNode(vertexId);
@@ -247,9 +247,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 				if(vertex === undefined) {
 					return [];
 				} else if(this.shouldSkipVertex(vertex)) {
-					return this.getPredecessorNodes(vertex.id);
+					return this.getPredecessorNodes(CfgVertex.getId(vertex));
 				} else {
-					return [getVertexRootId(vertex)];
+					return [CfgVertex.getRootId(vertex)];
 				}
 			})
 			.toArray() ?? [];
@@ -289,9 +289,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * Checks whether to continue visiting the control flow graph after a widening point.
 	 * By default, we only continue visiting if the widening point is visited for the first time or the abstract state at the widening point changed.
 	 */
-	protected shouldContinueVisiting(wideningPoint: CfgSimpleVertex, oldState: StateAbstractDomain<Domain>) {
-		const visitedCount = this.visited.get(wideningPoint.id) ?? 0;
-		this.visited.set(wideningPoint.id, visitedCount + 1);
+	protected shouldContinueVisiting(wideningPoint: CfgVertex, oldState: StateAbstractDomain<Domain>) {
+		const wid = CfgVertex.getId(wideningPoint);
+		const visitedCount = this.visited.get(wid) ?? 0;
+		this.visited.set(wid, visitedCount + 1);
 
 		return visitedCount === 0 || !oldState.equals(this.currentState);
 	}
@@ -300,15 +301,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * Checks whether a control flow graph vertex should be skipped during visitation.
 	 * By default, we only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes).
 	 */
-	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
-		return vertex.type !== CfgVertexType.EndMarker && vertex.end !== undefined;
+	protected shouldSkipVertex(vertex: CfgVertex): boolean {
+		return !CfgVertex.isMarker(vertex) && !CfgVertex.isBlock(vertex) && CfgVertex.getEnd(vertex) !== undefined;
 	}
 
 	/**
 	 * Whether widening should be performed at a widening point.
 	 * By default, we perform widening when the number of visitation of the widening point reaches the widening threshold of the config.
 	 */
-	protected shouldWiden(wideningPoint: CfgSimpleVertex): boolean {
-		return (this.visited.get(wideningPoint.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
+	protected shouldWiden(wideningPoint: CfgVertex): boolean {
+		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 }

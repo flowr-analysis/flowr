@@ -1,12 +1,9 @@
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import {
-	CfgEdgeType,
-	type CfgSimpleVertex,
-	CfgVertexType,
-	type ControlFlowInformation,
-	edgeTypeToString
+	CfgEdge,
+	CfgVertex,
+	type ControlFlowInformation
 } from '../../control-flow/control-flow-graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { reconstructToCode } from '../../reconstruct/reconstruct';
@@ -35,11 +32,11 @@ function getLexeme(n?: RNodeWithParent) {
 }
 
 
-function cfgOfNode(vert: CfgSimpleVertex, normalizedVertex: RNodeWithParent | undefined, id: NodeId, content: string | undefined, output: string): string {
+function cfgOfNode(vert: CfgVertex, normalizedVertex: RNodeWithParent | undefined, id: NodeId, content: string | undefined, output: string): string {
 	if(normalizedVertex && content !== undefined) {
-		const start = vert.type === CfgVertexType.Expression ? '([' : '[';
-		const end = vert.type === CfgVertexType.Expression ? '])' : ']';
-		const name = `"\`${escapeMarkdown(normalizedVertex.type)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}${vert.callTargets ? '\n calls:' + escapeMarkdown(JSON.stringify([...vert.callTargets])) : ''}\`"`;
+		const start = CfgVertex.isExpression(vert) ? '([' : '[';
+		const end = CfgVertex.isExpression(vert) ? '])' : ']';
+		const name = `"\`${escapeMarkdown(normalizedVertex.type)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}${CfgVertex.getCallTargets(vert) ? '\n calls:' + escapeMarkdown(JSON.stringify([...CfgVertex.getCallTargets(vert) as Set<NodeId>])) : ''}\`"`;
 		output += `    n${id}${start}${name}${end}\n`;
 	} else {
 		output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;
@@ -50,28 +47,26 @@ function cfgOfNode(vert: CfgSimpleVertex, normalizedVertex: RNodeWithParent | un
 const getDirRegex = /flowchart\s+([A-Za-z]+)/;
 
 
-function shouldIncludeNode(simplify: boolean, element: CfgSimpleVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
+function shouldIncludeNode(simplify: boolean, v: CfgVertex, include: ReadonlySet<MermaidMarkdownMark>): boolean {
 	if(simplify) {
 		// Only basic blocks are shown, so include the BB, if at least one child is selected
-		return element.type == CfgVertexType.Block && element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).some(elem => include.has(elem.id));
+		return CfgVertex.isBlock(v) && CfgVertex.getBasicBlockElements(v)
+			.filter(elem => !CfgVertex.isMarker(elem))
+			.some(elem => include.has(CfgVertex.getId(elem)));
 
 	} else {
 		// Basic blocks and vertices are shown, include the BB, if all children are highlighted
-		return element.type == CfgVertexType.Block
-			? element.elems.filter(elem => elem.type !== CfgVertexType.EndMarker).every(elem => include.has(elem.id))
-			: include.has(element.id);
+		return CfgVertex.isBlock(v)
+			? CfgVertex.getBasicBlockElements(v)
+				.filter(elem => !CfgVertex.isMarker(elem))
+				.every(elem => include.has(CfgVertex.getId(elem)))
+			: include.has(CfgVertex.getId(v));
 	}
 }
 
 /**
  * Convert the control flow graph to a mermaid string.
- * @param cfg              - The control flow graph to convert.
- * @param normalizedAst    - The normalized AST to use for the vertex content.
- * @param prefix           - The prefix to use for the mermaid string.
- * @param simplify         - Whether to simplify the control flow graph (especially in the context of basic blocks).
- * @param markStyle        - The style to use for marked vertices and edges.
- * @param includeOnlyIds   - If provided, only include the vertices with the given IDs.
- * @param mark             - If provided, mark the given vertices and edges.
+ * @see {@link MermaidCfgGraphPrinterInfo} for additional options.
  */
 export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, { prefix = 'flowchart BT\n', simplify = false, markStyle = MermaidDefaultMarkStyle, entryPointStyle = MermaidEntryPointDefaultMarkStyle, exitPointStyle = MermaidExitPointDefaultMarkStyle, includeOnlyIds, mark, includeBasicBlockLabel = true, basicBlockCharacterLimit = 100 }: MermaidCfgGraphPrinterInfo = {}): string {
 	const hasBbandSimplify = simplify && cfg.graph.mayHaveBasicBlocks();
@@ -91,7 +86,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		}
 		// if we have a filter, we automatically add all vertices in the cfg that are *markers* for these ids and
 		for(const [id, v] of cfg.graph.vertices()) {
-			if(v.type === CfgVertexType.EndMarker && completed.has(v.root)) {
+			if(CfgVertex.isMarker(v) && completed.has(CfgVertex.unpackRootId(v))) {
 				completed.add(id);
 			}
 		}
@@ -104,54 +99,49 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 	for(const [id, vertex] of cfg.graph.vertices(false)) {
 		const normalizedVertex = normalizedAst?.idMap.get(id);
 		const content = getLexeme(normalizedVertex);
-		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.Expression && cfg.graph.hasVertex(id + '-exit')) {
-			output += `    subgraph ${RType.ExpressionList} ${normalizedVertex?.info.fullLexeme ?? id}\n`;
-			output += `        direction ${dirIs}\n`;
-		}
-		if(vertex.type === CfgVertexType.Block) {
+		if(CfgVertex.isBlock(vertex)) {
+			const elems = CfgVertex.getBasicBlockElements(vertex);
 			if(simplify) {
-				if(includeOnlyIds && !vertex.elems.some(elem => includeOnlyIds.has(elem.id))) {
+				if(includeOnlyIds && !elems.some(elem => includeOnlyIds.has(CfgVertex.getId(elem)))) {
 					continue;
 				}
 
-				const ids = vertex.elems?.map(e => e.id) ?? [];
+				const ids = elems?.map(CfgVertex.getId) ?? [];
 				const reconstruct = limitTo(reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code, basicBlockCharacterLimit);
 				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${escapeMarkdown(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
-				diagramIncludedIds.add(vertex.id);
+				diagramIncludedIds.add(CfgVertex.getId(vertex));
 			} else {
-				if(includeOnlyIds && !vertex.elems.some(elem => includeOnlyIds.has(elem.id))) {
+				if(includeOnlyIds && !elems.some(elem => includeOnlyIds.has(CfgVertex.getId(elem)))) {
 					continue;
 				}
 
-				output += `    subgraph n${vertex.id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
+				output += `    subgraph n${id} [Block ${normalizedVertex?.info.fullLexeme ?? id}]\n`;
 				output += `        direction ${dirIs}\n`;
-				diagramIncludedIds.add(vertex.id);
+				diagramIncludedIds.add(id);
 				let last: NodeId | undefined = undefined;
-				for(const element of vertex.elems ?? []) {
-					if(includeOnlyIds && !includeOnlyIds.has(element.id)) {
+				for(const element of elems ?? []) {
+					if(includeOnlyIds && !includeOnlyIds.has(CfgVertex.getId(element))) {
 						last = undefined;
 						continue;
 					}
 
-					const childNormalizedVertex = normalizedAst?.idMap.get(element.id);
+					const eid = CfgVertex.getId(element);
+					const childNormalizedVertex = normalizedAst?.idMap.get(eid);
 					const childContent = getLexeme(childNormalizedVertex);
-					output = cfgOfNode(vertex, childNormalizedVertex, element.id, childContent, output);
-					diagramIncludedIds.add(element.id);
+					output = cfgOfNode(vertex, childNormalizedVertex, eid, childContent, output);
+					diagramIncludedIds.add(eid);
 					// just to keep the order
 					if(last) {
-						output += `    ${last} -.-> n${element.id}\n`;
+						output += `    ${last} -.-> n${eid}\n`;
 					}
-					last = `n${element.id}`;
+					last = `n${eid}`;
 				}
 				output += '    end\n';
 			}
 		} else if(!includeOnlyIds || includeOnlyIds.has(id)) {
 			output = cfgOfNode(vertex, normalizedVertex, id, content, output);
-			diagramIncludedIds.add(vertex.id);
-		}
-		if(vertex.name === RType.ExpressionList && vertex.type === CfgVertexType.EndMarker) {
-			output += '    end\n';
+			diagramIncludedIds.add(id);
 		}
 	}
 	for(const [from, targets] of cfg.graph.edges()) {
@@ -163,9 +153,10 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 				continue;
 			}
 
-			const edgeType = edge.label === CfgEdgeType.Cd ? '-->' : '-.->';
-			const edgeSuffix = edge.label === CfgEdgeType.Cd ? ` (${edge.when})` : '';
-			output += `    n${from} ${edgeType}|"${escapeMarkdown(edgeTypeToString(edge.label))}${edgeSuffix}"| n${to}\n`;
+			const isCd = CfgEdge.isControlDependency(edge);
+			const edgeType = isCd ? '-->' : '-.->';
+			const edgeSuffix = isCd ? ` (${CfgEdge.unpackWhen(edge)})` : '';
+			output += `    n${from} ${edgeType}|"${escapeMarkdown(CfgEdge.typeToString(edge))}${edgeSuffix}"| n${to}\n`;
 		}
 	}
 
@@ -180,9 +171,9 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 		}
 	}
 	if(mark) {
-		for(const [_, vertex] of cfg.graph.vertices(true)) {
+		for(const [id, vertex] of cfg.graph.vertices(true)) {
 			if(shouldIncludeNode(hasBbandSimplify, vertex, mark)) {
-				output += `    style n${vertex.id} ${markStyle.vertex}`;
+				output += `    style n${id} ${markStyle.vertex}`;
 			}
 		}
 	}

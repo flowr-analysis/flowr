@@ -1,5 +1,5 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrFile } from '../../../context/flowr-file';
+import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 import { removeRQuotes } from '../../../../r-bridge/retriever';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
@@ -19,6 +19,7 @@ import {
 	toUnnamedArgument
 } from '../../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { SourceRange } from '../../../../util/range';
+import { parseRRegexPattern } from '../../../../util/r-regex';
 
 export interface NamespaceInfo {
 	exportedSymbols:      string[];
@@ -55,6 +56,15 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.ctx = ctx;
+	}
+
+	/**
+	 * Creates a {@link FlowrNamespaceFile} from a given {@link NamespaceFormat}, path and optional roles. This is useful if you already have the namespace content parsed and want to create a namespace file instance without re-parsing.
+	 */
+	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
+		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
+		file.setContent(fmt);
+		return file;
 	}
 
 	/**
@@ -124,7 +134,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	// pattern
 	for(const pattern of nsInfo.exportedPatterns) {
-		const regex = new RegExp(pattern);
+		const regex = parseRRegexPattern(pattern);
 		if(regex.test(name)) {
 			return true;
 		}
@@ -157,7 +167,7 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 		return parseNamespaceSimple(file);
 	}
 	const f = nast.ast.files[0];
-	if(!f || !f.root) {
+	if(!f?.root) {
 		return parseNamespaceSimple(file);
 	}
 	const nothing = getEmptyNamespaceFormat;

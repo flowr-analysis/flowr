@@ -154,8 +154,8 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
 	visitAst((await input.normalize()).ast.files.map(f => f.root), node => {
 		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
-		if(treeSitterInfo.treeSitterId) {
-			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
+		if(treeSitterInfo.tsId) {
+			nodesByTreeSitterId.set(treeSitterInfo.tsId, node);
 		} else {
 			searchLogger.debug(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
 		}

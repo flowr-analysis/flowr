@@ -5,7 +5,7 @@ import { rawPrompt } from '../prompt';
 import { versionCommand } from './repl-version';
 import { parseCommand } from './repl-parse';
 import { executeCommand } from './repl-execute';
-import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
+import { normalizeCommand, normalizeHashCommand, normalizeStarCommand } from './repl-normalize';
 import {
 	dataflowAsciiCommand,
 	dataflowCommand, dataflowSilentCommand,
@@ -87,6 +87,7 @@ const _commands = {
 	'parse':           parseCommand,
 	'normalize':       normalizeCommand,
 	'normalize*':      normalizeStarCommand,
+	'normalize#':      normalizeHashCommand,
 	'dataflow':        dataflowCommand,
 	'dataflow*':       dataflowStarCommand,
 	'dataflowsimple':  dataflowSimplifiedCommand,

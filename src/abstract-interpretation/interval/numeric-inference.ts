@@ -3,10 +3,9 @@ import { IntervalDomain } from '../domains/interval-domain';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../dataflow/graph/vertex';
 import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { applyIntervalSemantics } from './semantics';
-import { Identifier } from '../../dataflow/environments/identifier';
 import { isUndefined } from '../../util/assert';
+import { FunctionArgument } from '../../dataflow/graph/graph';
 
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
@@ -24,6 +23,11 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
+		if(isNaN(node.content.num)) {
+			// NaN is part of top, which is represented as undefined in our implementation, so we can just skip it here
+			return;
+		}
+
 		const interval = new IntervalDomain([node.content.num, node.content.num]);
 		this.currentState.set(node.info.id, interval);
 	}
@@ -31,9 +35,9 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
 		super.onFunctionCall({ call });
 
-		const args = call.args.filter(arg => arg !== EmptyArgument).map(arg => this.getAbstractValue(arg.nodeId));
+		const args = call.args.filter(FunctionArgument.isNotEmpty).map(arg => this.getAbstractValue(arg.nodeId));
 
-		const result = applyIntervalSemantics(Identifier.getName(call.name), args);
+		const result = applyIntervalSemantics(call.name, args);
 
 		if(isUndefined(result)) {
 			return;

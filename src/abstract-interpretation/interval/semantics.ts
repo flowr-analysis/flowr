@@ -1,17 +1,16 @@
 import { IntervalDomain } from '../domains/interval-domain';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { isUndefined } from '../../util/assert';
 
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper = {
-	'+':       addSemantics,
-	'-':       subtractSemantics,
-	'*':       multiplySemantics,
-	'length':  lengthSemantics,
-	'unknown': () => undefined,
-} as const satisfies Record<string, IntervalSemanticsMapperInfo>;
-
-type IntervalSemanticsMapperInfo = IntervalSemantics;
+const IntervalSemanticsMapper: [identifier: Identifier, semantics: IntervalSemanticsMapperInfo][] = [
+	[Identifier.make('+'), addSemantics],
+	[Identifier.make('-'), subtractSemantics],
+	[Identifier.make('*'), multiplySemantics],
+	[Identifier.make('length'), lengthSemantics],
+] as const;
 
 /**
  * Semantics definition function for the interval domain.
@@ -21,25 +20,25 @@ type IntervalSemanticsMapperInfo = IntervalSemantics;
  */
 type IntervalSemantics = (domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]) => (IntervalDomain | undefined);
 
-/** All available interval operations. */
-export type IntervalOperationName = keyof typeof IntervalSemanticsMapper;
-
-/** The names of all interval operations. */
-export const IntervalOperationNames = Object.keys(IntervalSemanticsMapper) as IntervalOperationName[];
+type IntervalSemanticsMapperInfo = IntervalSemantics;
 
 /**
  * Applies the abstract semantics of the provided function name to the provided args.
- * @param fName - The name of the function/operator.
+ * @param functionIdentifier - The {@link Identifier} of the function/operator.
  * @param args - The resolved inferred intervals of the arguments.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalSemantics(fName: string, args: (IntervalDomain | undefined)[]): IntervalDomain | undefined {
-	// Check if fName is a valid IntervalOperationName. If not, set to 'unknown' to return undefined semantics.
-	if(!IntervalOperationNames.includes(fName as IntervalOperationName)) {
-		fName = 'unknown';
+export function applyIntervalSemantics(functionIdentifier: Identifier, args: (IntervalDomain | undefined)[]): IntervalDomain | undefined {
+	const match = IntervalSemanticsMapper.find(([id, _]) => Identifier.matches(id, functionIdentifier));
+
+	if(isUndefined(match)) {
+		console.warn(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
+		return undefined;
 	}
 
-	return IntervalSemanticsMapper[fName as IntervalOperationName](IntervalDomain.bottom(), args);
+	const [_, semantics] = match;
+
+	return semantics(IntervalDomain.bottom(), args);
 }
 
 function addSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
@@ -47,7 +46,7 @@ function addSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | u
 	if(args.length === 1) {
 		const left = args[0];
 		if(left?.isBottom()) {
-			return IntervalDomain.bottom();
+			return domain.bottom();
 		}
 		if(left?.isValue()) {
 			const [a, b] = left.value;
@@ -62,7 +61,7 @@ function addSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | u
 		const right = args[1];
 
 		if(left?.isBottom() || right?.isBottom()) {
-			return IntervalDomain.bottom();
+			return domain.bottom();
 		}
 
 		if(left?.isValue() && right?.isValue()) {
@@ -90,7 +89,7 @@ function subtractSemantics(domain: IntervalDomain, args: readonly (IntervalDomai
 	if(args.length === 1) {
 		const left = args[0];
 		if(left?.isBottom()) {
-			return IntervalDomain.bottom();
+			return domain.bottom();
 		}
 		if(left?.isValue()) {
 			const [a, b] = left.value;
@@ -121,7 +120,7 @@ function multiplySemantics(domain: IntervalDomain, args: readonly (IntervalDomai
 	const right = args[1];
 
 	if(left?.isBottom() || right?.isBottom()) {
-		return IntervalDomain.bottom();
+		return domain.bottom();
 	}
 
 	if(left?.isValue() && right?.isValue()) {

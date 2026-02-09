@@ -180,7 +180,7 @@ df[6, "value"]
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types, RemoteFlowrFilePathBaseRef)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, RemoteFlowrFilePathBaseRef, types)}]\\
 	${tags}
 
 		`.trim()));
@@ -196,7 +196,7 @@ ${tags}
 This rule is a ${certaintyText} rule.
  
 ${rule.info.description}\\
-_This linting rule is implemented in ${shortLinkFile(ruleType,  types, RemoteFlowrFilePathBaseRef)}._
+_This linting rule is implemented in ${shortLinkFile(ruleType,  RemoteFlowrFilePathBaseRef, types)}._
 
 
 ### Configuration

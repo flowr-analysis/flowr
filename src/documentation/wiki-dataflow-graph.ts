@@ -61,6 +61,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -707,8 +708,8 @@ However, nested definitions can carry it (in the nested case, \`x\` is defined b
 		name:        'Calls Edge',
 		type:        EdgeType.Calls,
 		description: `Link the [function call](#function-call-vertex) to the [function definition](#function-definition-vertex) that is called. To find all called definitions, 
-		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage('wiki/Dataflow Graph', 'working with the dataflow graph', 'Working-with-the-Dataflow-Graph')}.
-		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
+		please use the ${ctx.link(getOriginInDfg.name)} function, as explained in ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'working with the dataflow graph', 'Working-with-the-Dataflow-Graph')}.
+		If you are interested in the call graph, refer to ${ctx.linkM(FlowrAnalyzer, 'callGraph')} and consult the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'call graph wiki', 'perspectives-cg')} for more information.
 		`,
 		code:             'foo <- function() {}\nfoo()',
 		expectedSubgraph: emptyGraph().calls('2@foo', '1@function')
@@ -884,7 +885,7 @@ export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 		return `
 This page briefly summarizes flowR's dataflow graph, represented by the ${ctx.link(DataflowGraph)} class within the code.
 In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage<AllWikiDocuments>('wiki/Capabilities')} page.
 In summary, we discuss the following topics:
 
 - [Vertices](#vertices)
@@ -906,7 +907,7 @@ wiki page if you are unsure.
 > [!TIP]
 > If you want to investigate the dataflow graph,
 > you can either use the [Visual Studio Code extension](${FlowrVsCode}) or the ${ctx.replCmd('dataflow*')}
-> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information). 
+> command in the REPL (see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface', 'Interface wiki page')} for more information). 
 > There is also a simplified perspective available with ${ctx.replCmd('dataflowsimple*')} that does not show everything but is easier to read.
 > For small graphs, you can also use ${ctx.replCmd('dataflowascii')} to print the graph as ASCII art.
 >
@@ -922,7 +923,7 @@ ${await printDfGraphForCode(treeSitter, 'x <- 3\ny <- x + 1\ny')}
 The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
 ${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, 
-although they are explicitly no data dependency and relate to the ${ctx.linkPage('wiki/Control Flow Graph')}. 
+although they are explicitly no data dependency and relate to the ${ctx.linkPage<AllWikiDocuments>('wiki/Control Flow Graph')}. 
 
 <details open>
 
@@ -1153,8 +1154,8 @@ ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
 
-* The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
-* The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
+* The **${ctx.linkPage<AllWikiDocuments>('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
+* The **${ctx.linkPage<AllWikiDocuments>('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
 * ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
@@ -1167,8 +1168,8 @@ FlowR also provides various helper objects (with the same name as the correspond
 * ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
 * ${ctx.link('FunctionArgument', undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
 
-Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
+Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage<AllWikiDocuments>('wiki/Capabilities', 'capabilities')} page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 

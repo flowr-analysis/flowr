@@ -36,6 +36,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { prefixLines } from './doc-util/doc-general';
 import { codeBlock } from './doc-util/doc-code';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 const CfgLongExample = `f <- function(a, b = 3) {
  if(a > b) {
@@ -556,7 +557,7 @@ ${
 
 ${section('Working With Exit Points', 3, 'cfg-exit-points')}
 
-With the ${ctx.linkPage('wiki/Dataflow Graph')} you already get a \`${DfEdge.typeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
+With the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph')} you already get a \`${DfEdge.typeToName(EdgeType.Returns)}\` edge that tells you what a function call returns 
 (given that this function call does neither transform nor create a value).
 But the control flow perspective gives you more! Given a simple addition like \`x + 1\`, the CFG looks like this:
 

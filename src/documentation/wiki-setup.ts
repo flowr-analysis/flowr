@@ -1,6 +1,7 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrDockerRef, FlowrPositron, FlowrRStudioAddin, FlowrVsCode } from './doc-util/doc-files';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -61,7 +62,7 @@ To start flowr as a server, you can run:
 docker run -it --rm -p1042:1042 eagleoutice/flowr --server
 \`\`\`
 
-For more information, see the ${ctx.linkPage('wiki/Interface')} wiki page.
+For more information, see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page.
 
 ## ⚒️ Building From Scratch
 

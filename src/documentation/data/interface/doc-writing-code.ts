@@ -7,6 +7,7 @@ import { requestFromInput } from '../../../r-bridge/retriever';
 import { block, details } from '../../doc-util/doc-structure';
 import { TreeSitterExecutor } from '../../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
+import type { AllWikiDocuments } from '../../../cli/wiki';
 
 async function staticSliceExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -28,7 +29,7 @@ async function staticSliceExample() {
  */
 export function explainWritingCode(_shell: RShell, ctx: GeneralDocContext): string {
 	return `_flowR_ can be used as a ${ctx.linkPage('flowr:npm', 'module')} and offers several main classes and interfaces that are interesting for extension writers 
-(see the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} or the ${ctx.linkPage('wiki/Core')} wiki page for more information).
+(see the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} or the ${ctx.linkPage<AllWikiDocuments>('wiki/Core')} wiki page for more information).
 
 ### Creating Analyses with _flowR_
 
@@ -39,13 +40,13 @@ ${
 	ctx.code(staticSliceExample, { dropLinesEnd: 2, dropLinesStart: 1, hideDefinedAt: true })
 }
 
-For more information, please have a look at the ${ctx.linkPage('wiki/Analyzer')} wiki page, which explains how to construct and use the ${ctx.link(FlowrAnalyzer)} in more detail.
-To work with specific perspectives, you can also consult the respective pages like the ${ctx.linkPage('wiki/Dataflow Graph')} or the ${ctx.linkPage('wiki/Abstract Interpretation')} wiki pages.
+For more information, please have a look at the ${ctx.linkPage<AllWikiDocuments>('wiki/Analyzer')} wiki page, which explains how to construct and use the ${ctx.link(FlowrAnalyzer)} in more detail.
+To work with specific perspectives, you can also consult the respective pages like the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph')} or the ${ctx.linkPage<AllWikiDocuments>('wiki/Abstract Interpretation')} wiki pages.
         
 ### The Pipeline Executor (Low-Level Interface)
 
 Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
-However, with continuous updates, the ${ctx.linkPage('wiki/Dataflow Graph')} repeatedly proves to be the more interesting part.
+However, with continuous updates, the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph')} repeatedly proves to be the more interesting part.
 With this, we restructured _flowR_'s originally *hardcoded* pipeline to be far more flexible. 
 Now, it can be theoretically extended or replaced with arbitrary steps, optional steps, and what we call 'decorations' of these steps. 
 In short, a slicing pipeline using the ${ctx.link(PipelineExecutor)} looks like this:
@@ -82,7 +83,7 @@ See the in-code documentation for more information.
 ### Using the ${ctx.link(RShell)} to Interact with R
 
 The ${ctx.link(RShell)} class allows interfacing with the \`R\`&nbsp;ecosystem installed on the host system.
-Please have a look at ${ctx.linkPage('wiki/Engines', 'flowR\'s Engines')} for more information on alternatives (for example, the ${ctx.link(TreeSitterExecutor)}).
+Please have a look at ${ctx.linkPage<AllWikiDocuments>('wiki/Engines', 'flowR\'s Engines')} for more information on alternatives (for example, the ${ctx.link(TreeSitterExecutor)}).
 
 ${
 	block({

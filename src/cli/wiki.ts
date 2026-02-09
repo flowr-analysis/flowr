@@ -1,4 +1,3 @@
-import { wikiCli } from '../documentation/wiki-mk/make-wiki';
 import { flowrVersion } from '../util/version';
 import { WikiFaq } from '../documentation/wiki-faq';
 import {
@@ -21,6 +20,7 @@ import { WikiOverview } from '../documentation/wiki-overview';
 import { WikiAbsint } from '../documentation/wiki-absint';
 import type { DocMakerLike } from '../documentation/wiki-mk/doc-maker';
 import { FlowrRefs } from '../documentation/doc-util/doc-files';
+import { wikiCli } from '../documentation/wiki-mk/cli';
 
 export const AllWikiDocuments = [
 	new WikiFaq(),

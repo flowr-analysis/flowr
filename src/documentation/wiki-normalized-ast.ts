@@ -15,6 +15,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -222,7 +223,7 @@ As a simple showcase, we want to use the fold to evaluate numeric expressions co
 
 ${ctx.code(MyMathFold, { dropLinesStart: 1 })}
 
-Now, we can use the ${ctx.link(FlowrAnalyzer)} (see the ${ctx.linkPage('wiki/Analyzer')} wiki page) to get the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} and apply the fold:
+Now, we can use the ${ctx.link(FlowrAnalyzer)} (see the ${ctx.linkPage<AllWikiDocuments>('wiki/Analyzer')} wiki page) to get the ${ctx.linkPage<AllWikiDocuments>('wiki/Normalized AST', 'normalized AST')} and apply the fold:
  
 ${ctx.code(useMyMathFoldExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 

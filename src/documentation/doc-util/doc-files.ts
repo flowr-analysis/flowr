@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import type { DocRefs } from './doc-refs';
+import type { DocRefs } from '../wiki-mk/doc-context';
 
 export const FlowrGithubGroupName = 'flowr-analysis';
 export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;

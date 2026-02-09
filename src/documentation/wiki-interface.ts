@@ -21,6 +21,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { explainWritingCode } from './data/interface/doc-writing-code';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
@@ -104,7 +105,7 @@ async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise
 	return `
 > [!NOTE]
 > To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${ctx.cliOption('flowr', 'r-session-access')}.
-> Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
+> Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage<AllWikiDocuments>('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore, 
 there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error 
@@ -148,8 +149,8 @@ the REPL will re-use previously obtained information and not re-parse the code a
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
-Of special note, the ${ctx.linkPage('wiki/Query API', 'Config Query', 'Config-Query')}
-can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
+Of special note, the ${ctx.linkPage<AllWikiDocuments>('wiki/Query API', 'Config Query', 'Config-Query')}
+can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage<AllWikiDocuments>('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
 
 ### Example: Retrieving the Dataflow Graph
 
@@ -206,7 +207,7 @@ ${await documentReplSession(parser, [{
 	description: 'Run the linter on the given code, with only the `dead-code` rule enabled.'
 }], { openOutput: true })}
 
-For more information on the available queries, please check out the ${ctx.linkPage('wiki/Query API', 'Query API')}.
+For more information on the available queries, please check out the ${ctx.linkPage<AllWikiDocuments>('wiki/Query API', 'Query API')}.
 `;
 }
 
@@ -328,7 +329,7 @@ export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 
 	protected async text({ shell, ctx, treeSitter }: DocMakerArgs): Promise<string> {
 		return `
-Although far from being as detailed as the in-depth explanation of ${ctx.linkPage('wiki/Core', '_flowR_')},
+Although far from being as detailed as the in-depth explanation of ${ctx.linkPage<AllWikiDocuments>('wiki/Core', '_flowR_')},
 this wiki page explains how to interface with _flowR_ in more detail.
 In general, command line arguments and other options provide short descriptions on hover over.
 

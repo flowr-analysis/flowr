@@ -21,6 +21,7 @@ import { NewIssueUrl } from './doc-util/doc-issue';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{
@@ -194,7 +195,7 @@ ${await documentReplSession(treeSitter, [{
    `), '    ')}
 
 * 📚 **dependency analysis**\\
-  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
+  Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage<AllWikiDocuments>('wiki/Query API', 'queries')} to get more information about your code.
   An important query is the [dependencies query](${FlowrWikiBaseRef}/Query-API#dependencies-query), which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   
@@ -208,17 +209,17 @@ The following showcases the dependency view of the [Visual Studio Code extension
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
-  and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
+  and consult the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
 You can investigate flowR's analyses using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl).
-Commands like ${getReplCommand('dataflow*')} allow you to view a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for a given R script.
+Commands like ${getReplCommand('dataflow*')} allow you to view a ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'dataflow graph')} for a given R script.
 
 Let's have a look at the following example:
 
 ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
-To get the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for this script, you can use the following command:
+To get the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'dataflow graph')} for this script, you can use the following command:
 
 ${await documentReplSession(treeSitter, [{
 	command:     ':dataflow* test/testfiles/example.R',
@@ -243,8 +244,8 @@ If you are already using flowR and want to give feedback, please consider fillin
  
 ## ⭐ Getting Started
 
-To get started with _flowR_ and its features, please check out the ${ctx.linkPage('wiki/Overview')} wiki page. 
-The ${ctx.linkPage('wiki/Setup')} wiki page explains how you can download and setup _flowR_ on your system. 
+To get started with _flowR_ and its features, please check out the ${ctx.linkPage<AllWikiDocuments>('wiki/Overview')} wiki page. 
+The ${ctx.linkPage<AllWikiDocuments>('wiki/Setup')} wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
 ${codeBlock('shell', 'docker run -it --rm eagleoutice/flowr')}
@@ -281,7 +282,7 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
+We welcome every contribution! Please check out the ${ctx.linkPage<AllWikiDocuments>('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
 
 ### Contributors
 

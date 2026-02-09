@@ -1,6 +1,7 @@
 import type { DocMakerArgs, DocMakerLike, DocMakerOutputArgs } from './doc-maker';
 import { RShell } from '../../r-bridge/shell';
 import { TreeSitterExecutor } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { DocRefs } from './doc-context';
 import { makeDocContextForTypes } from './doc-context';
 import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import fs from 'fs';
@@ -10,7 +11,6 @@ import commandLineUsage from 'command-line-usage';
 import commandLineArgs from 'command-line-args';
 import { setMinLevelOfAllLogs } from '../../../test/functionality/_helper/log';
 import { LogLevel } from '../../util/log';
-import type { DocRefs } from '../doc-util/doc-refs';
 
 function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	return wikis.slice().sort((a, b) => {

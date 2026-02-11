@@ -51,9 +51,9 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 		/RExpressionList/,
 		/RSymbol/,
 		/.*/,
-		/n1-exit/,
+		/n1-e/,
 		/n0.*n1/,
-		/n1-exit.*n0/,
+		/n1-e.*n0/,
 		/style n1.*/
 	]);
 	assertMermaidVisualization(`x <- true
@@ -67,7 +67,7 @@ if(x) {
 		/.*/,
 		/RBinaryOp/,
 		/.*/,
-		/n2-exit/,
+		/n2-e/,
 		/RIfThenElse/
 	]);
 	assertMermaidVisualization(`x <- true
@@ -78,17 +78,17 @@ if(x) {
 		/.*/,
 		/RFunctionCall/,
 		/.*/,
-		/n9-exit/,
+		/n9-e/,
 		/RArgument/,
 		/.*/,
 		/RSymbol/,
 		/.*/,
-		/n8-exit/,
+		/n8-e/,
 		/n6.*n9/,
 		/n7.*n8/,
-		/n8-exit.*n7/,
+		/n8-e.*n7/,
 		/n8.*n6/,
-		/n9-exit.*n8-exit/
+		/n9-e.*n8-e/
 	], {
 		selectedVertices: ['3@print', '3@x']
 	});

@@ -1,6 +1,6 @@
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
-import { type ControlFlowGraph, CfgEdgeType } from './control-flow-graph';
+import { type ControlFlowGraph, CfgEdge, CfgVertex } from './control-flow-graph';
 
 /**
  * Determines if node `a` happens before node `b` in the control flow graph.
@@ -21,7 +21,7 @@ export function happensBefore(cfg: ControlFlowGraph, a: NodeId, b: NodeId): Tern
 		}
 		visited.add(current);
 		for(const [id, t] of cfg.outgoingEdges(current) ?? []) {
-			const marker = t.label === CfgEdgeType.Cd ? `${t.caused}-exit` : useCd;
+			const marker = CfgEdge.isControlDependency(t) ? CfgVertex.toExitId(CfgEdge.unpackCause(t)) : useCd;
 			stack.push([id, useCd ?? marker]);
 		}
 	}

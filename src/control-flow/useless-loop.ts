@@ -10,6 +10,7 @@ import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/de
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 import type { ControlFlowInformation } from './control-flow-graph';
+import { CfgVertex } from './control-flow-graph';
 import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
@@ -108,7 +109,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 		const g = this.config.controlFlow.graph;
 		const ingoing = (i: NodeId) => g.ingoingEdges(i);
 
-		const exits = new Set<NodeId>(g.getVertex(this.loopToCheck)?.end as NodeId[] ?? []);
+		const exits = new Set<NodeId>(CfgVertex.getEnd(g.getVertex(this.loopToCheck)) as NodeId[] ?? []);
 		guard(exits.size !== 0, "Can't find end of loop");
 
 		const stack: NodeId[] = [this.loopToCheck];

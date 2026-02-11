@@ -3,6 +3,8 @@ import type {
 	CfgStatementVertex,
 	ControlFlowInformation
 } from './control-flow-graph';
+import { CfgVertex
+} from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	NormalizedAst,
@@ -72,7 +74,7 @@ export class SyntaxAwareCfgGuidedVisitor<
 	}
 
 	private onExprOrStmtNode(node: CfgStatementVertex | CfgExpressionVertex): void {
-		const astVertex = this.getNormalizedAst(node.id);
+		const astVertex = this.getNormalizedAst(CfgVertex.getId(node));
 		if(!astVertex) {
 			return;
 		}

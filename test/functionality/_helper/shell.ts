@@ -118,7 +118,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
 			value = [value[0], 0, value[2], 0];
-		} else if(key === 'treeSitterId') {
+		} else if(key === 'tsId') {
 			// we ignore tree-sitter-specific metadata
 			return undefined;
 		}

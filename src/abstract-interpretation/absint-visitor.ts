@@ -1,5 +1,5 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
@@ -138,7 +138,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	public getEndState(): StateAbstractDomain<Domain> {
 		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
-		const exitNodes = exitPoints.map(vertex => getVertexRootId(vertex)).filter(isNotUndefined);
+		const exitNodes = exitPoints.map(CfgVertex.getRootId).filter(isNotUndefined);
 		const states = exitNodes.map(node => this.trace.get(node)).filter(isNotUndefined);
 
 		return AbstractDomain.joinAll(states, this._currentState.top());
@@ -182,7 +182,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
-		const predecessors = this.getPredecessorNodes(vertex.id);
+		const predecessors = this.getPredecessorNodes(CfgVertex.getId(vertex));
 		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
 
 		// retrieve new abstract state by joining states of predecessor nodes
@@ -192,7 +192,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this._currentState = AbstractDomain.joinAll(predecessorStates, this._currentState.top());
 			this.stateCopied = true;
 		}
-		const nodeId = getVertexRootId(vertex);
+		const nodeId = CfgVertex.getRootId(vertex);
 
 		// differentiate between widening points and other vertices
 		if(this.isWideningPoint(nodeId)) {
@@ -300,9 +300,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 				if(vertex === undefined) {
 					return [];
 				} else if(this.shouldSkipVertex(vertex)) {
-					return this.getPredecessorNodes(vertex.id);
+					return this.getPredecessorNodes(CfgVertex.getId(vertex));
 				} else {
-					return [getVertexRootId(vertex)];
+					return [CfgVertex.getRootId(vertex)];
 				}
 			})
 			.toArray() ?? [];
@@ -342,19 +342,19 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * Checks whether a control flow graph vertex should be skipped during visitation.
 	 * By default, we only process entry vertices of widening points, vertices of leaf nodes, and exit vertices (no entry nodes of complex nodes).
 	 */
-	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
-		if(this.isWideningPoint(getVertexRootId(vertex))) {
+	protected shouldSkipVertex(vertex: CfgVertex): boolean {
+		if(this.isWideningPoint(CfgVertex.getRootId(vertex))) {
 			// skip exit vertices of widening points
-			return vertex.type === CfgVertexType.EndMarker;
+			return CfgVertex.isMarker(vertex);
 		}
-		return vertex.type !== CfgVertexType.EndMarker && vertex.end !== undefined;
+		return !CfgVertex.isMarker(vertex) && !CfgVertex.isBlock(vertex) && CfgVertex.getEnd(vertex) !== undefined;
 	}
 
 	/**
 	 * Whether widening should be performed at a widening point.
 	 * By default, we perform widening when the number of visits of the widening point reaches the widening threshold of the config.
 	 */
-	protected shouldWiden(wideningPoint: CfgSimpleVertex): boolean {
-		return (this.visited.get(wideningPoint.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
+	protected shouldWiden(wideningPoint: CfgVertex): boolean {
+		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 }

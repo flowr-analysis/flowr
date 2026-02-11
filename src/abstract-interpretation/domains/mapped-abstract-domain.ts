@@ -1,5 +1,6 @@
-import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain, domainElementToString } from './abstract-domain';
 import { Top } from './lattice';
+import { Ternary } from '../../util/logic';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
 type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
@@ -48,36 +49,50 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 		return result;
 	}
 
-	public equals(other: this): boolean {
+	public equals(other: this): Ternary {
 		if(this.value === other.value) {
-			return true;
+			return Ternary.Always;
 		} else if(this.value.size !== other.value.size) {
-			return false;
+			return Ternary.Never;
 		}
+
+		let equals = Ternary.Always;
+
 		for(const [key, value] of this.value) {
 			const otherValue = other.get(key);
 
-			if(otherValue === undefined || !value.equals(otherValue)) {
-				return false;
+			if(otherValue === undefined || value.equals(otherValue) === Ternary.Never) {
+				return Ternary.Never;
+			}
+
+			if(value.equals(otherValue) === Ternary.Maybe) {
+				equals = Ternary.Maybe;
 			}
 		}
-		return true;
+		return equals;
 	}
 
-	public leq(other: this): boolean {
+	public leq(other: this): Ternary {
 		if(this.value === other.value) {
-			return true;
+			return Ternary.Always;
 		} else if(this.value.size > other.value.size) {
-			return false;
+			return Ternary.Never;
 		}
+
+		let leq = Ternary.Always;
+
 		for(const [key, value] of this.value) {
 			const otherValue = other.get(key);
 
-			if(otherValue === undefined || !value.leq(otherValue)) {
-				return false;
+			if(otherValue === undefined || value.leq(otherValue) === Ternary.Never) {
+				return Ternary.Never;
+			}
+
+			if(value.leq(otherValue) === Ternary.Maybe) {
+				leq = Ternary.Maybe;
 			}
 		}
-		return true;
+		return leq;
 	}
 
 	public join(other: this): this {

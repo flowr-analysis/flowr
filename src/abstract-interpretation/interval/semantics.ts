@@ -1,11 +1,12 @@
 import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isUndefined } from '../../util/assert';
+import { log } from '../../util/log';
 
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper: [identifier: Identifier, semantics: IntervalSemanticsMapperInfo][] = [
+const IntervalSemanticsMapper: readonly IntervalSemanticsMapperInfo[] = [
 	[Identifier.make('+'), addSemantics],
 	[Identifier.make('-'), subtractSemantics],
 	[Identifier.make('*'), multiplySemantics],
@@ -20,19 +21,19 @@ const IntervalSemanticsMapper: [identifier: Identifier, semantics: IntervalSeman
  */
 type IntervalSemantics = (domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]) => (IntervalDomain | undefined);
 
-type IntervalSemanticsMapperInfo = IntervalSemantics;
+type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: IntervalSemantics];
 
 /**
- * Applies the abstract semantics of the provided function name to the provided args.
+ * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
  * @param functionIdentifier - The {@link Identifier} of the function/operator.
  * @param args - The resolved inferred intervals of the arguments.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalSemantics(functionIdentifier: Identifier, args: (IntervalDomain | undefined)[]): IntervalDomain | undefined {
-	const match = IntervalSemanticsMapper.find(([id, _]) => Identifier.matches(id, functionIdentifier));
+export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: (IntervalDomain | undefined)[]): IntervalDomain | undefined {
+	const match = IntervalSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
-		console.warn(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
+		log.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
 		return undefined;
 	}
 
@@ -44,12 +45,12 @@ export function applyIntervalSemantics(functionIdentifier: Identifier, args: (In
 function addSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
 	// Usage as sign operator
 	if(args.length === 1) {
-		const left = args[0];
-		if(left?.isBottom()) {
+		const arg = args[0];
+		if(arg?.isBottom()) {
 			return domain.bottom();
 		}
-		if(left?.isValue()) {
-			const [a, b] = left.value;
+		if(arg?.isValue()) {
+			const [a, b] = arg.value;
 			return domain.create([a, b]);
 		}
 		return undefined;
@@ -80,19 +81,19 @@ function addSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | u
 		return undefined;
 	}
 
-	console.error('Called add with more than 2 arguments, which is not supported.');
+	log.warn('Called "+" with more than 2 arguments, which is not supported.');
 	return undefined;
 }
 
 function subtractSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
 	// Usage as sign operator
 	if(args.length === 1) {
-		const left = args[0];
-		if(left?.isBottom()) {
+		const arg = args[0];
+		if(arg?.isBottom()) {
 			return domain.bottom();
 		}
-		if(left?.isValue()) {
-			const [a, b] = left.value;
+		if(arg?.isValue()) {
+			const [a, b] = arg.value;
 			return domain.create([-b, -a]);
 		}
 		return undefined;
@@ -106,13 +107,13 @@ function subtractSemantics(domain: IntervalDomain, args: readonly (IntervalDomai
 		return addSemantics(domain, [left, subtractSemantics(domain, [right])]);
 	}
 
-	console.error('Called subtract with more than 2 arguments, which is not supported.');
+	log.warn('Called "-" with more than 2 arguments, which is not supported.');
 	return undefined;
 }
 
 function multiplySemantics(domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
 	if(args.length !== 2) {
-		console.error('Called multiply with more than 2 arguments, which is not supported.');
+		log.warn('Called "*" with more/less than 2 arguments, which is not supported.');
 		return undefined;
 	}
 
@@ -142,14 +143,14 @@ function multiplySemantics(domain: IntervalDomain, args: readonly (IntervalDomai
 
 function lengthSemantics(domain: IntervalDomain, args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
 	if(args.length !== 1) {
-		console.error('Called length with more than 1 argument, which is not supported.');
+		log.warn('Called "length" with more/less than 1 argument, which is not supported.');
 		return undefined;
 	}
 
 	const arg = args[0];
 
 	if(arg?.isBottom()) {
-		return IntervalDomain.bottom();
+		return domain.bottom();
 	}
 
 	if(arg?.isValue()) {

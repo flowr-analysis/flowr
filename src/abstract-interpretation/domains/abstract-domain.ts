@@ -1,10 +1,18 @@
 import { guard } from '../../util/assert';
-import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
+import { Bottom, BottomSymbol, type Lattice, Top, TopSymbol } from './lattice';
+import type { Ternary } from '../../util/logic';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
  */
 export const DEFAULT_INFERENCE_LIMIT = 50;
+
+/**
+ * The default number of significant figures to consider for comparing numerical values in {@link AbstractDomain|AbstractDomains} to avoid floating-point precision issues.
+ * `Infinity` means that the values are compared with their full precision.
+ * The typical range of significant figures for JavaScript numbers is around 1-17 significant digits, so a value of 15 is often a good choice to balance precision and performance.
+ */
+export const DEFAULT_SIGNIFICANT_FIGURES = Infinity;
 
 /**
  * An abstract domain as complete lattice with a widening operator, narrowing operator, concretization function, and abstraction function.
@@ -33,9 +41,9 @@ implements Lattice<Abstract, Top, Bot, Value> {
 
 	public abstract bottom(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
 
-	public abstract equals(other: this): boolean;
+	public abstract equals(other: this): Ternary;
 
-	public abstract leq(other: this): boolean;
+	public abstract leq(other: this): Ternary;
 
 	public abstract join(other: this): this;
 

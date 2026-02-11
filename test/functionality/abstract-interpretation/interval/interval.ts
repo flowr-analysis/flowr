@@ -2,64 +2,78 @@ import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { StateAbstractDomain } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
 import { NumericInferenceVisitor } from '../../../../src/abstract-interpretation/interval/numeric-inference';
-import { assert, beforeAll, expect, test } from 'vitest';
+import { beforeAll, expect, test } from 'vitest';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AbstractDomainValue } from '../../../../src/abstract-interpretation/domains/abstract-domain';
-import { isUndefined } from '../../../../src/util/assert';
-import { Bottom } from '../../../../src/abstract-interpretation/domains/lattice';
+import { DEFAULT_SIGNIFICANT_FIGURES } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { assertUnreachable, isUndefined } from '../../../../src/util/assert';
+import { Ternary } from '../../../../src/util/logic';
 
 /**
- * Helper function to create an interval value for the interval domain.
- * @param start - Lower bound of the interval.
- * @param end - Upper bound of the interval. If not provided, it defaults to the same value as start, creating a scalar interval.
- * @returns An interval value represented as a tuple of [lowerBound, upperBound].
- * @throws Error if the start value is greater than the end value, as this would represent an invalid interval.
+ * Helper for creating interval values and expected results for testing the interval domain inference.
  */
-export function interval(start: number, end = start): AbstractDomainValue<IntervalDomain> {
-	if(start > end) {
-		throw new Error(`Invalid interval with start ${start} greater than end ${end}`);
+export const IntervalTests = {
+	/**
+	 * Helper function to create an interval value for the interval domain.
+	 * @param start - Lower bound of the interval.
+	 * @param end - Upper bound of the interval. If not provided, it defaults to the same value as start, creating a scalar interval.
+	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds. Defaults to `DEFAULT_SIGNIFICANT_FIGURES`, which means no rounding.
+	 * @returns An interval value represented as a tuple of [lowerBound, upperBound].
+	 * @throws Error if the start value is greater than the end value, as this would represent an invalid interval.
+	 */
+	interval(this: void, start: number, end = start, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+		if(start > end) {
+			throw new Error(`Invalid interval with start ${start} greater than end ${end}`);
+		}
+
+		return new IntervalDomain([start, end], significantFigures);
+	},
+
+	/**
+	 * Helper function to create a scalar interval value for the interval domain, where the lower and upper bounds are the same.
+	 * @param value - The value of the scalar interval, which will be used as both the lower and upper bound.
+	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds. Defaults to `DEFAULT_SIGNIFICANT_FIGURES`, which means no rounding.
+	 * @returns A scalar interval value represented as a tuple of [value, value].
+	 */
+	scalar(this: void, value: number, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+		return IntervalTests.interval(value, value, significantFigures);
+	},
+
+	/**
+	 * Helper function for the Top element.
+	 * @returns `undefined`, representing the top element of the interval domain.
+	 */
+	top(this: void): undefined {
+		return undefined;
+	},
+
+	/**
+	 * Helper function for the Bottom element.
+	 * @returns The bottom element of the interval domain.
+	 */
+	bottom(this: void): IntervalDomain {
+		return IntervalDomain.bottom();
 	}
+};
 
-	return [start, end];
+export enum DomainMatchingType {
+	Exact = 'exact',
+	Overapproximation = 'overapproximation'
 }
 
-/**
- * Helper function to create a scalar interval value for the interval domain, where the lower and upper bounds are the same.
- * @param value - The value of the scalar interval, which will be used as both the lower and upper bound.
- * @returns A scalar interval value represented as a tuple of [value, value].
- */
-export function scalar(value: number): AbstractDomainValue<IntervalDomain> {
-	return interval(value);
-}
+export type SlicingCriterionExpected = { domain: IntervalDomain | undefined, matching?: DomainMatchingType };
 
-/**
- * Helper function for the Top element.
- * @returns `undefined`, representing the top element of the interval domain.
- */
-export function top(): undefined {
-	return undefined;
-}
-
-/**
- * Helper function for the Bottom element.
- * @returns The bottom element of the interval domain.
- */
-export function bottom(): AbstractDomainValue<IntervalDomain> {
-	return Bottom;
-}
+export type IntervalTestExpected = { [key: SingleSlicingCriterion]: SlicingCriterionExpected };
 
 /**
  * Executes the {@link NumericInferenceVisitor} on the given code and tests the inferred interval values for each slicing criterion against the expected result.
  * @param code - The code snippet to analyze.
- * @param expected - An object mapping each slicing criterion to the expected interval value (or `undefined` for top) that should be inferred by the visitor.
+ * @param expected - An object mapping each slicing criterion to the expected interval domain (or `undefined` for top) that should be inferred by the visitor.
  */
-export function testIntervalDomain(code: string, expected: {
-	[key: SingleSlicingCriterion]: AbstractDomainValue<IntervalDomain> | undefined
-}) {
+export function testIntervalDomain(code: string, expected: IntervalTestExpected) {
 	let ast: NormalizedAst<ParentInformation, RProject<ParentInformation>>;
 	let visitor: NumericInferenceVisitor;
 
@@ -86,39 +100,44 @@ export function testIntervalDomain(code: string, expected: {
 	});
 
 	test.each(
-		Object.entries(expected) as [criterion: SingleSlicingCriterion, expectedInterval: AbstractDomainValue<IntervalDomain> | undefined][]
-	)(
-		`should infer $1 for $0 at ${code.trim().replaceAll('\n', ' \\n ')}`,
-		(criterion: SingleSlicingCriterion, expectedInterval: AbstractDomainValue<IntervalDomain> | undefined) => {
+		// Append the test name manually because we need to access a property of criterionExpected, which cannot be done using vitest's test.each syntax.
+		(Object.entries(expected) as [criterion: SingleSlicingCriterion, criterionExpected: SlicingCriterionExpected][])
+			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.matching ?? DomainMatchingType.Exact}: ${criterionExpected.domain?.toString()} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
+	)('$0',
+		(_: string, criterion: SingleSlicingCriterion, criterionExpected: SlicingCriterionExpected) => {
 			const targetId: NodeId = slicingCriterionToId(criterion, ast.idMap);
 
-			const inferred = visitor.getAbstractValue(targetId);
-			const expected = isUndefined(expectedInterval) ? undefined : new IntervalDomain(expectedInterval);
+			const inferredIntervalDomain = visitor.getAbstractValue(targetId);
 
-			const errorContext = `expected actual value ${inferred?.toString()} to equal ${expected?.toString()} in final state ${JSON.stringify(visitor.getEndState().toJson())}`;
+			if(isUndefined(criterionExpected.matching)) {
+				criterionExpected.matching = DomainMatchingType.Exact;
+			}
 
-			if(!isUndefined(inferred) && !isUndefined(expected) && inferred.isValue() && expected.isValue()) {
-				const [inferredLower, inferredUpper] = inferred.value;
-				const [expectedLower, expectedUpper] = expected.value;
+			const errorContext = `expected inferred value ${inferredIntervalDomain?.toString()} to be ${criterionExpected.matching} 
+			match for ${criterionExpected.domain?.toString()} in final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
 
-				if(!isFinite(inferredLower) || !isFinite(expectedLower)) {
-					expect(inferredLower, 'Lower bound is incorrect: ' + errorContext).toEqual(expectedLower);
+			if(!isUndefined(inferredIntervalDomain) && !isUndefined(criterionExpected.domain)) {
+				// It is important to use the expected domain as base, as it contains the significant figures information (precision) for the comparison.
+				const expectedResult = criterionExpected.domain.significantFigures === DEFAULT_SIGNIFICANT_FIGURES ? Ternary.Always : Ternary.Maybe;
+
+				if(criterionExpected.matching === DomainMatchingType.Exact) {
+					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(expectedResult);
+				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
+					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(expectedResult);
 				} else {
-					const relativeTolerance = Number.EPSILON * Math.max(Math.abs(inferredLower), Math.abs(expectedLower), 1);
-					assert.closeTo(inferredLower, expectedLower, relativeTolerance, 'Lower bound is incorrect: ' + errorContext);
-				}
-
-				if(!isFinite(inferredUpper) || !isFinite(expectedUpper)) {
-					expect(inferredUpper, 'Upper bound is incorrect: ' + errorContext).toEqual(expectedUpper);
-				} else {
-					const relativeTolerance = Number.EPSILON * Math.max(Math.abs(inferredUpper), Math.abs(expectedUpper), 1);
-					assert.closeTo(inferredUpper, expectedUpper, relativeTolerance, 'Upper bound is incorrect: ' + errorContext);
+					assertUnreachable(criterionExpected.matching);
 				}
 			} else {
-				expect(
-					inferred?.value,
-					'Result differs: ' + errorContext
-				).toEqual(expectedInterval);
+				// At least one of the domains is undefined (Top)
+				if(criterionExpected.matching === DomainMatchingType.Exact) {
+					// Expect both to be undefined (Top)
+					expect(inferredIntervalDomain?.value, 'Result differs: ' + errorContext).toBe(criterionExpected.domain?.value);
+				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
+					// At least one domain is undefined (Top), so the inferred domain has to be undefined (Top) to be an overapproximation of the expected domain.
+					expect(inferredIntervalDomain, 'Result differs: ' + errorContext).toBeUndefined();
+				} else {
+					assertUnreachable(criterionExpected.matching);
+				}
 			}
 		});
 }

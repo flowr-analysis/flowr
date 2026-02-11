@@ -4,6 +4,8 @@ import { DomainMatchingType, IntervalTests, testIntervalDomain } from './interva
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { isUndefined } from '../../../../src/util/assert';
 
+type IntervalInferenceOperatorTestCase = readonly [arguments: string[], expected: Map<Identifier, SlicingCriterionExpected>][];
+
 describe('Interval Inference', () => {
 	const constantNumericTestCases: readonly [value: string, expected: SlicingCriterionExpected][] = [
 		['0', { domain: IntervalTests.scalar(0) }],
@@ -30,117 +32,143 @@ describe('Interval Inference', () => {
 		['c(1, 2, 3)', { domain: IntervalTests.top() }],
 	] as const;
 
-	const binaryOperatorTestCases: readonly [l: string, r: string, expected: Map<Identifier, SlicingCriterionExpected>][] = [
-		['', '7', new Map([
+	const binaryOperatorSpecialCases: IntervalInferenceOperatorTestCase = [
+		[['3', ''], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])],
+		[['', '7'], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])],
+		[['', ''], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])],
+		[['3', '4', ''], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])]
+	] as const;
+
+	const binaryInfixOperatorSpecialCases: IntervalInferenceOperatorTestCase = [
+		[['', '7'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(7) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-7) }]
-		])],
-		['0', '0', new Map([
+		])]
+	] as const;
+
+	const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase = [
+		[['0', '0'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(0) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(0) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(0) }]
 		])],
-		['2.5', '0', new Map([
+		[['2.5', '0'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(2.5) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(2.5) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(0) }]
 		])],
-		['0', '-5', new Map([
+		[['0', '-5'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(-5) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(5) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(0) }]
 		])],
-		['2', '5', new Map([
+		[['2', '5'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(7) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-3) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(10) }]
 		])],
-		['384', '92', new Map([
+		[['384', '92'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(476) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(292) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(35328) }]
 		])],
-		['-5', '18', new Map([
+		[['-5', '18'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(13) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-23) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(-90) }]
 		])],
-		['-15', '-2', new Map([
+		[['-15', '-2'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(-17) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-13) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(30) }]
 		])],
-		['2.7', '1.3', new Map([
+		[['2.7', '1.3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(4) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(1.4, 16) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(3.51, 16) }]
 		])],
-		['2', '1.3', new Map([
+		[['2', '1.3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(3.3) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(0.7) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(2.6) }]
 		])],
-		['5', '-3', new Map([
+		[['5', '-3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(2) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(8) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(-15) }]
 		])],
-		['-2', '4', new Map([
+		[['-2', '4'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(2) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-6) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(-8) }]
 		])],
-		['-3', '-6', new Map([
+		[['-3', '-6'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(-9) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(3) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(18) }]
 		])],
-		['1e10', '1e-5', new Map([
+		[['1e10', '1e-5'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(10000000000.00001) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(9999999999.99999) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(1e5, 16) }]
 		])],
-		['Inf', '0', new Map([
+		[['Inf', '0'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('*'), { domain: IntervalTests.top() }]
 		])],
-		['Inf', '5', new Map([
+		[['Inf', '5'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(Infinity) }]
 		])],
-		['Inf', '-3', new Map([
+		[['Inf', '-3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(-Infinity) }]
 		])],
-		['87', 'Inf', new Map([
+		[['87', 'Inf'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-Infinity) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(Infinity) }]
 		])],
-		['Inf', 'Inf', new Map([
+		[['Inf', 'Inf'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.top() }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(Infinity) }]
 		])],
-		['(-Inf)', 'Inf', new Map([
+		[['(-Inf)', 'Inf'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.top() }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(-Infinity) }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(-Infinity) }]
 		])],
-		['(-Inf)', '(-Inf)', new Map([
+		[['(-Inf)', '(-Inf)'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(-Infinity) }],
 			[Identifier.make('-'), { domain: IntervalTests.top() }],
 			[Identifier.make('*'), { domain: IntervalTests.scalar(Infinity) }]
 		])],
-		['NaN', '3', new Map([
+		[['NaN', '3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.top() }],
 			[Identifier.make('-'), { domain: IntervalTests.top() }],
 			[Identifier.make('*'), { domain: IntervalTests.top() }]
 		])],
-		['3', '"Hallo"', new Map([
+		[['3', '"Hallo"'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.top() }],
 			[Identifier.make('-'), { domain: IntervalTests.top() }],
 			[Identifier.make('*'), { domain: IntervalTests.top() }]
@@ -159,17 +187,27 @@ describe('Interval Inference', () => {
 		}
 	});
 
-	describe.each([Identifier.make('+'), Identifier.make('-'), Identifier.make('*')])('%s semantics', (identifier) => {
-		for(const [l, r, expected] of binaryOperatorTestCases) {
+	describe.each([Identifier.make('+'), Identifier.make('-'), Identifier.make('*')])('%s infix semantics', (identifier) => {
+		for(const [args, expected] of binaryOperatorSuccessTestCases.concat(binaryInfixOperatorSpecialCases)) {
 			const slicingCriterionExpected: SlicingCriterionExpected | undefined = expected.get(identifier);
 			if(!isUndefined(slicingCriterionExpected)) {
-				testIntervalDomain(`x <- ${l} ${Identifier.toString(identifier)} ${r}`, { '1@x': slicingCriterionExpected });
+				testIntervalDomain(`x <- ${args[0] ?? ''} ${Identifier.toString(identifier)} ${args[1] ?? ''}`, { '1@x': slicingCriterionExpected });
+			}
+		}
+	});
+
+	describe.each([Identifier.make('+'), Identifier.make('-'), Identifier.make('*')])('%s function semantics', (identifier) => {
+		for(const [args, expected] of binaryOperatorSuccessTestCases.concat(binaryOperatorSpecialCases)) {
+			const slicingCriterionExpected: SlicingCriterionExpected | undefined = expected.get(identifier);
+			if(!isUndefined(slicingCriterionExpected)) {
+				testIntervalDomain(`x <- \`${Identifier.toString(identifier)}\`(${args.join(', ')})`, { '1@x': slicingCriterionExpected });
 			}
 		}
 	});
 
 	describe('length semantics', () => {
 		const testCases: [value: string, expected: SlicingCriterionExpected][] = [
+			['', { domain: IntervalTests.bottom() }],
 			['0', { domain: IntervalTests.scalar(1) }],
 			['-232', { domain: IntervalTests.scalar(1) }],
 			['Inf', { domain: IntervalTests.scalar(1) }],
@@ -179,6 +217,7 @@ describe('Interval Inference', () => {
 			['"Hallo"', { domain: IntervalTests.interval(0, Infinity) }],
 			['TRUE', { domain: IntervalTests.interval(0, Infinity) }],
 			['NULL', { domain: IntervalTests.interval(0, Infinity) }],
+			['1, 2', { domain: IntervalTests.bottom() }]
 		] as const;
 
 		for(const [value, expected] of testCases) {

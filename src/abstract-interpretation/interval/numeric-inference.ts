@@ -5,7 +5,6 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { applyIntervalExpressionSemantics } from './semantics';
 import { isUndefined } from '../../util/assert';
-import { FunctionArgument } from '../../dataflow/graph/graph';
 import { log } from '../../util/log';
 
 /**
@@ -36,9 +35,7 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
 		super.onFunctionCall({ call });
 
-		const args = call.args.filter(FunctionArgument.isNotEmpty).map(arg => this.getAbstractValue(arg.nodeId));
-
-		const result = applyIntervalExpressionSemantics(call.name, args);
+		const result = applyIntervalExpressionSemantics(call.name, call.args, this);
 
 		if(isUndefined(result)) {
 			return;

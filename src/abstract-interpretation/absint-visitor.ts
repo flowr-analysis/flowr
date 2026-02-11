@@ -158,6 +158,23 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.clear();
 	}
 
+	protected override startVisitor(start: readonly NodeId[]): void {
+		const stack = Array.from(start);
+
+		while(stack.length > 0) {
+			const current = stack.pop() as NodeId;
+
+			if(!this.visitNode(current)) {
+				continue;
+			}
+			for(const next of this.config.controlFlow.graph.ingoingEdges(current)?.keys().toArray().reverse() ?? []) {
+				if(!stack.includes(next)) {  // prevent double entries in working list
+					stack.push(next);
+				}
+			}
+		}
+	}
+
 	protected override visitNode(vertexId: NodeId): boolean {
 		const vertex = this.getCfgVertex(vertexId);
 
@@ -177,6 +194,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 		const nodeId = getVertexRootId(vertex);
 
+		// differentiate between widening points and other vertices
 		if(this.isWideningPoint(nodeId)) {
 			const oldState = this.trace.get(nodeId) ?? this._currentState.top();
 

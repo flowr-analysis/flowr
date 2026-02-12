@@ -46,12 +46,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(value, this.significantFigures);
 	}
 
-	public static top(): IntervalDomain<IntervalTop> {
-		return new IntervalDomain(IntervalTop);
+	public static top(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
+		return new IntervalDomain(IntervalTop, significantFigures);
 	}
 
-	public static bottom(): IntervalDomain<IntervalBottom> {
-		return new IntervalDomain(Bottom);
+	public static bottom(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
+		return new IntervalDomain(Bottom, significantFigures);
 	}
 
 	public static abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {

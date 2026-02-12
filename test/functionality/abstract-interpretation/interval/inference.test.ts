@@ -33,6 +33,16 @@ describe('Interval Inference', () => {
 	] as const;
 
 	const binaryOperatorSpecialCases: IntervalInferenceOperatorTestCase = [
+		[[''], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])],
+		[['3'], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.scalar(3) }],
+			[Identifier.make('-'), { domain: IntervalTests.scalar(-3) }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }],
+		])],
 		[['3', ''], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
 			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
@@ -172,6 +182,16 @@ describe('Interval Inference', () => {
 			[Identifier.make('+'), { domain: IntervalTests.top() }],
 			[Identifier.make('-'), { domain: IntervalTests.top() }],
 			[Identifier.make('*'), { domain: IntervalTests.top() }]
+		])],
+		[['`+`()', '7'], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
+		])],
+		[['7', '`+`()'], new Map([
+			[Identifier.make('+'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('-'), { domain: IntervalTests.bottom() }],
+			[Identifier.make('*'), { domain: IntervalTests.bottom() }]
 		])]
 	] as const;
 
@@ -223,6 +243,14 @@ describe('Interval Inference', () => {
 		for(const [value, expected] of testCases) {
 			testIntervalDomain(`x <- length(${value})`, { '1@x': expected });
 		}
+
+		testIntervalDomain(`
+			x <- \`+\`()
+			y <- length(x)
+		`, {
+			'1@x': { domain: IntervalTests.bottom() },
+			'2@y': { domain: IntervalTests.bottom() }
+		});
 	});
 
 	describe('basic combined calculation', () => {

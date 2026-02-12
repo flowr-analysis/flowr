@@ -9,21 +9,44 @@ import type { NumericInferenceVisitor } from './numeric-inference';
  * Maps function/operator names to the semantic functions.
  */
 const IntervalSemanticsMapper: readonly IntervalSemanticsMapperInfo[] = [
-	[Identifier.make('+'), addSemantics],
-	[Identifier.make('-'), subtractSemantics],
-	[Identifier.make('*'), multiplySemantics],
-	[Identifier.make('length'), lengthSemantics],
+	[Identifier.make('+'), unaryBinaryOpSemantics(defaultPositiveOp, defaultAddOp)],
+	[Identifier.make('-'), unaryBinaryOpSemantics(defaultNegativeOp, defaultSubtractOp)],
+	[Identifier.make('*'), binaryOpSemantics(defaultMultiplyOp)],
+	[Identifier.make('length'), unaryFnSemantics(defaultLengthFn)],
 ] as const;
 
 /**
- * Semantics definition function for the interval domain.
+ * Semantics definition function for unary numeric operators.
+ * @param arg - The interval operand of the unary operator.
+ * @returns The resulting interval after applying the unary operator semantics to the provided operand.
+ */
+type UnaryOpSemantics = (arg: IntervalDomain | undefined) => IntervalDomain | undefined;
+
+/**
+ * Semantics definition function for binary numeric operators.
+ * @param left - The left interval operand of the binary operator.
+ * @param right - The right interval operand of the binary operator.
+ * @returns The resulting interval after applying the binary operator semantics to the provided operands.
+ */
+type BinaryOpSemantics = (left: IntervalDomain | undefined, right: IntervalDomain | undefined) => IntervalDomain | undefined;
+
+/**
+ * Semantics definition function for unary functions.
+ * @param arg - The raw argument of the function.
+ * @param visitor - The numeric inference visitor performing the analysis used to resolve the argument interval.
+ * @returns The resulting interval after applying the semantics.
+ */
+type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericInferenceVisitor) => IntervalDomain | undefined;
+
+/**
+ * Semantics definition function n-ary functions/operators.
  * @param args - The raw arguments of the function/operator.
  * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
  * @returns The resulting interval after applying the semantics.
  */
-type IntervalSemantics = (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor) => (IntervalDomain | undefined);
+type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor) => IntervalDomain | undefined;
 
-type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: IntervalSemantics];
+type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
 
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
@@ -46,155 +69,144 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
 }
 
 /**
- * Adds the provided intervals.
- * If one argument is provided, it is treated as a unary plus operation.
- * If two arguments are provided, they are added together.
- * @param args - The intervals to add.
- * @returns The resulting interval after addition.
+ * Guard for numerical operators that can be used as both unary and binary operators, filtering all calls with more than 2 arguments.
+ * If the call has exactly 1 argument that is not empty, the provided unary operator semantics function is applied.
+ * If the call has exactly 2 arguments that are not empty, the provided binary operator semantics function is applied.
+ * Otherwise, a warning is logged and bottom is returned.
+ * @param unaryOperatorSemantics - The semantics function for the unary operator.
+ * @param binaryOperatorSemantics - The semantics function for the binary operator.
+ * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
-function intervalAdd(args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
-	if(args.length === 1) {
-		if(args[0]?.isBottom()) {
-			return args[0].bottom();
-		}
-		if(args[0]?.isValue()) {
-			const [a, b] = args[0].value;
-			return args[0].create([a, b]);
-		}
-		return undefined;
-	}
-
-	if(args.length === 2) {
-		const left = args[0];
-		const right = args[1];
-
-		if(left?.isBottom() || right?.isBottom()) {
-			return left?.bottom() ?? right?.bottom();
-		}
-
-		if(left?.isValue() && right?.isValue()) {
-			const [a, b] = left.value;
-			const [c, d] = right.value;
-
-			if((a === Infinity && c === -Infinity)
-				|| (a === -Infinity && c === Infinity)
-				|| (b === Infinity && d === -Infinity)
-				|| (b === -Infinity && d === Infinity)) {
-				return undefined;
+function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
+	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined => {
+		// Usage as unary operator
+		if(args.length === 1) {
+			if(FunctionArgument.isEmpty(args[0])) {
+				log.warn('Called unary operator with an empty argument, which is not supported.');
+				return IntervalDomain.bottom();
 			}
 
-			return left.create([a + c, b + d]);
+			const arg = visitor.getAbstractValue(args[0].nodeId);
+			return unaryOperatorSemantics(arg);
 		}
-		return undefined;
-	}
 
-	log.warn('Called "+" with more than 2 arguments, which is not supported.');
-	return IntervalDomain.bottom();
+		return binaryOpSemantics(binaryOperatorSemantics)(args, visitor);
+	};
 }
 
-function addSemantics(args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined {
-	// Usage as sign operator
-	if(args.length === 1) {
-		if(FunctionArgument.isEmpty(args[0])) {
-			log.warn('Called unary "+" with an empty argument, which is not supported.');
+/**
+ * Guard for binary numerical operators, filtering all calls with more/less than 2 arguments.
+ * If the call has exactly 2 arguments that are not empty, the provided semantics function is applied.
+ * Otherwise, a warning is logged and bottom is returned.
+ * @param binaryOperatorSemantics - The semantics function for the binary operator.
+ * @returns A semantics function for n-ary functions that applies the provided binary numeric operator semantics if the call has exactly 2 non-empty numeric arguments, and logs a warning and returns bottom otherwise.
+ */
+function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
+	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined => {
+		if(args.length !== 2) {
+			log.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
 			return IntervalDomain.bottom();
 		}
 
-		const arg = visitor.getAbstractValue(args[0].nodeId);
-		return intervalAdd([arg]);
-	}
-
-	// Usage as addition
-	if(args.length === 2) {
 		if(FunctionArgument.isEmpty(args[0]) || FunctionArgument.isEmpty(args[1])) {
-			log.warn('Called binary "+" with at least one empty argument, which is not supported.');
+			log.warn('Called binary operator with at least one empty argument, which is not supported.');
 			return IntervalDomain.bottom();
 		}
 
 		const left = visitor.getAbstractValue(args[0].nodeId);
 		const right = visitor.getAbstractValue(args[1].nodeId);
 
-		return intervalAdd([left, right]);
+		return binaryOperatorSemantics(left, right);
+	};
+}
+
+/**
+ * Guard for unary functions, filtering all calls with more/less than 1 argument.
+ * If the call has exactly 1 argument, the provided semantics function is applied.
+ * Otherwise, a warning is logged and bottom is returned.
+ * @param unaryFunctionSemantics - The semantics function for the unary function.
+ * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
+ */
+function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
+	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined => {
+		if(args.length !== 1) {
+			log.warn('Called unary function with more/less than 1 argument, which is not supported.');
+			return IntervalDomain.bottom();
+		}
+
+		return unaryFunctionSemantics(args[0], visitor);
+	};
+}
+
+/**
+ * Applies the unary plus operator to the provided interval.
+ * @param arg - The interval to apply the unary plus operator to.
+ * @returns The resulting interval after applying the unary plus operator, which is the same as the input interval.
+ */
+function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	return arg;
+}
+
+/**
+ * Adds the provided intervals.
+ * @param left - The left interval to add.
+ * @param right - The right interval to add.
+ * @returns The resulting interval after addition.
+ */
+function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(left?.isBottom() || right?.isBottom()) {
+		return left?.bottom() ?? right?.bottom();
 	}
 
-	log.warn('Called "+" with more than 2 arguments, which is not supported.');
-	return IntervalDomain.bottom();
+	if(left?.isValue() && right?.isValue()) {
+		const [a, b] = left.value;
+		const [c, d] = right.value;
+
+		if((a === Infinity && c === -Infinity)
+			|| (a === -Infinity && c === Infinity)
+			|| (b === Infinity && d === -Infinity)
+			|| (b === -Infinity && d === Infinity)) {
+			return undefined;
+		}
+
+		return left.create([a + c, b + d]);
+	}
+	return undefined;
+}
+
+/**
+ * Negates the provided interval.
+ * @param arg - The interval to negate.
+ * @returns The resulting interval after negation.
+ */
+function defaultNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(arg?.isBottom()) {
+		return arg.bottom();
+	}
+	if(arg?.isValue()) {
+		const [a, b] = arg.value;
+		return arg.create([-b, -a]);
+	}
+	return undefined;
 }
 
 /**
  * Subtracts the provided intervals.
- * If one argument is provided, it is treated as a unary minus operation.
- * If two arguments are provided, the second is subtracted from the first.
- * @param args - The intervals to subtract.
+ * @param left - The left interval to subtract from.
+ * @param right - The right interval to subtract.
  * @returns The resulting interval after subtraction.
  */
-function intervalSubtract(args: readonly (IntervalDomain | undefined)[]): IntervalDomain | undefined {
-	if(args.length === 1) {
-		const arg = args[0];
-		if(arg?.isBottom()) {
-			return arg.bottom();
-		}
-		if(arg?.isValue()) {
-			const [a, b] = arg.value;
-			return arg.create([-b, -a]);
-		}
-		return undefined;
-	}
-
-	if(args.length === 2) {
-		const left = args[0];
-		const right = args[1];
-
-		return intervalAdd([left, intervalSubtract([right])]);
-	}
-
-	log.warn('Called "-" with more than 2 arguments, which is not supported.');
-	return IntervalDomain.bottom();
+function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	return defaultAddOp(left, defaultNegativeOp(right));
 }
 
-function subtractSemantics(args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined {
-	// Usage as sign operator
-	if(args.length === 1) {
-		if(FunctionArgument.isEmpty(args[0])) {
-			log.warn('Called unary "-" with an empty argument, which is not supported.');
-			return IntervalDomain.bottom();
-		}
-
-		const arg = visitor.getAbstractValue(args[0].nodeId);
-		return intervalSubtract([arg]);
-	}
-
-	// Usage as subtraction
-	if(args.length === 2) {
-		if(FunctionArgument.isEmpty(args[0]) || FunctionArgument.isEmpty(args[1])) {
-			log.warn('Called binary "-" with at least one empty argument, which is not supported.');
-			return IntervalDomain.bottom();
-		}
-
-		const left = visitor.getAbstractValue(args[0].nodeId);
-		const right = visitor.getAbstractValue(args[1].nodeId);
-
-		return intervalSubtract([left, right]);
-	}
-
-	log.warn('Called "-" with more than 2 arguments, which is not supported.');
-	return IntervalDomain.bottom();
-}
-
-function multiplySemantics(args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined {
-	if(args.length !== 2) {
-		log.warn('Called "*" with more/less than 2 arguments, which is not supported.');
-		return IntervalDomain.bottom();
-	}
-
-	if(FunctionArgument.isEmpty(args[0]) || FunctionArgument.isEmpty(args[1])) {
-		log.warn('Called binary "*" with at least one empty argument, which is not supported.');
-		return IntervalDomain.bottom();
-	}
-
-	const left = visitor.getAbstractValue(args[0].nodeId);
-	const right = visitor.getAbstractValue(args[1].nodeId);
-
+/**
+ * Multiplies the provided intervals.
+ * @param left - The left interval to multiply.
+ * @param right - The right interval to multiply.
+ * @returns The resulting interval after multiplication.
+ */
+function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
 		return left?.bottom() ?? right?.bottom();
 	}
@@ -216,25 +228,27 @@ function multiplySemantics(args: readonly FunctionArgument[], visitor: NumericIn
 	return undefined;
 }
 
-function lengthSemantics(args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined {
-	if(args.length !== 1) {
-		log.warn('Called "length" with more/less than 1 argument, which is not supported.');
-		return IntervalDomain.bottom();
-	}
-
-	if(FunctionArgument.isEmpty(args[0])) {
+/**
+ * Infers the interval resulting from applying the `length` function to the provided argument.
+ * @param arg - The argument to apply the `length` function to.
+ * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
+ * @returns Bottom if the provided argument is bottom or empty, otherwise overapproximates to the interval [0, Infinity].
+ *          If the argument can be resolved to a supported value, the resulting interval is more precise (e.g.: [1,1] for scalar numbers).
+ */
+function defaultLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisitor): IntervalDomain | undefined {
+	if(FunctionArgument.isEmpty(arg)) {
 		log.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom();
 	}
 
-	const arg = visitor.getAbstractValue(args[0].nodeId);
+	const inferredInterval = visitor.getAbstractValue(arg.nodeId);
 
-	if(arg?.isBottom()) {
-		return arg.bottom();
+	if(inferredInterval?.isBottom()) {
+		return inferredInterval.bottom();
 	}
 
-	if(arg?.isValue()) {
-		return arg.create([1, 1]);
+	if(inferredInterval?.isValue()) {
+		return inferredInterval.create([1, 1]);
 	}
 
 	return new IntervalDomain([0, Infinity]);

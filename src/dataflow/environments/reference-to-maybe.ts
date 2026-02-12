@@ -7,13 +7,13 @@ import { resolveByName } from './resolve-by-name';
 
 function appToCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void{
 	if(toAdd) {
-		target.push(...toAdd.filter(c => !target.find(tc => tc.id === c.id && tc.when === c.when)));
+		target.push(...toAdd.filter(c => !target.some(tc => tc.id === c.id && tc.when === c.when)));
 	}
 }
 
 function concatCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
 	if(toAdd) {
-		return target.concat(toAdd.filter(c => !target.find(tc => tc.id === c.id && tc.when === c.when)));
+		return target.concat(toAdd.filter(c => !target.some(tc => tc.id === c.id && tc.when === c.when)));
 	} else {
 		return target;
 	}

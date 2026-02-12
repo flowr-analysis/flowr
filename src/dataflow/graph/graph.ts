@@ -376,27 +376,25 @@ export class DataflowGraph<
 	 * @see DataflowGraphVertexArgument
 	 */
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
-		const oldVertex = this.vertexInformation.get(vertex.id);
+		const vid = vertex.id;
+		const oldVertex = this.vertexInformation.get(vid);
 		if(oldVertex !== undefined && !overwrite) {
 			return this;
 		}
+		const vtag = vertex.tag;
 
-		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
-
-		this.vertexInformation.set(vertex.id, {
-			...vertex,
-			// keep a clone of the original environment
-			environment: vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback
-		} as unknown as Vertex);
+		// keep a clone of the original environment
+		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
+		this.vertexInformation.set(vid, vertex as Vertex);
 		const has =  this.types.get(vertex.tag);
 		if(has) {
-			has.push(vertex.id);
+			has.push(vid);
 		} else {
-			this.types.set(vertex.tag, [vertex.id]);
+			this.types.set(vertex.tag, [vid]);
 		}
 
 		if(asRoot) {
-			this.rootVertices.add(vertex.id);
+			this.rootVertices.add(vid);
 		}
 		return this;
 	}

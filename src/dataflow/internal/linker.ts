@@ -27,7 +27,7 @@ import { type BuiltIn, BuiltInProcName, isBuiltIn } from '../environments/built-
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
-import { doesExitPointPropagateCalls } from '../info';
+import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
@@ -552,8 +552,9 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	// this implicitly assumes that the outgoing references are ordered
 	const lastOutgoing = new Map<Identifier, IdentifierReference>();
 	for(const out of outgoing) {
-		if(out.name) {
-			lastOutgoing.set(out.name, out);
+		const on = out.name;
+		if(on) {
+			lastOutgoing.set(on, out);
 		}
 	}
 
@@ -571,19 +572,30 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 /**
  * Reapplies the loop exit points' control dependencies to the given identifier references.
  */
-export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
+export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.cds).filter(isNotUndefined));
+	const exitCds = new Set(exits.flatMap(e => e.cds?.map(negateControlDependency)).filter(isNotUndefined));
 
 	for(const ref of references) {
 		for(const cd of exitCds) {
 			const { id: cId, when: cWhen } = cd;
 			if(ref.cds) {
-				if(!ref.cds?.find(c => c.id === cId && c.when === cWhen)) {
+				if(!ref.cds?.find(c => c.id === cId && c.when === !cWhen)) {
 					ref.cds.push({ ...cd, byIteration: true });
+					// in this case these are synced with the vertex
 				}
 			} else {
 				ref.cds = [{ ...cd, byIteration: true }];
+				const vertex = graph.getVertex(ref.nodeId);
+				if(vertex) {
+					if(vertex.cds) {
+						if(!vertex.cds?.find(c => c.id === cId && c.when === !cWhen)) {
+							vertex.cds.push({ ...cd, byIteration: true });
+						}
+					} else {
+						vertex.cds = [{ ...cd, byIteration: true }];
+					}
+				}
 			}
 		}
 	}

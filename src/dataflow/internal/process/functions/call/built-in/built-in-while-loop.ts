@@ -25,6 +25,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { appendEnvironment } from '../../../../../environments/append';
 
 
 /**
@@ -48,9 +49,12 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
+	const origEnv = data.environment;
+
 	// we should defer this to the abstract interpretation
 	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
+	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	//We don't care about the body if it never executes
 	if(conditionIsAlwaysFalse) {
@@ -64,12 +68,8 @@ export function processWhileLoop<OtherInfo>(
 		rootId,
 		data,
 		markAsNSE: [1],
-		patchData: (d, i) => {
-			if(i === 1) {
-				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: true }] };
-			}
-			return d;
-		}, origin: BuiltInProcName.WhileLoop });
+		origin:    BuiltInProcName.WhileLoop
+	});
 	const [condition, body] = processedArguments;
 
 	// If the condition is always false, we don't include the body
@@ -86,7 +86,6 @@ export function processWhileLoop<OtherInfo>(
 			hooks:             condition.hooks
 		};
 	}
-
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 
@@ -101,8 +100,9 @@ export function processWhileLoop<OtherInfo>(
 		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
 			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
+
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences));
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
@@ -114,7 +114,8 @@ export function processWhileLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
-		environment:       information.environment,
+		// as we do not know whether the loop executes at all, we have to merge the environments of the condition and the body, as both may be relevant
+		environment:       conditionIsAlwaysTrue ? information.environment : appendEnvironment(origEnv, information.environment),
 		hooks:             condition.hooks.concat(body.hooks)
 	};
 }

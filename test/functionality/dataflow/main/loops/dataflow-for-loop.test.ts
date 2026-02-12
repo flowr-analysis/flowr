@@ -454,7 +454,7 @@ print(x)`,  emptyGraph()
 		});
 
 		describe('while', () => {
-			assertDataflow(label('Break immediately', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
+			assertDataflow(label('Break immediately (while)', ['while-loop', 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;
@@ -462,7 +462,7 @@ while(TRUE) {
 }
 print(x)`,  emptyGraph()
 					.use('13', 'x')
-					.reads('13', ['0', '6'])
+					.reads('13', ['6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 					.calls('2', builtInId('<-'))
 					.argument('2', ['1', '0'])
@@ -473,7 +473,7 @@ print(x)`,  emptyGraph()
 					.calls('9', builtInId('break'))
 					.argument('10', '8')
 					.argument('10', '9')
-					.call('10', '{', [argumentInCall('8', { cds: [] }), argumentInCall('9', { cds: [] })], { returns: ['9'], reads: [builtInId('{')], cds: [{ id: 11, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '11', when: true }]) })
+					.call('10', '{', [argumentInCall('8', { cds: [] }), argumentInCall('9', { cds: [] })], { returns: [], reads: [builtInId('{')], cds: [{ id: 11, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '11', when: true }]) })
 					.calls('10', builtInId('{'))
 					.argument('11', '10')
 					.call('11', 'while', [argumentInCall('3'), argumentInCall('10', { cds: [] })], { returns: [], reads: ['3', builtInId('while')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '11', when: true }]) })
@@ -487,11 +487,11 @@ print(x)`,  emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
-					.constant('7', { cds: [{ id: '11', when: true }] })
+					.constant('7')
 					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: 11, when: true }] })
 					.markIdForUnknownSideEffects('15')
 			);
-			assertDataflow(label('Break in condition', ['while-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
+			assertDataflow(label('Break in condition (while)', ['while-loop', 'name-normal', 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments', 'if']),
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;
@@ -499,24 +499,24 @@ while(TRUE) {
       break
 }
 print(x)`, emptyGraph()
-					.use('9', 'foo', { cds: [{ id: 14, when: true }, { id: '12', when: true }] })
+					.use('9', 'foo', { cds: [{ id: 14, when: true }, { id: '12', when: false }] })
 					.use('16', 'x')
-					.reads('16', ['0', '6'])
+					.reads('16', ['6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 					.calls('2', builtInId('<-'))
 					.argument('2', ['1', '0'])
-					.call('8', '<-', [argumentInCall('6', { cds: [] }), argumentInCall('7', { cds: [{ id: '14', when: true }, { id: '12', when: true }] })], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, cds: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
+					.call('8', '<-', [argumentInCall('6', { cds: [] }), argumentInCall('7', { cds: [{ id: '14', when: true }, { id: '12', when: false }] })], { returns: ['6'], reads: [builtInId('<-'), 7], onlyBuiltIn: true, cds: [{ id: 14, when: true }, { id: '12', when: false }], environment: defaultEnv().defineVariable('x', '0', '2') })
 					.calls('8', builtInId('<-'))
 					.argument('8', ['7', '6'])
-					.call('10', 'break', [], { origin: [BuiltInProcName.Break], returns: [], reads: [builtInId('break')], cds: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }]) })
+					.call('10', 'break', [], { origin: [BuiltInProcName.Break], returns: [], reads: [builtInId('break')], cds: [{ id: '12', when: true }, { id: 14, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }]) })
 					.calls('10', builtInId('break'))
 					.argument('12', '9')
 					.argument('12', '10')
-					.call('12', 'if', [argumentInCall('9', { cds: [] }), argumentInCall('10', { cds: [] }), EmptyArgument], { returns: ['10'], reads: [builtInId('if'), '9'], onlyBuiltIn: true, cds: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
+					.call('12', 'if', [argumentInCall('9', { cds: [] }), argumentInCall('10', { cds: [] }), EmptyArgument], { returns: ['10'], reads: [builtInId('if'), '9'], onlyBuiltIn: true, cds: [{ id: 14, when: true }, { id: '12', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
 					.calls('12', builtInId('if'))
 					.argument('13', '8')
 					.argument('13', '12')
-					.call('13', '{', [argumentInCall('8', { cds: [] }), argumentInCall('12', { cds: [] })], { returns: ['12'], reads: [builtInId('{')], cds: [{ id: 14, when: true }, { id: '12', when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
+					.call('13', '{', [argumentInCall('8', { cds: [] }), argumentInCall('12', { cds: [] })], { returns: ['12'], reads: [builtInId('{')], cds: [{ id: 14, when: true }, { id: '12', when: false }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
 					.calls('13', builtInId('{'))
 					.argument('14', '13')
 					.call('14', 'while', [argumentInCall('3'), argumentInCall('13', { cds: [] })], { returns: [], reads: ['3', builtInId('while')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '14', when: true }, { id: '12', when: true }]) })
@@ -530,11 +530,11 @@ print(x)`, emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
-					.constant('7', { cds: [{ id: '14', when: true }, { id: '12', when: true }] })
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: 14, when: true }, { id: '12', when: true }] })
+					.constant('7')
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: '12', when: false }, { id: 14, when: true }] })
 					.markIdForUnknownSideEffects('18')
 			);
-			assertDataflow(label('Next', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
+			assertDataflow(label('Next (while)', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;
@@ -543,7 +543,7 @@ while(TRUE) {
 }
 print(x)`, emptyGraph()
 					.use('18', 'x')
-					.reads('18', ['0', '6', '11'])
+					.reads('18', ['6'])
 					.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 					.calls('2', builtInId('<-'))
 					.argument('2', ['1', '0'])
@@ -552,11 +552,8 @@ print(x)`, emptyGraph()
 					.argument('8', ['7', '6'])
 					.call('9', 'next', [], { returns: [], reads: [builtInId('next')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]) })
 					.calls('9', builtInId('next'))
-					.call('13', '<-', [argumentInCall('11', { cds: [] }), argumentInCall('12', { cds: [{ id: '16', when: true }] })], { returns: ['11'], reads: [builtInId('<-'), 12], onlyBuiltIn: true, cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]) })
-					.calls('13', builtInId('<-'))
-					.argument('13', ['12', '11'])
 					.argument('15', '8')
-					.call('15', '{', [argumentInCall('8', { cds: [{ id: 16, when: true }] })], { returns: ['8'], reads: [builtInId('{')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]).defineVariable('x', '11', '13', []) })
+					.call('15', '{', [argumentInCall('8', { cds: [{ id: 16, when: true }] })], { returns: [], reads: [builtInId('{')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]).defineVariable('x', '11', '13', []) })
 					.calls('15', builtInId('{'))
 					.argument('16', '15')
 					.call('16', 'while', [argumentInCall('3'), argumentInCall('15', { cds: [] })], { returns: [], reads: ['3', builtInId('while')], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]).defineVariable('x', '11', '13', []) })
@@ -570,10 +567,8 @@ print(x)`, emptyGraph()
 					.constant('1')
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
-					.constant('7', { cds: [{ id: '16', when: true }] })
+					.constant('7')
 					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: '16', when: true }] })
-					.constant('12', { cds: [{ id: '16', when: true }] })
-					.defineVariable('11', 'x', { definedBy: ['12', '13'], cds: [{ id: '16', when: true }] })
 					.markIdForUnknownSideEffects('20')
 			);
 		});

@@ -30,7 +30,7 @@ describe.sequential('While', withShell(shell => {
 		.calls('7', builtInId('while'))
 		.nse('7', '6')
 		.constant('0')
-		.constant('4', { cds: [{ id: '7', when: true }] })
+		.constant('4')
 		.defineVariable('3', 'x', { definedBy: ['4', '5'], cds: [{ id: 7, when: true }] })
 	);
 	assertDataflow(label('def compare in loop', ['while-loop', 'grouping', ...OperatorDatabase['<-'].capabilities, 'name-normal', 'infix-calls', 'binary-operator', ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['>'].capabilities, 'precedence']), shell, 'while ((x <- x - 1) > 0) { x }', emptyGraph()
@@ -62,5 +62,20 @@ describe.sequential('While', withShell(shell => {
 		.call('3', 'while', [argumentInCall('0'), argumentInCall('1')], { returns: [], reads: ['0', builtInId('while')], onlyBuiltIn: true, origin: [BuiltInProcName.WhileLoop] })
 		.calls('3', builtInId('while'))
 		.nse('3', '1')
+	);
+	assertDataflow(label('Loop Definitions', ['while-loop', 'name-normal', 'local-left-assignment']), shell, `x <- 1
+while (x < 10) {
+    x <- x + 1
+    x <- x - 1
+}
+print(x)`, emptyGraph()
+		.reads('4:10', '3@x')
+		.reads('3:10', '1@x')
+		.reads('3:10', '4@x')
+	, {
+		expectIsSubgraph:      true,
+		resolveIdsAsCriterion: true,
+		mustNotHaveEdges:      [['4:10', '1@x']]
+	}
 	);
 }));

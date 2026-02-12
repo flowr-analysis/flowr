@@ -7,13 +7,12 @@ import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
-import { Identifier, type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
+import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
 import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
-import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in';
 
@@ -86,8 +85,6 @@ export function processKnownFunctionCall<OtherInfo>(
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
-	expensiveTrace(dataflowLogger, () => `Processing known function call ${Identifier.toString(functionCallName)} with ${args.length} arguments`);
-
 	const processArgs = reverseOrder ? args.toReversed() : args;
 
 	const {

@@ -55,10 +55,7 @@ ${loop} {
    next;
    x <- 3;
 }
-print(x)`, ['7@x'], loop == 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${loop} {
-    x <- 2
-    x <- 3
-}
+print(x)`, ['7@x'], loop === 'repeat' ? 'x <- 1\nrepeat x <- 2\nx' : `x <- 1\n${loop} x <- 2
 x`,
 				{
 					skipCompare:          true /* see https://github.com/flowr-analysis/flowr/issues/1209 */,

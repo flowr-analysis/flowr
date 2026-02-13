@@ -79,6 +79,7 @@ function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): Contro
 
 /**
  * Uses {@link visitCfgInOrder} to find all nodes that are reachable from the control flow graph's {@link ControlFlowInformation.entryPoints} and returns them as a set.
+ * Please note that this will not visit the grouping delimiters of expression list!
  * @param cfg - The control flow graph whose reachable nodes to find.
  */
 export function cfgFindAllReachable(cfg: ControlFlowInformation): Set<NodeId> {

@@ -1,4 +1,10 @@
-import { LintingResultCertainty, LintingPrettyPrintContext, type LintingResult, type LintingRule, LintingRuleCertainty } from '../linter-format';
+import {
+	LintingPrettyPrintContext,
+	type LintingResult,
+	LintingResultCertainty,
+	type LintingRule,
+	LintingRuleCertainty
+} from '../linter-format';
 import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
@@ -7,6 +13,7 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import { isNotUndefined } from '../../util/assert';
 import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { Writable } from 'ts-essentials';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 
 export interface DeadCodeResult extends LintingResult {
 	readonly loc: SourceLocation
@@ -39,7 +46,7 @@ export const DEAD_CODE = {
 					.filter(element => {
 						meta.consideredNodes++;
 						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
-						return cfgInformation.isRoot && !cfgInformation.isReachable;
+						return element.node.info.role !== RoleInParent.ExpressionListGrouping  && !cfgInformation.isReachable;
 					})
 					.map(element => ({
 						certainty:  LintingResultCertainty.Certain,

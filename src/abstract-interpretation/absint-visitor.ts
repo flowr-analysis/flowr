@@ -347,7 +347,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 
-	protected applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<Domain> | undefined {
+	protected applyConditionSemantics(conditionNodeId: NodeId, _trueBranch: boolean): StateAbstractDomain<Domain> | undefined {
 		return this.getAbstractState(conditionNodeId) ?? this.config.domain.bottom();
 	}
 }

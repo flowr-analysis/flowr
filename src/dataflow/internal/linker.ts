@@ -36,37 +36,33 @@ export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
  * Find all reads within the graph that do not reference a local definition in the graph.
  */
 export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<NodeId> = new Set()): IdentifierReference[] {
-	const ids = new Set(
-		graph.vertexIdsOfType(VertexType.Use).concat(
-			graph.vertexIdsOfType(VertexType.FunctionCall)
-		)
-	);
 	const defs = new Set(graph.vertexIdsOfType(VertexType.VariableDefinition).concat(
 		graph.vertexIdsOfType(VertexType.FunctionDefinition)
 	));
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
-	for(const nodeId of ids) {
-		if(ignores.has(nodeId)) {
-			continue;
-		}
-		const outgoing = graph.outgoingEdges(nodeId);
-		const origin = graph.getVertex(nodeId);
-		const name = recoverName(nodeId, graph.idMap);
+	for(const ids of [graph.vertexIdsOfType(VertexType.Use), graph.vertexIdsOfType(VertexType.FunctionCall)]) {
+		for(const nodeId of ids) {
+			if(ignores.has(nodeId)) {
+				continue;
+			}
+			const outgoing = graph.outgoingEdges(nodeId);
+			const origin = graph.getVertex(nodeId);
+			const name = recoverName(nodeId, graph.idMap);
 
-		const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
+			const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
 
-		const identifierRef = { nodeId, name, type };
+			const identifierRef = { nodeId, name, type };
 
-		if(outgoing === undefined) {
-			nonLocalReads.push(identifierRef);
-			continue;
-		}
-		// TODO: we have to check whether *all* edges lead to fully defined targets, why do we not check the open-in list?`
-		for(const [target, e] of outgoing) {
-			if(DfEdge.includesType(e, EdgeType.Reads) && !defs.has(target)) {
+			if(outgoing === undefined) {
 				nonLocalReads.push(identifierRef);
-				break;
+				continue;
+			}
+			for(const [target, e] of outgoing) {
+				if(DfEdge.includesType(e, EdgeType.Reads) && !defs.has(target)) {
+					nonLocalReads.push(identifierRef);
+					break;
+				}
 			}
 		}
 	}

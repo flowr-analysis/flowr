@@ -41,6 +41,9 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			graph.vertexIdsOfType(VertexType.FunctionCall)
 		)
 	);
+	const defs = new Set(graph.vertexIdsOfType(VertexType.VariableDefinition).concat(
+		graph.vertexIdsOfType(VertexType.FunctionDefinition)
+	));
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
 	for(const nodeId of ids) {
@@ -59,16 +62,12 @@ export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<Nod
 			nonLocalReads.push(identifierRef);
 			continue;
 		}
-		let found = false;
+		// TODO: we have to check whether *all* edges lead to fully defined targets, why do we not check the open-in list?`
 		for(const [target, e] of outgoing) {
-			if(DfEdge.includesType(e, EdgeType.Reads) && !ids.has(target)) {
+			if(DfEdge.includesType(e, EdgeType.Reads) && !defs.has(target)) {
 				nonLocalReads.push(identifierRef);
-				found = true;
 				break;
 			}
-		}
-		if(!found) {
-			nonLocalReads.push(identifierRef);
 		}
 	}
 	return nonLocalReads;

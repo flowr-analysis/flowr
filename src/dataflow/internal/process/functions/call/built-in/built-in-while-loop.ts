@@ -23,7 +23,10 @@ import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import {
+	applyCdsToAllInGraphButConstants,
+	applyCdToReferences
+} from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { appendEnvironment } from '../../../../../environments/append';
 
@@ -98,21 +101,21 @@ export function processWhileLoop<OtherInfo>(
 	}
 
 	const cdTrue = [{ id: nameId, when: true }];
-	const remainingInputs = linkInputs(
-		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
-			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
+	const bodyRead = body.in.concat(body.unknownReferences);
+	applyCdsToAllInGraphButConstants(body.graph, bodyRead, cdTrue);
+	const remainingInputs = linkInputs(bodyRead,
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
+	applyCdToReferences(body.out, cdTrue);
 
 	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
-
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: nameId, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
-		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
+		out:               condition.out.concat(body.out),
 		entryPoint:        nameId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,

@@ -39,6 +39,10 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		return parseDCF(this.wrapped);
 	}
 
+	/**
+	 * Creates a FlowrDescriptionFile from given DCF content, path and optional roles.
+	 * This is useful if you already have the DCF content parsed and want to create a description file instance without re-parsing.
+	 */
 	public static fromDCF(dcf: DCF, path: string, roles?: FileRole[]): FlowrDescriptionFile {
 		const file = new FlowrDescriptionFile(new FlowrTextFile(path, roles));
 		file.setContent(dcf);

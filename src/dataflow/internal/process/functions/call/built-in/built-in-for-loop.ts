@@ -21,7 +21,7 @@ import { EdgeType } from '../../../../../graph/edge';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 
@@ -79,21 +79,21 @@ export function processForLoop<OtherInfo>(
 	const cd = [{ id: name.info.id, when: true }];
 
 
+	const bodyRefs = body.in.concat(body.unknownReferences);
+	applyCdsToAllInGraphButConstants(body.graph, bodyRefs, cd);
+	const nextGraph = headGraph.mergeWith(body.graph);
+
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!
-	const nameIdShares = produceNameSharedIdMap(
-		makeAllMaybe(findNonLocalReads(body.graph, writtenIds), body.graph, outEnvironment, true, cd)
-			.concat(findNonLocalReads(headGraph, writtenIds))
-	);
-
-	const nextGraph = headGraph.mergeWith(body.graph);
+	const nameIdShares = produceNameSharedIdMap(findNonLocalReads(nextGraph, writtenIds));
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
 		nextGraph.setDefinitionOfVertex(write);
 	}
 
-	const outgoing = variable.out.concat(writtenVariable, makeAllMaybe(body.out, nextGraph, outEnvironment, true, cd));
+	applyCdToReferences(body.out, cd);
+	const outgoing = variable.out.concat(writtenVariable, body.out);
 
 	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
 

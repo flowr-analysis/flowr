@@ -140,13 +140,11 @@ x`, emptyGraph()
 		emptyGraph().defineVariable('1@x', 'x', { cds: [{ id: 10, when: true }] }).use('1:21', 'x', { cds: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
-
-	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x; x <- x }\n x', emptyGraph()
+	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph()
 		.use('10', 'x', { cds: [{ id: '16', when: true }] })
 		.reads('10', ['12', '0'])
 		.use('13', 'x', { cds: [{ id: '16', when: true }] })
-		/* we should try to narrow this */
-		.reads('13', ['0', '9', '12'])
+		.reads('13', [9])
 		.use('17', 'x')
 		.reads('17', ['0', '12'])
 		.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { origin: [BuiltInProcName.Assignment], returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
@@ -526,7 +524,7 @@ print(x)`, emptyGraph()
 					.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 					.constant('3')
 					.constant('7')
-					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: '12', when: false }, { id: 14, when: true }] })
+					.defineVariable('6', 'x', { definedBy: ['7', '8'], cds: [{ id: 14, when: true }, { id: '12', when: false }] })
 					.markIdForUnknownSideEffects('18')
 			);
 			assertDataflow(label('Next (while)', ['while-loop', 'newlines', 'name-normal', 'numbers', 'next', 'semicolons', 'unnamed-arguments']),

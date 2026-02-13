@@ -12,7 +12,7 @@ describe.sequential('While', withShell(shell => {
 		.calls('3', builtInId('while'))
 		.nse('3', '1')
 		.constant('0')
-		.constant('1', { cds: [{ id: 3, when: true }] })
+		.constant('1')
 	);
 	assertDataflow(label('using variable in body', ['while-loop', 'logical', 'name-normal']), shell, 'while (TRUE) x', emptyGraph()
 		.use('1', 'x', { cds: [{ id: 3, when: true }] })
@@ -75,7 +75,6 @@ print(x)`, emptyGraph()
 	, {
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
-		mustNotHaveEdges:      [['4:10', '1@x']]
-	}
-	);
+		mustNotHaveEdges:      [['4:10', '1@x'], ['4:10', '4@x']]
+	});
 }));

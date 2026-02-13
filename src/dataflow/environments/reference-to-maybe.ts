@@ -4,6 +4,7 @@ import type { DataflowGraph } from '../graph/graph';
 import type { ControlDependency } from '../info';
 import type { REnvironmentInformation } from './environment';
 import { resolveByName } from './resolve-by-name';
+import { VertexType } from '../graph/vertex';
 
 function appToCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void{
 	if(toAdd) {
@@ -62,4 +63,40 @@ export function makeAllMaybe(references: readonly IdentifierReference[] | undefi
 		return [];
 	}
 	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds));
+}
+
+/**
+ * apply the given cds to all elements in the graph and also transform the given references similar to {@link makeAllMaybe}.
+ */
+export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
+	for(const [,v] of graph.vertices(true)) {
+		if(v.tag === VertexType.Value) {
+			continue;
+		}
+		if(v.cds) {
+			appToCdsUnique(v.cds, cds);
+		} else {
+			v.cds = Array.from(cds);
+		}
+	}
+	for(const ref of references) {
+		if(ref.cds) {
+			appToCdsUnique(ref.cds, cds);
+		} else {
+			ref.cds = Array.from(cds);
+		}
+	}
+}
+
+/**
+ * apply the given cds to all given references, but not to the graph. This is useful if we want to mark the references as maybe without marking all other nodes in the graph as maybe.
+ */
+export function applyCdToReferences(references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
+	for(const ref of references) {
+		if(ref.cds) {
+			appToCdsUnique(ref.cds, cds);
+		} else {
+			ref.cds = Array.from(cds);
+		}
+	}
 }

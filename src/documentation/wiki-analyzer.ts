@@ -39,6 +39,7 @@ import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -170,7 +171,7 @@ Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekNormalize', { codeFont: true, realName
 Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
 * ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
-* ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
+* ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
 * ${ctx.linkM(FlowrAnalyzer, 'query')} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
 * ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)

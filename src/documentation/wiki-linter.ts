@@ -1,10 +1,10 @@
 import { autoGenHeader } from './doc-util/doc-auto-gen';
-import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
+import { FlowrRefs, FlowrWikiBaseRef, linkFlowRSourceFile, RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
 import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
-import path from 'path';
+import path from 'node:path';
 import { documentReplSession } from './doc-util/doc-repl';
 import { section } from './doc-util/doc-structure';
 import { LintingRuleTag } from '../linter/linter-tags';
@@ -87,7 +87,7 @@ ${args.length >= 7 ? `\nAnd using the following [configuration](#configuration):
 We expect the linter to report the following:
 ${codeBlock('ts', prettyPrintExpectedOutput(args[4].getText(report.source)))}
 
-See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber })}) for the test-case implementation.
+See [here](${getTypePathLink({ filePath: report.source.fileName, lineNumber: report.lineNumber }, RemoteFlowrFilePathBaseRef)}) for the test-case implementation.
 		`;
 	}
 
@@ -180,7 +180,7 @@ df[6, "value"]
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
 		if(format === 'short') {
 			ruleExplanations.set(name, () => Promise.resolve(`
-	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, types)}]\\
+	**[${rule.info.name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name))}):** ${rule.info.description} [see ${shortLinkFile(ruleType, RemoteFlowrFilePathBaseRef, types)}]\\
 	${tags}
 
 		`.trim()));
@@ -196,7 +196,7 @@ ${tags}
 This rule is a ${certaintyText} rule.
  
 ${rule.info.description}\\
-_This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
+_This linting rule is implemented in ${shortLinkFile(ruleType,  RemoteFlowrFilePathBaseRef, types)}._
 
 
 ### Configuration
@@ -206,7 +206,7 @@ The \`${name}\` rule accepts the following configuration options:
 
 ${
 	Object.getOwnPropertyNames(LintingRules[name].info.defaultConfig).sort().map(key =>
-		`- ${shortLink(`${configType}:::${key}`, types)}\\\n${getDocumentationForType(`${configType}::${key}`, types)}`
+		`- ${shortLink(`${configType}:::${key}`, FlowrRefs.GitHub.FileBaseRef, types)}\\\n${getDocumentationForType(`${configType}::${key}`, types)}`
 	).join('\n')
 }
 

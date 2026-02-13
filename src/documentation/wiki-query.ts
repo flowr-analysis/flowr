@@ -49,6 +49,7 @@ import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
+import type { AllWikiDocuments } from '../cli/wiki';
 
 
 registerQueryDocumentation('call-context', {
@@ -156,7 +157,7 @@ registerQueryDocumentation('call-graph', {
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
-This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the given code.
+This query calculates and returns the ${ctx.linkPage<AllWikiDocuments>('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the given code.
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
@@ -893,7 +894,7 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
-Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
+Please see the ${ctx.linkPage<AllWikiDocuments>('wiki/Interface')} wiki page for more information on how to access this API.
 
 ${
 	block({

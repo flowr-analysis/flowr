@@ -33,32 +33,32 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (2 ms)
+    Query: linter (3 ms)
        ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Seeded Randomness (seeded-randomness):
            ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Absolute Paths (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Unused Definitions (unused-definitions):
            ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Naming Convention (naming-convention):
-           ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Network Functions (network-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
            ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dead Code (dead-code):
-           ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: consideredNodes: 5, searchTimeMs: 1, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈3 ms (1ms accuracy, total 4 ms)
     ```
     
     
@@ -82,7 +82,7 @@ It offers a wide variety of features, for example:
     
     Query: **linter** (3 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -92,7 +92,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
@@ -100,7 +100,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
@@ -109,7 +109,7 @@ It offers a wide variety of features, for example:
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _3.1 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -126,7 +126,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -181,7 +181,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -217,8 +217,8 @@ It offers a wide variety of features, for example:
               "numOperations": 0,
               "numAccesses": 0,
               "totalAccessed": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 1
+              "searchTimeMs": 1,
+              "processTimeMs": 0
             }
           },
           "dead-code": {
@@ -322,7 +322,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈3 ms (1ms accuracy, total 4 ms)
     ```
     
     
@@ -401,7 +401,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDMoW1wiYCM5MTtSU3ltYm9sIzkzOyBleGFtcGxlLlJcbiAgICAgICgzKVxuICAgICAgKjEuMTYtMjQqYFwiXSlcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMFxuICAgIDEoW1wiYCM5MTtSU3ltYm9sIzkzOyB0ZXN0ZmlsZXNcbiAgICAgICgxKVxuICAgICAgKjEuNi0xNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDFcbiAgICAyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoMilcbiAgICAgICoxLjEtMTQqXG4gICAgKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuL2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -416,6 +416,7 @@ It offers a wide variety of features, for example:
         1{{"`#91;RNumber#93; 0
           (1)
           *1.8*`"}}
+       %% No edges found for 1
         0["`#91;RSymbol#93; sum
           (0)
           *1.1-3*`"]
@@ -429,6 +430,7 @@ It offers a wide variety of features, for example:
         4{{"`#91;RNumber#93; 1
           (4)
           *2.12*`"}}
+       %% No edges found for 4
         3["`#91;RSymbol#93; product
           (3)
           *2.1-7*`"]
@@ -439,6 +441,7 @@ It offers a wide variety of features, for example:
         7{{"`#91;RNumber#93; 7
           (7)
           *3.6*`"}}
+       %% No edges found for 7
         6["`#91;RSymbol#93; w
           (6)
           *3.1*`"]
@@ -449,6 +452,7 @@ It offers a wide variety of features, for example:
         10{{"`#91;RNumber#93; 10
           (10)
           *4.6-7*`"}}
+       %% No edges found for 10
         9["`#91;RSymbol#93; N
           (9)
           *4.1*`"]
@@ -462,12 +466,14 @@ It offers a wide variety of features, for example:
         13{{"`#91;RNumber#93; 1
           (13)
           *6.11*`"}}
+       %% No edges found for 13
         16(["`#91;RSymbol#93; N
           (16)
           *6.14*`"])
         17{{"`#91;RNumber#93; 1
           (17)
           *6.16*`"}}
+       %% No edges found for 17
         18[["`#91;RBinaryOp#93; #45;
           (18)
           *6.14-16*
@@ -492,9 +498,6 @@ It offers a wide variety of features, for example:
         24(["`#91;RSymbol#93; sum
           (24, :may:36+)
           *7.10-12*`"])
-        built-in:sum["`Built-In:
-    sum`"]
-        style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         25(["`#91;RSymbol#93; i
           (25, :may:36+)
           *7.16*`"])
@@ -547,6 +550,7 @@ It offers a wide variety of features, for example:
         38{{"`#91;RString#93; #34;Sum#58;#34;
           (38)
           *11.5-10*`"}}
+       %% No edges found for 38
         40(["`#91;RSymbol#93; sum
           (40)
           *11.13-15*`"])
@@ -554,6 +558,7 @@ It offers a wide variety of features, for example:
     #34;
           (42)
           *11.18-21*`"}}
+       %% No edges found for 42
         44[["`#91;RFunctionCall#93; cat
           (44)
           *11.1-22*
@@ -564,6 +569,7 @@ It offers a wide variety of features, for example:
         46{{"`#91;RString#93; #34;Product#58;#34;
           (46)
           *12.5-14*`"}}
+       %% No edges found for 46
         48(["`#91;RSymbol#93; product
           (48)
           *12.17-23*`"])
@@ -571,6 +577,7 @@ It offers a wide variety of features, for example:
     #34;
           (50)
           *12.26-29*`"}}
+       %% No edges found for 50
         52[["`#91;RFunctionCall#93; cat
           (52)
           *12.1-30*
@@ -614,92 +621,88 @@ It offers a wide variety of features, for example:
         linkStyle 29 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
-        24 -.->|"reads"| built-in:sum
-        linkStyle 32 stroke:gray;
         24 -->|"CD-True"| 36
-        linkStyle 33 stroke:gray,color:gray;
+        linkStyle 32 stroke:gray,color:gray;
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
-        linkStyle 35 stroke:gray,color:gray;
+        linkStyle 34 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
         26 -.->|"reads, calls"| built-in:_
-        linkStyle 38 stroke:gray;
+        linkStyle 37 stroke:gray;
         26 -->|"CD-True"| 36
-        linkStyle 39 stroke:gray,color:gray;
+        linkStyle 38 stroke:gray,color:gray;
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
-        linkStyle 41 stroke:gray,color:gray;
+        linkStyle 40 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
         28 -.->|"reads, calls"| built-in:_
-        linkStyle 44 stroke:gray;
+        linkStyle 43 stroke:gray;
         28 -->|"CD-True"| 36
-        linkStyle 45 stroke:gray,color:gray;
+        linkStyle 44 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
         23 -->|"CD-True"| 36
-        linkStyle 48 stroke:gray,color:gray;
+        linkStyle 47 stroke:gray,color:gray;
         29 -->|"reads, argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 51 stroke:gray;
+        linkStyle 50 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 52 stroke:gray,color:gray;
+        linkStyle 51 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 55 stroke:gray,color:gray;
+        linkStyle 54 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 57 stroke:gray,color:gray;
+        linkStyle 56 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 60 stroke:gray;
+        linkStyle 59 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 61 stroke:gray,color:gray;
+        linkStyle 60 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
         30 -->|"CD-True"| 36
-        linkStyle 64 stroke:gray,color:gray;
+        linkStyle 63 stroke:gray,color:gray;
         34 -->|"reads, argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 67 stroke:gray;
+        linkStyle 66 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 68 stroke:gray,color:gray;
+        linkStyle 67 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 71 stroke:gray;
+        linkStyle 70 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 72 stroke:gray,color:gray;
+        linkStyle 71 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 76 stroke:gray;
+        linkStyle 75 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
-        40 -.->|"reads"| built-in:sum
-        linkStyle 79 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 83 stroke:gray;
+        linkStyle 81 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 89 stroke:gray;
+        linkStyle 87 stroke:gray;
     ```
     
     	
-    (The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

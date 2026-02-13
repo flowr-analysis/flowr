@@ -20,7 +20,6 @@ import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domai
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { Ternary } from '../util/logic';
 import { RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { log } from '../util/log';
 
 export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
 	extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
@@ -152,7 +151,6 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return true;
 		}
 		const nodeId = CfgVertex.getRootId(vertex);
-		log.debug(`NodeID: ${nodeId}, state: ${this.currentState.toString()}`);
 
 		if(this.isWideningPoint(nodeId)) {
 			// only check widening points at the entry vertex

@@ -284,7 +284,6 @@ describe('Interval Inference', () => {
 		}
 	});
 
-	// We cannot process condition/while yet
 	describe('while semantics', () => {
 		testIntervalDomain(`
 			x <- 1
@@ -294,16 +293,79 @@ describe('Interval Inference', () => {
 			}
 			print(x)
 		`, {
+			'1@x': { domain: IntervalTests.scalar(1) },
+			'2@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation },
 			'3@x': { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation },
 			'4@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation },
 			'6@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }
+		});
+		testIntervalDomain(`
+			x <- 0
+			while (!((!(!3)))) {
+				x <- x + 1
+			}
+			print(x)
+		`, {
+			'3@x': { domain: IntervalTests.bottom() },
+			'5@x': { domain: IntervalTests.scalar(0) },
+		});
+		testIntervalDomain(`
+			x <- 0
+			while ((3 + 4) * (2 - 2)) {
+				x <- x * 2
+				x <- x + 4
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.scalar(0) },
+			'3@x': { domain: IntervalTests.bottom() },
+			'4@x': { domain: IntervalTests.bottom() },
+			'6@x': { domain: IntervalTests.scalar(0) }
+		});
+		testIntervalDomain(`
+			x <- 0
+			while (!x) {
+				x <- 1
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.scalar(0) },
+			'2@x': { domain: IntervalTests.interval(0, 1) },
+			'3@x': { domain: IntervalTests.scalar(1) },
+			'5@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }
+		});
+		testIntervalDomain(`
+			x <- 0
+			while (3) {
+				x <- x + 1
+			}
+			print(x)
+		`, {
+			'3@x': { domain: IntervalTests.interval(1, Infinity) },
+			'5@x': { domain: IntervalTests.bottom() },
+		});
+	});
+
+	describe('repeat semantics', () => {
+		testIntervalDomain(`
+			x <- 0
+			repeat {
+				x <- x + 1
+				if (unknown) {
+					break
+				}
+			}
+			print(x)
+		`, {
+			'3@x': { domain: IntervalTests.interval(1, Infinity) },
+			'8@x': { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
 		});
 	});
 
 	describe('condition semantics', () => {
 		testIntervalDomain(`
 			x <- 0
-			if (x < 5) {
+			if (!x) {
 				x <- x + 1
 			} else {
 				x <- x - 1
@@ -312,8 +374,8 @@ describe('Interval Inference', () => {
 		`, {
 			'1@x': { domain: IntervalTests.scalar(0) },
 			'3@x': { domain: IntervalTests.scalar(1) },
-			'5@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation },
-			'7@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }
+			'5@x': { domain: IntervalTests.bottom() },
+			'7@x': { domain: IntervalTests.scalar(1) }
 		});
 	});
 });

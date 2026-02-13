@@ -20,6 +20,7 @@ import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domai
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { Ternary } from '../util/logic';
 import { RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { log } from '../util/log';
 
 export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
 	extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
@@ -151,15 +152,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return true;
 		}
 		const nodeId = CfgVertex.getRootId(vertex);
+		log.debug(`NodeID: ${nodeId}, state: ${this.currentState.toString()}`);
 
 		if(this.isWideningPoint(nodeId)) {
 			// only check widening points at the entry vertex
 			if(CfgVertex.isMarker(vertex)) {
-				// As branch might be empty, this could be the immediate note after a condition.
-				// If it is, we need to apply the condition semantics for the respective branch.
-				const predecessorDomains = this.getPredecessorDomains(vertex);
-				this.currentState = this.currentState.joinAll(predecessorDomains);
-				this.trace.set(nodeId, this.currentState);
 				return true;
 			}
 			const oldState = this.getAbstractState(nodeId) ?? this.config.domain.bottom();
@@ -258,14 +255,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
 	}
 
-	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
+	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices (root vertex instead of exit vertex for widening points) */
 	protected getPredecessorNodes(vertexId: NodeId, pathEdges: CfgEdge[] = []): { id: NodeId, edges: CfgEdge[] }[] {
 		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.entries()  // outgoing dependency edges are incoming CFG edges
 			.map(([id, edge]: [NodeId, CfgEdge]): [CfgVertex | undefined, CfgEdge[]] => [this.getCfgVertex(id), [...pathEdges, edge]])
 			.flatMap(([vertex, path]) => {
 				if(vertex === undefined) {
 					return [];
-				} else if(this.shouldSkipVertex(vertex)) {
+				} else if((this.isWideningPoint(CfgVertex.getRootId(vertex)) && CfgVertex.isMarker(vertex)) || (!this.isWideningPoint(CfgVertex.getRootId(vertex)) && this.shouldSkipVertex(vertex))) {
+					// For widening points we need to skip the exit marker (same special handling as in visitNode), for all other nodes we only skip if shouldSkipVertex returns true
 					return this.getPredecessorNodes(CfgVertex.getId(vertex), path);
 				} else {
 					return [{ id: CfgVertex.getRootId(vertex), edges: path }];

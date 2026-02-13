@@ -2,7 +2,7 @@ import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type Con
 import { Top } from './lattice';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
-type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
+export type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
 
 /**
  * A mapped abstract domain as mapping of keys to abstract values of an abstract domain.
@@ -10,14 +10,17 @@ type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, Concr
  * @template Key       - Type of the keys of the mapping to abstract values
  * @template Domain    - Type of the abstract domain to map the keys to
  */
-export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
+export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 	extends AbstractDomain<ConcreteMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>, ReadonlyMap<Key, Domain>> {
 
 	constructor(value: ReadonlyMap<Key, Domain>) {
 		super(new Map(value));
 	}
 
-	public abstract create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): MappedAbstractDomain<Key, Domain> {
+		return new MappedAbstractDomain(value);
+	}
 
 	public get(key: Key): Domain | undefined {
 		return this._value.get(key);
@@ -27,7 +30,7 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 		return this._value.has(key);
 	}
 
-	public set(key: Key, value: Domain): void {
+	protected set(key: Key, value: Domain): void {
 		(this._value as Map<Key, Domain>).set(key, value);
 	}
 
@@ -36,14 +39,14 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 	}
 
 	public bottom(): this {
-		return this.create(new Map<Key, Domain>());
+		return this.create(new Map());
 	}
 
 	public top(): this {
 		const result = this.create(this.value);
 
 		for(const [key, value] of result.value) {
-			result.set(key, value.top() as Domain);
+			result.set(key, value.top());
 		}
 		return result;
 	}
@@ -147,10 +150,10 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 	}
 
 	public concretize(limit: number): ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top {
-		if(this.value.values().some(value => value.isBottom())) {
+		if(this.value.size === 0) {
 			return new Set();
 		}
-		let states = new Set<ConcreteMap<Key, Domain>>([new Map()]);
+		let mappings = new Set<ConcreteMap<Key, Domain>>([new Map()]);
 
 		for(const [key, value] of this.value) {
 			const concreteValues = value.concretize(limit);
@@ -158,46 +161,51 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 			if(concreteValues === Top) {
 				return Top;
 			}
-			const newStates = new Set<ConcreteMap<Key, Domain>>();
+			const newMappings = new Set<ConcreteMap<Key, Domain>>();
 
-			for(const state of states) {
+			for(const state of mappings) {
 				for(const concrete of concreteValues) {
-					if(newStates.size > limit) {
+					if(newMappings.size > limit) {
 						return Top;
 					}
 					const map = new Map(state);
 					map.set(key, concrete as ConcreteDomain<Domain>);
-					newStates.add(map);
+					newMappings.add(map);
 				}
 			}
-			states = newStates;
+			mappings = newMappings;
 		}
-		return states;
+		return mappings;
 	}
 
 	public abstract(concrete: ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top): this {
-		const entry = [...this.value.values()][0];
-
-		if(concrete === Top || entry === undefined) {
-			return this.create(new Map<Key, Domain>());
+		if(concrete === Top) {
+			return this.top();
+		} else if(concrete.size === 0) {
+			return this.bottom();
 		}
-		const mappings = new Map<Key, Set<ConcreteDomain<Domain>>>();
+		const domain = this.value.values().toArray()[0];
 
-		for(const state of concrete) {
-			for(const [key, value] of state) {
-				const mapping = mappings.get(key);
+		if(domain === undefined) {
+			return this.top();
+		}
+		const mapping = new Map<Key, Set<ConcreteDomain<Domain>>>();
 
-				if(mapping === undefined) {
-					mappings.set(key, new Set([value]));
+		for(const concreteMapping of concrete) {
+			for(const [key, value] of concreteMapping) {
+				const set = mapping.get(key);
+
+				if(set === undefined) {
+					mapping.set(key, new Set([value]));
 				} else {
-					mapping.add(value);
+					set.add(value);
 				}
 			}
 		}
 		const result = new Map<Key, Domain>();
 
-		for(const [key, values] of mappings) {
-			result.set(key, entry.abstract(values));
+		for(const [key, values] of mapping) {
+			result.set(key, domain.abstract(values));
 		}
 		return this.create(result);
 	}
@@ -211,7 +219,7 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 	}
 
 	public isTop(): this is this {
-		return this.value.size > 0 && this.value.values().every(value => value.isTop());
+		return this.value.values().some(entry => entry.isTop());
 	}
 
 	public isBottom(): this is this {
@@ -220,5 +228,23 @@ export abstract class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain
 
 	public isValue(): this is this {
 		return true;
+	}
+}
+
+/**
+ * A mutable version of the {@link MappedAbstractDomain} with {@link MutableMappedAbstractDomain#set|`set`} and {@link MutableMappedAbstractDomain#remove|`remove`}.
+ */
+export class MutableMappedAbstractDomain<Key, Domain extends AnyAbstractDomain> extends MappedAbstractDomain<Key, Domain> {
+	public create(value: ReadonlyMap<Key, Domain>): this;
+	public create(value: ReadonlyMap<Key, Domain>): MutableMappedAbstractDomain<Key, Domain> {
+		return new MutableMappedAbstractDomain(value);
+	}
+
+	public set(key: Key, value: Domain): void {
+		super.set(key, value);
+	}
+
+	public remove(key: Key): void {
+		super.remove(key);
 	}
 }

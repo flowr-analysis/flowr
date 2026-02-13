@@ -1,5 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AnyAbstractDomain } from './abstract-domain';
+import { BottomSymbol, Top, TopSymbol } from './lattice';
+import type { ConcreteMap } from './mapped-abstract-domain';
 import { MappedAbstractDomain } from './mapped-abstract-domain';
 
 /**
@@ -9,13 +11,147 @@ import { MappedAbstractDomain } from './mapped-abstract-domain';
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends MappedAbstractDomain<NodeId, Domain> {
-	public create(value: ReadonlyMap<NodeId, Domain>): this;
-	public create(value: ReadonlyMap<NodeId, Domain>): StateAbstractDomain<Domain> {
-		return new StateAbstractDomain(value);
+	private _isBottom: true | undefined;
+
+	constructor(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean) {
+		super(value);
+
+		if(bottom || value.values().some(entry => entry.isBottom())) {
+			this.toBottom();
+		}
+	}
+
+	public create(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean): this;
+	public create(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean): StateAbstractDomain<Domain> {
+		return new StateAbstractDomain(value, bottom ?? this._isBottom);
 	}
 
 	public static top<Domain extends AnyAbstractDomain>(): StateAbstractDomain<Domain> {
 		return new StateAbstractDomain<Domain>(new Map());
+	}
+
+	protected set(key: NodeId, value: Domain): void {
+		if(this._isBottom) {
+			super.set(key, value.bottom());
+		} else if(value.isBottom()) {
+			super.set(key, value);
+			this.toBottom();
+		} else {
+			super.set(key, value);
+		}
+	}
+
+	public bottom(): this {
+		return this.create(this.value, true);
+	}
+
+	public top(): this {
+		return this.create(new Map(), false);
+	}
+
+	public equals(other: this): boolean {
+		if(this._isBottom !== other._isBottom) {
+			return false;
+		}
+		return super.equals(other);
+	}
+
+	public leq(other: this): boolean {
+		if(this._isBottom) {
+			return true;
+		} else if(other._isBottom) {
+			return false;
+		}
+		return super.leq(other);
+	}
+
+	public join(other: this): this {
+		if(this._isBottom) {
+			return other.create(other.value);
+		} else if(other._isBottom) {
+			return this.create(this.value);
+		}
+		return super.join(other);
+	}
+
+	public meet(other: this): this {
+		const result = super.meet(other);
+		result._isBottom = this._isBottom || other._isBottom;
+
+		return result;
+	}
+
+	public widen(other: this): this {
+		if(this._isBottom) {
+			return other.create(other.value);
+		} else if(other._isBottom) {
+			return this.create(this.value);
+		}
+		return super.widen(other);
+	}
+
+	public narrow(other: this): this {
+		const result = super.narrow(other);
+		result._isBottom = this._isBottom || other._isBottom;
+
+		return result;
+	}
+
+	public concretize(limit: number): ReadonlySet<ConcreteMap<NodeId, Domain>> | typeof Top {
+		if(this._isBottom) {
+			return new Set();
+		} else if(this.value.size === 0) {
+			return Top;
+		}
+		return super.concretize(limit);
+	}
+
+	public abstract(concrete: typeof Top | ReadonlySet<ConcreteMap<NodeId, Domain>>): this {
+		if(concrete === Top) {
+			return this.top();
+		} else if(concrete.size === 0) {
+			return this.create(new Map(), true);
+		}
+		return super.abstract(concrete);
+	}
+
+	public toJson(): unknown {
+		if(this._isBottom) {
+			return BottomSymbol;
+		} else if(this.value.size === 0) {
+			return TopSymbol;
+		}
+		return super.toJson();
+	}
+
+	public toString(): string {
+		if(this._isBottom) {
+			return BottomSymbol;
+		} else if(this.value.size === 0) {
+			return TopSymbol;
+		}
+		return super.toString();
+	}
+
+	public isTop(): this is this {
+		return this.value.size === 0;
+	}
+
+	public isBottom(): this is this {
+		return this._isBottom ?? false;
+	}
+
+	public isValue(): this is this {
+		return !this._isBottom;
+	}
+
+	private toBottom(): this {
+		this._isBottom = true;
+
+		for(const [key, entry] of this.value) {
+			this.set(key, entry.bottom());
+		}
+		return this;
 	}
 }
 

@@ -1,9 +1,8 @@
-import { log } from '../../util/log';
 import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
-type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
+export type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
 
 /**
  * A mapped abstract domain as mapping of keys to abstract values of an abstract domain.
@@ -40,12 +39,16 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 	}
 
 	public bottom(): this {
-		log.warn('There is no explicit bottom representaton of the mapped abstract domain');
-		return this.top();
+		return this.create(new Map());
 	}
 
 	public top(): this {
-		return this.create(new Map());
+		const result = this.create(this.value);
+
+		for(const [key, value] of result.value) {
+			result.set(key, value.top());
+		}
+		return result;
 	}
 
 	public equals(other: this): boolean {
@@ -147,10 +150,10 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 	}
 
 	public concretize(limit: number): ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top {
-		if(this.value.values().some(value => value.isBottom())) {
+		if(this.value.size === 0) {
 			return new Set();
 		}
-		let states = new Set<ConcreteMap<Key, Domain>>([new Map()]);
+		let mappings = new Set<ConcreteMap<Key, Domain>>([new Map()]);
 
 		for(const [key, value] of this.value) {
 			const concreteValues = value.concretize(limit);
@@ -158,46 +161,51 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 			if(concreteValues === Top) {
 				return Top;
 			}
-			const newStates = new Set<ConcreteMap<Key, Domain>>();
+			const newMappings = new Set<ConcreteMap<Key, Domain>>();
 
-			for(const state of states) {
+			for(const state of mappings) {
 				for(const concrete of concreteValues) {
-					if(newStates.size > limit) {
+					if(newMappings.size > limit) {
 						return Top;
 					}
 					const map = new Map(state);
 					map.set(key, concrete as ConcreteDomain<Domain>);
-					newStates.add(map);
+					newMappings.add(map);
 				}
 			}
-			states = newStates;
+			mappings = newMappings;
 		}
-		return states;
+		return mappings;
 	}
 
 	public abstract(concrete: ReadonlySet<ConcreteMap<Key, Domain>> | typeof Top): this {
-		const entry = [...this.value.values()][0];
-
-		if(concrete === Top || entry === undefined) {
-			return this.create(new Map<Key, Domain>());
+		if(concrete === Top) {
+			return this.top();
+		} else if(concrete.size === 0) {
+			return this.bottom();
 		}
-		const mappings = new Map<Key, Set<ConcreteDomain<Domain>>>();
+		const domain = this.value.values().toArray()[0];
 
-		for(const state of concrete) {
-			for(const [key, value] of state) {
-				const mapping = mappings.get(key);
+		if(domain === undefined) {
+			return this.top();
+		}
+		const mapping = new Map<Key, Set<ConcreteDomain<Domain>>>();
 
-				if(mapping === undefined) {
-					mappings.set(key, new Set([value]));
+		for(const concreteMapping of concrete) {
+			for(const [key, value] of concreteMapping) {
+				const set = mapping.get(key);
+
+				if(set === undefined) {
+					mapping.set(key, new Set([value]));
 				} else {
-					mapping.add(value);
+					set.add(value);
 				}
 			}
 		}
 		const result = new Map<Key, Domain>();
 
-		for(const [key, values] of mappings) {
-			result.set(key, entry.abstract(values));
+		for(const [key, values] of mapping) {
+			result.set(key, domain.abstract(values));
 		}
 		return this.create(result);
 	}
@@ -211,11 +219,11 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 	}
 
 	public isTop(): this is this {
-		return this.value.size === 0;
+		return this.value.values().some(entry => entry.isTop());
 	}
 
 	public isBottom(): this is this {
-		return this.value.values().some(value => value.isBottom());
+		return this.value.size === 0;
 	}
 
 	public isValue(): this is this {

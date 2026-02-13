@@ -17,7 +17,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 		super(value);
 
 		if(bottom || value.values().some(entry => entry.isBottom())) {
-			this.toBottom();
+			this._isBottom = true;
 		}
 	}
 
@@ -30,15 +30,15 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 		return new StateAbstractDomain<Domain>(new Map());
 	}
 
+	public get(key: NodeId, ignoreBottom?: boolean): Domain | undefined {
+		return this._isBottom && !ignoreBottom ? super.get(key)?.bottom() : super.get(key);
+	}
+
 	protected set(key: NodeId, value: Domain): void {
-		if(this._isBottom) {
-			super.set(key, value.bottom());
-		} else if(value.isBottom()) {
-			super.set(key, value);
-			this.toBottom();
-		} else {
-			super.set(key, value);
+		if(value.isBottom()) {
+			this._isBottom = true;
 		}
+		super.set(key, value);
 	}
 
 	public bottom(): this {
@@ -46,7 +46,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 	}
 
 	public top(): this {
-		return this.create(new Map(), false);
+		return this.create(new Map());
 	}
 
 	public equals(other: this): boolean {
@@ -143,15 +143,6 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 
 	public isValue(): this is this {
 		return !this._isBottom;
-	}
-
-	private toBottom(): this {
-		this._isBottom = true;
-
-		for(const [key, entry] of this.value) {
-			this.set(key, entry.bottom());
-		}
-		return this;
 	}
 }
 

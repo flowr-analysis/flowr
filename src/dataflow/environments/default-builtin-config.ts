@@ -118,8 +118,8 @@ export const DefaultBuiltinConfig = [
 			'pdf', 'jpeg', 'png', 'windows', 'postscript', 'xfig', 'bitmap', 'pictex', 'cairo_pdf', 'svg', 'bmp', 'tiff', 'X11', 'quartz',
 			'jitter'
 		],
-		processor:       BuiltInProcName.Default,
-		config:          { readAllArguments: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          {},
 		assumePrimitive: true
 	},
 	{
@@ -127,8 +127,8 @@ export const DefaultBuiltinConfig = [
 		names: [
 			't', 'aperm' /* transpose function, permutation generation */
 		],
-		processor:       BuiltInProcName.Default,
-		config:          { readAllArguments: true },
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          {},
 		assumePrimitive: false
 	},
 	{ type: 'function', names: ['rm'],                                          processor: BuiltInProcName.Rm,                  config: {},                                                                           assumePrimitive: true  },
@@ -377,6 +377,9 @@ export function getDefaultProcessor(name: string): BuiltInProcName | undefined {
 	}
 	const fn = DefaultBuiltinConfig.find(def => ((def.names as string[]).includes(name) && def.type !== 'constant')
 	|| (def.type === 'replacement' && def.suffixes.flatMap(d => def.names.map(n => `${n}${d}`)).includes(name))
-	) as BuiltInFunctionDefinition<BuiltInProcName.Default> | BuiltInReplacementDefinition | undefined;
-	return fn?.type === 'replacement' ? BuiltInProcName.Replacement : fn?.processor as BuiltInProcName;
+	) as BuiltInFunctionDefinition<BuiltInProcName.Default | BuiltInProcName.DefaultReadAllArgs> | BuiltInReplacementDefinition | undefined;
+	if(fn?.type === 'replacement') {
+		return BuiltInProcName.Replacement;
+	}
+	return fn?.processor === BuiltInProcName.DefaultReadAllArgs ? BuiltInProcName.Default : fn?.processor as BuiltInProcName;
 }

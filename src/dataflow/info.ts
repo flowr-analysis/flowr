@@ -171,7 +171,7 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		in:                [],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap),
+		graph:             new DataflowGraph(undefined),
 		entryPoint,
 		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
 		hooks:             []
@@ -250,7 +250,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${JSON.stringify(a.id)} vs. ${info.rightname}: ${JSON.stringify(b.id)}`);
 	}
 	if(a.when !== b.when) {
-		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
+		info.report.addComment(`${info.position}Different control dependency when (id: ${JSON.stringify(a.id)}). ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
 	}
 }
 

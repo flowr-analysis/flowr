@@ -23,6 +23,7 @@ import type { IdentifierDefinition } from '../../../../../environments/identifie
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 
 
 /**
@@ -64,25 +65,28 @@ export function processForLoop<OtherInfo>(
 	const headGraph = variable.graph.mergeWith(vector.graph);
 
 	const writtenVariable = variable.unknownReferences.concat(variable.in);
+	const writtenIds = new Set<NodeId>();
 	for(const write of writtenVariable) {
+		writtenIds.add(write.nodeId);
 		headEnvironments = define({ ...write, definedAt: name.info.id, type: ReferenceType.Variable } as (IdentifierDefinition & { name: string }), false, headEnvironments);
 	}
 
-	// TODO: only patch cd after just as with while
-	data = { ...data, environment: headEnvironments };
+	(data as { environment: REnvironmentInformation }).environment = headEnvironments;
 
 	const body = processDataflowFor(bodyArg, data);
 
-	const nextGraph = headGraph.mergeWith(body.graph);
-	const outEnvironment = appendEnvironment(headEnvironments, body.environment );
+	const outEnvironment = appendEnvironment(headEnvironments, body.environment);
 	const cd = [{ id: name.info.id, when: true }];
 
 
 	// now we have to identify all reads that may be effected by a circular redefinition
 	// for this, we search for all reads with a non-local read resolve!
 	const nameIdShares = produceNameSharedIdMap(
-		makeAllMaybe(findNonLocalReads(nextGraph, writtenVariable), nextGraph, outEnvironment, false, cd)
+		makeAllMaybe(findNonLocalReads(body.graph, writtenIds), body.graph, outEnvironment, true, cd)
+			.concat(findNonLocalReads(headGraph, writtenIds))
 	);
+
+	const nextGraph = headGraph.mergeWith(body.graph);
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);

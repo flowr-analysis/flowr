@@ -35,8 +35,7 @@ export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 /**
  * Find all reads within the graph that do not reference a local definition in the graph.
  */
-export function findNonLocalReads(graph: DataflowGraph, ignore: readonly IdentifierReference[]): IdentifierReference[] {
-	const ignores = new Set(ignore.map(i => i.nodeId));
+export function findNonLocalReads(graph: DataflowGraph, ignores: ReadonlySet<NodeId> = new Set()): IdentifierReference[] {
 	const ids = new Set(
 		graph.vertexIdsOfType(VertexType.Use).concat(
 			graph.vertexIdsOfType(VertexType.FunctionCall)
@@ -49,20 +48,27 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 			continue;
 		}
 		const outgoing = graph.outgoingEdges(nodeId);
-		const name = recoverName(nodeId, graph.idMap);
 		const origin = graph.getVertex(nodeId);
+		const name = recoverName(nodeId, graph.idMap);
 
 		const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
 
+		const identifierRef = { nodeId, name, type };
+
 		if(outgoing === undefined) {
-			nonLocalReads.push({ name, nodeId, type });
+			nonLocalReads.push(identifierRef);
 			continue;
 		}
+		let found = false;
 		for(const [target, e] of outgoing) {
 			if(DfEdge.includesType(e, EdgeType.Reads) && !ids.has(target)) {
-				nonLocalReads.push({ name,  nodeId,  type });
+				nonLocalReads.push(identifierRef);
+				found = true;
 				break;
 			}
+		}
+		if(!found) {
+			nonLocalReads.push(identifierRef);
 		}
 	}
 	return nonLocalReads;
@@ -74,8 +80,9 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 export function produceNameSharedIdMap(references: IdentifierReference[]): NameIdMap {
 	const nameIdShares = new DefaultMap<Identifier, IdentifierReference[]>(() => []);
 	for(const reference of references) {
-		if(reference.name) {
-			nameIdShares.get(reference.name).push(reference);
+		const rn = reference.name;
+		if(rn) {
+			nameIdShares.get(rn).push(reference);
 		}
 	}
 	return nameIdShares;
@@ -575,21 +582,29 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
 	// just apply the cds of all exit points not already present
 	const exitCds = new Set(exits.flatMap(e => e.cds?.map(negateControlDependency)).filter(isNotUndefined));
-
+	const seenRefs = new Set<NodeId>();
 	for(const ref of references) {
+		if(seenRefs.has(ref.nodeId)) {
+			continue;
+		}
+		seenRefs.add(ref.nodeId);
 		for(const cd of exitCds) {
-			const { id: cId, when: cWhen } = cd;
+			const { id: cId } = cd;
+			let setVertex = false;
 			if(ref.cds) {
-				if(!ref.cds?.find(c => c.id === cId && c.when === !cWhen)) {
+				if(!ref.cds?.find(c => c.id === cId)) {
 					ref.cds.push({ ...cd, byIteration: true });
-					// in this case these are synced with the vertex
+					setVertex = true;
 				}
 			} else {
 				ref.cds = [{ ...cd, byIteration: true }];
+				setVertex = true;
+			}
+			if(setVertex) {
 				const vertex = graph.getVertex(ref.nodeId);
 				if(vertex) {
 					if(vertex.cds) {
-						if(!vertex.cds?.find(c => c.id === cId && c.when === !cWhen)) {
+						if(!vertex.cds?.find(c => c.id === cId)) {
 							vertex.cds.push({ ...cd, byIteration: true });
 						}
 					} else {

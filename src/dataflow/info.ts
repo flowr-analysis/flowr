@@ -171,7 +171,7 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		in:                [],
 		out:               [],
 		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap),
+		graph:             new DataflowGraph(undefined),
 		entryPoint,
 		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
 		hooks:             []

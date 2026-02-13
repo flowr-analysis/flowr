@@ -58,5 +58,8 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
  * @see {@link makeReferenceMaybe}
  */
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, applyCds: ControlDependency[] | undefined = undefined): IdentifierReference[] {
-	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds)) ?? [];
+	if(references === undefined || references.length === 0) {
+		return [];
+	}
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds));
 }

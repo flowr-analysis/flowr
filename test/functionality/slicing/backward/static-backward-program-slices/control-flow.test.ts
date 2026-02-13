@@ -25,7 +25,7 @@ x`);
 		// we don't expect to be smart about loops other than repeat at the moment, see https://github.com/flowr-analysis/flowr/issues/804
 		describe.each([
 			{ loop: 'repeat', caps: ['repeat-loop'] },
-			{ loop: 'while(TRUE)', caps: ['while-loop', 'logical'] },
+			{ loop: 'while(u)', caps: ['while-loop', 'logical'] },
 			{ loop: 'for(i in 1:100)', caps: ['for-loop', 'numbers', 'name-normal'] }
 		] satisfies { loop: string, caps: SupportedFlowrCapabilityId[] }[])('$loop', ({ loop, caps }) => {
 			assertSliced(label('Break immediately', [...caps, 'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'semicolons', 'newlines', 'break', 'unnamed-arguments']),

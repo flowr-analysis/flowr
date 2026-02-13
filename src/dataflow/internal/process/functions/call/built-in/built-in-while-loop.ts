@@ -49,6 +49,7 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
+	const nameId = name.info.id;
 	const origEnv = data.environment;
 
 	// we should defer this to the abstract interpretation
@@ -74,12 +75,12 @@ export function processWhileLoop<OtherInfo>(
 
 	// If the condition is always false, we don't include the body
 	if(condition !== undefined && conditionIsAlwaysFalse) {
-		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return {
 			unknownReferences: [],
-			in:                [{ nodeId: name.info.id, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
+			in:                [{ nodeId: nameId, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
 			out:               condition.out,
-			entryPoint:        name.info.id,
+			entryPoint:        nameId,
 			exitPoints:        [],
 			graph:             information.graph,
 			environment:       information.environment,
@@ -91,27 +92,27 @@ export function processWhileLoop<OtherInfo>(
 
 	if(alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
-		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return condition;
 	}
 
-	const cdTrue = [{ id: name.info.id, when: true }];
+	const cdTrue = [{ id: nameId, when: true }];
 	const remainingInputs = linkInputs(
 		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
 			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
 
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition
-	information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+	information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
+		in:                [{ nodeId: nameId, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
 		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
-		entryPoint:        name.info.id,
+		entryPoint:        nameId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
 		// as we do not know whether the loop executes at all, we have to merge the environments of the condition and the body, as both may be relevant

@@ -109,7 +109,7 @@ export const FunctionArgument = {
 	 * ```
 	 * @see {@link isNotEmpty}
 	 */
-	isEmpty(this: void, arg: FunctionArgument): arg is typeof EmptyArgument {
+	isEmpty(this: void, arg: unknown): arg is typeof EmptyArgument {
 		return arg === EmptyArgument;
 	},
 	/**

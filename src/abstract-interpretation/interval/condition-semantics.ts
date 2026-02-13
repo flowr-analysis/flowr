@@ -6,6 +6,7 @@ import type { IntervalDomain } from '../domains/interval-domain';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { isNotUndefined } from '../../util/assert';
 
 /**
  * Applies the abstract condition semantics of the provided function with respect to the interval domain to the provided args.
@@ -43,6 +44,13 @@ export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo 
 	const argState = visitor.getAbstractValue(vertex?.id);
 
 	if(argState?.isValue() && argState.value[0] == 0 && argState.value[1] == 0) {
+		// Map every variable in state to bottom (fix until state-domain rework)
+		if(isNotUndefined(currentState)) {
+			for(const entry of currentState.value.entries()) {
+				currentState.set(entry[0], entry[1].bottom());
+			}
+			return currentState;
+		}
 		return new StateAbstractDomain<IntervalDomain>(StateAbstractDomain.bottom<IntervalDomain>().value).bottom();
 	}
 
@@ -89,6 +97,13 @@ function applyNegation(arg: DataflowGraphVertexInfo | undefined, currentState: S
 	const argState = visitor.getAbstractValue(arg?.id);
 
 	if(argState?.isValue() && (0 < argState.value[0] || argState.value[1] < 0)) {
+		// (fix until state-domain rework)
+		if(isNotUndefined(currentState)) {
+			for(const entry of currentState.value.entries()) {
+				currentState.set(entry[0], entry[1].bottom());
+			}
+			return currentState;
+		}
 		return new StateAbstractDomain<IntervalDomain>(StateAbstractDomain.bottom<IntervalDomain>().value).bottom();
 	}
 

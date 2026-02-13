@@ -55,7 +55,6 @@ export function processWhileLoop<OtherInfo>(
 	// we should defer this to the abstract interpretation
 	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
-	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	//We don't care about the body if it never executes
 	if(conditionIsAlwaysFalse) {
@@ -87,6 +86,8 @@ export function processWhileLoop<OtherInfo>(
 			hooks:             condition.hooks
 		};
 	}
+	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
+
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 

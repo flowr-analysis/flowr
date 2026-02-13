@@ -46,7 +46,7 @@ export const DEAD_CODE = {
 					.filter(element => {
 						meta.consideredNodes++;
 						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
-						return element.node.info.role !== RoleInParent.ExpressionListGrouping  && !cfgInformation.isReachable;
+						return element.node.info.role !== RoleInParent.ExpressionListGrouping && !cfgInformation.isReachable;
 					})
 					.map(element => ({
 						certainty:  LintingResultCertainty.Certain,

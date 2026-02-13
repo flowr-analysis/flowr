@@ -190,21 +190,30 @@ export function processSourceCall<OtherInfo>(
 	if(sourceFile?.length === 1) {
 		const path = removeRQuotes(sourceFile[0]);
 		let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
-
-		if(Array.isArray(filepath)) {
-			filepath = filepath?.[0];
+		if(!Array.isArray(filepath)) {
+			filepath = filepath ? [filepath] : undefined;
 		}
-		if(filepath !== undefined) {
-			// check if the sourced file has already been dataflow analyzed, and if so, skip it
-			const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
-			const findCount = data.referenceChain.filter(e => e !== undefined && filepath === e).length;
-			if(findCount > limit) {
-				dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(filepath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
-				handleUnknownSideEffect(information.graph, information.environment, rootId);
-				return information;
+		if(filepath !== undefined && filepath.length > 0) {
+			let result = information;
+			const origCds = data.cds?.slice() ?? [];
+			for(const f of filepath) {
+				// check if the sourced file has already been dataflow analyzed, and if so, skip it
+				const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
+				const findCount = data.referenceChain.filter(e => e !== undefined && f === e).length;
+				if(findCount > limit) {
+					dataflowLogger.warn(`Found cycle (>=${limit + 1}) in dataflow analysis for ${JSON.stringify(filepath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
+					handleUnknownSideEffect(result.graph, result.environment, rootId);
+					continue;
+				}
+				if(filepath.length > 1) {
+					data = { ...data, cds: [...origCds, { id: rootId, when: true, file: f }] };
+				}
+				result = sourceRequest(rootId, {
+					request: 'file',
+					content: f
+				}, data, result, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
 			}
-
-			return sourceRequest(rootId, { request: 'file', content: filepath }, data, information, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + path, name.location));
+			return result;
 		}
 	}
 

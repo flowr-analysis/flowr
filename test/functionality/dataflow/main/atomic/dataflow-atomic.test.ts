@@ -497,7 +497,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 							.defineVariable(1, 'i', { definedBy: [4] })
 							.constant(2)
 							.constant(3)
-							.constant(5, { cds: [{ id: 7, when: true }] })
+							.constant(5)
 							.defineVariable(0, 'x', { definedBy: [7, 8] })
 					);
 				});
@@ -813,7 +813,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.defineVariable(0, 'i', { definedBy: [3] })
 					.constant(1)
 					.constant(2)
-					.constant(6, { cds: [{ id: 8, when: true }] })
+					.constant(6)
 			);
 			assertDataflow(label('using loop variable in for-body', ['for-loop', 'numbers', 'name-normal', 'grouping']),
 				shell, 'for(i in 1:10) { i }',  emptyGraph()

@@ -20,7 +20,12 @@ import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
-import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall, EmptyArgument } from '../nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionCall,
+	type RNamedFunctionCall,
+	type RUnnamedFunctionCall
+} from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
 import type { RArgument } from '../nodes/r-argument';
@@ -384,6 +389,12 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			childInfo.parent = id;
 			childInfo.index = i++;
 			childInfo.role = RoleInParent.ExpressionListChild;
+		}
+		// assign role for grouping
+		if(grouping) {
+			const [open, close] = grouping;
+			open.info.role = RoleInParent.ExpressionListGrouping;
+			close.info.role = RoleInParent.ExpressionListGrouping;
 		}
 		decorated.info.file = info.file;
 		return decorated;

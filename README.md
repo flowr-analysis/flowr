@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.7, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -49,11 +49,11 @@ It offers a wide variety of features, for example:
        ╰ Unused Definitions (unused-definitions):
            ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Naming Convention (naming-convention):
-           ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Network Functions (network-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dead Code (dead-code):
            ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
@@ -109,7 +109,7 @@ It offers a wide variety of features, for example:
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _3.3 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -308,7 +308,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.7, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -322,7 +322,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -356,7 +356,7 @@ It offers a wide variety of features, for example:
          
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">111.7 ms</span></i> (as of Feb 7, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">112.3 ms</span></i> (as of Feb 9, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph#perspectives-cg).
 
@@ -392,7 +392,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.7, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -492,6 +492,9 @@ It offers a wide variety of features, for example:
         24(["`#91;RSymbol#93; sum
           (24, :may:36+)
           *7.10-12*`"])
+        built-in:sum["`Built-In:
+    sum`"]
+        style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         25(["`#91;RSymbol#93; i
           (25, :may:36+)
           *7.16*`"])
@@ -547,9 +550,6 @@ It offers a wide variety of features, for example:
         40(["`#91;RSymbol#93; sum
           (40)
           *11.13-15*`"])
-        built-in:sum["`Built-In:
-    sum`"]
-        style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         42{{"`#91;RString#93; #34;
     #34;
           (42)
@@ -614,86 +614,88 @@ It offers a wide variety of features, for example:
         linkStyle 29 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
+        24 -.->|"reads"| built-in:sum
+        linkStyle 32 stroke:gray;
         24 -->|"CD-True"| 36
-        linkStyle 32 stroke:gray,color:gray;
+        linkStyle 33 stroke:gray,color:gray;
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
-        linkStyle 34 stroke:gray,color:gray;
+        linkStyle 35 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
         26 -.->|"reads, calls"| built-in:_
-        linkStyle 37 stroke:gray;
+        linkStyle 38 stroke:gray;
         26 -->|"CD-True"| 36
-        linkStyle 38 stroke:gray,color:gray;
+        linkStyle 39 stroke:gray,color:gray;
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
-        linkStyle 40 stroke:gray,color:gray;
+        linkStyle 41 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
         28 -.->|"reads, calls"| built-in:_
-        linkStyle 43 stroke:gray;
+        linkStyle 44 stroke:gray;
         28 -->|"CD-True"| 36
-        linkStyle 44 stroke:gray,color:gray;
+        linkStyle 45 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
         23 -->|"CD-True"| 36
-        linkStyle 47 stroke:gray,color:gray;
+        linkStyle 48 stroke:gray,color:gray;
         29 -->|"reads, argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 50 stroke:gray;
+        linkStyle 51 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 51 stroke:gray,color:gray;
+        linkStyle 52 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 54 stroke:gray,color:gray;
+        linkStyle 55 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 56 stroke:gray,color:gray;
+        linkStyle 57 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 59 stroke:gray;
+        linkStyle 60 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 60 stroke:gray,color:gray;
+        linkStyle 61 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
         30 -->|"CD-True"| 36
-        linkStyle 63 stroke:gray,color:gray;
+        linkStyle 64 stroke:gray,color:gray;
         34 -->|"reads, argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 66 stroke:gray;
+        linkStyle 67 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 67 stroke:gray,color:gray;
+        linkStyle 68 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 70 stroke:gray;
+        linkStyle 71 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 71 stroke:gray,color:gray;
+        linkStyle 72 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 75 stroke:gray;
+        linkStyle 76 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         40 -.->|"reads"| built-in:sum
-        linkStyle 78 stroke:gray;
+        linkStyle 79 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 82 stroke:gray;
+        linkStyle 83 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 88 stroke:gray;
+        linkStyle 89 stroke:gray;
     ```
     
     	

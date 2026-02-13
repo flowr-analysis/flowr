@@ -24,15 +24,16 @@ import { Identifier } from '../../environments/identifier';
  * @returns resolved value or top/bottom
  */
 export function resolveNode({ resolve, node, ctx, blocked, environment, graph, idMap }: BuiltInEvalHandlerArgs): Value {
-	if(node.type === RType.String) {
+	const nt = node.type;
+	if(nt === RType.String) {
 		return stringFrom(node.content.str);
-	} else if(node.type === RType.Number) {
+	} else if(nt === RType.Number) {
 		return intervalFrom(node.content.num, node.content.num);
-	} else if(node.type === RType.Logical) {
+	} else if(nt === RType.Logical) {
 		return node.content.valueOf() ? ValueLogicalTrue : ValueLogicalFalse;
-	} else if(node.type === RType.FunctionDefinition) {
+	} else if(nt === RType.FunctionDefinition) {
 		return { type: 'function-definition' };
-	} else if((node.type === RType.FunctionCall || node.type === RType.BinaryOp || node.type === RType.UnaryOp) && graph) {
+	} else if((nt === RType.FunctionCall || nt === RType.BinaryOp || nt === RType.UnaryOp) && graph) {
 		const origin = getOriginInDfg(graph, node.info.id)?.[0];
 		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
 			return Top;
@@ -41,9 +42,9 @@ export function resolveNode({ resolve, node, ctx, blocked, environment, graph, i
 
 		if(isBuiltIn(origin.proc)) {
 			builtInName = origin.proc;
-		} else if(node.type === RType.FunctionCall && node.named) {
+		} else if(nt === RType.FunctionCall && node.named) {
 			builtInName = builtInId(Identifier.getName(node.functionName.content));
-		} else if(node.type === RType.BinaryOp || node.type === RType.UnaryOp) {
+		} else if(nt === RType.BinaryOp || nt === RType.UnaryOp) {
 			builtInName = builtInId(node.operator);
 		} else {
 			return Top;

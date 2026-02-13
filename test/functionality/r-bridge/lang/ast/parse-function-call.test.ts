@@ -138,6 +138,90 @@ describe.sequential('Parse function calls', withShell(shell => {
 				]
 			})
 		);
+		assertAst(label('f(x=1)', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, 'f(x=1)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(1, 5, 1, 5),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}
+				]
+			})
+		);
+		assertAst(label('f(x=1) with comment', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, `f(x= # comment
+1)`, exprList({
+				type:     RType.FunctionCall,
+				named:    true,
+				location: SourceRange.from(1, 1, 1, 1),
+				lexeme:   'f',
+				info:     {
+					adToks: [{
+						type:     RType.Comment,
+						location: SourceRange.from(1, 6, 1, 14),
+						lexeme:   '# comment',
+						info:     {},
+					}]
+				},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(2, 1, 2, 1),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}
+				]
+			}), { skipTreeSitter: true }
+		);
 		assertAst(label('f(1, x=2, 4, y=3)', ['name-normal', 'call-normal', 'unnamed-arguments', 'named-arguments', 'numbers']),
 			shell, 'f(1, x=2, 4, y=3)', exprList({
 				type:         RType.FunctionCall,
@@ -359,7 +443,7 @@ describe.sequential('Parse function calls', withShell(shell => {
 					}
 				]
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),

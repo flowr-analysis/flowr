@@ -282,6 +282,16 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 					.addVertex(CfgVertex.makeStatementWithEnd(8, { callTargets: new Set([5]) }))
 			}, { expectIsSubgraph: true });
 		});
+		assertCfg(parser, `result <- foreach(i = vec) %do% {
+    # ...
+    return(x)
+}`, {
+			entryPoints: [ 18 ],
+			exitPoints:  [ CfgVertex.toExitId(18) ],
+			graph:       new ControlFlowGraph()
+				.addEdge(CfgVertex.toExitId(14), CfgVertex.toExitId(13), CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(15), CfgVertex.toExitId(14), CfgEdge.makeFd())
+		}, { expectIsSubgraph: true });
 	});
 	describe('With Basic Blocks', () => {
 		assertCfg(parser, '2 + 3', {

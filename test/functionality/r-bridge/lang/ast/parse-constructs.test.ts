@@ -211,11 +211,65 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 							},
 							then: ensureExpressionList(variant.then)
 						}), {
-							ignoreadToks: true
+							ignoreAdToks: true
 						});
 					}
 				});
 			}
+		});
+		describe('If-Then-Comment', () => {
+			assertAst(label('if-then with comment', ['if', 'logical', 'numbers', 'comments', 'newlines']), shell,
+				`if (u) # comment
+{
+    x
+}`,
+				exprList({
+					type:     RType.IfThenElse,
+					location: SourceRange.from(1, 1, 1, 2),
+					lexeme:   'if',
+					info:     {
+						adToks: [{
+							type:     RType.Comment,
+							lexeme:   '# comment',
+							info:     {},
+							location: SourceRange.from(1, 8, 1, 16)
+						}]
+					},
+					condition: {
+						type:     RType.Symbol,
+						location: SourceRange.from(1, 5, 1, 5),
+						lexeme:   'u',
+						content:  'u',
+						info:     {}
+					},
+					then: {
+						type:     RType.ExpressionList,
+						location: undefined,
+						lexeme:   undefined,
+						info:     {},
+						grouping: [{
+							type:     RType.Symbol,
+							lexeme:   '{',
+							content:  '{',
+							info:     {},
+							location: SourceRange.from(2, 1, 2, 1)
+						}, {
+							type:     RType.Symbol,
+							lexeme:   '}',
+							content:  '}',
+							info:     {},
+							location: SourceRange.from(4, 1, 4, 1)
+						}],
+						children: [{
+							type:     RType.Symbol,
+							location: SourceRange.from(3, 5, 3, 5),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						}]
+					},
+					otherwise: undefined
+				}));
 		});
 		describe('if-then-else', () => {
 			for(const elsePool of [{ name: 'grouping', variants: ElseGroupingVariants }, {
@@ -245,7 +299,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 									then:      ensureExpressionList(ifThenVariant.then),
 									otherwise: ensureExpressionList(elseVariant.otherwise(ifThenVariant.end))
 								}), {
-									ignoreadToks: true
+									ignoreAdToks: true
 								});
 							}
 						}
@@ -298,14 +352,14 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				}
 			);
 			assertAst(label('for-loop with comment', ['for-loop', 'name-normal', 'numbers', 'comments', 'newlines']), shell, `for(#a
 				i#b
 				in#c
 				1:42#d
-			)
+			) # lol
 			2`, exprList({
 				type:     RType.ForLoop,
 				location: SourceRange.from(1, 1, 1, 3),
@@ -347,7 +401,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 					info:     {}
 				})
 			}), {
-				ignoreadToks:  true,
+				ignoreAdToks:  true,
 				ignoreColumns: true
 			}
 			);
@@ -367,7 +421,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 			assertAst(label('Two Statement Repeat', ['repeat-loop', 'numbers', 'grouping', 'semicolons']),
 				shell, 'repeat { x; y }', exprList({
@@ -408,7 +462,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						}]
 					}
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 		});
 		describe('while', () => {
@@ -433,7 +487,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						info:     {}
 					})
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 
 			assertAst(label('Two statement while', ['while-loop', 'logical', 'grouping', 'semicolons']),
@@ -482,7 +536,7 @@ describe.sequential('Parse simple constructs', withShell(shell => {
 						}]
 					}
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 		});
 		describe('break', () => {

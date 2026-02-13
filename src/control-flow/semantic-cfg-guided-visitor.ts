@@ -318,6 +318,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Recall:
 				return this.onRecallCall({ call });
 			case BuiltInProcName.Default:
+			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
 				return this.onDefaultFunctionCall({ call });

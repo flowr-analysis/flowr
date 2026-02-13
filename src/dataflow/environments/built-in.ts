@@ -143,12 +143,11 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
-	const activeProcessor = useAsProcessor ?? BuiltInProcName.Default;
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: activeProcessor });
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(returnsNthArgument !== undefined) {
-		const arg = returnsNthArgument === 'last' ? processedArguments[args.length - 1] : processedArguments[returnsNthArgument];
+		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];
 		if(arg !== undefined) {
 			res.graph.addEdge(rootId, arg.entryPoint, EdgeType.Returns);
 		}
@@ -192,7 +191,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 					environment: data.environment,
 					onlyBuiltin: false,
 					cds:         data.cds,
-					origin:      [activeProcessor]
+					origin:      [useAsProcessor]
 				});
 			}
 		}
@@ -202,6 +201,23 @@ function defaultBuiltInProcessor<OtherInfo>(
 		(res.exitPoints as ExitPoint[]).push({ type: cfg, nodeId: rootId, cds: data.cds });
 	}
 
+	return res;
+}
+
+function defaultBuiltInProcessorReadallArgs<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs'>
+): DataflowInformation {
+	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const g = res.graph;
+	for(const arg of processedArguments) {
+		if(arg) {
+			g.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
+		}
+	}
 	return res;
 }
 
@@ -221,6 +237,8 @@ export enum BuiltInProcName {
 	Break               = 'builtin:break',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
 	Default             = 'builtin:default',
+	/** Just a more performant variant of the default processor for built-ins that need to read all their arguments, see {@link defaultBuiltInProcessor}, this will still produce the origin `BuiltIn.Default` */
+	DefaultReadAllArgs  = 'builtin:default-read-all-args',
 	/** for `eval` calls, see {@link processEvalCall} */
 	Eval                = 'builtin:eval',
 	/** for expression lists, see {@link processExpressionList} */
@@ -293,6 +311,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Assignment]:         processAssignment,
 	[BuiltInProcName.AssignmentLike]:     processAssignmentLike,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
+	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
 	[BuiltInProcName.Eval]:               processEvalCall,
 	[BuiltInProcName.ExpressionList]:     processExpressionList,
 	[BuiltInProcName.ForLoop]:            processForLoop,

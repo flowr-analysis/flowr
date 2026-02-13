@@ -6,6 +6,9 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import { applyIntervalExpressionSemantics } from './semantics';
 import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
 
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
@@ -42,5 +45,22 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 		}
 
 		return this.currentState.set(call.id, result);
+	}
+
+	protected override applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> | undefined {
+		const conditionHeadState = this.getAbstractState(conditionNodeId);
+		const newState = isUndefined(conditionHeadState) ? undefined : this.config.domain.bottom().join(conditionHeadState);
+
+		const vertex = this.config.dfg.getVertex(conditionNodeId);
+
+		let result: StateAbstractDomain<IntervalDomain> | undefined;
+
+		if(trueBranch) {
+			result = applyIntervalConditionSemantics(vertex, newState, this, this.config.dfg);
+		} else {
+			result = applyNegatedIntervalConditionSemantics(vertex, newState, this, this.config.dfg);
+		}
+
+		return result;
 	}
 }

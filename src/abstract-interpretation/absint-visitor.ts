@@ -1,5 +1,5 @@
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertex } from '../control-flow/control-flow-graph';
+import { CfgEdge, CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
@@ -19,6 +19,7 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { Ternary } from '../util/logic';
+import { RTrue } from '../r-bridge/lang-4.x/convert-values';
 
 export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
 	extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
@@ -154,10 +155,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(this.isWideningPoint(nodeId)) {
 			// only check widening points at the entry vertex
 			if(CfgVertex.isMarker(vertex)) {
+				// As branch might be empty, this could be the immediate note after a condition.
+				// If it is, we need to apply the condition semantics for the respective branch.
+				const predecessorDomains = this.getPredecessorDomains(vertex);
+				this.currentState = this.currentState.joinAll(predecessorDomains);
+				this.trace.set(nodeId, this.currentState);
 				return true;
 			}
 			const oldState = this.getAbstractState(nodeId) ?? this.config.domain.bottom();
-			const predecessorDomains = this.getPredecessorNodes(CfgVertex.getId(vertex)).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
+			const predecessorDomains = this.getPredecessorDomains(vertex);
 			this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
 
 			if(this.shouldWiden(vertex)) {
@@ -169,7 +175,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		} else if(this.shouldSkipVertex(vertex)) {
 			return true;
 		}
-		const predecessorDomains = this.getPredecessorNodes(CfgVertex.getId(vertex)).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
+		const predecessorDomains = this.getPredecessorDomains(vertex);
 		this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
 
 		this.onVisitNode(vertexId);
@@ -253,19 +259,34 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
-	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {
-		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are incoming CFG edges
-			.map(id => this.getCfgVertex(id))
-			.flatMap(vertex => {
+	protected getPredecessorNodes(vertexId: NodeId, pathEdges: CfgEdge[] = []): { id: NodeId, edges: CfgEdge[] }[] {
+		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.entries()  // outgoing dependency edges are incoming CFG edges
+			.map(([id, edge]: [NodeId, CfgEdge]): [CfgVertex | undefined, CfgEdge[]] => [this.getCfgVertex(id), [...pathEdges, edge]])
+			.flatMap(([vertex, path]) => {
 				if(vertex === undefined) {
 					return [];
 				} else if(this.shouldSkipVertex(vertex)) {
-					return this.getPredecessorNodes(CfgVertex.getId(vertex));
+					return this.getPredecessorNodes(CfgVertex.getId(vertex), path);
 				} else {
-					return [CfgVertex.getRootId(vertex)];
+					return [{ id: CfgVertex.getRootId(vertex), edges: path }];
 				}
 			})
 			.toArray() ?? [];
+	}
+
+	protected getPredecessorDomains(vertex: CfgVertex): StateAbstractDomain<Domain>[] {
+		return this.getPredecessorNodes(CfgVertex.getId(vertex))
+			.map(pred => {
+				const cfdEdge = pred.edges.find(CfgEdge.isControlDependency);
+				if(isNotUndefined(cfdEdge)) {
+					const branchType = CfgEdge.getWhen(cfdEdge);
+					if(isNotUndefined(branchType)) {
+						// Apply Condition Semantics
+						return this.applyConditionSemantics(pred.id, branchType === RTrue);
+					}
+				}
+				return this.getAbstractState(pred.id);
+			}).filter(isNotUndefined);
 	}
 
 	/** Gets each variable origin that has already been visited and whose assignment has already been processed */
@@ -324,5 +345,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	protected shouldWiden(wideningPoint: CfgVertex): boolean {
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
+	}
+
+	protected applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<Domain> | undefined {
+		return this.getAbstractState(conditionNodeId) ?? this.config.domain.bottom();
 	}
 }

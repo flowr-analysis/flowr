@@ -110,8 +110,8 @@ describe('Interval Inference', () => {
 		])],
 		[['2.7', '1.3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(4) }],
-			[Identifier.make('-'), { domain: IntervalTests.scalar(1.4, 16) }],
-			[Identifier.make('*'), { domain: IntervalTests.scalar(3.51, 16) }]
+			[Identifier.make('-'), { domain: IntervalTests.scalar(1.4, 15) }],
+			[Identifier.make('*'), { domain: IntervalTests.scalar(3.51, 15) }]
 		])],
 		[['2', '1.3'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(3.3) }],
@@ -136,7 +136,7 @@ describe('Interval Inference', () => {
 		[['1e10', '1e-5'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(10000000000.00001) }],
 			[Identifier.make('-'), { domain: IntervalTests.scalar(9999999999.99999) }],
-			[Identifier.make('*'), { domain: IntervalTests.scalar(1e5, 16) }]
+			[Identifier.make('*'), { domain: IntervalTests.scalar(1e5, 15) }]
 		])],
 		[['Inf', '0'], new Map([
 			[Identifier.make('+'), { domain: IntervalTests.scalar(Infinity) }],

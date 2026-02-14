@@ -1,4 +1,4 @@
-import { assertUnreachable } from '../../util/assert';
+import { assertUnreachable, isUndefined } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_SIGNIFICANT_FIGURES } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
@@ -27,9 +27,9 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
 	implements SatisfiableDomain<number> {
 
-	public readonly significantFigures: number;
+	public readonly significantFigures: number | undefined;
 
-	constructor(value: Value, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES) {
+	constructor(value: Value, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES) {
 		if(Array.isArray(value)) {
 			if(value.some(isNaN) || value[0] > value[1]) {
 				log.warn('Invalid interval value, provided NaN or lower bound greater than upper bound. Setting to Bottom.');
@@ -40,10 +40,10 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		} else {
 			super(value);
 		}
-		if(significantFigures >= 0) {
+		if(isUndefined(significantFigures) || significantFigures >= 0) {
 			this.significantFigures = significantFigures;
 		} else {
-			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative. Setting to DEFAULT_SIGNIFICANT_FIGURES.`);
+			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative or undefined. Setting to DEFAULT_SIGNIFICANT_FIGURES.`);
 			this.significantFigures = DEFAULT_SIGNIFICANT_FIGURES;
 		}
 	}
@@ -53,11 +53,11 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(value, this.significantFigures);
 	}
 
-	public static top(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
+	public static top(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
 		return new IntervalDomain(IntervalTop, significantFigures);
 	}
 
-	public static bottom(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
+	public static bottom(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
 		return new IntervalDomain(Bottom, significantFigures);
 	}
 
@@ -90,7 +90,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	 * @private
 	 */
 	private isEqualWithSignificancePrecision(a: number, b: number): Ternary {
-		if(!Number.isFinite(this.significantFigures)) {
+		if(isUndefined(this.significantFigures)) {
 			// If significantFigures is not finite, we consider the values to be exactly equal or not equal
 			return a === b ? Ternary.Always : Ternary.Never;
 		}
@@ -117,7 +117,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	 * @private
 	 */
 	private isLowerWithSignificancePrecision(a: number, b: number): Ternary {
-		if(!Number.isFinite(this.significantFigures)) {
+		if(isUndefined(this.significantFigures)) {
 			return a < b ? Ternary.Always : Ternary.Never;
 		}
 

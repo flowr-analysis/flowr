@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.10, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -33,9 +33,9 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (3 ms)
+    Query: linter (1 ms)
        ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
@@ -55,10 +55,10 @@ It offers a wide variety of features, for example:
        ╰ Dataframe Access Validation (dataframe-access-validation):
            ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dead Code (dead-code):
-           ╰ Metadata: consideredNodes: 5, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈3 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈1 ms (1ms accuracy, total 2 ms)
     ```
     
     
@@ -80,9 +80,9 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (3 ms)\
+    Query: **linter** (2 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -98,18 +98,18 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
+    _All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _3.1 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -126,7 +126,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -207,7 +207,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -217,7 +217,7 @@ It offers a wide variety of features, for example:
               "numOperations": 0,
               "numAccesses": 0,
               "totalAccessed": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -239,11 +239,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 3
+          "timing": 2
         }
       },
       ".meta": {
-        "timing": 3
+        "timing": 2
       }
     }
     ```
@@ -308,7 +308,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.10, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -322,7 +322,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 4 ms)
+    All queries together required ≈6 ms (1ms accuracy, total 6 ms)
     ```
     
     
@@ -356,7 +356,7 @@ It offers a wide variety of features, for example:
          
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">112.3 ms</span></i> (as of Feb 9, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">104.5 ms</span></i> (as of Feb 13, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/wiki/dataflow-graph#perspectives-cg).
 
@@ -392,7 +392,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.9.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.9.10, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     

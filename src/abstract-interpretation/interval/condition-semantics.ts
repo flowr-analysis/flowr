@@ -3,7 +3,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
 import type { IntervalDomain } from '../domains/interval-domain';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
 import type { DataflowGraphVertexInfo } from '../../dataflow/graph/vertex';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import { isNotUndefined } from '../../util/assert';
@@ -16,7 +16,7 @@ import { isNotUndefined } from '../../util/assert';
  * @param dfg - The dataflow graph containing the vertex and its arguments.
  * @returns The filtered state after applying the semantics.
  */
-export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo | undefined, currentState: StateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): StateAbstractDomain<IntervalDomain> | undefined {
+export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo | undefined, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
 	if(isFunctionCallVertex(vertex)) {
 		if(Identifier.matches(Identifier.make('!'), vertex.name)) {
 			if(vertex.args.length !== 1 || FunctionArgument.isEmpty(vertex.args[0])) {
@@ -46,12 +46,12 @@ export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo 
 	if(argState?.isValue() && argState.value[0] == 0 && argState.value[1] == 0) {
 		// Map every variable in state to bottom (fix until state-domain rework)
 		if(isNotUndefined(currentState)) {
-			for(const entry of currentState.value.entries()) {
-				currentState.set(entry[0], entry[1].bottom());
-			}
-			return currentState;
+			// for(const entry of currentState.value.entries()) {
+			// 	currentState.set(entry[0], entry[1].bottom());
+			// }
+			return currentState.bottom();
 		}
-		return new StateAbstractDomain<IntervalDomain>(StateAbstractDomain.bottom<IntervalDomain>().value).bottom();
+		return new MutableStateAbstractDomain(new Map(), true);
 	}
 
 	return currentState;
@@ -65,12 +65,12 @@ export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo 
  * @param dfg - The dataflow graph containing the vertex and its arguments.
  * @returns The filtered state after applying the negated semantics.
  */
-export function applyNegatedIntervalConditionSemantics(vertex: DataflowGraphVertexInfo | undefined, currentState: StateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): StateAbstractDomain<IntervalDomain> | undefined {
+export function applyNegatedIntervalConditionSemantics(vertex: DataflowGraphVertexInfo | undefined, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
 	return applyNegation(vertex, currentState, visitor, dfg);
 }
 
 
-function applyNegation(arg: DataflowGraphVertexInfo | undefined, currentState: StateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): StateAbstractDomain<IntervalDomain> | undefined {
+function applyNegation(arg: DataflowGraphVertexInfo | undefined, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
 	if(isFunctionCallVertex(arg)) {
 		const functionIdentifier = arg.name;
 		if(Identifier.matches(Identifier.make('!'), functionIdentifier)) {
@@ -99,12 +99,12 @@ function applyNegation(arg: DataflowGraphVertexInfo | undefined, currentState: S
 	if(argState?.isValue() && (0 < argState.value[0] || argState.value[1] < 0)) {
 		// (fix until state-domain rework)
 		if(isNotUndefined(currentState)) {
-			for(const entry of currentState.value.entries()) {
-				currentState.set(entry[0], entry[1].bottom());
-			}
-			return currentState;
+			// for(const entry of currentState.value.entries()) {
+			// 	currentState.set(entry[0], entry[1].bottom());
+			// }
+			return currentState.bottom();
 		}
-		return new StateAbstractDomain<IntervalDomain>(StateAbstractDomain.bottom<IntervalDomain>().value).bottom();
+		return new MutableStateAbstractDomain(new Map(), true);
 	}
 
 	return currentState;

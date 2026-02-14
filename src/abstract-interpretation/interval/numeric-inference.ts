@@ -7,8 +7,9 @@ import { applyIntervalExpressionSemantics } from './semantics';
 import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { StateAbstractDomain } from '../domains/state-abstract-domain';
+import type { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
 import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
+import { AbstractDomain } from '../domains/abstract-domain';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
 
@@ -38,7 +39,7 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 		}
 
 		const interval = IntervalDomain.scalar(node.content.num);
-		this.currentState.set(node.info.id, interval);
+		this.updateState(node.info.id, interval);
 	}
 
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
@@ -50,16 +51,16 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
-		return this.currentState.set(call.id, result);
+		return this.updateState(call.id, result);
 	}
 
-	protected override applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> | undefined {
-		const conditionHeadState = this.getAbstractState(conditionNodeId);
-		const newState = isUndefined(conditionHeadState) ? undefined : this.config.domain.bottom().join(conditionHeadState);
+	protected override applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): MutableStateAbstractDomain<IntervalDomain> | undefined {
+		const conditionHeadState = this.trace.get(conditionNodeId);
+		const newState = isUndefined(conditionHeadState) ? undefined : AbstractDomain.joinAll([conditionHeadState]);
 
 		const vertex = this.config.dfg.getVertex(conditionNodeId);
 
-		let result: StateAbstractDomain<IntervalDomain> | undefined;
+		let result: MutableStateAbstractDomain<IntervalDomain> | undefined;
 
 		if(trueBranch) {
 			result = applyIntervalConditionSemantics(vertex, newState, this, this.config.dfg);

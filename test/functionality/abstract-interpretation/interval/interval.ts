@@ -1,6 +1,5 @@
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { StateAbstractDomain } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
 import { NumericInferenceVisitor } from '../../../../src/abstract-interpretation/interval/numeric-inference';
 import { beforeAll, expect, test } from 'vitest';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
@@ -86,14 +85,12 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 		const dfg = (await analyzer.dataflow()).graph;
 		const cfg = await analyzer.controlflow();
 		const ctx = analyzer.inspectContext();
-		const domain = new StateAbstractDomain<IntervalDomain>(StateAbstractDomain.bottom<IntervalDomain>().value);
 
 		visitor = new NumericInferenceVisitor({
 			normalizedAst: ast,
 			dfg:           dfg,
 			controlFlow:   cfg,
-			ctx:           ctx,
-			domain:        domain
+			ctx:           ctx
 		});
 
 		visitor.start();

@@ -1,0 +1,117 @@
+import { type TestLabel, decorateLabelContext } from './label';
+import { assert, beforeAll, describe, test } from 'vitest';
+import { type NormalizedAst, type ParentInformation, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
+import { type FlowrSearchLike, getFlowrSearch } from '../../../src/search/flowr-search-builder';
+import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { arrayEqual } from '../../../src/util/collections/arrays';
+import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { guard, isNotUndefined } from '../../../src/util/assert';
+import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
+import type { FlowrSearchElement } from '../../../src/search/flowr-search';
+import { type Enrichment, type EnrichmentElementContent, enrichmentContent } from '../../../src/search/search-executor/search-enrichers';
+import type { KnownParser } from '../../../src/r-bridge/parser';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
+import type { DataflowInformation } from '../../../src/dataflow/info';
+
+/**
+ * Asserts the result of a search or a set of searches (all of which should return the same result)!
+ * The `expected` items may be slicing criteria, which will be converted to node ids, or a function to test the results.
+ */
+export function assertSearch(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	expected: readonly (NodeId | SingleSlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
+	...searches: FlowrSearchLike[]
+) {
+	const effectiveName = decorateLabelContext(name, ['search']);
+	describe(effectiveName, () => {
+		let analyzer: FlowrAnalyzer | undefined;
+		let dataflow: DataflowInformation | undefined;
+		let ast: NormalizedAst | undefined;
+
+		beforeAll(async() => {
+			analyzer = await new FlowrAnalyzerBuilder()
+				.setInput({
+					getId: deterministicCountingIdGenerator(0)
+				})
+				.setParser(parser)
+				.build();
+			analyzer.addRequest(code);
+			dataflow = await analyzer.dataflow();
+			ast = await analyzer.normalize();
+		});
+
+
+		describe.each([true, false])('optimize %s', optimize => {
+			test.each(searches)('%s', async search => {
+				guard(isNotUndefined(analyzer), 'Analyzer must be defined');
+				guard(isNotUndefined(dataflow), 'Dataflow must be defined');
+				guard(isNotUndefined(ast), 'Normalized AST must be defined');
+				search = getFlowrSearch(search, optimize);
+
+				const result = (await analyzer.runSearch(search)).getElements();
+				try {
+					if(Array.isArray(expected)) {
+						expected = expected.map(id => {
+							try {
+								guard(isNotUndefined(ast), 'Normalized AST must be defined');
+								return slicingCriterionToId(id as SingleSlicingCriterion, ast.idMap);
+							} catch{
+								/* just keep it :D */
+								return id as NodeId;
+							}
+						});
+						assert(
+							arrayEqual(result.map(r => r.node.info.id).sort(), [...expected].sort()),
+							`Expected search results to match. Wanted: [${expected.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
+					} else {
+						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => boolean;
+						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
+					}
+				} /* v8 ignore next 4 */ catch(e: unknown) {
+					console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(dataflow));
+					console.error('Search', flowrSearchToAscii(search));
+					throw e;
+				}
+			});
+		});
+	});
+}
+
+
+/**
+ *
+ */
+export function assertSearchEnrichment(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	expectedEnrichments: readonly { [E in Enrichment]?: EnrichmentElementContent<E> }[],
+	matchType: 'some' | 'every',
+	...searches: FlowrSearchLike[]
+) {
+	assertSearch(name, parser, code, results => {
+		for(const expected of expectedEnrichments) {
+			for(const [enrichment, content] of Object.entries(expected)) {
+				let any = false;
+				for(const result of results) {
+					try {
+						assert.deepEqual(enrichmentContent(result, enrichment as Enrichment), content);
+						any = true;
+					} catch(e: unknown) {
+						if(matchType === 'every') {
+							throw e;
+						}
+					}
+				}
+				if(!any) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}, ...searches);
+}

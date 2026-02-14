@@ -31,10 +31,7 @@ export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  */
 export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, Config extends AbsintVisitorConfiguration<Domain> = AbsintVisitorConfiguration<Domain>>
-	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & {
-		defaultVisitingOrder: 'forward',
-		defaultVisitingType:  'exit'
-	}> {
+	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
 	 */

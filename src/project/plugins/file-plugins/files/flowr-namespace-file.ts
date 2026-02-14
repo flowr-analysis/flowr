@@ -1,5 +1,5 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
-import { FlowrFile } from '../../../context/flowr-file';
+import { FlowrTextFile, FlowrFile } from '../../../context/flowr-file';
 import { unquoteArgument } from '../../../../abstract-interpretation/data-frame/resolve-args';
 import { removeRQuotes } from '../../../../r-bridge/retriever';
 import type { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
@@ -56,6 +56,15 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.ctx = ctx;
+	}
+
+	/**
+	 * Creates a {@link FlowrNamespaceFile} from a given {@link NamespaceFormat}, path and optional roles. This is useful if you already have the namespace content parsed and want to create a namespace file instance without re-parsing.
+	 */
+	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
+		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
+		file.setContent(fmt);
+		return file;
 	}
 
 	/**

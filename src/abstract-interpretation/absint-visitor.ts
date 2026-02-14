@@ -18,6 +18,7 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
+import { Ternary } from '../util/logic';
 
 export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
 	extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
@@ -209,7 +210,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
-	protected override onAssignmentCall({ target, source }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onAssignmentCall({ target, source}: {
+		call:    DataflowGraphVertexFunctionCall,
+		target?: NodeId,
+		source?: NodeId
+	}): void {
 		if(target === undefined || source === undefined) {
 			return;
 		}
@@ -222,7 +227,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
-	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
+	protected override onReplacementCall({ target}: {
+		call:    DataflowGraphVertexFunctionCall,
+		target?: NodeId,
+		source?: NodeId
+	}): void {
 		if(target !== undefined) {
 			this.unassigned.delete(target);
 		}
@@ -237,7 +246,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * This bundles all function calls that are no conditions, loops, assignments, replacement calls, and access operations.
 	 * @protected
 	 */
-	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {
+	}
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {
@@ -294,7 +304,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const visitedCount = this.visited.get(wid) ?? 0;
 		this.visited.set(wid, visitedCount + 1);
 
-		return visitedCount === 0 || !oldState.equals(this.currentState);
+		return visitedCount === 0 || oldState.equals(this.currentState) === Ternary.Never;
 	}
 
 	/**

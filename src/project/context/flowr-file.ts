@@ -112,6 +112,14 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 		return this.contentCache;
 	}
 
+	/**
+	 * Allows to overwrite the content cache.
+	 * @protected
+	 */
+	protected setContent(content: Content): void {
+		this.contentCache = content;
+	}
+
 	protected abstract loadContent(): Content;
 
 	public assignRole(role: FileRole): void {

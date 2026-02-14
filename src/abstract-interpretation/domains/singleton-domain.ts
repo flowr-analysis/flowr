@@ -55,12 +55,18 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return SingletonDomain.bottom();
 	}
 
-	public equals(other: this): boolean {
-		return this.value === other.value;
+	public equals(other: this): Ternary {
+		if(this.value === other.value) {
+			return Ternary.Always;
+		}
+		return Ternary.Never;
 	}
 
-	public leq(other: this): boolean {
-		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
+	public leq(other: this): Ternary {
+		if(this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value)) {
+			return Ternary.Always;
+		}
+		return Ternary.Never;
 	}
 
 	public join(other: SingletonLift<T>): this;
@@ -103,7 +109,7 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return this.meet(other);  // Using meet for narrowing as the lattice is finite
 	}
 
-	public concretize(): ReadonlySet<T> |  typeof Top {
+	public concretize(): ReadonlySet<T> | typeof Top {
 		if(this.value === Top) {
 			return Top;
 		} else if(this.value === Bottom) {

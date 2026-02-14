@@ -10,6 +10,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
 
+export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
+
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
@@ -22,16 +24,20 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 
 		if(node.content.complexNumber) {
 			// For complex numbers, we do not perform interval analysis.
-			log.warn(`NumericInferenceVisitor: Skipping complex number constant at node ID ${node.info.id}`);
+			numericInferenceLogger.warn(`NumericInferenceVisitor: Skipping complex number constant at node ID ${node.info.id}`);
 			return;
 		}
 
-		if(isNaN(node.content.num)) {
+		if(node.content.markedAsInt) {
+			numericInferenceLogger.warn(`NumericInferenceVisitor: Numbers are tracked as floating-point values, therefore precision might be lost for integer at node ID ${node.info.id}`);
+		}
+
+		if(Number.isNaN(node.content.num)) {
 			// NaN is part of the general Top, which is represented as undefined in the state abstract domain, so we can just skip it here.
 			return;
 		}
 
-		const interval = new IntervalDomain([node.content.num, node.content.num]);
+		const interval = IntervalDomain.scalar(node.content.num);
 		this.currentState.set(node.info.id, interval);
 	}
 

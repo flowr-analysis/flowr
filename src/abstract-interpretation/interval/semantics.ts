@@ -1,19 +1,19 @@
 import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isUndefined } from '../../util/assert';
-import { log } from '../../util/log';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
+import { numericInferenceLogger } from './numeric-inference';
 
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper: readonly IntervalSemanticsMapperInfo[] = [
+const IntervalSemanticsMapper = [
 	[Identifier.make('+'), unaryBinaryOpSemantics(defaultPositiveOp, defaultAddOp)],
 	[Identifier.make('-'), unaryBinaryOpSemantics(defaultNegativeOp, defaultSubtractOp)],
 	[Identifier.make('*'), binaryOpSemantics(defaultMultiplyOp)],
 	[Identifier.make('length'), unaryFnSemantics(defaultLengthFn)],
-] as const;
+] as const satisfies readonly IntervalSemanticsMapperInfo[];
 
 /**
  * Semantics definition function for unary numeric operators.
@@ -59,7 +59,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
 	const match = IntervalSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
-		log.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
+		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
 		return undefined;
 	}
 
@@ -82,7 +82,7 @@ function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binary
 		// Usage as unary operator
 		if(args.length === 1) {
 			if(FunctionArgument.isEmpty(args[0])) {
-				log.warn('Called unary operator with an empty argument, which is not supported.');
+				numericInferenceLogger.warn('Called unary operator with an empty argument, which is not supported.');
 				return IntervalDomain.bottom();
 			}
 
@@ -104,12 +104,12 @@ function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binary
 function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
 	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined => {
 		if(args.length !== 2) {
-			log.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
+			numericInferenceLogger.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
 			return IntervalDomain.bottom();
 		}
 
 		if(FunctionArgument.isEmpty(args[0]) || FunctionArgument.isEmpty(args[1])) {
-			log.warn('Called binary operator with at least one empty argument, which is not supported.');
+			numericInferenceLogger.warn('Called binary operator with at least one empty argument, which is not supported.');
 			return IntervalDomain.bottom();
 		}
 
@@ -130,7 +130,7 @@ function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSe
 function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
 	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined => {
 		if(args.length !== 1) {
-			log.warn('Called unary function with more/less than 1 argument, which is not supported.');
+			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
 			return IntervalDomain.bottom();
 		}
 
@@ -140,7 +140,7 @@ function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSeman
 
 /**
  * Applies the unary plus operator to the provided interval.
- * @param arg - The interval to apply the unary plus operator to.
+ * @param arg - The interval to apply the unary plus operator to (undefined meaning no information).
  * @returns The resulting interval after applying the unary plus operator, which is the same as the input interval.
  */
 function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
@@ -149,9 +149,9 @@ function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | un
 
 /**
  * Adds the provided intervals.
- * @param left - The left interval to add.
- * @param right - The right interval to add.
- * @returns The resulting interval after addition.
+ * @param left - The left interval to add (undefined meaning no information).
+ * @param right - The right interval to add (undefined meaning no information).
+ * @returns The resulting interval after addition. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
@@ -176,25 +176,22 @@ function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | 
 
 /**
  * Negates the provided interval.
- * @param arg - The interval to negate.
- * @returns The resulting interval after negation.
+ * @param arg - The interval to negate (undefined meaning no information).
+ * @returns The resulting interval after negation. If the interval is undefined, the result is also undefined.
  */
 function defaultNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
-	if(arg?.isBottom()) {
-		return arg.bottom();
-	}
 	if(arg?.isValue()) {
 		const [a, b] = arg.value;
 		return arg.create([-b, -a]);
 	}
-	return undefined;
+	return arg;
 }
 
 /**
  * Subtracts the provided intervals.
- * @param left - The left interval to subtract from.
- * @param right - The right interval to subtract.
- * @returns The resulting interval after subtraction.
+ * @param left - The left interval to subtract from (undefined meaning no information).
+ * @param right - The right interval to subtract (undefined meaning no information).
+ * @returns The resulting interval after subtraction. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	return defaultAddOp(left, defaultNegativeOp(right));
@@ -202,9 +199,9 @@ function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDoma
 
 /**
  * Multiplies the provided intervals.
- * @param left - The left interval to multiply.
- * @param right - The right interval to multiply.
- * @returns The resulting interval after multiplication.
+ * @param left - The left interval to multiply (undefined meaning no information).
+ * @param right - The right interval to multiply (undefined meaning no information).
+ * @returns The resulting interval after multiplication. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
@@ -222,7 +219,19 @@ function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDoma
 
 		const products = [a * c, a * d, b * c, b * d];
 
-		return left.create([Math.min(...products), Math.max(...products)]);
+		let min = Infinity;
+		let max = -Infinity;
+
+		for(const product of products) {
+			if(product < min) {
+				min = product;
+			}
+			if(product > max) {
+				max = product;
+			}
+		}
+
+		return left.create([min, max]);
 	}
 
 	return undefined;
@@ -237,7 +246,7 @@ function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDoma
  */
 function defaultLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisitor): IntervalDomain | undefined {
 	if(FunctionArgument.isEmpty(arg)) {
-		log.warn('Called unary "length" with an empty argument, which is not supported.');
+		numericInferenceLogger.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom();
 	}
 

@@ -47,10 +47,11 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		let equals = Ternary.Always;
 
 		for(const key in this.value) {
-			if(this.value[key].equals(other.value[key]) === Ternary.Never) {
+			const keyEquals = this.value[key].equals(other.value[key]);
+			if(keyEquals === Ternary.Never) {
 				return Ternary.Never;
 			}
-			if(this.value[key].equals(other.value[key]) === Ternary.Maybe) {
+			if(keyEquals === Ternary.Maybe) {
 				equals = Ternary.Maybe;
 			}
 		}
@@ -65,10 +66,11 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		let leq = Ternary.Always;
 
 		for(const key in this.value) {
-			if(this.value[key].leq(other.value[key]) === Ternary.Never) {
+			const keyLeq = this.value[key].leq(other.value[key]);
+			if(keyLeq === Ternary.Never) {
 				return Ternary.Never;
 			}
-			if(this.value[key].leq(other.value[key]) === Ternary.Maybe) {
+			if(keyLeq === Ternary.Maybe) {
 				leq = Ternary.Maybe;
 			}
 		}

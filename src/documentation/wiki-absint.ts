@@ -20,7 +20,7 @@ class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDom
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
 		super.onNumberConstant({ vertex, node });
 
-		const interval = new IntervalDomain([node.content.num, node.content.num]);
+		const interval = IntervalDomain.scalar(node.content.num);
 		this.currentState.set(node.info.id, interval);
 	}
 

@@ -9,10 +9,10 @@ export const DEFAULT_INFERENCE_LIMIT = 50;
 
 /**
  * The default number of significant figures to consider for comparing numerical values in {@link AbstractDomain|AbstractDomains} to avoid floating-point precision issues.
- * `Infinity` means that the values are compared with their full precision.
+ * `undefined` means that the values are compared with their full precision.
  * The typical range of significant figures for JavaScript numbers is around 1-17 significant digits, so a value of 15 is often a good choice to balance precision and performance.
  */
-export const DEFAULT_SIGNIFICANT_FIGURES = Infinity;
+export const DEFAULT_SIGNIFICANT_FIGURES: number | undefined = undefined;
 
 /**
  * An abstract domain as complete lattice with a widening operator, narrowing operator, concretization function, and abstraction function.

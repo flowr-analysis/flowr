@@ -1,8 +1,9 @@
-import { assertUnreachable } from '../../util/assert';
-import { Ternary } from '../../util/logic';
+import { assertUnreachable, isUndefined } from '../../util/assert';
+import { SignificancePrecisionComparison, Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_SIGNIFICANT_FIGURES } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
 import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
+import { log } from '../../util/log';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -26,11 +27,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
 	implements SatisfiableDomain<number> {
 
-	public readonly significantFigures: number;
+	public readonly significantFigures: number | undefined;
 
-	constructor(value: Value, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES) {
+	constructor(value: Value, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES) {
 		if(Array.isArray(value)) {
 			if(value.some(isNaN) || value[0] > value[1]) {
+				log.warn('Invalid interval value, provided NaN or lower bound greater than upper bound. Setting to Bottom.');
 				super(Bottom as Value);
 			} else {
 				super([value[0], value[1]] as const as Value);
@@ -38,7 +40,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		} else {
 			super(value);
 		}
-		this.significantFigures = significantFigures;
+		if(isUndefined(significantFigures) || significantFigures >= 0) {
+			this.significantFigures = significantFigures;
+		} else {
+			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative or undefined. Setting to DEFAULT_SIGNIFICANT_FIGURES.`);
+			this.significantFigures = DEFAULT_SIGNIFICANT_FIGURES;
+		}
 	}
 
 	public create(value: IntervalLift): this;
@@ -46,11 +53,15 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(value, this.significantFigures);
 	}
 
-	public static top(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
+	public static scalar(value: number, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+		return new IntervalDomain([value, value], significantFigures);
+	}
+
+	public static top(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
 		return new IntervalDomain(IntervalTop, significantFigures);
 	}
 
-	public static bottom(significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
+	public static bottom(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
 		return new IntervalDomain(Bottom, significantFigures);
 	}
 
@@ -73,79 +84,13 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return IntervalDomain.bottom();
 	}
 
-	/**
-	 * Compares two numbers for equality with a precision based on the number of significant figures of the interval domain.
-	 * If the number of significant figures is not finite, an exact comparison is performed.
-	 * @param a - The first number to compare.
-	 * @param b - The second number to compare.
-	 * @returns A ternary value indicating whether the two numbers are considered equal (Ternary.Always), not equal (Ternary.Never),
-	 *          or maybe equal (Ternary.Maybe) based on the significance precision.
-	 * @private
-	 */
-	private isEqualWithSignificancePrecision(a: number, b: number): Ternary {
-		if(!isFinite(this.significantFigures)) {
-			// If significantFigures is not finite, we consider the values to be exactly equal or not equal
-			return a === b ? Ternary.Always : Ternary.Never;
-		}
-
-		if(isFinite(a) && isFinite(b) && a !== b) {
-			const magnitude = Math.pow(10, Math.floor(Math.log10(Math.max(Math.abs(a), Math.abs(b)))));
-			const tolerance = 0.5 * Math.pow(10, Math.round(Math.log10(magnitude)) - (Math.round(this.significantFigures) - 1));
-
-			return Math.abs(Math.abs(a) - Math.abs(b)) <= tolerance ? Ternary.Maybe : Ternary.Never;
-		}
-		return a === b ? Ternary.Always : Ternary.Never;
-	};
-
-	/**
-	 * Compares two numbers for less-than relation with a precision based on the number of significant figures of the interval domain.
-	 * If the number of significant figures is not finite, an exact comparison is performed.
-	 * @param a - The first number to compare.
-	 * @param b - The second number to compare.
-	 * @returns A ternary value indicating whether the first number is considered less than the second number (Ternary.Always),
-	 *          not less than (Ternary.Never), or maybe less than (Ternary.Maybe) based on the significance precision.
-	 * @private
-	 */
-	private isLowerWithSignificancePrecision(a: number, b: number): Ternary {
-		if(!isFinite(this.significantFigures)) {
-			return a < b ? Ternary.Always : Ternary.Never;
-		}
-
-		let less = a < b ? Ternary.Always : Ternary.Never;
-		if(less === Ternary.Never) {
-			// a is not less than b, so we check for equality with significance precision
-			if(this.isEqualWithSignificancePrecision(a, b) !== Ternary.Never) {
-				less = Ternary.Maybe;
-			}
-		}
-		return less;
-	}
-
-	/**
-	 * Compares two numbers for less-than-or-equal relation with a precision based on the number of significant figures of the interval domain.
-	 * If the number of significant figures is not finite, an exact comparison is performed.
-	 * @param a - The first number to compare.
-	 * @param b - The second number to compare.
-	 * @returns A ternary value indicating whether the first number is considered less than or equal to the second number (Ternary.Always),
-	 *          not less than or equal to (Ternary.Never), or maybe less than or equal to (Ternary.Maybe) based on the significance precision.
-	 * @private
-	 */
-	private isLowerEqualWithSignificancePrecision(a: number, b: number): Ternary {
-		let leq = a < b ? Ternary.Always : Ternary.Never;
-		if(leq === Ternary.Never) {
-			// a is not less than b, so we check for equality with significance precision
-			leq = this.isEqualWithSignificancePrecision(a, b);
-		}
-		return leq;
-	}
-
 	public equals(other: this): Ternary {
 		if(this.isValue() && other.isValue()) {
 			const [lowerA, upperA] = this.value;
 			const [lowerB, upperB] = other.value;
 
-			const lowerEqual: Ternary = this.isEqualWithSignificancePrecision(lowerA, lowerB);
-			const upperEqual: Ternary = this.isEqualWithSignificancePrecision(upperA, upperB);
+			const lowerEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(lowerA, lowerB, this.significantFigures);
+			const upperEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(upperA, upperB, this.significantFigures);
 
 			if(lowerEqual === Ternary.Never || upperEqual === Ternary.Never) {
 				return Ternary.Never;
@@ -171,8 +116,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		const [thisLower, thisUpper] = this.value;
 		const [otherLower, otherUpper] = other.value;
 
-		const lowerLeq = this.isLowerEqualWithSignificancePrecision(otherLower, thisLower);
-		const upperLeq = this.isLowerEqualWithSignificancePrecision(thisUpper, otherUpper);
+		const lowerLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(otherLower, thisLower, this.significantFigures);
+		const upperLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(thisUpper, otherUpper, this.significantFigures);
 
 		if(lowerLeq === Ternary.Never || upperLeq === Ternary.Never) {
 			return Ternary.Never;
@@ -237,7 +182,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public concretize(limit: number): ReadonlySet<number> | typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(!isFinite(this.value[0]) || !isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
+		} else if(!Number.isFinite(this.value[0]) || !Number.isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
 			return Top;
 		}
 		const set = new Set<number>();
@@ -257,12 +202,13 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		switch(comparator) {
 			case NumericalComparator.Equal: {
 				if(this.isValue()) {
-					if(this.value[0] === value && this.value[1] === value) {
+					const [lower, upper] = this.value;
+					if(lower === value && upper === value) {
 						return Ternary.Always;
 					}
 
-					const lowerLeq = this.isLowerEqualWithSignificancePrecision(this.value[0], value);
-					const upperGeq = this.isLowerEqualWithSignificancePrecision(value, this.value[1]);
+					const lowerLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(lower, value, this.significantFigures);
+					const upperGeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(value, upper, this.significantFigures);
 
 					if(lowerLeq !== Ternary.Never && upperGeq !== Ternary.Never) {
 						return Ternary.Maybe;
@@ -272,11 +218,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			}
 			case NumericalComparator.Less: {
 				if(this.isValue()) {
-					if(value < this.value[0]) {
+					const [lower, upper] = this.value;
+					if(value < lower) {
 						return Ternary.Always;
 					}
 
-					if(this.isLowerWithSignificancePrecision(value, this.value[1]) !== Ternary.Never) {
+					if(SignificancePrecisionComparison.isLowerWithSignificancePrecision(value, upper, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -284,11 +231,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			}
 			case NumericalComparator.LessOrEqual: {
 				if(this.isValue()) {
-					if(value <= this.value[0]) {
+					const [lower, upper] = this.value;
+					if(value <= lower) {
 						return Ternary.Always;
 					}
 
-					if(this.isLowerEqualWithSignificancePrecision(value, this.value[1]) !== Ternary.Never) {
+					if(SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(value, upper, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -296,11 +244,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			}
 			case NumericalComparator.Greater: {
 				if(this.isValue()) {
-					if(value > this.value[1]) {
+					const [lower, upper] = this.value;
+					if(value > upper) {
 						return Ternary.Always;
 					}
 
-					if(this.isLowerWithSignificancePrecision(this.value[0], value) !== Ternary.Never) {
+					if(SignificancePrecisionComparison.isLowerWithSignificancePrecision(lower, value, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -308,11 +257,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			}
 			case NumericalComparator.GreaterOrEqual: {
 				if(this.isValue()) {
-					if(value >= this.value[1]) {
+					const [lower, upper] = this.value;
+					if(value >= upper) {
 						return Ternary.Always;
 					}
 
-					if(this.isLowerEqualWithSignificancePrecision(this.value[0], value) !== Ternary.Never) {
+					if(SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(lower, value, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -409,8 +359,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		const lower = `${isFinite(this.value[0]) ? this.value[0] : (this.value[0] > 0 ? '+∞' : '-∞')}`;
-		const upper = `${isFinite(this.value[1]) ? this.value[1] : (this.value[1] > 0 ? '+∞' : '-∞')}`;
+		const lower = `${Number.isFinite(this.value[0]) ? this.value[0] : (this.value[0] > 0 ? '+∞' : '-∞')}`;
+		const upper = `${Number.isFinite(this.value[1]) ? this.value[1] : (this.value[1] > 0 ? '+∞' : '-∞')}`;
 		return `[${lower}, ${upper}]`;
 	}
 

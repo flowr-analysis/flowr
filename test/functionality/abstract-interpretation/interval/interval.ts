@@ -20,11 +20,11 @@ export const IntervalTests = {
 	 * Helper function to create an interval value for the interval domain.
 	 * @param start - Lower bound of the interval.
 	 * @param end - Upper bound of the interval. If not provided, it defaults to the same value as start, creating a scalar interval.
-	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds. Defaults to `DEFAULT_SIGNIFICANT_FIGURES`, which means no rounding.
+	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds (undefined means exact comparison). Defaults to `DEFAULT_SIGNIFICANT_FIGURES`.
 	 * @returns An interval value represented as a tuple of [lowerBound, upperBound].
 	 * @throws Error if the start value is greater than the end value, as this would represent an invalid interval.
 	 */
-	interval(this: void, start: number, end = start, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+	interval(this: void, start: number, end = start, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
 		if(start > end) {
 			throw new Error(`Invalid interval with start ${start} greater than end ${end}`);
 		}
@@ -35,10 +35,10 @@ export const IntervalTests = {
 	/**
 	 * Helper function to create a scalar interval value for the interval domain, where the lower and upper bounds are the same.
 	 * @param value - The value of the scalar interval, which will be used as both the lower and upper bound.
-	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds. Defaults to `DEFAULT_SIGNIFICANT_FIGURES`, which means no rounding.
+	 * @param significantFigures - The number of significant figures to consider for comparing the interval bounds (undefined means exact comparison). Defaults to `DEFAULT_SIGNIFICANT_FIGURES`.
 	 * @returns A scalar interval value represented as a tuple of [value, value].
 	 */
-	scalar(this: void, value: number, significantFigures: number = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+	scalar(this: void, value: number, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
 		return IntervalTests.interval(value, value, significantFigures);
 	},
 
@@ -118,7 +118,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 
 			if(!isUndefined(inferredIntervalDomain) && !isUndefined(criterionExpected.domain)) {
 				// It is important to use the expected domain as base, as it contains the significant figures information (precision) for the comparison.
-				const expectedResult = criterionExpected.domain.significantFigures === DEFAULT_SIGNIFICANT_FIGURES ? Ternary.Always : Ternary.Maybe;
+				const expectedResult = isUndefined(criterionExpected.domain.significantFigures) ? Ternary.Always : Ternary.Maybe;
 
 				if(criterionExpected.matching === DomainMatchingType.Exact) {
 					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(expectedResult);

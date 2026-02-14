@@ -47,7 +47,7 @@ export function applyIntervalConditionSemantics(vertex: DataflowGraphVertexInfo 
 		// Map every variable in state to bottom (fix until state-domain rework)
 		if(isNotUndefined(currentState)) {
 			// for(const entry of currentState.value.entries()) {
-			// 	currentState.set(entry[0], entry[1].bottom());
+			//  currentState.set(entry[0], entry[1].bottom());
 			// }
 			return currentState.bottom();
 		}
@@ -100,7 +100,7 @@ function applyNegation(arg: DataflowGraphVertexInfo | undefined, currentState: M
 		// (fix until state-domain rework)
 		if(isNotUndefined(currentState)) {
 			// for(const entry of currentState.value.entries()) {
-			// 	currentState.set(entry[0], entry[1].bottom());
+			//  currentState.set(entry[0], entry[1].bottom());
 			// }
 			return currentState.bottom();
 		}

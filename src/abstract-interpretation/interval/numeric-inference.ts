@@ -7,6 +7,8 @@ import { applyIntervalExpressionSemantics } from './semantics';
 import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 
+export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
+
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
@@ -19,12 +21,12 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 
 		if(node.content.complexNumber) {
 			// For complex numbers, we do not perform interval analysis.
-			log.warn(`NumericInferenceVisitor: Skipping complex number constant at node ID ${node.info.id}`);
+			numericInferenceLogger.warn(`NumericInferenceVisitor: Skipping complex number constant at node ID ${node.info.id}`);
 			return;
 		}
 
 		if(node.content.markedAsInt) {
-			log.warn(`NumericInferenceVisitor: Numbers are tracked as floating-point values, therefore precision might be lost for integer at node ID ${node.info.id}`);
+			numericInferenceLogger.warn(`NumericInferenceVisitor: Numbers are tracked as floating-point values, therefore precision might be lost for integer at node ID ${node.info.id}`);
 		}
 
 		if(Number.isNaN(node.content.num)) {
@@ -32,7 +34,7 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
-		const interval = new IntervalDomain([node.content.num, node.content.num]);
+		const interval = IntervalDomain.scalar(node.content.num);
 		this.currentState.set(node.info.id, interval);
 	}
 

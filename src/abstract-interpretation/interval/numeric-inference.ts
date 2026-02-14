@@ -23,7 +23,11 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
-		if(isNaN(node.content.num)) {
+		if(node.content.markedAsInt) {
+			log.warn(`NumericInferenceVisitor: Numbers are tracked as floating-point values, therefore precision might be lost for integer at node ID ${node.info.id}`);
+		}
+
+		if(Number.isNaN(node.content.num)) {
 			// NaN is part of the general Top, which is represented as undefined in the state abstract domain, so we can just skip it here.
 			return;
 		}

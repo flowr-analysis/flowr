@@ -8,12 +8,12 @@ import type { NumericInferenceVisitor } from './numeric-inference';
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper: readonly IntervalSemanticsMapperInfo[] = [
+const IntervalSemanticsMapper = [
 	[Identifier.make('+'), unaryBinaryOpSemantics(defaultPositiveOp, defaultAddOp)],
 	[Identifier.make('-'), unaryBinaryOpSemantics(defaultNegativeOp, defaultSubtractOp)],
 	[Identifier.make('*'), binaryOpSemantics(defaultMultiplyOp)],
 	[Identifier.make('length'), unaryFnSemantics(defaultLengthFn)],
-] as const;
+] as const satisfies readonly IntervalSemanticsMapperInfo[];
 
 /**
  * Semantics definition function for unary numeric operators.
@@ -140,7 +140,7 @@ function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSeman
 
 /**
  * Applies the unary plus operator to the provided interval.
- * @param arg - The interval to apply the unary plus operator to.
+ * @param arg - The interval to apply the unary plus operator to (undefined meaning no information).
  * @returns The resulting interval after applying the unary plus operator, which is the same as the input interval.
  */
 function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
@@ -149,9 +149,9 @@ function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | un
 
 /**
  * Adds the provided intervals.
- * @param left - The left interval to add.
- * @param right - The right interval to add.
- * @returns The resulting interval after addition.
+ * @param left - The left interval to add (undefined meaning no information).
+ * @param right - The right interval to add (undefined meaning no information).
+ * @returns The resulting interval after addition. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
@@ -176,25 +176,22 @@ function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | 
 
 /**
  * Negates the provided interval.
- * @param arg - The interval to negate.
- * @returns The resulting interval after negation.
+ * @param arg - The interval to negate (undefined meaning no information).
+ * @returns The resulting interval after negation. If the interval is undefined, the result is also undefined.
  */
 function defaultNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
-	if(arg?.isBottom()) {
-		return arg.bottom();
-	}
 	if(arg?.isValue()) {
 		const [a, b] = arg.value;
 		return arg.create([-b, -a]);
 	}
-	return undefined;
+	return arg;
 }
 
 /**
  * Subtracts the provided intervals.
- * @param left - The left interval to subtract from.
- * @param right - The right interval to subtract.
- * @returns The resulting interval after subtraction.
+ * @param left - The left interval to subtract from (undefined meaning no information).
+ * @param right - The right interval to subtract (undefined meaning no information).
+ * @returns The resulting interval after subtraction. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	return defaultAddOp(left, defaultNegativeOp(right));
@@ -202,9 +199,9 @@ function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDoma
 
 /**
  * Multiplies the provided intervals.
- * @param left - The left interval to multiply.
- * @param right - The right interval to multiply.
- * @returns The resulting interval after multiplication.
+ * @param left - The left interval to multiply (undefined meaning no information).
+ * @param right - The right interval to multiply (undefined meaning no information).
+ * @returns The resulting interval after multiplication. If one of the intervals is undefined, the result is also undefined.
  */
 function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {

@@ -12,15 +12,18 @@ import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
-import { type ContainerIndicesCollection, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
-import { expensiveTrace } from '../../../../../util/log';
+import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
 import { BuiltInProcName } from '../../../../environments/built-in';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
+	/** The name of the function being called. */
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
+	/** The arguments to the function call. */
 	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	/** The node ID to use for the function call vertex. */
 	readonly rootId:                NodeId
+	/** The dataflow processor information at the point of the function call. */
 	readonly data:                  DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** should arguments be processed from right to left? This does not affect the order recorded in the call but of the environments */
 	readonly reverseOrder?:         boolean
@@ -76,14 +79,12 @@ export function markNonStandardEvaluationEdges(
  * add any specific handling.
  */
 export function processKnownFunctionCall<OtherInfo>(
-	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>, indicesCollection: ContainerIndicesCollection = undefined,
+	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
 
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
-	expensiveTrace(dataflowLogger, () => `Processing known function call ${functionCallName} with ${args.length} arguments`);
-
 	const processArgs = reverseOrder ? args.toReversed() : args;
 
 	const {
@@ -97,16 +98,15 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	finalGraph.addVertex({
-		tag:               VertexType.FunctionCall,
-		id:                rootId,
-		environment:       data.environment,
-		name:              functionCallName,
+		tag:         VertexType.FunctionCall,
+		id:          rootId,
+		environment: data.environment,
+		name:        functionCallName,
 		/* will be overwritten accordingly */
-		onlyBuiltin:       false,
-		cds:               data.cds,
-		args:              reverseOrder ? callArgs.toReversed() : callArgs,
-		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? [BuiltInProcName.Function] : [origin]
+		onlyBuiltin: false,
+		cds:         data.cds,
+		args:        reverseOrder ? callArgs.toReversed() : callArgs,
+		origin:      origin === 'default' ? [BuiltInProcName.Function] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {

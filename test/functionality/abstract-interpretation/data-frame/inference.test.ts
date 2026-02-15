@@ -632,7 +632,7 @@ df2 <- as.data.frame(df1)
 			shell,
 			'"c.csv"', `"${getFileContent('c.csv')}"`,
 			source => `df <- readr::read_csv(${source}, comment = "#")`,
-			[['1@df', { colnames: [['id,number','"unique" name'], Top], cols: [3, 3], rows: [5, 5] }]],
+			[['1@df', { colnames: [['id,number', '"unique" name'], Top], cols: [3, 3], rows: [5, 5] }]],
 			{ skipRun: skipLibraries, addFiles }
 		);
 
@@ -915,7 +915,7 @@ result <- df[[1, 1]]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df["id", drop = TRUE]
 			`.trim(),
-			[['2@result', { colnames: [['id'], []], cols: [1,1], rows: [3, 3] }]]
+			[['2@result', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomain(
@@ -924,7 +924,7 @@ result <- df["id", drop = TRUE]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, "id", drop = FALSE]
 			`.trim(),
-			[['2@result', { colnames: [['id'], []], cols: [1,1], rows: [3, 3] }]]
+			[['2@result', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomain(
@@ -978,7 +978,7 @@ result <- df[sample(1:3, 1), , drop = FALSE]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[]
 			`.trim(),
-			[['2@result', { colnames: [['id','name'], []], cols: [2, 2], rows: [3, 3] }]]
+			[['2@result', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomain(
@@ -987,7 +987,7 @@ result <- df[]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[,]
 			`.trim(),
-			[['2@result', { colnames: [['id','name'], []], cols: [2, 2], rows: [3, 3] }]]
+			[['2@result', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]]
 		);
 
 		testDataFrameDomain(
@@ -1005,7 +1005,7 @@ result <- df[0]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[0, 1, drop = FALSE]
 			`.trim(),
-			[['2@result', { colnames: [[], ['id','name']], cols: [1, 1], rows: [0, 0] }]]
+			[['2@result', { colnames: [[], ['id', 'name']], cols: [1, 1], rows: [0, 0] }]]
 		);
 
 		testDataFrameDomain(

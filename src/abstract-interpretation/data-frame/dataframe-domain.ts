@@ -1,5 +1,4 @@
 import type { AbstractDomainValue } from '../domains/abstract-domain';
-import { Top } from '../domains/lattice';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
 import { SetRangeDomain } from '../domains/set-range-domain';
@@ -9,7 +8,7 @@ export type AbstractDataFrameShape = {
 	colnames: SetRangeDomain<string>;
 	cols:     PosIntervalDomain;
 	rows:     PosIntervalDomain;
-}
+};
 
 /** The type of abstract values of a sub abstract domain (shape property) of the data frame shape product domain */
 export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape> = AbstractDomainValue<AbstractDataFrameShape[Property]>;
@@ -70,7 +69,7 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 
 	private static refine(value: AbstractDataFrameShape): AbstractDataFrameShape {
 		if(value.colnames.isValue() && value.cols.isValue()) {
-			if(value.colnames.value.range === Top && value.colnames.value.min.size >= value.cols.value[1]) {
+			if(value.colnames.value.min.size >= value.cols.value[1]) {
 				value.colnames = value.colnames.meet({ min: new Set(), range: value.colnames.value.min });
 			}
 			if(value.colnames.isValue()) {

@@ -46,8 +46,7 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import { type ContainerIndicesCollection, isParentContainerIndex, VertexType } from '../dataflow/graph/vertex';
+import { VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
 import { type FlowrConfigOptions, getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -110,14 +109,13 @@ export type SamplingStrategy = 'random' | 'equidistant';
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
  */
-type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE
+type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE;
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
-	private config:              FlowrConfigOptions | undefined;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
 	private loadedXml:           KnownParserType[] | undefined;
@@ -142,7 +140,6 @@ export class BenchmarkSlicer {
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
-		this.config = config;
 
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
@@ -218,7 +215,7 @@ export class BenchmarkSlicer {
 		let commentCharsNoWhitespace = 0;
 		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
 			nodes++;
-			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
+			const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
 			if(comments && comments.length > 0) {
 				const content = comments.map(c => c.lexeme ?? '').join('');
 				commentChars += content.length;
@@ -228,10 +225,6 @@ export class BenchmarkSlicer {
 			}
 			return false;
 		});
-
-		const storedVertexIndices = this.countStoredVertexIndices();
-		const storedEnvIndices = this.countStoredEnvIndices();
-		const overwrittenIndices = storedVertexIndices - storedEnvIndices;
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -257,9 +250,6 @@ export class BenchmarkSlicer {
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
-				storedVertexIndices:         storedVertexIndices,
-				storedEnvIndices:            storedEnvIndices,
-				overwrittenIndices:          overwrittenIndices,
 			},
 
 			// these are all properly initialized in finish()
@@ -269,53 +259,6 @@ export class BenchmarkSlicer {
 			dataflowTimePerToken:    { raw: 0, normalized: 0 },
 			totalCommonTimePerToken: { raw: 0, normalized: 0 }
 		};
-	}
-
-	/**
-	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
-	 */
-	private countStoredVertexIndices(): number {
-		return this.countStoredIndices(this.dataflow?.out.map(ref => ref as InGraphIdentifierDefinition) ?? []);
-	}
-
-	/**
-	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
-	 */
-	private countStoredEnvIndices(): number {
-		return this.countStoredIndices(
-			this.dataflow?.environment.current.memory.values()
-				?.flatMap(def => def)
-				.map(def => def as InGraphIdentifierDefinition) ?? []
-		);
-	}
-
-	/**
-	 * Counts the number of stored indices in the passed definitions.
-	 */
-	private countStoredIndices(definitions: Iterable<InGraphIdentifierDefinition>): number {
-		let numberOfIndices = 0;
-		for(const reference of definitions) {
-			if(reference.indicesCollection) {
-				numberOfIndices += this.countIndices(reference.indicesCollection);
-			}
-		}
-		return numberOfIndices;
-	}
-
-	/**
-	 * Recursively counts the number of indices and sub-indices in the given collection.
-	 */
-	private countIndices(collection: ContainerIndicesCollection): number {
-		let numberOfIndices = 0;
-		for(const indices of collection ?? []) {
-			for(const index of indices.indices) {
-				numberOfIndices++;
-				if(isParentContainerIndex(index)) {
-					numberOfIndices += this.countIndices(index.subIndices);
-				}
-			}
-		}
-		return numberOfIndices;
 	}
 
 	/**
@@ -384,13 +327,10 @@ export class BenchmarkSlicer {
 
 		this.guardActive();
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
-		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
-		guard(this.config !== undefined, 'config should be defined for control flow extraction');
 
 		const ast = this.normalizedAst;
-		const dfg = this.dataflow.graph;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
 	}
 
 	/**
@@ -428,6 +368,7 @@ export class BenchmarkSlicer {
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
 		stats.numberOfResultConstraints = result.value.size;
+		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
 
 		for(const value of result.value.values()) {
 			if(value.isTop()) {
@@ -448,11 +389,9 @@ export class BenchmarkSlicer {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
-			const state = inference.getAbstractState(node.info.id);
-			stats.sizeOfInfo += safeSizeOf([state]);
 
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.value.size ?? 0
+				numberOfEntries: inference.getAbstractState(node.info.id)?.value.size ?? 0
 			};
 
 			if(operations !== undefined) {

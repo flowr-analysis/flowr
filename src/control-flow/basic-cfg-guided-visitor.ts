@@ -1,17 +1,18 @@
 import {
-	type CfgBasicBlockVertex, type CfgEndMarkerVertex, type CfgExpressionVertex,
-	type CfgSimpleVertex,
+	type CfgBasicBlockVertex, type CfgMarkerVertex, type CfgExpressionVertex,
+	CfgVertex,
 	type CfgStatementVertex,
 	type ControlFlowInformation
-	, CfgVertexType } from './control-flow-graph';
+	, CfgVertexType
+} from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable } from '../util/assert';
 
 export interface BasicCfgGuidedVisitorConfiguration<
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 > {
-    readonly controlFlow:          ControlFlow;
-    readonly defaultVisitingOrder: 'forward' | 'backward';
+	readonly controlFlow:          ControlFlow;
+	readonly defaultVisitingOrder: 'forward' | 'backward';
 }
 
 /**
@@ -22,7 +23,7 @@ export interface BasicCfgGuidedVisitorConfiguration<
  * Use {@link BasicCfgGuidedVisitor#start} to start the traversal.
  */
 export class BasicCfgGuidedVisitor<
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Config extends BasicCfgGuidedVisitorConfiguration<ControlFlow> = BasicCfgGuidedVisitorConfiguration<ControlFlow>
 > {
 
@@ -49,10 +50,13 @@ export class BasicCfgGuidedVisitor<
 
 	protected startVisitor(start: readonly NodeId[]): void {
 		const graph = this.config.controlFlow.graph;
-		const getNext = this.config.defaultVisitingOrder === 'forward' ?
-			(node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().toReversed() :
-			(node: NodeId) => graph.outgoingEdges(node)?.keys().toArray();
-		const stack = [...start];
+		let getNext: (node: NodeId) => MapIterator<NodeId> | NodeId[] | undefined;
+		if(this.config.defaultVisitingOrder === 'forward') {
+			getNext = (node: NodeId) => graph.ingoingEdges(node)?.keys().toArray().reverse();
+		} else {
+			getNext = (node: NodeId) => graph.outgoingEdges(node)?.keys();
+		}
+		const stack = Array.from(start);
 		while(stack.length > 0) {
 			const current = stack.pop() as NodeId;
 
@@ -75,7 +79,7 @@ export class BasicCfgGuidedVisitor<
 	/**
 	 * Get the control flow vertex for the given node id or fail if it does not exist.
 	 */
-	protected getCfgVertex(id: NodeId): CfgSimpleVertex | undefined {
+	protected getCfgVertex(id: NodeId): CfgVertex | undefined {
 		return this.config.controlFlow.graph.getVertex(id);
 	}
 
@@ -85,19 +89,19 @@ export class BasicCfgGuidedVisitor<
 		if(vertex === undefined) {
 			return;
 		}
-		const type = vertex.type;
+		const type = CfgVertex.getType(vertex);
 		switch(type) {
 			case CfgVertexType.Statement:
-				this.onStatementNode(vertex);
+				this.onStatementNode(vertex as CfgStatementVertex);
 				break;
 			case CfgVertexType.Expression:
-				this.onExpressionNode(vertex);
+				this.onExpressionNode(vertex as CfgExpressionVertex);
 				break;
-			case CfgVertexType.EndMarker:
-				this.onEndMarkerNode(vertex);
+			case CfgVertexType.Marker:
+				this.onEndMarkerNode(vertex as CfgMarkerVertex);
 				break;
 			case CfgVertexType.Block:
-				this.onBasicBlockNode(vertex);
+				this.onBasicBlockNode(vertex as CfgBasicBlockVertex);
 				break;
 			default:
 				assertUnreachable(type);
@@ -105,13 +109,14 @@ export class BasicCfgGuidedVisitor<
 	}
 
 	protected onBasicBlockNode(node: CfgBasicBlockVertex): void {
+		const elems = CfgVertex.getBasicBlockElements(node);
 		if(this.config.defaultVisitingOrder === 'forward') {
-			for(const elem of node.elems.toReversed()) {
-				this.visitNode(elem.id);
+			for(const elem of elems.toReversed()) {
+				this.visitNode(CfgVertex.getId(elem));
 			}
 		} else {
-			for(const elem of node.elems) {
-				this.visitNode(elem.id);
+			for(const elem of elems) {
+				this.visitNode(CfgVertex.getId(elem));
 			}
 		}
 	}
@@ -124,7 +129,7 @@ export class BasicCfgGuidedVisitor<
 		/* does nothing by default */
 	}
 
-	protected onEndMarkerNode(_node: CfgEndMarkerVertex): void {
+	protected onEndMarkerNode(_node: CfgMarkerVertex): void {
 		/* does nothing by default */
 	}
 }

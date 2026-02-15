@@ -109,10 +109,10 @@ describe.sequential('Function Definition', withShell(shell => {
 					graph:             new Set(['0', '2', '4', '6']),
 					environment:       envWithXYZParam
 				}, { readParams: [ [0, false], [2, true], [4, false] ] })
-				.defineVariable('0', 'x', { },  false)
-				.defineVariable('2', 'y', { },  false)
-				.defineVariable('4', 'z', { },  false)
-				.use('6', 'y', { }, false)
+				.defineVariable('0', 'x', {},  false)
+				.defineVariable('2', 'y', {},  false)
+				.defineVariable('4', 'z', {},  false)
+				.use('6', 'y', {}, false)
 				.reads('6', '2')
 		);
 	});
@@ -534,7 +534,7 @@ print(x)`,  emptyGraph()
 			.constant('19')
 			.defineVariable('18', 'b', { definedBy: ['19', '20'] })
 		);
-		assertDataflow(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
+		assertDataflow(label('closure w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
 			shell, `f <- function(x = 1) {
   function() x
 }
@@ -794,7 +794,7 @@ f(5)`, emptyGraph()
 				.definesOnCall(25, 1)
 				.definedByOnCall(1, 25)
 		);
-		assertDataflow(label('return in if',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments', 'if']),
+		assertDataflow(label('return in if', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-named', 'newlines', 'numbers', ...OperatorDatabase['*'].capabilities, 'return', 'unnamed-arguments', 'if']),
 			shell, `f <- function(x) {
    x <- 3 * x
    if(k)

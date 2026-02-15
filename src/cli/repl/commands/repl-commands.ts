@@ -5,7 +5,7 @@ import { rawPrompt } from '../prompt';
 import { versionCommand } from './repl-version';
 import { parseCommand } from './repl-parse';
 import { executeCommand } from './repl-execute';
-import { normalizeCommand, normalizeStarCommand } from './repl-normalize';
+import { normalizeCommand, normalizeHashCommand, normalizeStarCommand } from './repl-normalize';
 import {
 	dataflowAsciiCommand,
 	dataflowCommand, dataflowSilentCommand,
@@ -14,7 +14,7 @@ import {
 	dataflowStarCommand
 } from './repl-dataflow';
 import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import { type OutputFormatter , bold, italic } from '../../../util/text/ansi';
+import { type OutputFormatter, bold, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
@@ -71,7 +71,7 @@ ${
 		([command, { description }]) => `  ${bold(padCmd(':' + command), output.formatter)}${description}`).sort().join('\n')
 }
 
-You can combine commands by separating them with a semicolon ${bold(';',output.formatter)}.
+You can combine commands by separating them with a semicolon ${bold(';', output.formatter)}.
 `);
 	}
 };
@@ -87,6 +87,7 @@ const _commands = {
 	'parse':           parseCommand,
 	'normalize':       normalizeCommand,
 	'normalize*':      normalizeStarCommand,
+	'normalize#':      normalizeHashCommand,
 	'dataflow':        dataflowCommand,
 	'dataflow*':       dataflowStarCommand,
 	'dataflowsimple':  dataflowSimplifiedCommand,

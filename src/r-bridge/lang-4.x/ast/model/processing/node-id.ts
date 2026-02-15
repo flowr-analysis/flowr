@@ -2,6 +2,7 @@ import type { AstIdMap } from './decorate';
 import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { VertexType } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
+import { Identifier } from '../../../../../dataflow/environments/identifier';
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
@@ -30,7 +31,7 @@ export function recoverName(id: NodeId, idMap?: AstIdMap): string | undefined {
 export function recoverContent(id: NodeId, graph: DataflowGraph): string | undefined {
 	const vertex = graph.getVertex(id);
 	if(vertex && vertex.tag === VertexType.FunctionCall && vertex.name) {
-		return vertex.name;
+		return Identifier.toString(vertex.name);
 	}
 	const node = graph.idMap?.get(id);
 	if(node === undefined) {

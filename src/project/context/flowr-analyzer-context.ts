@@ -29,6 +29,9 @@ import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
 import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
+import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
+import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
+import type { FlowrAnalyzer } from '../flowr-analyzer';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -36,6 +39,10 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
  * If you are a {@link FlowrAnalyzerPlugin} and want to modify the context, you can use the {@link FlowrAnalyzerContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerContext {
+	/**
+	 * The meta context provides access to the project metadata such as name, version, and namespace.
+	 */
+	readonly meta:               ReadOnlyFlowrAnalyzerMetaContext;
 	/**
 	 * The files context provides access to the files to be analyzed and their loading order.
 	 */
@@ -71,9 +78,11 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
 export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
+	public readonly meta:  FlowrAnalyzerMetaContext;
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	private _analyzer:     FlowrAnalyzer | undefined;
 
 	public readonly config: FlowrConfigOptions;
 
@@ -81,10 +90,24 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
-            (plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
+			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.meta = new FlowrAnalyzerMetaContext();
+	}
+
+	/**
+	 * Provides the analyzer associated with this context, if any.
+	 * This is usually set when the context is used within an analyzer instance.
+	 * Please note, that this may be `undefined` if the context is used standalone (e.g., during setup or in plugins that do not have access to the analyzer).
+	 */
+	get analyzer(): FlowrAnalyzer | undefined {
+		return this._analyzer;
+	}
+
+	setAnalyzer(analyzer: FlowrAnalyzer) {
+		this._analyzer = analyzer;
 	}
 
 	/** delegate request addition */
@@ -116,11 +139,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	}
 
 	/**
-	 * Reset the context to its initial state, removing all files, dependencies, and loading orders.
+	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
 	 */
 	public reset(): void {
 		this.files.reset();
 		this.deps.reset();
+		this.meta.reset();
 	}
 }
 

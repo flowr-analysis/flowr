@@ -12,9 +12,9 @@ import type { FileRole } from '../../../project/context/flowr-file';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
-	readonly type:       'project';
-    /** Whether to include Dataflow information in the result. */
-    readonly withDf?: boolean;
+	readonly type:    'project';
+	/** Whether to include Dataflow information in the result. */
+	readonly withDf?: boolean;
 }
 
 export interface ProjectQueryResult extends BaseQueryResult {

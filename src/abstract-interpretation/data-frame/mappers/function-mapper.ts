@@ -15,6 +15,7 @@ import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName,
 import type { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /**
  * Represents the different types of data frames in R
@@ -564,10 +565,10 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `info` contains the resolve information
  */
 type DataFrameFunctionMapping<Params extends object> = (
-    args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly RFunctionArgument<ParentInformation>[],
 	params: Params,
 	inference: DataFrameShapeInferenceVisitor,
-    info: ResolveInfo
+	info: ResolveInfo
 ) => DataFrameOperations;
 
 /** All currently supported data frame functions */
@@ -582,13 +583,14 @@ type DataFrameFunctionParams<N extends DataFrameFunction> = Parameters<typeof Da
  */
 type DataFrameFunctionParamsMapping = {
 	[Name in DataFrameFunction]: DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] }
-}
+};
 
 /**
  * Maps a concrete data frame function call to abstract data frame operations.
- * @param node - The R node of the function call
- * @param dfg  - The data flow graph for resolving the arguments
- * @param ctx  - The current flowR analyzer context
+ * @param node      - The R node of the function call
+ * @param inference - The data frame shape inference visitor
+ * @param dfg       - The data flow graph for resolving the arguments
+ * @param ctx       - The current flowR analyzer context
  * @returns The mapped abstract data frame operations for the function call, or `undefined` if the node does not represent a data frame function call
  */
 export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
@@ -602,8 +604,9 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
 
-	if(isDataFrameFunction(node.functionName.content)) {
-		const functionName = node.functionName.content as Name;
+	const n = Identifier.getName(node.functionName.content);
+	if(isDataFrameFunction(n)) {
+		const functionName = n as Name;
 		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
 		const args = getFunctionArguments(node, dfg);
@@ -614,7 +617,7 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 			return mapper(args, params, inference, resolveInfo);
 		}
 	} else {
-		const mapping = getOtherDataFrameFunction(node.functionName.content);
+		const mapping = getOtherDataFrameFunction(Identifier.getName(node.functionName.content));
 
 		if(mapping === undefined) {
 			return;
@@ -999,7 +1002,7 @@ function mapDataFrameFilter(
 	const filterArgs = args.filter(arg => arg !== dataFrame);
 	const filterValues = filterArgs.map(arg => resolveIdToArgValue(arg, info));
 
-	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
+	const accessedNames = filterArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.getName));
 	const condition = filterValues.every(value => typeof value === 'boolean') ? filterValues.every(cond => cond) : undefined;
 
 	if(accessedNames.length > 0) {
@@ -1116,7 +1119,7 @@ function mapDataFrameMutate(
 
 	// only column names that are not created by mutation are preconditions on the operand
 	const accessedNames = mutateArgs
-		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.toString))
 		.filter(arg => !mutatedCols?.includes(arg));
 
 	deletedCols = filterValidNames(deletedCols, params.checkNames, params.noDupNames, undefined, true);
@@ -1171,7 +1174,7 @@ function mapDataFrameGroupBy(
 	const result: DataFrameOperations = [];
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
-	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph));
+	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph)).map(Identifier.toString);
 	const byNames = byArgs.map(arg => isNamedArgument(arg) ? resolveIdToArgName(arg, info) : resolveIdToArgValueSymbolName(arg, info));
 
 	const mutatedCols = byArgs.some(isNamedArgument) || byNames.some(isUndefined);
@@ -1212,7 +1215,7 @@ function mapDataFrameSummarize(
 
 	// only column names that are not created by summarize are preconditions on the operand
 	const accessedNames = summarizeArgs
-		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph))
+		.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph).map(Identifier.toString))
 		.filter(arg => !summarizedCols.includes(arg));
 
 	if(accessedNames.length > 0) {

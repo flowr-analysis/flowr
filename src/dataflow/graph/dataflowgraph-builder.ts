@@ -4,11 +4,10 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import {
 	type DataflowFunctionFlowInformation,
 	DataflowGraph,
-	type FunctionArgument,
-	isPositionalArgument
+	FunctionArgument
 } from './graph';
 import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
-import {
+import { type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexInfo,
@@ -71,7 +70,7 @@ export class DataflowGraphBuilder<
 	 */
 	public defineFunction(id: NodeId,
 		exitPoints: readonly ExitPoint[] | readonly NodeId[], subflow: Omit<DataflowFunctionFlowInformation, 'hooks'> & { hooks?: HookInformation[] },
-		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][] },
+		info?: { environment?: REnvironmentInformation, builtInEnvironment?: IEnvironment, cds?: ControlDependency[], readParams?: [NodeId, boolean][], mode?: DataflowGraphVertexFunctionDefinition['mode'] },
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
@@ -84,8 +83,9 @@ export class DataflowGraphBuilder<
 				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				hooks:             subflow.hooks ?? []
+				hooks:             subflow.hooks ?? [],
 			} as DataflowFunctionFlowInformation,
+			mode:       info?.mode,
 			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
 				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, cds: undefined })
 			),
@@ -147,10 +147,10 @@ export class DataflowGraphBuilder<
 	/** automatically adds argument links if they do not already exist */
 	private addArgumentLinks(id: NodeId, args: readonly FunctionArgument[]) {
 		for(const arg of args) {
-			if(arg === EmptyArgument) {
+			if(FunctionArgument.isEmpty(arg)) {
 				continue;
 			}
-			if(isPositionalArgument(arg)) {
+			if(FunctionArgument.isPositional(arg)) {
 				this.argument(id, arg.nodeId);
 				if(typeof arg.nodeId === 'string' && arg.nodeId.endsWith('-arg')) {
 					const withoutSuffix = arg.nodeId.slice(0, -4);
@@ -172,7 +172,7 @@ export class DataflowGraphBuilder<
 	 * (i.e., be a valid entry point), or is it nested (e.g., as part of a function definition)
 	 */
 	public defineVariable(id: NodeId, name?: string,
-		info?: { cds?: ControlDependency[], definedBy?: NodeId[]}, asRoot: boolean = true) {
+		info?: { cds?: ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
 			id:  normalizeIdToNumberIfPossible(id),
@@ -431,14 +431,6 @@ interface Query {
 	query: FlowrSearchLike;
 }
 
-type FromQueryParam =
-  | {
-      nodeId: NodeId;
-    }
-  | Query;
+type FromQueryParam = { nodeId: NodeId; } | Query;
 
-type ToQueryParam =
-  | {
-      target: DataflowGraphEdgeTarget;
-    }
-  | Query;
+type ToQueryParam = { target: DataflowGraphEdgeTarget; } | Query;

@@ -2,14 +2,14 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
-import { type SingleSlicingCriterion, type SlicingCriteria , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type SingleSlicingCriterion, type SlicingCriteria, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
 	function testCode(name: string, criterion: SingleSlicingCriterion, code: string, expected: SlicingCriteria | undefined) {
 		test(name, async() => {
 			const { dataflow, normalize } =
-			await createDataflowPipeline(shell, { context: contextFromInput(code.trim()) }).allRemainingSteps();
+				await createDataflowPipeline(shell, { context: contextFromInput(code.trim()) }).allRemainingSteps();
 
 			const refs = getAllRefsToSymbol(dataflow.graph, slicingCriterionToId(criterion, normalize.idMap));
 			if(expected !== undefined) {

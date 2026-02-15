@@ -1,7 +1,7 @@
 import type { Reduction, SummarizedDfShapeStats, SummarizedSlicerStats, TimePerToken, UltimateSlicerStats } from '../data';
 import { summarizeSummarizedReductions, summarizeSummarizedMeasurement, summarizeSummarizedTimePerToken, summarizeTimePerToken } from '../first-phase/process';
 import { DefaultMap } from '../../../util/collections/defaultmap';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { guard, isNotUndefined } from '../../../util/assert';
 import {
 	type BenchmarkMemoryMeasurement,
@@ -11,7 +11,7 @@ import {
 	CommonSlicerMeasurements,
 	PerSliceMeasurements
 } from '../../stats/stats';
-import { type DataFrameOperationName , DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { type DataFrameOperationName, DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
 import { arraySum } from '../../../util/collections/arrays';
 
 /**
@@ -116,9 +116,6 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			numberOfCalls:               summarizeMeasurement(dataflows.map(d => d.numberOfCalls)),
 			numberOfEdges:               summarizeMeasurement(dataflows.map(d => d.numberOfEdges)),
 			sizeOfObject:                summarizeMeasurement(dataflows.map(d => d.sizeOfObject)),
-			storedVertexIndices:         summarizeMeasurement(dataflows.map(d => d.storedVertexIndices)),
-			storedEnvIndices:            summarizeMeasurement(dataflows.map(d => d.storedEnvIndices)),
-			overwrittenIndices:          summarizeMeasurement(dataflows.map(d => d.overwrittenIndices)),
 		},
 		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
 			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
@@ -133,6 +130,8 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 			sizeOfInfo:                summarizeMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
 			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
 			numberOfOperations:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
+			numberOfTotalConstraints:  summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
+			numberOfTotalExact:        summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
 			numberOfTotalValues:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
 			numberOfTotalBottom:       summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
 			numberOfTotalTop:          summarizeMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),
@@ -204,9 +203,6 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			numberOfCalls:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfCalls)),
 			numberOfEdges:               summarizeSummarizedMeasurement(stats.map(s => s.dataflow.numberOfEdges)),
 			sizeOfObject:                summarizeSummarizedMeasurement(stats.map(s => s.dataflow.sizeOfObject)),
-			storedVertexIndices:         summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedVertexIndices)),
-			storedEnvIndices:            summarizeSummarizedMeasurement(stats.map(s => s.dataflow.storedEnvIndices)),
-			overwrittenIndices:          summarizeSummarizedMeasurement(stats.map(s => s.dataflow.overwrittenIndices)),
 		},
 		dataFrameShape: stats.some(s => s.dataFrameShape !== undefined) ? {
 			numberOfDataFrameFiles:    arraySum(stats.map(s => s.dataFrameShape?.numberOfDataFrameFiles).filter(isNotUndefined)),
@@ -221,6 +217,8 @@ export function summarizeAllUltimateStats(stats: UltimateSlicerStats[]): Ultimat
 			sizeOfInfo:                summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.sizeOfInfo).filter(isNotUndefined)),
 			numberOfEntriesPerNode:    summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfEntriesPerNode).filter(isNotUndefined)),
 			numberOfOperations:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfOperations).filter(isNotUndefined)),
+			numberOfTotalConstraints:  summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalConstraints).filter(isNotUndefined)),
+			numberOfTotalExact:        summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalExact).filter(isNotUndefined)),
 			numberOfTotalValues:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalValues).filter(isNotUndefined)),
 			numberOfTotalBottom:       summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalBottom).filter(isNotUndefined)),
 			numberOfTotalTop:          summarizeSummarizedMeasurement(stats.map(s => s.dataFrameShape?.numberOfTotalTop).filter(isNotUndefined)),

@@ -1,4 +1,4 @@
-import { type FlowrSearch, type FlowrSearchLike, type SearchOutput , getFlowrSearch } from './flowr-search-builder';
+import { type FlowrSearch, type FlowrSearchLike, type SearchOutput, getFlowrSearch } from './flowr-search-builder';
 import type { FlowrSearchElements } from './flowr-search';
 import { getGenerator } from './search-executor/search-generators';
 import { getTransformer } from './search-executor/search-transformer';

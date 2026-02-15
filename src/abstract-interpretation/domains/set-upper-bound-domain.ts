@@ -3,7 +3,7 @@ import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
-import { type SatisfiableDomain , SetComparator } from './satisfiable-domain';
+import { type SatisfiableDomain, SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the set upper bound domain as set */

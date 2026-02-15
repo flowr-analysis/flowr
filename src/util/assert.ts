@@ -33,7 +33,7 @@ export function assertUnreachable(x: never): never {
  * @see {@link isUndefined}
  * @see {@link isNotNull}
  */
-export function isNotUndefined<T>(x: T | undefined): x is T {
+export function isNotUndefined<T>(this: void, x: T | undefined): x is T {
 	return x !== undefined;
 }
 
@@ -49,7 +49,7 @@ export function isNotUndefined<T>(x: T | undefined): x is T {
  * @see {@link isNotUndefined}
  * @see {@link isNotNull}
  */
-export function isUndefined<T>(x: T | undefined): x is undefined {
+export function isUndefined<T>(this: void, x: T | undefined): x is undefined {
 	return x === undefined;
 }
 
@@ -65,11 +65,11 @@ export function isUndefined<T>(x: T | undefined): x is undefined {
  * @see {@link isUndefined}
  * @see {@link isNotUndefined}
  */
-export function isNotNull<T>(x: T | null): x is T {
+export function isNotNull<T>(this: void, x: T | null): x is T {
 	return x !== null;
 }
 
-function prepareStack(stack: string | undefined): string {
+function prepareStack(this: void, stack: string | undefined): string {
 	if(!stack) {
 		return 'No stack trace available';
 	}
@@ -115,7 +115,7 @@ class GuardError extends Error {
 	}
 }
 
-export type GuardMessage = string | (() => string)
+export type GuardMessage = string | (() => string);
 
 /**
  * @param assertion   - will be asserted

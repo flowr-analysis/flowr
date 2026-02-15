@@ -1,8 +1,10 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
 import { FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
-import { type Node , Parser } from 'commonmark';
+import { type Node, Parser } from 'commonmark';
+import type { GrayMatterFile } from 'gray-matter';
 import matter from 'gray-matter';
+import { log } from '../../../../util/log';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
@@ -21,6 +23,9 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		this.wrapped = file;
 	}
 
+	/**
+	 * Gets the parsed R Markdown information
+	 */
 	get rmd(): RmdInfo {
 		if(!this.data) {
 			this.loadContent();
@@ -50,7 +55,7 @@ export interface CodeBlock {
 
 export type CodeBlockEx = CodeBlock & {
 	startpos: { line: number, col: number }
-}
+};
 
 export interface RmdInfo {
 	content: string
@@ -69,7 +74,14 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 	const ast = parser.parse(raw);
 
 	// Parse Frontmatter
-	const frontmatter = matter(raw);
+	let frontmatter: GrayMatterFile<string> | undefined;
+	try {
+		frontmatter = matter(raw);
+	} catch(e) {
+		log.warn(`Failed to parse frontmatter of Rmd file, ignoring it. Error was: ${JSON.stringify(e)}`);
+		frontmatter = undefined;
+	}
+
 
 	// Parse Codeblocks
 	const walker = ast.walker();
@@ -92,7 +104,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
 		// eslint-disable-next-line unused-imports/no-unused-vars
 		blocks:  blocks.map(({ startpos, ...block }) => block),
-		options: frontmatter.data
+		options: frontmatter?.data ?? {}
 	};
 }
 

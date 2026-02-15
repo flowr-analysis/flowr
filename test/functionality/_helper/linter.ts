@@ -4,16 +4,16 @@ import {
 	type LintingRuleNames,
 	type LintingRuleResult
 	, LintingRules } from '../../../src/linter/linter-rules';
-import { type TestLabel , decorateLabelContext } from './label';
+import { type TestLabel, decorateLabelContext } from './label';
 import { assert, test } from 'vitest';
 import { fileProtocol, requestFromInput } from '../../../src/r-bridge/retriever';
-import { type NormalizedAst , deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import { type LintingRule , isLintingResultsError, LintingPrettyPrintContext } from '../../../src/linter/linter-format';
+import { type LintingRule, LintingPrettyPrintContext, LintingResults } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { type FlowrLaxSourcingOptions , DropPathsOption } from '../../../src/config';
+import { type FlowrLaxSourcingOptions, DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -22,6 +22,7 @@ import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 
 
 /**
@@ -53,13 +54,13 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 	parser: KnownParser,
 	code: string,
 	ruleName: Name,
-	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & {involvedId: SlicingCriteria})[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & {involvedId: SlicingCriteria})[]),
+	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
 ) {
 	assertLinterWithCleanup(name, parser, code, ruleName, expected, expectedMetadata, lintingRuleConfig, (result, ast) => ({
 		...result,
-		involvedId: (Array.isArray(result.involvedId) ? result.involvedId : result.involvedId !== undefined ? [result.involvedId] : []).map(s =>{
+		involvedId: (Array.isArray(result.involvedId) ? result.involvedId : result.involvedId !== undefined ? [result.involvedId] : []).map(s => {
 			try {
 				return slicingCriterionToId(s as SingleSlicingCriterion, ast.idMap);
 			} catch{
@@ -106,11 +107,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		);
 
 		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-		const results = await executeLintingRule(ruleName, analyzer, lintingRuleConfig);
-
-		if(isLintingResultsError(results)) {
-			throw new Error(results.error);
-		}
+		const results = LintingResults.unpackSuccess(await executeLintingRule(ruleName, analyzer, lintingRuleConfig));
 
 		for(const [type, printer] of Object.entries({
 			text: (result: LintingRuleResult<Name>, metadata: LintingRuleMetadata<Name>) => `${rule.prettyPrint[LintingPrettyPrintContext.Query](result, metadata)} (${result.certainty})${result.quickFix ? ` (${result.quickFix.length} quick fix(es) available)` : ''}`,
@@ -125,9 +122,10 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		}
 
 		try {
-			assert.deepEqual(results.results.map(r => cleanup(r,ast )), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
+			assert.deepEqual(results.results.map(r => cleanup(r, ast )), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
 			console.error('dfg:', graphToMermaidUrl((await analyzer.dataflow()).graph));
+			console.error('cfg:', cfgToMermaidUrl(await analyzer.controlflow(), await analyzer.normalize()));
 			throw e;
 		}
 		if(expectedMetadata !== undefined) {

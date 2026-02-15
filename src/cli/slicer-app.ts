@@ -29,7 +29,7 @@ export interface SlicerCliOptions {
 }
 
 
-const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'criterion'],{
+const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'criterion'], {
 	subtitle: 'Slice R code based on a given slicing criterion',
 	examples: [
 		'{bold -c} {italic "12@product"} {italic test/testfiles/example.R}',

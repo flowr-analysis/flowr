@@ -19,7 +19,7 @@ export interface ResolveValueQuery extends BaseQueryFormat {
 }
 
 export interface ResolveValueQueryResult extends BaseQueryResult {
-	results: Record<string, {values: ResolveResult[]}>
+	results: Record<string, { values: ResolveResult[] }>
 }
 
 function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'resolve-value'> {

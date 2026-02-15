@@ -1,8 +1,7 @@
-import { type LintingResult, type LintingRule , LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
-import type { SourceRange } from '../../util/range';
-import { formatRange } from '../../util/mermaid/dfg';
+import { SourceLocation } from '../../util/range';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
 import { findSource } from '../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { Ternary } from '../../util/logic';
@@ -13,7 +12,7 @@ import { Enrichment } from '../../search/search-executor/search-enrichers';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string,
-	range:    SourceRange
+	loc:      SourceLocation
 }
 
 export interface FilePathValidityConfig extends MergeableRecord {
@@ -63,15 +62,17 @@ export const FILE_PATH_VALIDITY = {
 					return [];
 				}
 				metadata.totalReads++;
-				const range = element.node.info.fullRange as SourceRange;
-
+				const loc = SourceLocation.fromNode(element.node);
+				if(!loc) {
+					return [];
+				}
 				// check if we can't parse the file path statically
 				if(matchingRead.value === Unknown) {
 					metadata.totalUnknown++;
 					if(config.includeUnknown) {
 						return [{
 							involvedId: matchingRead.nodeId,
-							range,
+							loc,
 							filePath:   Unknown,
 							certainty:  LintingResultCertainty.Uncertain
 						}];
@@ -100,7 +101,7 @@ export const FILE_PATH_VALIDITY = {
 
 				return [{
 					involvedId: matchingRead.nodeId,
-					range,
+					loc,
 					filePath:   matchingRead.value as string,
 					certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
 				}];
@@ -121,8 +122,8 @@ export const FILE_PATH_VALIDITY = {
 		}
 	},
 	prettyPrint: {
-		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${formatRange(result.range)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${formatRange(result.range)} does not point to a valid file`
+		[LintingPrettyPrintContext.Query]: result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  result => `Path \`${result.filePath}\` at ${SourceLocation.format(result.loc)} does not point to a valid file`
 	}
 } as const satisfies LintingRule<FilePathValidityResult, FilePathValidityMetadata, FilePathValidityConfig>;
 

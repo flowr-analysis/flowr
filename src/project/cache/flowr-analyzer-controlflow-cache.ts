@@ -65,6 +65,9 @@ export class FlowrAnalyzerControlFlowCache {
 			case CfgKind.NoDataflow:
 				result = extractCfg(await ast(), ctx);
 				break;
+			case CfgKind.NoFunctionDefs:
+				result = extractCfg(await ast(), ctx, undefined, undefined, true);
+				break;
 			case CfgKind.Quick:
 				result = cfgQuick ?? extractCfgQuick(await ast());
 				break;

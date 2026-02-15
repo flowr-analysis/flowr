@@ -28,9 +28,9 @@ export function normalizeLineDirective(data: NormalizerData, obj: JsonEntry): RL
 			location,
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: content
 			},
 			content: content.slice(1)
 		};
@@ -42,9 +42,9 @@ export function normalizeLineDirective(data: NormalizerData, obj: JsonEntry): RL
 			file:   match[2],
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: content
 			}
 		};
 	}

@@ -3,7 +3,7 @@ import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../summarizer';
 import { date2string } from '../../../util/text/time';
 import {
-	type CommonSummarizerConfiguration ,
+	type CommonSummarizerConfiguration,
 	summarizedMeasurement2Csv,
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
@@ -11,7 +11,7 @@ import {
 import { arraySum } from '../../../util/collections/arrays';
 import { readLineByLineSync } from '../../../util/files';
 import { guard } from '../../../util/assert';
-import { type FeatureStatistics, type FeatureStatisticsWithMeta , ALL_FEATURES } from '../../features/feature';
+import { type FeatureStatistics, type FeatureStatisticsWithMeta, ALL_FEATURES } from '../../features/feature';
 import type { MetaStatistics } from '../../meta-statistics';
 
 

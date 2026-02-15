@@ -1,4 +1,4 @@
-import { type Mergeable , deepMergeObject, isObjectOrArray } from '../../../src/util/objects';
+import { type Mergeable, deepMergeObject, isObjectOrArray } from '../../../src/util/objects';
 import { describe, assert, test } from 'vitest';
 
 describe('Objects', () => {

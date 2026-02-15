@@ -20,7 +20,12 @@ import type { NodeId } from './node-id';
 import type { RDelimiter } from '../nodes/info/r-delimiter';
 import type { RBinaryOp } from '../nodes/r-binary-op';
 import type { RPipe } from '../nodes/r-pipe';
-import { type RFunctionCall, type RNamedFunctionCall, type RUnnamedFunctionCall , EmptyArgument } from '../nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionCall,
+	type RNamedFunctionCall,
+	type RUnnamedFunctionCall
+} from '../nodes/r-function-call';
 import type { RExpressionList } from '../nodes/r-expression-list';
 import type { RParameter } from '../nodes/r-parameter';
 import type { RArgument } from '../nodes/r-argument';
@@ -31,7 +36,7 @@ import type { RProject } from '../nodes/r-project';
  * @param data - the node to generate an id for
  * @returns a unique id for the given node
  */
-export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId
+export type IdGenerator<OtherInfo> = (data: RProject<OtherInfo> | RNode<OtherInfo>) => NodeId;
 
 /**
  * The simplest id generator which just increments a number on each call.
@@ -55,7 +60,7 @@ export function sourcedDeterministicCountingIdGenerator(path: string, location: 
 	return () => `${path}-${loc2Id(location)}-${id++}`;
 }
 
-function loc2Id([sl,sc,el,ec]: SourceRange): string {
+function loc2Id([sl, sc, el, ec]: SourceRange): string {
 	return `${sl}:${sc}-${el}:${ec}`;
 }
 
@@ -109,10 +114,10 @@ export interface ParentInformation extends ParentContextInfo {
 	parent: NodeId | undefined
 }
 
-export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>
+export type RNodeWithParent<OtherInfo = NoInfo> = RNode<OtherInfo & ParentInformation>;
 
 
-export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>
+export type AstIdMap<OtherInfo = NoInfo> = BiMap<NodeId, RNodeWithParent<OtherInfo>>;
 interface FoldInfo<OtherInfo> { idMap: AstIdMap<OtherInfo>, getId: IdGenerator<OtherInfo>, file?: string }
 
 /**
@@ -384,6 +389,12 @@ function createFoldForExprList<OtherInfo>(info: FoldInfo<OtherInfo>) {
 			childInfo.parent = id;
 			childInfo.index = i++;
 			childInfo.role = RoleInParent.ExpressionListChild;
+		}
+		// assign role for grouping
+		if(grouping) {
+			const [open, close] = grouping;
+			open.info.role = RoleInParent.ExpressionListGrouping;
+			close.info.role = RoleInParent.ExpressionListGrouping;
 		}
 		decorated.info.file = info.file;
 		return decorated;

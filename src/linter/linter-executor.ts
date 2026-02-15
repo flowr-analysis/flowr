@@ -1,4 +1,4 @@
-import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult , LintingRules } from './linter-rules';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
 import type { LintingResults, LintingRule } from './linter-format';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
@@ -40,9 +40,8 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 			}
 		};
 	} catch(e) {
-		const msg = typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e);
 		return {
-			error: msg
+			error: e
 		};
 	}
 }

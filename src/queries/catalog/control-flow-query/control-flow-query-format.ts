@@ -4,9 +4,9 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeControlFlowQuery } from './control-flow-query-executor';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type ControlFlowInformation , CfgVertexType } from '../../../control-flow/control-flow-graph';
+import { type ControlFlowInformation, CfgVertex } from '../../../control-flow/control-flow-graph';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
-import { type CfgSimplificationPassName , CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName, CfgSimplificationPasses } from '../../../control-flow/cfg-simplification';
 
 /**
  * Provides the control flow graph with an optional, fixed configuration
@@ -45,7 +45,7 @@ export const ControlFlowQueryDefinition = {
 	flattenInvolvedNodes: (queryResults: BaseQueryResult): NodeId[] => {
 		const out = queryResults as QueryResults<'control-flow'>['control-flow'];
 		return out.controlFlow.graph.vertices(true).entries()
-			.filter(([,v]) => v.type !== CfgVertexType.Block)
+			.filter(([,v]) => !CfgVertex.isBlock(v))
 			.map(v => v[0])
 			.toArray();
 	}

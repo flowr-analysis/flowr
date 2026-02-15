@@ -33,7 +33,7 @@ export interface SliceSizeCollection {
 export type SummarizedSlicerStats = {
 	perSliceMeasurements: SummarizedPerSliceStats,
 	dataFrameShape?:      SummarizedDfShapeStats
-} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>
+} & Omit<SlicerStats, 'perSliceMeasurements' | 'dataFrameShape'>;
 
 export interface Reduction<T = number> {
 	numberOfLines:                   T
@@ -98,6 +98,8 @@ export interface UltimateSlicerStats {
 export interface SummarizedDfShapeStats<T = number> extends Omit<SlicerStatsDfShape<T>, 'perNodeStats'> {
 	numberOfEntriesPerNode:   SummarizedMeasurement,
 	numberOfOperations:       T,
+	numberOfTotalConstraints: T,
+	numberOfTotalExact:       T,
 	numberOfTotalValues:      T,
 	numberOfTotalBottom:      T,
 	numberOfTotalTop:         T,

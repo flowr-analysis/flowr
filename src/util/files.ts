@@ -1,4 +1,4 @@
-import fs, { type PathLike , promises as fsPromise } from 'fs';
+import fs, { type PathLike, promises as fsPromise } from 'fs';
 import path from 'path';
 import { log } from './log';
 import LineByLine from 'n-readlines';

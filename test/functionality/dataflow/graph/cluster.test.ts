@@ -1,6 +1,6 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
-import { type DataflowGraphCluster, type DataflowGraphClusters , findAllClusters } from '../../../../src/dataflow/cluster';
-import { type SlicingCriteria , slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { type DataflowGraphCluster, type DataflowGraphClusters, findAllClusters } from '../../../../src/dataflow/cluster';
+import { type SlicingCriteria, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -160,8 +160,8 @@ cat(product)
 				check('two half if', 'if(x) a <- va else b = vb\nprint(a)\nprint(b)', [
 					['1@if', '1@x', '1@a', '1@<-', '1@va', '2@print', '2@a', '1@b', '1@=', '1@vb', '3@print', '3@b']
 				]);
-				check('the "zeitschleife"', 'x <- vx\nwhile(u) {\nx <- v + vi\n v <- x } ', [ /* or: interdependence should be maintained */
-					['1@x', '1@<-', '1@vx', '2@while', '2@u', '$14', '3@x', '3@<-', '3@v', '3@+', '3@vi', '4@v', '4@<-', '4@x']
+				check('the "zeitschleife"', 'v <- vx\nwhile(u) {\nx <- v + vi\n v <- x } ', [ /* or: interdependence should be maintained */
+					['1@v', '1@<-', '1@vx', '2@while', '2@u', '$14', '3@x', '3@<-', '3@v', '3@+', '3@vi', '4@v', '4@<-', '4@x']
 				]);
 				check('re-cluster function calls', 'f <- function() vf\nf()\nf()\nf()', [
 					['1@f', '1@<-', '1@function', '1@vf', '2@f', '3@f', '4@f']

@@ -98,20 +98,20 @@ implements Lattice<Abstract, Top, Bot, Value> {
 
 	/**
 	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.
-	 * The provided array of abstract values cannot be empty!
+	 * The provided array of abstract values must not be empty or a default value must be provided!
 	 */
-	public static joinAll<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
-		guard(values.length > 0, 'Abstract values to join cannot be empty');
-		return values[0].joinAll(values.slice(1));
+	public static joinAll<Domain extends AnyAbstractDomain>(values: Domain[], defaultValue?: Domain): Domain {
+		guard(values.length > 0 || defaultValue !== undefined, 'Abstract values to join cannot be empty');
+		return values[0]?.joinAll(values.slice(1)) ?? defaultValue;
 	}
 
 	/**
 	 * Meets an array of abstract values by meeting the first abstract value with the other values in the array.
-	 * The provided array of abstract values cannot be empty!
+	 * The provided array of abstract values must not be empty or a default value must be provided!
 	 */
-	public static meetAll<Domain extends AnyAbstractDomain>(values: Domain[]): Domain {
-		guard(values.length > 0, 'Abstract values to meet cannot be empty');
-		return values[0].meetAll(values.slice(1));
+	public static meetAll<Domain extends AnyAbstractDomain>(values: Domain[], defaultValue?: Domain): Domain {
+		guard(values.length > 0 || defaultValue !== undefined, 'Abstract values to meet cannot be empty');
+		return values[0]?.meetAll(values.slice(1)) ?? defaultValue;
 	}
 }
 

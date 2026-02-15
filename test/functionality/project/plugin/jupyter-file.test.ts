@@ -10,5 +10,5 @@ cat(x)
 # This is a cool test
 y <- c(1,2,3)
 plot(y)
-# Hi`);
+# Hi`, ['file:ipynb']);
 });

@@ -24,7 +24,7 @@ export type FilePath = string & { readonly __filePath?: unique symbol };
 export interface LocationMapQueryResult extends BaseQueryResult {
 	readonly map: {
 		files: Record<FileId, FilePath>;
-		ids:   Record<NodeId, [FileId,SourceRange]>
+		ids:   Record<NodeId, [FileId, SourceRange]>
 	}
 }
 

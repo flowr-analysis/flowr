@@ -21,7 +21,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			expectIsSubgraph:     true,
 			simplificationPasses: ['analyze-dead-code'],
 			/** we break unreachable edges for this test, the whole point is for not all of them being reachable */
-			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all'],
+			excludeProperties:    ['entry-reaches-all', 'exit-reaches-all', 'single-entry-and-exit'],
 			testIds:              ids,
 			additionalAsserts:    (cfg, ast) => {
 				for(const [n, i] of [...reachableFromStart.map(n => [n, false] as const), ...unreachableFromStart.map(n => [n, true] as const)]) {
@@ -88,7 +88,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 		])('code after return', ({ prefix, loop }) => {
 			const verbs = loop ? ['return(1)', 'break', 'next', 'stop(1)', 'stopifnot(FALSE)'] : ['return(1)', 'stop(1)', 'stopifnot(FALSE)'];
 			for(const verb of verbs) {
-				assertDeadCode(`${prefix}{ foo; ${verb}; 2 }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
+				assertDeadCode(`function() { ${prefix}{ foo; ${verb}; 2 } }`, { reachableFromStart: ['1@foo'],  unreachableFromStart: ['1@2'] });
 			}
 		});
 
@@ -106,8 +106,9 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			for(const outer of outers) {
 				for(const inner1 of inners) {
 					for(const inner2 of inners) {
-						assertDeadCode(`${outer} { 1; if(u) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
-						assertDeadCode(`${outer} { 1; if(TRUE) ${inner1} else ${inner2}; 2 }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+						// we add a function wrapper for return
+						assertDeadCode(`function() { ${outer} { 1; if(u) ${inner1} else ${inner2}; 2 } }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
+						assertDeadCode(`function() { ${outer} { 1; if(TRUE) ${inner1} else ${inner2}; 2 } }`, { reachableFromStart: ['1@1'], unreachableFromStart: ['1@2'] });
 					}
 				}
 			}

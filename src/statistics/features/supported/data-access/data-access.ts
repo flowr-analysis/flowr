@@ -1,6 +1,6 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
-import { type CommonSyntaxTypeCounts ,
+import { type CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -34,7 +34,7 @@ const initialDataAccessInfo = {
 	bySlot:                0,
 };
 
-export type DataAccessInfo = Writable<typeof initialDataAccessInfo>
+export type DataAccessInfo = Writable<typeof initialDataAccessInfo>;
 
 function classifyArguments(args: readonly (RArgument<ParentInformation> | typeof EmptyArgument | null | undefined)[], existing: Record<number, bigint | CommonSyntaxTypeCounts>) {
 	if(args.length === 0) {

@@ -6,12 +6,12 @@ import { ReferenceType } from '../../../../src/dataflow/environments/identifier'
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RParameter } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
-import { rangeFrom } from '../../../../src/util/range';
 import type { ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import { EdgeType } from '../../../../src/dataflow/graph/edge';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../_helper/label';
+import { SourceRange } from '../../../../src/util/range';
 
 describe('Dataflow Linker - Argument Matching', () => {
 	/**
@@ -46,7 +46,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 					type:     RType.Symbol,
 					content:  name,
 					lexeme:   name,
-					location: rangeFrom(0, 0, 0, 0),
+					location: SourceRange.from(0, 0, 0, 0),
 					info:     {
 						id:      'param-' + idx,
 						role:    RoleInParent.ParameterName,
@@ -62,7 +62,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 					nesting: 1,
 					index:   idx
 				},
-				location:     rangeFrom(0, 0, 0, 0),
+				location:     SourceRange.from(0, 0, 0, 0),
 				lexeme:       name,
 				special:      name === '...',
 				defaultValue: undefined
@@ -108,23 +108,23 @@ describe('Dataflow Linker - Argument Matching', () => {
 		check(['pos'], ['x'], ['x']);
 		check([null], ['x'], [' ']);
 		check(['y'], ['x'], [' ']);
-		check(['y'], ['x','y'], ['y']);
-		check(['x','y'], ['x','y'], ['x','y']);
-		check(['y','x'], ['x','y'], ['y','x']);
-		check(['pos','pos'], ['x','y'], ['x','y']);
-		check(['x','pos'], ['x','y'], ['x','y']);
-		check(['pos','y'], ['x','y'], ['x','y']);
-		check(['pos', 'x'], ['x','y'], ['y','x']);
-		check(['y', 'pos'], ['x','y'], ['y','x']);
-		check(['y', 'pos', 'x'], ['x','y', 'z'], ['y','z', 'x']);
-		check(['y', 'pos', 'pos'], ['x','y', 'z'], ['y','x','z']);
+		check(['y'], ['x', 'y'], ['y']);
+		check(['x', 'y'], ['x', 'y'], ['x', 'y']);
+		check(['y', 'x'], ['x', 'y'], ['y', 'x']);
+		check(['pos', 'pos'], ['x', 'y'], ['x', 'y']);
+		check(['x', 'pos'], ['x', 'y'], ['x', 'y']);
+		check(['pos', 'y'], ['x', 'y'], ['x', 'y']);
+		check(['pos', 'x'], ['x', 'y'], ['y', 'x']);
+		check(['y', 'pos'], ['x', 'y'], ['y', 'x']);
+		check(['y', 'pos', 'x'], ['x', 'y', 'z'], ['y', 'z', 'x']);
+		check(['y', 'pos', 'pos'], ['x', 'y', 'z'], ['y', 'x', 'z']);
 	});
 	describe('Partial Matches', () => {
 		check(['x'], ['xylo'], ['xylo']);
 		check(['xylo'], ['x'], [' ']);
 		check(['x'], ['ylo'], [' ']);
 		check(['x', 'pos'], ['xylo', 'x'], ['x', 'xylo']);
-		check(['pos','x'], ['x', 'xylo'], ['xylo', 'x']);
+		check(['pos', 'x'], ['x', 'xylo'], ['xylo', 'x']);
 		check(['x'], ['xylo', 'xander'], [' ']);
 		check(['ab'], ['ab', 'abcd'], ['ab']);
 		check(['ab'], ['abcd', 'ab'], ['ab']);
@@ -138,7 +138,7 @@ describe('Dataflow Linker - Argument Matching', () => {
 			check(['xylo'], ['...', 'x'], ['...']);
 			check(['x'], ['...', 'xylo'], ['...']);
 			check(['x'], ['x', '...', 'xylo'], ['x']);
-			check(['x','pos'], ['...', 'xylo', 'x'], ['x','...']);
+			check(['x', 'pos'], ['...', 'xylo', 'x'], ['x', '...']);
 			check(['x'], ['xylo', '...', 'x'], ['x']);
 			check(['x'], ['xylo', '...', 'xb'], ['xylo']);
 		});

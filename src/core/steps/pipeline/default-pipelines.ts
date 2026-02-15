@@ -38,9 +38,9 @@ export const DEFAULT_PARSE_PIPELINE = createPipeline(PARSE_WITH_R_SHELL_STEP);
 export const TREE_SITTER_PARSE_PIPELINE = createPipeline(PARSE_WITH_TREE_SITTER_STEP);
 
 
-export function createParsePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>
-export function createParsePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE>
-export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>
+export function createParsePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>;
+export function createParsePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE>;
+export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_PARSE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_PARSE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_PARSE_PIPELINE>;
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_PARSE_PIPELINE} or a {@link TREE_SITTER_PARSE_PIPELINE} depending on the parser used.
@@ -55,9 +55,9 @@ export function createParsePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 }
 
 
-export function createSlicePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>
-export function createSlicePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>
-export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>
+export function createSlicePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>;
+export function createSlicePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE>;
+export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_SLICING_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_SLICING_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_SLICING_PIPELINE>;
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_SLICING_PIPELINE} or a {@link TREE_SITTER_SLICING_PIPELINE} depending on the parser used.
@@ -72,9 +72,9 @@ export function createSlicePipeline(parser: KnownParser, inputs: Omit<PipelineIn
 }
 
 
-export function createNormalizePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE>
-export function createNormalizePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE>
-export function createNormalizePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE>
+export function createNormalizePipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE>;
+export function createNormalizePipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE>;
+export function createNormalizePipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_NORMALIZE_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_NORMALIZE_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_NORMALIZE_PIPELINE>;
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_NORMALIZE_PIPELINE} or a {@link TREE_SITTER_NORMALIZE_PIPELINE} depending on the parser used.
@@ -88,9 +88,9 @@ export function createNormalizePipeline(parser: KnownParser, inputs: Omit<Pipeli
 	});
 }
 
-export function createDataflowPipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE>
-export function createDataflowPipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE>
-export function createDataflowPipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE>
+export function createDataflowPipeline(parser: TreeSitterExecutor, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE>;
+export function createDataflowPipeline(parser: RShell, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE>;
+export function createDataflowPipeline(parser: KnownParser, inputs: Omit<PipelineInput<typeof DEFAULT_DATAFLOW_PIPELINE>, 'parser'>): PipelineExecutor<typeof DEFAULT_DATAFLOW_PIPELINE> | PipelineExecutor<typeof TREE_SITTER_DATAFLOW_PIPELINE>;
 /**
  * **Please use {@link FlowrAnalyzer} instead of this directly unless you really know what you are doing.**
  * Returns either a {@link DEFAULT_DATAFLOW_PIPELINE} or a {@link TREE_SITTER_DATAFLOW_PIPELINE} depending on the parser used.

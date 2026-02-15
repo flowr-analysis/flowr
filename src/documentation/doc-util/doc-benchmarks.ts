@@ -4,24 +4,24 @@ import { guard } from '../../util/assert';
 const BenchmarkDataPath = path.resolve(__dirname, '..', '..', '..', 'wiki', 'stats', 'benchmark', 'data.js');
 
 interface BenchmarkData {
-    readonly lastUpdate: number
-    readonly repoUrl:    string
-    readonly entries:    Record<string, [BenchmarkElement]>
+	readonly lastUpdate: number
+	readonly repoUrl:    string
+	readonly entries:    Record<string, [BenchmarkElement]>
 }
 
 interface BenchmarkElement {
-    readonly commit:  Record<string, unknown>
-    readonly date:    number
-    readonly tool:    string
-    readonly benches: BenchmarkElementBench[]
+	readonly commit:  Record<string, unknown>
+	readonly date:    number
+	readonly tool:    string
+	readonly benches: BenchmarkElementBench[]
 }
 
 interface BenchmarkElementBench {
-    readonly name:  string
-    readonly value: number
-    readonly unit:  string
-    readonly range: number
-    readonly extra: string
+	readonly name:  string
+	readonly value: number
+	readonly unit:  string
+	readonly range: number
+	readonly extra: string
 }
 
 let benchmarkData = null as BenchmarkData | null;

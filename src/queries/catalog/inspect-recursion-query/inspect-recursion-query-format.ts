@@ -3,12 +3,12 @@ import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeRecursionQuery } from './inspect-recursion-query-executor';
-import { type NodeId , normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type NodeId, normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { SourceLocation } from '../../../util/range';
 
 /**
  * Either returns all function definitions alongside whether they are recursive,
@@ -40,8 +40,9 @@ export const InspectRecursionQueryDefinition = {
 		const out = queryResults as QueryResults<'inspect-recursion'>['inspect-recursion'];
 		result.push(`Query: ${bold('inspect-recursion', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		for(const [r, v] of Object.entries(out.recursive)) {
-			const loc = (await processed.normalize()).idMap.get(normalizeIdToNumberIfPossible(r))?.location ?? undefined;
-			result.push(`  - Function ${bold(r, formatter)} (${formatRange(loc)}) is ${v ? '' : 'not '}recursive`);
+			const node = (await processed.normalize()).idMap.get(normalizeIdToNumberIfPossible(r));
+			const loc = node ? SourceLocation.fromNode(node) : undefined;
+			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(loc)}) is ${v ? '' : 'not '}recursive`);
 		}
 		return true;
 	},

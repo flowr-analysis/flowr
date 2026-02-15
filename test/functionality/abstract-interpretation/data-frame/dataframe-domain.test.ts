@@ -17,12 +17,12 @@ describe('Data Frame Domains', () => {
 		rows:     new PosIntervalDomain(rows)
 	});
 
-	const createState = (state: [NodeId, ExpectedDataFrameShape][]) =>
-		new StateAbstractDomain(new Map(state.map(([id, value]) => [id, createDomain(value)])));
+	const createState = (state: [NodeId, ExpectedDataFrameShape][] | typeof Bottom) =>
+		new StateAbstractDomain(new Map(state === Bottom ? undefined : state.map(([id, value]) => [id, createDomain(value)])), state === Bottom);
 
 	const DataFrameBottom = { colnames: Bottom, cols: Bottom, rows: Bottom } satisfies ExpectedDataFrameShape;
 	const DataFrameTop = { colnames: [[], Top], cols: PosIntervalTop, rows: PosIntervalTop } satisfies ExpectedDataFrameShape;
-	const DataFrameEmpty = { colnames: [[], []], cols: [0, 0], rows: [0,0] } satisfies ExpectedDataFrameShape;
+	const DataFrameEmpty = { colnames: [[], []], cols: [0, 0], rows: [0, 0] } satisfies ExpectedDataFrameShape;
 
 	const domain1 = { colnames: [['id', 'name'], ['age']], cols: [2, 3], rows: [5, 5] } satisfies ExpectedDataFrameShape;
 	const domain2 = { colnames: [['id', 'category'], []], cols: [2, 2], rows: [0, 6] } satisfies ExpectedDataFrameShape;
@@ -123,25 +123,25 @@ describe('Data Frame Domains', () => {
 		const concreteState2 = concrete2.map(concrete => new Map([[0, concrete]]));
 
 		assertAbstractDomain(create, [[0, DataFrameBottom]], [[0, DataFrameBottom]], {
-			equal: true, leq: true, join: [[0, DataFrameBottom]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameBottom]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: []
+			equal: true, leq: true, join: [[0, DataFrameBottom]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameBottom]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: Bottom
 		});
 		assertAbstractDomain(create, [[0, DataFrameTop]], [[0, DataFrameTop]], {
 			equal: true, leq: true, join: [[0, DataFrameTop]], meet: [[0, DataFrameTop]], widen: [[0, DataFrameTop]], narrow: [[0, DataFrameTop]], concrete: Top, abstract: []
 		});
 		assertAbstractDomain(create, [[0, DataFrameBottom]], [[0, DataFrameTop]], {
-			equal: false, leq: true, join: [[0, DataFrameTop]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameTop]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: []
+			equal: false, leq: true, join: [[0, DataFrameTop]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameTop]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: Bottom
 		});
 		assertAbstractDomain(create, [[0, DataFrameTop]], [[0, DataFrameBottom]], {
 			equal: false, leq: false, join: [[0, DataFrameTop]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameTop]], narrow: [[0, DataFrameBottom]], concrete: Top, abstract: []
 		});
 		assertAbstractDomain(create, [[0, DataFrameBottom]], [[0, DataFrameEmpty]], {
-			equal: false, leq: true, join: [[0, DataFrameEmpty]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameEmpty]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: []
+			equal: false, leq: true, join: [[0, DataFrameEmpty]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameEmpty]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: Bottom
 		});
 		assertAbstractDomain(create, [[0, DataFrameEmpty]], [[0, DataFrameBottom]], {
 			equal: false, leq: false, join: [[0, DataFrameEmpty]], meet: [[0, DataFrameBottom]], widen: [[0, DataFrameEmpty]], narrow: [[0, DataFrameBottom]], concrete: [new Map([[0, { colnames: new Set<string>(), cols: 0, rows: 0 }]])]
 		});
 		assertAbstractDomain(create, [[0, DataFrameBottom]], [[0, domain1]], {
-			equal: false, leq: true, join: [[0, domain1]], meet: [[0, DataFrameBottom]], widen: [[0, domain1]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: []
+			equal: false, leq: true, join: [[0, domain1]], meet: [[0, DataFrameBottom]], widen: [[0, domain1]], narrow: [[0, DataFrameBottom]], concrete: [], abstract: Bottom
 		});
 		assertAbstractDomain(create, [[0, domain1]], [[0, DataFrameBottom]], {
 			equal: false, leq: false, join: [[0, domain1]], meet: [[0, DataFrameBottom]], widen: [[0, domain1]], narrow: [[0, DataFrameBottom]], concrete: concreteState1
@@ -167,17 +167,17 @@ describe('Data Frame Domains', () => {
 		assertAbstractDomain(create, [[0, domain1], [1, domain2]], [[1, DataFrameTop]], {
 			equal: false, leq: false, join: [[0, domain1], [1, DataFrameTop]], meet: [[1, domain2]], widen: [[0, domain1], [1, DataFrameTop]], narrow: [[1, domain2]], concrete: Top, abstract: []
 		});
-		assertAbstractDomain(create, [[0, domain1], [1, domain2]], [[0, DataFrameTop], [1, DataFrameBottom]], {
-			equal: false, leq: false, join: [[0, DataFrameTop], [1, domain2]], meet: [[0, domain1], [1, DataFrameBottom]], widen: [[0, DataFrameTop], [1, domain2]], narrow: [[0, domain1], [1, DataFrameBottom]], concrete: Top, abstract: []
+		assertAbstractDomain(create, [[0, domain1], [1, domain2]], [[0, DataFrameTop], [1, domain2]], {
+			equal: false, leq: true, join: [[0, DataFrameTop], [1, domain2]], meet: [[0, domain1], [1, domain2]], widen: [[0, DataFrameTop], [1, domain2]], narrow: [[0, domain1], [1, domain2]], concrete: Top, abstract: []
 		});
-		assertAbstractDomain(create, [[0, DataFrameTop], [1, DataFrameBottom]], [[0, domain1], [1, domain2]], {
-			equal: false, leq: false, join: [[0, DataFrameTop], [1, domain2]], meet: [[0, domain1], [1, DataFrameBottom]], widen: [[0, DataFrameTop], [1, domain2]], narrow: [[0, domain1], [1, DataFrameBottom]], concrete: [], abstract: []
+		assertAbstractDomain(create, [[0, DataFrameTop], [1, domain2]], [[0, domain1], [1, domain2]], {
+			equal: false, leq: false, join: [[0, DataFrameTop], [1, domain2]], meet: [[0, domain1], [1, domain2]], widen: [[0, DataFrameTop], [1, domain2]], narrow: [[0, domain1], [1, domain2]], concrete: Top, abstract: []
 		});
 		assertAbstractDomain(create, [[0, domain1], [2, DataFrameBottom]], [[1, DataFrameTop]], {
-			equal: false, leq: false, join: [[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]], meet: [], widen: [[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]], narrow: [], concrete: [], abstract: []
+			equal: false, leq: true, join: [[1, DataFrameTop]], meet: Bottom, widen: [[1, DataFrameTop]], narrow: Bottom, concrete: [], abstract: Bottom
 		});
 		assertAbstractDomain(create, [[1, DataFrameTop]], [[0, domain1], [2, DataFrameBottom]], {
-			equal: false, leq: false, join: [[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]], meet: [], widen: [[0, domain1], [1, DataFrameTop], [2, DataFrameBottom]], narrow: [], concrete: Top, abstract: []
+			equal: false, leq: false, join: [[1, DataFrameTop]], meet: Bottom, widen: [[1, DataFrameTop]], narrow: Bottom, concrete: Top, abstract: []
 		});
 		assertAbstractDomain(create, [[0, DataFrameTop]], [[0, domain1]], {
 			equal: false, leq: false, join: [[0, DataFrameTop]], meet: [[0, domain1]], widen: [[0, DataFrameTop]], narrow: [[0, domain1]], concrete: Top, abstract: []

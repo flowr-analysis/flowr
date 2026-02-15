@@ -1,4 +1,4 @@
-export type Os = 'mac-os' | 'linux' | 'windows' | 'unknown'
+export type Os = 'mac-os' | 'linux' | 'windows' | 'unknown';
 
 let platformCache: Os | null = null;
 

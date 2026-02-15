@@ -1,11 +1,11 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import { type CommentInfo , initialCommentInfo } from './comments';
+import { type CommentInfo, initialCommentInfo } from './comments';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
 import type { MergeableRecord } from '../../../../util/objects';
 import {
-	type SummarizedMeasurement , summarizedMeasurement2Csv
+	type SummarizedMeasurement, summarizedMeasurement2Csv
 	,
 	summarizedMeasurement2CsvHeader,
 	summarizeMeasurement
@@ -14,7 +14,7 @@ import { guard } from '../../../../util/assert';
 
 type CommentsPostProcessing<Measurement=SummarizedMeasurement> = MergeableRecord & {
 	[K in keyof CommentInfo]: Measurement
-}
+};
 
 // monoids would be helpful :c
 function appendCommentsPostProcessing(a: CommentsPostProcessing<CommentsMeta>, b: CommentsPostProcessing<number>, numberOfLines: number, filepath: string, skipForProjects: number) {
@@ -39,7 +39,7 @@ interface CommentsMeta {
 }
 const initialCommentsMeta: () => CommentsMeta = () => ({ count: [], uniqueProjects: new Set(), uniqueFiles: new Set(), fracOfLines: [] });
 
-function mapComments<In,Out>(data: CommentsPostProcessing<In>, fn: (input: In) => Out): CommentsPostProcessing<Out> {
+function mapComments<In, Out>(data: CommentsPostProcessing<In>, fn: (input: In) => Out): CommentsPostProcessing<Out> {
 	const collected = {} as unknown as CommentsPostProcessing<Out>;
 	for(const [key, value] of Object.entries(data)) {
 		collected[key] = fn(value as In);
@@ -55,8 +55,8 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	// for each we collect the count and the number of files that contain them
 	const collected = mapComments(initialCommentInfo, initialCommentsMeta);
 
-	for(const [filepath,feature] of info.entries()) {
-		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length,filepath,config.projectSkip);
+	for(const [filepath, feature] of info.entries()) {
+		appendCommentsPostProcessing(collected, feature.comments as CommentsPostProcessing<number>, feature.stats.lines[0].length, filepath, config.projectSkip);
 	}
 
 	const fnOutStream = fs.createWriteStream(path.join(outputPath, 'comments.csv'));

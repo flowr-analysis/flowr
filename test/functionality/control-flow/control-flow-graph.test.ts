@@ -1,119 +1,129 @@
 import { withTreeSitter } from '../_helper/shell';
-import { RFalse, RTrue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import { describe } from 'vitest';
 import { assertCfg } from '../_helper/controlflow/assert-control-flow-graph';
-import { CfgEdgeType, CfgVertexType, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
+import { CfgEdge, CfgVertex, ControlFlowGraph } from '../../../src/control-flow/control-flow-graph';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	describe('Without Basic Blocks', () => {
 		assertCfg(parser, '2 + 3', {
 			entryPoints: [ '3' ],
-			exitPoints:  [ '3-exit' ],
+			exitPoints:  [ CfgVertex.toExitId(3) ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id: 0, type: CfgVertexType.Expression })
-				.addVertex({ id: 1, type: CfgVertexType.Expression })
-				.addVertex({ id: 2, type: CfgVertexType.Expression, end: ['2-exit'] })
-				.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
-				.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
-				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
+				.addVertex(CfgVertex.makeExpression(0))
+				.addVertex(CfgVertex.makeExpression(1))
+				.addVertex(CfgVertex.makeExpressionWithEnd(2))
+				.addVertex(CfgVertex.makeExitMarker(2))
+				.addVertex(CfgVertex.makeExpressionWithEnd(3))
+				.addVertex(CfgVertex.makeExitMarker(3))
 
-				.addEdge(2, 3, { label: CfgEdgeType.Fd })
-				.addEdge(0, 2, { label: CfgEdgeType.Fd })
-				.addEdge(1, 0, { label: CfgEdgeType.Fd })
-				.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
-				.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
+				.addEdge(2, 3, CfgEdge.makeFd())
+				.addEdge(0, 2, CfgEdge.makeFd())
+				.addEdge(1, 0, CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(2), 1, CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(3), CfgVertex.toExitId(2), CfgEdge.makeFd())
 		});
 
 		assertCfg(parser, 'df$name', {
 			entryPoints: [ '4' ],
-			exitPoints:  [ '4-exit' ],
+			exitPoints:  [ CfgVertex.toExitId(4) ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] })
-				.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
-				.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'], mid: [0] })
-				.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-				.addVertex({ id: 2, type: CfgVertexType.Expression, end: ['2-exit'], mid: [2] })
-				.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
-				.addVertex({ id: 0, type: CfgVertexType.Expression })
-				.addVertex({ id: 1, type: CfgVertexType.Expression })
-				.addEdge(3, 4, { label: CfgEdgeType.Fd })
-				.addEdge(0, 3, { label: CfgEdgeType.Fd })
-				.addEdge(2, 0, { label: CfgEdgeType.Fd })
-				.addEdge(1, 2, { label: CfgEdgeType.Fd })
-				.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
-				.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
-				.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+				.addVertex(CfgVertex.makeExpressionWithEnd(4))
+				.addVertex(CfgVertex.makeExitMarker(4))
+				.addVertex(CfgVertex.makeExpressionWithEnd(3, { mid: [0] }))
+				.addVertex(CfgVertex.makeExitMarker(3))
+				.addVertex(CfgVertex.makeExpressionWithEnd(2, { mid: [2] }))
+				.addVertex(CfgVertex.makeExitMarker(2))
+				.addVertex(CfgVertex.makeExpression(0))
+				.addVertex(CfgVertex.makeExpression(1))
+				.addEdge(3, 4, CfgEdge.makeFd())
+				.addEdge(0, 3, CfgEdge.makeFd())
+				.addEdge(2, 0, CfgEdge.makeFd())
+				.addEdge(1, 2, CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(2), 1, CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(3), CfgVertex.toExitId(2), CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(4), CfgVertex.toExitId(3), CfgEdge.makeFd())
 		});
 
 		describe('conditionals', () => {
 			assertCfg(parser, 'if(TRUE) 1', {
 				entryPoints: [ '4' ],
-				exitPoints:  [ '4-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(4) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
-					.addVertex({ id: 1, type: CfgVertexType.Expression })
-					.addVertex({ id: 3, type: CfgVertexType.Statement, mid: [0], end: ['3-exit'] })
-					.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] })
-					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
-					.addVertex({ id: 2, type: CfgVertexType.Expression, end: ['2-exit'] })
-					.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
-					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-					.addEdge(3, 4, { label: CfgEdgeType.Fd })
-					.addEdge(0, 3, { label: CfgEdgeType.Fd })
-					.addEdge(1, 2, { label: CfgEdgeType.Fd })
-					.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
-					.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
-					.addEdge(2, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 3 })
-					.addEdge('3-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 3 })
-					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+					.addVertex(CfgVertex.makeExpression(0))
+					.addVertex(CfgVertex.makeExpression(1))
+					.addVertex(CfgVertex.makeStatementWithEnd(3, { mid: [0] }))
+					.addVertex(CfgVertex.makeExpressionWithEnd(4))
+					.addVertex(CfgVertex.makeExitMarker(4))
+					.addVertex(CfgVertex.makeExpressionWithEnd(2))
+					.addVertex(CfgVertex.makeExitMarker(2))
+					.addVertex(CfgVertex.makeExitMarker(3))
+					.addEdge(3, 4, CfgEdge.makeFd())
+					.addEdge(0, 3, CfgEdge.makeFd())
+					.addEdge(1, 2, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(2), 1, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(3), CfgVertex.toExitId(2), CfgEdge.makeFd())
+					.addEdge(2, 0, CfgEdge.makeCdTrue(3))
+					.addEdge(CfgVertex.toExitId(3), 0, CfgEdge.makeCdFalse(3))
+					.addEdge(CfgVertex.toExitId(4), CfgVertex.toExitId(3), CfgEdge.makeFd())
 			});
 
 			assertCfg(parser, 'if(TRUE) {}', {
 				entryPoints: [ '5' ],
-				exitPoints:  [ '5-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(5) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
-					.addVertex({ id: 4, type: CfgVertexType.Statement, mid: [0], end: ['4-exit'] })
-					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
-					.addVertex({ id: 5, type: CfgVertexType.Expression, end: ['5-exit'] })
-					.addVertex({ id: '5-exit', type: CfgVertexType.EndMarker, root: 5 })
-					.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
-					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-					.addEdge(4, 5, { label: CfgEdgeType.Fd })
-					.addEdge(0, 4, { label: CfgEdgeType.Fd })
-					.addEdge(3, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 4 })
-					.addEdge('3-exit', 3, { label: CfgEdgeType.Fd })
-					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
-					.addEdge('4-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 4 })
-					.addEdge('5-exit', '4-exit', { label: CfgEdgeType.Fd })
+					.addVertex(CfgVertex.makeExpression(0))
+					.addVertex(CfgVertex.makeStatementWithEnd(4, { mid: [0] }))
+					.addVertex(CfgVertex.makeExitMarker(4))
+					.addVertex(CfgVertex.makeExpressionWithEnd(5))
+					.addVertex(CfgVertex.makeExitMarker(5))
+					.addVertex(CfgVertex.makeExpressionWithEnd(3))
+					.addVertex(CfgVertex.makeExitMarker(3))
+					.addEdge(4, 5, CfgEdge.makeFd())
+					.addEdge(0, 4, CfgEdge.makeFd())
+					.addEdge(3, 0, CfgEdge.makeCdTrue(4))
+					.addEdge(CfgVertex.toExitId(3), 3, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(4), CfgVertex.toExitId(3), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(4), 0, CfgEdge.makeCdFalse(4))
+					.addEdge(CfgVertex.toExitId(5), CfgVertex.toExitId(4), CfgEdge.makeFd())
 			});
 
 			assertCfg(parser, 'if(TRUE) {} else {}', {
 				entryPoints: [ '8' ],
-				exitPoints:  [ '8-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(8) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
-					.addVertex({ id: 7, type: CfgVertexType.Statement, mid: [0], end: ['7-exit'] })
-					.addVertex({ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 })
-					.addVertex({ id: 8, type: CfgVertexType.Expression, end: ['8-exit'] })
-					.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
-					.addVertex({ id: 6, type: CfgVertexType.Expression, end: ['6-exit'] })
-					.addVertex({ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 })
-					.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
-					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-					.addEdge(7, 8, { label: CfgEdgeType.Fd })
-					.addEdge(0, 7, { label: CfgEdgeType.Fd })
+					.addVertex(CfgVertex.makeExpression(0))
+					.addVertex(CfgVertex.makeStatementWithEnd(7, { mid: [0] }))
+					.addVertex(CfgVertex.makeExitMarker(7))
+					.addVertex(CfgVertex.makeExpressionWithEnd(8))
+					.addVertex(CfgVertex.makeExitMarker(8))
+					.addVertex(CfgVertex.makeExpressionWithEnd(6))
+					.addVertex(CfgVertex.makeExitMarker(6))
+					.addVertex(CfgVertex.makeExpressionWithEnd(3))
+					.addVertex(CfgVertex.makeExitMarker(3))
+					.addEdge(7, 8, CfgEdge.makeFd())
+					.addEdge(0, 7, CfgEdge.makeFd())
 
-					.addEdge(3, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 7 })
-					.addEdge(6, 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 7 })
+					.addEdge(3, 0, CfgEdge.makeCdTrue(7))
+					.addEdge(6, 0, CfgEdge.makeCdFalse(7))
 
-					.addEdge('3-exit', 3, { label: CfgEdgeType.Fd })
-					.addEdge('6-exit', 6, { label: CfgEdgeType.Fd })
+					.addEdge(CfgVertex.toExitId(3), 3, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(6), 6, CfgEdge.makeFd())
 
-					.addEdge('7-exit', '3-exit', { label: CfgEdgeType.Fd })
-					.addEdge('7-exit', '6-exit', { label: CfgEdgeType.Fd })
-					.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
+					.addEdge(CfgVertex.toExitId(7), CfgVertex.toExitId(3), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(7), CfgVertex.toExitId(6), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(8), CfgVertex.toExitId(7), CfgEdge.makeFd())
 			});
+
+			assertCfg(parser, 'f <- function() if (u) return(42) else return(1)', {
+				entryPoints: [ '4' ],
+				exitPoints:  [ CfgVertex.toExitId(4) ],
+				graph:       new ControlFlowGraph()
+					.addVertex(CfgVertex.makeStatementWithEnd(5), false)
+					.addVertex(CfgVertex.makeStatementWithEnd(10), false)
+					.addEdge(CfgVertex.toExitId(14), CfgVertex.toExitId(5), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(14), CfgVertex.toExitId(10), CfgEdge.makeFd())
+			}, { simplificationPasses: ['analyze-dead-code'], expectIsSubgraph: true });
+
 		});
 
 		describe('loops', () => {
@@ -125,37 +135,37 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 }
 	`, {
 				entryPoints: [ '12' ],
-				exitPoints:  [ '12-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(12) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 12, type: CfgVertexType.Expression, end: ['12-exit'] })
-					.addVertex({ id: '12-exit', type: CfgVertexType.EndMarker, root: 12 })
-					.addVertex({ id: 11, type: CfgVertexType.Statement, mid: [0], end: ['11-exit'] })
-					.addVertex({ id: '11-exit', type: CfgVertexType.EndMarker, root: 11 })
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
+					.addVertex(CfgVertex.makeExpressionWithEnd(12))
+					.addVertex(CfgVertex.makeExitMarker(12))
+					.addVertex(CfgVertex.makeStatementWithEnd(11, { mid: [0] }))
+					.addVertex(CfgVertex.makeExitMarker(11))
+					.addVertex(CfgVertex.makeExpression(0))
 
-					.addVertex({ id: 10, type: CfgVertexType.Expression, end: ['10-exit'] })
-					.addVertex({ id: '10-exit', type: CfgVertexType.EndMarker, root: 10 })
-					.addVertex({ id: 8, type: CfgVertexType.Statement, mid: [3], end: ['8-exit'] })
-					.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
-					.addVertex({ id: 3, type: CfgVertexType.Expression })
-					.addVertex({ id: 7, type: CfgVertexType.Expression })
-					.addVertex({ id: 6, type: CfgVertexType.Statement })
-					.addVertex({ id: 9, type: CfgVertexType.Expression })
+					.addVertex(CfgVertex.makeExpressionWithEnd(10))
+					.addVertex(CfgVertex.makeExitMarker(10))
+					.addVertex(CfgVertex.makeStatementWithEnd(8, { mid: [3] }))
+					.addVertex(CfgVertex.makeExitMarker(8))
+					.addVertex(CfgVertex.makeExpression(3))
+					.addVertex(CfgVertex.makeExpression(7))
+					.addVertex(CfgVertex.makeStatement(6))
+					.addVertex(CfgVertex.makeExpression(9))
 
-					.addEdge(11, 12, { label: CfgEdgeType.Fd })
-					.addEdge(0, 11, { label: CfgEdgeType.Fd })
-					.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
-					.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
-					.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
-					.addEdge(8, 10, { label: CfgEdgeType.Fd })
-					.addEdge(3, 8, { label: CfgEdgeType.Fd })
-					.addEdge(7, 3, { label: CfgEdgeType.Cd, when: RTrue, caused: 8 })
-					.addEdge('8-exit', 3, { label: CfgEdgeType.Cd, when: RFalse, caused: 8 })
-					.addEdge(6, 7, { label: CfgEdgeType.Fd })
-					.addEdge(11, 6, { label: CfgEdgeType.Fd })
-					.addEdge(9, '8-exit', { label: CfgEdgeType.Fd })
-					.addEdge('10-exit', 9, { label: CfgEdgeType.Fd })
-					.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
+					.addEdge(11, 12, CfgEdge.makeFd())
+					.addEdge(0, 11, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(11), 0, CfgEdge.makeCdFalse(11))
+					.addEdge(CfgVertex.toExitId(12), CfgVertex.toExitId(11), CfgEdge.makeFd())
+					.addEdge(10, 0, CfgEdge.makeCdTrue(11))
+					.addEdge(8, 10, CfgEdge.makeFd())
+					.addEdge(3, 8, CfgEdge.makeFd())
+					.addEdge(7, 3, CfgEdge.makeCdTrue(8))
+					.addEdge(CfgVertex.toExitId(8), 3, CfgEdge.makeCdFalse(8))
+					.addEdge(6, 7, CfgEdge.makeFd())
+					.addEdge(11, 6, CfgEdge.makeFd())
+					.addEdge(9, CfgVertex.toExitId(8), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(10), 9, CfgEdge.makeFd())
+					.addEdge(11, CfgVertex.toExitId(10), CfgEdge.makeFd())
 			});
 
 			assertCfg(parser, `while (a) {
@@ -166,192 +176,185 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 }
 	`, {
 				entryPoints: [ '12' ],
-				exitPoints:  [ '12-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(12) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 12, type: CfgVertexType.Expression, end: ['12-exit'] })
-					.addVertex({ id: '12-exit', type: CfgVertexType.EndMarker, root: 12 })
-					.addVertex({ id: 11, type: CfgVertexType.Statement, mid: [0], end: ['11-exit'] })
-					.addVertex({ id: '11-exit', type: CfgVertexType.EndMarker, root: 11 })
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
+					.addVertex(CfgVertex.makeExpressionWithEnd(12))
+					.addVertex(CfgVertex.makeExitMarker(12))
+					.addVertex(CfgVertex.makeStatementWithEnd(11, { mid: [0] }))
+					.addVertex(CfgVertex.makeExitMarker(11))
+					.addVertex(CfgVertex.makeExpression(0))
 
-					.addVertex({ id: 10, type: CfgVertexType.Expression, end: ['10-exit'] })
-					.addVertex({ id: '10-exit', type: CfgVertexType.EndMarker, root: 10 })
-					.addVertex({ id: 8, type: CfgVertexType.Statement, mid: [3], end: ['8-exit'] })
-					.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
-					.addVertex({ id: 3, type: CfgVertexType.Expression })
-					.addVertex({ id: 7, type: CfgVertexType.Expression })
-					.addVertex({ id: 6, type: CfgVertexType.Statement })
-					.addVertex({ id: 9, type: CfgVertexType.Expression })
+					.addVertex(CfgVertex.makeExpressionWithEnd(10))
+					.addVertex(CfgVertex.makeExitMarker(10))
+					.addVertex(CfgVertex.makeStatementWithEnd(8, { mid: [3] }))
+					.addVertex(CfgVertex.makeExitMarker(8))
+					.addVertex(CfgVertex.makeExpression(3))
+					.addVertex(CfgVertex.makeExpression(7))
+					.addVertex(CfgVertex.makeStatement(6))
+					.addVertex(CfgVertex.makeExpression(9))
 
-					.addEdge(11, 12, { label: CfgEdgeType.Fd })
-					.addEdge(0, 11, { label: CfgEdgeType.Fd })
-					.addEdge('11-exit', 0, { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
-					.addEdge('12-exit', '11-exit', { label: CfgEdgeType.Fd })
-					.addEdge(10, 0, { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
-					.addEdge(8, 10, { label: CfgEdgeType.Fd })
-					.addEdge(3, 8, { label: CfgEdgeType.Fd })
-					.addEdge(7, 3, { label: CfgEdgeType.Cd, when: RTrue, caused: 8 })
-					.addEdge('8-exit', 3, { label: CfgEdgeType.Cd, when: RFalse, caused: 8 })
-					.addEdge(6, 7, { label: CfgEdgeType.Fd })
-					.addEdge('11-exit', 6, { label: CfgEdgeType.Fd })
-					.addEdge(9, '8-exit', { label: CfgEdgeType.Fd })
-					.addEdge('10-exit', 9, { label: CfgEdgeType.Fd })
-					.addEdge(11, '10-exit', { label: CfgEdgeType.Fd })
+					.addEdge(11, 12, CfgEdge.makeFd())
+					.addEdge(0, 11, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(11), 0, CfgEdge.makeCdFalse(11))
+					.addEdge(CfgVertex.toExitId(12), CfgVertex.toExitId(11), CfgEdge.makeFd())
+					.addEdge(10, 0, CfgEdge.makeCdTrue(11))
+					.addEdge(8, 10, CfgEdge.makeFd())
+					.addEdge(3, 8, CfgEdge.makeFd())
+					.addEdge(7, 3, CfgEdge.makeCdTrue(8))
+					.addEdge(CfgVertex.toExitId(8), 3, CfgEdge.makeCdFalse(8))
+					.addEdge(6, 7, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(11), 6, CfgEdge.makeFd())
+					.addEdge(9, CfgVertex.toExitId(8), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(10), 9, CfgEdge.makeFd())
+					.addEdge(11, CfgVertex.toExitId(10), CfgEdge.makeFd())
 			});
 		});
 
 		describe('function calls', () => {
 			assertCfg(parser, 'print(x)', {
 				entryPoints: [ '4' ],
-				exitPoints:  [ '4-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(4) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] })
-					.addVertex({ id: 3, type: CfgVertexType.Statement, mid: [0], end: ['3-exit'] })
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
-					.addVertex({ id: 2, type: CfgVertexType.Expression, mid: [2], end: ['2-exit'] })
-					.addVertex({ id: 1, type: CfgVertexType.Expression })
-					.addVertex({ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 })
-					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
+					.addVertex(CfgVertex.makeExpressionWithEnd(4))
+					.addVertex(CfgVertex.makeStatementWithEnd(3, { mid: [0] }))
+					.addVertex(CfgVertex.makeExpression(0))
+					.addVertex(CfgVertex.makeExpressionWithEnd(2, { mid: [2] }))
+					.addVertex(CfgVertex.makeExpression(1))
+					.addVertex(CfgVertex.makeExitMarker(2))
+					.addVertex(CfgVertex.makeExitMarker(3))
+					.addVertex(CfgVertex.makeExitMarker(4))
 
-					.addEdge(3, 4, { label: CfgEdgeType.Fd })
-					.addEdge(0, 3, { label: CfgEdgeType.Fd })
-					.addEdge(2, 0, { label: CfgEdgeType.Fd })
-					.addEdge(1, 2, { label: CfgEdgeType.Fd })
-					.addEdge('2-exit', 1, { label: CfgEdgeType.Fd })
-					.addEdge('3-exit', '2-exit', { label: CfgEdgeType.Fd })
-					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+					.addEdge(3, 4, CfgEdge.makeFd())
+					.addEdge(0, 3, CfgEdge.makeFd())
+					.addEdge(2, 0, CfgEdge.makeFd())
+					.addEdge(1, 2, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(2), 1, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(3), CfgVertex.toExitId(2), CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(4), CfgVertex.toExitId(3), CfgEdge.makeFd())
 			});
 
 			assertCfg(parser, 'f(2 + 3, x=3)', {
 				entryPoints: [ '9' ],
-				exitPoints:  [ '9-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(9) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 0, type: CfgVertexType.Expression })
-					.addVertex({ id: 8, type: CfgVertexType.Statement, end: ['8-exit'], mid: [0]  })
-					.addVertex({ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 })
+					.addVertex(CfgVertex.makeExpression(0))
+					.addVertex(CfgVertex.makeStatementWithEnd(8, { mid: [0] }))
+					.addVertex(CfgVertex.makeExitMarker(8))
 
-					.addVertex({ id: 4, type: CfgVertexType.Expression, end: ['4-exit'], mid: [4] })
-					.addVertex({ id: 1, type: CfgVertexType.Expression })
-					.addVertex({ id: 2, type: CfgVertexType.Expression })
-					.addVertex({ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] })
-					.addVertex({ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 })
-					.addVertex({ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 })
+					.addVertex(CfgVertex.makeExpressionWithEnd(4, { mid: [4] }))
+					.addVertex(CfgVertex.makeExpression(1))
+					.addVertex(CfgVertex.makeExpression(2))
+					.addVertex(CfgVertex.makeExpressionWithEnd(3))
+					.addVertex(CfgVertex.makeExitMarker(3))
+					.addVertex(CfgVertex.makeExitMarker(4))
 
-					.addVertex({ id: 7, type: CfgVertexType.Expression, mid: [5], end: ['7-exit'] })
-					.addVertex({ id: 5, type: CfgVertexType.Expression })
-					.addVertex({ id: 6, type: CfgVertexType.Expression })
-					.addVertex({ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 })
+					.addVertex(CfgVertex.makeExpressionWithEnd(7, { mid: [5] }))
+					.addVertex(CfgVertex.makeExpression(5))
+					.addVertex(CfgVertex.makeExpression(6))
+					.addVertex(CfgVertex.makeExitMarker(7))
 
-					.addVertex({ id: 9, type: CfgVertexType.Expression, end: ['9-exit'] })
-					.addVertex({ id: '9-exit', type: CfgVertexType.EndMarker, root: 9 })
+					.addVertex(CfgVertex.makeExpressionWithEnd(9))
+					.addVertex(CfgVertex.makeExitMarker(9))
 
-					.addEdge(8, 9, { label: CfgEdgeType.Fd })
-					.addEdge('9-exit', '8-exit', { label: CfgEdgeType.Fd })
+					.addEdge(8, 9, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(9), CfgVertex.toExitId(8), CfgEdge.makeFd())
 
-					.addEdge(0, 8, { label: CfgEdgeType.Fd })
-					.addEdge(4, 0, { label: CfgEdgeType.Fd })
-					.addEdge(3, 4, { label: CfgEdgeType.Fd })
-					.addEdge(1, 3, { label: CfgEdgeType.Fd })
-					.addEdge(2, 1, { label: CfgEdgeType.Fd })
-					.addEdge('3-exit', 2, { label: CfgEdgeType.Fd })
-					.addEdge('4-exit', '3-exit', { label: CfgEdgeType.Fd })
+					.addEdge(0, 8, CfgEdge.makeFd())
+					.addEdge(4, 0, CfgEdge.makeFd())
+					.addEdge(3, 4, CfgEdge.makeFd())
+					.addEdge(1, 3, CfgEdge.makeFd())
+					.addEdge(2, 1, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(3), 2, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(4), CfgVertex.toExitId(3), CfgEdge.makeFd())
 
-					.addEdge(7, '4-exit', { label: CfgEdgeType.Fd })
-					.addEdge(5, 7, { label: CfgEdgeType.Fd })
-					.addEdge(6, 5, { label: CfgEdgeType.Fd })
-					.addEdge('7-exit', 6, { label: CfgEdgeType.Fd })
-					.addEdge('8-exit', '7-exit', { label: CfgEdgeType.Fd })
+					.addEdge(7, CfgVertex.toExitId(4), CfgEdge.makeFd())
+					.addEdge(5, 7, CfgEdge.makeFd())
+					.addEdge(6, 5, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(7), 6, CfgEdge.makeFd())
+					.addEdge(CfgVertex.toExitId(8), CfgVertex.toExitId(7), CfgEdge.makeFd())
 			});
-
 
 			assertCfg(parser, 'f <- function(x) x\nf()', {
 				entryPoints: [ '9' ],
-				exitPoints:  [ '9-exit' ],
+				exitPoints:  [ CfgVertex.toExitId(9) ],
 				graph:       new ControlFlowGraph()
-					.addVertex({ id: 5, type: CfgVertexType.Expression, mid: [], end: ['5-exit'] })
-					.addVertex({ id: 8, type: CfgVertexType.Statement, mid: [], end: ['8-exit'], callTargets: new Set([5]) })
+					.addVertex(CfgVertex.makeExpressionWithEnd(5))
+					.addVertex(CfgVertex.makeStatementWithEnd(8, { callTargets: new Set([5]) }))
 			}, { expectIsSubgraph: true });
-
 		});
+		assertCfg(parser, `result <- foreach(i = vec) %do% {
+    # ...
+    return(x)
+}`, {
+			entryPoints: [ 18 ],
+			exitPoints:  [ CfgVertex.toExitId(18) ],
+			graph:       new ControlFlowGraph()
+				.addEdge(CfgVertex.toExitId(14), CfgVertex.toExitId(13), CfgEdge.makeFd())
+				.addEdge(CfgVertex.toExitId(15), CfgVertex.toExitId(14), CfgEdge.makeFd())
+		}, { expectIsSubgraph: true });
 	});
 	describe('With Basic Blocks', () => {
 		assertCfg(parser, '2 + 3', {
-			entryPoints: [ 'bb-3-exit' ],
-			exitPoints:  [ 'bb-3-exit' ],
+			entryPoints: [ CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)) ],
+			exitPoints:  [ CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)) ],
 			graph:       new ControlFlowGraph()
-				.addVertex({
-					id:    'bb-3-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 },
-						{ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 },
-						{ id: 1, type: CfgVertexType.Expression },
-						{ id: 0, type: CfgVertexType.Expression },
-						{ id: 2, type: CfgVertexType.Expression, end: ['2-exit'] },
-						{ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] }
+				.addVertex(CfgVertex.makeBlock(
+					CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)),
+					[
+						CfgVertex.makeExitMarker(3),
+						CfgVertex.makeExitMarker(2),
+						CfgVertex.makeExpression(1),
+						CfgVertex.makeExpression(0),
+						CfgVertex.makeExpressionWithEnd(2),
+						CfgVertex.makeExpressionWithEnd(3),
 					]
-				})
+				))
 		}, { withBasicBlocks: true });
 
 		assertCfg(parser, 'if(TRUE) {} else {}', {
-			entryPoints: ['bb-0'],
-			exitPoints:  ['bb-8-exit'],
+			entryPoints: [CfgVertex.toBasicBlockId(0)],
+			exitPoints:  [CfgVertex.toBasicBlockId(CfgVertex.toExitId(8))],
 			graph:       new ControlFlowGraph()
-				.addVertex({
-					id:    'bb-0',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: 0, type: CfgVertexType.Expression },
-						{ id: 7, type: CfgVertexType.Statement, mid: [0], end: ['7-exit'] },
-						{ id: 8, type: CfgVertexType.Expression, end: ['8-exit'] }
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(0),
+					[
+						CfgVertex.makeExpression(0),
+						CfgVertex.makeStatementWithEnd(7, { mid: [0] }),
+						CfgVertex.makeExpressionWithEnd(8)
 					]
-				})
-				.addVertex({
-					id:    'bb-3-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 },
-						{ id: 3, type: CfgVertexType.Expression, end: ['3-exit'] }
-					]
-				})
-				.addVertex({
-					id:    'bb-6-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 },
-						{ id: 6, type: CfgVertexType.Expression, end: ['6-exit'] }
-					]
-				})
-				.addVertex({
-					id:    'bb-8-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 },
-						{ id: '7-exit', type: CfgVertexType.EndMarker, root: 7 }
-					]
-				})
-				.addEdge('bb-8-exit', 'bb-3-exit', { label: CfgEdgeType.Fd })
-				.addEdge('bb-8-exit', 'bb-6-exit', { label: CfgEdgeType.Fd })
+				))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)), [
+					CfgVertex.makeExitMarker(3),
+					CfgVertex.makeExpressionWithEnd(3)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(6)), [
+					CfgVertex.makeExitMarker(6),
+					CfgVertex.makeExpressionWithEnd(6)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(8)), [
+					CfgVertex.makeExitMarker(8),
+					CfgVertex.makeExitMarker(7)
+				]))
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(8)), CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)), CfgEdge.makeFd())
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(8)), CfgVertex.toBasicBlockId(CfgVertex.toExitId(6)), CfgEdge.makeFd())
 
-				.addEdge('bb-3-exit', 'bb-0', { label: CfgEdgeType.Cd, when: RTrue, caused: 7 })
-				.addEdge('bb-6-exit', 'bb-0', { label: CfgEdgeType.Cd, when: RFalse, caused: 7 })
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(3)), CfgVertex.toBasicBlockId(0), CfgEdge.makeCdTrue(7))
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(6)), CfgVertex.toBasicBlockId(0), CfgEdge.makeCdFalse(7))
 		}, { withBasicBlocks: true });
 
 		assertCfg(parser, 'print(x)', {
-			entryPoints: [ 'bb-4-exit' ],
-			exitPoints:  [ 'bb-4-exit' ],
+			entryPoints: [ CfgVertex.toBasicBlockId(CfgVertex.toExitId(4)) ],
+			exitPoints:  [ CfgVertex.toBasicBlockId(CfgVertex.toExitId(4)) ],
 			graph:       new ControlFlowGraph()
-				.addVertex({ id:    'bb-4-exit', type:  CfgVertexType.Block, elems: [
-					{ id: '4-exit', type: CfgVertexType.EndMarker, root: 4 },
-					{ id: '3-exit', type: CfgVertexType.EndMarker, root: 3 },
-					{ id: '2-exit', type: CfgVertexType.EndMarker, root: 2 },
-					{ id: 1, type: CfgVertexType.Expression },
-					{ id: 2, type: CfgVertexType.Expression, mid: [2], end: ['2-exit'] },
-					{ id: 0, type: CfgVertexType.Expression },
-					{ id: 3, type: CfgVertexType.Statement, mid: [0], end: ['3-exit'] },
-					{ id: 4, type: CfgVertexType.Expression, end: ['4-exit'] }
-				] })
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(4)), [
+					CfgVertex.makeExitMarker(4),
+					CfgVertex.makeExitMarker(3),
+					CfgVertex.makeExitMarker(2),
+					CfgVertex.makeExpression(1),
+					CfgVertex.makeExpressionWithEnd(2, { mid: [2] }),
+					CfgVertex.makeExpression(0),
+					CfgVertex.makeStatementWithEnd(3, { mid: [0] }),
+					CfgVertex.makeExpressionWithEnd(4)
+				]))
 
 		}, { withBasicBlocks: true });
 
@@ -362,91 +365,56 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	c
 }
 	`, {
-			entryPoints: [ 'bb-12' ],
-			exitPoints:  [ 'bb-12-exit' ],
+			entryPoints: [ CfgVertex.toBasicBlockId(12) ],
+			exitPoints:  [ CfgVertex.toBasicBlockId(CfgVertex.toExitId(12)) ],
 			graph:       new ControlFlowGraph()
-				.addVertex({
-					id:    'bb-12',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: 12, type: CfgVertexType.Expression, end: ['12-exit'] }
-					]
-				})
-				.addVertex({
-					id:    'bb-0',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: 0, type: CfgVertexType.Expression },
-						{ id: 11, type: CfgVertexType.Statement, mid: [0], end: ['11-exit'] }
-					]
-				})
-				.addVertex({
-					id:    'bb-10-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '10-exit', type: CfgVertexType.EndMarker, root: 10 },
-						{ id: 9, type: CfgVertexType.Expression },
-						{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 }
-					]
-				})
-				.addVertex({
-					id:    'bb-3',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: 3, type: CfgVertexType.Expression },
-						{ id: 8, type: CfgVertexType.Statement, mid: [3], end: ['8-exit'] },
-						{ id: 10, type: CfgVertexType.Expression, end: ['10-exit'] }
-					]
-				})
-				.addVertex({
-					id:    'bb-6',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: 6, type: CfgVertexType.Statement },
-						{ id: 7, type: CfgVertexType.Expression }
-					]
-				})
-				.addVertex({
-					id:    'bb-12-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '12-exit', type: CfgVertexType.EndMarker, root: 12 },
-						{ id: '11-exit', type: CfgVertexType.EndMarker, root: 11 }
-					]
-				})
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(12), [
+					CfgVertex.makeExpressionWithEnd(12)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(0), [
+					CfgVertex.makeExpression(0),
+					CfgVertex.makeStatementWithEnd(11, { mid: [0] })
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(10)), [
+					CfgVertex.makeExitMarker(10),
+					CfgVertex.makeExpression(9),
+					CfgVertex.makeExitMarker(8)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(3), [
+					CfgVertex.makeExpression(3),
+					CfgVertex.makeStatementWithEnd(8, { mid: [3] }),
+					CfgVertex.makeExpressionWithEnd(10)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(6), [
+					CfgVertex.makeStatement(6),
+					CfgVertex.makeExpression(7)
+				]))
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(12)), [
+					CfgVertex.makeExitMarker(12),
+					CfgVertex.makeExitMarker(11)
+				]))
 
-				.addEdge('bb-0', 'bb-12', { label: CfgEdgeType.Fd })
-				.addEdge('bb-0', 'bb-10-exit', { label: CfgEdgeType.Fd })
+				.addEdge(CfgVertex.toBasicBlockId(0), CfgVertex.toBasicBlockId(12), CfgEdge.makeFd())
+				.addEdge(CfgVertex.toBasicBlockId(0), CfgVertex.toBasicBlockId(CfgVertex.toExitId(10)), CfgEdge.makeFd())
 
-				.addEdge('bb-10-exit', 'bb-3', { label: CfgEdgeType.Cd, when: RFalse, caused: 8 })
-				.addEdge('bb-3', 'bb-0', { label: CfgEdgeType.Cd, when: RTrue, caused: 11 })
-				.addEdge('bb-6', 'bb-3', { label: CfgEdgeType.Cd, when: RTrue, caused: 8 })
-				.addEdge('bb-12-exit', 'bb-0', { label: CfgEdgeType.Cd, when: RFalse, caused: 11 })
-				.addEdge('bb-12-exit', 'bb-6', { label: CfgEdgeType.Fd })
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(10)), CfgVertex.toBasicBlockId(3), CfgEdge.makeCdFalse(8))
+				.addEdge(CfgVertex.toBasicBlockId(3), CfgVertex.toBasicBlockId(0), CfgEdge.makeCdTrue(11))
+				.addEdge(CfgVertex.toBasicBlockId(6), CfgVertex.toBasicBlockId(3), CfgEdge.makeCdTrue(8))
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(12)), CfgVertex.toBasicBlockId(0), CfgEdge.makeCdFalse(11))
+				.addEdge(CfgVertex.toBasicBlockId(CfgVertex.toExitId(12)), CfgVertex.toBasicBlockId(6), CfgEdge.makeFd())
 
 		}, { withBasicBlocks: true });
 
 		assertCfg(parser, 'f <- function(x) x\nf()', {
-			entryPoints: ['bb-5'],
-			exitPoints:  ['bb-9-exit'],
+			entryPoints: [CfgVertex.toBasicBlockId(5)],
+			exitPoints:  [CfgVertex.toBasicBlockId(CfgVertex.toExitId(9))],
 			graph:       new ControlFlowGraph()
-				.addVertex({
-					id:    'bb-8-exit',
-					type:  CfgVertexType.Block,
-					elems: [
-						{ id: '8-exit', type: CfgVertexType.EndMarker, root: 8 },
-						{ id: 7, type: CfgVertexType.Expression },
-						{
-							id:          8,
-							type:        CfgVertexType.Statement,
-							mid:         [0],
-							end:         ['8-exit'],
-							callTargets: new Set([5])
-						},
-						{ id: '6-exit', type: CfgVertexType.EndMarker, root: 6 }
-
-					]
-				})
+				.addVertex(CfgVertex.makeBlock(CfgVertex.toBasicBlockId(CfgVertex.toExitId(8)), [
+					CfgVertex.makeExitMarker(8),
+					CfgVertex.makeExpression(7),
+					CfgVertex.makeStatementWithEnd(8, { callTargets: new Set([5]), mid: [0] }),
+					CfgVertex.makeExitMarker(6)
+				]))
 		}, { expectIsSubgraph: true, withBasicBlocks: true });
 	});
 }));

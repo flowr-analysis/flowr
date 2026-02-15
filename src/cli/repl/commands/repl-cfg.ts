@@ -4,7 +4,7 @@ import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type CfgSimplificationPassName , DefaultCfgSimplificationOrder } from '../../../control-flow/cfg-simplification';
+import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../../control-flow/cfg-simplification';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { handleString } from '../core';
 

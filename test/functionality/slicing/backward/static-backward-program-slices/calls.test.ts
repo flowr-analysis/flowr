@@ -29,12 +29,12 @@ a(i)`);
 		assertSliced(label('Slice function definition', constCapabilities),
 			shell, constFunction, ['2@a'], 'a <- function(x) { }');
 		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2:20'], 'x <- 2');
-		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments','unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
+		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, `
 foo(x, y)
 foo(x, 3)
     `, ['3@foo'], 'foo(x, 3)');
-		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments','formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
+		assertSliced(label('Multiple unknown calls sharing known def', ['name-normal', 'resolve-arguments', 'formals-named', 'unnamed-arguments', 'implicit-return', 'numbers', 'call-normal', 'newlines']),
 			shell, `
 x. <- function (x) { x }
 foo(x, x.(y))
@@ -108,7 +108,7 @@ b()`);
 	describe('Functions with named arguments', () => {
 		const code = `a <- function(x=4) { x }
 a(x = 3)`;
-		assertSliced(label('Must include function definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments','resolve-arguments', 'numbers']),
+		assertSliced(label('Must include function definition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'named-arguments', 'resolve-arguments', 'numbers']),
 			shell, code, ['2@a'], `a <- function(x=4) x
 a(x = 3)`);
 
@@ -138,7 +138,7 @@ f()`);
 		const lateCodeB = `f <- function(a=b, b=3) { b <- 1; a; b <- 5; a + 1 }
 f()
 `;
-		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines','binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
+		assertSliced(label('Late bindings of parameter in parameters', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'newlines', 'binary-operator', 'infix-calls', 'numbers', 'call-normal', ...OperatorDatabase['+'].capabilities, 'semicolons']),
 			shell, lateCodeB, ['2@f'], `f <- function(a=b, b=3) a + 1
 f()`);
 		assertSliced(label('Parameters binding context', ['name-normal', 'formals-promises', 'resolve-arguments', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
@@ -282,9 +282,9 @@ b <- f()
         b
     }
 b <- f()`);
-	assertSliced(label('always dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+	assertSliced(label('always dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
 		shell, 'x <- 2\nf <- function() x <<- 3\nf()\nprint(x)', ['4@x'], 'f <- function() x <<- 3\nf()\nx');
-	assertSliced(label('conditionally dominating', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
+	assertSliced(label('conditionally dominating', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'side-effects-in-function-call' ]),
 		shell, 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nprint(x)', ['4@x'], 'x <- 2\nf <- function() x <<- 3\nif(u) f()\nx');
 	describe('Early return of function', () => {
 		const code = `x <- (function() {
@@ -447,7 +447,7 @@ cat(4 %a% 5)
 cat(4 %a% 5)`);
 	});
 	describe('Quotation', () => {
-		assertSliced(label('quote does not reference variables', ['name-normal','newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]),
+		assertSliced(label('quote does not reference variables', ['name-normal', 'newlines', ...OperatorDatabase['<-'].capabilities, 'built-in-quoting' ]),
 			shell, 'x <- 3\ny <- quote(x)', ['2@y'], 'y <- quote(x)');
 	});
 	describe('Assignment and Reflection Functions', () => {
@@ -475,7 +475,7 @@ a()`, { minRVersion: MIN_VERSION_LAMBDA });
 				'delayedAssign("y", x)\ny'); // note: `x <- 5` should be part of the slice!
 		});
 		describe('Get', () => {
-			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers','strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created']),
+			assertSliced(label('get-access should work like a symbol-access', ['name-normal', 'numbers', 'strings', 'newlines', ...OperatorDatabase['<-'].capabilities, 'global-scope', 'name-created']),
 				shell, 'x <- 42\ny <- get("x")', ['2@y'],
 				'x <- 42\ny <- get("x")');
 			assertSliced(label('function', ['name-normal', 'strings', 'newlines', 'normal-definition', 'implicit-return', ...OperatorDatabase['<-'].capabilities, 'name-created']),
@@ -844,7 +844,7 @@ print(df)`;
 		});
 	});
 	describe('Closures', () => {
-		assertSliced(label('closure w/ default arguments',['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
+		assertSliced(label('closure w/ default arguments', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'formals-default', 'numbers', 'newlines', 'implicit-return', 'normal-definition', 'closures', 'unnamed-arguments']),
 			shell, `f <- function(x = 1) {
   function() x
 }

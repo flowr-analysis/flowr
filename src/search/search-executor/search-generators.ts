@@ -1,12 +1,12 @@
-import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter , FlowrSearchElements } from '../flowr-search';
+import { type FlowrSearchElement, type FlowrSearchGeneratorNodeBase, type FlowrSearchGetFilter, FlowrSearchElements } from '../flowr-search';
 import type { TailTypesOrUndefined } from '../../util/collections/arrays';
 import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteria , slicingCriterionToId } from '../../slicing/criterion/parse';
+import { type SlicingCriteria, slicingCriterionToId } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
-import { type Query, type SupportedQuery , executeQueries, SupportedQueries } from '../../queries/query';
+import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
@@ -22,15 +22,15 @@ export const searchLogger = log.getSubLogger({ name: 'search' });
  * This is a union of all possible generator node types
  */
 export type FlowrSearchGeneratorNode = {
-    [K in GeneratorNames]:
-    FlowrSearchGeneratorNodeBase<K,
-        TailTypesOrUndefined<Parameters<typeof generators[K]>>
-    >
-}[GeneratorNames]
+	[K in GeneratorNames]:
+	FlowrSearchGeneratorNodeBase<K,
+		TailTypesOrUndefined<Parameters<typeof generators[K]>>
+	>
+}[GeneratorNames];
 
 export type GeneratorNames = keyof typeof generators;
 
-export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode & { name: Name }
+export type GetGenerator<Name extends GeneratorNames> = FlowrSearchGeneratorNode & { name: Name };
 
 
 /**
@@ -154,8 +154,8 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
 	visitAst((await input.normalize()).ast.files.map(f => f.root), node => {
 		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
-		if(treeSitterInfo.treeSitterId) {
-			nodesByTreeSitterId.set(treeSitterInfo.treeSitterId, node);
+		if(treeSitterInfo.tsId) {
+			nodesByTreeSitterId.set(treeSitterInfo.tsId, node);
 		} else {
 			searchLogger.debug(`normalized ast node ${node.lexeme} with type ${node.type} does not have a tree-sitter id`);
 		}

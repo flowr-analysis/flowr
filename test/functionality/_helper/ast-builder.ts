@@ -5,7 +5,7 @@ import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../src/r-bridge/lang-4.x/convert-values';
 import type { RParameter } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 
-const emptyInfo = { fullRange: undefined, additionalTokens: [], fullLexeme: undefined, nesting: 0 };
+const emptyInfo = { fullRange: undefined, adToks: [], fullLexeme: undefined, nesting: 0 };
 
 
 /**
@@ -34,12 +34,11 @@ export function parameter(name: string, location: SourceRange, defaultValue?: RN
 		lexeme: name,
 		defaultValue,
 		name:   {
-			type:      RType.Symbol,
+			type:    RType.Symbol,
 			location,
-			lexeme:    name,
-			content:   name,
-			namespace: undefined,
-			info:      emptyInfo
+			lexeme:  name,
+			content: name,
+			info:    emptyInfo
 		},
 		info: emptyInfo
 	};

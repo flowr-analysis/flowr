@@ -3,14 +3,14 @@ import fs from 'fs';
 import { log, LogLevel } from '../../util/log';
 import { guard } from '../../util/assert';
 
-type FileDescriptor = number
-export type AppendFnType = string | number | symbol
+type FileDescriptor = number;
+export type AppendFnType = string | number | symbol;
 
 export interface StatisticAppendProvider {
 	append(name: string, fn: AppendFnType, content: string): void
 }
 
-export type DummyAppendMemoryMap = Map<string,Map<AppendFnType, string[]>>
+export type DummyAppendMemoryMap = Map<string, Map<AppendFnType, string[]>>;
 
 export class DummyAppendProvider implements StatisticAppendProvider {
 	private readonly map: DummyAppendMemoryMap | undefined;

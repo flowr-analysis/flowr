@@ -202,11 +202,13 @@
     <a id="repository-link" rel="noopener" class="icon-link"><i class="fa fa-github"></i></a>
 </div>
 <div class="description text" style="padding-top: 3em;">
-    These pages continuously track the performance of flowR comparing both <a
+    This page continuously tracks the performance of flowR comparing both <a
         href="https://github.com/flowr-analysis/flowr/wiki/Engines">Engines</a> on an artificial and a real-world
     dataset.
     Please have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/performance">performance
     test documentation</a> for more information on the used files and the benchmarking process.
+    Note that we update and increase the benchmark suite from time to time to better reflect real-world usage
+    scenarios (see <a href="https://github.com/flowr-analysis/flowr/pull/2295">PR#2295</a>).
 
     Currently, the page shows all benchmark results collected in the <span id="show-range"><span
         style="color:gray;user-select:none;">fetching date range...</span></span>.
@@ -290,7 +292,7 @@
             'Last Week': 7,
             'Last Day': 1,
         }
-        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
+        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)]\s*)(?<version>\d+\.\d+\.\d+)/;
 
         const data = ensureEveryElementHasAllKeys(window.BENCHMARK_DATA);
 
@@ -380,7 +382,7 @@
             };
 
             // Prepare data points for charts
-            return Object.keys(data.entries).map(name => ({
+            return Object.keys(data.entries).reverse()  .map(name => ({
                 name,
                 dataSet: collectBenchesPerTestCase(data.entries[name]),
             }));

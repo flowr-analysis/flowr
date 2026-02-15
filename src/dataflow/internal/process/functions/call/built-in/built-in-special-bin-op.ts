@@ -9,6 +9,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
 
 /**
  * Process a special built-in binary operator, possibly lazily.
@@ -25,7 +26,7 @@ export function processSpecialBinOp<OtherInfo>(
 	if(!config.lazy) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.SpecialBinOp }).information;
 	} else if(args.length != 2) {
-		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`);
+		dataflowLogger.warn(`Logical bin-op ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 

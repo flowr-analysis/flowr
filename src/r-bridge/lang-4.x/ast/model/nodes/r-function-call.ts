@@ -5,7 +5,7 @@ import type { RArgument } from './r-argument';
 
 export const EmptyArgument = '<>';
 
-export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument
+export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument;
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.

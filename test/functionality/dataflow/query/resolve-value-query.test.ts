@@ -36,10 +36,10 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 	}
 
 
-	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[setFrom(intervalFrom(1,1))]]);
-	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1,1))]]);
+	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
+	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1, 1))]]);
 	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[Top]]);
-	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[setFrom(intervalFrom(2,2), intervalFrom(1,1))]]);
+	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[setFrom(intervalFrom(2, 2), intervalFrom(1, 1))]]);
 	testQuery('Big vector', `results <- c("A", "B", "C", "D", "E")
 		col <- vector()
 		

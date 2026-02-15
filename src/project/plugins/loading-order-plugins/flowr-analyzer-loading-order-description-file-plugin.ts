@@ -19,7 +19,7 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 	process(ctx: FlowrAnalyzerContext): void {
 		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
 		if(descFiles.length === 0) {
-			descriptionFileLog.warn('No description file found, cannot determine loading order from Collate field.');
+			descriptionFileLog.debug('No description file found, cannot determine loading order from Collate field.');
 			return;
 		} else if(descFiles.length > 1) {
 			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);

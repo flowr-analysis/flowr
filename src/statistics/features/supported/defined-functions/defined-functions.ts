@@ -2,11 +2,11 @@ import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
 import type { MergeableRecord } from '../../../../util/objects';
-import { type SourcePosition , getRangeStart } from '../../../../util/range';
+import { SourcePosition, SourceRange } from '../../../../util/range';
 import { guard, isNotUndefined } from '../../../../util/assert';
 import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { appendStatisticsFile } from '../../../output/statistics-file';
@@ -25,7 +25,7 @@ const initialFunctionDefinitionInfo = {
 	deepestNesting:    0
 };
 
-export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>
+export type FunctionDefinitionInfo = Writable<typeof initialFunctionDefinitionInfo>;
 
 export const AllDefinitionsFileBase = 'all-definitions';
 
@@ -48,18 +48,18 @@ function retrieveAllCallsites(input: FeatureProcessorInput, node: RFunctionDefin
 	const dfStart = input.dataflow.graph.outgoingEdges(node.info.id);
 	const callsites = [];
 	for(const [target, edge] of dfStart ?? []) {
-		if(!edgeIncludesType(edge.types, EdgeType.Calls)) {
+		if(!DfEdge.includesType(edge, EdgeType.Calls)) {
 			continue;
 		}
 		const loc = input.normalizedRAst.idMap.get(target)?.location;
 		if(loc) {
-			callsites.push(getRangeStart(loc));
+			callsites.push(SourceRange.getStart(loc));
 		}
 	}
 	for(const call of recursiveCalls) {
 		const loc = call.location;
 		if(loc) {
-			callsites.push(getRangeStart(loc));
+			callsites.push(SourceRange.getStart(loc));
 		}
 	}
 	return callsites;
@@ -88,7 +88,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 				.map(([vertex]) => {
 					const l = graph.idMap?.get(vertex.id)?.location;
 					return {
-						location: l ? getRangeStart(l) : [-1, -1] satisfies SourcePosition
+						location: l ? SourceRange.getStart(l) : SourcePosition.invalid()
 					};
 				});
 
@@ -115,7 +115,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const edges = input.dataflow.graph.ingoingEdges(node.info.id);
 			if(edges !== undefined) {
 				for(const [targetId, edge] of edges) {
-					if(edgeIncludesType(edge.types, EdgeType.DefinedBy)) {
+					if(DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 						const target = input.normalizedRAst.idMap.get(targetId);
 						guard(target !== undefined, 'Dataflow edge points to unknown node');
 						const name = target.info.fullLexeme ?? target.lexeme;
@@ -125,7 +125,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 						info.assignedFunctions++;
 						appendStatisticsFile(definedFunctions.name, 'assignedFunctions', [name ?? '<unknown>'], input.filepath);
 					}
-					if(edgeIncludesType(edge.types, EdgeType.Calls)) {
+					if(DfEdge.includesType(edge, EdgeType.Calls)) {
 						const target = input.normalizedRAst.idMap.get(targetId);
 						guard(target !== undefined, 'Dataflow edge points to unknown node');
 					}
@@ -147,7 +147,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const lexemeSplit= lexeme?.split('\n');
 
 			allDefinitions.push({
-				location:           getRangeStart(node.location),
+				location:           SourceRange.getStart(node.location),
 				callsites:          retrieveAllCallsites(input, node, recursiveCalls),
 				numberOfParameters: node.parameters.length,
 				returns:            returnTypes,

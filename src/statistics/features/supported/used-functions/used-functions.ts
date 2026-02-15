@@ -1,18 +1,19 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	emptyCommonSyntaxTypeCounts,
 	updateCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
 import { postProcess } from './post-process';
-import { getRangeStart } from '../../../../util/range';
 import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
-import { edgeIncludesType, EdgeType } from '../../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
+import { Identifier } from '../../../../dataflow/environments/identifier';
+import { SourceRange } from '../../../../util/range';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -27,7 +28,7 @@ const initialFunctionUsageInfo = {
 	unnamedCalls:        0
 };
 
-export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>
+export type FunctionUsageInfo = Writable<typeof initialFunctionUsageInfo>;
 
 export const AllCallsFileBase = 'all-calls';
 
@@ -72,7 +73,7 @@ export type FunctionCallInformation = [
 	/** whether this was called from a namespace, like `a::b()` */
 	namespace:             string | undefined,
 	knownDefinitionInFile: 0 | 1
-]
+];
 
 function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void {
 	const calls: RNodeWithParent[] = [];
@@ -93,7 +94,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			const dataflowNode = input.dataflow.graph.get(node.info.id);
 			let hasCallsEdge = false;
 			if(dataflowNode) {
-				hasCallsEdge = [...dataflowNode[1].values()].some(e => edgeIncludesType(e.types, EdgeType.Calls));
+				hasCallsEdge = dataflowNode[1].values().some(e => DfEdge.includesType(e, EdgeType.Calls));
 			}
 
 			if(!node.named) {
@@ -101,7 +102,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 				appendStatisticsFile(usedFunctions.name, 'unnamed-calls', [node.lexeme], input.filepath);
 				allCalls.push([
 					undefined,
-					getRangeStart(node.location),
+					SourceRange.getStart(node.location),
 					node.arguments.length,
 					'',
 					hasCallsEdge ? 1 : 0
@@ -109,9 +110,9 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 			} else {
 				allCalls.push([
 					node.functionName.lexeme,
-					getRangeStart(node.location),
+					SourceRange.getStart(node.location),
 					node.arguments.length,
-					node.functionName.namespace ?? '',
+					Identifier.getNamespace(node.functionName.content) ?? '',
 					hasCallsEdge ? 1 : 0
 				]);
 			}

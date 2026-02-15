@@ -1,14 +1,10 @@
-import type { CfgSimpleVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertexType, getVertexRootId } from '../control-flow/control-flow-graph';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import {
-	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexVariableDefinition,
-	VertexType
-} from '../dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -18,38 +14,61 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
+import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
 
-export interface AbsintVisitorConfiguration<Domain extends AnyAbstractDomain>
-extends Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'> {
-	readonly domain: StateAbstractDomain<Domain>;
-}
+export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 /**
  * A control flow graph visitor to perform abstract interpretation.
  *
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  */
-export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, Config extends AbsintVisitorConfiguration<Domain> = AbsintVisitorConfiguration<Domain>>
+export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
 	 */
-	protected readonly trace: Map<NodeId, StateAbstractDomain<Domain>> = new Map();
+	protected readonly trace: Map<NodeId, MutableStateAbstractDomain<Domain>> = new Map();
 
 	/**
 	 * The current abstract state domain at the currently processed AST node.
 	 */
-	protected currentState: StateAbstractDomain<Domain>;
+	private _currentState: MutableStateAbstractDomain<Domain>;
 
 	/**
 	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
 
+	/**
+	 * Whether the current abstract state has been copied/cloned and is save to modify in place.
+	 */
+	private stateCopied: boolean = false;
+
 	constructor(config: Config) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
-		this.currentState = config.domain.bottom();
+		this._currentState = new MutableStateAbstractDomain<Domain>(new Map());
+	}
+
+	public get currentState(): StateAbstractDomain<Domain> {
+		return this._currentState;
+	}
+
+	public removeState(node: NodeId): void {
+		if(!this.stateCopied) {
+			this._currentState = this._currentState.create(this.currentState.value);
+			this.stateCopied = true;
+		}
+		this._currentState.remove(node);
+	}
+
+	public updateState(node: NodeId, value: Domain): void {
+		if(!this.stateCopied) {
+			this._currentState = this._currentState.create(this.currentState.value);
+			this.stateCopied = true;
+		}
+		this._currentState.set(node, value);
 	}
 
 	/**
@@ -69,7 +88,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return state.get(node.info.id);
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
-		const call = vertex?.tag === VertexType.FunctionCall ? vertex : undefined;
+		const call = isFunctionCallVertex(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
@@ -119,10 +138,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	public getEndState(): StateAbstractDomain<Domain> {
 		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
-		const exitNodes = exitPoints.map(vertex => getVertexRootId(vertex)).filter(isNotUndefined);
-		const states = exitNodes.map(node => this.getAbstractState(node)).filter(isNotUndefined);
+		const exitNodes = exitPoints.map(CfgVertex.getRootId).filter(isNotUndefined);
+		const states = exitNodes.map(node => this.trace.get(node)).filter(isNotUndefined);
 
-		return this.config.domain.bottom().joinAll(states);
+		return AbstractDomain.joinAll(states, this._currentState.top());
 	}
 
 	/**
@@ -139,44 +158,76 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.clear();
 	}
 
+	protected override startVisitor(start: readonly NodeId[]): void {
+		const stack = Array.from(start);
+
+		while(stack.length > 0) {
+			const current = stack.pop() as NodeId;
+
+			if(!this.visitNode(current)) {
+				continue;
+			}
+			for(const next of this.config.controlFlow.graph.ingoingEdges(current)?.keys().toArray().reverse() ?? []) {
+				if(!stack.includes(next)) {  // prevent double entries in working list
+					stack.push(next);
+				}
+			}
+		}
+	}
+
 	protected override visitNode(vertexId: NodeId): boolean {
 		const vertex = this.getCfgVertex(vertexId);
 
-		if(vertex === undefined) {
+		// skip exit vertices of widening points and entry vertices of complex nodes
+		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
-		const nodeId = getVertexRootId(vertex);
+		const predecessors = this.getPredecessorNodes(CfgVertex.getId(vertex));
+		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
 
+		// retrieve new abstract state by joining states of predecessor nodes
+		if(predecessorStates.length === 1) {
+			this._currentState = predecessorStates[0];
+		} else {
+			this._currentState = AbstractDomain.joinAll(predecessorStates, this._currentState.top());
+			this.stateCopied = true;
+		}
+		const nodeId = CfgVertex.getRootId(vertex);
+
+		// differentiate between widening points and other vertices
 		if(this.isWideningPoint(nodeId)) {
-			// only check widening points at the entry vertex
-			if(vertex.type === CfgVertexType.EndMarker) {
-				return true;
-			}
-			const oldState = this.getAbstractState(nodeId) ?? this.config.domain.bottom();
-			const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
-			this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
+			const oldState = this.trace.get(nodeId) ?? this._currentState.top();
 
 			if(this.shouldWiden(vertex)) {
-				this.currentState = oldState.widen(this.currentState);
+				this._currentState = oldState.widen(this._currentState);
+				this.stateCopied = true;
 			}
-			this.trace.set(nodeId, this.currentState);
+			this.trace.set(nodeId, this._currentState);
+			this.stateCopied = false;
 
-			return this.shouldContinueVisiting(vertex, oldState);
-		} else if(this.shouldSkipVertex(vertex)) {
-			return true;
+			const visitedCount = this.visited.get(nodeId) ?? 0;
+			this.visited.set(nodeId, visitedCount + 1);
+
+			// continue visiting after widening point if visited for the first time or the state changed
+			return visitedCount === 0 || !oldState.equals(this._currentState);
+		} else {
+			this.onVisitNode(vertexId);
+
+			// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
+			if(this.config.dfg.unknownSideEffects.has(nodeId)) {
+				this._currentState = this._currentState.top();
+				this.stateCopied = true;
+			}
+			this.trace.set(nodeId, this._currentState);
+			this.stateCopied = false;
+
+			const predecessorVisits = predecessors.map(pred => this.visited.get(pred) ?? 0);
+			const visitedCount = this.visited.get(nodeId) ?? 0;
+			this.visited.set(nodeId, visitedCount + 1);
+
+			// continue visiting if vertex is not a join vertex or number of visits of predecessors is the same
+			return predecessors.length <= 1 || predecessorVisits.every(visits => visits === predecessorVisits[0]);
 		}
-		const predecessorDomains = this.getPredecessorNodes(vertex.id).map(pred => this.getAbstractState(pred)).filter(isNotUndefined);
-		this.currentState = this.config.domain.bottom().joinAll(predecessorDomains);
-
-		this.onVisitNode(vertexId);
-
-		// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
-		if(this.config.dfg.unknownSideEffects.has(nodeId)) {
-			this.currentState = this.currentState.bottom();
-		}
-		this.trace.set(nodeId, this.currentState);
-
-		return true;
 	}
 
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
@@ -217,8 +268,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.delete(target);
 
 		if(value !== undefined) {
-			this.currentState.set(target, value);
-			this.trace.set(target, this.currentState.create(this.currentState.value));
+			this.updateState(target, value);
+			this.trace.set(target, this._currentState);
+			this.stateCopied = false;
+
 		}
 	}
 
@@ -241,15 +294,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 
 	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
 	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {
-		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are incoming CFG edges
+		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are ingoing CFG edges
 			.map(id => this.getCfgVertex(id))
 			.flatMap(vertex => {
 				if(vertex === undefined) {
 					return [];
 				} else if(this.shouldSkipVertex(vertex)) {
-					return this.getPredecessorNodes(vertex.id);
+					return this.getPredecessorNodes(CfgVertex.getId(vertex));
 				} else {
-					return [getVertexRootId(vertex)];
+					return [CfgVertex.getRootId(vertex)];
 				}
 			})
 			.toArray() ?? [];
@@ -263,11 +316,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			.filter(origin => this.trace.has(origin) && !this.unassigned.has(origin)) ?? [];
 	}
 
-	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one incoming CFG edge */
+	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one ingoing CFG edge */
 	protected isWideningPoint(nodeId: NodeId): boolean {
-		const incomingEdges = this.config.controlFlow.graph.outgoingEdges(nodeId)?.size;  // outgoing dependency edges are incoming CFG edges
+		const ingoingEdges = this.config.controlFlow.graph.outgoingEdges(nodeId)?.size;  // outgoing dependency edges are ingoing CFG edges
 
-		if(incomingEdges === undefined || incomingEdges <= 1) {
+		if(ingoingEdges === undefined || ingoingEdges <= 1) {
 			return false;
 		}
 		const node = this.getNormalizedAst(nodeId);
@@ -286,29 +339,22 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	/**
-	 * Checks whether to continue visiting the control flow graph after a widening point.
-	 * By default, we only continue visiting if the widening point is visited for the first time or the abstract state at the widening point changed.
-	 */
-	protected shouldContinueVisiting(wideningPoint: CfgSimpleVertex, oldState: StateAbstractDomain<Domain>) {
-		const visitedCount = this.visited.get(wideningPoint.id) ?? 0;
-		this.visited.set(wideningPoint.id, visitedCount + 1);
-
-		return visitedCount === 0 || !oldState.equals(this.currentState);
-	}
-
-	/**
 	 * Checks whether a control flow graph vertex should be skipped during visitation.
-	 * By default, we only process vertices of leaf nodes and exit vertices (no entry nodes of complex nodes).
+	 * By default, we only process entry vertices of widening points, vertices of leaf nodes, and exit vertices (no entry nodes of complex nodes).
 	 */
-	protected shouldSkipVertex(vertex: CfgSimpleVertex): boolean {
-		return vertex.type !== CfgVertexType.EndMarker && vertex.end !== undefined;
+	protected shouldSkipVertex(vertex: CfgVertex): boolean {
+		if(this.isWideningPoint(CfgVertex.getRootId(vertex))) {
+			// skip exit vertices of widening points
+			return CfgVertex.isMarker(vertex);
+		}
+		return !CfgVertex.isMarker(vertex) && !CfgVertex.isBlock(vertex) && CfgVertex.getEnd(vertex) !== undefined;
 	}
 
 	/**
 	 * Whether widening should be performed at a widening point.
-	 * By default, we perform widening when the number of visitation of the widening point reaches the widening threshold of the config.
+	 * By default, we perform widening when the number of visits of the widening point reaches the widening threshold of the config.
 	 */
-	protected shouldWiden(wideningPoint: CfgSimpleVertex): boolean {
-		return (this.visited.get(wideningPoint.id) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
+	protected shouldWiden(wideningPoint: CfgVertex): boolean {
+		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 }

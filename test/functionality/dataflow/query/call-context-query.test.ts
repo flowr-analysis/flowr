@@ -123,7 +123,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 		}));
 	});
 	describe('Exact Names', () => {
-		testQuery('Contained Match (expl undefined)', 'foo()', [q(/o/, { })], r([{ id: 1, name: 'foo' }]));
+		testQuery('Contained Match (expl undefined)', 'foo()', [q(/o/, {})], r([{ id: 1, name: 'foo' }]));
 		testQuery('Contained Match (expl. false)', 'foo()', [q(/o/, { callNameExact: false })], r([{ id: 1, name: 'foo' }]));
 		testQuery('No Contained Match', 'foo()', [q(/o/, { callNameExact: true })], baseResult({}));
 	});

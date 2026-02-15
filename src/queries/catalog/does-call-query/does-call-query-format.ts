@@ -5,11 +5,11 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import { executeDoesCallQuery } from './does-call-query-executor';
 import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { formatRange } from '../../../util/mermaid/dfg';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { startAndEndsWith } from '../../../util/text/strings';
+import { SourceRange } from '../../../util/range';
 
 interface CallsIdConstraint {
 	readonly type: 'calls-id';
@@ -125,7 +125,7 @@ export const DoesCallQueryDefinition = {
 				result.push('    - Does not call any matching functions.');
 			} else {
 				const loc = idMap.get(v.call)?.location ?? undefined;
-				result.push(`    - Call with id ${bold(String(v.call), formatter)} (${formatRange(loc)})`);
+				result.push(`    - Call with id ${bold(String(v.call), formatter)} (${SourceRange.format(loc)})`);
 			}
 		}
 		return true;

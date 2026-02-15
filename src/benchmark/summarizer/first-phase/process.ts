@@ -4,7 +4,7 @@ import fs from 'fs';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import { log } from '../../../util/log';
 import { withoutWhitespace } from '../../../util/text/strings';
-import { type SummarizedMeasurement , summarizeMeasurement } from '../../../util/summarizer';
+import { type SummarizedMeasurement, summarizeMeasurement } from '../../../util/summarizer';
 import { isNotUndefined } from '../../../util/assert';
 import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerStats, SlicerStatsDfShape, SlicerStatsDataflow, SlicerStatsInput } from '../../stats/stats';
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
@@ -137,7 +137,7 @@ export async function summarizeSlicerStats(
 			let commentCharsNoWhitespace = 0;
 			visitAst(reParsed.ast.files.map(f => f.root), t => {
 				numberOfNormalizedTokens++;
-				const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
+				const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
 				if(comments && comments.length > 0) {
 					const content = comments.map(c => c.lexeme ?? '').join('');
 					commentChars += content.length;
@@ -157,7 +157,7 @@ export async function summarizeSlicerStats(
 			const numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(reParseShellSession, true);
 			sliceSize.tokensNoComments.push(numberOfRTokensNoComments);
 
-			const perSlice: {[k in keyof SliceSizeCollection]: number} = {
+			const perSlice: { [k in keyof SliceSizeCollection]: number } = {
 				lines:                             lines,
 				nonEmptyLines:                     nonEmptyLines,
 				characters:                        output.length,
@@ -249,8 +249,10 @@ function summarizeDfShapeStats({ perNodeStats, ...stats }: SlicerStatsDfShape): 
 		...stats,
 		numberOfEntriesPerNode:   summarizeMeasurement(nodeStats.map(s => s.numberOfEntries)),
 		numberOfOperations:       arraySum(nodeStats.map(s => s.mappedOperations?.length).filter(isNotUndefined)),
+		numberOfTotalConstraints: nodeStats.filter(s => s.inferredColNames !== undefined && s.inferredColCount !== undefined && s.inferredRowCount !== undefined).length,
+		numberOfTotalExact:       nodeStats.filter(s => s.approxRangeColNames === 0 && s.approxRangeColCount === 0 && s.approxRangeRowCount === 0).length,
 		numberOfTotalValues:      nodeStats.filter(s => isValue(s.inferredColNames) && isValue(s.inferredColCount) && isValue(s.inferredRowCount)).length,
-		numberOfTotalBottom:      nodeStats.filter(s => s.inferredColNames === 0 && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
+		numberOfTotalBottom:      nodeStats.filter(s => isBottom(s.inferredColCount) && isBottom(s.inferredColCount) && isBottom(s.inferredRowCount)).length,
 		numberOfTotalTop:         nodeStats.filter(s => isTop(s.inferredColNames) && isTop(s.inferredColCount) && isTop(s.inferredRowCount)).length,
 		inferredColNames:         summarizeMeasurement(nodeStats.map(s => s.inferredColNames).filter(isValue)),
 		approxRangeColNames:      summarizeMeasurement(nodeStats.map(s => s.approxRangeColNames).filter(isNotUndefined).filter(isFinite)),

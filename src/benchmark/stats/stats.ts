@@ -9,12 +9,12 @@ import type { DataFrameOperationName } from '../../abstract-interpretation/data-
 export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
 export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes'] as const;
 export const CommonSlicerMeasurements = [...RequiredSlicerMeasurements, ...OptionalSlicerMeasurements] as const;
-export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
+export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number];
 
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const;
-export type PerSliceMeasurements = typeof PerSliceMeasurements[number]
+export type PerSliceMeasurements = typeof PerSliceMeasurements[number];
 
-export type ElapsedTime = bigint
+export type ElapsedTime = bigint;
 
 export interface PerSliceStats {
 	measurements:                Map<PerSliceMeasurements, ElapsedTime>
@@ -45,9 +45,6 @@ export interface SlicerStatsDataflow<T = number> {
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */
 	sizeOfObject:                T
-	storedVertexIndices:         T
-	storedEnvIndices:            T
-	overwrittenIndices:          T
 }
 
 export interface SlicerStatsDfShape<T = number> {

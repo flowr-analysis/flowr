@@ -293,7 +293,7 @@ To speed up the process, we use the ${ctx.link(initCommand)} function to compile
 custom serialization, which outputs the information in a CSV-like format.
 This means, that the ${getReplCommand('parse')} command actually kind-of lies to you, as it does pretty print the serialized version which looks more like the following (this uses the ${ctx.link(retrieveParseDataFromRCode.name)} function with the sample code \`${sampleCode}\`):
 
-${details(`Raw parse output for <code>${sampleCode}</code>`, `For the code \`${sampleCode}\`:\n\n` + codeBlock('csv',await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell)))}
+${details(`Raw parse output for <code>${sampleCode}</code>`, `For the code \`${sampleCode}\`:\n\n` + codeBlock('csv', await retrieveParseDataFromRCode(requestFromInput(sampleCode), shell)))}
 
 Beautiful, right? I thought so too! In fact, the output is a little bit nicer, when we put it into a table-format and add the appropriate headers:
 

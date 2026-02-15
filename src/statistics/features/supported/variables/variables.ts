@@ -1,12 +1,12 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
-import { getRangeStart } from '../../../../util/range';
 import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { VertexType } from '../../../../dataflow/graph/vertex';
+import { SourceRange } from '../../../../util/range';
 
 
 const initialVariableInfo = {
@@ -17,13 +17,13 @@ const initialVariableInfo = {
 	unknownVariables:      0
 };
 
-export type VariableInfo = Writable<typeof initialVariableInfo>
+export type VariableInfo = Writable<typeof initialVariableInfo>;
 
 
 export type DefinedVariableInformation = [
 	name: string,
 	location: [line: number, character: number]
-]
+];
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
 	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
@@ -39,7 +39,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 				info.unknownVariables++;
 				appendStatisticsFile(variables.name, 'unknown', [[
 					node.info.fullLexeme ?? node.lexeme,
-					getRangeStart(node.location)
+					SourceRange.getStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath);
 				return;
 			}
@@ -50,14 +50,14 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 				const lexeme = node.info.fullLexeme ?? node.lexeme;
 				appendStatisticsFile(variables.name, 'definedVariables', [[
 					lexeme,
-					getRangeStart(node.location)
+					SourceRange.getStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath);
 				// checking for redefinitions is no longer possible in its current form!
 			} else if(dfNode.tag === 'use') {
 				info.numberOfVariableUses++;
 				appendStatisticsFile(variables.name, 'usedVariables', [[
 					node.info.fullLexeme ?? node.lexeme,
-					getRangeStart(node.location)
+					SourceRange.getStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath);
 			}
 		}

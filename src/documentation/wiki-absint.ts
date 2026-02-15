@@ -17,6 +17,10 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { Identifier } from '../dataflow/environments/identifier';
 
 class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
+	protected getBottomValue(): IntervalDomain {
+		return IntervalDomain.bottom();
+	}
+
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
 		super.onNumberConstant({ vertex, node });
 

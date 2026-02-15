@@ -168,14 +168,14 @@ export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVert
 }
 
 export interface DataflowGraphVertexLazyFunctionDefinition<OtherInfo = ParentInformation>
- extends Omit<DataflowGraphVertexFunctionDefinition, 'subflow' | 'exitPoints' | 'params'> {
-    readonly lazy: true;
+	extends Omit<DataflowGraphVertexFunctionDefinition, 'subflow' | 'exitPoints' | 'params'> {
+	readonly lazy: true;
 
-    readonly id:            NodeId;
-    readonly name:          RSymbol<OtherInfo & ParentInformation>;
-    readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[];
-    rootId:                 NodeId;
-    readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
+	readonly id:            NodeId;
+	readonly name:          RSymbol<OtherInfo & ParentInformation>;
+	readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[];
+	rootId:                 NodeId;
+	readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
 }
 
 /**

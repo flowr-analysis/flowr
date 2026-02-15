@@ -58,7 +58,7 @@ export function processFunctionDefinition<OtherInfo>(
 
 		/** get function body and guard against existence */
 		const functionBody = args.at(-1);
-		guard(functionBody !== undefined, () => `Function Definition ${name.content} has no body! This is bad!`);
+		guard(functionBody !== undefined, () => `Function Definition ${name.content[0]} has no body! This is bad!`);
 
 		graph.addVertex({
 			tag:           VertexType.FunctionDefinition,

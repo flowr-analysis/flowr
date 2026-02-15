@@ -4,28 +4,28 @@ import * as path from 'path';
 import type { WorkerResult } from './results-types';
 
 type Settings = {
-    sourcesRoot:          string;
-    workerJs:             string;
-    resultsRoot:          string;
-    runName:              string;
-    maxProjectsPerSuite?: number;
+	sourcesRoot:          string;
+	workerJs:             string;
+	resultsRoot:          string;
+	runName:              string;
+	maxProjectsPerSuite?: number;
 
-    repetitions:      number;
-    warmup?:          boolean;
-    collectStats?:    boolean;
-    skipCorrectness?: boolean;
+	repetitions:      number;
+	warmup?:          boolean;
+	collectStats?:    boolean;
+	skipCorrectness?: boolean;
 
-    optimizations?: {
-        parallelFiles?:      boolean;
-        parallelOperations?: boolean;
-        lazyFunctions?:      boolean;
-    };
+	optimizations?: {
+		parallelFiles?:      boolean;
+		parallelOperations?: boolean;
+		lazyFunctions?:      boolean;
+	};
 
-    excludeSuites?: string[];
+	excludeSuites?: string[];
 
-    // Arrays of threads for worker execution
-    threadsForCorrectness?: number[];
-    threadsForPerformance?: number[];
+	// Arrays of threads for worker execution
+	threadsForCorrectness?: number[];
+	threadsForPerformance?: number[];
 };
 
 // --------------------------------------------------
@@ -174,11 +174,11 @@ async function runTestSuite(suiteName: string, suitePath: string): Promise<void>
 // ---------------- Results ----------------
 
 type SuiteSummary = {
-    suiteName:            string;
-    projects:             WorkerResult[];
-    totalRuntimeMs:       number;
-    meanProjectRuntimeMs: number;
-    totalFiles:           number;
+	suiteName:            string;
+	projects:             WorkerResult[];
+	totalRuntimeMs:       number;
+	meanProjectRuntimeMs: number;
+	totalFiles:           number;
 };
 
 function collectResults(): SuiteSummary[] {

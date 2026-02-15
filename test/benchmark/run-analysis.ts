@@ -15,18 +15,18 @@ import type {
 } from './results-types';
 
 export interface PerformanceMetrics {
-    wallMs:        number;
-    cpuUserMs:     number;
-    cpuSystemMs:   number;
-    rssMax:        number;
-    heapUsedMax:   number;
-    heapTotalMax:  number;
-    cpuUtilApprox: number;
+	wallMs:        number;
+	cpuUserMs:     number;
+	cpuSystemMs:   number;
+	rssMax:        number;
+	heapUsedMax:   number;
+	heapTotalMax:  number;
+	cpuUtilApprox: number;
 }
 
 // minimal shape for analyzers returning a graph (benchmark-only)
 interface AnalyzerWithGraph {
-    graph: DataflowGraph;
+	graph: DataflowGraph;
 }
 
 // -------------------- stats helpers --------------------
@@ -131,7 +131,7 @@ async function runOnce(
 	const cpuUserMs = cpuEnd.user / 1000;
 	const cpuSystemMs = cpuEnd.system / 1000;
 	const cpuUtilApprox =
-        wallMs > 0 ? (cpuUserMs + cpuSystemMs) / wallMs / getPhysicalCpuCount : 0;
+		wallMs > 0 ? (cpuUserMs + cpuSystemMs) / wallMs / getPhysicalCpuCount : 0;
 
 	return { wallMs, cpuUserMs, cpuSystemMs, rssMax, heapUsedMax, heapTotalMax, cpuUtilApprox };
 }

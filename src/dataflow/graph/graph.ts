@@ -164,10 +164,10 @@ export interface DataflowGraphJson {
 }
 
 export interface LazyFunctionStatistics {
-    /** Total count of function definition vertices registered in the graph */
-    totalFunctionDefinitions:  number;
-    /** Number of times lazy function vertices were materialized (called) */
-    lazyFunctionsMaterialized: number;
+	/** Total count of function definition vertices registered in the graph */
+	totalFunctionDefinitions:  number;
+	/** Number of times lazy function vertices were materialized (called) */
+	lazyFunctionsMaterialized: number;
 }
 
 /**
@@ -717,7 +717,7 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 /**
  * Merge two arrays of exit points, removing duplicates based on value equality (nodeId and type)
  */
-function mergeExitPoints(left: readonly ExitPoint[], right: readonly ExitPoint[]): ExitPoint[] {
+function _mergeExitPoints(left: readonly ExitPoint[], right: readonly ExitPoint[]): ExitPoint[] {
 	const seen = new Set<string>();
 	const result: ExitPoint[] = [];
 

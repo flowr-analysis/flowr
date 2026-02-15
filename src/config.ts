@@ -196,13 +196,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
-    readonly optimizations: {
-        readonly fileParallelization: boolean;
+	readonly optimizations: {
+		readonly fileParallelization: boolean;
 
-        readonly dataflowOperationParallelization: boolean;
+		readonly dataflowOperationParallelization: boolean;
 
-        readonly deferredFunctionEvaluation: boolean;
-    }
+		readonly deferredFunctionEvaluation: boolean;
+	}
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {

@@ -17,6 +17,10 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
 export class NumericInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
+	protected getBottomValue(): IntervalDomain {
+		return IntervalDomain.bottom();
+	}
+
 	protected override onNumberConstant({ vertex, node}: {
 		vertex: DataflowGraphVertexValue;
 		node:   RNumber<ParentInformation>

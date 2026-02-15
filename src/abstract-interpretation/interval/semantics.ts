@@ -56,6 +56,10 @@ type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSem
  * @returns The resulting interval after applying the semantics.
  */
 export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericInferenceVisitor): IntervalDomain | undefined {
+	if(visitor.currentState.isBottom()) {
+		return IntervalDomain.bottom();
+	}
+
 	const match = IntervalSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {

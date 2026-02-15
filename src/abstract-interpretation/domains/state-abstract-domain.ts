@@ -12,7 +12,7 @@ import { Ternary } from '../../util/logic';
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends MappedAbstractDomain<NodeId, Domain> {
-	private _isBottom: true | undefined;
+	protected _isBottom: true | undefined;
 
 	constructor(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean) {
 		super(value);
@@ -151,9 +151,9 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
  * A mutable version of the {@link StateAbstractDomain} with {@link MutableStateAbstractDomain#set|`set`} and {@link MutableStateAbstractDomain#remove|`remove`}.
  */
 export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain> extends StateAbstractDomain<Domain> {
-	public create(value: ReadonlyMap<NodeId, Domain>): this;
-	public create(value: ReadonlyMap<NodeId, Domain>): MutableStateAbstractDomain<Domain> {
-		return new MutableStateAbstractDomain(value);
+	public create(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean): this;
+	public create(value: ReadonlyMap<NodeId, Domain>, bottom?: boolean): MutableStateAbstractDomain<Domain> {
+		return new MutableStateAbstractDomain(value, bottom ?? this._isBottom);
 	}
 
 	public set(key: NodeId, value: Domain): void {

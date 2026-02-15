@@ -2,12 +2,19 @@ import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/verte
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
+import { type AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../absint-visitor';
 import { DataFrameDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
 import { mapDataFrameReplacementFunction } from './mappers/replacement-mapper';
-import { applyDataFrameSemantics, ConstraintType, getConstraintType, type DataFrameOperationArgs, type DataFrameOperationName, type DataFrameOperationOptions } from './semantics';
+import {
+	applyDataFrameSemantics,
+	ConstraintType,
+	type DataFrameOperationArgs,
+	type DataFrameOperationName,
+	type DataFrameOperationOptions,
+	getConstraintType
+} from './semantics';
 
 interface Operation<Name extends DataFrameOperationName> {
 	/** The type of the abstract data frame operation (see {@link DataFrameOperationName}) */
@@ -58,6 +65,11 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 		if(trackOperations) {
 			this.operations = new Map();
 		}
+	}
+
+	protected getBottomValue(): DataFrameDomain {
+		const maxColNames = this.config.ctx.config.abstractInterpretation.dataFrame.maxColNames;
+		return DataFrameDomain.bottom(maxColNames);
 	}
 
 	/**

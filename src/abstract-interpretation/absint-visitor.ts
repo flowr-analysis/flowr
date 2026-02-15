@@ -21,6 +21,7 @@ import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domai
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
 import { RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { Ternary } from '../util/logic';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -88,6 +89,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
+		if(state?.isBottom()) {
+			return this.getBottomValue();
+		}
+
 		if(node === undefined) {
 			return;
 		} else if(state?.has(node.info.id)) {
@@ -98,7 +103,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			const values = this.getVariableOrigins(node.info.id).map(origin => state?.get(origin));
+			const values = this.getVariableOrigins(node.info.id).map(origin => this.trace.get(origin)?.isBottom() ? this.getBottomValue() : state?.get(origin));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
@@ -215,7 +220,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this.visited.set(nodeId, visitedCount + 1);
 
 			// continue visiting after widening point if visited for the first time or the state changed
-			return visitedCount === 0 || !oldState.equals(this._currentState);
+			return visitedCount === 0 || oldState.equals(this._currentState) === Ternary.Never;
 		} else {
 			this.onVisitNode(vertexId);
 
@@ -382,4 +387,6 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	protected applyConditionSemantics(conditionNodeId: NodeId, _trueBranch: boolean): MutableStateAbstractDomain<Domain> | undefined {
 		return this.trace.get(conditionNodeId) ?? this._currentState.bottom();
 	}
+
+	protected abstract getBottomValue(): Domain;
 }

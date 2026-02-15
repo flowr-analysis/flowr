@@ -332,7 +332,7 @@ describe('Interval Inference', () => {
 			'1@x': { domain: IntervalTests.scalar(0) },
 			'2@x': { domain: IntervalTests.interval(0, 1) },
 			'3@x': { domain: IntervalTests.scalar(1) },
-			'5@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }
+			'5@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation } // OA due to flowR -> read edge to 1@x
 		});
 		testIntervalDomain(`
 			x <- 0
@@ -358,7 +358,7 @@ describe('Interval Inference', () => {
 			print(x)
 		`, {
 			'3@x': { domain: IntervalTests.interval(1, Infinity) },
-			'8@x': { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
+			'8@x': { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation }, // OA due to flowR -> read edge to 1@x
 		});
 	});
 

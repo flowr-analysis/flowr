@@ -182,7 +182,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mermaid.rootGraph.unknownSideEffects.values().some(l => normalizeIdToNumberIfPossible(l as string) === normalizeIdToNumberIfPossible(origId))) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
-
+	if(info.tag === VertexType.FunctionDefinition) {
+		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
+	}
 	const edges = mermaid.rootGraph.outgoingEdges(normalizeIdToNumberIfPossible(origId));
 	if(edges === undefined) {
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
@@ -221,9 +223,6 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				}
 			}
 		}
-	}
-	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
 	}
 }
 

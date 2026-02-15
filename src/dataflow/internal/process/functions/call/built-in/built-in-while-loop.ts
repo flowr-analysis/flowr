@@ -23,8 +23,12 @@ import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import {
+	applyCdsToAllInGraphButConstants,
+	applyCdToReferences
+} from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { appendEnvironment } from '../../../../../environments/append';
 
 
 /**
@@ -48,6 +52,9 @@ export function processWhileLoop<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
+	const nameId = name.info.id;
+	const origEnv = data.environment;
+
 	// we should defer this to the abstract interpretation
 	const values = resolveIdToValue(unpackedArgs[0]?.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx });
 	const conditionIsAlwaysFalse = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === false) ?? false;
@@ -64,57 +71,56 @@ export function processWhileLoop<OtherInfo>(
 		rootId,
 		data,
 		markAsNSE: [1],
-		patchData: (d, i) => {
-			if(i === 1) {
-				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: true }] };
-			}
-			return d;
-		}, origin: BuiltInProcName.WhileLoop });
+		origin:    BuiltInProcName.WhileLoop
+	});
 	const [condition, body] = processedArguments;
 
 	// If the condition is always false, we don't include the body
 	if(condition !== undefined && conditionIsAlwaysFalse) {
-		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return {
 			unknownReferences: [],
-			in:                [{ nodeId: name.info.id, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
+			in:                [{ nodeId: nameId, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
 			out:               condition.out,
-			entryPoint:        name.info.id,
+			entryPoint:        nameId,
 			exitPoints:        [],
 			graph:             information.graph,
 			environment:       information.environment,
 			hooks:             condition.hooks
 		};
 	}
+	const conditionIsAlwaysTrue = valueSetGuard(values)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${Identifier.toString(name.content)} has no condition or body, impossible!`);
 	const originalDependency = data.cds;
 
 	if(alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
-		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
+		information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 		return condition;
 	}
 
-	const cdTrue = [{ id: name.info.id, when: true }];
-	const remainingInputs = linkInputs(
-		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
-			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
+	const cdTrue = [{ id: nameId, when: true }];
+	const bodyRead = body.in.concat(body.unknownReferences);
+	applyCdsToAllInGraphButConstants(body.graph, bodyRead, cdTrue);
+	const remainingInputs = linkInputs(bodyRead,
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, condition.in)), body.out);
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences));
+	applyCdToReferences(body.out, cdTrue);
+
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out);
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition
-	information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
-
+	information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
-		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
-		entryPoint:        name.info.id,
+		in:                [{ nodeId: nameId, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
+		out:               condition.out.concat(body.out),
+		entryPoint:        nameId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
-		environment:       information.environment,
+		// as we do not know whether the loop executes at all, we have to merge the environments of the condition and the body, as both may be relevant
+		environment:       conditionIsAlwaysTrue ? information.environment : appendEnvironment(origEnv, information.environment),
 		hooks:             condition.hooks.concat(body.hooks)
 	};
 }

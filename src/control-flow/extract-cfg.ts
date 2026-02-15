@@ -1,6 +1,5 @@
 import { graph2quads, type QuadSerializationConfiguration } from '../util/quads';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { foldAst, type FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -33,9 +32,21 @@ import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
+import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 
+type CfgDownState = [loop: boolean, fn: boolean];
 
-const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
+const cfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
+	down: (n, down) => {
+		if(n.type === RType.FunctionDefinition) {
+			return [down[0], true];
+		} else if(n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop) {
+			return [true, down[1]];
+		}
+		return down;
+	},
 	foldNumber:   cfgLeaf(CfgVertexType.Expression),
 	foldString:   cfgLeaf(CfgVertexType.Expression),
 	foldLogical:  cfgLeaf(CfgVertexType.Expression),
@@ -65,7 +76,7 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 	}
 };
 
-const ignoreFunctDefCfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
+const ignoreFunctDefCfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
 	...cfgFolds,
 	functions: {
 		...cfgFolds.functions,
@@ -73,7 +84,7 @@ const ignoreFunctDefCfgFolds: FoldFunctions<ParentInformation, ControlFlowInform
 	}
 };
 
-function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInformation, ControlFlowInformation> {
+function dataflowCfgFolds(dataflowGraph: DataflowGraph): StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> {
 	const newFolds = {
 		...cfgFolds,
 	};
@@ -127,11 +138,11 @@ export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph)
 	return calls;
 }
 
-function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): ControlFlowInformation {
+function cfgFoldProject(proj: RProject<ParentInformation>, folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>): ControlFlowInformation {
 	if(proj.files.length === 0) {
 		return emptyControlFlowInformation();
 	} else if(proj.files.length === 1) {
-		return foldAst(proj.files[0].root, folds);
+		return foldAstStateful(proj.files[0].root, [false, false], folds);
 	}
 
 	/* for many files, it is too expensive to keep all asts at once, hence we create and merge them incrementally */
@@ -142,7 +153,7 @@ function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<
 	let nexts: NodeId[];
 	let returns: NodeId[];
 	{
-		const firstInfo = foldAst(proj.files[0].root, folds);
+		const firstInfo = foldAstStateful(proj.files[0].root, [false, false], folds);
 		exitPoints = firstInfo.exitPoints;
 		finalGraph = firstInfo.graph;
 		firstEntryPoints = firstInfo.entryPoints;
@@ -151,7 +162,7 @@ function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<
 		returns = firstInfo.returns;
 	}
 	for(let i = 1; i < proj.files.length; i++) {
-		const nextInfo = foldAst(proj.files[i].root, folds);
+		const nextInfo = foldAstStateful(proj.files[i].root, [false, false], folds);
 		finalGraph.mergeWith(nextInfo.graph);
 		for(const exitPoint of exitPoints) {
 			for(const entryPoint of nextInfo.entryPoints) {
@@ -184,11 +195,17 @@ function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (lea
 
 const cfgLeafStatement = cfgLeaf(CfgVertexType.Statement);
 
-function cfgBreak(leaf: RNodeWithParent): ControlFlowInformation {
+function cfgBreak(leaf: RNodeWithParent, down: CfgDownState): ControlFlowInformation {
+	if(!down[0]) {
+		return cfgLeafStatement(leaf);
+	}
 	return { ...cfgLeafStatement(leaf), breaks: [leaf.info.id], exitPoints: [] };
 }
 
-function cfgNext(leaf: RNodeWithParent): ControlFlowInformation {
+function cfgNext(leaf: RNodeWithParent, down: CfgDownState): ControlFlowInformation {
+	if(!down[0]) {
+		return cfgLeafStatement(leaf);
+	}
 	return { ...cfgLeafStatement(leaf), nexts: [leaf.info.id], exitPoints: [] };
 }
 
@@ -392,7 +409,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	return { graph: graph, breaks: [], nexts: [], returns: [], exitPoints: [fnId], entryPoints: [fnId] };
 }
 
-function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation {
+function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
 	if(call.named && call.functionName.content === 'ifelse') {
 		// special built-in handling for ifelse as it is an expression that does not short-circuit
 		return cfgIfThenElse(
@@ -446,8 +463,10 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	}
 
 	if(call.named && call.functionName.content === 'return') {
-		info.returns.push(CfgVertex.toExitId(callId));
-		info.exitPoints.length = 0;
+		if(down[1]) {
+			info.returns.push(CfgVertex.toExitId(callId));
+			info.exitPoints.length = 0;
+		}
 	}
 
 	// should not contain any breaks, nexts, or returns, (except for the body if something like 'break()')
@@ -456,28 +475,28 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
-const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: FoldFunctions<ParentInformation, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
-	[BuiltInProcName.IfThenElse]: (folds, call, args) => {
+const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
+	[BuiltInProcName.IfThenElse]: (folds, call, args, down) => {
 		// arguments are in order!
 		return folds.foldIfThenElse(
 			call as RNodeWithParent as RIfThenElse<ParentInformation>, // we will have to this more sophisticated if we rewrite the dfg based generation
 			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
 			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
 			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2],
-			undefined
+			down
 		);
 	}
 };
-function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): typeof cfgFunctionCall {
-	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation => {
+function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>): typeof cfgFunctionCall {
+	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation => {
 		const vtx = graph.getVertex(call.info.id);
 		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
 			const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
 			if(mayMap) {
-				return mayMap(folds, call, args, vtx);
+				return mayMap(folds, call, args, down, vtx);
 			}
 		}
-		const baseCfg = cfgFunctionCall(call, name, args);
+		const baseCfg = cfgFunctionCall(call, name, args, down);
 
 		/* try to resolve the call and link the target definitions */
 		const targets = getAllFunctionCallTargets(call.info.id, graph);

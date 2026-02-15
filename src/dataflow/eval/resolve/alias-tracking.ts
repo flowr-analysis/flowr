@@ -150,8 +150,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
  * @param ctx                - Context used for clean environment
  * @param blocked            - If set, the ids that should not be considered during resolution (=&gt;top)
  */
-export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, resolve, ctx, blocked }: ResolveInfo): ResolveResult {
-	const variableResolve = resolve ?? ctx.config.solver.variables;
+export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { environment, graph, idMap, full = true, ctx, resolve = ctx.config.solver.variables, blocked }: ResolveInfo): ResolveResult {
 	blocked ??= new Set<NodeId>();
 
 	if(id === undefined) {
@@ -168,13 +167,13 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 	switch(node.type) {
 		case RType.Argument:
 			if(node.value) {
-				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve: variableResolve, ctx, blocked });
+				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve, ctx, blocked });
 			}
 		// eslint-disable-next-line no-fallthrough
 		case RType.Symbol:
 			if(full) {
 				if(environment) {
-					return trackAliasInEnvironments(Identifier.toString((node as RSymbol).content), environment, { idMap, resolve: variableResolve, ctx, graph, blocked });
+					return trackAliasInEnvironments(Identifier.toString((node as RSymbol).content), environment, { idMap, resolve, ctx, graph, blocked });
 				} else if(graph && resolve === VariableResolve.Alias) {
 					return trackAliasesInGraph(node.info.id, graph, ctx, idMap);
 				}
@@ -186,7 +185,7 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 		case RType.BinaryOp:
 		case RType.UnaryOp:
 			return setFrom(resolveNode({
-				resolve: variableResolve, node, ctx, environment, graph, idMap, blocked
+				resolve, node, ctx, environment, graph, idMap, blocked
 			}));
 		case RType.String:
 		case RType.Number:

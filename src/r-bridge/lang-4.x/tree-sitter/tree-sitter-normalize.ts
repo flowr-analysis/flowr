@@ -275,7 +275,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					...defaultInfo
 				};
 			case TreeSitterType.IfStatement: {
-				const [ifNode, /* ( */, condition, /* ) */, then, /* else */, ...otherwise] = nonErrorChildren(node);
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				const [ifNode, /* ( */, condition, /* ) */, then, /* else */, ...otherwise] = children;
 				const filteredOtherwise = otherwise.filter(n => n.type !== TreeSitterType.ElseStatement);
 				return {
 					type:      RType.IfThenElse,
@@ -284,11 +285,14 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					otherwise: filteredOtherwise.length > 0 ? ensureExpressionList(convertTreeNode(filteredOtherwise[0])) : undefined,
 					location:  makeSourceRange(ifNode),
 					lexeme:    ifNode.text,
-					...defaultInfo
+					info:      {
+						...defaultInfo.info,
+						adToks: comments.map(c => c[1]),
+					}
 				};
 			}
 			case TreeSitterType.ForStatement: {
-				const children = nonErrorChildren(node);
+				const [comments, children] = splitComments(nonErrorChildren(node));
 				const forNode = children[0]; // we follow with a (
 				const variable = getNodesUntil(children, 'in', 2); // we follow with the "in"
 				const sequence = getNodesUntil(children, ')', 2 + variable.length + 1); // we follow with a (
@@ -315,31 +319,38 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					lexeme:   forNode.text,
 					info:     {
 						fullRange:  range,
-						adToks:     variableComments.concat(sequenceComments).map(c => c[1]),
+						adToks:     variableComments.concat(comments, sequenceComments).map(c => c[1]),
 						fullLexeme: node.text,
 						tsId:       node.id
 					}
 				};
 			}
 			case TreeSitterType.WhileStatement: {
-				const [whileNode, /* ( */, condition, /* ) */, body] = nonErrorChildren(node);
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				const [whileNode, /* ( */, condition, /* ) */, body] = children;
 				return {
 					type:      RType.WhileLoop,
 					condition: convertTreeNode(condition),
 					body:      ensureExpressionList(convertTreeNode(body)),
 					location:  makeSourceRange(whileNode),
 					lexeme:    whileNode.text,
-					...defaultInfo
+					info:      {
+						...defaultInfo.info,
+						adToks: comments.map(c => c[1]),
+					}
 				};
 			}
 			case TreeSitterType.RepeatStatement: {
-				const [repeatNode, body] = nonErrorChildren(node);
+				const [comments, [repeatNode, body]] = splitComments(nonErrorChildren(node));
 				return {
 					type:     RType.RepeatLoop,
 					body:     ensureExpressionList(convertTreeNode(body)),
 					location: makeSourceRange(repeatNode),
 					lexeme:   repeatNode.text,
-					...defaultInfo
+					info:     {
+						...defaultInfo.info,
+						adToks: comments.map(c => c[1]),
+					}
 				};
 			}
 			case TreeSitterType.Call: {
@@ -464,7 +475,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [func, content] = nonErrorChildren(node);
 				// bracket is now [ or [[ and argsClosing is x] or x]]
 				const [bracket, ...argsClosing] = nonErrorChildren(content);
-				const args = splitArrayOn(argsClosing.slice(0, -1), x => x.type === 'comma');
+				const [argsComments, argsNoComments] = splitComments(argsClosing.slice(0, -1));
+				const args = splitArrayOn(argsNoComments, x => x.type === 'comma');
 				return {
 					type:     RType.Access,
 					operator: bracket.text as '[' | '[[',
@@ -472,7 +484,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					access:   args.map(n => n.length === 0 ? EmptyArgument : convertTreeNode(n[0]) as RArgument<TreeSitterInfo>),
 					location: makeSourceRange(bracket),
 					lexeme:   bracket.text,
-					...defaultInfo
+					info:     {
+						...defaultInfo.info,
+						adToks: argsComments.map(c => c[1]),
+					}
 				};
 			}
 			case TreeSitterType.ExtractOperator: {
@@ -538,7 +553,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				};
 			}
 			case TreeSitterType.Argument: {
-				const children = nonErrorChildren(node);
+				const [commentChildren, children] = splitComments(nonErrorChildren(node));
 				if(children.length === 1) {
 					const [arg] = children;
 					return {
@@ -547,7 +562,10 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						value:    convertTreeNode(arg),
 						location: range,
 						lexeme:   node.text,
-						...defaultInfo
+						info:     {
+							...defaultInfo.info,
+							adToks: commentChildren.map(c => c[1]),
+						}
 					};
 				} else {
 					const [nameNode, /* = */, valueNode] = children;
@@ -573,7 +591,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						lexeme:   nameNode.text,
 						info:     {
 							fullRange:  nameRange,
-							adToks:     [],
+							adToks:     commentChildren.map(c => c[1]),
 							fullLexeme: nameNode.text,
 							tsId:       nameNode.id
 						}
@@ -628,7 +646,7 @@ function makeSourceRange(node: SyntaxNode | undefined): SourceRange {
 	];
 }
 
-function splitComments(nodes: readonly SyntaxNode[]): [SyntaxAndRNode[], SyntaxNode[]] {
+function splitComments(nodes: readonly SyntaxNode[]): [comments: SyntaxAndRNode[], others: SyntaxNode[]] {
 	const comments: SyntaxAndRNode[] = [];
 	const others: SyntaxNode[] = [];
 	for(const node of nodes) {

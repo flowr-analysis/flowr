@@ -35,7 +35,7 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 		}
 
 		const interval = IntervalDomain.scalar(node.content.num);
-		this.currentState.set(node.info.id, interval);
+		this.updateState(node.info.id, interval);
 	}
 
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
@@ -47,6 +47,6 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
-		return this.currentState.set(call.id, result);
+		return this.updateState(call.id, result);
 	}
 }

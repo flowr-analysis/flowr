@@ -149,6 +149,7 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includeOnlyIds: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
+	const origId = id;
 	id = escapeId(id);
 
 	if(info.environment && mermaid.includeEnvironments) {
@@ -178,18 +179,20 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	if(mark?.has(id)) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} ${mermaid.markStyle.vertex} `);
 	}
-	if([...mermaid.rootGraph.unknownSideEffects].some(l => normalizeIdToNumberIfPossible(l as string) === normalizeIdToNumberIfPossible(id))) {
+	if(mermaid.rootGraph.unknownSideEffects.values().some(l => normalizeIdToNumberIfPossible(l as string) === normalizeIdToNumberIfPossible(origId))) {
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
-
-	const edges = mermaid.rootGraph.get(normalizeIdToNumberIfPossible(id), true);
+	if(info.tag === VertexType.FunctionDefinition) {
+		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
+	}
+	const edges = mermaid.rootGraph.outgoingEdges(normalizeIdToNumberIfPossible(origId));
 	if(edges === undefined) {
 		mermaid.nodeLines.push('   %% No edges found for ' + id);
 		return;
 	}
-	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']) }] as const);
+	const artificialCdEdges = (info.cds ?? []).map(x => [x.id, { types: new Set<EdgeType | 'CD-True' | 'CD-False'>([x.when ? 'CD-True' : 'CD-False']), file: x.file }] as const);
 	// eslint-disable-next-line prefer-const
-	for(let [target, edge] of [...edges[1], ...artificialCdEdges]) {
+	for(let [target, edge] of [...edges, ...artificialCdEdges]) {
 		if(includeOnlyIds && !includeOnlyIds.has(target)) {
 			continue;
 		}
@@ -201,7 +204,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
 			const style = isBuiltIn(target) ? '-.->' : '-->';
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}"| ${idPrefix}${target}`);
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
+				'file' in edge && edge.file ? `, from: ${edge.file}` : ''
+			}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} ${mermaid.markStyle.edge}`);
@@ -218,9 +223,6 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 				}
 			}
 		}
-	}
-	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
 	}
 }
 

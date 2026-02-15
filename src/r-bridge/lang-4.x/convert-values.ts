@@ -92,7 +92,7 @@ export function number2ts(value: string): RNumberValue {
 	// check for hexadecimal number with floating point addon which is supported by R but not by JS :/
 	let lcValue = value.toLowerCase();
 	/* both checks are case-sensitive! */
-	const last = value[value.length - 1];
+	const last = value.at(-1);
 	const markedAsInt = last === RIntegerMarker;
 	const complexNumber = last === RImaginaryMarker;
 

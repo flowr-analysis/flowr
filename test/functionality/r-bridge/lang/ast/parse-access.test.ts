@@ -173,6 +173,57 @@ describe.sequential('Parse value access', withShell(shell => {
 				}]
 			})
 		);
+		assertAst(label('Multiple Access with Comments', ['name-normal', 'single-bracket-access', 'numbers', 'comments']),
+			shell, `a[3, # comment
+2]`, exprList({
+				type:     RType.Access,
+				location: SourceRange.from(1, 2, 1, 2),
+				lexeme:   '[',
+				operator: '[',
+				info:     {
+					adToks: [{
+						type:     RType.Comment,
+						location: SourceRange.from(1, 6, 1, 14),
+						lexeme:   '# comment',
+						info:     {}
+					}]
+				},
+				accessed: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'a',
+					content:  'a',
+					info:     {}
+				},
+				access: [{
+					type:     RType.Argument,
+					location: SourceRange.from(1, 3, 1, 3),
+					lexeme:   '3',
+					name:     undefined,
+					info:     {},
+					value:    {
+						type:     RType.Number,
+						location: SourceRange.from(1, 3, 1, 3),
+						lexeme:   '3',
+						content:  numVal(3),
+						info:     {}
+					}
+				}, {
+					type:     RType.Argument,
+					location: SourceRange.from(2, 1, 2, 1),
+					lexeme:   '2',
+					name:     undefined,
+					info:     {},
+					value:    {
+						type:     RType.Number,
+						location: SourceRange.from(2, 1, 2, 1),
+						lexeme:   '2',
+						content:  numVal(2),
+						info:     {}
+					}
+				}]
+			})
+		);
 		assertAst(label('Multiple with Empty', ['name-normal', 'single-bracket-access', 'numbers', 'access-with-empty']),
 			shell, 'a[,2,4]', exprList({
 				type:     RType.Access,

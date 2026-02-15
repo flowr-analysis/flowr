@@ -1,6 +1,6 @@
 /* currently this does not do work on function definitions */
 import type { ControlFlowGraph, ControlFlowInformation } from './control-flow-graph';
-import { CfgEdgeType } from './control-flow-graph';
+import { CfgVertex, CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
 import type { CfgPassInfo } from './cfg-simplification';
@@ -13,7 +13,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
 import { visitCfgInOrder } from './simple-visitor';
-import { invertCfg } from './invert-cfg';
+import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
@@ -55,22 +55,21 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	protected override startVisitor(): void {
 		const cfg = this.config.controlFlow.graph;
-		this.invertedCfg = invertCfg(cfg);
 		for(const [from, targets] of cfg.edges()) {
 			for(const [target, edge] of targets) {
-				if(edge.label === CfgEdgeType.Cd) {
-					const og = this.getValue(edge.caused);
-
-					if(og === Ternary.Always && edge.when === 'FALSE') {
+				if(CfgEdge.isControlDependency(edge)) {
+					const og = this.getValue(CfgEdge.unpackCause(edge));
+					const w = CfgEdge.unpackWhen(edge);
+					if(og === Ternary.Always && w === RFalse) {
 						cfg.removeEdge(from, target);
-					} else if(og === Ternary.Never && edge.when === 'TRUE') {
+					} else if(og === Ternary.Never && w === RTrue) {
 						cfg.removeEdge(from, target);
 					}
-				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
+				} else if(CfgEdge.isFlowDependency(edge) && this.isUnconditionalJump(target)) {
 					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
-					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
-						for(const [target, edge] of this.invertedCfg.outgoingEdges(end) ?? []) {
-							if(edge.label === CfgEdgeType.Fd) {
+					for(const end of CfgVertex.getEnd(this.getCfgVertex(target)) as NodeId[] ?? []) {
+						for(const [target, edge] of cfg.ingoingEdges(end) ?? []) {
+							if(CfgEdge.isFlowDependency(edge)) {
 								cfg.removeEdge(target, end);
 							}
 						}
@@ -91,7 +90,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			resolve: this.config.ctx.config.solver.variables,
 			ctx:     this.config.ctx,
 		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'logical'  || !isValue(values.elements[0].value)) {
 			this.unableToCalculateValue(id);
 			return;
 		}
@@ -119,7 +118,7 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 			idMap: this.config.normalizedAst.idMap,
 			ctx:   this.config.ctx,
 		}));
-		if(values === undefined || values.elements.length !== 1 || values.elements[0].type != 'logical'  || !isValue(values.elements[0].value)) {
+		if(values === undefined || values.elements.length !== 1 || values.elements[0].type !== 'logical'  || !isValue(values.elements[0].value)) {
 			return undefined;
 		}
 
@@ -156,13 +155,13 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		if(!body) {
 			return;
 		}
-		visitCfgInOrder(this.config.controlFlow.graph, [body.id], n => {
-			if((body.end as NodeId[])?.includes(n)) {
+		visitCfgInOrder(this.config.controlFlow.graph, [CfgVertex.getId(body)], n => {
+			if(CfgVertex.getEnd(body)?.includes(n)) {
 				return true;
 			}
 			this.inTry.add(n);
 			return false;
-		}, this.invertedCfg);
+		});
 	}
 }
 

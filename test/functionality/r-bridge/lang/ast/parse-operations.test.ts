@@ -98,7 +98,7 @@ describe.sequential('Parse simple operations', withShell(shell => {
 						}
 					]
 				}, {
-					ignoreadToks: false
+					ignoreAdToks: false
 				}
 			);
 		});
@@ -243,7 +243,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						info:     {}
 					}
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 
 			([offsetL, offsetC, offsetR] = [1, 2, 3]);
@@ -321,7 +321,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						}]
 					}
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 
 			// exponentiation and assignments has a different behavior when nested without parenthesis
@@ -364,7 +364,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							info:     {}
 						}
 					}), {
-						ignoreadToks: true
+						ignoreAdToks: true
 					});
 			}
 
@@ -423,7 +423,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 						}]
 					}
 				}), {
-					ignoreadToks: true
+					ignoreAdToks: true
 				});
 		}
 	});

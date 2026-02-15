@@ -1,4 +1,4 @@
-import { CfgEdgeType, type ControlFlowGraph, type ControlFlowInformation } from './control-flow-graph';
+import { CfgEdge, CfgEdgeType, type ControlFlowGraph, type ControlFlowInformation } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { setMinus } from '../util/collections/set';
 import { log } from '../util/log';
@@ -65,7 +65,7 @@ function _checkFdIOCount(cfg: ControlFlowInformation, dir: 'in' | 'out', type: '
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {
 			const important = dir === 'in' ? to : from;
-			if(edge.label === CfgEdgeType.Fd) {
+			if(CfgEdge.isFlowDependency(edge)) {
 				counts.set(important, (counts.get(important) ?? 0) + 1);
 			}
 		}
@@ -86,7 +86,7 @@ function _checkFdIOCount(cfg: ControlFlowInformation, dir: 'in' | 'out', type: '
 function checkNoDirectCycles(cfg: ControlFlowInformation, type: CfgEdgeType): boolean {
 	for(const [from, targets] of cfg.graph.edges()) {
 		for(const [to, edge] of targets) {
-			if(edge.label === type && to === from) {
+			if(CfgEdge.isOfType(edge, type) && to === from) {
 				log.error(`Node ${from} has a direct cycle with ${to}`);
 				return false;
 			}

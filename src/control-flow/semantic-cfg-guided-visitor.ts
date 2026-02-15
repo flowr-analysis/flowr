@@ -1,4 +1,5 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { CfgVertex } from './control-flow-graph';
 import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
@@ -170,7 +171,7 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
 		super.visitUnknown(vertex);
-		const ast = this.getNormalizedAst(vertex.id);
+		const ast = this.getNormalizedAst(CfgVertex.getId(vertex));
 		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
 			this.onProgram(ast);
 		}
@@ -317,6 +318,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Recall:
 				return this.onRecallCall({ call });
 			case BuiltInProcName.Default:
+			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
 				return this.onDefaultFunctionCall({ call });

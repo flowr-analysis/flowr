@@ -118,7 +118,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			return undefined;
 		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
 			value = [value[0], 0, value[2], 0];
-		} else if(key === 'treeSitterId') {
+		} else if(key === 'tsId') {
 			// we ignore tree-sitter-specific metadata
 			return undefined;
 		}
@@ -241,7 +241,7 @@ export function sameForSteps<T, S>(steps: S[], wanted: T): { step: S, wanted: T 
  * @see sameForSteps
  */
 export function assertAst(name: TestLabel | string, shell: RShell, input: string, expected: RExpressionList, userConfig?: Partial<TestConfiguration & {
-	ignoreadToks:   boolean,
+	ignoreAdToks:   boolean,
 	ignoreColumns:  boolean,
 	skipTreeSitter: boolean
 }>) {
@@ -264,11 +264,11 @@ export function assertAst(name: TestLabel | string, shell: RShell, input: string
 		});
 		afterAll(() => ts?.close());
 		test('shell', function() {
-			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreadToks, userConfig?.ignoreColumns === true,
+			assertAstEqual(shellAst as RProject, expected, !userConfig?.ignoreAdToks, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(shellAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('tree-sitter', function() {
-			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreadToks, userConfig?.ignoreColumns === true,
+			assertAstEqual(tsAst as RProject, expected, !userConfig?.ignoreAdToks, userConfig?.ignoreColumns === true,
 				() => `got: ${JSON.stringify(tsAst)}, vs. expected: ${JSON.stringify(expected)}`);
 		});
 		test.skipIf(skipTreeSitter)('compare', function() {

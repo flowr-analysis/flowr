@@ -4,6 +4,7 @@ import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lan
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { FunctionArgument } from '../../../../../graph/graph';
 
 
 
@@ -40,5 +41,5 @@ export function wrapArgumentsUnnamed<OtherInfo>(
 	nodes: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
 	idMap: AstIdMap<OtherInfo>
 ) {
-	return nodes.map(n => n === EmptyArgument || n?.type === RType.Argument ? n : toUnnamedArgument(n, idMap));
+	return nodes.map(n => FunctionArgument.isEmpty(n) || n?.type === RType.Argument ? n : toUnnamedArgument(n, idMap));
 }

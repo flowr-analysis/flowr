@@ -36,7 +36,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 		assertAst(label('No Args', ['normal-definition', 'name-normal', 'numbers', 'grouping', ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['*'].capabilities]),
@@ -101,7 +101,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 	});
@@ -134,7 +134,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 		assertAst(label('Multiple parameters', ['normal-definition', 'name-normal', 'formals-named', 'grouping']),
@@ -175,7 +175,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 	});
@@ -227,7 +227,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 				]
 			},
 		}), {
-			ignoreadToks: false
+			ignoreAdToks: false
 		}
 	);
 
@@ -260,7 +260,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 
@@ -295,7 +295,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 
@@ -337,7 +337,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 	});
@@ -378,7 +378,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					info:     {}
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 
@@ -432,7 +432,7 @@ describe.sequential('Parse function definitions', withShell(shell => {
 					}]
 				}
 			}), {
-				ignoreadToks: true
+				ignoreAdToks: true
 			}
 		);
 	});

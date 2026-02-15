@@ -102,6 +102,13 @@ export interface DataflowGraphJson {
 	readonly _unknownSideEffects: UnknownSideEffect[]
 }
 
+export interface LazyFunctionStatistics {
+    /** Total count of function definition vertices registered in the graph */
+    totalFunctionDefinitions:  number;
+    /** Number of times lazy function vertices were materialized (called) */
+    lazyFunctionsMaterialized: number;
+}
+
 /**
  * An unknown side effect describes something that we cannot handle correctly (in all cases).
  * For example, `load` will be marked as an unknown side effect as we have no idea of how it will affect the program.
@@ -152,6 +159,48 @@ export class DataflowGraph<
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
 	/**
+	 * Get the current lazy function evaluation statistics.
+	 * @returns Statistics about lazy function definitions and materializations
+	 */
+	public getLazyFunctionStatistics(): Readonly<LazyFunctionStatistics> {
+		const fns = this.vertexIdsOfType(VertexType.FunctionDefinition).length;
+		return {
+			totalFunctionDefinitions:  fns,
+			lazyFunctionsMaterialized: fns - this.countLazyFunctionDefinitions(),
+		};
+	}
+
+	public countLazyFunctionDefinitions(): number {
+		let count = 0;
+
+		for(const id of this.vertexIdsOfType(VertexType.FunctionDefinition)) {
+			const vtx = this.peekVertex(id);
+			if(vtx !== undefined && isLazyFunctionDefinitionVertex(vtx)) {
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+	public countLazyFunctionDefinitionsByScan(): number {
+		let count = 0;
+		console.log(`Scanning for lazy function definitions among ${this.vertexInformation.size} vertices...`);
+		for(const [, vertex] of this.vertexInformation) {
+			if(vertex.tag === VertexType.FunctionDefinition){
+				console.log(isLazyFunctionDefinitionVertex(vertex), vertex.id);
+			}
+			if(vertex.tag === VertexType.FunctionDefinition && isLazyFunctionDefinitionVertex(vertex)) {
+				console.log(`Found lazy function definition vertex with id ${vertex.id}`);
+				count++;
+			}
+		}
+
+		return count;
+	}
+
+
+	/**
 	 * Materializes a lazy function definition vertex if it hasn't been materialized yet.
 	 * This converts a lazy stub into a fully analyzed function definition with its complete subflow.
 	 * @param id - The node id of the lazy vertex
@@ -161,6 +210,14 @@ export class DataflowGraph<
 		if(!isLazyFunctionDefinitionVertex<ParentInformation>(lazyVertex)) {
 			return;
 		}
+		const stack = new Error().stack;
+		console.log(`Materializing lazy function definition vertex with id ${id}, called from `, stack);
+
+		/* remove vertex id from types */
+		const types = this.vertexIdsOfType(VertexType.FunctionDefinition);
+		this.types.set(VertexType.FunctionDefinition, types.filter(vId => vId !== id));
+
+
 		// Materialize the lazy vertex by calling the materialization function
 		// This will merge the fully analyzed function definition into this graph
 		materializeLazyFunctionDefinitionVertex(this, lazyVertex);
@@ -176,7 +233,7 @@ export class DataflowGraph<
 			rootVertices:        Array.from(this.rootVertices),
 			vertexInformation:   Array.from(this.vertexInformation.entries()),
 			edgeInformation:     Array.from(this.edgeInformation.entries()).map(([id, edges]) => [id, Array.from(edges.entries())]),
-			_unknownSideEffects: Array.from(this._unknownSideEffects)
+			_unknownSideEffects: Array.from(this._unknownSideEffects),
 		};
 	}
 
@@ -400,7 +457,9 @@ export class DataflowGraph<
 		} as unknown as Vertex);
 		const has =  this.types.get(vertex.tag);
 		if(has) {
-			has.push(vertex.id);
+			if(!has.includes(vertex.id)) {
+				has.push(vertex.id);
+			}
 		} else {
 			this.types.set(vertex.tag, [vertex.id]);
 		}

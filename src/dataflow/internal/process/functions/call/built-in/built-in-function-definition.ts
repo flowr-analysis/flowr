@@ -160,7 +160,10 @@ export function processFunctionDefinitionEagerly<OtherInfo>(
 
 	// functions can be called multiple times,
 	// so if they have a global effect, we have to link them as if they would be executed a loop
-	/* theoretically, we should just check if there is a global effect-write somewhere within */
+	/* theoretically, we should just check if there is a g
+
+
+    lobal effect-write somewhere within */
 	if(remainingRead.length > 0) {
 		const nameIdShares = produceNameSharedIdMap(remainingRead);
 		const definedInLocalEnvironment = new Set(Array.from(bodyEnvironment.current.memory.values()).flat().map(d => d.nodeId));

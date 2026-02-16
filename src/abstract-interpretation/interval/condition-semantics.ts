@@ -8,13 +8,17 @@ import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { AbstractDomain } from '../domains/abstract-domain';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Ternary } from '../../util/logic';
+import { SignificancePrecisionComparison, Ternary } from '../../util/logic';
 
 const IntervalConditionSemanticsMapper = [
 	[Identifier.make('!'), unaryOpSemantics(applyNegatedIntervalConditionSemantics), unaryOpSemantics(applyIntervalConditionSemantics)],
 	[Identifier.make('('), unaryOpSemantics(applyIntervalConditionSemantics), unaryOpSemantics(applyNegatedIntervalConditionSemantics)],
 	[Identifier.make('=='), binaryOpSemantics(defaultEqualsOp), binaryOpSemantics(defaultNotEqualsOp)],
 	[Identifier.make('!='), binaryOpSemantics(defaultNotEqualsOp), binaryOpSemantics(defaultEqualsOp)],
+	[Identifier.make('>'), binaryOpSemantics(defaultGreaterOp), binaryOpSemantics(defaultLessEqualOp)],
+	[Identifier.make('>='), binaryOpSemantics(defaultGreaterEqualOp), binaryOpSemantics(defaultLessOp)],
+	[Identifier.make('<'), binaryOpSemantics(defaultLessOp), binaryOpSemantics(defaultGreaterEqualOp)],
+	[Identifier.make('<='), binaryOpSemantics(defaultLessEqualOp), binaryOpSemantics(defaultGreaterOp)],
 ] as const satisfies IntervalConditionSemanticsMapperInfo[];
 
 type IntervalConditionSemanticsMapperInfo = [identifier: Identifier, semantics: NAryFnSemantics, negatedSemantics: NAryFnSemantics];
@@ -174,4 +178,68 @@ function defaultNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, currentStat
 	}
 
 	return currentState;
+}
+
+function defaultGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	if(isUndefined(currentState)) {
+		return currentState;
+	}
+
+	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
+	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
+
+	if(leftValue?.isTop() || rightValue?.isTop()) {
+		return currentState;
+	}
+
+	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
+		const [a, b] = leftValue.value;
+		const [c, d] = rightValue.value;
+
+		if(c < b || SignificancePrecisionComparison.isLowerWithSignificancePrecision(c, b, leftValue.significantFigures) != Ternary.Never) {
+			const maxAC = a < c ? c : a;
+			currentState.set(leftNodeId, leftValue.create([maxAC, b]));
+			const minBD = b < d ? b : d;
+			currentState.set(rightNodeId, rightValue.create([c, minBD]));
+			return currentState;
+		}
+	}
+
+	return currentState.bottom();
+}
+
+function defaultLessOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	return defaultGreaterOp(rightNodeId, leftNodeId, currentState, visitor);
+}
+
+function defaultGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	if(isUndefined(currentState)) {
+		return currentState;
+	}
+
+	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
+	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
+
+	if(leftValue?.isTop() || rightValue?.isTop()) {
+		return currentState;
+	}
+
+	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
+		const [a, b] = leftValue.value;
+		const [c, d] = rightValue.value;
+
+		if(c <= b || SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(c, b, leftValue.significantFigures) != Ternary.Never) {
+			const maxAC = a < c ? c : a;
+			currentState.set(leftNodeId, leftValue.create([maxAC, b]));
+			const minBD = b < d ? b : d;
+			currentState.set(rightNodeId, rightValue.create([c, minBD]));
+			return currentState;
+		}
+	}
+
+	return currentState.bottom();
+}
+
+function defaultLessEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	return defaultGreaterEqualOp(rightNodeId, leftNodeId, currentState, visitor);
 }

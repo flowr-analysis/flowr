@@ -1,4 +1,4 @@
-import { assert, beforeAll, expect, test } from 'vitest';
+import { assert, beforeAll, test } from 'vitest';
 import type {
 	AbstractDataFrameShape,
 	DataFrameDomain,
@@ -42,7 +42,6 @@ import { decorateLabelContext, type TestLabel } from '../../_helper/label';
 import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../../_helper/shell';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { SourceRange } from '../../../../src/util/range';
-import { Ternary } from '../../../../src/util/logic';
 
 /**
  * The default flowR configuration options for performing abstract interpretation.
@@ -336,9 +335,9 @@ function assertPropertyMatches<K extends keyof AbstractDataFrameShape, T extends
 ): void {
 	switch(matching) {
 		case DomainMatchingType.Exact:
-			return expect(inferred.equals(expected), `${type} differs: expected ${inferred.toString()} to equal ${expected.toString()}`).toBe(Ternary.Always);
+			return assert.ok(inferred.equals(expected), `${type} differs: expected ${inferred.toString()} to equal ${expected.toString()}`);
 		case DomainMatchingType.Overapproximation:
-			return expect(expected.leq(inferred), `${type} is no over-approximation: expected ${inferred.toString()} to be an over-approximation of ${expected.toString()}`).toBe(Ternary.Always);
+			return assert.ok(expected.leq(inferred), `${type} is no over-approximation: expected ${inferred.toString()} to be an over-approximation of ${expected.toString()}`);
 		default:
 			assertUnreachable(matching);
 	}

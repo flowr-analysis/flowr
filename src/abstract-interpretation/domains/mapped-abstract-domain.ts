@@ -1,6 +1,5 @@
 import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain, domainElementToString } from './abstract-domain';
 import { Top } from './lattice';
-import { Ternary } from '../../util/logic';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */
 export type ConcreteMap<Key, Domain extends AnyAbstractDomain> = ReadonlyMap<Key, ConcreteDomain<Domain>>;
@@ -52,50 +51,36 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 		return result;
 	}
 
-	public equals(other: this): Ternary {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
-			return Ternary.Always;
+			return true;
 		} else if(this.value.size !== other.value.size) {
-			return Ternary.Never;
+			return false;
 		}
-
-		let equals = Ternary.Always;
-
 		for(const [key, value] of this.value) {
 			const otherValue = other.get(key);
 
-			if(otherValue === undefined || value.equals(otherValue) === Ternary.Never) {
-				return Ternary.Never;
-			}
-
-			if(value.equals(otherValue) === Ternary.Maybe) {
-				equals = Ternary.Maybe;
+			if(otherValue === undefined || !value.equals(otherValue)) {
+				return false;
 			}
 		}
-		return equals;
+		return true;
 	}
 
-	public leq(other: this): Ternary {
+	public leq(other: this): boolean {
 		if(this.value === other.value) {
-			return Ternary.Always;
+			return true;
 		} else if(this.value.size > other.value.size) {
-			return Ternary.Never;
+			return false;
 		}
-
-		let leq = Ternary.Always;
-
 		for(const [key, value] of this.value) {
 			const otherValue = other.get(key);
 
-			if(otherValue === undefined || value.leq(otherValue) === Ternary.Never) {
-				return Ternary.Never;
-			}
-
-			if(value.leq(otherValue) === Ternary.Maybe) {
-				leq = Ternary.Maybe;
+			if(otherValue === undefined || !value.leq(otherValue)) {
+				return false;
 			}
 		}
-		return leq;
+		return true;
 	}
 
 	public join(other: this): this {

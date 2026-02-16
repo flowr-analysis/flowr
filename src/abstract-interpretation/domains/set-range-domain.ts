@@ -122,35 +122,29 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return SetRangeDomain.bottom(this.limit, this.setType);
 	}
 
-	public equals(other: this): Ternary {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
-			return Ternary.Always;
+			return true;
 		} else if(this.value === Bottom || other.value === Bottom || !setEquals(this.value.min, other.value.min)) {
-			return Ternary.Never;
+			return false;
 		} else if(this.value.range === other.value.range) {
-			return Ternary.Always;
+			return true;
 		}
-		if(this.value.range !== Top && other.value.range !== Top && setEquals(this.value.range, other.value.range)) {
-			return Ternary.Always;
-		}
-		return Ternary.Never;
+		return this.value.range !== Top && other.value.range !== Top && setEquals(this.value.range, other.value.range);
 	}
 
-	public leq(other: this): Ternary {
+	public leq(other: this): boolean {
 		const thisLower = this.lower(), thisUpper = this.upper();
 		const otherLower = other.lower(), otherUpper = other.upper();
 
 		if(thisLower === Bottom || thisUpper === Bottom) {
-			return Ternary.Always;
+			return true;
 		} else if(otherLower === Bottom || otherUpper === Bottom || !otherLower.isSubsetOf(thisLower)) {
-			return Ternary.Never;
+			return false;
 		} else if(otherUpper === Top) {
-			return Ternary.Always;
+			return true;
 		}
-		if(thisUpper !== Top && thisUpper.isSubsetOf(otherUpper)) {
-			return Ternary.Always;
-		}
-		return Ternary.Never;
+		return thisUpper !== Top && thisUpper.isSubsetOf(otherUpper);
 	}
 
 	public join(other: SetRangeLift<T> | ArrayRangeValue<T>): this;

@@ -9,7 +9,6 @@ import type { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DEFAULT_SIGNIFICANT_FIGURES } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { assertUnreachable, isUndefined } from '../../../../src/util/assert';
-import { Ternary } from '../../../../src/util/logic';
 
 /**
  * Helper for creating interval values and expected results for testing the interval domain inference.
@@ -114,13 +113,10 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 			match for ${criterionExpected.domain?.toString()} in final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
 
 			if(!isUndefined(inferredIntervalDomain) && !isUndefined(criterionExpected.domain)) {
-				// It is important to use the expected domain as base, as it contains the significant figures information (precision) for the comparison.
-				const expectedResult = isUndefined(criterionExpected.domain.significantFigures) ? Ternary.Always : Ternary.Maybe;
-
 				if(criterionExpected.matching === DomainMatchingType.Exact) {
-					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(expectedResult);
+					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
-					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(expectedResult);
+					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
 				} else {
 					assertUnreachable(criterionExpected.matching);
 				}

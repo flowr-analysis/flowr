@@ -20,7 +20,6 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
-import { Ternary } from '../util/logic';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -215,7 +214,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this.visited.set(nodeId, visitedCount + 1);
 
 			// continue visiting after widening point if visited for the first time or the state changed
-			return visitedCount === 0 || oldState.equals(this._currentState) === Ternary.Never;
+			return visitedCount === 0 || !oldState.equals(this._currentState);
 		} else {
 			this.onVisitNode(vertexId);
 

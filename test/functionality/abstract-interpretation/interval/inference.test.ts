@@ -294,10 +294,10 @@ describe('Interval Inference', () => {
 			print(x)
 		`, {
 			'1@x': { domain: IntervalTests.scalar(1) },
-			'2@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation },
-			'3@x': { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation },
-			'4@x': { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation },
-			'6@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }
+			'2@x': { domain: IntervalTests.scalar(1) },
+			'3@x': { domain: IntervalTests.scalar(2) },
+			'4@x': { domain: IntervalTests.scalar(1) },
+			'6@x': { domain: IntervalTests.bottom() }
 		});
 		testIntervalDomain(`
 			x <- 0
@@ -344,6 +344,17 @@ describe('Interval Inference', () => {
 			'3@x': { domain: IntervalTests.interval(1, Infinity) },
 			'5@x': { domain: IntervalTests.bottom() },
 		});
+
+		testIntervalDomain(`
+			x <- 0
+			while (x != 2) {
+				x <- x + 1
+			}
+			print(x)
+		`, {
+			'3@x': { domain: IntervalTests.interval(1, 2), matching: DomainMatchingType.Overapproximation }, // Due to reads edge from 2@x to 1@x (still there after first iteration where x is re-defined)
+			'5@x': { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation },
+		});
 	});
 
 	describe('repeat semantics', () => {
@@ -376,6 +387,36 @@ describe('Interval Inference', () => {
 			'3@x': { domain: IntervalTests.scalar(1) },
 			'5@x': { domain: IntervalTests.bottom() },
 			'7@x': { domain: IntervalTests.scalar(1) }
+		});
+
+		testIntervalDomain(`
+			x <- 5
+			if (x == 5) {
+				x <- x + 1
+			} else {
+				x <- x - 1
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.scalar(5) },
+			'3@x': { domain: IntervalTests.scalar(6) },
+			'5@x': { domain: IntervalTests.bottom() },
+			'7@x': { domain: IntervalTests.scalar(6) }
+		});
+
+		testIntervalDomain(`
+			x <- 1
+			if ((2 * x + 3) == 5) {
+				x <- x + 1
+			} else {
+				x <- x - 1
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.scalar(1) },
+			'3@x': { domain: IntervalTests.scalar(2) },
+			'5@x': { domain: IntervalTests.bottom() },
+			'7@x': { domain: IntervalTests.scalar(2) }
 		});
 	});
 });

@@ -62,14 +62,12 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 		const conditionHeadState = this.trace.get(conditionNodeId);
 		const newState = isUndefined(conditionHeadState) ? undefined : AbstractDomain.joinAll([conditionHeadState]);
 
-		const vertex = this.config.dfg.getVertex(conditionNodeId);
-
 		let result: MutableStateAbstractDomain<IntervalDomain> | undefined;
 
 		if(trueBranch) {
-			result = applyIntervalConditionSemantics(vertex, newState, this, this.config.dfg);
+			result = applyIntervalConditionSemantics(conditionNodeId, newState, this, this.config.dfg);
 		} else {
-			result = applyNegatedIntervalConditionSemantics(vertex, newState, this, this.config.dfg);
+			result = applyNegatedIntervalConditionSemantics(conditionNodeId, newState, this, this.config.dfg);
 		}
 
 		return result;

@@ -1,6 +1,5 @@
 import { guard } from '../../util/assert';
 import { Bottom, BottomSymbol, type Lattice, Top, TopSymbol } from './lattice';
-import type { Ternary } from '../../util/logic';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.
@@ -41,9 +40,9 @@ implements Lattice<Abstract, Top, Bot, Value> {
 
 	public abstract bottom(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
 
-	public abstract equals(other: this): Ternary;
+	public abstract equals(other: this): boolean;
 
-	public abstract leq(other: this): Ternary;
+	public abstract leq(other: this): boolean;
 
 	public abstract join(other: this): this;
 

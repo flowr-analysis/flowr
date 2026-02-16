@@ -1,5 +1,3 @@
-import type { Ternary } from '../../util/logic';
-
 /**
  * The Top symbol to represent the Top element of complete lattices (e.g. of abstract domains).
  */
@@ -43,12 +41,12 @@ export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value
 	/**
 	 * Checks whether the current abstract value equals to another abstract value.
 	 */
-	equals(other: this): Ternary;
+	equals(other: this): boolean;
 
 	/**
 	 * Checks whether the current abstract value is less than or equal to another abstract value with respect to the partial order of the lattice.
 	 */
-	leq(other: this): Ternary;
+	leq(other: this): boolean;
 
 	/**
 	 * Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice.

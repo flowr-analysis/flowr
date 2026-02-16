@@ -84,7 +84,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return IntervalDomain.bottom();
 	}
 
-	public equals(other: this): Ternary {
+	public equals(other: this): boolean {
 		if(this.isValue() && other.isValue()) {
 			const [lowerA, upperA] = this.value;
 			const [lowerB, upperB] = other.value;
@@ -92,25 +92,19 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			const lowerEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(lowerA, lowerB, this.significantFigures);
 			const upperEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(upperA, upperB, this.significantFigures);
 
-			if(lowerEqual === Ternary.Never || upperEqual === Ternary.Never) {
-				return Ternary.Never;
-			} else if(lowerEqual === Ternary.Always && upperEqual === Ternary.Always) {
-				return Ternary.Always;
-			} else {
-				return Ternary.Maybe;
-			}
+			return !(lowerEqual === Ternary.Never || upperEqual === Ternary.Never);
 		}
 
-		return this.value === other.value ? Ternary.Always : Ternary.Never;
+		return this.value === other.value;
 	}
 
-	public leq(other: this): Ternary {
+	public leq(other: this): boolean {
 		if(this.value === Bottom) {
-			return Ternary.Always;
+			return true;
 		}
 
 		if(other.value === Bottom) {
-			return Ternary.Never;
+			return false;
 		}
 
 		const [thisLower, thisUpper] = this.value;
@@ -119,13 +113,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		const lowerLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(otherLower, thisLower, this.significantFigures);
 		const upperLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(thisUpper, otherUpper, this.significantFigures);
 
-		if(lowerLeq === Ternary.Never || upperLeq === Ternary.Never) {
-			return Ternary.Never;
-		} else if(lowerLeq === Ternary.Always && upperLeq === Ternary.Always) {
-			return Ternary.Always;
-		} else {
-			return Ternary.Maybe;
-		}
+		return !(lowerLeq === Ternary.Never || upperLeq === Ternary.Never);
 	}
 
 	public join(other: IntervalLift): this;

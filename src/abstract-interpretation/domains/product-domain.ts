@@ -1,6 +1,5 @@
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
-import { Ternary } from '../../util/logic';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct = Record<string, AnyAbstractDomain>;
@@ -39,42 +38,28 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		return result;
 	}
 
-	public equals(other: this): Ternary {
+	public equals(other: this): boolean {
 		if(this.value === other.value) {
-			return Ternary.Always;
+			return true;
 		}
-
-		let equals = Ternary.Always;
-
 		for(const key in this.value) {
-			const keyEquals = this.value[key].equals(other.value[key]);
-			if(keyEquals === Ternary.Never) {
-				return Ternary.Never;
-			}
-			if(keyEquals === Ternary.Maybe) {
-				equals = Ternary.Maybe;
+			if(!this.value[key].equals(other.value[key])) {
+				return false;
 			}
 		}
-		return equals;
+		return true;
 	}
 
-	public leq(other: this): Ternary {
+	public leq(other: this): boolean {
 		if(this.value === other.value) {
-			return Ternary.Always;
+			return true;
 		}
-
-		let leq = Ternary.Always;
-
 		for(const key in this.value) {
-			const keyLeq = this.value[key].leq(other.value[key]);
-			if(keyLeq === Ternary.Never) {
-				return Ternary.Never;
-			}
-			if(keyLeq === Ternary.Maybe) {
-				leq = Ternary.Maybe;
+			if(!this.value[key].leq(other.value[key])) {
+				return false;
 			}
 		}
-		return leq;
+		return true;
 	}
 
 	public join(other: this): this {

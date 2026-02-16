@@ -3,7 +3,6 @@ import type { AnyAbstractDomain } from './abstract-domain';
 import { BottomSymbol, Top, TopSymbol } from './lattice';
 import type { ConcreteMap } from './mapped-abstract-domain';
 import { MappedAbstractDomain } from './mapped-abstract-domain';
-import { Ternary } from '../../util/logic';
 
 /**
  * A state abstract domain as mapping of AST node IDs of a program to abstract values of an abstract domain.
@@ -50,18 +49,18 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 		return this.create(new Map());
 	}
 
-	public equals(other: this): Ternary {
+	public equals(other: this): boolean {
 		if(this._isBottom !== other._isBottom) {
-			return Ternary.Never;
+			return false;
 		}
 		return super.equals(other);
 	}
 
-	public leq(other: this): Ternary {
+	public leq(other: this): boolean {
 		if(this._isBottom) {
-			return Ternary.Always;
+			return true;
 		} else if(other._isBottom) {
-			return Ternary.Never;
+			return false;
 		}
 		return super.leq(other);
 	}

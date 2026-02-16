@@ -170,7 +170,7 @@ function defaultNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, currentStat
 		const [a, b] = leftValue.value;
 		const [c, d] = rightValue.value;
 
-		if(a == b && c == d && leftValue?.equals(rightValue) != Ternary.Never) {
+		if(a == b && c == d && leftValue?.equals(rightValue)) {
 			if(isNotUndefined(currentState)) {
 				return currentState.bottom();
 			}

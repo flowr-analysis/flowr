@@ -78,18 +78,12 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		return SetUpperBoundDomain.bottom(this.limit, this.setType);
 	}
 
-	public equals(other: this): Ternary {
-		if(this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value))) {
-			return Ternary.Always;
-		}
-		return Ternary.Never;
+	public equals(other: this): boolean {
+		return this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value));
 	}
 
-	public leq(other: this): Ternary {
-		if(this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value))) {
-			return Ternary.Always;
-		}
-		return Ternary.Never;
+	public leq(other: this): boolean {
+		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
 	}
 
 	public join(other: SetUpperBoundLift<T> | T[]): this;
@@ -147,7 +141,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		} else if(other.value === Bottom) {
 			return this.create(this.value);
 		}
-		return other.leq(this) !== Ternary.Never ? this.create(this.value) : this.top();
+		return other.leq(this) ? this.create(this.value) : this.top();
 	}
 
 	public narrow(other: this): this {

@@ -19,6 +19,7 @@ const IntervalConditionSemanticsMapper = [
 	[Identifier.make('>='), binaryOpSemantics(defaultGreaterEqualOp), binaryOpSemantics(defaultLessOp)],
 	[Identifier.make('<'), binaryOpSemantics(defaultLessOp), binaryOpSemantics(defaultGreaterEqualOp)],
 	[Identifier.make('<='), binaryOpSemantics(defaultLessEqualOp), binaryOpSemantics(defaultGreaterOp)],
+	[Identifier.make('is.na'), unaryOpSemantics(defaultIsNaFn), unaryOpSemantics(defaultNegatedIsNaFn)]
 ] as const satisfies IntervalConditionSemanticsMapperInfo[];
 
 type IntervalConditionSemanticsMapperInfo = [identifier: Identifier, semantics: NAryFnSemantics, negatedSemantics: NAryFnSemantics];
@@ -242,4 +243,22 @@ function defaultGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentS
 
 function defaultLessEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
 	return defaultGreaterEqualOp(rightNodeId, leftNodeId, currentState, visitor);
+}
+
+function defaultIsNaFn(argNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	if(isUndefined(currentState)) {
+		return currentState;
+	}
+
+	const argValue = visitor.getAbstractValue(argNodeId, currentState);
+
+	if(isUndefined(argValue)) {
+		return currentState;
+	}
+
+	return currentState.bottom();
+}
+
+function defaultNegatedIsNaFn(argNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined) {
+	return currentState;
 }

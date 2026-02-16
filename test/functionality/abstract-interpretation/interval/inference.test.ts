@@ -418,5 +418,35 @@ describe('Interval Inference', () => {
 			'5@x': { domain: IntervalTests.bottom() },
 			'7@x': { domain: IntervalTests.scalar(2) }
 		});
+
+		testIntervalDomain(`
+			x <- 1
+			if (is.na(x)) {
+				x <- x + 1
+			} else {
+				x <- x - 1
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.scalar(1) },
+			'3@x': { domain: IntervalTests.bottom() },
+			'5@x': { domain: IntervalTests.scalar(0) },
+			'7@x': { domain: IntervalTests.scalar(0) }
+		});
+
+		testIntervalDomain(`
+			x <- "Hallo"
+			if (is.na(x)) {
+				x <- 1
+			} else {
+				x <- -1
+			}
+			print(x)
+		`, {
+			'1@x': { domain: IntervalTests.top() },
+			'3@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }, // OA due to missing string domain/resolving
+			'5@x': { domain: IntervalTests.scalar(-1) },
+			'7@x': { domain: IntervalTests.scalar(-1), matching: DomainMatchingType.Overapproximation }, // OA result from above
+		});
 	});
 });

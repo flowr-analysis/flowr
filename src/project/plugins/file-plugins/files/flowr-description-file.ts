@@ -123,6 +123,15 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	}
 
 	/**
+	 * Returns the parsed linking dependencies from the 'LinkingTo' field in the DESCRIPTION file.
+	 * This field is used for packages that need to link to C/C++ code and is treated similarly to 'Imports'.
+	 */
+	public linkingTo(): readonly Package[] | undefined {
+		const lt = this.content().get('LinkingTo');
+		return lt ? parsePackagesWithVersions(lt, 'package') : undefined;
+	}
+
+	/**
 	 * Returns the parsed imports from the 'Imports' field in the DESCRIPTION file.
 	 */
 	public imports(): readonly Package[] | undefined {

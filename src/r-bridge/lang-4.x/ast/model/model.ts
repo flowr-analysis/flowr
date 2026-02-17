@@ -1,4 +1,5 @@
 import type { SourceRange } from '../../../../util/range';
+import { SourceLocation } from '../../../../util/range';
 import type { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
 import type { RNumber } from './nodes/r-number';
@@ -23,6 +24,8 @@ import type { RUnaryOp } from './nodes/r-unary-op';
 import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
+import type { ParentInformation } from './processing/decorate';
+import type { NodeId } from './processing/node-id';
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -80,9 +83,7 @@ export interface WithChildren<Info, Children extends RAstNodeBase<Info, string |
  * It is intended to help humans understand the code.
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {
-
-}
+export interface Leaf<Info = NoInfo, LexemeType = string> extends RAstNodeBase<Info, LexemeType> {}
 
 /**
  * Indicates, that the respective {@link RAstNodeBase} node has known source code
@@ -145,10 +146,36 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
  * exclusive, some nodes can appear in multiple subtypes.
  * @see {@link recoverName} - to receive the name/lexeme from such a node
  * @see {@link recoverContent} - for a more rigorous approach to get the content of a node within a {@link DataflowGraph|dataflow graph}
+ * @see {@link RNode.getLocation} - to get the location of a node and other helpful functions provided by the {@link RNode} helper object
  */
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>;
+
+/**
+ * Helper object to provide helper functions for {@link RNode|RNodes}.
+ */
+export const RNode = {
+	/**
+	 * A helper function to retrieve the location of a given node, if available.
+	 * @see SourceLocation.fromNode
+	 */
+	getLocation(this: void, node: RNode): SourceLocation | undefined {
+		return SourceLocation.fromNode(node);
+	},
+	/**
+	 * A helper function to retrieve the id of a given node, if available.
+	 */
+	getId(this: void, node: RNode<ParentInformation>): NodeId {
+		return node.info.id;
+	},
+	/**
+	 * A helper function to retrieve the type of a given node.
+	 */
+	getType(this: void, node: RNode): RType {
+		return node.type;
+	}
+} as const;
 
 export type OtherInfoNode = RNode | RDelimiter;
 

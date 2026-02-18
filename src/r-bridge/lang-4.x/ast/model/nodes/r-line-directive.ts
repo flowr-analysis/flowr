@@ -1,4 +1,4 @@
-import type { Leaf, Location, NoInfo } from '../model';
+import type { Leaf, Location, NoInfo, RNode } from '../model';
 import { RType } from '../type';
 
 /**
@@ -18,7 +18,7 @@ export const RLineDirective = {
 	/**
 	 * Type guard for {@link RLineDirective} nodes.
 	 */
-	is<Info = NoInfo>(this: void, node: RLineDirective<Info> | undefined): node is RLineDirective<Info> {
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLineDirective<Info> {
 		return node?.type === RType.LineDirective;
 	}
 } as const;

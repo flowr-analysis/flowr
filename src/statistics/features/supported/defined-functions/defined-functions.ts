@@ -119,7 +119,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 					if(DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 						const target = input.normalizedRAst.idMap.get(targetId);
 						guard(target !== undefined, 'Dataflow edge points to unknown node');
-						const name = RNode.lexeme(node);
+						const name = RNode.lexeme(target);
 						if(name) {
 							assigned.add(name);
 						}

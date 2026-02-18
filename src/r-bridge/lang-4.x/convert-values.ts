@@ -170,7 +170,7 @@ export const RStringValue = {
 				str:    value.slice(1, -1),
 				quotes: init
 			};
-		} else if(init === 'r' || init === 'R' && value.length >= 3) {
+		} else if((init === 'r' || init === 'R') && value.length >= 3) {
 			const flags = value[1];
 			if(flags === '"' || flags === '\'') {
 				return {

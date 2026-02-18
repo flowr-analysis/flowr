@@ -187,14 +187,14 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ useAsProcessor = BuiltInProcName.Default, forceArgs }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs'>
 ): DataflowInformation {
-	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
-	const g = res.graph;
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	const g = information.graph;
 	for(const arg of processedArguments) {
 		if(arg) {
 			g.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 		}
 	}
-	return res;
+	return information;
 }
 
 /**

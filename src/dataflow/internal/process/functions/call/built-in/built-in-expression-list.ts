@@ -31,15 +31,14 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const readId = readName ? Identifier.getName(readName) : undefined;
-
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
+		const readId = readName ? Identifier.getName(readName) : undefined;
 		const has = remainingRead.get(readId);
 		if(has) {
-			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
+			if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
@@ -56,7 +55,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const rid = read.nodeId;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && NodeId.isBuiltIn(target.definedAt)) {
+		if(NodeId.isBuiltIn(target.definedAt) && (read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);

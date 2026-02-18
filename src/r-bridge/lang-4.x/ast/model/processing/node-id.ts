@@ -6,16 +6,29 @@ import { Identifier } from '../../../../../dataflow/environments/identifier';
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
-const numIdRegex = /^\d+$/;
 
-/** used so that we do not have to store strings for the default numeric ids */
-export function normalizeIdToNumberIfPossible(id: NodeId): NodeId {
-	// check if string is number
-	if(typeof id === 'string' && numIdRegex.test(id)) {
-		return Number(id);
+/**
+ * The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types.
+ * The default ids are numeric, but we use a branded type to avoid confusion with other numeric types.
+ * Custom ids or scoped ids can be strings, but they will be normalized to numbers if they are numeric strings.
+ */
+export const NodeId = {
+	/**
+	 * Normalizes a node id by converting numeric strings to numbers.
+	 * This allows us to use numeric ids without storing them as strings, while still allowing custom string ids if needed.
+	 */
+	normalize(this: void, id: NodeId): NodeId {
+		// check if string is number
+		if(typeof id === 'string') {
+			/* typescript is a beautiful converter */
+			const num = +id;
+			if(!Number.isNaN(num)) {
+				return num as NodeId;
+			}
+		}
+		return id;
 	}
-	return id;
-}
+} as const;
 
 /**
  * Recovers the lexeme of a {@link RNode|node} from its id in the {@link AstIdMap|id map}.

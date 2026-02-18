@@ -26,7 +26,7 @@ import { processExpressionList } from '../internal/process/functions/call/built-
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
@@ -39,7 +39,6 @@ import { processVector } from '../internal/process/functions/call/built-in/built
 import { processRm } from '../internal/process/functions/call/built-in/built-in-rm';
 import { processEvalCall } from '../internal/process/functions/call/built-in/built-in-eval';
 import { VertexType } from '../graph/vertex';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { handleUnknownSideEffect } from '../graph/unknown-side-effect';
 import type { REnvironmentInformation } from './environment';
 import type { Value } from '../eval/values/r-value';
@@ -61,6 +60,7 @@ import { processS3Dispatch } from '../internal/process/functions/call/built-in/b
 import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
 import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -174,10 +174,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 				const rhs = arg.value;
 				let fnName: Identifier | undefined;
 				let fnId: NodeId | undefined;
-				if(rhs.type === RType.String) {
+				if(RString.is(rhs)) {
 					fnName = rhs.content.str;
 					fnId = rhs.info.id;
-				} else if(rhs.type === RType.Symbol) {
+				} else if(RSymbol.is(rhs)) {
 					fnName = rhs.content;
 					fnId = rhs.info.id;
 				} else {

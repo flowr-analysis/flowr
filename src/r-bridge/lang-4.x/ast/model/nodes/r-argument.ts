@@ -17,6 +17,10 @@ export interface RArgument<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	value:         RNode<Info> | undefined;
 }
 
+/**
+ * Represents an unnamed argument of a function definition in R, i.e. an argument without a name.
+ * For the helper object, see {@link RArgument.isUnnamed}.
+ */
 export interface RUnnamedArgument<Info = NoInfo> extends RArgument<Info> {
 	name:  undefined;
 	value: RNode<Info>;
@@ -49,7 +53,7 @@ export const RArgument = {
 	/**
 	 * Retrieve the argument with the given id from the list of arguments.
 	 */
-	getWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RFunctionArgument<OtherInfo & ParentInformation> | undefined {
+	getWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<RFunctionArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
 		if(id === undefined) {
 			return undefined;
 		}
@@ -62,5 +66,11 @@ export const RArgument = {
 			}
 		}
 		return undefined;
+	},
+	/**
+	 * Retrieve the value of the argument with the given id from the list of arguments.
+	 */
+	getValue<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RNode<OtherInfo> | undefined {
+		return RArgument.getWithId(args, id)?.value;
 	}
 } as const;

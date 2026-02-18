@@ -12,7 +12,7 @@ import {
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
@@ -510,7 +510,7 @@ export class DataflowGraph<
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
 	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
-		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
+		to = to ? NodeId.normalize(to) : undefined;
 		const vertex = this.getVertex(from);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
 		vertex.cds ??= [];
@@ -533,12 +533,12 @@ export class DataflowGraph<
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
 			this._unknownSideEffects.add({
-				id:     normalizeIdToNumberIfPossible(id),
+				id:     NodeId.normalize(id),
 				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
 			});
 			return this;
 		}
-		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));
+		this._unknownSideEffects.add(NodeId.normalize(id));
 		return this;
 	}
 

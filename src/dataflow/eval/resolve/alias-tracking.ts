@@ -1,7 +1,8 @@
 import { VariableResolve } from '../../../config';
 import type { LinkTo } from '../../../queries/catalog/call-context-query/call-context-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type NodeId, recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { recoverName } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';

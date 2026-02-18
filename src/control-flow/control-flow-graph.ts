@@ -1,5 +1,4 @@
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
 import { assertUnreachable, guard } from '../util/assert';
@@ -375,7 +374,7 @@ export const CfgVertex = {
 	 */
 	fromExitId(this: void, exitId: NodeId): NodeId {
 		if(typeof exitId === 'string' && exitId.endsWith('-e')) {
-			return normalizeIdToNumberIfPossible(exitId.slice(0, -2));
+			return NodeId.normalize(exitId.slice(0, -2));
 		} else {
 			return exitId;
 		}

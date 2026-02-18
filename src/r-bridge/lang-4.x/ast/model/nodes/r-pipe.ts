@@ -16,6 +16,7 @@ export interface RPipe<Info = NoInfo> extends RAstNodeBase<Info>, Location {
  * Helper for working with {@link RPipe} AST nodes.
  */
 export const RPipe = {
+	name: 'RPipe',
 	/**
 	 * Type guard for {@link RPipe} nodes.
 	 */

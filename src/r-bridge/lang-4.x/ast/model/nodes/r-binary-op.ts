@@ -17,6 +17,7 @@ export interface RBinaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
  * Helper for working with {@link RBinaryOp} AST nodes.
  */
 export const RBinaryOp = {
+	name: 'RBinaryOp',
 	/**
 	 * Type guard for {@link RBinaryOp} nodes.
 	 */

@@ -16,6 +16,7 @@ export interface RExpressionList<Info = NoInfo> extends WithChildren<Info, RNode
  * Helper for working with {@link RExpressionList} AST nodes.
  */
 export const RExpressionList = {
+	name: 'RExpressionList',
 	/**
 	 * Type guard for {@link RExpressionList} nodes.
 	 */

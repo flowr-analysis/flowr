@@ -16,6 +16,7 @@ export interface RRepeatLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location
  * Helper for working with {@link RRepeatLoop} AST nodes.
  */
 export const RRepeatLoop = {
+	name: 'RRepeatLoop',
 	/**
 	 * Type guard for RRepeatLoop nodes.
 	 */

@@ -12,6 +12,7 @@ export interface RNext<Info = NoInfo> extends Location, Leaf<Info> {
  * Helper for working with {@link RNext} AST nodes.
  */
 export const RNext = {
+	name: 'RNext',
 	/**
 	 * Type guard for {@link RNext} nodes.
 	 */

@@ -19,6 +19,7 @@ export interface RParameter<Info = NoInfo> extends RAstNodeBase<Info>, Location 
  * Helper for working with {@link RParameter} AST nodes.
  */
 export const RParameter = {
+	name: 'RParameter',
 	/**
 	 * Type guard for {@link RParameter} nodes.
 	 * @see {@link RParameter.isDotDotDotDot} - to check whether a parameter is the special `...` parameter

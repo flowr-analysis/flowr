@@ -26,6 +26,7 @@ export interface RUnnamedArgument<Info = NoInfo> extends RArgument<Info> {
  * Helper for working with {@link RArgument} AST nodes.
  */
 export const RArgument = {
+	name: 'RArgument',
 	/**
 	 * Type guard for {@link RArgument} nodes.
 	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed

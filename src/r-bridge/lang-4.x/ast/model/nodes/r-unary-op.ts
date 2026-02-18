@@ -16,6 +16,7 @@ export interface RUnaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
  * Helper for working with {@link RUnaryOp} AST nodes.
  */
 export const RUnaryOp = {
+	name: 'RUnaryOp',
 	/**
 	 * Type guard for {@link RUnaryOp} nodes.
 	 */

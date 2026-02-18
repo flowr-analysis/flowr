@@ -5,7 +5,7 @@ import { TreeSitterType } from './tree-sitter-types';
 import { RType } from '../ast/model/type';
 import { SourceRange } from '../../../util/range';
 import { removeRQuotes } from '../../retriever';
-import { number2ts, RTrue, string2ts } from '../convert-values';
+import { RNumberValue, RStringValue, RTrue } from '../convert-values';
 import { ensureExpressionList } from '../ast/parser/main/normalize-meta';
 import type { RArgument } from '../ast/model/nodes/r-argument';
 import { splitArrayOn } from '../../../util/collections/arrays';
@@ -430,7 +430,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.String,
 					location: range,
-					content:  string2ts(node.text),
+					content:  RStringValue.fromRLexeme(node.text),
 					lexeme:   node.text,
 					...defaultInfo
 				};
@@ -442,7 +442,7 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				return {
 					type:     RType.Number,
 					location: range,
-					content:  number2ts(node.text),
+					content:  RNumberValue.fromRLexeme(node.text),
 					lexeme:   node.text,
 					...defaultInfo
 				};

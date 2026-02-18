@@ -14,6 +14,7 @@ export interface RLineDirective<Info = NoInfo> extends Location, Leaf<Info> {
  * Helper for working with {@link RLineDirective} AST nodes.
  */
 export const RLineDirective = {
+	name: 'RLineDirective',
 	/**
 	 * Type guard for {@link RLineDirective} nodes.
 	 */

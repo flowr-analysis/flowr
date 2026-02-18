@@ -14,6 +14,7 @@ export interface RComment<Info = NoInfo> extends Location, Leaf<Info> {
  * Helper for working with {@link RComment} AST nodes.
  */
 export const RComment = {
+	name: 'RComment',
 	/**
 	 * Type guard for {@link RComment} nodes.
 	 */

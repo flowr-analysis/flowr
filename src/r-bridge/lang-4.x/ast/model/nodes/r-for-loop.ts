@@ -18,7 +18,11 @@ export interface RForLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	body:          RExpressionList<Info>
 }
 
+/**
+ * Helper for working with {@link RForLoop} AST nodes.
+ */
 export const RForLoop = {
+	name: 'RForLoop',
 	/**
 	 * Type guard for RForLoop nodes.
 	 */

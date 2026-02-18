@@ -85,60 +85,60 @@ export interface RNumberValue {
 	complexNumber: boolean
 }
 
-/**
- * Convert a valid R number into a {@link RNumberValue}.
- */
-export function number2ts(value: string): RNumberValue {
-	// check for hexadecimal number with floating point addon which is supported by R but not by JS :/
-	let lcValue = value.toLowerCase();
-	/* both checks are case-sensitive! */
-	const last = value.at(-1);
-	const markedAsInt = last === RIntegerMarker;
-	const complexNumber = last === RImaginaryMarker;
+export const RNumberValue = {
+	name: 'RNumberValue',
+	fromRLexeme(this: void, value: string): RNumberValue {
+		// check for hexadecimal number with floating point addon which is supported by R but not by JS :/
+		let lcValue = value.toLowerCase();
+		/* both checks are case-sensitive! */
+		const last = value.at(-1);
+		const markedAsInt = last === RIntegerMarker;
+		const complexNumber = last === RImaginaryMarker;
 
-	if(markedAsInt || complexNumber) {
-		lcValue = lcValue.slice(0, -1);
-	}
+		if(markedAsInt || complexNumber) {
+			lcValue = lcValue.slice(0, -1);
+		}
 
-	if(value === RInf) {
-		return {
-			num: Infinity,
-			complexNumber,
-			markedAsInt
-		};
-	}
+		if(value === RInf) {
+			return {
+				num: Infinity,
+				complexNumber,
+				markedAsInt
+			};
+		}
 
-	if(value === RNa) {
-		return {
-			num: NaN,
-			complexNumber,
-			markedAsInt
-		};
-	}
+		if(value === RNa) {
+			return {
+				num: NaN,
+				complexNumber,
+				markedAsInt
+			};
+		}
 
-	const floatHex = lcValue.match(RNumHexFloatRegex);
-	if(floatHex == null) {
-		return {
-			num: Number(lcValue),
-			complexNumber,
-			markedAsInt
-		};
-	} else {
-		const {
-			intPart,
-			floatPart,
-			exp
-		} = floatHex.groups as { intPart: string | undefined, floatPart: string | undefined, exp: string };
-		const base = intPart === undefined ? 0 : parseInt(`${intPart}`, 16);
-		const floatSuffix = floatPart === undefined ? 0 : getDecimalPlacesWithRadix(floatPart, 16);
-		const exponent = parseInt(exp, 10);
-		return {
-			num: (base + floatSuffix) * Math.pow(2, exponent),
-			complexNumber,
-			markedAsInt
-		};
+		const floatHex = lcValue.match(RNumHexFloatRegex);
+		if(floatHex == null) {
+			return {
+				num: Number(lcValue),
+				complexNumber,
+				markedAsInt
+			};
+		} else {
+			const {
+				intPart,
+				floatPart,
+				exp
+			} = floatHex.groups as { intPart: string | undefined, floatPart: string | undefined, exp: string };
+			const base = intPart === undefined ? 0 : parseInt(`${intPart}`, 16);
+			const floatSuffix = floatPart === undefined ? 0 : getDecimalPlacesWithRadix(floatPart, 16);
+			const exponent = parseInt(exp, 10);
+			return {
+				num: (base + floatSuffix) * Math.pow(2, exponent),
+				complexNumber,
+				markedAsInt
+			};
+		}
 	}
-}
+} as const;
 
 /**
  * Represents a string value in R, including the type of quotes used and whether it is a raw string.
@@ -152,34 +152,40 @@ export interface RStringValue {
 }
 
 /**
- * Convert a valid R string into a {@link RStringValue}.
- * @throws {@link ValueConversionError} if the string has an unknown starting quote
+ * Checks whether the given string is an R string literal (including raw strings).
  */
-export function string2ts(value: string): RStringValue {
-	if(value.length < 2) {
-		throw new ValueConversionError(`cannot parse string '${value}' as it is too short`);
-	}
-	const init = value[0];
-	if(init === '"' || init === '\'') {
-		return {
-			str:    value.slice(1, -1),
-			quotes: init
-		};
-	} else if(init === 'r' || init === 'R' && value.length >= 3) {
-		const flags = value[1];
-		if(flags === '"' || flags === '\'') {
+export const RStringValue = {
+	name: 'RStringValue',
+	/**
+	 * Convert a valid R string into a {@link RStringValue}.
+	 * @throws {@link ValueConversionError} if the string has an unknown starting quote
+	 */
+	fromRLexeme(this: void, value: string): RStringValue {
+		if(value.length < 2) {
+			throw new ValueConversionError(`cannot parse string '${value}' as it is too short`);
+		}
+		const init = value[0];
+		if(init === '"' || init === '\'') {
 			return {
-				str:    dropRawStringSurround(value.slice(2, -1)),
-				quotes: flags,
-				flag:   'raw'
+				str:    value.slice(1, -1),
+				quotes: init
 			};
+		} else if(init === 'r' || init === 'R' && value.length >= 3) {
+			const flags = value[1];
+			if(flags === '"' || flags === '\'') {
+				return {
+					str:    dropRawStringSurround(value.slice(2, -1)),
+					quotes: flags,
+					flag:   'raw'
+				};
+			} else {
+				throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
+			}
 		} else {
 			throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
 		}
-	} else {
-		throw new ValueConversionError(`expected string to start with a known quote (' or "), or raw, yet received ${value}`);
 	}
-}
+} as const;
 
 export const RNa = 'NA';
 export const RNull = 'NULL';

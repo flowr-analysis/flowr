@@ -2,9 +2,9 @@ import type { SourceRange } from '../../../../util/range';
 import { SourceLocation } from '../../../../util/range';
 import type { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
-import type { RNumber } from './nodes/r-number';
-import type { RString } from './nodes/r-string';
-import type { RLogical } from './nodes/r-logical';
+import { RNumber } from './nodes/r-number';
+import { RString } from './nodes/r-string';
+import { RLogical } from './nodes/r-logical';
 import type { RSymbol } from './nodes/r-symbol';
 import type { RComment } from './nodes/r-comment';
 import type { RBreak } from './nodes/r-break';
@@ -107,12 +107,24 @@ export interface Location {
  */
 export type NamespaceIdentifier = string;
 
-
 /**
  * This subtype of {@link RNode} represents all types of constants
  * represented in the normalized AST.
  */
 export type RConstant<Info>       = RNumber<Info> | RString<Info> | RLogical<Info>;
+/**
+ * Helper object to provide helper functions for {@link RConstant|RConstants}.
+ * @see {@link RNode} - for more general helper functions for all nodes
+ */
+export const RConstant = {
+	name: 'RConstant',
+	/**
+	 * Type guard for {@link RConstant} nodes, i.e. checks whether a node is a number, string or logical constant.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstant<Info> {
+		return node !== undefined && (RNumber.is(node) || RString.is(node) || RLogical.is(node));
+	}
+} as const;
 /**
  * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
  * normalized AST.
@@ -154,6 +166,8 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>;
+
+// TODO: ROther etc. helper; the other functions as discussed for the RNode
 
 /**
  * Helper object to provide helper functions for {@link RNode|RNodes}.

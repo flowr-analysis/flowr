@@ -40,6 +40,7 @@ export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFu
  * Helper for working with {@link RFunctionCall} AST nodes.
  */
 export const RFunctionCall = {
+	name: 'RFunctionCall',
 	/**
 	 * Type guard for {@link RFunctionCall} nodes.
 	 */

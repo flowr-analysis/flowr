@@ -18,6 +18,7 @@ export interface RSymbol<Info = NoInfo, T extends Identifier = Identifier> exten
  * Helper for working with {@link RSymbol} AST nodes.
  */
 export const RSymbol = {
+	name: 'RSymbol',
 	/**
 	 * Type guard for {@link RSymbol} nodes.
 	 * @see {@link RSymbol.isSpecial} - to check whether a symbol is a special symbol like `NA` or `NULL`

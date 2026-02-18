@@ -15,6 +15,7 @@ export interface RLogical<Info = NoInfo> extends Leaf<Info>, Location {
  * Helper for working with {@link RLogical} AST nodes.
  */
 export const RLogical = {
+	name: 'RLogical',
 	/**
 	 * Type guard for {@link RLogical} nodes.
 	 */

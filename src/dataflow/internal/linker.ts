@@ -1,6 +1,6 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { isNotUndefined } from '../../util/assert';
-import { expensiveTrace, log } from '../../util/log';
+import { expensiveTrace } from '../../util/log';
 import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
@@ -516,7 +516,6 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
 		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
-			log.trace(`found no target for ${bodyInput.name ? Identifier.toString(bodyInput.name) : '<no-name>'}`);
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];
 			}
@@ -577,7 +576,9 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.cds?.map(negateControlDependency)).filter(isNotUndefined));
+	const exitCds = exits.flatMap(e => e.cds?.map(negateControlDependency))
+		.filter(isNotUndefined)
+		.map(cd => ({ ...cd, byIteration: true }));
 	const seenRefs = new Set<NodeId>();
 	for(const ref of references) {
 		if(seenRefs.has(ref.nodeId)) {
@@ -589,11 +590,11 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 			let setVertex = false;
 			if(ref.cds) {
 				if(!ref.cds?.find(c => c.id === cId)) {
-					ref.cds.push({ ...cd, byIteration: true });
+					ref.cds.push(cd);
 					setVertex = true;
 				}
 			} else {
-				ref.cds = [{ ...cd, byIteration: true }];
+				ref.cds = [cd];
 				setVertex = true;
 			}
 			if(setVertex) {
@@ -601,10 +602,10 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 				if(vertex) {
 					if(vertex.cds) {
 						if(!vertex.cds?.find(c => c.id === cId)) {
-							vertex.cds.push({ ...cd, byIteration: true });
+							vertex.cds.push(cd);
 						}
 					} else {
-						vertex.cds = [{ ...cd, byIteration: true }];
+						vertex.cds = [cd];
 					}
 				}
 			}

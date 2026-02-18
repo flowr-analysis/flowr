@@ -15,7 +15,7 @@ import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { convertCfgToBasicBlocks } from '../control-flow/cfg-to-basic-blocks';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNumberValue } from '../r-bridge/lang-4.x/convert-values';
-import { type RNumber, isRNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { happensBefore } from '../control-flow/happens-before';
 import { assertCfgSatisfiesProperties } from '../control-flow/cfg-properties';
 import { BasicCfgGuidedVisitor } from '../control-flow/basic-cfg-guided-visitor';
@@ -57,7 +57,7 @@ function sampleCollectNumbers(cfg: ControlFlowInformation, ast: NormalizedAst): 
 		/* obtain the corresponding node from the AST */
 		const node = ast.idMap.get(id);
 		/* if it is present and a number, add the parsed value to the list */
-		if(isRNumber(node)) {
+		if(RNumber.is(node)) {
 			numbers.push(node.content);
 		}
 	});
@@ -75,7 +75,7 @@ class CollectNumbersVisitor extends BasicCfgGuidedVisitor {
 
 	protected override onVisitNode(node: NodeId): void {
 		const astNode = this.ast.idMap.get(node);
-		if(isRNumber(astNode)) {
+		if(RNumber.is(astNode)) {
 			this.numbers.push(astNode.content);
 		}
 		super.onVisitNode(node);
@@ -111,7 +111,7 @@ class CollectNumbersDataflowVisitor extends DataflowAwareCfgGuidedVisitor {
 
 	protected override visitValue(node: DataflowGraphVertexValue): void {
 		const astNode = this.config.dfg.idMap?.get(node.id);
-		if(isRNumber(astNode)) {
+		if(RNumber.is(astNode)) {
 			this.numbers.push(astNode.content);
 		}
 	}

@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RParameter } from './r-parameter';
 
 /**
@@ -17,3 +17,15 @@ export interface RFunctionDefinition<Info = NoInfo> extends RAstNodeBase<Info>, 
 	parameters:    RParameter<Info>[];
 	body:          RNode<Info>;
 }
+
+/**
+ * Helper for working with {@link RFunctionDefinition} AST nodes.
+ */
+export const RFunctionDefinition = {
+	/**
+	 * Type guard for {@link RFunctionDefinition} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionDefinition<Info> {
+		return node?.type === RType.FunctionDefinition;
+	}
+} as const;

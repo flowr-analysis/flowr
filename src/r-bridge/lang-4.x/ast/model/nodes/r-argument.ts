@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { ParentInformation } from '../processing/decorate';
 import type { NodeId } from '../processing/node-id';
@@ -22,21 +22,44 @@ export interface RUnnamedArgument<Info = NoInfo> extends RArgument<Info> {
 	value: RNode<Info>;
 }
 
-
 /**
- * Retrieve the argument with the given id from the list of arguments.
+ * Helper for working with {@link RArgument} AST nodes.
  */
-export function getArgumentWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RFunctionArgument<OtherInfo & ParentInformation> | undefined {
-	if(id === undefined) {
+export const RArgument = {
+	/**
+	 * Type guard for {@link RArgument} nodes.
+	 * @see {@link RArgument.isUnnamed} - to check whether an argument is unnamed
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> {
+		return node?.type === RType.Argument;
+	},
+	/**
+	 * Type guard for named arguments, i.e. arguments with a name.
+	 */
+	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> & { name: RSymbol<Info, BrandedIdentifier> } {
+		return RArgument.is(node) && node.name !== undefined;
+	},
+	/**
+	 * Type guard for unnamed arguments, i.e. arguments without a name.
+	 */
+	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedArgument<Info> {
+		return RArgument.is(node) && node.name === undefined && node.value !== undefined;
+	},
+	/**
+	 * Retrieve the argument with the given id from the list of arguments.
+	 */
+	getWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RFunctionArgument<OtherInfo & ParentInformation> | undefined {
+		if(id === undefined) {
+			return undefined;
+		}
+		for(const arg of args) {
+			if(arg === EmptyArgument) {
+				continue;
+			}
+			if(arg.info.id === id) {
+				return arg;
+			}
+		}
 		return undefined;
 	}
-	for(const arg of args) {
-		if(arg === EmptyArgument) {
-			continue;
-		}
-		if(arg.info.id === id) {
-			return arg;
-		}
-	}
-	return undefined;
-}
+} as const;

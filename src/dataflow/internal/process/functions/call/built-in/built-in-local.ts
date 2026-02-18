@@ -10,10 +10,10 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { invertArgumentMap, pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 
 export interface LocalFunctionConfiguration {
@@ -44,8 +44,8 @@ export function processLocal<OtherInfo>(
 		'...':              '...'
 	};
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
-	const env = unpackArg(getArgumentWithId(args, argMaps.get('env')?.[0]));
-	const expr = unpackArg(getArgumentWithId(args, argMaps.get('expr')?.[0]));
+	const env = unpackArg(RArgument.getWithId(args, argMaps.get('env')?.[0]));
+	const expr = unpackArg(RArgument.getWithId(args, argMaps.get('expr')?.[0]));
 	if(!expr) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}

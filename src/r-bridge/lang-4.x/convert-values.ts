@@ -140,6 +140,9 @@ export function number2ts(value: string): RNumberValue {
 	}
 }
 
+/**
+ * Represents a string value in R, including the type of quotes used and whether it is a raw string.
+ */
 export interface RStringValue {
 	str:    string
 	/** from the R-language definition a string is either delimited by a pair of single or double quotes, 'none' strings are syntactically unquoted but treated as strings  */

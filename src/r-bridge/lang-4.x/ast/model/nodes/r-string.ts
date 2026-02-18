@@ -12,9 +12,14 @@ export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
 }
 
 /**
- * Type guard for RString nodes.
- * @see {@link RString}
+ * Helper for working with {@link RString} AST nodes.
  */
-export function isRString(node: RNode | undefined): node is RString {
-	return node?.type === RType.String;
-}
+export const RString = {
+	/**
+	 * Type guard for RString nodes.
+	 * @see {@link RString}
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RString<Info> {
+		return node?.type === RType.String;
+	}
+};

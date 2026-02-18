@@ -35,11 +35,11 @@ It offers a wide variety of features, for example:
     ```text
     Query: linter (2 ms)
        ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 1
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Seeded Randomness (seeded-randomness):
            ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Absolute Paths (absolute-file-paths):
@@ -53,12 +53,12 @@ It offers a wide variety of features, for example:
        ╰ Network Functions (network-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ Dead Code (dead-code):
            ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -80,15 +80,15 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (2 ms)\
+    Query: **linter** (3 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -102,14 +102,14 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 1</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+    _All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _2.3 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _2.5 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -126,7 +126,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -149,7 +149,7 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -161,7 +161,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -226,7 +226,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "consideredNodes": 5,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "useless-loop": {
@@ -239,11 +239,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 2
+          "timing": 3
         }
       },
       ".meta": {
-        "timing": 2
+        "timing": 3
       }
     }
     ```
@@ -322,7 +322,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -485,9 +485,6 @@ It offers a wide variety of features, for example:
           (19)
           *6.13*
         (18)`"]]
-        built-in:_["`Built-In:
-    (`"]
-        style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         20[["`#91;RBinaryOp#93; #58;
           (20)
           *6.11-17*
@@ -505,6 +502,9 @@ It offers a wide variety of features, for example:
           (26, :may:36+)
           *7.10-16*
         (24, 25)`"]]
+        built-in:_["`Built-In:
+    #43;`"]
+        style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         27(["`#91;RSymbol#93; w
           (27, :may:36+)
           *7.20*`"])
@@ -613,96 +613,94 @@ It offers a wide variety of features, for example:
         18 -.->|"reads, calls"| built-in:-
         linkStyle 24 stroke:gray;
         19 -->|"returns, argument"| 18
-        19 -.->|"reads"| built-in:_
-        linkStyle 26 stroke:gray;
         20 -->|"reads, argument"| 13
         20 -->|"reads, argument"| 19
         20 -.->|"reads, calls"| built-in::
-        linkStyle 29 stroke:gray;
+        linkStyle 28 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
         24 -->|"CD-True"| 36
-        linkStyle 32 stroke:gray,color:gray;
+        linkStyle 31 stroke:gray,color:gray;
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
-        linkStyle 34 stroke:gray,color:gray;
+        linkStyle 33 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
         26 -.->|"reads, calls"| built-in:_
-        linkStyle 37 stroke:gray;
+        linkStyle 36 stroke:gray;
         26 -->|"CD-True"| 36
-        linkStyle 38 stroke:gray,color:gray;
+        linkStyle 37 stroke:gray,color:gray;
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
-        linkStyle 40 stroke:gray,color:gray;
+        linkStyle 39 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
         28 -.->|"reads, calls"| built-in:_
-        linkStyle 43 stroke:gray;
+        linkStyle 42 stroke:gray;
         28 -->|"CD-True"| 36
-        linkStyle 44 stroke:gray,color:gray;
+        linkStyle 43 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
         23 -->|"CD-True"| 36
-        linkStyle 47 stroke:gray,color:gray;
+        linkStyle 46 stroke:gray,color:gray;
         29 -->|"reads, argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 50 stroke:gray;
+        linkStyle 49 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 51 stroke:gray,color:gray;
+        linkStyle 50 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 54 stroke:gray,color:gray;
+        linkStyle 53 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 56 stroke:gray,color:gray;
+        linkStyle 55 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 59 stroke:gray;
+        linkStyle 58 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 60 stroke:gray,color:gray;
+        linkStyle 59 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
         30 -->|"CD-True"| 36
-        linkStyle 63 stroke:gray,color:gray;
+        linkStyle 62 stroke:gray,color:gray;
         34 -->|"reads, argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 66 stroke:gray;
+        linkStyle 65 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 67 stroke:gray,color:gray;
+        linkStyle 66 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 70 stroke:gray;
+        linkStyle 69 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 71 stroke:gray,color:gray;
+        linkStyle 70 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 75 stroke:gray;
+        linkStyle 74 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 81 stroke:gray;
+        linkStyle 80 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 87 stroke:gray;
+        linkStyle 86 stroke:gray;
     ```
     
     	
-    (The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

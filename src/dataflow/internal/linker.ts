@@ -1,7 +1,8 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type InGraphIdentifierDefinition,
 	Identifier,
@@ -23,7 +24,7 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { type BuiltIn, BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
@@ -264,7 +265,7 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const { nodeId, type, value } of defs as InGraphIdentifierDefinition[]) {
-				if(!isBuiltIn(nodeId)) {
+				if(!NodeId.isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					if(type === ReferenceType.Function && ingoing.type === ReferenceType.S7MethodPrefix && Array.isArray(value)) {
@@ -336,7 +337,7 @@ function linkFunctionCall(
 
 	const functionDefinitionReadIds = new Set<NodeId>();
 	for(const [t, e] of edges.entries()) {
-		if(!isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
+		if(!NodeId.isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
 			functionDefinitionReadIds.add(t);
 		}
 	}
@@ -460,7 +461,7 @@ export function getAllLinkedFunctionDefinitions(
 		const cid = potential.pop() as NodeId;
 		visited.add(cid);
 
-		if(isBuiltIn(cid)) {
+		if(NodeId.isBuiltIn(cid)) {
 			builtIns.add(cid);
 			continue;
 		}

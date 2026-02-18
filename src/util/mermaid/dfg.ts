@@ -12,7 +12,6 @@ import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
 import { SourceRange } from '../range';
 
@@ -203,7 +202,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		const edgeId = encodeEdge(idPrefix + id, idPrefix + target, edgeTypes);
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
-			const style = isBuiltIn(target) ? '-.->' : '-->';
+			const style = NodeId.isBuiltIn(target) ? '-.->' : '-->';
 			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
 				'file' in edge && edge.file ? `, from: ${edge.file}` : ''
 			}"| ${idPrefix}${target}`);
@@ -214,7 +213,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
 			}
-			if(isBuiltIn(target)) {
+			if(NodeId.isBuiltIn(target)) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);
 				if(!mermaid.presentVertices.has(target)) {
 					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${escapeMarkdown(String(originalTarget).replace('built-in:', ''))}\`"]`);

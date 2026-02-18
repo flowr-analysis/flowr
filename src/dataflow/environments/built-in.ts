@@ -27,7 +27,7 @@ import { processGet } from '../internal/process/functions/call/built-in/built-in
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';
@@ -61,30 +61,6 @@ import { processRecall } from '../internal/process/functions/call/built-in/built
 import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
-
-export type BuiltIn = `built-in:${string}`;
-
-/**
- * Generate a built-in id for the given name
- */
-export function builtInId<T extends string>(name: T): `built-in:${T}` {
-	return `built-in:${name}`;
-}
-
-/**
- * Checks whether the given name is a built-in identifier
- */
-export function isBuiltIn(name: NodeId | string): name is BuiltIn {
-	return String(name).startsWith('built-in:');
-}
-
-const builtInPrefixLength = 'built-in:'.length;
-/**
- * Drops the `built-in:` prefix from the given built-in name
- */
-export function dropBuiltInPrefix<T extends string>(name: `built-in:${T}`): T {
-	return name.slice(builtInPrefixLength) as T;
-}
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -357,7 +333,7 @@ export class BuiltIns {
 	registerBuiltInConstant<T>({ names, value, assumePrimitive }: BuiltInConstantDefinition<T>): void {
 		for(const name of names) {
 			const n = Identifier.getName(name);
-			const id = builtInId(n);
+			const id = NodeId.toBuiltIn(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInConstant,
 				definedAt: id,
@@ -379,7 +355,7 @@ export class BuiltIns {
 		guard(mappedProcessor !== undefined, () => `Processor for ${processor} is undefined! Please pass a valid builtin name ${JSON.stringify(Object.keys(BuiltInProcessorMapper))}!`);
 		for(const name of names) {
 			const n = Identifier.getName(name);
-			const id = builtInId(n);
+			const id = NodeId.toBuiltIn(n);
 			const d: IdentifierDefinition[] = [{
 				type:      ReferenceType.BuiltInFunction,
 				definedAt: id,
@@ -403,7 +379,7 @@ export class BuiltIns {
 		for(const assignment of names) {
 			for(const suffix of suffixes) {
 				const effectiveName = `${Identifier.getName(assignment)}${suffix}`;
-				const id = builtInId(effectiveName);
+				const id = NodeId.toBuiltIn(effectiveName);
 				const d: IdentifierDefinition[] = [{
 					type:      ReferenceType.BuiltInFunction,
 					definedAt: id,

@@ -16,7 +16,7 @@ import { type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
@@ -116,7 +116,7 @@ export class DataflowGraphBuilder<
 			omitArgs?:           boolean
 		},
 		asRoot: boolean = true) {
-		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
+		const onlyBuiltInAuto = info?.reads?.length === 1 && NodeId.isBuiltIn(info?.reads[0]);
 		this.addVertexWithDefaultEnv({
 			tag:         VertexType.FunctionCall,
 			id:          NodeId.normalize(id),

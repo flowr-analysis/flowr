@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { mapProblematicNodesToIds, withTreeSitter } from '../../_helper/shell';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { getSubCallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { label } from '../../_helper/label';
@@ -11,7 +11,7 @@ import { resolveDataflowGraph } from '../../../../src/dataflow/graph/resolve-gra
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
-import { builtInId, BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { ExitPointType } from '../../../../src/dataflow/info';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
@@ -70,11 +70,11 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', [11, '2@return'])
-			.calls(11, [10, builtInId('expression-list')])
+			.calls(11, [10, NodeId.toBuiltIn('expression-list')])
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
-			.calls('2@return', builtInId('return')).calls('2@return', '2@+')
+			.calls('2@return', NodeId.toBuiltIn('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@+', builtInId('default'))
+			.calls('2@+', NodeId.toBuiltIn('default'))
 			.calls(12, 8)
 	);
 }));

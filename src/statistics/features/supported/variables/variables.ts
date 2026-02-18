@@ -1,7 +1,6 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
-import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { VertexType } from '../../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../../util/range';
@@ -29,7 +28,7 @@ export type DefinedVariableInformation = [
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
 	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
-			if(node.type !== RType.Symbol || RSymbol.isSpecial(node)) {
+			if(!RSymbol.is(node) || RSymbol.isSpecial(node)) {
 				return;
 			}
 

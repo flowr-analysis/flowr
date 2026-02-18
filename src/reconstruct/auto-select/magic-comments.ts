@@ -1,7 +1,6 @@
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../util/assert';
 import type { SourceRange } from '../../util/range';
 import type { AutoSelectPredicate } from './auto-select-defaults';
@@ -66,7 +65,7 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 					return;
 				}
 				for(const c of comments) {
-					if(c.type !== RType.Comment || !c.lexeme.startsWith('# flowr@')) {
+					if(!RComment.is(c) || !c.lexeme.startsWith('# flowr@')) {
 						continue;
 					}
 					const match = commentTriggerRegex.exec(c.lexeme);

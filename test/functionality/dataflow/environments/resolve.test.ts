@@ -84,11 +84,11 @@ describe.sequential('Resolve', withShell(shell => {
 				ctx:         context
 			});
 
-			if((allow & Allow.Top) == Allow.Top && isTop(resolved)) {
+			if((allow & Allow.Top) === Allow.Top && isTop(resolved)) {
 				return;
 			}
 
-			if((allow & Allow.Bottom) == Allow.Bottom && isBottom(resolved)) {
+			if((allow & Allow.Bottom) === Allow.Bottom && isBottom(resolved)) {
 				return;
 			}
 

@@ -394,7 +394,7 @@ export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrCon
 	if(!engines.length) {
 		return defaultEngineConfigs[engine];
 	} else {
-		return engines.find(e => e.type == engine) as EngineConfig & { type: T } | undefined;
+		return engines.find(e => e.type === engine) as EngineConfig & { type: T } | undefined;
 	}
 }
 

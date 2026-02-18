@@ -181,7 +181,7 @@ export const LintingResults = {
 		if(!res || LintingResults.isError(res)) {
 			return [];
 		}
-		return res.results.map(r => LintingResults.hasLocation(r) ? r.loc : undefined).filter(isNotUndefined);
+		return res.results.filter(LintingResults.hasLocation).map(r => r.loc);
 	},
 	/**
 	 * Stringifies the error contained in the given linting results error.

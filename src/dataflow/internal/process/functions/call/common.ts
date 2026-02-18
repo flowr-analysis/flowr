@@ -155,7 +155,9 @@ export function processAllArguments<OtherInfo>(
 					/* maybe all targets are not definitely of the current scope and should be still kept */
 					let assumeItMayHaveAHigherTarget = true;
 					for(const resolved of tryToResolve) {
-						if(happensInEveryBranch(resolved.cds) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+						if(isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+							continue;
+						} else if(happensInEveryBranch(resolved.cds)) {
 							assumeItMayHaveAHigherTarget = false;
 						}
 						finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);

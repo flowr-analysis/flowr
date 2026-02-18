@@ -404,13 +404,12 @@ export class DataflowGraph<
 			return this;
 		}
 
-		/* we now that we pass all required arguments */
-		const edge = { types: type } as unknown as Edge;
-
 		const existingFrom = this.edgeInformation.get(fromId);
 		const edgeInFrom = existingFrom?.get(toId);
 
 		if(edgeInFrom === undefined) {
+			const edge = { types: type } as unknown as Edge;
+
 			if(existingFrom === undefined) {
 				this.edgeInformation.set(fromId, new Map([[toId, edge]]));
 			} else {
@@ -489,8 +488,9 @@ export class DataflowGraph<
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
 			vertex.cds = reference.cds;
 		} else {
-			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
-			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
+			const oldTag = vertex.tag;
+			(vertex as { tag: VertexType }).tag = VertexType.VariableDefinition;
+			this.types.set(oldTag, (this.types.get(oldTag) ?? []).filter(id => id !== reference.nodeId));
 			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 		}
 	}
@@ -500,31 +500,35 @@ export class DataflowGraph<
 	 * @param info - The information about the new function call node
 	 */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
-		const vertex = this.getVertex(info.id);
+		const infoId = info.id;
+		const vertex = this.getVertex(infoId);
 		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
-		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall });
-		this.types.set(previousTag, (this.types.get(previousTag) ?? []).filter(id => id !== info.id));
-		this.types.set(VertexType.FunctionCall, (this.types.get(VertexType.FunctionCall) ?? []).concat([info.id]));
+		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
+		this.types.set(previousTag, (this.types.get(previousTag) ?? []).filter(id => id !== infoId));
+		const g = this.types.get(VertexType.FunctionCall);
+		if(g) {
+			g.push(infoId);
+		} else {
+			this.types.set(VertexType.FunctionCall, [infoId]);
+		}
 	}
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
-	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
-		to = to ? NodeId.normalize(to) : undefined;
+	public addControlDependency(from: NodeId, to: NodeId, when?: boolean): this {
+		to = NodeId.normalize(to);
 		const vertex = this.getVertex(from);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
 		vertex.cds ??= [];
-		if(to) {
-			let hasControlDependency = false;
-			for(const { id, when: cond } of vertex.cds) {
-				if(id === to && when !== cond) {
-					hasControlDependency = true;
-					break;
-				}
+		let hasControlDependency = false;
+		for(const { id, when: cond } of vertex.cds) {
+			if(id === to && when !== cond) {
+				hasControlDependency = true;
+				break;
 			}
-			if(!hasControlDependency) {
-				vertex.cds.push({ id: to, when });
-			}
+		}
+		if(!hasControlDependency) {
+			vertex.cds.push({ id: to, when });
 		}
 		return this;
 	}

@@ -1,7 +1,9 @@
 import type { NoInfo, RNode } from '../model';
 import { RType } from '../type';
 import { assertUnreachable } from '../../../../../util/assert';
-import { EmptyArgument } from '../nodes/r-function-call';
+import type { EmptyArgument } from '../nodes/r-function-call';
+import { RAccess } from '../nodes/r-access';
+import { FunctionArgument } from '../../../../../dataflow/graph/graph';
 
 /** Return `true` to stop visiting from this node (i.e., do not continue to visit this node *and* the children) */
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
@@ -74,7 +76,7 @@ export class NodeVisitor<OtherInfo = NoInfo> {
 				break;
 			case RType.Access:
 				this.visitSingle(node.accessed);
-				if(node.operator === '[' || node.operator === '[[') {
+				if(RAccess.isIndex(node)) {
 					this.visit(node.access);
 				}
 				break;
@@ -99,7 +101,7 @@ export class NodeVisitor<OtherInfo = NoInfo> {
 		if(Array.isArray(nodes)) {
 			const n = nodes as readonly (RNode<OtherInfo> | null | undefined | typeof EmptyArgument)[];
 			for(const node of n) {
-				if(node && node !== EmptyArgument) {
+				if(node && FunctionArgument.isNotEmpty(node)) {
 					this.visitSingle(node);
 				}
 			}

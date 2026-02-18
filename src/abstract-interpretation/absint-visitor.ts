@@ -7,6 +7,7 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -325,7 +326,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 		const node = this.getNormalizedAst(nodeId);
 
-		if(node?.type === RType.ForLoop || node?.type === RType.WhileLoop || node?.type === RType.RepeatLoop) {
+		if(RLoopConstructs.is(node)) {
 			return true;
 		}
 		const dataflowVertex = this.getDataflowGraph(nodeId);

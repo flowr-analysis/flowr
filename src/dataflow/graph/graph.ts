@@ -114,9 +114,9 @@ export const FunctionArgument = {
 	},
 	/**
 	 * Checks whether the given argument is not an empty argument.
-	 * @see {@link isEmpty}
+	 * @see {@link FunctionArgument.isEmpty}
 	 */
-	isNotEmpty(this: void, arg: FunctionArgument): arg is NamedFunctionArgument | PositionalFunctionArgument {
+	isNotEmpty<T>(this: void, arg: T): arg is Exclude<T, typeof EmptyArgument> {
 		return arg !== EmptyArgument;
 	},
 	/**

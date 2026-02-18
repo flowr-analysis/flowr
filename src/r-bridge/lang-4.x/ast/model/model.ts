@@ -381,6 +381,13 @@ export const RNode = {
 			return false;
 		});
 		return ids;
+	},
+	/**
+	 * A helper function to retrieve the lexeme of a given node, if available.
+	 * If the `fullLexeme` is available, it will be returned, otherwise the `lexeme` will be returned.
+	 */
+	lexeme<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>): string | undefined {
+		return node.info.fullLexeme ?? node.lexeme;
 	}
 } as const;
 

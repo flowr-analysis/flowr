@@ -12,7 +12,7 @@ import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
 import type { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
@@ -138,7 +138,7 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 
 	foldRAccess(access: RAccess<Info>) {
 		let accessed = this.foldSingle(access.accessed);
-		if(access.operator === '[' || access.operator === '[[') {
+		if(RAccess.isIndex(access)) {
 			accessed = this.concat(accessed, this.fold(access.access));
 		}
 		return accessed;

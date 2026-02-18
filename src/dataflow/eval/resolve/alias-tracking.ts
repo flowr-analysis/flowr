@@ -21,6 +21,7 @@ import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RLoopConstructs } from '../../../r-bridge/lang-4.x/ast/model/model';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -347,7 +348,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 			if(target === undefined) {
 				continue;
 			}
-			if(target.type === RType.WhileLoop || target.type === RType.RepeatLoop || target.type === RType.ForLoop) {
+			if(RLoopConstructs.is(target)) {
 				forceTop = true;
 				break;
 			}

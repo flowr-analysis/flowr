@@ -58,7 +58,7 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	// cluster adjacent edges
 	for(const [dest, e] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
 		// don't cluster for function content if it isn't returned
-		if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name == '{'){
+		if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{'){
 			continue;
 		}
 		if(notReached.delete(dest)) {

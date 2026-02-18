@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode, WithChildren } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 
 /**
@@ -12,3 +12,33 @@ export interface RExpressionList<Info = NoInfo> extends WithChildren<Info, RNode
 	readonly grouping: undefined | [start: RSymbol<Info>, end: RSymbol<Info>]
 }
 
+/**
+ * Helper for working with {@link RExpressionList} AST nodes.
+ */
+export const RExpressionList = {
+	name: 'RExpressionList',
+	/**
+	 * Type guard for {@link RExpressionList} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info> {
+		return node?.type === RType.ExpressionList;
+	},
+	/**
+	 * Type guard for implicit {@link RExpressionList} nodes, i.e., expression lists that are not created by a wrapper like `{}`.
+	 */
+	isImplicit<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RExpressionList<Info>  {
+		return RExpressionList.is(node) && node.grouping === undefined;
+	},
+	/**
+	 * Returns the grouping symbol at the start of the expression list, if it exists. For example, for an expression list created by `{ ... }`, this would return the symbol for `{`.
+	 */
+	groupStart<Info = NoInfo>(this: void, node: RExpressionList<Info>): RSymbol<Info> | undefined {
+		return node.grouping?.[0];
+	},
+	/**
+	 * Returns the grouping symbol at the end of the expression list, if it exists. For example, for an expression list created by `{ ... }`, this would return the symbol for `}`.
+	 */
+	groupEnd<Info = NoInfo>(this: void, node: RExpressionList<Info>): RSymbol<Info> | undefined {
+		return node.grouping?.[1];
+	}
+} as const;

@@ -3,7 +3,7 @@ import { bold } from '../../../util/text/ansi';
 import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeExceptionQuery } from './inspect-exception-query-executor';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfigOptions } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
@@ -48,11 +48,11 @@ export const InspectExceptionQueryDefinition = {
 		result.push(`Query: ${bold('inspect-exception', formatter)} (${out['.meta'].timing.toFixed(0)}ms)`);
 		const n = await processed.normalize();
 		function getLoc(r: NodeId): SourceLocation | undefined {
-			const node = n.idMap.get(normalizeIdToNumberIfPossible(r));
+			const node = n.idMap.get(NodeId.normalize(r));
 			return node ? SourceLocation.fromNode(node) : undefined;
 		}
 		function getLexeme(r: NodeId): string {
-			return n.idMap.get(normalizeIdToNumberIfPossible(r))?.lexeme ?? String(r);
+			return n.idMap.get(NodeId.normalize(r))?.lexeme ?? String(r);
 		}
 		for(const [r, v] of Object.entries(out.exceptions)) {
 			result.push(`  - Function ${bold(r, formatter)} (${SourceLocation.format(getLoc(r))}) ${v.length > 0 ? 'throws exceptions:' : 'does not throw exceptions.'}`);

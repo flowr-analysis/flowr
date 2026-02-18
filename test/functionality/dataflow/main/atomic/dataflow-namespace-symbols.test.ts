@@ -2,8 +2,8 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('Resolve for Namespaces', withTreeSitter(ts => {
 	assertDataflow(label('Simple Assign Break', ['namespaces', 'lexicographic-scope']), ts,
@@ -60,7 +60,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 	assertDataflow(label('Access base even if overwritten', ['namespaces', 'lexicographic-scope']), ts,
 		'library <- function() {}\nbase::library()',
 		emptyGraph()
-			.addEdge('2@base::library', builtInId('library'), EdgeType.Reads | EdgeType.Calls),
+			.addEdge('2@base::library', NodeId.toBuiltIn('library'), EdgeType.Reads | EdgeType.Calls),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
@@ -78,7 +78,7 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 	assertDataflow(label('work with s3', ['namespaces', 'replacement-functions', 'lexicographic-scope']), ts,
 		'`[[<-.foo::bar` <- function() {}\nx[[1]] <- 42',
 		emptyGraph()
-			.addEdge('2@[[', builtInId('[[<-'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('2@[[', NodeId.toBuiltIn('[[<-'), EdgeType.Reads | EdgeType.Calls)
 			.reads('2@[[', '1@`[[<-.foo::bar`'),
 		{
 			expectIsSubgraph:      true,

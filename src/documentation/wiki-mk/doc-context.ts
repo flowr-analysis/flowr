@@ -122,9 +122,14 @@ export interface GeneralDocContext {
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
 	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
-
+	/**
+	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the type/element name as link text.
+	 * This is similar to {@link GeneralDocContext#link}, but it uses the type/element name as link text, which is especially useful for types with long or complex names.
+	 */
+	linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -295,10 +300,10 @@ export function makeDocContextForTypes(
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {
-		doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
+		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
-		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
+		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
@@ -308,10 +313,14 @@ export function makeDocContextForTypes(
 			const fullName = `${className}${sep}${String(element)}`;
 			return this.link(fullName, fmt, filter);
 		},
-		linkFile(element: ElementIdOrRef): string {
+		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.link(fullName, fmt, filter);
+		},
+		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);
 		},
-		hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
+		hierarchy(this: void, element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
 			return printHierarchy({
 				program, info,
@@ -319,24 +328,24 @@ export function makeDocContextForTypes(
 				...fmt
 			});
 		},
-		code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
+		code(this: void, element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for code');
 			return printCodeOfElement({
 				program, info,
 				...fmt,
 			}, getNameFromElementIdOrRef(element));
 		},
-		async header(filename: string, purpose: string): Promise<string> {
+		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
-		mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
+		mermaid(this: void, element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
 			return visualizeMermaidClassDiagram(info, {
 				typeNameForMermaid: getNameFromElementIdOrRef(element),
 				...options
 			}) as string;
 		},
-		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
+		linkPage(this: void, pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			const text = linkText ?? pageName.split('/').pop() ?? pageName;
 			let link: string;
 			if(pageName in ConstantWikiLinkInfo) {
@@ -346,17 +355,17 @@ export function makeDocContextForTypes(
 			}
 			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
 		},
-		linkCode(path: PathLike, lineNumber?: number): string {
+		linkCode(this: void, path: PathLike, lineNumber?: number): string {
 			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();
 			return `[${path.toString()}](${encodeURIComponent(lnk)})`;
 		},
 		cliOption<
 			ScriptName extends keyof typeof scripts | 'flowr',
 			OptionName extends ScriptOptions<ScriptName>
-		>(scriptName: ScriptName, optionName: OptionName, withAlias = false, quote = true): string {
+		>(this: void, scriptName: ScriptName, optionName: OptionName, withAlias = false, quote = true): string {
 			return getCliLongOptionOf(scriptName, optionName, withAlias, quote);
 		},
-		replCmd(commandName: ReplCommandNames | string, quote = true, showStar = false): string {
+		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
 		}
 	};

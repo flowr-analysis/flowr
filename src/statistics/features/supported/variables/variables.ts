@@ -1,12 +1,12 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
-import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { VertexType } from '../../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../../util/range';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 
 
 const initialVariableInfo = {
@@ -26,9 +26,9 @@ export type DefinedVariableInformation = [
 ];
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
-			if(node.type !== RType.Symbol || isSpecialSymbol(node)) {
+			if(!RSymbol.is(node) || RSymbol.isSpecial(node)) {
 				return;
 			}
 
@@ -38,7 +38,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 			if(mayNode === undefined) {
 				info.unknownVariables++;
 				appendStatisticsFile(variables.name, 'unknown', [[
-					node.info.fullLexeme ?? node.lexeme,
+					RNode.lexeme(node),
 					SourceRange.getStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath);
 				return;
@@ -47,7 +47,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 			const [dfNode] = mayNode;
 			if(dfNode.tag === VertexType.VariableDefinition) {
 				info.numberOfDefinitions++;
-				const lexeme = node.info.fullLexeme ?? node.lexeme;
+				const lexeme = RNode.lexeme(node);
 				appendStatisticsFile(variables.name, 'definedVariables', [[
 					lexeme,
 					SourceRange.getStart(node.location)
@@ -56,7 +56,7 @@ function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void 
 			} else if(dfNode.tag === 'use') {
 				info.numberOfVariableUses++;
 				appendStatisticsFile(variables.name, 'usedVariables', [[
-					node.info.fullLexeme ?? node.lexeme,
+					RNode.lexeme(node),
 					SourceRange.getStart(node.location)
 				] satisfies DefinedVariableInformation ], input.filepath);
 			}

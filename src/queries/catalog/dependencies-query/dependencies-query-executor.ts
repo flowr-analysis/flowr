@@ -28,6 +28,7 @@ import { guard } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
 
 /**
@@ -216,7 +217,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		if(get?.type === RType.Argument) {
 			get = get.value;
 		}
-		return get?.info.fullLexeme ?? get?.lexeme;
+		return RNode.lexeme(get);
 	}
 }
 

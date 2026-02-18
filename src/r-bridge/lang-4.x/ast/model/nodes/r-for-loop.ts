@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RExpressionList } from './r-expression-list';
 
@@ -17,3 +17,16 @@ export interface RForLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	/** body used in for-loop: <p> `for(... in ...) <body>`*/
 	body:          RExpressionList<Info>
 }
+
+/**
+ * Helper for working with {@link RForLoop} AST nodes.
+ */
+export const RForLoop = {
+	name: 'RForLoop',
+	/**
+	 * Type guard for RForLoop nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RForLoop<Info> {
+		return node?.type === RType.ForLoop;
+	}
+} as const;

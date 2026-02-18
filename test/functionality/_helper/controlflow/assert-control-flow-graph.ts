@@ -1,7 +1,7 @@
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { diffOfControlFlowGraphs } from '../../../../src/control-flow/diff-cfg';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
 import { type ControlFlowInformation, emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
@@ -17,7 +17,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/g
 import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
-	return ids.map(normalizeIdToNumberIfPossible);
+	return ids.map(NodeId.normalize);
 }
 
 export interface AssertCfgOptions {

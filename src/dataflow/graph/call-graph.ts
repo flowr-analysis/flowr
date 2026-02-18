@@ -7,10 +7,10 @@ import {
 	VertexType
 } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { DfEdge, EdgeType } from './edge';
-import { builtInId, BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
 /**
@@ -211,7 +211,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	let addedTarget = false;
 	let addedBiTarget = false;
 	for(const tar of tars) {
-		if(isBuiltIn(tar)) {
+		if(NodeId.isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
 			addedTarget = true;
 			addedBiTarget = true;
@@ -228,7 +228,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 		for(const origs of vtx.origin) {
 			if(origs.startsWith('builtin:')) {
 				addedTarget = true;
-				result.addEdge(vid, builtInId(
+				result.addEdge(vid, NodeId.toBuiltIn(
 					origs.substring('builtin:'.length)
 				), EdgeType.Calls);
 			}
@@ -275,7 +275,7 @@ function processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, 
 			return;
 		case VertexType.FunctionDefinition:
 			if(from) {
-				result.addEdge(from, builtInId('function'), EdgeType.Calls);
+				result.addEdge(from, NodeId.toBuiltIn('function'), EdgeType.Calls);
 			}
 			return;
 		default:

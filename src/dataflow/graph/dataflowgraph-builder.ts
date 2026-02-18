@@ -1,5 +1,5 @@
 import { deepMergeObject } from '../../util/objects';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	type DataflowFunctionFlowInformation,
@@ -16,7 +16,7 @@ import { type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
@@ -74,22 +74,22 @@ export class DataflowGraphBuilder<
 		asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:     VertexType.FunctionDefinition,
-			id:      normalizeIdToNumberIfPossible(id),
+			id:      NodeId.normalize(id),
 			params:  Object.fromEntries(info?.readParams ?? []),
 			subflow: {
 				...subflow,
-				entryPoint:        normalizeIdToNumberIfPossible(subflow.entryPoint),
-				graph:             new Set([...subflow.graph].map(normalizeIdToNumberIfPossible)),
-				out:               subflow.out.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				in:                subflow.in.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
-				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: normalizeIdToNumberIfPossible(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) })),
+				entryPoint:        NodeId.normalize(subflow.entryPoint),
+				graph:             new Set([...subflow.graph].map(NodeId.normalize)),
+				out:               subflow.out.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
+				in:                subflow.in.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
+				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
 				hooks:             subflow.hooks ?? [],
 			} as DataflowFunctionFlowInformation,
 			mode:       info?.mode,
-			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: normalizeIdToNumberIfPossible(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) }) :
-				({ nodeId: normalizeIdToNumberIfPossible(e), type: ExitPointType.Default, cds: undefined })
+			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: NodeId.normalize(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) }) :
+				({ nodeId: NodeId.normalize(e), type: ExitPointType.Default, cds: undefined })
 			),
-			cds:         info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			cds:         info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
 			environment: info?.environment,
 		}, asRoot);
 	}
@@ -116,14 +116,14 @@ export class DataflowGraphBuilder<
 			omitArgs?:           boolean
 		},
 		asRoot: boolean = true) {
-		const onlyBuiltInAuto = info?.reads?.length === 1 && isBuiltIn(info?.reads[0]);
+		const onlyBuiltInAuto = info?.reads?.length === 1 && NodeId.isBuiltIn(info?.reads[0]);
 		this.addVertexWithDefaultEnv({
 			tag:         VertexType.FunctionCall,
-			id:          normalizeIdToNumberIfPossible(id),
+			id:          NodeId.normalize(id),
 			name,
-			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: normalizeIdToNumberIfPossible(a.nodeId), cds: undefined }),
+			args:        args.map(a => a === EmptyArgument ? EmptyArgument : { ...a, nodeId: NodeId.normalize(a.nodeId), cds: undefined }),
 			environment: (info?.onlyBuiltIn || onlyBuiltInAuto) ? undefined : info?.environment ?? this.defaultEnvironment,
-			cds:         info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			cds:         info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
 			onlyBuiltin: info?.onlyBuiltIn ?? onlyBuiltInAuto ?? false,
 			origin:      info?.origin ?? [ getDefaultProcessor(name) ?? BuiltInProcName.Function ],
 			link:        info?.link
@@ -175,9 +175,9 @@ export class DataflowGraphBuilder<
 		info?: { cds?: ControlDependency[], definedBy?: NodeId[] }, asRoot: boolean = true) {
 		this.addVertexWithDefaultEnv({
 			tag: VertexType.VariableDefinition,
-			id:  normalizeIdToNumberIfPossible(id),
+			id:  NodeId.normalize(id),
 			name,
-			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			cds: info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
 		}, asRoot);
 		if(info?.definedBy) {
 			for(const def of info.definedBy) {
@@ -198,13 +198,13 @@ export class DataflowGraphBuilder<
 	public use(id: NodeId, name?: string, info?: Partial<DataflowGraphVertexUse>, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv(deepMergeObject({
 			tag:         VertexType.Use,
-			id:          normalizeIdToNumberIfPossible(id),
+			id:          NodeId.normalize(id),
 			name,
 			cds:         undefined,
 			environment: undefined
 		}, {
 			...info,
-			cds: info?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
+			cds: info?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }))
 		} as Partial<DataflowGraphVertexUse>), asRoot);
 	}
 
@@ -219,8 +219,8 @@ export class DataflowGraphBuilder<
 	public constant(id: NodeId, options?: { cds?: ControlDependency[] }, asRoot: boolean = true) {
 		return this.addVertexWithDefaultEnv({
 			tag:         VertexType.Value,
-			id:          normalizeIdToNumberIfPossible(id),
-			cds:         options?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })),
+			id:          NodeId.normalize(id),
+			cds:         options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })),
 			environment: undefined
 		}, asRoot);
 	}
@@ -232,7 +232,7 @@ export class DataflowGraphBuilder<
 			}
 			return this;
 		}
-		return this.addEdge(normalizeIdToNumberIfPossible(from), normalizeIdToNumberIfPossible(to as NodeId), type);
+		return this.addEdge(NodeId.normalize(from), NodeId.normalize(to as NodeId), type);
 	}
 
 	private async queryHelper(from: FromQueryParam, to: ToQueryParam, data: ReadonlyFlowrAnalysisProvider, type: EdgeType) {
@@ -410,7 +410,7 @@ export class DataflowGraphBuilder<
 	 * this is just an easier variant in case you working with a lot of functions this saves you a lot of `false` flags.
 	 */
 	public overwriteRootIds(ids: readonly NodeId[]) {
-		this.rootVertices = new Set(ids.map(normalizeIdToNumberIfPossible));
+		this.rootVertices = new Set(ids.map(NodeId.normalize));
 		return this;
 	}
 }

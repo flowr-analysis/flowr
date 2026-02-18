@@ -11,10 +11,10 @@ import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { enrichElement, Enrichment } from './search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { TreeSitterInfo } from '../../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { log } from '../../util/log';
 import type TreeSitter from 'web-tree-sitter';
+import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 export const searchLogger = log.getSubLogger({ name: 'search' });
 
@@ -152,7 +152,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 	}
 
 	const nodesByTreeSitterId = new Map<number, RNode<ParentInformation>>();
-	visitAst((await input.normalize()).ast.files.map(f => f.root), node => {
+	RProject.visitAst((await input.normalize()).ast, node => {
 		const treeSitterInfo = node.info as unknown as TreeSitterInfo;
 		if(treeSitterInfo.tsId) {
 			nodesByTreeSitterId.set(treeSitterInfo.tsId, node);

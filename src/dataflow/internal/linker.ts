@@ -1,7 +1,8 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { isNotUndefined } from '../../util/assert';
-import { expensiveTrace, log } from '../../util/log';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { expensiveTrace } from '../../util/log';
+import type { BuiltIn } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type InGraphIdentifierDefinition,
 	Identifier,
@@ -23,7 +24,7 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { type BuiltIn, BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
@@ -264,7 +265,7 @@ export function linkFunctionCallWithSingleTarget(
 				continue;
 			}
 			for(const { nodeId, type, value } of defs as InGraphIdentifierDefinition[]) {
-				if(!isBuiltIn(nodeId)) {
+				if(!NodeId.isBuiltIn(nodeId)) {
 					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
 					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					if(type === ReferenceType.Function && ingoing.type === ReferenceType.S7MethodPrefix && Array.isArray(value)) {
@@ -336,7 +337,7 @@ function linkFunctionCall(
 
 	const functionDefinitionReadIds = new Set<NodeId>();
 	for(const [t, e] of edges.entries()) {
-		if(!isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
+		if(!NodeId.isBuiltIn(t) && DfEdge.doesNotIncludeType(e, EdgeType.Argument) && DfEdge.includesType(e, FCallLinkReadBits)) {
 			functionDefinitionReadIds.add(t);
 		}
 	}
@@ -460,7 +461,7 @@ export function getAllLinkedFunctionDefinitions(
 		const cid = potential.pop() as NodeId;
 		visited.add(cid);
 
-		if(isBuiltIn(cid)) {
+		if(NodeId.isBuiltIn(cid)) {
 			builtIns.add(cid);
 			continue;
 		}
@@ -515,7 +516,6 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
 		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
-			log.trace(`found no target for ${bodyInput.name ? Identifier.toString(bodyInput.name) : '<no-name>'}`);
 			if(maybeForRemaining) {
 				bodyInput.cds ??= [];
 			}
@@ -576,7 +576,9 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[], graph: DataflowGraph): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.cds?.map(negateControlDependency)).filter(isNotUndefined));
+	const exitCds = exits.flatMap(e => e.cds?.map(negateControlDependency))
+		.filter(isNotUndefined)
+		.map(cd => ({ ...cd, byIteration: true }));
 	const seenRefs = new Set<NodeId>();
 	for(const ref of references) {
 		if(seenRefs.has(ref.nodeId)) {
@@ -588,11 +590,11 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 			let setVertex = false;
 			if(ref.cds) {
 				if(!ref.cds?.find(c => c.id === cId)) {
-					ref.cds.push({ ...cd, byIteration: true });
+					ref.cds.push(cd);
 					setVertex = true;
 				}
 			} else {
-				ref.cds = [{ ...cd, byIteration: true }];
+				ref.cds = [cd];
 				setVertex = true;
 			}
 			if(setVertex) {
@@ -600,10 +602,10 @@ export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: r
 				if(vertex) {
 					if(vertex.cds) {
 						if(!vertex.cds?.find(c => c.id === cId)) {
-							vertex.cds.push({ ...cd, byIteration: true });
+							vertex.cds.push(cd);
 						}
 					} else {
-						vertex.cds = [{ ...cd, byIteration: true }];
+						vertex.cds = [cd];
 					}
 				}
 			}

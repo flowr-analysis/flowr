@@ -2,8 +2,7 @@ import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
 import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
-import type { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
-import { isRComment } from '../lang-4.x/ast/model/nodes/r-comment';
+import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
 import { SourceRange } from '../../util/range';
@@ -36,7 +35,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 	let cur: RNode<ParentInformation> | undefined = node;
 	do{
 		comments = cur?.info.adToks
-			?.filter(isRComment).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
+			?.filter(RComment.is).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {

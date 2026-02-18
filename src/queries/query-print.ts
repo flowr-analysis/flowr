@@ -1,26 +1,26 @@
 import { type OutputFormatter, bold, italic, markdownFormatter } from '../util/text/ansi';
 import { type Queries, type Query, type QueryResult, type QueryResults, type SupportedQueryTypes, SupportedQueries } from './query';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { textWithTooltip } from '../util/html-hover-over';
 import type { CallContextQuerySubKindResult } from './catalog/call-context-query/call-context-query-format';
 import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
-import { isBuiltIn } from '../dataflow/environments/built-in';
 import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
 	const id = isObj ? nodeId?.id : nodeId;
 	const info = isObj ? nodeId?.info : undefined;
-	if(isBuiltIn(id)) {
+	if(NodeId.isBuiltIn(id)) {
 		return italic(id, formatter) + (info ? ` (${JSON.stringify(info)})` : '');
 	}
 	const node = idMap.get(id);
 	if(node === undefined) {
 		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
+	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {

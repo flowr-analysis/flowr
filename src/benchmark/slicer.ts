@@ -37,8 +37,6 @@ import {
 } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
@@ -59,6 +57,8 @@ import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-dom
 import fs from 'fs';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -213,9 +213,9 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0;
 		let commentChars = 0;
 		let commentCharsNoWhitespace = 0;
-		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
+		RProject.visitAst(this.normalizedAst.ast, t => {
 			nodes++;
-			const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
+			const comments = t.info.adToks?.filter(RComment.is);
 			if(comments && comments.length > 0) {
 				const content = comments.map(c => c.lexeme ?? '').join('');
 				commentChars += content.length;
@@ -380,7 +380,7 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		visitAst(this.normalizedAst.ast.files.map(file => file.root), node => {
+		RProject.visitAst(this.normalizedAst.ast, node => {
 			const operations = inference.getAbstractOperations(node.info.id);
 			const value = inference.getAbstractValue(node.info.id);
 

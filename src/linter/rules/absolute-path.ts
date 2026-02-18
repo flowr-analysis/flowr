@@ -12,7 +12,6 @@ import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isAbsolutePath } from '../../util/text/strings';
-import { isRString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
@@ -28,6 +27,7 @@ import path from 'path';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { Identifier } from '../../dataflow/environments/identifier';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -77,7 +77,7 @@ function inferWd(file: string | undefined, wd: SupportedWd): string | undefined 
 
 // this can be improved by respecting raw strings and supporting more scenarios
 function buildQuickFix(str: RNode | undefined, filePath: string, wd: string | undefined): LintQuickFixReplacement[] | undefined {
-	if(!wd || !isRString(str)) {
+	if(!wd || !str || !RString.is(str)) {
 		return undefined;
 	}
 	return [{
@@ -148,7 +148,7 @@ export const ABSOLUTE_PATH = {
 				metadata.totalConsidered++;
 				const node = element.node;
 				const wd = inferWd(node.info.file, config.useAsWd);
-				if(isRString(node)) {
+				if(RString.is(node)) {
 					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
 						return [{
 							certainty: LintingResultCertainty.Uncertain,

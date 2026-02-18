@@ -1,4 +1,4 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -7,9 +7,7 @@ import {
 import { type EdgeTypeBits, EdgeType, DfEdge } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
-import { isBuiltIn } from '../environments/built-in';
 import type { Identifier } from '../environments/identifier';
-
 
 export const enum OriginType {
 	ReadVariableOrigin = 0,
@@ -174,7 +172,7 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 		return origins?.length === 0 ? getVariableUseOrigin(dfg, call) : origins;
 	}
 	origins = (origins ?? []).concat([...targets].map(target => {
-		if(isBuiltIn(target)) {
+		if(NodeId.isBuiltIn(target)) {
 			return {
 				type: OriginType.BuiltInFunctionOrigin,
 				fn:   { name: call.name },

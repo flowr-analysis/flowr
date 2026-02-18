@@ -88,7 +88,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
-	if(nonEmpty.length == 0 || (nonEmpty.length == 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
+	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
 		const q = nonEmpty[0].slice(1);
@@ -123,7 +123,7 @@ export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.Re
  */
 export function handleString(code: string) {
 	return {
-		rCode:     code.length == 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
+		rCode:     code.length === 0 ? undefined : startAndEndsWith(code, '"') ? JSON.parse(code) as string : code,
 		remaining: []
 	};
 }
@@ -213,7 +213,6 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
  * @param allowRSessionAccess - If true, allows the execution of arbitrary R code.
  */
 export async function replProcessAnswer(analyzer: FlowrAnalyzer, output: ReplOutput, expr: string, allowRSessionAccess: boolean): Promise<void> {
-
 	const statements = splitAtEscapeSensitive(expr, false, /^;\s*:/);
 
 	for(const statement of statements) {

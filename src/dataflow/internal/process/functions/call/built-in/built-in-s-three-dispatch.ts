@@ -11,13 +11,13 @@ import { dataflowLogger } from '../../../../../logger';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { invertArgumentMap, pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -50,11 +50,11 @@ export function processS3Dispatch<OtherInfo>(
 		'...':                 '...'
 	};
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
-	const generic = unpackArg(getArgumentWithId(args, argMaps.get('generic')?.[0]));
+	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const obj = unpackArg(getArgumentWithId(args, argMaps.get('object')?.[0]));
+	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
 	const dfObj = obj ? processDataflowFor(obj, data) : initializeCleanDataflowInformation(rootId, data);
 
 	if(alwaysExits(dfObj)) {

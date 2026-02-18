@@ -1,5 +1,11 @@
 import { RNumberPool, RStringPool } from '../../_helper/provider';
-import { boolean2ts, isBoolean, number2ts, string2ts, ts2r } from '../../../../src/r-bridge/lang-4.x/convert-values';
+import {
+	boolean2ts,
+	isBoolean,
+	RNumberValue,
+	RStringValue,
+	ts2r
+} from '../../../../src/r-bridge/lang-4.x/convert-values';
 import { describe, assert, test } from 'vitest';
 
 describe('Bidirectional Value Translation', () => {
@@ -82,21 +88,21 @@ describe('Bidirectional Value Translation', () => {
 		describe('numbers', () => {
 			for(const number of RNumberPool) {
 				test(`${number.str} => ${number.val.num}`, () => {
-					assert.deepStrictEqual(number2ts(number.str), number.val);
+					assert.deepStrictEqual(RNumberValue.fromRLexeme(number.str), number.val);
 				});
 			}
 		});
 		describe('strings', () => {
 			test('deny string which is too short to have both quotes', () => {
-				assert.throws(() => string2ts(''), Error);
-				assert.throws(() => string2ts('"'), Error);
+				assert.throws(() => RStringValue.fromRLexeme(''), Error);
+				assert.throws(() => RStringValue.fromRLexeme('"'), Error);
 			});
 			test('deny wrongly quoted strings', () => {
-				assert.throws(() => string2ts('abc'), Error);
+				assert.throws(() => RStringValue.fromRLexeme('abc'), Error);
 			});
 			for(const string of RStringPool) {
 				test(`${string.str} => ${string.val.str}`, () => {
-					assert.deepStrictEqual(string2ts(string.str), string.val);
+					assert.deepStrictEqual(RStringValue.fromRLexeme(string.str), string.val);
 				});
 			}
 		});

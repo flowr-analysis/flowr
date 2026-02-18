@@ -24,7 +24,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
@@ -661,10 +661,10 @@ export function assertSliced(
 					// check whether all ids are present in the slice result
 					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(n => normalizeIdToNumberIfPossible(n));
+						.map(NodeId.normalize);
 					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(n => normalizeIdToNumberIfPossible(n));
+						.map(NodeId.normalize);
 					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
 				} else {
 					assert.strictEqual(

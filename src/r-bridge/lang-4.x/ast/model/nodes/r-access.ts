@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RArgument, RUnnamedArgument } from './r-argument';
 import type { EmptyArgument } from './r-function-call';
 
@@ -30,3 +30,27 @@ export interface RIndexAccess<Info = NoInfo> extends RAccessBase<Info> {
 
 export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>;
 
+/**
+ * Helper for working with {@link RAccess} AST nodes.
+ */
+export const RAccess = {
+	name: 'RAccess',
+	/**
+	 * Type guard for {@link RAccess} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RAccess<Info> {
+		return node?.type === RType.Access;
+	},
+	/**
+	 * Type guard for {@link RNamedAccess} nodes.
+	 */
+	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedAccess<Info> {
+		return RAccess.is(node) && (node.operator === '$' || node.operator === '@');
+	},
+	/**
+	 * Type guard for {@link RIndexAccess} nodes.
+	 */
+	isIndex<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIndexAccess<Info> {
+		return RAccess.is(node) && (node.operator === '[' || node.operator === '[[');
+	}
+} as const;

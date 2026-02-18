@@ -1,5 +1,5 @@
 import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
 
@@ -35,3 +35,28 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>,
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
+
+/**
+ * Helper for working with {@link RFunctionCall} AST nodes.
+ */
+export const RFunctionCall = {
+	name: 'RFunctionCall',
+	/**
+	 * Type guard for {@link RFunctionCall} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
+		return node?.type === RType.FunctionCall;
+	},
+	/**
+	 * Type guard for {@link RNamedFunctionCall} nodes.
+	 */
+	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info> {
+		return RFunctionCall.is(node) && node.named === true;
+	},
+	/**
+	 * Type guard for {@link RUnnamedFunctionCall} nodes.
+	 */
+	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedFunctionCall<Info> {
+		return RFunctionCall.is(node) && !node.named;
+	}
+} as const;

@@ -12,7 +12,7 @@ import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RUnaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-unary-op';
 import type { RParameter } from '../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { RArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
+import { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
 import type { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
@@ -21,9 +21,7 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLineDirective } from '../r-bridge/lang-4.x/ast/model/nodes/r-line-directive';
 import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { isRProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
-
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 type FoldOfType<T extends RType, Returns = void, Info = NoInfo> = (node: Extract<RNode<Info>, { type: T }>) => Returns;
 
@@ -115,13 +113,13 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 			const n = nodes as readonly (RNode<Info> | null | undefined | typeof EmptyArgument | RProject<Info>)[];
 			return this.concatAll(
 				n.filter(n => n && n !== EmptyArgument)
-					.map(node => isRProject<Info>(node) ?
+					.map(node => RProject.is<Info>(node) ?
 						this.concatAll(node.files.map(f => this.foldSingle(f.root))) :
 						this.foldSingle(node as RNode<Info>)
 					)
 			);
 		} else if(nodes) {
-			if(isRProject<Info>(nodes)) {
+			if(RProject.is<Info>(nodes)) {
 				return this.concatAll(nodes.files.map(f => this.foldSingle(f.root)));
 			}
 			return this.foldSingle(nodes as RNode<Info>);
@@ -140,7 +138,7 @@ export class DefaultNormalizedAstFold<Returns = void, Info = NoInfo> implements 
 
 	foldRAccess(access: RAccess<Info>) {
 		let accessed = this.foldSingle(access.accessed);
-		if(access.operator === '[' || access.operator === '[[') {
+		if(RAccess.isIndex(access)) {
 			accessed = this.concat(accessed, this.fold(access.access));
 		}
 		return accessed;

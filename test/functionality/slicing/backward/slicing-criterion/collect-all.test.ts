@@ -1,5 +1,4 @@
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell';
-import { normalizeIdToNumberIfPossible } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type TestLabel, label, decorateLabelContext } from '../../../_helper/label';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -9,6 +8,7 @@ import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/dat
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { describe, assert, test } from 'vitest';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return test(decorateLabelContext(name, ['slice']), async() => {
@@ -16,11 +16,11 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
-			.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme }));
+			.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme }));
 		const expectedMapped = expected
 			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap));
 
-		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
+		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
 	});
 }
 

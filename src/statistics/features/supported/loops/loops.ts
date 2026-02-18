@@ -5,7 +5,7 @@ import { postProcess } from './post-process';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 
 const initialLoopInfo = {
@@ -33,7 +33,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
 	const loopStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			switch(node.type) {
 				case RType.Next:         info.nextStatements++; return;

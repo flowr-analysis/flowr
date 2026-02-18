@@ -1,13 +1,13 @@
 import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { FlowrFile } from '../../project/context/flowr-file';
 import type { MermaidGraphPrinterInfo } from './info';
 import { MermaidDefaultMarkStyle } from './info';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 function identifyMermaidDirection(prefix: string): string {
 	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
@@ -43,7 +43,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 		}
 	}
 	function showAst(ast: RNodeWithParent): void {
-		visitAst(ast, n => {
+		RNode.visitAst(ast, n => {
 			showNode(n);
 			if(n.type === 'RAccess' && (n.operator !== '[' && n.operator !== '[[')) {
 				for(const k of n.access) {

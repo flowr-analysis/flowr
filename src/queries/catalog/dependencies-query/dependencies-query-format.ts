@@ -11,7 +11,6 @@ import { SourceFunctions } from './function-info/source-functions';
 import { ReadFunctions } from './function-info/read-functions';
 import { WriteFunctions } from './function-info/write-functions';
 import { VisualizeFunctions } from './function-info/visualize-functions';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
@@ -20,6 +19,7 @@ import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/
 import { TestFunctions } from './function-info/test-functions';
 import type { BrandedNamespace } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 export const Unknown = 'unknown';
 
@@ -48,7 +48,7 @@ export const DefaultDependencyCategories = {
 		/* for libraries, we have to additionally track all uses of `::` and `:::`, for this we currently simply traverse all uses */
 		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
 			if(!ignoreDefault) {
-				visitAst((await data.analyzer.normalize()).ast.files.map(f => f.root), n => {
+				RProject.visitAst((await data.analyzer.normalize()).ast, n => {
 					let ns: BrandedNamespace | undefined;
 					if(n.type === RType.Symbol && (ns = Identifier.getNamespace(n.content)) !== undefined) {
 						const dep = data.analyzer.inspectContext().deps.getDependency(ns);

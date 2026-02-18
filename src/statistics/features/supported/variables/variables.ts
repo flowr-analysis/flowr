@@ -1,12 +1,12 @@
 import type { Feature, FeatureProcessorInput } from '../../feature';
 import type { Writable } from 'ts-essentials';
 import { postProcess } from './post-process';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { isSpecialSymbol } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { VertexType } from '../../../../dataflow/graph/vertex';
 import { SourceRange } from '../../../../util/range';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 
 const initialVariableInfo = {
@@ -26,7 +26,7 @@ export type DefinedVariableInformation = [
 ];
 
 function visitVariables(info: VariableInfo, input: FeatureProcessorInput): void {
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.Symbol || isSpecialSymbol(node)) {
 				return;

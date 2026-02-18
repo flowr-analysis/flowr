@@ -8,9 +8,10 @@ import type { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/mode
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { VertexType } from '../../../../dataflow/graph/vertex';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 
 const initialFunctionDefinitionInfo = {
 	/** all, anonymous, assigned, non-assigned, ... */
@@ -69,7 +70,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 	const definitionStack: RNodeWithParent[] = [];
 	const allDefinitions: SingleFunctionDefinitionInformation[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.FunctionDefinition) {
 				return;
@@ -134,7 +135,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 
 			// track all calls with the same name that do not already have a bound calls edge, superfluous if recursive tracking is explicit
 			const recursiveCalls: RNodeWithParent[] = [];
-			visitAst(node.body, n => {
+			RNode.visitAst(node.body, n => {
 				if(n.type === RType.FunctionCall && n.named && assigned.has(n.functionName.lexeme)) {
 					recursiveCalls.push(n);
 				}

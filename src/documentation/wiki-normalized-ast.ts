@@ -4,8 +4,6 @@ import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details } from './doc-util/doc-structure';
 import { requestFromInput } from '../r-bridge/retriever';
-import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { collectAllIds } from '../r-bridge/lang-4.x/ast/model/collect';
 import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -15,6 +13,8 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -192,11 +192,11 @@ ${
 
 ### Visitors
 
-If you want a simple visitor which traverses the AST, the ${ctx.link(visitAst)} function is a good starting point.
+If you want a simple visitor which traverses the AST, the ${ctx.linkO(RNode, 'visitAst')} function is a good starting point.
 You may specify functions to be called whenever you enter and exit a node during the traversal, and any
 computation is to be done by side effects.
 For example, if you want to collect all the \`id\`s present within a normalized (sub-)AST,
-as it is done by the ${ctx.link(collectAllIds)} function, you can use the following visitor:
+as it is done by the ${ctx.linkO(RNode, 'collectAllIds')} (and corresponding ${ctx.linkO(RNode, 'collectAllIdsWithStop')}, ${ctx.linkO(RProject, 'collectAllIds')}, ...) function, you can use the following visitor:
 
 ${codeBlock('ts', `
 const ids = new Set<NodeId>();

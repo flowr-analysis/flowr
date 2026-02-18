@@ -8,8 +8,7 @@ import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-n
 import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../parser';
 import { type FlowrConfigOptions, getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
-import type { RProject } from '../../model/nodes/r-project';
-import { mergeProjects } from '../../model/nodes/r-project';
+import { RProject } from '../../model/nodes/r-project';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -22,7 +21,7 @@ export function normalize(
 	parsed: ParseStepOutput<string>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): NormalizedAst {
-	return decorateAst(mergeProjects(parsed.files.map(normalizeButNotDecorated)), { getId });
+	return decorateAst(RProject.merge(parsed.files.map(normalizeButNotDecorated)), { getId });
 }
 
 /**

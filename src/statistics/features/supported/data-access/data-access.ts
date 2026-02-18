@@ -9,11 +9,11 @@ import { assertUnreachable, guard } from '../../../../util/assert';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RoleInParent, rolesOfParents } from '../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 const initialDataAccessInfo = {
 	// for the nth argument, how many of them are constant, etc.
@@ -59,7 +59,7 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 	const accessChain: RNodeWithParent[] = [];
 	const parentRoleCache = new Map<NodeId, { acc: boolean, idxAcc: boolean }>();
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.Access) {
 				return;

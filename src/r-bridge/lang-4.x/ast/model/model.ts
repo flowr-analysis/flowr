@@ -26,6 +26,9 @@ import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
 import type { ParentInformation } from './processing/decorate';
 import type { NodeId } from './processing/node-id';
+import type { OnEnter, OnExit } from './processing/visitor';
+import { NodeVisitor } from './processing/visitor';
+import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -154,8 +157,10 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 
 /**
  * Helper object to provide helper functions for {@link RNode|RNodes}.
+ * @see {@link DefaultNormalizedAstFold} - for a more powerful way to traverse the normalized AST
  */
 export const RNode = {
+	name: 'RNode',
 	/**
 	 * A helper function to retrieve the location of a given node, if available.
 	 * @see SourceLocation.fromNode
@@ -174,6 +179,49 @@ export const RNode = {
 	 */
 	getType(this: void, node: RNode): RType {
 		return node.type;
+	},
+	/**
+	 * Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.
+	 * @param nodes          - The root id nodes to start collecting from
+	 * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
+	 * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
+	 * @see {@link RProject.visitAst} - to visit all nodes in a project
+	 */
+	visitAst<OtherInfo = NoInfo>(this: void, nodes: SingleOrArrayOrNothing<RNode<OtherInfo>>, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
+		return new NodeVisitor(onVisit, onExit).visit(nodes);
+	},
+	/**
+	 * Collects all node ids within a tree given by a respective root node
+	 * @param nodes - The root id nodes to start collecting from
+	 * @see {@link collectAllIdsWithStop} - to stop collecting at certain nodes
+	 * @see {@link RProject.collectAllIds} - to collect all ids within a project
+	 */
+	collectAllIds<OtherInfo>(this: void, nodes: SingleOrArrayOrNothing<RNode<OtherInfo & ParentInformation>>): Set<NodeId> {
+		const ids = new Set<NodeId>();
+		RNode.visitAst(nodes, node => {
+			ids.add(node.info.id);
+		});
+		return ids;
+	},
+	/**
+	 * Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given `stop` function returns `true`.
+	 * <p>
+	 * This can be used to exclude certain subtrees from the collection, for example to exclude function bodies when collecting ids on the root level.
+	 * @param nodes - The root id nodes to start collecting from
+	 * @param stop - A function that determines whether to stop collecting at a given node, does not stop by default
+	 * @see {@link collectAllIds} - to collect all ids without stopping
+	 * @see {@link RProject.collectAllIdsWithStop} - to collect all ids within a project with stopping
+	 */
+	collectAllIdsWithStop<OtherInfo>(this: void, nodes: SingleOrArrayOrNothing<RNode<OtherInfo & ParentInformation>>, stop: (node: RNode<OtherInfo & ParentInformation>) => boolean): Set<NodeId> {
+		const ids = new Set<NodeId>();
+		RNode.visitAst(nodes, node => {
+			if(stop(node)) {
+				return true;
+			}
+			ids.add(node.info.id);
+			return false;
+		});
+		return ids;
 	}
 } as const;
 

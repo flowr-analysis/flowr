@@ -10,7 +10,7 @@ export type OnEnter<OtherInfo> = (node: RNode<OtherInfo>) => (boolean | void);
 export type OnExit<OtherInfo> = (node: RNode<OtherInfo>) => void;
 
 // capsuled as a class to avoid passing onExit and onEnter on *each* visit call
-class NodeVisitor<OtherInfo = NoInfo> {
+export class NodeVisitor<OtherInfo = NoInfo> {
 	private readonly onEnter?: OnEnter<OtherInfo>;
 	private readonly onExit?:  OnExit<OtherInfo>;
 
@@ -107,15 +107,4 @@ class NodeVisitor<OtherInfo = NoInfo> {
 			this.visitSingle(nodes as RNode<OtherInfo>);
 		}
 	}
-
-}
-
-/**
- * Visits all node ids within a tree given by a respective root node using a depth-first search with prefix order.
- * @param nodes          - The root id nodes to start collecting from
- * @param onVisit        - Called before visiting the subtree of each node. Can be used to stop visiting the subtree starting with this node (return `true` stop)
- * @param onExit         - Called after the subtree of a node has been visited, called for leafs too (even though their subtree is empty)
- */
-export function visitAst<OtherInfo = NoInfo>(nodes: RNode<OtherInfo> | (RNode<OtherInfo> | null | undefined)[] | undefined, onVisit?: OnEnter<OtherInfo>, onExit?: OnExit<OtherInfo>): void {
-	return new NodeVisitor(onVisit, onExit).visit(nodes);
 }

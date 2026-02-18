@@ -1,10 +1,10 @@
 import type { SourceRange } from '../../../../util/range';
 import { SourceLocation } from '../../../../util/range';
-import type { RType } from './type';
+import { RType } from './type';
 import type { MergeableRecord } from '../../../../util/objects';
-import { RNumber } from './nodes/r-number';
-import { RString } from './nodes/r-string';
-import { RLogical } from './nodes/r-logical';
+import type { RNumber } from './nodes/r-number';
+import type { RString } from './nodes/r-string';
+import type { RLogical } from './nodes/r-logical';
 import type { RSymbol } from './nodes/r-symbol';
 import type { RComment } from './nodes/r-comment';
 import type { RBreak } from './nodes/r-break';
@@ -120,35 +120,130 @@ export const RConstant = {
 	name: 'RConstant',
 	/**
 	 * Type guard for {@link RConstant} nodes, i.e. checks whether a node is a number, string or logical constant.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RNumber.is}) or check the `type` node directly.
 	 */
 	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstant<Info> {
-		return node !== undefined && (RNumber.is(node) || RString.is(node) || RLogical.is(node));
-	}
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return t === RType.Number || t === RType.String || t === RType.Logical;
+	},
+	/**
+	 * A set of all types of constants in the normalized AST, i.e. number, string and logical constants.
+	 */
+	constantTypes: new Set([RType.Number, RType.String, RType.Logical]) as ReadonlySet<RType>
 } as const;
 /**
  * This subtype of {@link RNode} represents all types of {@link Leaf} nodes in the
  * normalized AST.
  */
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
+export const RSingleNode = {
+	name: 'RSingleNode',
+	/**
+	 * Type guard for {@link RSingleNode} nodes, i.e. checks whether a node is a comment, symbol, constant, break, next or line directive.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RComment.is}) or check the `type` node directly.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RSingleNode<Info> {
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return t === RType.Comment || t === RType.Symbol || RConstant.constantTypes.has(t) || t === RType.Break || t === RType.Next || t === RType.LineDirective;
+	},
+	/**
+	 * A set of all types of single nodes in the normalized AST, i.e. comment, symbol, constant, break, next and line directive nodes.
+	 */
+	singleNodeTypes: new Set([RType.Comment, RType.Symbol, RType.Break, RType.Next, RType.LineDirective, ...RConstant.constantTypes]) as ReadonlySet<RType>
+} as const;
 /**
  * This subtype of {@link RNode} represents all looping constructs in the normalized AST.
  */
 export type RLoopConstructs<Info> = RForLoop<Info> | RRepeatLoop<Info> | RWhileLoop<Info>;
+export const RLoopConstructs = {
+	name: 'RLoopConstructs',
+	/**
+	 * Type guard for {@link RLoopConstructs} nodes, i.e. checks whether a node is a for, repeat or while loop.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RLoopConstructs<Info> {
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return t === RType.ForLoop || t === RType.RepeatLoop || t === RType.WhileLoop;
+	},
+	/**
+	 * A set of all types of loop constructs in the normalized AST, i.e. for, repeat and while loops.
+	 */
+	loopConstructTypes: new Set([RType.ForLoop, RType.RepeatLoop, RType.WhileLoop]) as ReadonlySet<RType>
+} as const;
 /**
  * As an extension to {@link RLoopConstructs}, this subtype of {@link RNode} includes
  * the {@link RIfThenElse} construct as well.
  */
 export type RConstructs<Info>     = RLoopConstructs<Info> | RIfThenElse<Info>;
+export const RConstructs = {
+	name: 'RConstructs',
+	/**
+	 * Type guard for {@link RConstructs} nodes, i.e. checks whether a node is a for, repeat or while loop or an if-then-else construct.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RForLoop.is}) or check the `type` node directly.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RConstructs<Info> {
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return RLoopConstructs.loopConstructTypes.has(t) || t === RType.IfThenElse;
+	},
+	/**
+	 * A set of all types of constructs in the normalized AST, i.e. for, repeat and while loops and if-then-else constructs.
+	 */
+	constructTypes: new Set([...RLoopConstructs.loopConstructTypes, RType.IfThenElse]) as ReadonlySet<RType>
+} as const;
 /**
  * This subtype of {@link RNode} represents all types related to functions
  * (calls and definitions) in the normalized AST.
  */
 export type RFunctions<Info>      = RFunctionDefinition<Info> | RFunctionCall<Info> | RParameter<Info> | RArgument<Info>;
+export const RFunctions = {
+	name: 'RFunctions',
+	/**
+	 * Type guard for {@link RFunctions} nodes, i.e. checks whether a node is a function definition, function call, parameter or argument.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RFunctionDefinition.is}) or check the `type` node directly.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctions<Info> {
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return t === RType.FunctionDefinition || t === RType.FunctionCall || t === RType.Parameter || t === RType.Argument;
+	},
+	/**
+	 * A set of all types of function-related nodes in the normalized AST, i.e. function definitions, function calls, parameters and arguments.
+	 */
+	functionTypes: new Set([RType.FunctionDefinition, RType.FunctionCall, RType.Parameter, RType.Argument]) as ReadonlySet<RType>
+} as const;
 /**
  * This subtype of {@link RNode} represents all types of otherwise hard to categorize
  * nodes in the normalized AST. At the moment these are the comment-like nodes.
  */
 export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
+export const ROther = {
+	name: 'ROther',
+	/**
+	 * Type guard for {@link ROther} nodes, i.e. checks whether a node is a comment or line directive.
+	 * If you need the specific type, please either use the respective type guards (e.g., {@link RComment.is}) or check the `type` node directly.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is ROther<Info> {
+		if(!node) {
+			return false;
+		}
+		const t = node.type;
+		return t === RType.Comment || t === RType.LineDirective;
+	}
+} as const;
 
 /**
  * The `RNode` type is the union of all possible nodes in the R-ast.
@@ -166,8 +261,6 @@ export type ROther<Info>          = RComment<Info> | RLineDirective<Info>;
 export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 	| ROther<Info> | RConstructs<Info> | RNamedAccess<Info> | RIndexAccess<Info>
 	| RUnaryOp<Info> | RBinaryOp<Info> | RSingleNode<Info>  | RPipe<Info>;
-
-// TODO: ROther etc. helper; the other functions as discussed for the RNode
 
 /**
  * Helper object to provide helper functions for {@link RNode|RNodes}.

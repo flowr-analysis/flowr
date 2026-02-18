@@ -12,7 +12,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
-import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
@@ -88,7 +88,9 @@ offering the following benefits:
 3. decorate the AST with additional information, e.g., parent relations and nesting information
 
 In general, the mapping should be rather intuitive and focused primarily on the
-syntactic structure of the program.
+syntactic structure of the program. As with other types in flowR, you get corresponding helper objects.
+So if you want to work with an \`RBinaryOp\` node, you can use the ${ctx.link(RBinaryOp)} object to check whether a node is an \`RBinaryOp\` and to access its fields
+(e.g., with ${ctx.linkO(RBinaryOp, 'is')}).
 Consider the following example which shows the normalized AST of the code
 
 ${codeBlock('r', 'x <- 2 * 3 + 1')}
@@ -132,7 +134,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${details('Normalized AST Node Types',
-	ctx.hierarchy('RNode', { collapseFromNesting: Number.MAX_VALUE })
+	ctx.hierarchy('RNode', { collapseFromNesting: Number.MAX_VALUE, ignoredTypes: ['Info', 'LogLevel'] })
 )}
 
 The following segments intend to give you an overview of how to work with the normalized AST:

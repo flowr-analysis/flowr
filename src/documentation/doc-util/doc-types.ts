@@ -577,7 +577,7 @@ export function printHierarchy({ program, info, root, ignoredTypes, collapseFrom
 		if(mermaidHide.includes(baseType) || ignoredTypes?.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });
+		const res = printHierarchy({ program, info, root: baseType, ignoredTypes, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });
 		result.push(res);
 	}
 

@@ -15,11 +15,12 @@ import type { RRepeatLoop } from './nodes/r-repeat-loop';
 import type { RWhileLoop } from './nodes/r-while-loop';
 import type { RIfThenElse } from './nodes/r-if-then-else';
 import type { RFunctionDefinition } from './nodes/r-function-definition';
-import type { RFunctionCall } from './nodes/r-function-call';
+import type { EmptyArgument, RFunctionCall } from './nodes/r-function-call';
 import type { RParameter } from './nodes/r-parameter';
 import type { RArgument } from './nodes/r-argument';
 import type { RExpressionList } from './nodes/r-expression-list';
 import type { RIndexAccess, RNamedAccess } from './nodes/r-access';
+import { RAccess } from './nodes/r-access';
 import type { RUnaryOp } from './nodes/r-unary-op';
 import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
@@ -29,6 +30,7 @@ import type { NodeId } from './processing/node-id';
 import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
 import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
+import { assertUnreachable } from '../../../../util/assert';
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -309,6 +311,56 @@ export const RNode = {
 			ids.add(node.info.id);
 		});
 		return ids;
+	},
+	/**
+	 * Collects all direct children of a given node, i.e. all nodes that are directly reachable via a property of the given node.
+	 */
+	directChildren<OtherInfo>(this: void, node: RNode<OtherInfo>): readonly (RNode<OtherInfo> | typeof EmptyArgument)[] {
+		const type = node.type;
+		switch(type) {
+			case RType.FunctionCall:       return [node.named ? node.functionName : node.calledFunction, ...node.arguments];
+			case RType.FunctionDefinition: return [...node.parameters, node.body];
+			case RType.ExpressionList:     return node.grouping ? [node.grouping[0], ...node.children, node.grouping[1]] : node.children;
+			case RType.ForLoop:            return [node.variable, node.vector, node.body];
+			case RType.WhileLoop:          return [node.condition, node.body];
+			case RType.RepeatLoop:         return [node.body];
+			case RType.IfThenElse:         return node.otherwise ? [node.condition, node.then, node.otherwise] : [node.condition, node.then];
+			case RType.BinaryOp:
+			case RType.Pipe:               return [node.lhs, node.rhs];
+			case RType.UnaryOp:            return [node.operand];
+			case RType.Parameter:          return node.defaultValue ? [node.name, node.defaultValue] : [node.name];
+			case RType.Argument:           return node.name && node.value ? [node.name, node.value] : node.name ? [node.name] : node.value ? [node.value] : [];
+			case RType.Access:             return RAccess.isIndex(node) ? [node.accessed, ...node.access] : [node.accessed];
+			case RType.Symbol: case RType.Logical: case RType.Number: case RType.String: case RType.Comment: case RType.Break: case RType.Next:
+			case RType.LineDirective:      return [];
+			default:
+				assertUnreachable(type);
+		}
+	},
+	/**
+	 * Returns the direct parent of a node.
+	 * Usually, only root nodes do not have a parent, and you can assume that there is a
+	 * linear chain of parents leading to the root node.
+	 */
+	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: Map<NodeId, RNode<OtherInfo>>): RNode<OtherInfo> | undefined {
+		const parentId = node.info.parent;
+		if(parentId === undefined) {
+			return undefined;
+		}
+		return idMap.get(parentId);
+	},
+	/**
+	 * In contrast to the nesting stored in the {@link RNode} structure,
+	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
+	 */
+	depth(this: void, node: RNode, idMap: Map<NodeId, RNode>): number {
+		let depth = 0;
+		let currentNode: RNode | undefined = node;
+		while(currentNode) {
+			currentNode = RNode.directParent(currentNode as RNode<ParentInformation>, idMap);
+			depth++;
+		}
+		return depth;
 	},
 	/**
 	 * Collects all node ids within a tree given by a respective root node, but stops collecting at nodes where the given `stop` function returns `true`.

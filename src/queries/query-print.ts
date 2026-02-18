@@ -7,6 +7,7 @@ import type { BaseQueryMeta, BaseQueryResult } from './base-query-format';
 import { printAsMs } from '../util/text/time';
 import type { AstIdMap, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: OutputFormatter, idMap: AstIdMap<ParentInformation>): string {
 	const isObj = typeof nodeId === 'object' && nodeId !== null && 'id' in nodeId;
@@ -19,7 +20,7 @@ function nodeString(nodeId: NodeId | { id: NodeId, info?: object }, formatter: O
 	if(node === undefined) {
 		return `UNKNOWN: ${id} (info: ${JSON.stringify(info)})`;
 	}
-	return `${italic('`' + (node.lexeme ?? node.info.fullLexeme ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
+	return `${italic('`' + (RNode.lexeme(node) ?? 'UNKNOWN') + '`', formatter)} (L.${node.location?.[0]}${info ? ', ' + JSON.stringify(info) : ''})`;
 }
 
 function asciiCallContextSubHit(formatter: OutputFormatter, results: readonly CallContextQuerySubKindResult[], idMap: AstIdMap<ParentInformation>): string {

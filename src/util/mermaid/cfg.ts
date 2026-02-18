@@ -28,7 +28,7 @@ export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'st
 export const MermaidExitPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:green,stroke-width:6.5px;';
 
 function getLexeme(n?: RNodeWithParent) {
-	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
+	return n ? RNode.lexeme(n) ?? '' : undefined;
 }
 
 

@@ -14,6 +14,7 @@ import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
 import { SourceRange } from '../range';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 interface MermaidGraph {
 	nodeLines:           string[]
@@ -40,7 +41,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		// get parent
 		const idMap = mermaid.rootGraph.idMap;
 		const node = idMap?.get(nodeId);
-		const nodeLexeme = node?.info.fullLexeme ?? node?.lexeme ?? 'function';
+		const nodeLexeme = RNode.lexeme(node) ?? 'function';
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${escapeMarkdown(nodeLexeme)}${location}"]`);
 	} else {

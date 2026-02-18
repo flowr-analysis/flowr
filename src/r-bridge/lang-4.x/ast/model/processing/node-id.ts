@@ -3,6 +3,7 @@ import type { DataflowGraph } from '../../../../../dataflow/graph/graph';
 import { VertexType } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
+import { RNode } from '../model';
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };

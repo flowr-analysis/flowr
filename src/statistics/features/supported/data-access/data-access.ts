@@ -14,6 +14,7 @@ import { appendStatisticsFile } from '../../../output/statistics-file';
 import type { RArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 
 const initialDataAccessInfo = {
 	// for the nth argument, how many of them are constant, etc.
@@ -93,7 +94,7 @@ function visitAccess(info: DataAccessInfo, input: FeatureProcessorInput): void {
 
 
 			if(accessNest.length === 0 && accessChain.length === 0) { // store topmost, after add as it must not be a child to do that
-				appendStatisticsFile(dataAccess.name, 'dataAccess', [node.info.fullLexeme ?? node.lexeme], input.filepath);
+				appendStatisticsFile(dataAccess.name, 'dataAccess', [RNode.lexeme(node)], input.filepath);
 			}
 
 			const op = node.operator;

@@ -96,17 +96,17 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			if(definitionStack.length > 0) {
 				info.nestedFunctions++;
 				info.deepestNesting = Math.max(info.deepestNesting, definitionStack.length);
-				appendStatisticsFile(definedFunctions.name, 'nested-definitions', [node.info.fullLexeme ?? node.lexeme], input.filepath);
+				appendStatisticsFile(definedFunctions.name, 'nested-definitions', [RNode.lexeme(node)], input.filepath);
 			}
 
 			// parameter names:
-			const parameterNames = node.parameters.map(p => p.info.fullLexeme ?? p.lexeme);
+			const parameterNames = node.parameters.map(RNode.lexeme);
 			appendStatisticsFile(definedFunctions.name, 'usedParameterNames', parameterNames, input.filepath);
 
 			const isLambda = node.lexeme.startsWith('\\');
 			if(isLambda) {
 				info.lambdasOnly++;
-				appendStatisticsFile(definedFunctions.name, 'allLambdas', [node.info.fullLexeme ?? node.lexeme], input.filepath);
+				appendStatisticsFile(definedFunctions.name, 'allLambdas', [RNode.lexeme(node)], input.filepath);
 			}
 
 			definitionStack.push(node);
@@ -119,7 +119,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 					if(DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 						const target = input.normalizedRAst.idMap.get(targetId);
 						guard(target !== undefined, 'Dataflow edge points to unknown node');
-						const name = target.info.fullLexeme ?? target.lexeme;
+						const name = RNode.lexeme(node);
 						if(name) {
 							assigned.add(name);
 						}
@@ -142,7 +142,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			});
 			// one recursive definition, but we record all
 			info.recursive += recursiveCalls.length > 0 ? 1 : 0;
-			appendStatisticsFile(definedFunctions.name, 'recursive', recursiveCalls.map(n => n.info.fullLexeme ?? n.lexeme ?? 'unknown'), input.filepath);
+			appendStatisticsFile(definedFunctions.name, 'recursive', recursiveCalls.map(n => RNode.lexeme(n) ?? 'unknown'), input.filepath);
 
 			const lexeme = node.info.fullLexeme;
 			const lexemeSplit= lexeme?.split('\n');

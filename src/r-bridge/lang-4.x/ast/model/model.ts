@@ -386,8 +386,8 @@ export const RNode = {
 	 * A helper function to retrieve the lexeme of a given node, if available.
 	 * If the `fullLexeme` is available, it will be returned, otherwise the `lexeme` will be returned.
 	 */
-	lexeme<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>): string | undefined {
-		return node.info.fullLexeme ?? node.lexeme;
+	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
+		return node?.info.fullLexeme ?? node?.lexeme as string;
 	}
 } as const;
 

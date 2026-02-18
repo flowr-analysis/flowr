@@ -141,6 +141,9 @@ export const RConstant = {
  * normalized AST.
  */
 export type RSingleNode<Info>     = RComment<Info> | RSymbol<Info> | RConstant<Info> | RBreak<Info> | RNext<Info> | RLineDirective<Info>;
+/**
+ * Represents a leaf node in the normalized AST, i.e. a node that does not have any children. This includes comment, symbol, constant, break, next and line directive nodes.
+ */
 export const RSingleNode = {
 	name: 'RSingleNode',
 	/**

@@ -27,6 +27,7 @@ import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -102,13 +103,10 @@ export function processApply<OtherInfo>(
 	let anonymous: boolean = false;
 
 	const val = arg.value;
-	if(unquoteFunction && val.type === RType.String) {
+	if(unquoteFunction && RString.is(val)) {
 		functionId = val.info.id;
 		functionName = val.content.str;
-		information = {
-			...information,
-			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
-		};
+		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {

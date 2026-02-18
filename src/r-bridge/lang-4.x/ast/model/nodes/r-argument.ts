@@ -51,8 +51,11 @@ export const RArgument = {
 		return RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
 	/**
-	 * Retrieve the argument with the given id from the list of arguments.
+	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.
 	 */
+	isWithValue<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> & { value: RNode<Info> } {
+		return RArgument.is(node) && node.value !== undefined;
+	},
 	getWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<RFunctionArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
 		if(id === undefined) {
 			return undefined;

@@ -35,7 +35,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
-		const readId = Identifier.getName(readName ?? '');
+		const readId = readName ? Identifier.getName(readName) : undefined;
 		const has = remainingRead.get(readId);
 		if(has) {
 			if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {

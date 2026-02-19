@@ -1,6 +1,6 @@
 import { assertUnreachable, isUndefined } from '../../util/assert';
 import { SignificancePrecisionComparison, Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_SIGNIFICANT_FIGURES } from './abstract-domain';
+import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
 import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
 import { log } from '../../util/log';
@@ -27,9 +27,9 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
 	implements SatisfiableDomain<number> {
 
-	public readonly significantFigures: number | undefined;
+	public readonly significantFigures?: number;
 
-	constructor(value: Value, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES) {
+	constructor(value: Value, significantFigures?: number) {
 		if(Array.isArray(value)) {
 			if(value.some(isNaN) || value[0] > value[1]) {
 				log.warn('Invalid interval value, provided NaN or lower bound greater than upper bound. Setting to Bottom.');
@@ -43,8 +43,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(isUndefined(significantFigures) || significantFigures >= 0) {
 			this.significantFigures = significantFigures;
 		} else {
-			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative or undefined. Setting to DEFAULT_SIGNIFICANT_FIGURES.`);
-			this.significantFigures = DEFAULT_SIGNIFICANT_FIGURES;
+			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative or undefined. Setting to undefined.`);
+			this.significantFigures = undefined;
 		}
 	}
 
@@ -53,15 +53,15 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(value, this.significantFigures);
 	}
 
-	public static scalar(value: number, significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain {
+	public static scalar(value: number, significantFigures?: number): IntervalDomain {
 		return new IntervalDomain([value, value], significantFigures);
 	}
 
-	public static top(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalTop> {
+	public static top(significantFigures?: number): IntervalDomain<IntervalTop> {
 		return new IntervalDomain(IntervalTop, significantFigures);
 	}
 
-	public static bottom(significantFigures: number | undefined = DEFAULT_SIGNIFICANT_FIGURES): IntervalDomain<IntervalBottom> {
+	public static bottom(significantFigures?: number): IntervalDomain<IntervalBottom> {
 		return new IntervalDomain(Bottom, significantFigures);
 	}
 

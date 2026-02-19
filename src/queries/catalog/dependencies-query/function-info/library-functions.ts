@@ -12,5 +12,6 @@ export const LibraryFunctions: FunctionInfo[] = [
 	{ package: 'easypackages', name: 'from_import',       argIdx: 0,         argName: 'package', resolveValue: true },
 	{ package: 'easypackages', name: 'libraries',         argIdx: 'unnamed',                     resolveValue: true },
 	{ package: 'librarian',    name: 'shelf',             argIdx: 'unnamed',                     resolveValue: true },
-	{ package: 'devtools',     name: 'load_all',          argIdx: 0,         argName: 'path',    resolveValue: true }
+	{ package: 'devtools',     name: 'load_all',          argIdx: 0,         argName: 'path',    resolveValue: true, defaultValue: '.' },
+	{ package: 'devtools',     name: 'load_code',         argIdx: 0,         argName: 'path',    resolveValue: true, defaultValue: '.' },
 ] as const;

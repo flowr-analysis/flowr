@@ -241,7 +241,10 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		} else {
 			intersectUpper = thisUpper.intersection(otherUpper);
 		}
-		return this.create({ min: intersectLower, range: intersectUpper === Top ? Top : intersectUpper.difference(intersectLower) });
+		return this.create({
+			min:   intersectLower,
+			range: intersectUpper === Top ? Top : intersectUpper.difference(intersectLower)
+		});
 	}
 
 	/**
@@ -338,10 +341,10 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return this.create({ min: narrowLower, range: narrowUpper === Top ? Top : narrowUpper.difference(narrowLower) });
 	}
 
-	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
+	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> | typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(this.value.range === Top || 2**(this.value.range.size) > limit) {
+		} else if(this.value.range === Top || 2 ** (this.value.range.size) > limit) {
 			return Top;
 		}
 		const subsets = [new this.setType()];

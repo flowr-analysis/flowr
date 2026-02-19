@@ -132,7 +132,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
-	public concretize(limit: number): ReadonlySet<T> |  typeof Top {
+	public concretize(limit: number): ReadonlySet<T> | typeof Top {
 		return this.value === Top || this.value.size > limit ? Top : this.value;
 	}
 

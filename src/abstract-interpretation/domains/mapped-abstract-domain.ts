@@ -1,4 +1,4 @@
-import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain, domainElementToString } from './abstract-domain';
 import { Top } from './lattice';
 
 /** The type of the concrete mapping of the concrete domain of a mapped abstract domain mapping keys to a concrete value in the concrete domain */

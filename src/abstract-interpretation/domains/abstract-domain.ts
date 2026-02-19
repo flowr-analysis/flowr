@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
+import { Bottom, BottomSymbol, type Lattice, Top, TopSymbol } from './lattice';
 
 /**
  * The default limit of inferred constraints in {@link AbstractDomain|AbstractDomains}.

@@ -1,15 +1,33 @@
 import { assert, beforeAll, test } from 'vitest';
-import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
-import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
-import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
+import type {
+	AbstractDataFrameShape,
+	DataFrameDomain,
+	DataFrameShapeProperty
+} from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import type {
+	DataFrameOperationArgs,
+	DataFrameOperationName
+} from '../../../../src/abstract-interpretation/data-frame/semantics';
+import {
+	type DataFrameOperations,
+	DataFrameShapeInferenceVisitor
+} from '../../../../src/abstract-interpretation/data-frame/shape-inference';
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
-import { type FlowrConfigOptions, defaultConfigOptions } from '../../../../src/config';
+import { defaultConfigOptions, type FlowrConfigOptions } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
-import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
+import {
+	createDataflowPipeline,
+	type DEFAULT_DATAFLOW_PIPELINE,
+	type TREE_SITTER_DATAFLOW_PIPELINE
+} from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
-import { type FlowrAnalyzerContext, type ReadOnlyFlowrAnalyzerContext, contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import {
+	contextFromInput,
+	type FlowrAnalyzerContext,
+	type ReadOnlyFlowrAnalyzerContext
+} from '../../../../src/project/context/flowr-analyzer-context';
 import type { FlowrFileProvider } from '../../../../src/project/context/flowr-file';
 import type { RNode } from '../../../../src/r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -20,8 +38,8 @@ import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
-import { type TestLabel, decorateLabelContext } from '../../_helper/label';
-import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
+import { decorateLabelContext, type TestLabel } from '../../_helper/label';
+import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../../_helper/shell';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import { SourceRange } from '../../../../src/util/range';
 
@@ -29,7 +47,10 @@ import { SourceRange } from '../../../../src/util/range';
  * The default flowR configuration options for performing abstract interpretation.
  * As resolving eval calls from string is only supported in the data flow graph, we have to disable it when visiting the control flow graph to correctly identify eval statements as unknown side effects.
  */
-const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, evalStrings: false } };
+const defaultAbsintConfig: FlowrConfigOptions = {
+	...defaultConfigOptions,
+	solver: { ...defaultConfigOptions.solver, evalStrings: false }
+};
 
 /**
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
@@ -376,7 +397,12 @@ function getInferredDomainForCriterion(
 		throw new Error(`slicing criterion ${criterion} does not refer to an AST node`);
 	}
 	const cfg = extractCfg(result.normalize, ctx, undefined, undefined, true);
-	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	const inference = new DataFrameShapeInferenceVisitor({
+		controlFlow:   cfg,
+		dfg:           result.dataflow.graph,
+		normalizedAst: result.normalize,
+		ctx
+	});
 	inference.start();
 	const value = inference.getAbstractValue(node);
 
@@ -396,7 +422,12 @@ function getInferredOperationsForCriterion(
 		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
 	}
 	const cfg = extractCfg(result.normalize, ctx, undefined, undefined, true);
-	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: result.dataflow.graph, normalizedAst: result.normalize, ctx });
+	const inference = new DataFrameShapeInferenceVisitor({
+		controlFlow:   cfg,
+		dfg:           result.dataflow.graph,
+		normalizedAst: result.normalize,
+		ctx
+	});
 	inference.start();
 
 	return inference.getAbstractOperations(node?.info.id);

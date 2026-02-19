@@ -33,7 +33,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		const result = this.create(this.value);
 
 		for(const key in result.value) {
-			result._value[key] =  result.value[key].top() as Product[Extract<keyof Product, string>];
+			result._value[key] = result.value[key].top() as Product[Extract<keyof Product, string>];
 		}
 		return result;
 	}

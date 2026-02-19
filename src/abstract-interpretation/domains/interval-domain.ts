@@ -1,8 +1,10 @@
-import { assertUnreachable } from '../../util/assert';
+import { assertUnreachable, isUndefined } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
-import { type SatisfiableDomain, NumericalComparator } from './satisfiable-domain';
+import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
+import { log } from '../../util/log';
+import { FloatingPointComparison } from '../../util/floating-point';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -26,9 +28,12 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
 	implements SatisfiableDomain<number> {
 
-	constructor(value: Value) {
+	public readonly significantFigures?: number;
+
+	constructor(value: Value, significantFigures?: number) {
 		if(Array.isArray(value)) {
-			if(value.some(isNaN) || value[0] > value[1] || value[0] === +Infinity || value[1] === -Infinity) {
+			if(value.some(isNaN) || value[0] > value[1]) {
+				log.warn('Invalid interval value, provided NaN or lower bound greater than upper bound. Setting to Bottom.');
 				super(Bottom as Value);
 			} else {
 				super([value[0], value[1]] as const as Value);
@@ -36,19 +41,33 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		} else {
 			super(value);
 		}
+		if(isUndefined(significantFigures) || significantFigures >= 0) {
+			this.significantFigures = significantFigures;
+		} else {
+			log.warn(`Invalid significant figures ${significantFigures}, must be non-negative or undefined. Setting to undefined.`);
+			this.significantFigures = undefined;
+		}
 	}
 
 	public create(value: IntervalLift): this;
 	public create(value: IntervalLift): IntervalDomain {
-		return new IntervalDomain(value);
+		return new IntervalDomain(value, this.significantFigures);
 	}
 
-	public static top(): IntervalDomain<IntervalTop> {
-		return new IntervalDomain(IntervalTop);
+	public scalar(value: number): this {
+		return this.create([value, value]);
 	}
 
-	public static bottom(): IntervalDomain<IntervalBottom> {
-		return new IntervalDomain(Bottom);
+	public static scalar(value: number, significantFigures?: number): IntervalDomain {
+		return new IntervalDomain([value, value], significantFigures);
+	}
+
+	public static top(significantFigures?: number): IntervalDomain<IntervalTop> {
+		return new IntervalDomain(IntervalTop, significantFigures);
+	}
+
+	public static bottom(significantFigures?: number): IntervalDomain<IntervalBottom> {
+		return new IntervalDomain(Bottom, significantFigures);
 	}
 
 	public static abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
@@ -71,11 +90,35 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	}
 
 	public equals(other: this): boolean {
-		return this.value === other.value || (this.isValue() && other.isValue() && this.value[0] === other.value[0] && this.value[1] === other.value[1]);
+		if(this.isValue() && other.isValue()) {
+			const [lowerA, upperA] = this.value;
+			const [lowerB, upperB] = other.value;
+
+			const lowerEqual: Ternary = FloatingPointComparison.isNearlyEqual(lowerA, lowerB, this.significantFigures);
+			const upperEqual: Ternary = FloatingPointComparison.isNearlyEqual(upperA, upperB, this.significantFigures);
+
+			return !(lowerEqual === Ternary.Never || upperEqual === Ternary.Never);
+		}
+
+		return this.value === other.value;
 	}
 
 	public leq(other: this): boolean {
-		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
+		if(this.value === Bottom) {
+			return true;
+		}
+
+		if(other.value === Bottom) {
+			return false;
+		}
+
+		const [thisLower, thisUpper] = this.value;
+		const [otherLower, otherUpper] = other.value;
+
+		const lowerLeq = FloatingPointComparison.isNearlyLessOrEqual(otherLower, thisLower, this.significantFigures);
+		const upperLeq = FloatingPointComparison.isNearlyLessOrEqual(thisUpper, otherUpper, this.significantFigures);
+
+		return !(lowerLeq === Ternary.Never || upperLeq === Ternary.Never);
 	}
 
 	public join(other: IntervalLift): this;
@@ -132,7 +175,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public concretize(limit: number): ReadonlySet<number> | typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(!isFinite(this.value[0]) || !isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
+		} else if(!Number.isFinite(this.value[0]) || !Number.isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
 			return Top;
 		}
 		const set = new Set<number>();
@@ -151,39 +194,72 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {
 		switch(comparator) {
 			case NumericalComparator.Equal: {
-				if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
-					return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
-				} else {
-					return Ternary.Never;
+				if(this.isValue()) {
+					const [lower, upper] = this.value;
+					if(lower === value && upper === value) {
+						return Ternary.Always;
+					}
+
+					const lowerLeq = FloatingPointComparison.isNearlyLessOrEqual(lower, value, this.significantFigures);
+					const upperGeq = FloatingPointComparison.isNearlyLessOrEqual(value, upper, this.significantFigures);
+
+					if(lowerLeq !== Ternary.Never && upperGeq !== Ternary.Never) {
+						return Ternary.Maybe;
+					}
 				}
+				return Ternary.Never;
 			}
 			case NumericalComparator.Less: {
-				if(this.isValue() && value < this.value[1]) {
-					return value < this.value[0] ? Ternary.Always : Ternary.Maybe;
-				} else {
-					return Ternary.Never;
+				if(this.isValue()) {
+					const [lower, upper] = this.value;
+					if(value < lower) {
+						return Ternary.Always;
+					}
+
+					if(FloatingPointComparison.isNearlyLess(value, upper, this.significantFigures) !== Ternary.Never) {
+						return Ternary.Maybe;
+					}
 				}
+				return Ternary.Never;
 			}
 			case NumericalComparator.LessOrEqual: {
-				if(this.isValue() && value <= this.value[1]) {
-					return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
-				} else {
-					return Ternary.Never;
+				if(this.isValue()) {
+					const [lower, upper] = this.value;
+					if(value <= lower) {
+						return Ternary.Always;
+					}
+
+					if(FloatingPointComparison.isNearlyLessOrEqual(value, upper, this.significantFigures) !== Ternary.Never) {
+						return Ternary.Maybe;
+					}
 				}
+				return Ternary.Never;
 			}
 			case NumericalComparator.Greater: {
-				if(this.isValue() && this.value[0] <= value) {
-					return this.value[1] <= value ? Ternary.Always : Ternary.Maybe;
-				} else {
-					return Ternary.Never;
+				if(this.isValue()) {
+					const [lower, upper] = this.value;
+					if(value > upper) {
+						return Ternary.Always;
+					}
+
+					if(FloatingPointComparison.isNearlyLess(lower, value, this.significantFigures) !== Ternary.Never) {
+						return Ternary.Maybe;
+					}
 				}
+				return Ternary.Never;
 			}
 			case NumericalComparator.GreaterOrEqual: {
-				if(this.isValue() && this.value[0] < value) {
-					return this.value[1] < value ? Ternary.Always : Ternary.Maybe;
-				} else {
-					return Ternary.Never;
+				if(this.isValue()) {
+					const [lower, upper] = this.value;
+					if(value >= upper) {
+						return Ternary.Always;
+					}
+
+					if(FloatingPointComparison.isNearlyLessOrEqual(lower, value, this.significantFigures) !== Ternary.Never) {
+						return Ternary.Maybe;
+					}
 				}
+				return Ternary.Never;
 			}
 			default: {
 				assertUnreachable(comparator);
@@ -276,7 +352,9 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return `[${isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
+		const lower = `${Number.isFinite(this.value[0]) ? this.value[0] : (this.value[0] > 0 ? '+∞' : '-∞')}`;
+		const upper = `${Number.isFinite(this.value[1]) ? this.value[1] : (this.value[1] > 0 ? '+∞' : '-∞')}`;
+		return `[${lower}, ${upper}]`;
 	}
 
 	public isTop(): this is IntervalDomain<IntervalTop> {

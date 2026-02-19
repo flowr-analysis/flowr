@@ -3,7 +3,7 @@ import { IntervalDomain } from '../domains/interval-domain';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../dataflow/graph/vertex';
 import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { applyIntervalExpressionSemantics } from './semantics';
+import { applyIntervalExpressionSemantics } from './expression-semantics';
 import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 

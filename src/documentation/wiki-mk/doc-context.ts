@@ -69,17 +69,17 @@ type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
 type StaticKeys<T> = T extends { prototype: infer P } ? Exclude<keyof T, keyof P> : never;
 
 export const ConstantWikiLinkInfo = {
-	'flowr:npm':           FlowrNpmRef,
-	'flowr:github':        FlowrGithubRef,
-	'flowr:wiki':          FlowrWikiBaseRef,
-	'flowr:docker':        FlowrDockerRef,
-	'flowr:vscode':        FlowrVsCode,
-	'flowr:positron':      FlowrPositron,
-	'flowr:rstudio-addin': FlowrRStudioAddin,
-	'flowr:radapter':      FlowrRAdapter,
-	'flowr:benchmarks':    'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark',
-	'flowr:docs':          'https://flowr-analysis.github.io/flowr/docs',
-	'flowr:zenodo':        'https://zenodo.org/doi/10.5281/zenodo.13319290'
+	'flowr:npm':           { url: FlowrNpmRef, name: 'flowR on npm' },
+	'flowr:github':        { url: FlowrGithubRef, name: 'flowR\'s GitHub' },
+	'flowr:wiki':          { url: FlowrWikiBaseRef, name: 'flowR\'s wiki' },
+	'flowr:docker':        { url: FlowrDockerRef, name: 'flowR\'s Docker Image' },
+	'flowr:vscode':        { url: FlowrVsCode, name: 'flowR extension for VS Code' },
+	'flowr:positron':      { url: FlowrPositron, name: 'flowR extension for Positron' },
+	'flowr:rstudio-addin': { url: FlowrRStudioAddin, name: 'flowR RStudio Addin' },
+	'flowr:radapter':      { url: FlowrRAdapter, name: 'flowR R Adapter' },
+	'flowr:benchmarks':    { url: 'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark', name: 'flowR benchmark page' },
+	'flowr:docs':          { url: 'https://flowr-analysis.github.io/flowr/docs', name: 'flowR code docs' },
+	'flowr:zenodo':        { url: 'https://zenodo.org/doi/10.5281/zenodo.13319290', name: 'flowR on Zenodo' },
 } as const;
 
 /**
@@ -346,13 +346,16 @@ export function makeDocContextForTypes(
 			}) as string;
 		},
 		linkPage(this: void, pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
-			const text = linkText ?? pageName.split('/').pop() ?? pageName;
 			let link: string;
+			let text = linkText;
 			if(pageName in ConstantWikiLinkInfo) {
-				link = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
+				const i = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
+				link = i.url;
+				text ??= i.name;
 			} else {
 				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replace(/ /g, '-')}`;
 			}
+			text ??= pageName.split('/').pop() ?? pageName;
 			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
 		},
 		linkCode(this: void, path: PathLike, lineNumber?: number): string {

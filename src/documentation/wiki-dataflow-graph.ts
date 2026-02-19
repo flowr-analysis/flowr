@@ -969,7 +969,7 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 > For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
 > some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.
 
-${section('Reading the Visualizations', 2, 'reading-the-visualizations')}
+${section('Reading the Visualizations', 2, 'reading-the-visualization')}
 
 Before we dive into the details of the different vertices and edges, let's briefly talk about how to read the visualizations.
 For this, let's have a look at a very simple graph, created for the number \`42\`:
@@ -1024,11 +1024,11 @@ The third line indicates the compressed ${ctx.link(SourceRange)} of the vertex i
 this is short for \`1.7-1.7\`, likewise, \`1.7-9\` is short for \`1.7-1.9\`. So, \`1.7-9\` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
-${section('Arguments and Additional Information', 3, 'vtx-additinal-info')}
+${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
 As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
-these vertices also have an additional line which list the ids of the arguments in order to clear any ambiguity in case, for example,
+these vertices also have an additional line which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
 ${section('Vertices', 2, 'vertices')}

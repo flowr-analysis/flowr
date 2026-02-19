@@ -1,9 +1,10 @@
 import { assertUnreachable, isUndefined } from '../../util/assert';
-import { SignificancePrecisionComparison, Ternary } from '../../util/logic';
+import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
 import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
 import { log } from '../../util/log';
+import { FloatingPointComparison } from '../../util/floating-point';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -93,8 +94,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			const [lowerA, upperA] = this.value;
 			const [lowerB, upperB] = other.value;
 
-			const lowerEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(lowerA, lowerB, this.significantFigures);
-			const upperEqual: Ternary = SignificancePrecisionComparison.isEqualWithSignificancePrecision(upperA, upperB, this.significantFigures);
+			const lowerEqual: Ternary = FloatingPointComparison.isNearlyEqual(lowerA, lowerB, this.significantFigures);
+			const upperEqual: Ternary = FloatingPointComparison.isNearlyEqual(upperA, upperB, this.significantFigures);
 
 			return !(lowerEqual === Ternary.Never || upperEqual === Ternary.Never);
 		}
@@ -114,8 +115,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		const [thisLower, thisUpper] = this.value;
 		const [otherLower, otherUpper] = other.value;
 
-		const lowerLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(otherLower, thisLower, this.significantFigures);
-		const upperLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(thisUpper, otherUpper, this.significantFigures);
+		const lowerLeq = FloatingPointComparison.isNearlyLessOrEqual(otherLower, thisLower, this.significantFigures);
+		const upperLeq = FloatingPointComparison.isNearlyLessOrEqual(thisUpper, otherUpper, this.significantFigures);
 
 		return !(lowerLeq === Ternary.Never || upperLeq === Ternary.Never);
 	}
@@ -199,8 +200,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 						return Ternary.Always;
 					}
 
-					const lowerLeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(lower, value, this.significantFigures);
-					const upperGeq = SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(value, upper, this.significantFigures);
+					const lowerLeq = FloatingPointComparison.isNearlyLessOrEqual(lower, value, this.significantFigures);
+					const upperGeq = FloatingPointComparison.isNearlyLessOrEqual(value, upper, this.significantFigures);
 
 					if(lowerLeq !== Ternary.Never && upperGeq !== Ternary.Never) {
 						return Ternary.Maybe;
@@ -215,7 +216,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 						return Ternary.Always;
 					}
 
-					if(SignificancePrecisionComparison.isLowerWithSignificancePrecision(value, upper, this.significantFigures) !== Ternary.Never) {
+					if(FloatingPointComparison.isNearlyLess(value, upper, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -228,7 +229,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 						return Ternary.Always;
 					}
 
-					if(SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(value, upper, this.significantFigures) !== Ternary.Never) {
+					if(FloatingPointComparison.isNearlyLessOrEqual(value, upper, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -241,7 +242,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 						return Ternary.Always;
 					}
 
-					if(SignificancePrecisionComparison.isLowerWithSignificancePrecision(lower, value, this.significantFigures) !== Ternary.Never) {
+					if(FloatingPointComparison.isNearlyLess(lower, value, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}
@@ -254,7 +255,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 						return Ternary.Always;
 					}
 
-					if(SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(lower, value, this.significantFigures) !== Ternary.Never) {
+					if(FloatingPointComparison.isNearlyLessOrEqual(lower, value, this.significantFigures) !== Ternary.Never) {
 						return Ternary.Maybe;
 					}
 				}

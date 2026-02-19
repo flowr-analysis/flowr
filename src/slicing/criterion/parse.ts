@@ -1,0 +1,123 @@
+import type { SourcePosition } from '../../util/range';
+import { expensiveTrace } from '../../util/log';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type {
+	AstIdMap,
+	RNodeWithParent
+} from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { slicerLogger } from '../static/static-slicer';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+
+/** Either `line:column`, `line@variable-name`, or `$id` */
+export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`;
+export type SlicingCriteria = SingleSlicingCriterion[];
+
+/**
+ * Thrown if the given slicing criteria can not be found
+ */
+export class CriteriaParseError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'CriteriaParseError';
+	}
+}
+
+/**
+ * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
+ * @see {@link tryResolveSliceCriterionToId} for a version that does not throw an error
+ */
+export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
+	let resolved: NodeId | undefined;
+	if(criterion.startsWith('$')) {
+		resolved = NodeId.normalize(criterion.substring(1)) as NodeId;
+	} else if(criterion.includes('@')) {
+		const at = criterion.indexOf('@');
+		const line = parseInt(criterion.substring(0, at));
+		const name = criterion.substring(at + 1);
+		resolved = conventionalCriteriaToId(line, name, idMap);
+	} else if(criterion.includes(':')) {
+		const [line, column] = criterion.split(':').map(c => parseInt(c));
+		resolved = locationToId([line, column], idMap);
+	}
+
+	if(resolved === undefined) {
+		throw new CriteriaParseError(`invalid slicing criterion ${criterion}`);
+	}
+	return resolved;
+}
+
+/**
+ * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
+ * @see {@link slicingCriterionToId} for the version that throws an error
+ */
+export function tryResolveSliceCriterionToId(criterion: string | NodeId, idMap: AstIdMap): NodeId | undefined {
+	try {
+		return slicingCriterionToId(criterion as SingleSlicingCriterion, idMap);
+	} catch(e) {
+		if(e instanceof CriteriaParseError) {
+			expensiveTrace(slicerLogger, () => `could not resolve slicing criterion ${criterion}: ${e.message}`);
+			return undefined;
+		}
+		throw e; // rethrow other errors
+	}
+}
+
+
+function locationToId<OtherInfo>(location: SourcePosition, dataflowIdMap: AstIdMap<OtherInfo>): NodeId | undefined {
+	let candidate: RNodeWithParent<OtherInfo> | undefined;
+	for(const [id, nodeInfo] of dataflowIdMap.entries()) {
+		if(nodeInfo.location === undefined || nodeInfo.location[0] !== location[0] || nodeInfo.location[1] !== location[1]) {
+			continue; // only consider those with position information
+		}
+
+		expensiveTrace(slicerLogger, () => `can resolve id ${id} (${JSON.stringify(nodeInfo.location)}) for location ${JSON.stringify(location)}`);
+		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
+			continue;
+		}
+
+		candidate = nodeInfo;
+	}
+	const id = candidate?.info.id;
+	if(id) {
+		expensiveTrace(slicerLogger, () => `resolve id ${id} (${JSON.stringify(candidate?.info)}) for location ${JSON.stringify(location)}`);
+	}
+	return id;
+}
+
+function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: AstIdMap<OtherInfo>): NodeId | undefined {
+	let candidate: RNodeWithParent<OtherInfo> | undefined;
+
+	for(const [id, nodeInfo] of dataflowIdMap.entries()) {
+		if(nodeInfo.location === undefined || nodeInfo.location[0] !== line || nodeInfo.lexeme !== name) {
+			continue;
+		}
+
+		slicerLogger.trace(`can resolve id ${id} (${JSON.stringify(nodeInfo)}) for line ${line} and name ${name}`);
+		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
+		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
+			continue;
+		}
+		candidate = nodeInfo;
+	}
+	const id = candidate?.info.id;
+	if(id) {
+		slicerLogger.trace(`resolve id ${id} (${JSON.stringify(candidate?.info)}) for line ${line} and name ${name}`);
+	}
+	return id;
+}
+
+export interface DecodedCriterion {
+	criterion: SingleSlicingCriterion,
+	id:        NodeId
+}
+
+export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
+
+/**
+ * Converts all slicing criteria to their corresponding node ids
+ * @throws CriteriaParseError if any of the criteria can not be resolved
+ */
+export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
+	return criteria.map(l => ({ criterion: l, id: slicingCriterionToId(l, decorated) }));
+}

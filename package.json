@@ -1,0 +1,227 @@
+{
+  "name": "@eagleoutice/flowr",
+  "version": "2.9.11",
+  "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
+  "types": "dist/src/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/flowr-analysis/flowr.git"
+  },
+  "homepage": "https://github.com/flowr-analysis/flowr",
+  "bugs": {
+    "url": "https://github.com/flowr-analysis/flowr/issues"
+  },
+  "scripts": {
+    "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
+    "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
+    "flowr": "npm run main --",
+    "flowr:dev": "npm run main-dev --",
+    "main-dev": "node -r ts-node/register --watch src/cli/flowr.ts",
+    "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
+    "release": "npx release-it --ci",
+    "stats": "ts-node src/cli/statistics-app.ts",
+    "stats-helper": "ts-node src/cli/statistics-helper-app.ts",
+    "slicer": "ts-node src/cli/slicer-app.ts",
+    "benchmark-helper": "ts-node src/cli/benchmark-helper-app.ts",
+    "benchmark": "npm run build-dev && node dist/src/cli/benchmark-app.js",
+    "summarizer": "ts-node src/cli/summarizer-app.ts",
+    "export-quads": "ts-node src/cli/export-quads-app.ts",
+    "capabilities-markdown": "ts-node src/documentation/doc-capabilities.ts",
+    "wiki": "ts-node src/cli/wiki.ts",
+    "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
+    "build": "tsc --project .",
+    "build-dev": "npm run build && npm run build:copy-wasm",
+    "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
+    "build:copy-wasm": "mkdir -p dist/node_modules/@eagleoutice/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@eagleoutice/tree-sitter-r/  && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
+    "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
+    "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
+    "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
+    "doc": "typedoc",
+    "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
+    "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
+    "test:coverage": "npm run test -- --coverage",
+    "test:full": "npm run test-full",
+    "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
+    "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
+    "test:performance": "npm run performance-test --",
+    "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
+    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run gen:readme && npm-run-all wiki:*"
+  },
+  "keywords": [
+    "static code analysis",
+    "R programming language",
+    "R",
+    "programming",
+    "slicing",
+    "dataflow analysis"
+  ],
+  "author": "Florian Sihler",
+  "license": "ISC",
+  "typedocOptions": {
+    "includeVersion": true,
+    "plugin": [
+      "typedoc-umlclass",
+      "typedoc-plugin-missing-exports",
+      "typedoc-theme-hierarchy"
+    ],
+    "entryPoints": [
+      "src",
+      "test/functionality/_helper"
+    ],
+    "entryPointStrategy": "expand",
+    "exclude": [
+      "**/node_modules/**/*",
+      "**/index.ts"
+    ],
+    "highlightLanguages": [
+      "bash",
+      "console",
+      "css",
+      "html",
+      "javascript",
+      "json",
+      "jsonc",
+      "json5",
+      "tsx",
+      "typescript",
+      "r"
+    ],
+    "theme": "hierarchy",
+    "out": "doc",
+    "readme": "README.md",
+    "umlClassDiagram": {
+      "type": "detailed",
+      "location": "embed",
+      "format": "svg",
+      "position": "below",
+      "legendType": "none",
+      "hideEmptyMembers": false,
+      "generatorProcessCount": 4
+    },
+    "lightHighlightTheme": "light-plus",
+    "darkHighlightTheme": "dark-plus",
+    "hideGenerator": false,
+    "searchInComments": true,
+    "useTsLinkResolution": true,
+    "categorizeByGroup": true,
+    "sort": [
+      "static-first",
+      "alphabetical"
+    ],
+    "visibilityFilters": {
+      "protected": true,
+      "private": true,
+      "inherited": true,
+      "external": true
+    },
+    "validation": {
+      "notExported": true,
+      "invalidLink": true,
+      "notDocumented": true
+    },
+    "treatValidationWarningsAsErrors": false
+  },
+  "release-it": {
+    "git": {
+      "commitMessage": "[skip ci] Release v${version}",
+      "requireCleanWorkingDir": true,
+      "tagName": "v${version}",
+      "commit": true,
+      "tag": true,
+      "push": true
+    },
+    "github": {
+      "release": true,
+      "tokenRef": "RELEASE_TOKEN",
+      "releaseName": "Release v${version}",
+      "web": false,
+      "autoGenerate": true,
+      "comments": {
+        "submit": true,
+        "issue": "_This issue has been resolved in v${version} (see [${releaseName}](${releaseUrl}))._",
+        "pr": "_This pull request is included in v${version} (see [${releaseName}](${releaseUrl}))._"
+      }
+    },
+    "npm": {
+      "publish": false
+    },
+    "hooks": {
+      "before:init": [
+        "npm run lint",
+        "npm run test-full"
+      ],
+      "after:bump": "npm run build-dev",
+      "after:git:release": "echo After git push, before github release",
+      "after:release": "echo Successfully released ${name} v${version} to ${repo.repository}."
+    },
+    "plugins": {
+      "@j-ulrich/release-it-regex-bumper": {
+        "out": {
+          "file": "src/util/version.ts",
+          "search": "const version = '[\\d.]+'",
+          "replace": "const version = '{{version}}'"
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.7.1",
+    "@commitlint/config-angular": "^19.7.1",
+    "@eagleoutice/eslint-config-flowr": "^1.0.36",
+    "@eslint/eslintrc": "^3.3.3",
+    "@eslint/js": "^9.39.2",
+    "@j-ulrich/release-it-regex-bumper": "^5.3.0",
+    "@types/command-line-args": "^5.2.3",
+    "@types/command-line-usage": "^5.0.4",
+    "@types/commonmark": "^0.27.10",
+    "@types/dagre": "^0.7.53",
+    "@types/n-readlines": "^1.0.6",
+    "@types/n3": "^1.26.0",
+    "@types/object-hash": "^3.0.6",
+    "@types/seedrandom": "^3.0.8",
+    "@types/semver": "^7.7.0",
+    "@types/tmp": "^0.2.6",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.40.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "license-checker-rseidelsohn": "^4.4.2",
+    "npm-run-all": "^4.1.5",
+    "release-it": "^19.2.3",
+    "ts-node": "^10.9.2",
+    "typedoc": "^0.27.7",
+    "typedoc-plugin-missing-exports": "^3.1.0",
+    "typedoc-theme-hierarchy": "^5.0.4",
+    "typedoc-umlclass": "^0.10.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@eagleoutice/tree-sitter-r": "^1.1.2",
+    "@jupyterlab/nbformat": "^4.5.4",
+    "@xmldom/xmldom": "^0.9.7",
+    "clipboardy": "^4.0.0",
+    "command-line-args": "^6.0.1",
+    "command-line-usage": "^7.0.3",
+    "commonmark": "^0.31.2",
+    "dagre": "^0.8.5",
+    "gray-matter": "^4.0.3",
+    "joi": "^18.0.1",
+    "lz-string": "^1.5.0",
+    "n-readlines": "^1.0.3",
+    "n3": "^1.26.0",
+    "object-hash": "^3.0.0",
+    "object-sizeof": "^2.6.5",
+    "rotating-file-stream": "^3.2.8",
+    "seedrandom": "^3.0.5",
+    "semver": "^7.7.4",
+    "tar": "^7.4.3",
+    "tmp": "^0.2.3",
+    "ts-essentials": "^10.1.1",
+    "tslog": "^4.10.2",
+    "web-tree-sitter": "^0.24.7",
+    "ws": "^8.18.0",
+    "xpath-ts2": "^1.4.2"
+  }
+}

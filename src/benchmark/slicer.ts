@@ -1,0 +1,614 @@
+/**
+ * Provides a top-level slicer that can be used to slice code *and* retrieve stats.
+ * @module
+ */
+
+import { type IStoppableStopwatch, Measurements } from './stopwatch';
+import seedrandom from 'seedrandom';
+import { log, LogLevel } from '../util/log';
+import type { MergeableRecord } from '../util/objects';
+import type { DataflowInformation } from '../dataflow/info';
+import type { SliceResult } from '../slicing/static/slicer-types';
+import type { ReconstructionResult } from '../reconstruct/reconstruct';
+import type { PipelineExecutor } from '../core/pipeline-executor';
+import { guard } from '../util/assert';
+import { withoutWhitespace } from '../util/text/strings';
+import type {
+	BenchmarkMemoryMeasurement,
+	CommonSlicerMeasurements,
+	ElapsedTime,
+	PerNodeStatsDfShape,
+	PerSliceMeasurements,
+	PerSliceStats,
+	SlicerStats,
+	SlicerStatsDfShape
+} from './stats/stats';
+import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { SlicingCriteria } from '../slicing/criterion/parse';
+import {
+	createSlicePipeline,
+	type DEFAULT_SLICING_PIPELINE,
+	type TREE_SITTER_SLICING_PIPELINE
+} from '../core/steps/pipeline/default-pipelines';
+import {
+	retrieveNumberOfRTokensOfLastParse,
+	type RParseRequestFromFile,
+	type RParseRequestFromText
+} from '../r-bridge/retriever';
+import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
+import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
+import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
+import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
+import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
+import type { SyntaxNode, Tree } from 'web-tree-sitter';
+import { RShell } from '../r-bridge/shell';
+import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
+import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { VertexType } from '../dataflow/graph/vertex';
+import { equidistantSampling } from '../util/collections/arrays';
+import { type FlowrConfigOptions, getEngineConfig } from '../config';
+import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { extractCfg } from '../control-flow/extract-cfg';
+import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
+import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
+import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
+import { Top } from '../abstract-interpretation/domains/lattice';
+import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
+import fs from 'fs';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+
+/**
+ * The logger to be used for benchmarking as a global object.
+ */
+export const benchmarkLogger = log.getSubLogger({ name: 'benchmark' });
+
+/**
+ * Returns the stats but also the result of all setup steps (parsing, normalization, and the dataflow analysis) during the slicing.
+ * This is useful for debugging and visualizing the slicing process.
+ */
+export interface BenchmarkSlicerStats extends MergeableRecord {
+	/** the measurements obtained during the benchmark */
+	stats:     SlicerStats
+	/** the initial and unmodified AST produced by the R side/the 'parse' step */
+	parse:     string
+	/** the normalized AST produced by the 'normalization' step, including its parent decoration */
+	normalize: NormalizedAst
+	/** the dataflow graph produced by the 'dataflow' step */
+	dataflow:  DataflowInformation
+}
+
+/**
+ * Additionally to {@link BenchmarkSlicerStats}, this contains the results of a *single* slice.
+ * In other words, it holds the results of the `slice` and `reconstruct` steps.
+ */
+export interface BenchmarkSingleSliceStats extends MergeableRecord {
+	/** the measurements obtained during the single slice */
+	stats: PerSliceStats
+	/** the result of the 'slice' step */
+	slice: SliceResult
+	/** the final code, as the result of the 'reconstruct' step */
+	code:  ReconstructionResult
+}
+
+/**
+ * The type of sampling strategy to use when slicing all possible variables.
+ *
+ * - `'random'`: Randomly select the given number of slicing criteria.
+ * - `'equidistant'`: Select the given number of slicing criteria in an equidistant manner.
+ */
+export type SamplingStrategy = 'random' | 'equidistant';
+
+/**
+ * A slicer that can be used to slice exactly one file (multiple times).
+ * It holds its own {@link RShell} instance, maintains a cached dataflow and keeps measurements.
+ *
+ * Make sure to call {@link init} to initialize the slicer, before calling {@link slice}.
+ * After slicing, call {@link finish} to close the R session and retrieve the stats.
+ * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
+ */
+type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE;
+export class BenchmarkSlicer {
+	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
+	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
+	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
+	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
+	private readonly parserName: KnownParserName;
+	private context:             FlowrAnalyzerContext | undefined;
+	private stats:               SlicerStats | undefined;
+	private loadedXml:           KnownParserType[] | undefined;
+	private dataflow:            DataflowInformation | undefined;
+	private normalizedAst:       NormalizedAst | undefined;
+	private controlFlow:         ControlFlowInformation | undefined;
+	private totalStopwatch:      IStoppableStopwatch;
+	private finished = false;
+	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
+	private executor:            PipelineExecutor<SupportedPipelines> = null as unknown as PipelineExecutor<SupportedPipelines>;
+	private parser:              KnownParser  = null as unknown as KnownParser;
+
+	constructor(parserName: KnownParserName) {
+		this.totalStopwatch = this.commonMeasurements.start('total');
+		this.parserName = parserName;
+	}
+
+	/**
+	 * Initialize the slicer on the given request.
+	 * Can only be called once for each instance.
+	 */
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
+		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
+		guard(this.stats === undefined, 'cannot initialize the slicer twice');
+
+		// we know these are in sync so we just cast to one of them
+		this.parser = await this.commonMeasurements.measure(
+			'initialize R session', async() => {
+				if(this.parserName === 'r-shell') {
+					return new RShell(getEngineConfig(config, 'r-shell'));
+				} else {
+					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
+					return new TreeSitterExecutor();
+				}
+			}
+		);
+		this.context = contextFromInput({ ...request }, config);
+		this.executor = createSlicePipeline(this.parser, {
+			context:   this.context,
+			criterion: [],
+			autoSelectIf,
+			threshold,
+		});
+
+		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);
+		this.normalizedAst = await this.measureCommonStep('normalize', 'normalize R AST');
+		this.dataflow = await this.measureCommonStep('dataflow', 'produce dataflow information');
+
+		this.executor.switchToRequestStage();
+
+		await this.calculateStatsAfterInit(request);
+	}
+
+	private async calculateStatsAfterInit(request: RParseRequestFromFile | RParseRequestFromText) {
+		const loadedContent = request.request === 'text' ? request.content : fs.readFileSync(request.content, 'utf-8');
+		let numberOfRTokens: number;
+		let numberOfRTokensNoComments: number;
+		if(this.parser.name === 'r-shell') {
+			// retrieve number of R tokens - flowr_parsed should still contain the last parsed code
+			numberOfRTokens = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell);
+			numberOfRTokensNoComments = await retrieveNumberOfRTokensOfLastParse(this.parser as RShell, true);
+		} else {
+			const countChildren = function(node: SyntaxNode, ignoreComments = false): number {
+				let ret = node.type === TreeSitterType.Comment && ignoreComments ? 0 : 1;
+				for(const child of node.children) {
+					ret += countChildren(child, ignoreComments);
+				}
+				return ret;
+			};
+			const root = (this.loadedXml as Tree[]).map(t => t.rootNode);
+			numberOfRTokens = root.map(r => countChildren(r)).reduce((a, b) => a + b, 0);
+			numberOfRTokensNoComments = root.map(r => countChildren(r, true)).reduce((a, b) => a + b, 0);
+		}
+
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined after initialization');
+		guard(this.dataflow !== undefined, 'dataflow should be defined after initialization');
+
+		// collect dataflow graph size
+		const vertices = this.dataflow.graph.vertices(true);
+		let numberOfEdges = 0;
+		let numberOfCalls = 0;
+		let numberOfDefinitions = 0;
+
+		for(const [n, info] of vertices) {
+			const outgoingEdges = this.dataflow.graph.outgoingEdges(n);
+			numberOfEdges += outgoingEdges?.size ?? 0;
+			if(info.tag === VertexType.FunctionCall) {
+				numberOfCalls++;
+			} else if(info.tag === VertexType.FunctionDefinition) {
+				numberOfDefinitions++;
+			}
+		}
+
+		let nodes = 0;
+		let nodesNoComments = 0;
+		let commentChars = 0;
+		let commentCharsNoWhitespace = 0;
+		RProject.visitAst(this.normalizedAst.ast, t => {
+			nodes++;
+			const comments = t.info.adToks?.filter(RComment.is);
+			if(comments && comments.length > 0) {
+				const content = comments.map(c => c.lexeme ?? '').join('');
+				commentChars += content.length;
+				commentCharsNoWhitespace += withoutWhitespace(content).length;
+			} else {
+				nodesNoComments++;
+			}
+			return false;
+		});
+
+		const split = loadedContent.split('\n');
+		const nonWhitespace = withoutWhitespace(loadedContent).length;
+		this.stats = {
+			perSliceMeasurements: this.perSliceMeasurements,
+			memory:               this.deltas,
+			request,
+			input:                {
+				numberOfLines:                             split.length,
+				numberOfNonEmptyLines:                     split.filter(l => l.trim().length > 0).length,
+				numberOfCharacters:                        loadedContent.length,
+				numberOfCharactersNoComments:              loadedContent.length - commentChars,
+				numberOfNonWhitespaceCharacters:           nonWhitespace,
+				numberOfNonWhitespaceCharactersNoComments: nonWhitespace - commentCharsNoWhitespace,
+				numberOfRTokens:                           numberOfRTokens,
+				numberOfRTokensNoComments:                 numberOfRTokensNoComments,
+				numberOfNormalizedTokens:                  nodes,
+				numberOfNormalizedTokensNoComments:        nodesNoComments
+			},
+			dataflow: {
+				numberOfNodes:               this.dataflow.graph.vertices(true).toArray().length,
+				numberOfEdges:               numberOfEdges,
+				numberOfCalls:               numberOfCalls,
+				numberOfFunctionDefinitions: numberOfDefinitions,
+				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
+			},
+
+			// these are all properly initialized in finish()
+			commonMeasurements:      new Map<CommonSlicerMeasurements, ElapsedTime>(),
+			retrieveTimePerToken:    { raw: 0, normalized: 0 },
+			normalizeTimePerToken:   { raw: 0, normalized: 0 },
+			dataflowTimePerToken:    { raw: 0, normalized: 0 },
+			totalCommonTimePerToken: { raw: 0, normalized: 0 }
+		};
+	}
+
+	/**
+	 * Slice for the given {@link SlicingCriteria}.
+	 * @see SingleSlicingCriterion
+	 * @returns The per slice stats retrieved for this slicing criteria
+	 */
+	public async slice(...slicingCriteria: SlicingCriteria): Promise<BenchmarkSingleSliceStats> {
+		benchmarkLogger.trace(`try to slice for criteria ${JSON.stringify(slicingCriteria)}`);
+
+		this.guardActive();
+		guard(!this.perSliceMeasurements.has(slicingCriteria), 'do not slice the same criteria combination twice');
+
+		const measurements = new Measurements<PerSliceMeasurements>();
+		const stats: PerSliceStats = {
+			measurements:                undefined as never,
+			slicingCriteria:             [],
+			numberOfDataflowNodesSliced: 0,
+			timesHitThreshold:           0,
+			reconstructedCode:           {
+				code:                  '',
+				linesWithAutoSelected: 0
+			}
+		};
+		this.perSliceMeasurements.set(slicingCriteria, stats);
+
+		this.executor.updateRequest({ criterion: slicingCriteria });
+
+		const totalStopwatch = measurements.start('total');
+
+
+		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
+		stats.slicingCriteria = [...slicedOutput.decodedCriteria];
+
+		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code');
+
+		totalStopwatch.stop();
+
+		benchmarkLogger.debug(`Produced code for ${JSON.stringify(slicingCriteria)}: ${stats.reconstructedCode.code as string}`);
+		const results = this.executor.getResults(false);
+
+		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
+			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
+				const node = results.normalize.idMap.get(c.id);
+				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
+			}).join('')}`);
+		}
+
+		// if it is not in the dataflow graph it was kept to be safe and should not count to the included nodes
+		stats.numberOfDataflowNodesSliced = Array.from(slicedOutput.result).filter(id => results.dataflow.graph.hasVertex(id, false)).length;
+		stats.timesHitThreshold = slicedOutput.timesHitThreshold;
+
+		stats.measurements = measurements.get();
+		return {
+			stats,
+			slice: slicedOutput,
+			code:  stats.reconstructedCode
+		};
+	}
+
+	/**
+	 * Extract the control flow graph using {@link extractCFG}
+	 */
+	public extractCFG(): void {
+		benchmarkLogger.trace('try to extract the control flow graph');
+
+		this.guardActive();
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
+
+		const ast = this.normalizedAst;
+
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+	}
+
+	/**
+	 * Infer the shape of data frames using abstract interpretation with {@link inferDataFrameShapes}
+	 * @returns The statistics of the data frame shape inference
+	 */
+	public inferDataFrameShapes(): SlicerStatsDfShape {
+		benchmarkLogger.trace('try to infer shapes for data frames');
+
+		guard(this.stats !== undefined && !this.finished, 'need to call init before, and can not do after finish!');
+		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for data frame shape inference');
+		guard(this.dataflow !== undefined, 'dataflow should be defined for data frame shape inference');
+		guard(this.controlFlow !== undefined, 'controlFlow should be defined for data frame shape inference');
+		guard(this.context !== undefined, 'context should be defined for data frame shape inference');
+
+		const ast = this.normalizedAst;
+		const dfg = this.dataflow.graph;
+		const cfinfo = this.controlFlow;
+
+		const stats: SlicerStatsDfShape = {
+			numberOfDataFrameFiles:    0,
+			numberOfNonDataFrameFiles: 0,
+			numberOfResultConstraints: 0,
+			numberOfResultingValues:   0,
+			numberOfResultingBottom:   0,
+			numberOfResultingTop:      0,
+			numberOfEmptyNodes:        0,
+			numberOfOperationNodes:    0,
+			numberOfValueNodes:        0,
+			sizeOfInfo:                0,
+			perNodeStats:              new Map()
+		};
+
+		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
+		this.measureSimpleStep('infer data frame shapes', () => inference.start());
+		const result = inference.getEndState();
+		stats.numberOfResultConstraints = result.value.size;
+		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
+
+		for(const value of result.value.values()) {
+			if(value.isTop()) {
+				stats.numberOfResultingTop++;
+			} else if((value as DataFrameDomain).isBottom()) {
+				stats.numberOfResultingBottom++;
+			} else {
+				stats.numberOfResultingValues++;
+			}
+		}
+
+		RProject.visitAst(this.normalizedAst.ast, node => {
+			const operations = inference.getAbstractOperations(node.info.id);
+			const value = inference.getAbstractValue(node.info.id);
+
+			// Only store per-node information for nodes representing expressions or nodes with abstract values
+			if(operations === undefined && value === undefined) {
+				stats.numberOfEmptyNodes++;
+				return;
+			}
+
+			const nodeStats: PerNodeStatsDfShape = {
+				numberOfEntries: inference.getAbstractState(node.info.id)?.value.size ?? 0
+			};
+
+			if(operations !== undefined) {
+				nodeStats.mappedOperations = operations.map(op => op.operation);
+				stats.numberOfOperationNodes++;
+
+				if(value !== undefined) {
+					nodeStats.inferredColNames = this.getInferredNumber(value.colnames);
+					nodeStats.inferredColCount = this.getInferredNumber(value.cols);
+					nodeStats.inferredRowCount = this.getInferredNumber(value.rows);
+					nodeStats.approxRangeColNames = this.getInferredRange(value.colnames);
+					nodeStats.approxRangeColCount = this.getInferredRange(value.cols);
+					nodeStats.approxRangeRowCount = this.getInferredRange(value.rows);
+				}
+			}
+			if(value !== undefined) {
+				stats.numberOfValueNodes++;
+			}
+			stats.perNodeStats.set(node.info.id, nodeStats);
+		});
+		if(stats.numberOfOperationNodes > 0) {
+			stats.numberOfDataFrameFiles = 1;
+		} else {
+			stats.numberOfNonDataFrameFiles = 1;
+		}
+		this.stats.dataFrameShape = stats;
+
+		return stats;
+	}
+
+	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
+		if(value.isValue()) {
+			if(value instanceof SetRangeDomain) {
+				return value.value.range === Top ? Infinity : value.value.range.size;
+			} else {
+				return value.value[1] - value.value[0];
+			}
+		}
+		return 0;
+	}
+
+	private getInferredNumber<T>(value: SetRangeDomain<T> | PosIntervalDomain): number | 'bottom' | 'infinite' | 'top' {
+		if(value.isTop()) {
+			return 'top';
+		} else if(value.isValue()) {
+			if(value instanceof SetRangeDomain) {
+				if(value.value.range === Top) {
+					return 'infinite';
+				}
+				return Math.floor(value.value.min.size + (value.value.range.size / 2));
+			} else {
+				if(!isFinite(value.value[1])) {
+					return 'infinite';
+				}
+				return Math.floor((value.value[0] + value.value[1]) / 2);
+			}
+		}
+		return 'bottom';
+	}
+
+	/** Bridging the gap between the new internal and the old names for the benchmarking */
+	private async measureCommonStep<Step extends PipelineStepNames<SupportedPipelines>>(
+		expectedStep: Step,
+		keyToMeasure: CommonSlicerMeasurements
+	): Promise<PipelineStepOutputWithName<SupportedPipelines, Step>> {
+		const memoryInit = process.memoryUsage();
+		const { result } = await this.commonMeasurements.measureAsync(
+			keyToMeasure, () => this.executor.nextStep(expectedStep)
+		);
+		const memoryEnd = process.memoryUsage();
+		this.deltas.set(keyToMeasure, {
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
+			external: memoryEnd.external - memoryInit.external,
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+		});
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	private measureSimpleStep<Out>(
+		keyToMeasure: CommonSlicerMeasurements,
+		measurement: () => Out
+	): Out {
+		const memoryInit = process.memoryUsage();
+		const result = this.commonMeasurements.measure(
+			keyToMeasure, measurement
+		);
+		const memoryEnd = process.memoryUsage();
+		this.deltas.set(keyToMeasure, {
+			heap:     memoryEnd.heapUsed - memoryInit.heapUsed,
+			rss:      memoryEnd.rss - memoryInit.rss,
+			external: memoryEnd.external - memoryInit.external,
+			buffs:    memoryEnd.arrayBuffers - memoryInit.arrayBuffers
+		});
+		return result;
+	}
+
+	private async measureSliceStep<Step extends PipelineStepNames<SupportedPipelines>>(
+		expectedStep: Step,
+		measure: Measurements<PerSliceMeasurements>,
+		keyToMeasure: PerSliceMeasurements
+	): Promise<PipelineStepOutputWithName<SupportedPipelines, Step>> {
+		const { result } = await measure.measureAsync(
+			keyToMeasure, () => this.executor.nextStep(expectedStep)
+		);
+
+		return result as PipelineStepOutputWithName<SupportedPipelines, Step>;
+	}
+
+	private guardActive() {
+		guard(this.stats !== undefined && !this.finished, 'need to call init before, and can not do after finish!');
+	}
+
+	/**
+	 * Call {@link slice} for all slicing criteria that match the given filter.
+	 * See {@link collectAllSlicingCriteria} for details.
+	 * <p>
+	 * the `report` function will be called *before* each *individual* slice is performed.
+	 * @returns The number of slices that were produced
+	 * @see collectAllSlicingCriteria
+	 * @see SlicingCriteriaFilter
+	 */
+	public async sliceForAll(
+		filter: SlicingCriteriaFilter,
+		report: (current: number, total: number, allCriteria: SlicingCriteria[]) => void = () => { /* do nothing */ },
+		options: {
+			sampleCount?:    number,
+			maxSliceCount?:  number,
+			sampleStrategy?: SamplingStrategy,
+			seed?:           string
+		} = {},
+	): Promise<number> {
+		const { sampleCount, maxSliceCount, sampleStrategy } = { sampleCount: -1, maxSliceCount: -1, sampleStrategy: 'random', ...options };
+		this.guardActive();
+		let count = 0;
+		let allCriteria = [...collectAllSlicingCriteria((this.normalizedAst as NormalizedAst).ast, filter)];
+		// Cancel slicing if the number of slices exceeds the limit
+		if(maxSliceCount > 0 && allCriteria.length > maxSliceCount) {
+			return -allCriteria.length;
+		}
+		if(sampleCount > 0) {
+			if(sampleStrategy === 'equidistant') {
+				allCriteria = equidistantSampling(allCriteria, sampleCount, 'ceil');
+			} else {
+				const random = options.seed ? seedrandom(options.seed) : Math.random;
+				allCriteria.sort(() => random() - 0.5);
+				allCriteria.length = Math.min(allCriteria.length, sampleCount);
+			}
+		}
+		for(const slicingCriteria of allCriteria) {
+			report(count, allCriteria.length, allCriteria);
+			await this.slice(...slicingCriteria);
+			count++;
+		}
+		return count;
+	}
+
+	/**
+	 * Retrieves the final stats and closes the shell session.
+	 * Can be called multiple times to retrieve the stored stats, but will only close the session once (the first time).
+	 */
+	public finish(): BenchmarkSlicerStats {
+		guard(this.stats !== undefined, 'need to call init before finish');
+
+		if(!this.finished) {
+			this.commonMeasurements.measure(
+				'close R session',
+				() => this.parser.close()
+			);
+			this.totalStopwatch.stop();
+			this.finished = true;
+		}
+
+		this.stats.commonMeasurements = this.commonMeasurements.get();
+		const retrieveTime = Number(this.stats.commonMeasurements.get('retrieve AST from R code'));
+		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
+		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
+		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
+		const dataFrameShapeTime = Number(this.stats.commonMeasurements.get('infer data frame shapes'));
+
+		this.stats.retrieveTimePerToken = {
+			raw:        retrieveTime / this.stats.input.numberOfRTokens,
+			normalized: retrieveTime / this.stats.input.numberOfNormalizedTokens
+		};
+		this.stats.normalizeTimePerToken = {
+			raw:        normalizeTime / this.stats.input.numberOfRTokens,
+			normalized: normalizeTime / this.stats.input.numberOfNormalizedTokens
+		};
+		this.stats.dataflowTimePerToken = {
+			raw:        dataflowTime / this.stats.input.numberOfRTokens,
+			normalized: dataflowTime / this.stats.input.numberOfNormalizedTokens
+		};
+		this.stats.totalCommonTimePerToken = {
+			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
+			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
+		};
+		this.stats.controlFlowTimePerToken = !isNaN(controlFlowTime) ? {
+			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
+			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
+		} : undefined;
+		this.stats.dataFrameShapeTimePerToken = !isNaN(dataFrameShapeTime) ? {
+			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
+			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
+		} : undefined;
+
+		return {
+			stats:     this.stats,
+			parse:     typeof this.loadedXml === 'string' ? this.loadedXml : JSON.stringify(this.loadedXml),
+			dataflow:  this.dataflow as DataflowInformation,
+			normalize: this.normalizedAst as NormalizedAst
+		};
+	}
+
+	/**
+	 * Only call in case of an error - if the session must be closed and the benchmark itself is to be considered failed/dead.
+	 */
+	public ensureSessionClosed(): void {
+		this.parser?.close();
+	}
+}

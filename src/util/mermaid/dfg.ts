@@ -105,7 +105,10 @@ function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 
 }
 
 
-function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
+/**
+ * Translates a vertex tag to the corresponding mermaid node brackets.
+ */
+export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open: string, close: string } {
 	let open: string;
 	let close: string;
 	if(tag === VertexType.FunctionDefinition || tag === VertexType.VariableDefinition) {

@@ -466,12 +466,10 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		const currentInfo = dataflowGraph.get(cid, true);
-		if(currentInfo === undefined) {
+		const vertex = dataflowGraph.getVertex(cid);
+		if(vertex === undefined) {
 			continue;
 		}
-
-		const [vertex, edges] = currentInfo;
 
 		// Found a function definition
 		if(vertex.subflow !== undefined) {
@@ -480,7 +478,8 @@ export function getAllLinkedFunctionDefinitions(
 		}
 
 		let hasReturnEdge = false;
-		for(const [target, e] of edges) {
+		const outgoing = dataflowGraph.outgoingEdges(cid) ?? [];
+		for(const [target, e] of outgoing) {
 			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				hasReturnEdge = true;
 				if(!visited.has(target)) {
@@ -493,7 +492,7 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
-		for(const [target, e] of edges) {
+		for(const [target, e] of outgoing) {
 			if(DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
 				potential.push(target);
 			}

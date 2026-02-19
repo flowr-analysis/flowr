@@ -50,19 +50,23 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 	if(info.tag === VertexType.FunctionDefinition) {
 		for(const { nodeId } of info.exitPoints){
 			if(notReached.delete(nodeId)) {
-				makeCluster(graph, nodeId, notReached).forEach(n => nodes.add(n));
+				for(const m of makeCluster(graph, nodeId, notReached)) {
+					nodes.add(m);
+				}
 			}
 		}
 	}
 
 	// cluster adjacent edges
-	for(const [dest, e] of [...graph.outgoingEdges(from) ?? [], ...graph.ingoingEdges(from) ?? []]) {
-		// don't cluster for function content if it isn't returned
-		if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{'){
-			continue;
-		}
-		if(notReached.delete(dest)) {
-			makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
+	for(const edges of [graph.outgoingEdges(from), graph.ingoingEdges(from)] as const) {
+		for(const [dest, e] of edges ?? []) {
+			// don't cluster for function content if it isn't returned
+			if(DfEdge.doesNotIncludeType(e, EdgeType.Returns) && info.onlyBuiltin && info.name === '{') {
+				continue;
+			}
+			if(notReached.delete(dest)) {
+				makeCluster(graph, dest, notReached).forEach(n => nodes.add(n));
+			}
 		}
 	}
 

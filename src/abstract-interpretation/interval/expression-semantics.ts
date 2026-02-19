@@ -9,10 +9,10 @@ import { numericInferenceLogger } from './numeric-inference';
  * Maps function/operator names to the semantic functions.
  */
 const IntervalSemanticsMapper = [
-	[Identifier.make('+'), unaryBinaryOpSemantics(defaultPositiveOp, defaultAddOp)],
-	[Identifier.make('-'), unaryBinaryOpSemantics(defaultNegativeOp, defaultSubtractOp)],
-	[Identifier.make('*'), binaryOpSemantics(defaultMultiplyOp)],
-	[Identifier.make('length'), unaryFnSemantics(defaultLengthFn)],
+	[Identifier.make('+'), unaryBinaryOpSemantics(intervalPositiveOp, intervalAddOp)],
+	[Identifier.make('-'), unaryBinaryOpSemantics(intervalNegativeOp, intervalSubtractOp)],
+	[Identifier.make('*'), binaryOpSemantics(intervalMultiplyOp)],
+	[Identifier.make('length'), unaryFnSemantics(intervalLengthFn)],
 ] as const satisfies readonly IntervalSemanticsMapperInfo[];
 
 /**
@@ -143,7 +143,7 @@ function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSeman
  * @param arg - The interval to apply the unary plus operator to (undefined meaning no information).
  * @returns The resulting interval after applying the unary plus operator, which is the same as the input interval.
  */
-function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+function intervalPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
 	return arg;
 }
 
@@ -153,7 +153,7 @@ function defaultPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | un
  * @param right - The right interval to add (undefined meaning no information).
  * @returns The resulting interval after addition. If one of the intervals is undefined, the result is also undefined.
  */
-function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
 		return left?.bottom() ?? right?.bottom();
 	}
@@ -179,7 +179,7 @@ function defaultAddOp(left: IntervalDomain | undefined, right: IntervalDomain | 
  * @param arg - The interval to negate (undefined meaning no information).
  * @returns The resulting interval after negation. If the interval is undefined, the result is also undefined.
  */
-function defaultNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(arg?.isValue()) {
 		const [a, b] = arg.value;
 		return arg.create([-b, -a]);
@@ -193,8 +193,8 @@ function defaultNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | un
  * @param right - The right interval to subtract (undefined meaning no information).
  * @returns The resulting interval after subtraction. If one of the intervals is undefined, the result is also undefined.
  */
-function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
-	return defaultAddOp(left, defaultNegativeOp(right));
+function intervalSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	return intervalAddOp(left, intervalNegativeOp(right));
 }
 
 /**
@@ -203,7 +203,7 @@ function defaultSubtractOp(left: IntervalDomain | undefined, right: IntervalDoma
  * @param right - The right interval to multiply (undefined meaning no information).
  * @returns The resulting interval after multiplication. If one of the intervals is undefined, the result is also undefined.
  */
-function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(left?.isBottom() || right?.isBottom()) {
 		return left?.bottom() ?? right?.bottom();
 	}
@@ -244,7 +244,7 @@ function defaultMultiplyOp(left: IntervalDomain | undefined, right: IntervalDoma
  * @returns Bottom if the provided argument is bottom or empty, otherwise overapproximates to the interval [0, Infinity].
  *          If the argument can be resolved to a supported value, the resulting interval is more precise (e.g.: [1,1] for scalar numbers).
  */
-function defaultLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisitor): IntervalDomain | undefined {
+function intervalLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisitor): IntervalDomain | undefined {
 	if(FunctionArgument.isEmpty(arg)) {
 		numericInferenceLogger.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom();

@@ -354,7 +354,7 @@ function processAssignmentToString<OtherInfo>(
 }
 
 function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: DataflowGraphVertexFunctionDefinition['mode'] | undefined): InGraphReferenceType {
-	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
+	const vert = sourceInfo.graph.peekVertex(sourceInfo.entryPoint);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
 			if(fnModes && fnModes.length > 0) {

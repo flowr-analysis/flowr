@@ -444,7 +444,7 @@ export class DataflowGraph<
 			for(const id of this.rootVertices) {
 				const vertex = this.vertexInformation.get(id) as Vertex;
 				if(isLazyFunctionDefinitionVertex(vertex)) {
-					this.materializeIfLazy(id, vertex);
+					continue;
 				}
 				yield [id, this.vertexInformation.get(id) as Vertex];
 			}
@@ -456,9 +456,9 @@ export class DataflowGraph<
 		for(const id of ids) {
 			const vertex = this.vertexInformation.get(id) as Vertex & { tag: T };
 			if(isLazyFunctionDefinitionVertex(vertex)) {
-				this.materializeIfLazy(id, vertex);
+				continue; // Skip lazy functions without materializing
 			}
-			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
+			yield [id, vertex];
 		}
 	}
 
@@ -698,6 +698,9 @@ export class DataflowGraph<
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
 		return current;
+	} else if(current.tag === VertexType.FunctionDefinition && isLazyFunctionDefinitionVertex(current) && !isLazyFunctionDefinitionVertex(next)) {
+		// Replace lazy stub with fully materialized function definition.
+		return next;
 	} else if(current.tag === VertexType.FunctionDefinition) {
 		const n = next as DataflowGraphVertexFunctionDefinition;
 		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);

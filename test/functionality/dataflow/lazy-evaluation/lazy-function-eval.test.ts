@@ -1,4 +1,4 @@
-import { assert, test } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../../src/project/flowr-analyzer';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
@@ -247,105 +247,110 @@ test('Understand current function definition handling', async() => {
 	assert.isTrue(result.graphsEqual);
 });
 
-test('Single unused function is not analyzed in lazy mode', async() => {
-	const result = await compareWithLazyStats('UnusedFunction', UnusedFunction);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// In lazy mode, at least one function should remain lazy (the unused one)
-	console.log(`Unused functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.isTrue(
-		lazyFunctionsRemaining > 0,
-		'Lazy mode should have skipped analysis of unused function g'
-	);
+describe('Simple Lazy Function Evaluation Tests', () => {
+    test('Single unused function is not analyzed in lazy mode', async() => {
+        const result = await compareWithLazyStats('UnusedFunction', UnusedFunction);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // In lazy mode, at least one function should remain lazy (the unused one)
+        console.log(`Unused functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.isTrue(
+            lazyFunctionsRemaining > 0,
+            'Lazy mode should have skipped analysis of unused function g'
+        );
+    });
+    
+    test('Multiple unused functions are not analyzed in lazy mode', async() => {
+        const result = await compareWithLazyStats('MultipleUnusedFunctions', MultipleUnusedFunctions);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // Should have remaining lazy functions (the unused ones)
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.isTrue(
+            lazyFunctionsRemaining >= 3,
+            'Lazy mode should have skipped analysis of unused1, unused2, and unused3'
+        );
+    });
 });
 
-test('Multiple unused functions are not analyzed in lazy mode', async() => {
-	const result = await compareWithLazyStats('MultipleUnusedFunctions', MultipleUnusedFunctions);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// Should have remaining lazy functions (the unused ones)
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.isTrue(
-		lazyFunctionsRemaining >= 3,
-		'Lazy mode should have skipped analysis of unused1, unused2, and unused3'
-	);
+describe('Advanced Lazy Function Evaluation Tests', () => {
+    test('Nested unused functions are not analyzed in lazy mode', async() => {
+        const result = await compareWithLazyStats('NestedUnusedFunctions', NestedUnusedFunctions);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // The inner_unused function should remain lazy
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.isTrue(
+            lazyFunctionsRemaining > 0,
+            'Lazy mode should have skipped analysis of nested inner_unused function'
+        );
+    });
+    
+    test('Deep call chains analyze all functions in call path', async() => {
+        const result = await compareWithLazyStats('DeepCallChain', DeepCallChain);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // All three functions should be analyzed since they're in the call chain
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.equal(
+            lazyFunctionsRemaining,
+            0,
+            'All functions in deep call chain should have been materialized'
+        );
+    });
+    
+    test('Conditional function calls analyze both branches (dataflow limitation)', async() => {
+        const result = await compareWithLazyStats('ConditionalFunctionCall', ConditionalFunctionCall);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // Both func_a and func_b should be analyzed since dataflow doesn't track conditionals
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+    });
+    
+    test('Function returned but not called is not analyzed in lazy mode', async() => {
+        const result = await compareWithLazyStats('FunctionReturnedButNotCalled', FunctionReturnedButNotCalled);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // The multiplier function returned but not called should remain lazy
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.isTrue(
+            lazyFunctionsRemaining > 0,
+            'Lazy mode should have skipped analysis of returned but non-called multiplier function'
+        );
+    });
+    
+    test('Mutually recursive functions are analyzed when called', async() => {
+        const result = await compareWithLazyStats('MutuallyRecursiveFunctions', MutuallyRecursiveFunctions);
+        assert.isTrue(result.graphsEqual);
+    
+        const stats = result.lazyStats;
+        const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+    
+        // Both mutually recursive functions should be analyzed since is_even is called
+        console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+        assert.equal(
+            lazyFunctionsRemaining,
+            0,
+            'Mutually recursive functions should have been materialized when one is called'
+        );
+    });
 });
 
-test('Nested unused functions are not analyzed in lazy mode', async() => {
-	const result = await compareWithLazyStats('NestedUnusedFunctions', NestedUnusedFunctions);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// The inner_unused function should remain lazy
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.isTrue(
-		lazyFunctionsRemaining > 0,
-		'Lazy mode should have skipped analysis of nested inner_unused function'
-	);
-});
-
-test('Deep call chains analyze all functions in call path', async() => {
-	const result = await compareWithLazyStats('DeepCallChain', DeepCallChain);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// All three functions should be analyzed since they're in the call chain
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.equal(
-		lazyFunctionsRemaining,
-		0,
-		'All functions in deep call chain should have been materialized'
-	);
-});
-
-test('Conditional function calls analyze both branches (dataflow limitation)', async() => {
-	const result = await compareWithLazyStats('ConditionalFunctionCall', ConditionalFunctionCall);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// Both func_a and func_b should be analyzed since dataflow doesn't track conditionals
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-});
-
-test('Function returned but not called is not analyzed in lazy mode', async() => {
-	const result = await compareWithLazyStats('FunctionReturnedButNotCalled', FunctionReturnedButNotCalled);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// The multiplier function returned but not called should remain lazy
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.isTrue(
-		lazyFunctionsRemaining > 0,
-		'Lazy mode should have skipped analysis of returned but non-called multiplier function'
-	);
-});
-
-test('Mutually recursive functions are analyzed when called', async() => {
-	const result = await compareWithLazyStats('MutuallyRecursiveFunctions', MutuallyRecursiveFunctions);
-	assert.isTrue(result.graphsEqual);
-
-	const stats = result.lazyStats;
-	const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
-
-	// Both mutually recursive functions should be analyzed since is_even is called
-	console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
-	assert.equal(
-		lazyFunctionsRemaining,
-		0,
-		'Mutually recursive functions should have been materialized when one is called'
-	);
-});

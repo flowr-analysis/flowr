@@ -358,25 +358,25 @@ export function updateNestedFunctionCalls(
 	// With lazy evaluation, materializing functions can add new function calls to the graph.
 	// We need to iterate until a fixpoint where no new function calls are added.
 	const processedCalls = new Set<NodeId>();
-	let iterations = 0;
+	let _iterations = 0;
 	let foundNewCalls = true;
-	
+
 	while(foundNewCalls) {
 		foundNewCalls = false;
-		iterations++;
-		
+		_iterations++;
+
 		// track *all* function calls - including those added during materialization
 		for(const [id, { onlyBuiltin, environment, name, args, origin }] of graph.verticesOfType(VertexType.FunctionCall)) {
 			// Skip already processed calls
 			if(processedCalls.has(id)) {
 				continue;
 			}
-			
+
 			// Only process actual function calls
 			if(onlyBuiltin || !name) {
 				continue;
 			}
-			
+
 			processedCalls.add(id);
 			foundNewCalls = true;
 

@@ -112,7 +112,7 @@ export function getAliases(sourceIds: readonly NodeId[], dataflow: DataflowGraph
 	const definitions: Set<NodeId> = new Set<NodeId>();
 
 	for(const sourceId of sourceIds) {
-		const info = dataflow.getVertex(sourceId);
+		const info = dataflow.peekVertex(sourceId);
 		if(info === undefined) {
 			return undefined;
 		} else if(info.tag === VertexType.FunctionDefinition) {

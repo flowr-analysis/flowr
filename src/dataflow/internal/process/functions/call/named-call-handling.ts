@@ -46,7 +46,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
  * Marks the given function call node as only calling built-in functions.
  */
 export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
-	const v = graph.getVertex(rootId);
+	const v = graph.peekVertex(rootId);
 	if(v?.tag === VertexType.FunctionCall) {
 		v.onlyBuiltin = true;
 		v.environment = undefined;

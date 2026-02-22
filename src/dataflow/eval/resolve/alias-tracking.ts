@@ -390,7 +390,10 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
 		const node = idMap.get(id);
-		if(node !== undefined && node.info.role !== RoleInParent.ParameterDefaultValue) {
+		if(node !== undefined) {
+			if(node.info.role === RoleInParent.ParameterDefaultValue) {
+				return Top;
+			}
 			values.add(valueFromRNodeConstant(node));
 		}
 	}

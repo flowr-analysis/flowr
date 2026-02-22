@@ -53,7 +53,7 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 	describe('Resolve Parameters and Calls', () => {
 		testQuery('No call-sites', 'function() { x <- 1 }', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
 		testQuery('No call-sites with inner use', 'function() { x <- 42\n x }', ['2@x'], [[setFrom(intervalFrom(42, 42))]]);
-		testQuery('No call-sites with inner use', 'f <- function() { x <<- 42 }\nf()\nprint(x)', ['3@x'], [[setFrom(intervalFrom(42, 42))]]);
+		testQuery('No call-sites with global assignment', 'f <- function() { x <<- 42 }\nf()\nprint(x)', ['3@x'], [[setFrom(intervalFrom(42, 42))]]);
 		testQuery('No call-sites with parameter', 'f <- function(x=42) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with calculated parameter', 'f <- function(x=42+1) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter', 'f <- function(x=42) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);

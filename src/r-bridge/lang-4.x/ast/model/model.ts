@@ -344,8 +344,9 @@ export const RNode = {
 	 * Returns the direct parent of a node.
 	 * Usually, only root nodes do not have a parent, and you can assume that there is a
 	 * linear chain of parents leading to the root node.
+	 * @see {@link iterateParents} - to get all parents of a node
 	 */
-	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: Map<NodeId, RNode<OtherInfo>>): RNode<OtherInfo> | undefined {
+	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): RNode<OtherInfo & ParentInformation> | undefined {
 		const parentId = node.info.parent;
 		if(parentId === undefined) {
 			return undefined;
@@ -353,10 +354,22 @@ export const RNode = {
 		return idMap.get(parentId);
 	},
 	/**
+	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
+	 */
+	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): Generator<RNode<OtherInfo & ParentInformation>> {
+		let currentNode: RNode<OtherInfo & ParentInformation> | undefined = node;
+		while(currentNode) {
+			currentNode = RNode.directParent(currentNode, idMap);
+			if(currentNode) {
+				yield currentNode;
+			}
+		}
+	},
+	/**
 	 * In contrast to the nesting stored in the {@link RNode} structure,
 	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
 	 */
-	depth(this: void, node: RNode, idMap: Map<NodeId, RNode>): number {
+	depth(this: void, node: RNode<ParentInformation>, idMap: Map<NodeId, RNode<ParentInformation>>): number {
 		let depth = 0;
 		let currentNode: RNode | undefined = node;
 		while(currentNode) {

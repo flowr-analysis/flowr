@@ -10,7 +10,7 @@ import type { BuiltInIdentifierConstant } from '../../environments/built-in';
 import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
-import { EdgeType } from '../../graph/edge';
+import { DfEdge, EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
@@ -21,7 +21,7 @@ import { setFrom } from '../values/sets/set-constants';
 import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { RLoopConstructs } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
@@ -294,21 +294,7 @@ onReplacementOperator((args: ReplacementOperatorHandlerArgs) => {
 });
 
 function isNestedInLoop(node: RNodeWithParent | undefined, ast: AstIdMap): boolean {
-	const parent = node?.info.parent;
-	if(node === undefined || !parent) {
-		return false;
-	}
-
-	const parentNode = ast.get(parent);
-	if(parentNode === undefined) {
-		return false;
-	}
-
-	if(parentNode.type === RType.WhileLoop || parentNode.type === RType.RepeatLoop || parentNode.type === RType.ForLoop) {
-		return true;
-	}
-
-	return isNestedInLoop(parentNode, ast);
+	return RNode.iterateParents(node, ast).some(RLoopConstructs.is);
 }
 
 /**
@@ -368,18 +354,23 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 		const isFn = t === VertexType.FunctionCall;
 		const outgoingEdges = graph.outgoingEdges(id) ?? [];
+		let foundRetuns = false;
 		// travel all read and defined-by edges
 		for(const [targetId, { types }] of outgoingEdges) {
 			if(isFn) {
 				if(types === EdgeType.Returns || types === EdgeType.DefinedByOnCall || types ===  EdgeType.DefinedBy) {
 					queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 				}
+				foundRetuns ||= DfEdge.includesType({ types }, EdgeType.Returns);
 				continue;
 			}
 			// currently, they have to be exact!
 			if(types === EdgeType.Reads || types ===  EdgeType.DefinedBy || types === EdgeType.DefinedByOnCall) {
 				queue.add(targetId, baseEnvironment, cleanFingerprint, false);
 			}
+		}
+		if(isFn && !foundRetuns) {
+			return Top;
 		}
 	}
 
@@ -391,7 +382,7 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	for(const id of resultIds) {
 		const node = idMap.get(id);
 		if(node !== undefined) {
-			if(node.info.role === RoleInParent.ParameterDefaultValue) {
+			if(node.info.role === RoleInParent.ParameterDefaultValue || RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue)) {
 				return Top;
 			}
 			values.add(valueFromRNodeConstant(node));

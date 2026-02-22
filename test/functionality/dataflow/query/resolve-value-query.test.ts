@@ -57,6 +57,7 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 		testQuery('No call-sites with parameter', 'f <- function(x=42) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with calculated parameter', 'f <- function(x=42+1) { \nprint(x)}', ['2@x'], [[Top]]);
 		testQuery('No call-sites with maybe parameter', 'f <- function(x=42) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
+		testQuery('No call-sites with maybe parameter and calc', 'f <- function(x=42+1) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
 	});
 
 	describe('For now suboptimal', () =>  {

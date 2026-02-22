@@ -59,6 +59,8 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import type { CallGraph } from '../dataflow/graph/call-graph';
+import { computeCallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -122,6 +124,7 @@ export class BenchmarkSlicer {
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
+	private callGraph:           CallGraph | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -331,6 +334,15 @@ export class BenchmarkSlicer {
 		const ast = this.normalizedAst;
 
 		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+	}
+
+	public extractCG(): void {
+		benchmarkLogger.trace('try to extract the call graph');
+		this.guardActive();
+		const g = this.dataflow?.graph;
+		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
+
+		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
 	}
 
 	/**
@@ -570,6 +582,7 @@ export class BenchmarkSlicer {
 		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
 		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
 		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
+		const callGraphTime = Number(this.stats.commonMeasurements.get('extract call graph'));
 		const dataFrameShapeTime = Number(this.stats.commonMeasurements.get('infer data frame shapes'));
 
 		this.stats.retrieveTimePerToken = {
@@ -588,14 +601,18 @@ export class BenchmarkSlicer {
 			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
 			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
 		};
-		this.stats.controlFlowTimePerToken = !isNaN(controlFlowTime) ? {
+		this.stats.controlFlowTimePerToken = Number.isNaN(controlFlowTime) ? undefined : {
 			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
 			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
-		this.stats.dataFrameShapeTimePerToken = !isNaN(dataFrameShapeTime) ? {
+		};
+		this.stats.callGraphTimePerToken = Number.isNaN(callGraphTime) ? undefined : {
+			raw:        callGraphTime / this.stats.input.numberOfRTokens,
+			normalized: callGraphTime / this.stats.input.numberOfNormalizedTokens,
+		};
+		this.stats.dataFrameShapeTimePerToken = Number.isNaN(dataFrameShapeTime) ? undefined : {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
+		};
 
 		return {
 			stats:     this.stats,

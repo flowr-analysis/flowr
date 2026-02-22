@@ -96,7 +96,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 		writeFileSync: fs.writeFileSync
 	};
 
-	console.log(`Setup for wiki generation took ${(new Date().getTime() - setupStart.getTime())}ms`);
+	console.log(`Setup for wiki generation took ${(Date.now() - setupStart.getTime())}ms`);
 	const changedWikis = new Set<string>();
 	try {
 		const sortedDocs = sortByLeastRecentChanged(AllWikiDocuments);
@@ -115,7 +115,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 				changedWikis.add(doc.getTarget());
 			}
 			const color = changed ? Colors.Green : Colors.White;
-			console.log(ansiFormatter.format(`  [${doc.getTarget()}] ${text}: ${doc.getTarget()} (took ${new Date().getTime() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
+			console.log(ansiFormatter.format(`  [${doc.getTarget()}] ${text}: ${doc.getTarget()} (took ${Date.now() - now.getTime()}ms)`, { color, effect: ColorEffect.Foreground }));
 			for(const out of doc.getWrittenSubfiles()) {
 				changedWikis.add(out);
 				console.log(`    - Also updated: ${out}`);

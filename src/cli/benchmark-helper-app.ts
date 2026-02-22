@@ -21,7 +21,8 @@ export interface SingleBenchmarkCliOptions {
 	parser:                      KnownParserName
 	'dataframe-shape-inference': boolean
 	'max-slices':                number
-	'cfg':                       boolean
+	cfg:                         boolean
+	cg:                          boolean
 	threshold?:                  number
 	'sampling-strategy':         string
 	seed?:                       string
@@ -99,6 +100,10 @@ async function benchmark() {
 
 		if(options['cfg'] || options['dataframe-shape-inference']) {
 			slicer.extractCFG();
+		}
+
+		if(options['cg']) {
+			slicer.extractCG();
 		}
 
 		if(options['dataframe-shape-inference']) {

@@ -121,6 +121,12 @@ Control flow extraction:              ${print(stats.commonMeasurements, 'extract
 Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
 	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${print(stats.commonMeasurements, 'extract call graph')}
+Call graph extraction per token:      ${formatNanoseconds(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatNanoseconds(stats.callGraphTimePerToken.raw)}`;
+	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
 Dataframe shape inference:            ${print(stats.commonMeasurements, 'infer data frame shapes')}
@@ -232,6 +238,12 @@ Total common time per R token:        ${formatSummarizedTimeMeasure(stats.totalC
 Control flow extraction:              ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract control flow graph'))}
 Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
+	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract call graph'))}
+Call graph extraction per token:      ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.raw)}`;
 	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `

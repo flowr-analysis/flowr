@@ -28,6 +28,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 	const dataflowTimesPerToken: TimePerToken<number>[] = [];
 	const totalCommonTimesPerToken: TimePerToken<number>[] = [];
 	const controlFlowTimePerToken: TimePerToken<number>[] = [];
+	const callGraphTimePerToken: TimePerToken<number>[] = [];
 	const dataFrameShapeTimePerToken: TimePerToken<number>[] = [];
 	const memory = new DefaultMap<CommonSlicerMeasurements, BenchmarkMemoryMeasurement[]>(() => []);
 	const reductions: Reduction<SummarizedMeasurement>[] = [];
@@ -56,6 +57,9 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 
 		if(stat.controlFlowTimePerToken !== undefined) {
 			controlFlowTimePerToken.push(stat.controlFlowTimePerToken);
+		}
+		if(stat.callGraphTimePerToken !== undefined) {
+			callGraphTimePerToken.push(stat.callGraphTimePerToken);
 		}
 		if(stat.dataFrameShapeTimePerToken !== undefined) {
 			dataFrameShapeTimePerToken.push(stat.dataFrameShapeTimePerToken);
@@ -93,6 +97,7 @@ export function summarizeAllSummarizedStats(stats: SummarizedSlicerStats[]): Ult
 		dataflowTimePerToken:       summarizeTimePerToken(dataflowTimesPerToken),
 		totalCommonTimePerToken:    summarizeTimePerToken(totalCommonTimesPerToken),
 		controlFlowTimePerToken:    controlFlowTimePerToken.length > 0 ? summarizeTimePerToken(controlFlowTimePerToken) : undefined,
+		callGraphTimePerToken:      callGraphTimePerToken.length > 0 ? summarizeTimePerToken(callGraphTimePerToken) : undefined,
 		dataFrameShapeTimePerToken: dataFrameShapeTimePerToken.length > 0 ? summarizeTimePerToken(dataFrameShapeTimePerToken) : undefined,
 		failedToRepParse,
 		timesHitThreshold,

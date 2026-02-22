@@ -1042,7 +1042,7 @@ ${await getVertexExplanations(treeSitter, ctx)}
 ${section('Edges', 2, 'edges')}
 
 1. ${getAllEdges().map(
-	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replaceAll(/\s/g, '-')}-edge)`
 ).join('\n1. ')}
 
 ${await getEdgesExplanations(treeSitter, ctx)}

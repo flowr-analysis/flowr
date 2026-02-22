@@ -68,7 +68,7 @@ export function summarizeMeasurement(data: number[], totalNumberOfDataPoints?: n
 	// just to avoid in-place modification
 	const sorted = [...data].sort((a, b) => a - b);
 	const min = sorted[0];
-	const max = sorted[sorted.length - 1];
+	const max = sorted.at(-1) as number;
 	const median = sorted[Math.floor(sorted.length / 2)];
 	const total = arraySum(sorted);
 	const length = totalNumberOfDataPoints ?? sorted.length;

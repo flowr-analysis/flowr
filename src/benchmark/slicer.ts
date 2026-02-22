@@ -609,7 +609,7 @@ export class BenchmarkSlicer {
 			raw:        callGraphTime / this.stats.input.numberOfRTokens,
 			normalized: callGraphTime / this.stats.input.numberOfNormalizedTokens,
 		};
-		this.stats.dataFrameShapeTimePerToken = Number.isNaN(dataFrameShapeTime) ? undefined :{
+		this.stats.dataFrameShapeTimePerToken = Number.isNaN(dataFrameShapeTime) ? undefined : {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
 		};

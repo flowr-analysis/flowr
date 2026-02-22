@@ -22,6 +22,7 @@ import { resolveNode } from './resolve';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RLoopConstructs } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 export type ResolveResult = Lift<ValueSet<Value[]>>;
 
@@ -58,7 +59,7 @@ function getFunctionCallAlias(sourceId: NodeId, dataflow: DataflowGraph, environ
 	}
 
 	const defs = resolveByName(identifier, environment, ReferenceType.Function);
-	if(defs === undefined || defs.length !== 1) {
+	if(defs?.length !== 1) {
 		return undefined;
 	}
 
@@ -244,7 +245,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 		}
 	}
 
-	if(values.size == 0) {
+	if(values.size === 0) {
 		return Top;
 	}
 
@@ -389,11 +390,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
 		const node = idMap.get(id);
-		if(node !== undefined) {
+		if(node !== undefined && node.info.role !== RoleInParent.ParameterDefaultValue) {
 			values.add(valueFromRNodeConstant(node));
 		}
 	}
-	return setFrom(...values);
+	return values.size === 0 ? Top : setFrom(...values);
 }
 
 /**

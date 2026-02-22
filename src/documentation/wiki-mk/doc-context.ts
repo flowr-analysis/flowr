@@ -295,8 +295,7 @@ export function makeDocContextForTypes(
 	...rootFolders: string[]
 ): GeneralDocContext {
 	if(rootFolders.length === 0) {
-		rootFolders.push(path.resolve(__dirname, '../../../src'));
-		rootFolders.push(path.resolve(__dirname, '../../../test/functionality'));
+		rootFolders.push(path.resolve(__dirname, '../../../src'), path.resolve(__dirname, '../../../test/functionality'));
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {
@@ -353,10 +352,10 @@ export function makeDocContextForTypes(
 				link = i.url;
 				text ??= i.name;
 			} else {
-				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replace(/ /g, '-')}`;
+				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
 			}
 			text ??= pageName.split('/').pop() ?? pageName;
-			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
+			return `[${text}](${link}${segment ? '#' + segment : ''})`;
 		},
 		linkCode(this: void, path: PathLike, lineNumber?: number): string {
 			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();

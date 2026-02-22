@@ -44,6 +44,12 @@ export const ResolveValueQueryDefinition = {
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];
+		if(out === undefined || typeof out !== 'object' || !('.meta' in out)) {
+			result.push(
+				formatter.format('Resolve value failed (maybe your criterion does not exist?)!', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }),
+			);
+			return true;
+		}
 		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;

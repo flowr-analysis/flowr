@@ -340,7 +340,7 @@ export class BenchmarkSlicer {
 		benchmarkLogger.trace('try to extract the call graph');
 		this.guardActive();
 		const g = this.dataflow?.graph;
-		guard(g !== undefined, 'dataflow should be defined for control flow extraction');
+		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
 		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
 	}
@@ -605,7 +605,7 @@ export class BenchmarkSlicer {
 			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
 			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
 		};
-		this.stats.controlFlowTimePerToken = Number.isNaN(callGraphTime) ? undefined : {
+		this.stats.callGraphTimePerToken = Number.isNaN(callGraphTime) ? undefined : {
 			raw:        callGraphTime / this.stats.input.numberOfRTokens,
 			normalized: callGraphTime / this.stats.input.numberOfNormalizedTokens,
 		};

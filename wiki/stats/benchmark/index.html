@@ -500,7 +500,7 @@
                 setElem.appendChild(graphsElem);
 
                 // render the first chart with stacked data
-                renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information", "Extract control flow graph"], benchSet, 0)
+                renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information", "Extract control flow graph", "Extract call graph"], benchSet, 0)
                 renderGraph(graphsElem, ["Static slicing", "Reconstruct code"], benchSet, 3)
                 // add a details element to contain the rest of the charts
                 const details = document.createElement('details');

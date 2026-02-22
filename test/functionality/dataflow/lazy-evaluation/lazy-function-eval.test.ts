@@ -37,6 +37,7 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
     console.log(`Graph Equality: ${isEqual}`);
     if (comments.length > 0) {
         console.log(`Differences: ${comments.join(', ')}`);
+        console.log(graphdiff.problematic());
     }
 
     assert.isTrue(isEqual, `Dataflow graphs should be equal for testCase ${testCaseName}`);

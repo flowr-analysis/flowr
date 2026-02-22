@@ -285,7 +285,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 }
 
 function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
-	for(const [, info] of graph.vertices(false)) {
+	for(const [, info] of graph.vertices(false, false)) {
 		if(info.tag !== VertexType.FunctionCall || !info.origin.includes(BuiltInProcName.S3Dispatch)) {
 			continue;
 		}
@@ -314,7 +314,7 @@ function updateNestedFunctionClosures(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition, false)) {
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
@@ -351,68 +351,83 @@ export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation
 ) {
-	// track *all* function definitions - including those nested within the current graph,
-	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(onlyBuiltin || !name) {
-			continue;
-		}
+    const processedCalls = new Set<NodeId>();
+    let foundCalls = true;
 
-		let effectiveEnvironment = outEnvironment;
-		// only the call environment counts!
-		if(environment) {
-			while(outEnvironment.level > environment.level) {
-				outEnvironment = popLocalEnvironment(outEnvironment);
-			}
-			while(outEnvironment.level < environment.level) {
-				outEnvironment = pushLocalEnvironment(outEnvironment);
-			}
-			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
-		}
+    while(foundCalls) {
+        foundCalls = false;
+        
+        // track *all* function definitions - including those nested within the current graph,
+        // try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+        for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
+            
+            if(processedCalls.has(id)) {
+                continue;
+            }
 
-		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
-		for(const target of targets) {
-			if(isBuiltIn(target)) {
-				graph.addEdge(id, target, EdgeType.Calls);
-				continue;
-			}
-			const targetVertex = graph.getVertex(target);
-			// support reads on symbols
-			if(targetVertex?.tag === VertexType.Use) {
-				graph.addEdge(id, target, EdgeType.Reads);
-				continue;
-			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
-				continue;
-			}
-			graph.addEdge(id, target, EdgeType.Calls);
-			for(const exitPoint of targetVertex.exitPoints) {
-				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
-			}
-			const ingoingRefs = targetVertex.subflow.in;
-			const remainingIn: IdentifierReference[] = [];
-			for(const ingoing of ingoingRefs) {
-				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
-				if(resolved === undefined) {
-					remainingIn.push(ingoing);
-					continue;
-				}
-				const inId = ingoing.nodeId;
-				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
-				for(const { nodeId } of resolved) {
-					if(!isBuiltIn(nodeId)) {
-						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
-						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
-					}
-				}
-			}
-			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
-			targetVertex.subflow.in = remainingIn;
-			const linkedParameters = graph.idMap?.get(target);
-			if(linkedParameters?.type === RType.FunctionDefinition) {
-				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
-			}
-		}
-	}
+            if(onlyBuiltin || !name) {
+                continue;
+            }
+
+            processedCalls.add(id);
+            foundCalls = true;
+    
+            let effectiveEnvironment = outEnvironment;
+            // only the call environment counts!
+            if(environment) {
+                while(outEnvironment.level > environment.level) {
+                    outEnvironment = popLocalEnvironment(outEnvironment);
+                }
+                while(outEnvironment.level < environment.level) {
+                    outEnvironment = pushLocalEnvironment(outEnvironment);
+                }
+                effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
+            }
+    
+            const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
+            for(const target of targets) {
+                if(isBuiltIn(target)) {
+                    graph.addEdge(id, target, EdgeType.Calls);
+                    continue;
+                }
+                const targetVertex = graph.getVertex(target);
+                // support reads on symbols
+                if(targetVertex?.tag === VertexType.Use) {
+                    graph.addEdge(id, target, EdgeType.Reads);
+                    continue;
+                } else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+                    continue;
+                }
+                graph.addEdge(id, target, EdgeType.Calls);
+                for(const exitPoint of targetVertex.exitPoints) {
+                    graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+                }
+                const ingoingRefs = targetVertex.subflow.in;
+                const remainingIn: IdentifierReference[] = [];
+                for(const ingoing of ingoingRefs) {
+                    const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
+                    if(resolved === undefined) {
+                        remainingIn.push(ingoing);
+                        continue;
+                    }
+                    const inId = ingoing.nodeId;
+                    expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
+                    for(const { nodeId } of resolved) {
+                        if(!isBuiltIn(nodeId)) {
+                            graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
+                            graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
+                        }
+                    }
+                }
+                expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
+                targetVertex.subflow.in = remainingIn;
+                const linkedParameters = graph.idMap?.get(target);
+                if(linkedParameters?.type === RType.FunctionDefinition) {
+                    linkArgumentsOnCall(args, linkedParameters.parameters, graph);
+                }
+            }
+        }
+    }
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {

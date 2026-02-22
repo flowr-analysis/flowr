@@ -367,14 +367,19 @@ export class DataflowGraph<
 
 	/**
 	 * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
+     * @param materializeLazy - If true, this will materialize lazy function definition vertices and return them
 	 * @returns the ids of all toplevel vertices in the graph together with their vertex information
 	 * @see #edges
 	 */
-	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
+	public* vertices(includeDefinedFunctions: boolean, materializeLazy = true): MapIterator<[NodeId, Vertex]> {
 		if(includeDefinedFunctions) {
 			for(const [id, vertex] of this.vertexInformation.entries()) {
 				if(isLazyFunctionDefinitionVertex(vertex)) {
-					this.materializeIfLazy(id, vertex);
+                    if(materializeLazy) {
+					    this.materializeIfLazy(id, vertex);
+                    } else {
+                        continue;
+                    }
 				}
 				yield [id, this.vertexInformation.get(id) as Vertex];
 			}
@@ -382,19 +387,27 @@ export class DataflowGraph<
 			for(const id of this.rootVertices) {
 				const vertex = this.vertexInformation.get(id) as Vertex;
 				if(isLazyFunctionDefinitionVertex(vertex)) {
-					this.materializeIfLazy(id, vertex);
-				}
+                    if(materializeLazy) {
+					    this.materializeIfLazy(id, vertex);
+                    } else {
+                        continue;
+                    }
+                }
 				yield [id, this.vertexInformation.get(id) as Vertex];
 			}
 		}
 	}
 
-	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
+	public* verticesOfType<T extends Vertex['tag']>(type: T, materializeLazy = true): MapIterator<[NodeId, Vertex & { tag: T }]> {
 		const ids = this.types.get(type) ?? [];
 		for(const id of ids) {
 			const vertex = this.vertexInformation.get(id) as Vertex & { tag: T };
 			if(isLazyFunctionDefinitionVertex(vertex)) {
-				this.materializeIfLazy(id, vertex);
+                if(materializeLazy) {
+                    this.materializeIfLazy(id, vertex);
+                } else {
+                    continue;
+                }
 			}
 			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
 		}

@@ -4,6 +4,7 @@ import { isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
 import { numericInferenceLogger } from './numeric-inference';
+import { getMinMax } from '../../util/numbers';
 
 /**
  * Maps function/operator names to the semantic functions.
@@ -219,19 +220,11 @@ function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDom
 
 		const products = [a * c, a * d, b * c, b * d];
 
-		let min = Infinity;
-		let max = -Infinity;
-
-		for(const product of products) {
-			if(product < min) {
-				min = product;
-			}
-			if(product > max) {
-				max = product;
-			}
+		const minMax = getMinMax(products);
+		if(isUndefined(minMax)) {
+			return left.bottom();
 		}
-
-		return left.create([min, max]);
+		return left.create([minMax.min, minMax.max]);
 	}
 
 	return undefined;

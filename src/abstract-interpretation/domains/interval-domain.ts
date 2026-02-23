@@ -5,6 +5,7 @@ import { Bottom, BottomSymbol, Top } from './lattice';
 import { NumericalComparator, type SatisfiableDomain } from './satisfiable-domain';
 import { log } from '../../util/log';
 import { FloatingPointComparison } from '../../util/floating-point';
+import { getMinMax } from '../../util/numbers';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -76,7 +77,11 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		} else if(concrete.size === 0 || concrete.values().some(isNaN)) {
 			return IntervalDomain.bottom();
 		}
-		return new IntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
+		const minMax = getMinMax(concrete.values().toArray());
+		if(isUndefined(minMax)) {
+			return IntervalDomain.bottom();
+		}
+		return new IntervalDomain([minMax.min, minMax.max]);
 	}
 
 	public top(): this & IntervalDomain<IntervalTop>;

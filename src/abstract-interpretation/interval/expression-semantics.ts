@@ -243,15 +243,16 @@ function intervalLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisito
 		return IntervalDomain.bottom();
 	}
 
+	let inferredLength: IntervalDomain = IntervalDomain.top();
+
+	// Check if the value is a scalar number
 	const inferredInterval = visitor.getAbstractValue(arg.nodeId);
-
 	if(inferredInterval?.isBottom()) {
-		return inferredInterval.bottom();
+		inferredLength = inferredInterval.bottom();
+	} else if(inferredInterval?.isValue()) {
+		inferredLength = inferredInterval.create([1, 1]);
 	}
 
-	if(inferredInterval?.isValue()) {
-		return inferredInterval.create([1, 1]);
-	}
-
-	return new IntervalDomain([0, Infinity]);
+	// Assure that the inferred value meets the general length semantics of being at least 0 and most Infinity
+	return inferredLength.meet(new IntervalDomain([0, Infinity]));
 }

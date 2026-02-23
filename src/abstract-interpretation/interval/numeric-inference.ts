@@ -34,14 +34,14 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 			return;
 		}
 
-		const interval = IntervalDomain.scalar(node.content.num);
+		const interval = IntervalDomain.scalar(node.content.num, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
 		this.updateState(node.info.id, interval);
 	}
 
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
 		super.onFunctionCall({ call });
 
-		const result = applyIntervalExpressionSemantics(call.name, call.args, this);
+		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
 
 		if(isUndefined(result)) {
 			return;

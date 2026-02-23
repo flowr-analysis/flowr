@@ -1,4 +1,4 @@
-import { type MergeableRecord, deepMergeObject } from './util/objects';
+import { deepMergeObject, type MergeableRecord } from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -195,6 +195,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 				readonly maxReadLines:      number;
 			}
 		}
+		/**
+		 * The configuration of the numeric inference for scalar numeric values
+		 */
+		readonly numeric: {
+			/**
+			 * The number of significant figures to consider for comparing numeric values (undefined means exact comparison).
+			 */
+			readonly significantFigures?: number;
+		}
 	}
 }
 
@@ -274,6 +283,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 				readExternalFiles: true,
 				maxReadLines:      1e6
 			}
+		},
+		numeric: {
+			significantFigures: undefined
 		}
 	}
 };

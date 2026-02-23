@@ -1,10 +1,10 @@
 import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { isUndefined } from '../../util/assert';
+import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
 import { numericInferenceLogger } from './numeric-inference';
-import { getMinMax } from '../../util/numbers';
+import { getMin, getMinMax } from '../../util/numbers';
 
 /**
  * Maps function/operator names to the semantic functions.
@@ -160,8 +160,9 @@ function intervalPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | u
  * @returns The resulting interval after addition. If one of the intervals is undefined, the result is also undefined.
  */
 function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	const smallestSignificantFigures = getMin([left?.significantFigures, right?.significantFigures].filter(isNotUndefined));
 	if(left?.isBottom() || right?.isBottom()) {
-		return left?.bottom() ?? right?.bottom();
+		return left?.bottom(smallestSignificantFigures) ?? right?.bottom(smallestSignificantFigures);
 	}
 
 	if(left?.isValue() && right?.isValue()) {
@@ -175,7 +176,7 @@ function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain |
 			return undefined;
 		}
 
-		return left.create([a + c, b + d]);
+		return left.create([a + c, b + d], smallestSignificantFigures);
 	}
 	return undefined;
 }
@@ -210,8 +211,9 @@ function intervalSubtractOp(left: IntervalDomain | undefined, right: IntervalDom
  * @returns The resulting interval after multiplication. If one of the intervals is undefined, the result is also undefined.
  */
 function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	const smallestSignificantFigures = getMin([left?.significantFigures, right?.significantFigures].filter(isNotUndefined));
 	if(left?.isBottom() || right?.isBottom()) {
-		return left?.bottom() ?? right?.bottom();
+		return left?.bottom(smallestSignificantFigures) ?? right?.bottom(smallestSignificantFigures);
 	}
 
 	if(left?.isValue() && right?.isValue()) {
@@ -227,9 +229,9 @@ function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDom
 
 		const minMax = getMinMax(products);
 		if(isUndefined(minMax)) {
-			return left.bottom();
+			return left.bottom(smallestSignificantFigures);
 		}
-		return left.create([minMax.min, minMax.max]);
+		return left.create([minMax.min, minMax.max], smallestSignificantFigures);
 	}
 
 	return undefined;
@@ -254,9 +256,9 @@ function intervalLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisito
 	// Check if the value is a scalar number
 	const inferredInterval = visitor.getAbstractValue(arg.nodeId);
 	if(inferredInterval?.isBottom()) {
-		inferredLength = inferredInterval.bottom();
+		inferredLength = inferredInterval.bottom(significantFigures);
 	} else if(inferredInterval?.isValue()) {
-		inferredLength = inferredInterval.create([1, 1]);
+		inferredLength = inferredInterval.create([1, 1], significantFigures);
 	}
 
 	// Assure that the inferred value meets the general length semantics of being at least 0 and most Infinity

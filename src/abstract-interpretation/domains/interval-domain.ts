@@ -1,4 +1,4 @@
-import { assertUnreachable, isUndefined } from '../../util/assert';
+import { assertUnreachable, isNotUndefined, isUndefined } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
@@ -50,9 +50,9 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	public create(value: IntervalLift): this;
-	public create(value: IntervalLift): IntervalDomain {
-		return new IntervalDomain(value, this.significantFigures);
+	public create(value: IntervalLift, significantFigures?: number): this;
+	public create(value: IntervalLift, significantFigures?: number): IntervalDomain {
+		return new IntervalDomain(value, significantFigures ?? this.significantFigures);
 	}
 
 	public scalar(value: number): this {
@@ -71,27 +71,27 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(Bottom, significantFigures);
 	}
 
-	public static abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
+	public static abstract(concrete: ReadonlySet<number> | typeof Top, significantFigures?: number): IntervalDomain {
 		if(concrete === Top) {
-			return IntervalDomain.top();
+			return IntervalDomain.top(significantFigures);
 		} else if(concrete.size === 0 || concrete.values().some(isNaN)) {
-			return IntervalDomain.bottom();
+			return IntervalDomain.bottom(significantFigures);
 		}
 		const minMax = getMinMax(concrete.values().toArray());
 		if(isUndefined(minMax)) {
-			return IntervalDomain.bottom();
+			return IntervalDomain.bottom(significantFigures);
 		}
-		return new IntervalDomain([minMax.min, minMax.max]);
+		return new IntervalDomain([minMax.min, minMax.max], significantFigures);
 	}
 
-	public top(): this & IntervalDomain<IntervalTop>;
-	public top(): IntervalDomain<IntervalTop> {
-		return IntervalDomain.top();
+	public top(significantFigures?: number): this & IntervalDomain<IntervalTop>;
+	public top(significantFigures?: number): IntervalDomain<IntervalTop> {
+		return IntervalDomain.top(significantFigures ?? this.significantFigures);
 	}
 
-	public bottom(): this & IntervalDomain<IntervalBottom>;
-	public bottom(): IntervalDomain<IntervalBottom> {
-		return IntervalDomain.bottom();
+	public bottom(significantFigures?: number): this & IntervalDomain<IntervalBottom>;
+	public bottom(significantFigures?: number): IntervalDomain<IntervalBottom> {
+		return IntervalDomain.bottom(significantFigures ?? this.significantFigures);
 	}
 
 	public equals(other: this): boolean {
@@ -126,17 +126,36 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return !(lowerLeq === Ternary.Never || upperLeq === Ternary.Never);
 	}
 
+	/**
+	 * Returns the smaller significant figures between the current abstract value and another abstract value.
+	 * This is used to determine the coarser precision for creating new abstract values.
+	 * @param other - The other abstract value to compare with.
+	 * @private
+	 */
+	private getSmallestSignificantFigures(other: this | IntervalLift): number | undefined {
+		if(other instanceof IntervalDomain) {
+			if(isNotUndefined(this.significantFigures) && isNotUndefined(other.significantFigures)) {
+				return Math.min(this.significantFigures, other.significantFigures);
+			} else {
+				return this.significantFigures ?? other.significantFigures;
+			}
+		} else {
+			return this.significantFigures;
+		}
+	}
+
 	public join(other: IntervalLift): this;
 	public join(other: this): this;
 	public join(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const smallestSignificantFigures = this.getSmallestSignificantFigures(other);
 
 		if(this.value === Bottom) {
-			return this.create(otherValue);
+			return this.create(otherValue, smallestSignificantFigures);
 		} else if(otherValue === Bottom) {
-			return this.create(this.value);
+			return this.create(this.value, smallestSignificantFigures);
 		} else {
-			return this.create([Math.min(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
+			return this.create([Math.min(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])], smallestSignificantFigures);
 		}
 	}
 
@@ -144,37 +163,40 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public meet(other: this): this;
 	public meet(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const smallestSignificantFigures = this.getSmallestSignificantFigures(other);
 
 		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
+			return this.bottom(smallestSignificantFigures);
 		} else {
-			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
+			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])], smallestSignificantFigures);
 		}
 	}
 
 	public widen(other: this): this {
+		const smallestSignificantFigures = this.getSmallestSignificantFigures(other);
 		if(this.value === Bottom) {
-			return this.create(other.value);
+			return this.create(other.value, smallestSignificantFigures);
 		} else if(other.value === Bottom) {
-			return this.create(this.value);
+			return this.create(this.value, smallestSignificantFigures);
 		} else {
 			return this.create([
 				this.value[0] <= other.value[0] ? this.value[0] : -Infinity,
 				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
-			]);
+			], smallestSignificantFigures);
 		}
 	}
 
 	public narrow(other: this): this {
+		const smallestSignificantFigures = this.getSmallestSignificantFigures(other);
 		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
+			return this.bottom(smallestSignificantFigures);
 		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
-			return this.bottom();
+			return this.bottom(smallestSignificantFigures);
 		}
 		return this.create([
 			this.value[0] === -Infinity ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
-		]);
+		], smallestSignificantFigures);
 	}
 
 	public concretize(limit: number): ReadonlySet<number> | typeof Top {
@@ -193,7 +215,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
 	public abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
-		return IntervalDomain.abstract(concrete);
+		return IntervalDomain.abstract(concrete, this.significantFigures);
 	}
 
 	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {

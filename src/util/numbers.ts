@@ -34,3 +34,20 @@ export function getMinMax(values: number[]): { min: number, max: number } | unde
 	}
 	return { min, max };
 }
+
+/**
+ * Returns the minimum value from an array of numbers, or `undefined` if the array is empty.
+ * @param values - The array of numbers to get the minimum from.
+ */
+export function getMin(values: number[]): number | undefined {
+	if(values.length === 0) {
+		return undefined;
+	}
+	let min = values[0];
+	for(const value of values.slice(1)) {
+		if(value < min) {
+			min = value;
+		}
+	}
+	return min;
+}

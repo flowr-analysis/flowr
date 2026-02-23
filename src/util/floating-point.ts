@@ -10,7 +10,6 @@ export const FloatingPointComparison = {
 	 * @param significantFigures - The number of significant figures to consider for the comparison (undefined means exact comparison).
 	 * @returns A ternary value indicating whether the two numbers are considered equal (Ternary.Always), not equal (Ternary.Never),
 	 *          or maybe equal (Ternary.Maybe) based on the significance precision.
-	 * @private
 	 */
 	isNearlyEqual(this: void, a: number, b: number, significantFigures: number | undefined): Ternary {
 		if(isUndefined(significantFigures)) {
@@ -38,7 +37,6 @@ export const FloatingPointComparison = {
 	 * @param significantFigures - The number of significant figures to consider for the comparison (undefined means exact comparison).
 	 * @returns A ternary value indicating whether the first number is considered less than the second number (Ternary.Always),
 	 *          not less than (Ternary.Never), or maybe less than (Ternary.Maybe) based on the significance precision.
-	 * @private
 	 */
 	isNearlyLess(this: void, a: number, b: number, significantFigures: number | undefined): Ternary {
 		if(isUndefined(significantFigures)) {
@@ -63,7 +61,6 @@ export const FloatingPointComparison = {
 	 * @param significantFigures - The number of significant figures to consider for the comparison (undefined means exact comparison).
 	 * @returns A ternary value indicating whether the first number is considered less than or equal to the second number (Ternary.Always),
 	 *          not less than or equal to (Ternary.Never), or maybe less than or equal to (Ternary.Maybe) based on the significance precision.
-	 * @private
 	 */
 	isNearlyLessOrEqual(this: void, a: number, b: number, significantFigures: number | undefined): Ternary {
 		let leq = a <= b ? Ternary.Always : Ternary.Never;

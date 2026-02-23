@@ -334,7 +334,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	}
 
 	/** Gets each variable origin that has already been visited and whose assignment has already been processed */
-	protected getVariableOrigins(nodeId: NodeId): NodeId[] {
+	public getVariableOrigins(nodeId: NodeId): NodeId[] {
 		return getOriginInDfg(this.config.dfg, nodeId)
 			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 			.map(origin => origin.id)

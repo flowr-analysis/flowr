@@ -8,7 +8,8 @@ import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { AbstractDomain } from '../domains/abstract-domain';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { SignificancePrecisionComparison, Ternary } from '../../util/logic';
+import { Ternary } from '../../util/logic';
+import { FloatingPointComparison } from '../../util/floating-point';
 
 const IntervalConditionSemanticsMapper = [
 	[Identifier.make('!'), unaryOpSemantics(applyNegatedIntervalConditionSemantics), unaryOpSemantics(applyIntervalConditionSemantics)],
@@ -156,8 +157,12 @@ function defaultEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: 
 		currentState = new MutableStateAbstractDomain(new Map());
 	}
 
-	currentState.set(leftNodeId, meet);
-	currentState.set(rightNodeId, meet);
+	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
+		currentState.set(originNodeId, meet);
+	});
+	visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
+		currentState.set(originNodeId, meet);
+	});
 
 	return currentState;
 }
@@ -189,19 +194,23 @@ function defaultGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState:
 	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
 	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
 
-	if(leftValue?.isTop() || rightValue?.isTop()) {
+	if(isUndefined(leftValue) || isUndefined(rightValue)) {
 		return currentState;
 	}
 
-	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
+	if(leftValue.isValue() && rightValue.isValue()) {
 		const [a, b] = leftValue.value;
 		const [c, d] = rightValue.value;
 
-		if(c < b || SignificancePrecisionComparison.isLowerWithSignificancePrecision(c, b, leftValue.significantFigures) != Ternary.Never) {
+		if(c < b || FloatingPointComparison.isNearlyLess(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const maxAC = a < c ? c : a;
-			currentState.set(leftNodeId, leftValue.create([maxAC, b]));
+			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
+				currentState.set(originNodeId, leftValue.create([maxAC, b]));
+			});
 			const minBD = b < d ? b : d;
-			currentState.set(rightNodeId, rightValue.create([c, minBD]));
+			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
+				currentState.set(originNodeId, rightValue.create([c, minBD]));
+			});
 			return currentState;
 		}
 	}
@@ -221,19 +230,23 @@ function defaultGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentS
 	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
 	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
 
-	if(leftValue?.isTop() || rightValue?.isTop()) {
+	if(isUndefined(leftValue) || isUndefined(rightValue)) {
 		return currentState;
 	}
 
-	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
+	if(leftValue.isValue() && rightValue.isValue()) {
 		const [a, b] = leftValue.value;
 		const [c, d] = rightValue.value;
 
-		if(c <= b || SignificancePrecisionComparison.isLowerEqualWithSignificancePrecision(c, b, leftValue.significantFigures) != Ternary.Never) {
+		if(c <= b || FloatingPointComparison.isNearlyLessOrEqual(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const maxAC = a < c ? c : a;
-			currentState.set(leftNodeId, leftValue.create([maxAC, b]));
+			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
+				currentState.set(originNodeId, leftValue.create([maxAC, b]));
+			});
 			const minBD = b < d ? b : d;
-			currentState.set(rightNodeId, rightValue.create([c, minBD]));
+			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
+				currentState.set(originNodeId, rightValue.create([c, minBD]));
+			});
 			return currentState;
 		}
 	}

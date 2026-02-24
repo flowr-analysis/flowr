@@ -18,7 +18,7 @@ export const FloatingPointComparison = {
 		}
 
 		if(Number.isFinite(a) && Number.isFinite(b) && a !== b) {
-			const sigFactor = 0.5 * Math.pow(10, 1 - significantFigures);
+			const sigFactor = 0.5 * (10 ** (1 - significantFigures));
 
 			const absA = Math.abs(a);
 			const absB = Math.abs(b);

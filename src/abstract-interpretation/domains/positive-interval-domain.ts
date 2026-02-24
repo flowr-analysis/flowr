@@ -1,5 +1,7 @@
 import { IntervalDomain } from './interval-domain';
 import { Bottom, Top } from './lattice';
+import { getMinMax } from '../../util/numbers';
+import { isUndefined } from '../../util/assert';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
 export const PosIntervalTop: PosIntervalValue = [0, +Infinity];
@@ -48,7 +50,11 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 		} else if(concrete.size === 0 || concrete.values().some(value => isNaN(value) || value < 0)) {
 			return PosIntervalDomain.bottom();
 		}
-		return new PosIntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
+		const minMax = getMinMax(concrete.values().toArray());
+		if(isUndefined(minMax)) {
+			return IntervalDomain.bottom();
+		}
+		return new IntervalDomain([minMax.min, minMax.max]);
 	}
 
 	public top(): this & PosIntervalDomain<PosIntervalTop>;

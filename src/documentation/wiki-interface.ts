@@ -9,7 +9,13 @@ import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { type FlowrConfigOptions, DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
+import {
+	DropPathsOption,
+	flowrConfigFileSchema,
+	type FlowrConfigOptions,
+	InferWorkingDirectory,
+	VariableResolve
+} from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -230,7 +236,7 @@ The following summarizes the configuration options:
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 - \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
 - \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
-- \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
+- \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape and numeric scalar inference through abstract interpretation.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -280,6 +286,9 @@ ${codeBlock('json', JSON.stringify(
 						readExternalFiles: true,
 						maxReadLines:      1_000_000
 					}
+				},
+				numeric: {
+					significantFigures: undefined
 				}
 			}
 		} satisfies FlowrConfigOptions,

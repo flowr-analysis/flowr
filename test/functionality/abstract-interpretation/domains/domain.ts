@@ -1,5 +1,8 @@
 import { assert, test } from 'vitest';
-import { type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import {
+	type AnyAbstractDomain,
+	type ConcreteDomain
+} from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/lattice';
 
 const ConcretizationLimit = 12;

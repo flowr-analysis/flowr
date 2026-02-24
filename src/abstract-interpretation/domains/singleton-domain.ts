@@ -103,7 +103,7 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return this.meet(other);  // Using meet for narrowing as the lattice is finite
 	}
 
-	public concretize(): ReadonlySet<T> |  typeof Top {
+	public concretize(): ReadonlySet<T> | typeof Top {
 		if(this.value === Top) {
 			return Top;
 		} else if(this.value === Bottom) {

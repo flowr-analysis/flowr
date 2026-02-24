@@ -14,7 +14,8 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	const lazyAnalyzer = func(await new FlowrAnalyzerBuilder()
 		.enableDeferredFunctionEval().build()
 	);
-	const eagerAnalyzer = func(await new FlowrAnalyzerBuilder().build());
+	const eagerAnalyzer = func(await new FlowrAnalyzerBuilder()
+        .disableDeferredFunctionEval().build());
 
 	const lazyDf = await lazyAnalyzer.dataflow();
 	const eagerDf = await eagerAnalyzer.dataflow();

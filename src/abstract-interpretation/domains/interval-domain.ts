@@ -9,7 +9,7 @@ import { getMinMax } from '../../util/numbers';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
-export const IntervalTop: IntervalValue = [-Infinity, +Infinity];
+export const IntervalTop: IntervalValue = [Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY];
 
 /** The type of the actual values of the interval domain as tuple of the lower and upper bound */
 type IntervalValue = readonly [lower: number, upper: number];
@@ -33,7 +33,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	constructor(value: Value, significantFigures?: number) {
 		if(Array.isArray(value)) {
-			if(value.some(isNaN) || value[0] > value[1]) {
+			if(value.some(Number.isNaN) || value[0] > value[1]) {
 				log.warn('Invalid interval value, provided NaN or lower bound greater than upper bound. Setting to Bottom.');
 				super(Bottom as Value);
 			} else {
@@ -74,7 +74,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public static abstract(concrete: ReadonlySet<number> | typeof Top, significantFigures?: number): IntervalDomain {
 		if(concrete === Top) {
 			return IntervalDomain.top(significantFigures);
-		} else if(concrete.size === 0 || concrete.values().some(isNaN)) {
+		} else if(concrete.size === 0 || concrete.values().some(Number.isNaN)) {
 			return IntervalDomain.bottom(significantFigures);
 		}
 		const minMax = getMinMax(concrete.values().toArray());
@@ -180,8 +180,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			return this.create(this.value, smallestSignificantFigures);
 		} else {
 			return this.create([
-				this.value[0] <= other.value[0] ? this.value[0] : -Infinity,
-				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
+				this.value[0] <= other.value[0] ? this.value[0] : Number.NEGATIVE_INFINITY,
+				this.value[1] >= other.value[1] ? this.value[1] : Number.POSITIVE_INFINITY
 			], smallestSignificantFigures);
 		}
 	}
@@ -194,8 +194,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			return this.bottom(smallestSignificantFigures);
 		}
 		return this.create([
-			this.value[0] === -Infinity ? other.value[0] : this.value[0],
-			this.value[1] === +Infinity ? other.value[1] : this.value[1]
+			this.value[0] === Number.NEGATIVE_INFINITY ? other.value[0] : this.value[0],
+			this.value[1] === Number.POSITIVE_INFINITY ? other.value[1] : this.value[1]
 		], smallestSignificantFigures);
 	}
 
@@ -353,7 +353,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return this.create([-Infinity, this.value[1]]);
+			return this.create([Number.NEGATIVE_INFINITY, this.value[1]]);
 		}
 	}
 
@@ -364,7 +364,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return this.bottom();
 		} else {
-			return this.create([this.value[0], +Infinity]);
+			return this.create([this.value[0], Number.POSITIVE_INFINITY]);
 		}
 	}
 
@@ -385,7 +385,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	}
 
 	public isTop(): this is IntervalDomain<IntervalTop> {
-		return this.value !== Bottom && this.value[0] === -Infinity && this.value[1] === +Infinity;
+		return this.value !== Bottom && this.value[0] === Number.NEGATIVE_INFINITY && this.value[1] === Number.POSITIVE_INFINITY;
 	}
 
 	public isBottom(): this is IntervalDomain<IntervalBottom> {

@@ -352,7 +352,7 @@ export function makeDocContextForTypes(
 				link = i.url;
 				text ??= i.name;
 			} else {
-				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
+				link = `${FlowrGithubRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
 			}
 			text ??= pageName.split('/').pop() ?? pageName;
 			return `[${text}](${link}${segment ? '#' + segment : ''})`;

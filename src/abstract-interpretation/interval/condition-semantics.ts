@@ -14,34 +14,34 @@ import { FloatingPointComparison } from '../../util/floating-point';
 const IntervalConditionSemanticsMapper = [
 	[Identifier.make('!'), unaryOpSemantics(applyNegatedIntervalConditionSemantics), unaryOpSemantics(applyIntervalConditionSemantics)],
 	[Identifier.make('('), unaryOpSemantics(applyIntervalConditionSemantics), unaryOpSemantics(applyNegatedIntervalConditionSemantics)],
-	[Identifier.make('=='), binaryOpSemantics(defaultEqualsOp), binaryOpSemantics(defaultNotEqualsOp)],
-	[Identifier.make('!='), binaryOpSemantics(defaultNotEqualsOp), binaryOpSemantics(defaultEqualsOp)],
-	[Identifier.make('>'), binaryOpSemantics(defaultGreaterOp), binaryOpSemantics(defaultLessEqualOp)],
-	[Identifier.make('>='), binaryOpSemantics(defaultGreaterEqualOp), binaryOpSemantics(defaultLessOp)],
-	[Identifier.make('<'), binaryOpSemantics(defaultLessOp), binaryOpSemantics(defaultGreaterEqualOp)],
-	[Identifier.make('<='), binaryOpSemantics(defaultLessEqualOp), binaryOpSemantics(defaultGreaterOp)],
-	[Identifier.make('is.na'), unaryOpSemantics(defaultIsNaFn), unaryOpSemantics(defaultNegatedIsNaFn)]
+	[Identifier.make('=='), binaryOpSemantics(intervalEqualsOp), binaryOpSemantics(intervalNotEqualsOp)],
+	[Identifier.make('!='), binaryOpSemantics(intervalNotEqualsOp), binaryOpSemantics(intervalEqualsOp)],
+	[Identifier.make('>'), binaryOpSemantics(intervalGreaterOp), binaryOpSemantics(intervalLessEqualOp)],
+	[Identifier.make('>='), binaryOpSemantics(intervalGreaterEqualOp), binaryOpSemantics(intervalLessOp)],
+	[Identifier.make('<'), binaryOpSemantics(intervalLessOp), binaryOpSemantics(intervalGreaterEqualOp)],
+	[Identifier.make('<='), binaryOpSemantics(intervalLessEqualOp), binaryOpSemantics(intervalGreaterOp)],
+	[Identifier.make('is.na'), unaryOpSemantics(intervalIsNaFn), unaryOpSemantics(intervalNegatedIsNaFn)]
 ] as const satisfies IntervalConditionSemanticsMapperInfo[];
 
 type IntervalConditionSemanticsMapperInfo = [identifier: Identifier, semantics: NAryFnSemantics, negatedSemantics: NAryFnSemantics];
 
-type UnaryOpSemantics = (argNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
+type UnaryOpSemantics = (argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
-type BinaryOpSemantics = (leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
+type BinaryOpSemantics = (leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
-type NAryFnSemantics = (argNodeIds: readonly (NodeId | undefined)[], currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
+type NAryFnSemantics = (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
 /**
  * Applies the abstract condition semantics of the provided function with respect to the interval domain to the provided args.
  * @param argNodeId - The node id representing the condition to which the semantics should be applied.
- * @param currentState - The current state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
+ * @param state - The state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
  * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
  * @param dfg - The dataflow graph containing the vertex and its arguments.
  * @returns The filtered state after applying the semantics.
  */
-export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
+export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
 	if(isUndefined(argNodeId)) {
-		return currentState;
+		return state;
 	}
 
 	const vertex = dfg.getVertex(argNodeId);
@@ -50,7 +50,7 @@ export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, c
 
 		if(isNotUndefined(match)) {
 			const [_, semantics] = match;
-			return semantics(vertex.args.map(FunctionArgument.getReference), currentState, visitor, dfg);
+			return semantics(vertex.args.map(FunctionArgument.getReference), state, visitor, dfg);
 		}
 	}
 
@@ -63,30 +63,26 @@ export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, c
 	// evaluating an expression and evaluating a condition, we can just apply the semantics for evaluating an expression
 	// in this case.
 	if(argState?.isValue() && argState.value[0] == 0 && argState.value[1] == 0) {
-		// Map every variable in state to bottom (fix until state-domain rework)
-		if(isNotUndefined(currentState)) {
-			// for(const entry of currentState.value.entries()) {
-			//  currentState.set(entry[0], entry[1].bottom());
-			// }
-			return currentState.bottom();
+		if(isNotUndefined(state)) {
+			return state.bottom();
 		}
 		return new MutableStateAbstractDomain(new Map(), true);
 	}
 
-	return currentState;
+	return state;
 }
 
 /**
  * Applies the negated abstract condition semantics of the provided function with respect to the interval domain to the provided args.
  * @param argNodeId - The node id representing the condition to which the negated semantics should be applied.
- * @param currentState - The current state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
+ * @param state - The state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
  * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
  * @param dfg - The dataflow graph containing the vertex and its arguments.
  * @returns The filtered state after applying the negated semantics.
  */
-export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undefined, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
+export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undefined, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph): MutableStateAbstractDomain<IntervalDomain> | undefined {
 	if(isUndefined(argNodeId)) {
-		return currentState;
+		return state;
 	}
 
 	const vertex = dfg.getVertex(argNodeId);
@@ -95,7 +91,7 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
 
 		if(isNotUndefined(match)) {
 			const [, , negatedSemantics] = match;
-			return negatedSemantics(vertex.args.map(FunctionArgument.getReference), currentState, visitor, dfg);
+			return negatedSemantics(vertex.args.map(FunctionArgument.getReference), state, visitor, dfg);
 		}
 	}
 
@@ -108,94 +104,90 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
 	// evaluating a negated expression and evaluating a negated condition, we can just apply the semantics for
 	// evaluating a negated expression in this case.
 	if(argState?.isValue() && (0 < argState.value[0] || argState.value[1] < 0)) {
-		// (fix until state-domain rework)
-		if(isNotUndefined(currentState)) {
-			// for(const entry of currentState.value.entries()) {
-			//  currentState.set(entry[0], entry[1].bottom());
-			// }
-			return currentState.bottom();
+		if(isNotUndefined(state)) {
+			return state.bottom();
 		}
 		return new MutableStateAbstractDomain(new Map(), true);
 	}
 
-	return currentState;
+	return state;
 }
 
 function unaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NAryFnSemantics {
-	return (argNodeIds: readonly (NodeId | undefined)[], currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
+	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 1 || isUndefined(argNodeIds[0])) {
-			return currentState;
+			return state;
 		}
-		return unaryOperatorSemantics(argNodeIds[0], currentState, visitor, dfg);
+		return unaryOperatorSemantics(argNodeIds[0], state, visitor, dfg);
 	};
 }
 
 function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NAryFnSemantics {
-	return (argNodeIds: readonly (NodeId | undefined)[], currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
+	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 2 || isUndefined(argNodeIds[0]) || isUndefined(argNodeIds[1])) {
-			return currentState;
+			return state;
 		}
 
-		return binaryOperatorSemantics(argNodeIds[0], argNodeIds[1], currentState, visitor, dfg);
+		return binaryOperatorSemantics(argNodeIds[0], argNodeIds[1], state, visitor, dfg);
 	};
 }
 
-function defaultEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
-	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
-	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
+function intervalEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	const leftValue = visitor.getAbstractValue(leftNodeId, state);
+	const rightValue = visitor.getAbstractValue(rightNodeId, state);
 
 	const meet = AbstractDomain.meetAll([leftValue, rightValue].filter(isNotUndefined));
 
 	if(meet.isBottom()) {
-		if(isNotUndefined(currentState)) {
-			return currentState.bottom();
+		if(isNotUndefined(state)) {
+			return state.bottom();
 		}
 		return new MutableStateAbstractDomain(new Map(), true);
 	}
 
-	if(isUndefined(currentState)) {
-		currentState = new MutableStateAbstractDomain(new Map());
+	if(isUndefined(state)) {
+		state = new MutableStateAbstractDomain(new Map());
 	}
 
 	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-		currentState.set(originNodeId, meet);
+		state.set(originNodeId, meet);
 	});
 	visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-		currentState.set(originNodeId, meet);
+		state.set(originNodeId, meet);
 	});
 
-	return currentState;
+	return state;
 }
 
-function defaultNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor): MutableStateAbstractDomain<IntervalDomain> | undefined {
-	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
-	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
+function intervalNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor): MutableStateAbstractDomain<IntervalDomain> | undefined {
+	const leftValue = visitor.getAbstractValue(leftNodeId, state);
+	const rightValue = visitor.getAbstractValue(rightNodeId, state);
 
 	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
 		const [a, b] = leftValue.value;
 		const [c, d] = rightValue.value;
 
 		if(a == b && c == d && leftValue?.equals(rightValue)) {
-			if(isNotUndefined(currentState)) {
-				return currentState.bottom();
+			if(isNotUndefined(state)) {
+				return state.bottom();
 			}
 			return new MutableStateAbstractDomain(new Map(), true);
 		}
 	}
 
-	return currentState;
+	return state;
 }
 
-function defaultGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
-	if(isUndefined(currentState)) {
-		return currentState;
+function intervalGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	if(isUndefined(state)) {
+		return state;
 	}
 
-	const leftValue = visitor.getAbstractValue(leftNodeId, currentState);
-	const rightValue = visitor.getAbstractValue(rightNodeId, currentState);
+	const leftValue = visitor.getAbstractValue(leftNodeId, state);
+	const rightValue = visitor.getAbstractValue(rightNodeId, state);
 
 	if(isUndefined(leftValue) || isUndefined(rightValue)) {
-		return currentState;
+		return state;
 	}
 
 	if(leftValue.isValue() && rightValue.isValue()) {
@@ -205,24 +197,24 @@ function defaultGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState:
 		if(c < b || FloatingPointComparison.isNearlyLess(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const maxAC = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				currentState.set(originNodeId, leftValue.create([maxAC, b]));
+				state.set(originNodeId, leftValue.create([maxAC, b]));
 			});
 			const minBD = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				currentState.set(originNodeId, rightValue.create([c, minBD]));
+				state.set(originNodeId, rightValue.create([c, minBD]));
 			});
-			return currentState;
+			return state;
 		}
 	}
 
-	return currentState.bottom();
+	return state.bottom();
 }
 
-function defaultLessOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
-	return defaultGreaterOp(rightNodeId, leftNodeId, currentState, visitor);
+function intervalLessOp(leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	return intervalGreaterOp(rightNodeId, leftNodeId, state, visitor);
 }
 
-function defaultGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+function intervalGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
 	if(isUndefined(currentState)) {
 		return currentState;
 	}
@@ -254,24 +246,24 @@ function defaultGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentS
 	return currentState.bottom();
 }
 
-function defaultLessEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
-	return defaultGreaterEqualOp(rightNodeId, leftNodeId, currentState, visitor);
+function intervalLessEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	return intervalGreaterEqualOp(rightNodeId, leftNodeId, state, visitor);
 }
 
-function defaultIsNaFn(argNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
-	if(isUndefined(currentState)) {
-		return currentState;
+function intervalIsNaFn(argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor) {
+	if(isUndefined(state)) {
+		return state;
 	}
 
-	const argValue = visitor.getAbstractValue(argNodeId, currentState);
+	const argValue = visitor.getAbstractValue(argNodeId, state);
 
 	if(isUndefined(argValue)) {
-		return currentState;
+		return state;
 	}
 
-	return currentState.bottom();
+	return state.bottom();
 }
 
-function defaultNegatedIsNaFn(argNodeId: NodeId, currentState: MutableStateAbstractDomain<IntervalDomain> | undefined) {
-	return currentState;
+function intervalNegatedIsNaFn(argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined) {
+	return state;
 }

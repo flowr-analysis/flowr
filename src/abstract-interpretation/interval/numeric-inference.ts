@@ -9,7 +9,6 @@ import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
 import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
-import { AbstractDomain } from '../domains/abstract-domain';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
 
@@ -58,16 +57,13 @@ export class NumericInferenceVisitor extends AbstractInterpretationVisitor<Inter
 		return this.updateState(call.id, result);
 	}
 
-	protected override applyConditionSemantics(conditionNodeId: NodeId, trueBranch: boolean): MutableStateAbstractDomain<IntervalDomain> | undefined {
-		const conditionHeadState = this.trace.get(conditionNodeId);
-		const newState = isUndefined(conditionHeadState) ? undefined : AbstractDomain.joinAll([conditionHeadState]);
-
+	protected override applyConditionSemantics(state: MutableStateAbstractDomain<IntervalDomain> | undefined, conditionNodeId: NodeId, trueBranch: boolean): MutableStateAbstractDomain<IntervalDomain> | undefined {
 		let result: MutableStateAbstractDomain<IntervalDomain> | undefined;
 
 		if(trueBranch) {
-			result = applyIntervalConditionSemantics(conditionNodeId, newState, this, this.config.dfg);
+			result = applyIntervalConditionSemantics(conditionNodeId, state, this, this.config.dfg);
 		} else {
-			result = applyNegatedIntervalConditionSemantics(conditionNodeId, newState, this, this.config.dfg);
+			result = applyNegatedIntervalConditionSemantics(conditionNodeId, state, this, this.config.dfg);
 		}
 
 		return result;

@@ -16,7 +16,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { guard, isNotUndefined } from '../util/assert';
+import { guard, isNotUndefined, isUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
@@ -321,15 +321,17 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	protected getPredecessorDomains(vertex: CfgVertex): MutableStateAbstractDomain<Domain>[] {
 		return this.getPredecessorNodes(CfgVertex.getId(vertex))
 			.map(pred => {
+				const predState = this.trace.get(pred.id);
 				const cfdEdge = pred.edges.find(CfgEdge.isControlDependency);
 				if(isNotUndefined(cfdEdge)) {
 					const branchType = CfgEdge.getWhen(cfdEdge);
 					if(isNotUndefined(branchType)) {
-						// Apply Condition Semantics
-						return this.applyConditionSemantics(pred.id, branchType === RTrue);
+						// Apply Condition Semantics to copy of predecessor state, as we do not want to modify the trace
+						const copiedState = isUndefined(predState) ? undefined : predState.create(predState.value);
+						return this.applyConditionSemantics(copiedState, pred.id, branchType === RTrue);
 					}
 				}
-				return this.trace.get(pred.id);
+				return predState;
 			}).filter(isNotUndefined);
 	}
 
@@ -383,8 +385,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 
-	protected applyConditionSemantics(conditionNodeId: NodeId, _trueBranch: boolean): MutableStateAbstractDomain<Domain> | undefined {
-		return this.trace.get(conditionNodeId) ?? this._currentState.bottom();
+	protected applyConditionSemantics(state: MutableStateAbstractDomain<Domain> | undefined, _conditionNodeId: NodeId, _trueBranch: boolean): MutableStateAbstractDomain<Domain> | undefined {
+		return state;
 	}
 
 	protected abstract getBottomValue(): Domain;

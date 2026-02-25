@@ -420,7 +420,7 @@ export function updateNestedFunctionCalls(
 					}
 				}
 				expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
-				targetVertex.subflow.in = remainingIn;
+				
 				const linkedParameters = graph.idMap?.get(target);
 				if(linkedParameters?.type === RType.FunctionDefinition) {
 					linkArgumentsOnCall(args, linkedParameters.parameters, graph);

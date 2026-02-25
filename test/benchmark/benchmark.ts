@@ -11,8 +11,6 @@ type Settings = {
     maxProjectsPerSuite?: number;
 
     repetitions:      number;
-    warmup?:          boolean;
-    collectStats?:    boolean;
     skipCorrectness?: boolean;
 
     optimizations?: {
@@ -113,13 +111,6 @@ async function runOne(suite: string, projectDir: string, threads?: number, skipC
 		String(settings.repetitions),
 	];
 
-	if(settings.warmup) {
-		args.push('--warmup');
-	}
-	if(settings.collectStats === false) {
-		args.push('--noStats');
-	}
-
 	// Skip correctness if requested
 	if(skipCorrectness === false || (settings.skipCorrectness ?? false)) {
 		args.push('--skipCorrectness');
@@ -135,11 +126,9 @@ async function runOne(suite: string, projectDir: string, threads?: number, skipC
 		args.push('--lazyFunctions');
 	}
 
-	//if (threads) args.push("--threads", String(threads));
-
 	const child = spawn(
-		'npx',
-		['0x', '--output-dir', profileDir, '--', 'node', ...args],
+		'node',
+		args,
 		{ stdio: 'inherit' }
 	);
 
@@ -215,8 +204,8 @@ function collectResults(): SuiteSummary[] {
 			projects.push(data);
 
 			// Approximate runtime using wallMs stats mean
-			if(data.stats.wallMs.mean) {
-				totalRuntimes.push(data.stats.wallMs.mean);
+			if(data.wallMs.mean) {
+				totalRuntimes.push(data.wallMs.mean);
 			}
 		}
 
@@ -262,8 +251,6 @@ async function main() {
 	console.log(`Output dir:   ${OutputRoot}`);
 	console.log(`Max projects per suite: ${settings.maxProjectsPerSuite ?? 'all'}`);
 	console.log(`Repetitions: ${settings.repetitions}`);
-	console.log(`Warmup: ${settings.warmup ?? false}`);
-	console.log(`Collect stats: ${settings.collectStats ?? true}`);
 	console.log(`Skip correctness: ${settings.skipCorrectness ?? false}`);
 	console.log(`Optimizations: ${JSON.stringify(settings.optimizations ?? {}, null, 2)}`);
 	console.log('Threads (correctness): ', settings.threadsForCorrectness);

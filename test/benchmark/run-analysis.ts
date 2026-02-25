@@ -11,17 +11,10 @@ import type {
 	PerformanceStats,
 	OptimizationFlags,
 	WorkerResult,
-	PerformanceMetricsStats,
 } from './results-types';
 
 export interface PerformanceMetrics {
-    wallMs:        number;
-    cpuUserMs:     number;
-    cpuSystemMs:   number;
-    rssMax:        number;
-    heapUsedMax:   number;
-    heapTotalMax:  number;
-    cpuUtilApprox: number;
+    wallMs: number;
 }
 
 // minimal shape for analyzers returning a graph (benchmark-only)
@@ -101,39 +94,18 @@ function countFiles(dir: string): number {
 async function runOnce(
 	projectPath: string,
 	buildAnalyzer: () => Promise<FlowrAnalyzer>,
-	gcBeforeRun: boolean,
 ): Promise<PerformanceMetrics> {
 	const analyzer = await buildAnalyzer();
 	analyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
 
-	if(gcBeforeRun) {
-		(globalThis as typeof globalThis & { gc?: () => void }).gc?.();
-	}
-
-
-	const memSamples: NodeJS.MemoryUsage[] = [process.memoryUsage()];
-	const sampleInterval = setInterval(() => memSamples.push(process.memoryUsage()), 10);
-
-	const cpuStart = process.cpuUsage();
 	const t0 = performance.now();
 
 	const _result = await analyzer.dataflow(); // intentionally unused in benchmarks
 
 	const t1 = performance.now();
-	const cpuEnd = process.cpuUsage(cpuStart);
-
-	clearInterval(sampleInterval);
-
-	const rssMax = Math.max(...memSamples.map((m) => m.rss));
-	const heapUsedMax = Math.max(...memSamples.map((m) => m.heapUsed));
-	const heapTotalMax = Math.max(...memSamples.map((m) => m.heapTotal));
 	const wallMs = t1 - t0;
-	const cpuUserMs = cpuEnd.user / 1000;
-	const cpuSystemMs = cpuEnd.system / 1000;
-	const cpuUtilApprox =
-        wallMs > 0 ? (cpuUserMs + cpuSystemMs) / wallMs / getPhysicalCpuCount : 0;
 
-	return { wallMs, cpuUserMs, cpuSystemMs, rssMax, heapUsedMax, heapTotalMax, cpuUtilApprox };
+	return { wallMs };
 }
 
 // -------------------- main --------------------
@@ -154,8 +126,6 @@ async function main(): Promise<void> {
 	};
 
 	const skipCorrectness = process.argv.includes('--skipCorrectness');
-	const warmup = process.argv.includes('--warmup');
-	const gcBeforeRun = process.argv.includes('--gcBeforeRun');
 
 	fs.mkdirSync(outputDir, { recursive: true });
 	const physicalCores = getPhysicalCpuCount;
@@ -182,41 +152,16 @@ async function main(): Promise<void> {
 		}
 	}
 
-	// -------------------- warmup --------------------
-	if(warmup) {
-		await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), gcBeforeRun);
-	}
-
 	// -------------------- measurement --------------------
 	console.log('Measuring optimized performance...');
 	const wallMsArr: number[] = [];
-	const cpuUserArr: number[] = [];
-	const cpuSystemArr: number[] = [];
-	const rssArr: number[] = [];
-	const heapUsedArr: number[] = [];
-	const heapTotalArr: number[] = [];
-	const cpuUtilArr: number[] = [];
 
 	for(let i = 0; i < repetitions; i++) {
-		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), gcBeforeRun);
+		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags));
 		wallMsArr.push(run.wallMs);
-		cpuUserArr.push(run.cpuUserMs);
-		cpuSystemArr.push(run.cpuSystemMs);
-		rssArr.push(run.rssMax);
-		heapUsedArr.push(run.heapUsedMax);
-		heapTotalArr.push(run.heapTotalMax);
-		cpuUtilArr.push(run.cpuUtilApprox);
 	}
 
-	const optimizedMetrics: PerformanceMetricsStats = {
-		wallMs:        stats(wallMsArr),
-		cpuUserMs:     stats(cpuUserArr),
-		cpuSystemMs:   stats(cpuSystemArr),
-		rssMax:        stats(rssArr),
-		heapUsedMax:   stats(heapUsedArr),
-		heapTotalMax:  stats(heapTotalArr),
-		cpuUtilApprox: stats(cpuUtilArr),
-	};
+	const wallMsStats = stats(wallMsArr);
 
 	const result: WorkerResult = {
 		project:       path.resolve(projectPath),
@@ -225,12 +170,9 @@ async function main(): Promise<void> {
 		optimizations: flags,
 		correctness,
 		physicalCores,
-		noStats:       false,
-		warmup,
-		gcBeforeRun,
 		fileCount,
 		timestamp:     new Date().toISOString(),
-		stats:         optimizedMetrics,
+		wallMs:        wallMsStats,
 	};
 
 	fs.writeFileSync(path.join(outputDir, 'result.json'), JSON.stringify(result, null, 2), 'utf-8');

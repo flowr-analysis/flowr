@@ -4,16 +4,6 @@ export interface OptimizationFlags {
   lazyFunctions:      boolean;
 }
 
-export interface PerformanceMetricsStats {
-  wallMs:        PerformanceStats;
-  cpuUserMs:     PerformanceStats;
-  cpuSystemMs:   PerformanceStats;
-  rssMax:        PerformanceStats;
-  heapUsedMax:   PerformanceStats;
-  heapTotalMax:  PerformanceStats;
-  cpuUtilApprox: PerformanceStats;
-}
-
 export interface PerformanceStats {
   mean:   number;
   median: number;
@@ -31,10 +21,7 @@ export interface WorkerResult {
   optimizations: OptimizationFlags;
   correctness:   'skipped' | { ok: boolean; diffCount: number; diff?: readonly string[] };
   physicalCores: number;
-  noStats:       boolean;
-  warmup:        boolean;
-  gcBeforeRun:   boolean;
   fileCount:     number;
   timestamp:     string;
-  stats:         PerformanceMetricsStats;
+  wallMs:        PerformanceStats;
 }

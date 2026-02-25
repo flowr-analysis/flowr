@@ -210,8 +210,6 @@ export class DataflowGraph<
 		if(!isLazyFunctionDefinitionVertex<ParentInformation>(lazyVertex)) {
 			return;
 		}
-		const stack = new Error().stack;
-		console.log(`Materializing lazy function definition vertex with id ${id}, called from `, stack);
 
 		/* remove vertex id from types */
 		const types = this.vertexIdsOfType(VertexType.FunctionDefinition);

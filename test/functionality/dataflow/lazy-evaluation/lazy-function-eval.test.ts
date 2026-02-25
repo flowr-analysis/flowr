@@ -240,6 +240,33 @@ result <- is_even(4)
 	return analyzer;
 };
 
+const MutuallyRecursiveFunctionsUnknownData: AnalyzerSetupFunction = (analyzer) => {
+	analyzer.addRequest({
+		request: 'text',
+		content: `
+# Mutually recursive functions
+is_even <- function(n) {
+  if(n == 0) {
+    TRUE
+  } else {
+    is_odd(n - 1)
+  }
+}
+
+is_odd <- function(n) {
+  if(n == 0) {
+    FALSE
+  } else {
+    is_even(n - 1)
+  }
+}
+x <- readline()
+result <- is_even(x)
+`
+	});
+	return analyzer;
+};
+
 // ============================================================================
 // Tests
 // ============================================================================
@@ -339,6 +366,22 @@ describe('Complex Usage for lazy evaluation tests', () => {
 
 	test('Mutually recursive functions are analyzed when called', async() => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctions', MutuallyRecursiveFunctions);
+		assert.isTrue(result.graphsEqual);
+
+		const stats = result.lazyStats;
+		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+
+		// Both mutually recursive functions should be analyzed since is_even is called
+		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
+		assert.equal(
+			lazyFunctionsRemaining,
+			0,
+			'Mutually recursive functions should have been materialized when one is called'
+		);
+	});
+
+    test('Mutually recursive functions wit hunkown data are analyzed when called', async() => {
+		const result = await compareWithLazyStats('MutuallyRecursiveFunctionsUnknownData', MutuallyRecursiveFunctionsUnknownData);
 		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;

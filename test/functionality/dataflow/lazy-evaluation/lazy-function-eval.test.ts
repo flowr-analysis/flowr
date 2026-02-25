@@ -15,7 +15,7 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 		.enableDeferredFunctionEval().build()
 	);
 	const eagerAnalyzer = func(await new FlowrAnalyzerBuilder()
-        .disableDeferredFunctionEval().build());
+		.disableDeferredFunctionEval().build());
 
 	const lazyDf = await lazyAnalyzer.dataflow();
 	const eagerDf = await eagerAnalyzer.dataflow();
@@ -380,7 +380,7 @@ describe('Complex Usage for lazy evaluation tests', () => {
 		);
 	});
 
-    test('Mutually recursive functions wit hunkown data are analyzed when called', async() => {
+	test('Mutually recursive functions wit hunkown data are analyzed when called', async() => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctionsUnknownData', MutuallyRecursiveFunctionsUnknownData);
 		assert.isTrue(result.graphsEqual);
 

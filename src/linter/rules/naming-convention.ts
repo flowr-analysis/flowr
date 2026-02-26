@@ -126,12 +126,17 @@ export function getMostUsedCasing(symbols: { detectedCasing: CasingConvention }[
 /**
  * Attempts to fix the casing of the given identifier to match the provided convention.
  */
-export function fixCasing(identifier: string, convention: CasingConvention): string | undefined {
+export function fixCasing(identifier: string, convention: CasingConvention, ignorePrefix?: string): string | undefined {
 	if(!containsAlpha(identifier)) {
 		return undefined;
 	}
 
-	const tokens = identifier.split(/(?=[A-Z])|_/).map(s => s.toLowerCase());
+	if(ignorePrefix) {
+		identifier = identifier.replace(new RegExp(`^(${ignorePrefix})`), '');
+	}
+
+	const splitOn = identifier.includes('_') ? /_/ : /(?=[A-Z])/;
+	const tokens = identifier.split(splitOn).map(s => s.toLowerCase());
 
 	const firstUp = (s: string) => {
 		if(s.length < 1) {
@@ -214,7 +219,7 @@ export const NAMING_CONVENTION = {
 		const results = symbols
 			.filter(m => (m.detectedCasing !== casing) && (!config.ignoreNonAlpha || containsAlpha(m.name)))
 			.map(({ id, ...m }) => {
-				const fix = fixCasing(m.name, casing);
+				const fix = fixCasing(m.name, casing, config.ignorePrefix);
 				return {
 					...m,
 					involvedId: id,

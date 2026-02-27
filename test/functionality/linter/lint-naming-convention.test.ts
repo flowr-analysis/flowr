@@ -114,6 +114,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ name: 'foo_Bar',          expected: 'foo_Bar',     convention: CasingConvention.CamelSnakeCase },
 			{ name: 'fooBar',           expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
 			{ name: 'foo_Bar',          expected: 'Foo_Bar',     convention: CasingConvention.PascalSnakeCase },
+			{ name: 'FOO_BAR_BAZ',      expected: 'foo_bar_baz', convention: CasingConvention.SnakeCase },
 		])('fix casing $convention', ({ name, convention, expected }) => {
 			const fixed = fixCasing(name, convention);
 			assert.equal(fixed, expected, `Expected to convert '${name}' to '${expected}', but converted to '${fixed}'`);

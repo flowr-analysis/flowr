@@ -240,20 +240,25 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(!ignoreCase) {
 				return this.hasFile(p) ? p : undefined;
 			}
+			if(this.hasFile(p)) {
+				return p;
+			}
 			// walk the directory and find the first match
 			const dir = path.dirname(p);
-			const file = path.basename(p);
+			const file = path.basename(p).toLowerCase();
 			// try to find in local known files first
-			const localFound = Array.from(this.files.keys()).find(f => {
-				return path.dirname(f) === dir && path.basename(f).toLowerCase() === file.toLowerCase();
-
-			});
-			if(localFound) {
-				return localFound;
+			for(const f of this.files.keys()) {
+				if(path.dirname(f).toLowerCase() !== dir.toLowerCase()) {
+					continue;
+				}
+				const lf = path.basename(f).toLowerCase();
+				if(file === lf) {
+					return f;
+				}
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
 				const files = fs.readdirSync(dir);
-				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				const found = files.find(f => f.toLowerCase() === file);
 				return found ? path.join(dir, found) : undefined;
 			}
 			return undefined;

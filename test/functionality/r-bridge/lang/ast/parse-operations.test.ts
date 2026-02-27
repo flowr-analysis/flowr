@@ -51,7 +51,6 @@ describe.sequential('Parse simple operations', withShell(shell => {
 			})
 		);
 	});
-
 	describe('Binary Operations', () => {
 		for(const op of [...BinaryOperatorPool].filter(op => !startAndEndsWith(op, '%'))) {
 			describePrecedenceTestsForOp(op, shell);
@@ -151,8 +150,68 @@ describe.sequential('Parse simple operations', withShell(shell => {
 			);
 		});
 	});
-})
-);
+	describe('Comment Breaks for Unary', () => {
+		assertAst(label('Comment Breaks for Unary', ['unary-operator', 'comments', 'newlines', 'name-normal', 'function-calls', ...OperatorDatabase['~'].capabilities]),
+			shell, 'res <- func(~ # comment\n     var)',
+			exprList({
+				type:     RType.BinaryOp,
+				operator: '<-',
+				lexeme:   '<-',
+				location: SourceRange.from(1, 5, 1, 6),
+				info:     {},
+				lhs:      {
+					type:     RType.Symbol,
+					lexeme:   'res',
+					content:  'res',
+					location: SourceRange.from(1, 1, 1, 3),
+					info:     {}
+				},
+				rhs: {
+					type:         RType.FunctionCall,
+					named:        true,
+					info:         {},
+					lexeme:       'func',
+					functionName: {
+						type:     RType.Symbol,
+						lexeme:   'func',
+						content:  'func',
+						location: SourceRange.from(1,  8, 1, 11),
+						info:     {}
+					},
+					location:  SourceRange.from(1, 8, 1, 11),
+					arguments: [{
+						type:     RType.Argument,
+						info:     {},
+						lexeme:   '~ # comment\n     var',
+						name:     undefined,
+						location: SourceRange.from(1, 13, 2, 8),
+						value:    {
+							type:     RType.UnaryOp,
+							operator: '~',
+							lexeme:   '~',
+							location: SourceRange.from(1, 13, 1, 13),
+							info:     {
+								adToks: [{
+									type:     RType.Comment,
+									lexeme:   '# comment',
+									location: SourceRange.from(1, 15, 1, 23),
+									info:     {}
+								}]
+							},
+							operand: {
+								type:     RType.Symbol,
+								lexeme:   'var',
+								content:  'var',
+								location: SourceRange.from(2, 6, 2, 8),
+								info:     {}
+							}
+						}
+					}]
+				}
+			})
+		);
+	});
+}));
 
 function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 	const comparisonPrecedenceOperators = new Set(['<', '<=', '>', '>=', '==', '!=', '', '==']);

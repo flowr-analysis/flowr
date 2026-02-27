@@ -239,14 +239,18 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				}
 			}
 			case TreeSitterType.UnaryOperator: {
-				const [op, operand] = nonErrorChildren(node);
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				const [op, operand] = children;
 				return {
 					type:     RType.UnaryOp,
 					operand:  convertTreeNode(operand),
 					location: makeSourceRange(op),
 					operator: op.text,
 					lexeme:   op.text,
-					...defaultInfo
+					info:     {
+						...defaultInfo.info,
+						adToks: comments.map(c => c[1]),
+					}
 				};
 			}
 			case TreeSitterType.NamespaceOperator: {

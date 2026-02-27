@@ -407,7 +407,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 }
 
 function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
-	if(call.named && call.functionName.content === 'ifelse') {
+	if(call.named && call.functionName.content === 'ifelse' && args.length > 1) {
 		// special built-in handling for ifelse as it is an expression that does not short-circuit
 		return cfgIfThenElse(
 			call as RNodeWithParent,

@@ -2,7 +2,6 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as process from 'process';
 import { performance } from 'perf_hooks';
-import getPhysicalCpuCount from 'physical-cpu-count';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../src/dataflow/graph/diff-dataflow-graph';
 import type { FlowrAnalyzer } from '../../src/project/flowr-analyzer';
@@ -11,10 +10,12 @@ import type {
 	PerformanceStats,
 	OptimizationFlags,
 	WorkerResult,
+	LazyFunctionStats,
 } from './results-types';
 
 export interface PerformanceMetrics {
     wallMs: number;
+    graph?: DataflowGraph;
 }
 
 // minimal shape for analyzers returning a graph (benchmark-only)
@@ -94,25 +95,29 @@ function countFiles(dir: string): number {
 async function runOnce(
 	projectPath: string,
 	buildAnalyzer: () => Promise<FlowrAnalyzer>,
+	captureGraph: boolean = false,
 ): Promise<PerformanceMetrics> {
 	const analyzer = await buildAnalyzer();
 	analyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
 
 	const t0 = performance.now();
 
-	const _result = await analyzer.dataflow(); // intentionally unused in benchmarks
+	const result = await analyzer.dataflow();
 
 	const t1 = performance.now();
 	const wallMs = t1 - t0;
 
-	return { wallMs };
+	return {
+		wallMs,
+		graph: captureGraph ? result.graph : undefined,
+	};
 }
 
 // -------------------- main --------------------
 async function main(): Promise<void> {
 	const projectPath = process.argv[2];
 	const outputDir = process.argv[3];
-	const repetitions = Number(process.argv[4] ?? '5');
+	const repetitions = Number(process.argv[4] ?? '10');
 
 	if(!projectPath || !outputDir) {
 		console.error('Usage: ts-node run-analysis.ts <projectPath> <outputDir> [repetitions] ...flags');
@@ -128,23 +133,23 @@ async function main(): Promise<void> {
 	const skipCorrectness = process.argv.includes('--skipCorrectness');
 
 	fs.mkdirSync(outputDir, { recursive: true });
-	const physicalCores = getPhysicalCpuCount;
 	const fileCount = countFiles(projectPath);
 
 	// -------------------- correctness --------------------
 	let correctness: WorkerResult['correctness'] = 'skipped';
+
 	if(!skipCorrectness) {
 		console.log('Running correctness check...');
 
 		const baseAnalyzer = (await new FlowrAnalyzerBuilder().build()) as FlowrAnalyzer & AnalyzerWithGraph;
 		baseAnalyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
-		await baseAnalyzer.dataflow();
+		const baseDf = await baseAnalyzer.dataflow();
 
 		const optAnalyzer = (await buildOptimizedAnalyzer(flags)) as FlowrAnalyzer & AnalyzerWithGraph;
 		optAnalyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
-		await optAnalyzer.dataflow();
+		const optDf = await optAnalyzer.dataflow();
 
-		correctness = compareGraphs(baseAnalyzer.graph, optAnalyzer.graph);
+		correctness = compareGraphs(baseDf.graph, optDf.graph);
 
 		if(!correctness.ok && correctness.diff) {
 			console.warn('Correctness check failed! Graphs differ:');
@@ -155,24 +160,34 @@ async function main(): Promise<void> {
 	// -------------------- measurement --------------------
 	console.log('Measuring optimized performance...');
 	const wallMsArr: number[] = [];
+	let lazyStats: LazyFunctionStats | undefined;
 
 	for(let i = 0; i < repetitions; i++) {
-		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags));
+		const captureGraph = i === 0; // Capture graph from first run to extract lazy stats
+		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), captureGraph);
 		wallMsArr.push(run.wallMs);
+
+		// Collect lazy function statistics from first run (analysis is deterministic)
+		if(i === 0 && run.graph) {
+			const graphStats = run.graph.getLazyFunctionStatistics();
+			lazyStats = {
+				totalFunctionDefinitions:  graphStats.totalFunctionDefinitions,
+				lazyFunctionsMaterialized: graphStats.lazyFunctionsMaterialized,
+				lazyFunctionsRemaining:    graphStats.totalFunctionDefinitions - graphStats.lazyFunctionsMaterialized,
+			};
+		}
 	}
 
 	const wallMsStats = stats(wallMsArr);
 
 	const result: WorkerResult = {
-		project:       path.resolve(projectPath),
-		repetitions,
-		threads:       undefined,
-		optimizations: flags,
+		project:           path.resolve(projectPath),
+		threads:           undefined,
 		correctness,
-		physicalCores,
 		fileCount,
-		timestamp:     new Date().toISOString(),
-		wallMs:        wallMsStats,
+		timestamp:         new Date().toISOString(),
+		wallMs:            wallMsStats,
+		lazyFunctionStats: lazyStats,
 	};
 
 	fs.writeFileSync(path.join(outputDir, 'result.json'), JSON.stringify(result, null, 2), 'utf-8');

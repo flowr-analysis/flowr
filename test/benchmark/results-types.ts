@@ -14,14 +14,18 @@ export interface PerformanceStats {
   p95:    number;
 }
 
+export interface LazyFunctionStats {
+  totalFunctionDefinitions:  number;
+  lazyFunctionsMaterialized: number;
+  lazyFunctionsRemaining:    number;
+}
+
 export interface WorkerResult {
-  project:       string;
-  repetitions:   number;
-  threads?:      number;
-  optimizations: OptimizationFlags;
-  correctness:   'skipped' | { ok: boolean; diffCount: number; diff?: readonly string[] };
-  physicalCores: number;
-  fileCount:     number;
-  timestamp:     string;
-  wallMs:        PerformanceStats;
+  project:            string;
+  threads?:           number;
+  correctness:        'skipped' | { ok: boolean; diffCount: number; diff?: readonly string[] };
+  fileCount:          number;
+  timestamp:          string;
+  wallMs:             PerformanceStats;
+  lazyFunctionStats?: LazyFunctionStats;
 }

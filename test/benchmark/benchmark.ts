@@ -112,7 +112,7 @@ async function runOne(suite: string, projectDir: string, threads?: number, skipC
 	];
 
 	// Skip correctness if requested
-	if(skipCorrectness === false || (settings.skipCorrectness ?? false)) {
+	if(skipCorrectness || (settings.skipCorrectness ?? false)) {
 		args.push('--skipCorrectness');
 	}
 
@@ -163,11 +163,21 @@ async function runTestSuite(suiteName: string, suitePath: string): Promise<void>
 // ---------------- Results ----------------
 
 type SuiteSummary = {
-    suiteName:            string;
-    projects:             WorkerResult[];
-    totalRuntimeMs:       number;
-    meanProjectRuntimeMs: number;
-    totalFiles:           number;
+    suiteName:               string;
+    projects:                WorkerResult[];
+    totalRuntimeMs:          number;
+    meanProjectRuntimeMs:    number;
+    totalFiles:              number;
+    totalLazyFunctionStats?:  {
+		totalFunctionDefinitions:  number;
+		lazyFunctionsMaterialized: number;
+		lazyFunctionsRemaining:    number;
+	};
+    correctnessStats?: {
+		successful:      number;
+		withDifferences: number;
+		skipped:         number;
+	};
 };
 
 function collectResults(): SuiteSummary[] {
@@ -191,6 +201,9 @@ function collectResults(): SuiteSummary[] {
 		const projects: WorkerResult[] = [];
 		const totalRuntimes: number[] = [];
 
+		// Aggregate lazy function stats
+		let totalLazyFunctionStats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number; lazyFunctionsRemaining: number } | undefined;
+
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
 			const resultPath = path.join(projectDir, 'result.json');
@@ -207,18 +220,58 @@ function collectResults(): SuiteSummary[] {
 			if(data.wallMs.mean) {
 				totalRuntimes.push(data.wallMs.mean);
 			}
+
+			// Aggregate lazy function stats
+			if(data.lazyFunctionStats) {
+				if(!totalLazyFunctionStats) {
+					totalLazyFunctionStats = { totalFunctionDefinitions: 0, lazyFunctionsMaterialized: 0, lazyFunctionsRemaining: 0 };
+				}
+				totalLazyFunctionStats.totalFunctionDefinitions += data.lazyFunctionStats.totalFunctionDefinitions;
+				totalLazyFunctionStats.lazyFunctionsMaterialized += data.lazyFunctionStats.lazyFunctionsMaterialized;
+				totalLazyFunctionStats.lazyFunctionsRemaining += data.lazyFunctionStats.lazyFunctionsRemaining;
+			}
 		}
 
 		const totalRuntimeMs = totalRuntimes.reduce((a, b) => a + b, 0);
 		const meanProjectRuntimeMs = projects.length ? totalRuntimeMs / projects.length : 0;
+
+		// Aggregate correctness stats
+		let correctnessStats: { successful: number; withDifferences: number; skipped: number } | undefined;
+		let hasCorrectness = false;
+		for(const project of projects) {
+			if(project.correctness !== 'skipped') {
+				hasCorrectness = true;
+				break;
+			}
+		}
+		if(hasCorrectness) {
+			correctnessStats = { successful: 0, withDifferences: 0, skipped: 0 };
+			for(const project of projects) {
+				if(project.correctness === 'skipped') {
+					correctnessStats.skipped++;
+				} else if(project.correctness.ok) {
+					correctnessStats.successful++;
+				} else {
+					correctnessStats.withDifferences++;
+				}
+			}
+		}
 
 		console.log(`\nSuite ${suiteName}:`);
 		console.log(`- Projects: ${projects.length}`);
 		console.log(`- Total runtime: ${(totalRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Mean per project: ${(meanProjectRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Total files analyzed: ${totalFiles}`);
+		if(correctnessStats) {
+			console.log(`- Correctness: ${correctnessStats.successful} successful, ${correctnessStats.withDifferences} with differences, ${correctnessStats.skipped} skipped`);
+		}
+		if(totalLazyFunctionStats) {
+			console.log(`- Total function definitions: ${totalLazyFunctionStats.totalFunctionDefinitions}`);
+			console.log(`- Functions materialized: ${totalLazyFunctionStats.lazyFunctionsMaterialized}`);
+			console.log(`- Functions remaining lazy: ${totalLazyFunctionStats.lazyFunctionsRemaining}`);
+		}
 
-		suites.push({ suiteName, projects, totalRuntimeMs, meanProjectRuntimeMs, totalFiles });
+		suites.push({ suiteName, projects, totalRuntimeMs, meanProjectRuntimeMs, totalFiles, totalLazyFunctionStats, correctnessStats });
 	}
 
 	return suites;
@@ -233,12 +286,54 @@ function writeSummary(suites: SuiteSummary[]) {
 	const totalRuntime = suites.reduce((sum, s) => sum + s.totalRuntimeMs, 0);
 	const totalFiles = suites.reduce((sum, s) => sum + s.totalFiles, 0);
 
+	// Aggregate lazy function stats across all suites
+	let totalLazyStats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number; lazyFunctionsRemaining: number } | undefined;
+	for(const suite of suites) {
+		if(suite.totalLazyFunctionStats) {
+			if(!totalLazyStats) {
+				totalLazyStats = { totalFunctionDefinitions: 0, lazyFunctionsMaterialized: 0, lazyFunctionsRemaining: 0 };
+			}
+			totalLazyStats.totalFunctionDefinitions += suite.totalLazyFunctionStats.totalFunctionDefinitions;
+			totalLazyStats.lazyFunctionsMaterialized += suite.totalLazyFunctionStats.lazyFunctionsMaterialized;
+			totalLazyStats.lazyFunctionsRemaining += suite.totalLazyFunctionStats.lazyFunctionsRemaining;
+		}
+	}
+
+	// Aggregate correctness stats across all suites
+	let totalCorrectnessStats: { successful: number; withDifferences: number; skipped: number } | undefined;
+	for(const suite of suites) {
+		if(suite.correctnessStats) {
+			if(!totalCorrectnessStats) {
+				totalCorrectnessStats = { successful: 0, withDifferences: 0, skipped: 0 };
+			}
+			totalCorrectnessStats.successful += suite.correctnessStats.successful;
+			totalCorrectnessStats.withDifferences += suite.correctnessStats.withDifferences;
+			totalCorrectnessStats.skipped += suite.correctnessStats.skipped;
+		}
+	}
+
 	console.log('\n=== Summary written ===');
 	console.log(`- ${summaryPath}`);
 	console.log(`Total suites: ${suites.length}`);
 	console.log(`Total projects: ${totalProjects}`);
 	console.log(`Total runtime across all suites: ${(totalRuntime / 1000).toFixed(2)} s`);
 	console.log(`Total files analyzed: ${totalFiles}`);
+	if(totalCorrectnessStats) {
+		console.log('\n=== Correctness Statistics ===');
+		console.log(`Projects with matching graphs: ${totalCorrectnessStats.successful}`);
+		console.log(`Projects with differences: ${totalCorrectnessStats.withDifferences}`);
+		console.log(`Projects with skipped correctness: ${totalCorrectnessStats.skipped}`);
+	}
+	if(totalLazyStats) {
+		console.log('\n=== Lazy Function Statistics ===');
+		console.log(`Total function definitions: ${totalLazyStats.totalFunctionDefinitions}`);
+		console.log(`Total functions materialized: ${totalLazyStats.lazyFunctionsMaterialized}`);
+		console.log(`Total functions remaining lazy: ${totalLazyStats.lazyFunctionsRemaining}`);
+		if(totalLazyStats.totalFunctionDefinitions > 0) {
+			const materializationRate = ((totalLazyStats.lazyFunctionsMaterialized / totalLazyStats.totalFunctionDefinitions) * 100).toFixed(2);
+			console.log(`Materialization rate: ${materializationRate}%`);
+		}
+	}
 
 }
 

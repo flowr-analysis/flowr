@@ -14,10 +14,10 @@
         "parallelOperations": false
     },
     "threadsForCorrectness": [
-        2
+        1
     ],
     "threadsForPerformance": [
-        2
+        1
     ],
     "excludeSuites": ["dataverse"]
 }

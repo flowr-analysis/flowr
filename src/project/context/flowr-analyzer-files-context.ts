@@ -257,8 +257,21 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				}
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
-				const files = fs.readdirSync(dir);
-				const found = files.find(f => f.toLowerCase() === file);
+				let files: string[] | undefined;
+				if(fs.existsSync(dir)) {
+					files = fs.readdirSync(dir);
+				} else {
+					// try to find a dir in parent
+					const parentDir = path.dirname(dir);
+					if(fs.existsSync(parentDir)) {
+						const parentFiles = fs.readdirSync(parentDir);
+						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
+						if(foundDir) {
+							files = fs.readdirSync(path.join(parentDir, foundDir));
+						}
+					}
+				}
+				const found = files?.find(f => f.toLowerCase() === file);
 				return found ? path.join(dir, found) : undefined;
 			}
 			return undefined;

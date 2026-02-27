@@ -135,9 +135,8 @@ export function findSource(
 			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
 			const context = data.ctx.files;
 			const get = context.exists(effectivePath, capitalization) ?? context.exists(returnPlatformPath(effectivePath), capitalization);
-
-			if(get && !found.includes(effectivePath)) {
-				found.push(returnPlatformPath(effectivePath));
+			if(get && !found.includes(returnPlatformPath(get))) {
+				found.push(returnPlatformPath(get));
 			}
 		}
 	}

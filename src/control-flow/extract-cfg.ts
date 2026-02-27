@@ -358,15 +358,12 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		graph.addEdge(CfgVertex.toExitId(forLoopId), breakPoint, CfgEdge.makeFd());
 	}
 
-	const isNotEndless = body.exitPoints.length > 0 || body.breaks.length > 0;
-	if(isNotEndless) {
-		graph.addVertex(CfgVertex.makeExitMarker(forLoopId));
-		for(const e of variable.exitPoints) {
-			graph.addEdge(CfgVertex.toExitId(forLoopId), e, CfgEdge.makeCdFalse(forLoopId));
-		}
+	graph.addVertex(CfgVertex.makeExitMarker(forLoopId));
+	for(const e of variable.exitPoints) {
+		graph.addEdge(CfgVertex.toExitId(forLoopId), e, CfgEdge.makeCdFalse(forLoopId));
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: isNotEndless ? [CfgVertex.toExitId(forLoopId)] : [], entryPoints: [forLoopId] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [CfgVertex.toExitId(forLoopId)], entryPoints: [forLoopId] };
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {

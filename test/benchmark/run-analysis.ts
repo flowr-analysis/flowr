@@ -100,6 +100,9 @@ async function runOnce(
 	const analyzer = await buildAnalyzer();
 	analyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
 
+	/** compute parsing and normailization  */
+	await analyzer.normalize();
+
 	const t0 = performance.now();
 
 	const result = await analyzer.dataflow();

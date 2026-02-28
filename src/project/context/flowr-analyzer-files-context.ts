@@ -90,7 +90,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
-	 * (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @param path - The path to the file.
 	 *
 	 * If you do not know the exact path or, e.g., casing of the file, use {@link exists} instead.
@@ -101,7 +101,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @param path - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
-	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @returns The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;

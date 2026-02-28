@@ -240,6 +240,7 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
  * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
  */
 export const FlowrConfig = {
+	name: 'FlowrConfig',
 	/**
 	 * The default configuration for flowR, used when no config file is found or when a config file is missing some options.
 	 * You can use this as a base for your own config and only specify the options you want to change.

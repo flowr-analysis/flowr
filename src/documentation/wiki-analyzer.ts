@@ -39,6 +39,7 @@ import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import { FlowrConfig } from '../config';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -192,23 +193,23 @@ The following sections highlight some of the most important configuration option
 ${section('Configuring flowR', 3)}
 
 You can fundamentally change the behavior of flowR using the [config file](${FlowrWikiBaseRef}/Interface#configuring-flowr),
-embedded in the interface ${ctx.link('FlowrConfigOptions')}.
+embedded in the interface ${ctx.link(FlowrConfig)}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'setConfig')} to set a complete configuration
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'amendConfig')} to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with ${ctx.link('defaultConfigOptions')}.
+By default, the builder uses flowR's standard configuration obtained with ${ctx.linkO(FlowrConfig, 'default')}.
 
 ${block({
 	type:    'NOTE',
-	content: `During the analysis with the ${ctx.link(FlowrAnalyzer.name)}, you can also access the configuration with
+	content: `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
 		 the ${ctx.link(FlowrAnalyzerContext)}.`
 })}
 
 ${section('Configuring the Engine', 3)}
 
-FlowR supports multiple [engines](${FlowrWikiBaseRef}/Engines) for parsing and analyzing R code.
+FlowR supports multiple ${ctx.linkPage('wiki/Engines', 'engines')} for parsing and analyzing R code.
 With the builder, you can select the engine to use with:
 
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'setEngine')} to set the desired engine.

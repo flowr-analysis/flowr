@@ -210,7 +210,7 @@ For more information on the available queries, please check out the ${ctx.linkPa
 `;
 }
 
-function explainConfigFile(): string {
+function explainConfigFile(ctx: GeneralDocContext): string {
 	return `
 
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
@@ -221,6 +221,8 @@ Within the REPL this works by running the following:
 
 ${codeBlock('shell', ':query @config')}
 
+To work with the ${ctx.link(FlowrConfig)} you can use the provided helper objects alongside its methods like
+${ctx.linkO(FlowrConfig, 'amend')}.
 The following summarizes the configuration options:
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
@@ -346,7 +348,7 @@ ${await explainRepl(treeSitter, ctx)}
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR
 
-${explainConfigFile()}
+${explainConfigFile(ctx)}
 
 <a id='writing-code'></a>
 ## ⚒️ Writing Code

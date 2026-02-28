@@ -207,7 +207,7 @@ export interface FlowrConfig extends MergeableRecord {
 	}
 }
 
-export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 3 }>;
+export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
 	readonly type:                'tree-sitter'
@@ -351,10 +351,10 @@ export const FlowrConfig = {
 			}).optional().description('The configuration for the slicer.')
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
-			dataFrame: Joi.object({
-				maxColNames:       Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
-				wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
-				readLoadedData:    Joi.object({
+			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+			dataFrame:         Joi.object({
+				maxColNames:    Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
+				readLoadedData: Joi.object({
 					readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
 					maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')

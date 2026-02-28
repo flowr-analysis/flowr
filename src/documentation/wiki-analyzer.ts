@@ -197,6 +197,7 @@ embedded in the interface ${ctx.link(FlowrConfig)}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'setConfig')} to set a complete configuration
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'configure')} to set the value of a specific key in the config
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'amendConfig')} to amend the default configuration
 
 By default, the builder uses flowR's standard configuration obtained with ${ctx.linkO(FlowrConfig, 'default')}.

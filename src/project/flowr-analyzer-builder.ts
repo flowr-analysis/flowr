@@ -11,6 +11,7 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
+import type { ObjectPath, ObjectPathValue } from '../util/objects';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -36,10 +37,10 @@ import { makePlugin } from './plugins/plugin-registry';
  * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig: DeepWritable<FlowrConfig> = FlowrConfig.default();
-	private parser?:     KnownParser;
-	private input?:      Omit<NormalizeRequiredInput, 'context'>;
-	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private flowrConfig:      DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private parser?:          KnownParser;
+	private input?:           Omit<NormalizeRequiredInput, 'context'>;
+	private readonly plugins: Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -57,7 +58,9 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Apply an amendment to the configuration the builder currently holds.
-	 * Per default, the {@link defaultConfigOptions} are used.
+	 * This is mostly intended for more complex logic to transform the config.
+	 * Please consider using {@link FlowrAnalyzerBuilder.configure} to set/amend individual values
+	 * Per default, the value returned by {@link FlowrConfig.default} is used.
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
@@ -75,8 +78,10 @@ export class FlowrAnalyzerBuilder {
 		return this;
 	}
 
-	public setInConfig(): FlowrConfig {
-		return this.flowrConfig;
+	public configure<Path extends ObjectPath<FlowrConfig>>(key: Path, value: ObjectPathValue<FlowrConfig, Path>): this {
+		// @ts-expect-error -- ts engine may have reached its heuristic limit here, but we do not need additional checks
+		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value);
+		return this;
 	}
 
 	/**

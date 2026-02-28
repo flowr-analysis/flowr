@@ -2,18 +2,22 @@ import {
 	type LintingRuleConfig,
 	type LintingRuleMetadata,
 	type LintingRuleNames,
-	type LintingRuleResult
-	, LintingRules } from '../../../src/linter/linter-rules';
-import { type TestLabel, decorateLabelContext } from './label';
+	type LintingRuleResult,
+	LintingRules
+} from '../../../src/linter/linter-rules';
+import { decorateLabelContext, type TestLabel } from './label';
 import { assert, test } from 'vitest';
 import { fileProtocol, requestFromInput } from '../../../src/r-bridge/retriever';
-import { type NormalizedAst, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import {
+	deterministicCountingIdGenerator,
+	type NormalizedAst
+} from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { executeLintingRule } from '../../../src/linter/linter-executor';
-import { type LintingRule, LintingPrettyPrintContext, LintingResults } from '../../../src/linter/linter-format';
+import { LintingPrettyPrintContext, LintingResults, type LintingRule } from '../../../src/linter/linter-format';
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { type FlowrLaxSourcingOptions, DropPathsOption } from '../../../src/config';
+import { DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -88,12 +92,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
-			.amendConfig(c => {
-				(c.solver.resolveSource as FlowrLaxSourcingOptions) = {
-					...c.solver.resolveSource as FlowrLaxSourcingOptions,
-					dropPaths: DropPathsOption.All
-				};
-			})
+			.configure('solver.resolveSource.dropPaths', DropPathsOption.All)
 			.build();
 		if(lintingRuleConfig?.useAsFilePath) {
 			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));

@@ -328,7 +328,7 @@ ${section('File Loading', 4)}
 
 These plugins register for every file encountered by the [files context](#Files_Context) and determine whether and _how_ they can process the file.
 They are responsible for transforming the raw file content into a representation that flowR can work with during the analysis.
-For example, the ${ctx.link(FlowrAnalyzerDescriptionFilePlugin.name)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
+For example, the ${ctx.link(FlowrAnalyzerDescriptionFilePlugin)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
 These can then be used by other plugins, e.g. the ${ctx.link(FlowrAnalyzerPackageVersionsDescriptionFilePlugin)} that extracts package version information from these files.
 
 If multiple file plugins could apply (${ctx.link('DefaultFlowrAnalyzerFilePlugin::' + FlowrAnalyzerFilePlugin.defaultPlugin().applies.name)}) to the same file,

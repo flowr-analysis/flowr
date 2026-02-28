@@ -189,3 +189,26 @@ export type ObjectPath<T> = PathsOfObject<T>;
  * Given an object type `T` and a path `P`, produces the type of the value at that path within the object.
  */
 export type ObjectPathValue<T, P extends PathsOfObject<T>> = TypeOfPathInObject<T, P>;
+
+/**
+ * This is a version of a deep clone that preserves uncloneable values (like functions, symbols, ...) by keeping the same reference to them.
+ */
+export function deepClonePreserveUncloneable<T>(obj: T): T {
+	if(typeof obj !== 'object' || obj === null) {
+		return obj;
+	} else if(Array.isArray(obj)) {
+		return obj.map(deepClonePreserveUncloneable) as unknown as T;
+	} else if(obj instanceof Date) {
+		return new Date(obj.getTime()) as unknown as T;
+	} else if(obj instanceof Map) {
+		return new Map(Array.from(obj.entries()).map(([k, v]) => [deepClonePreserveUncloneable(k), deepClonePreserveUncloneable(v)])) as unknown as T;
+	} else if(obj instanceof Set) {
+		return new Set(Array.from(obj.values()).map(deepClonePreserveUncloneable)) as unknown as T;
+	} else {
+		const result: Record<string, unknown> = {};
+		for(const key of Object.keys(obj)) {
+			result[key] = deepClonePreserveUncloneable((obj as Record<string, unknown>)[key]);
+		}
+		return result as T;
+	}
+}

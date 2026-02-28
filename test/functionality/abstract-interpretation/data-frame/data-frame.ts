@@ -108,7 +108,7 @@ export interface DataFrameTestOptions extends Partial<TestConfiguration> {
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
  * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
- * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link FlowrConfig.default})
  */
 export function testDataFrameDomain(
 	shell: RShell,
@@ -138,7 +138,7 @@ export function testDataFrameDomain(
  * @param getCode     - The function to get the R code for `fileArg` or `textArg`
  * @param criteria    - The slicing criteria to test including the expected shape constraints and a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
  * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
- * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link FlowrConfig.default})
  */
 export function testDataFrameDomainWithSource(
 	shell: RShell,
@@ -161,7 +161,7 @@ export function testDataFrameDomainWithSource(
  * @param code        - The R code to test
  * @param expected    - The expected data frame shape constraints for each slicing criterion
  * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
- * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link FlowrConfig.default})
  */
 export function assertDataFrameDomain(
 	parser: KnownParser,
@@ -197,7 +197,7 @@ export function assertDataFrameDomain(
  * @param code        - The R code to test
  * @param expected    - The expected abstract data frame operation for each slicing criterion
  * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
- * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link FlowrConfig.default})
  */
 export function assertDataFrameOperation(
 	parser: KnownParser,
@@ -235,7 +235,7 @@ export function assertDataFrameOperation(
  * @param code        - The R code to test
  * @param criteria    - The slicing criteria to test including a {@link DataFrameShapeMatching} option for each criterion (defaults to {@link DataFrameShapeExact})
  * @param config      - The test configuration options including the parser to use, the name for the test, and whether the execution test should be skipped ({@link DataFrameTestOptions})
- * @param flowRConfig - The flowR config to use for the test (defaults to {@link defaultConfigOptions})
+ * @param flowRConfig - The flowR config to use for the test (defaults to {@link FlowrConfig.default})
  */
 export function testDataFrameDomainAgainstReal(
 	shell: RShell,

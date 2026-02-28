@@ -1,4 +1,10 @@
-import { type ObjectPath, type ObjectPathValue, type MergeableRecord, deepMergeObject } from './util/objects';
+import {
+	type ObjectPath,
+	type ObjectPathValue,
+	type MergeableRecord,
+	deepMergeObject,
+	deepClonePreserveUncloneable
+} from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -95,7 +101,7 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 
 /**
  * The configuration file format for flowR.
- * @see {@link FlowrConfig#Default} for the default configuration.
+ * @see {@link FlowrConfig.default} for the default configuration.
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
 export interface FlowrConfig extends MergeableRecord {
@@ -325,7 +331,7 @@ export const FlowrConfig = {
 				type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
 				rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
 			}).description('The configuration for the R shell engine.')
-		)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
+		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 		solver:        Joi.object({
 			variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
@@ -380,20 +386,19 @@ export const FlowrConfig = {
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	amend(config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
-		amendmentFunc(newConfig as DeepWritable<FlowrConfig>);
-		return newConfig;
+		return amendmentFunc(newConfig as DeepWritable<FlowrConfig>) ?? newConfig;
 	},
 	/**
 	 * Clones the given flowr config object.
 	 */
 	clone(config: FlowrConfig): FlowrConfig {
-		return structuredClone(config);
+		return deepClonePreserveUncloneable(config);
 	},
 	/**
 	 * Loads the flowr config from the given file or the default locations.
 	 * Please note that you can also use this without a path parameter to
 	 * infer the config from flowR's default locations.
-	 * This is mostly useful foruser-facing features.
+	 * This is mostly useful for user-facing features.
 	 */
 	fromFile(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
 		try {

@@ -1,5 +1,5 @@
-import { amendConfig, cloneConfig, defaultConfigOptions, type EngineConfig, type FlowrConfigOptions } from '../config';
-import type { DeepWritable } from 'ts-essentials';
+import { type EngineConfig, FlowrConfig } from '../config';
+import type { DeepWritable, Paths, PathValue } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
 import type { KnownParser } from '../r-bridge/parser';
@@ -11,6 +11,7 @@ import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
 import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
+import type { AutocompletablePaths } from '../util/objects';
 
 /**
  * Builder for the {@link FlowrAnalyzer}, use it to configure all analysis aspects before creating the analyzer instance
@@ -36,10 +37,10 @@ import { makePlugin } from './plugins/plugin-registry';
  * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
-	private parser?:     KnownParser;
-	private input?:      Omit<NormalizeRequiredInput, 'context'>;
-	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private flowrConfig:      DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private parser?:          KnownParser;
+	private input?:           Omit<NormalizeRequiredInput, 'context'>;
+	private readonly plugins: Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -57,12 +58,14 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Apply an amendment to the configuration the builder currently holds.
-	 * Per default, the {@link defaultConfigOptions} are used.
+	 * This is mostly intended for more complex logic to transform the config.
+	 * Please consider using {@link FlowrAnalyzerBuilder.configure} to set/amend individual values
+	 * Per default, the value returned by {@link FlowrConfig.default} is used.
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions | void): this {
-		this.flowrConfig = amendConfig(this.flowrConfig, func);
+	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
+		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;
 	}
 
@@ -70,8 +73,21 @@ export class FlowrAnalyzerBuilder {
 	 * Overwrite the configuration used by the resulting analyzer.
 	 * @param config - The new configuration.
 	 */
-	public setConfig(config: FlowrConfigOptions): this {
+	public setConfig(config: FlowrConfig): this {
 		this.flowrConfig = config;
+		return this;
+	}
+
+	// we have a type safe export to ease auto-completion
+	public configure<K extends AutocompletablePaths<FlowrConfig>>(
+		key: K,
+		value: PathValue<FlowrConfig, K>
+	): this;
+	/**
+	 * Set a specific value in the configuration used by the resulting analyzer.
+	 */
+	public configure(key: Paths<FlowrConfig, { depth: 9 }>, value: unknown): this {
+		FlowrConfig.setInConfigInPlace(this.flowrConfig, key, value as never);
 		return this;
 	}
 

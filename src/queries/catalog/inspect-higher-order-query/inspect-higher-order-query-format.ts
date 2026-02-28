@@ -6,7 +6,7 @@ import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
@@ -23,7 +23,7 @@ export interface InspectHigherOrderQueryResult extends BaseQueryResult {
 	readonly higherOrder: Record<NodeId, boolean>;
 }
 
-function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-higher-order'> {
+function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-higher-order'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

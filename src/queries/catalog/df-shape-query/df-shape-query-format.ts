@@ -3,7 +3,7 @@ import type { DataFrameDomain } from '../../../abstract-interpretation/data-fram
 import type { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -22,7 +22,7 @@ export interface DfShapeQueryResult extends BaseQueryResult {
 	domains: StateAbstractDomain<DataFrameDomain> | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
 }
 
-function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'df-shape'> {
+function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'df-shape'> {
 	const criterion = sliceCriterionParser(line[0]);
 
 	return {

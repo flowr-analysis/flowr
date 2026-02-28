@@ -8,7 +8,7 @@ import { type SamplingStrategy, BenchmarkSlicer } from '../benchmark/slicer';
 import { DefaultAllVariablesFilter } from '../slicing/criterion/filters/all-variables';
 import path from 'path';
 import type { KnownParserName } from '../r-bridge/parser';
-import { getConfig } from '../config';
+import { FlowrConfig } from '../config';
 
 export interface SingleBenchmarkCliOptions {
 	verbose:                     boolean
@@ -52,7 +52,7 @@ async function benchmark() {
 	guard((options['file-id'] === undefined) === (options['run-num'] === undefined), 'When giving a file-id or run-num, both have to be given');
 
 	// prefix for printing to console, includes file id and run number if present
-	const prefix = `[${options.input }${options['file-id'] !== undefined ? ` (file ${options['file-id']}, run ${options['run-num']})` : ''}]`;
+	const prefix = `[${options.input }${options['file-id'] === undefined ? '' : ` (file ${options['file-id']}, run ${options['run-num']})`}]`;
 	console.log(`${prefix} Appending output to ${options.output}`);
 	const directory = path.parse(options.output).dir;
 	// ensure the directory exists if the path contains one
@@ -60,7 +60,7 @@ async function benchmark() {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
-	const config = getConfig();
+	const config = FlowrConfig.fromFile();
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);
@@ -86,7 +86,7 @@ async function benchmark() {
 		} else if(options.slice === 'no') {
 			console.log(`${prefix} Skipping Slicing due to --slice=${options.slice}`);
 		} else {
-			const limit = parseInt(options.slice);
+			const limit = Number.parseInt(options.slice);
 			console.log(`${prefix} Slicing up to ${limit} possible slices`);
 			const count = await slicer.sliceForAll(
 				DefaultAllVariablesFilter,

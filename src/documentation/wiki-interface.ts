@@ -9,7 +9,7 @@ import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { type FlowrConfigOptions, DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
+import { FlowrConfig, DropPathsOption, InferWorkingDirectory, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -210,7 +210,7 @@ For more information on the available queries, please check out the ${ctx.linkPa
 `;
 }
 
-function explainConfigFile(): string {
+function explainConfigFile(ctx: GeneralDocContext): string {
 	return `
 
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
@@ -221,6 +221,8 @@ Within the REPL this works by running the following:
 
 ${codeBlock('shell', ':query @config')}
 
+To work with the ${ctx.link(FlowrConfig)} you can use the provided helper objects alongside its methods like
+${ctx.linkO(FlowrConfig, 'amend')}.
 The following summarizes the configuration options:
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
@@ -282,7 +284,7 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			}
-		} satisfies FlowrConfigOptions,
+		} satisfies FlowrConfig,
 		null, 2))
 }
 
@@ -311,7 +313,7 @@ ${codeBlock('json', JSON.stringify(
 
 <summary style='color:gray'>Full Configuration-File Schema</summary>
 
-${describeSchema(flowrConfigFileSchema, markdownFormatter)}
+${describeSchema(FlowrConfig.Schema, markdownFormatter)}
 
 </details>
 
@@ -346,7 +348,7 @@ ${await explainRepl(treeSitter, ctx)}
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR
 
-${explainConfigFile()}
+${explainConfigFile(ctx)}
 
 <a id='writing-code'></a>
 ## ⚒️ Writing Code

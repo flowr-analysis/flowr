@@ -7,7 +7,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { FileRole } from '../../../project/context/flowr-file';
 import { jsonReplacer } from '../../../util/json';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 
@@ -60,7 +60,7 @@ function rolesFromInput(rolesPart: readonly string[]): { valid: FileRole[], inva
 
 const rolePrefix = 'role:';
 
-function filesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'files'> {
+function filesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'files'> {
 	let roles: FileRole[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(rolePrefix)) {
@@ -78,7 +78,7 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	return { query: [{ type: 'files', roles }], rCode: input } ;
 }
 
-function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): CommandCompletions {
+function filesQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	const rolesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rolePrefix.length);
 	const rolesNotFinished = line.length == 1 && line[0].startsWith(rolePrefix) && !startingNewArg;
 	const endOfRoles = line.length == 1 && startingNewArg || line.length == 2;

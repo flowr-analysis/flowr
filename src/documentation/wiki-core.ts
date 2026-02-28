@@ -49,9 +49,7 @@ import { expensiveTrace, FlowrLogger } from '../util/log';
 
 async function makeAnalyzerExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
-		.amendConfig(c => {
-			c.ignoreSourceCalls = true;
-		})
+		.configure('ignoreSourceCalls', true)
 		.setEngine('tree-sitter')
 		.build();
 	analyzer.addRequest('x <- 1; y <- x; print(y);');

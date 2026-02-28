@@ -16,8 +16,8 @@ import { intervalFromValues } from '../../../../src/dataflow/eval/values/interva
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
 import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/eval/resolve/alias-tracking';
-import { defaultConfigOptions } from '../../../../src/config';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 enum Allow {
 	None = 0,
@@ -80,7 +80,7 @@ describe.sequential('Resolve', withShell(shell => {
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
 				full:        true,
-				resolve:     defaultConfigOptions.solver.variables,
+				resolve:     FlowrConfig.default().solver.variables,
 				ctx:         context
 			});
 

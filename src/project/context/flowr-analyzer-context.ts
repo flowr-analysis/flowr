@@ -23,8 +23,7 @@ import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-contex
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
-import type { FlowrConfigOptions } from '../../config';
-import { defaultConfigOptions } from '../../config';
+import { FlowrConfig } from '../../config';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
@@ -58,7 +57,7 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/**
 	 * The configuration options used by the analyzer.
 	 */
-	readonly config:             FlowrConfigOptions;
+	readonly config:             FlowrConfig;
 	/**
 	 * Run all resolution steps that can be done before the main analysis run.
 	 */
@@ -84,9 +83,9 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
 
-	public readonly config: FlowrConfigOptions;
+	public readonly config: FlowrConfig;
 
-	constructor(config: FlowrConfigOptions, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
+	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
 		this.config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
@@ -157,7 +156,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
  */
 export function contextFromInput(
 	input: `${typeof fileProtocol}${string}` | string | readonly string[] | RParseRequests,
-	config = defaultConfigOptions,
+	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
 	const context = new FlowrAnalyzerContext(
@@ -184,7 +183,7 @@ export function contextFromInput(
  */
 export function contextFromSources(
 	sources: Record<string, string>,
-	config = defaultConfigOptions,
+	config = FlowrConfig.default(),
 	plugins?: FlowrAnalyzerPlugin[],
 ): FlowrAnalyzerContext {
 	const context = new FlowrAnalyzerContext(

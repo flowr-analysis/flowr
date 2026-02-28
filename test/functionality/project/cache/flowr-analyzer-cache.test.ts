@@ -1,18 +1,18 @@
 import { describe, expect, test } from 'vitest';
 import { FlowrAnalyzerCache } from '../../../../src/project/cache/flowr-analyzer-cache';
 import { CfgKind } from '../../../../src/project/cfg-kind';
-import { defaultConfigOptions } from '../../../../src/config';
 import { withTreeSitter } from '../../_helper/shell';
 import { extractCfg, extractCfgQuick } from '../../../../src/control-flow/extract-cfg';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
+import { FlowrConfig } from '../../../../src/config';
 
 describe('Analyzer Cache', withTreeSitter( (shell) => {
 
 	function createCache(request: string) {
 		const data = {
 			parser:  shell,
-			context: new FlowrAnalyzerContext(defaultConfigOptions, new Map()),
+			context: new FlowrAnalyzerContext(FlowrConfig.default(), new Map()),
 		};
 		data.context.addRequests([requestFromInput(request)]);
 		return data;

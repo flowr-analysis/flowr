@@ -8,13 +8,13 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { defaultConfigOptions } from '../../../../src/config';
 import { isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrConfig } from '../../../../src/config';
 
 
 describe('NAMESPACE-file', function() {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerNamespaceFilesPlugin(),
 			new FlowrAnalyzerPackageVersionsNamespaceFilePlugin()

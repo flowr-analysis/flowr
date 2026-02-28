@@ -6,7 +6,7 @@ import { executeRecursionQuery } from './inspect-recursion-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
@@ -23,7 +23,7 @@ export interface InspectRecursionQueryResult extends BaseQueryResult {
 	readonly recursive: Record<NodeId, boolean>;
 }
 
-function inspectRecLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-recursion'> {
+function inspectRecLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-recursion'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

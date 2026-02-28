@@ -17,7 +17,6 @@ import { LintingPrettyPrintContext, LintingResults, type LintingRule } from '../
 import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { DropPathsOption } from '../../../src/config';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -27,6 +26,7 @@ import type { SingleSlicingCriterion, SlicingCriteria } from '../../../src/slici
 import { slicingCriterionToId } from '../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
+import { DropPathsOption } from '../../../src/config';
 
 
 /**

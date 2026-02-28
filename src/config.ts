@@ -1,9 +1,6 @@
-import {
-	type ObjectPath,
-	type ObjectPathValue,
-	type MergeableRecord,
+import { type MergeableRecord,
 	deepMergeObject,
-	deepClonePreserveUncloneable
+	deepClonePreserveUnclonable
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -12,7 +9,7 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepWritable } from 'ts-essentials';
+import type { DeepWritable, Paths, PathValue } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
@@ -210,6 +207,8 @@ export interface FlowrConfig extends MergeableRecord {
 	}
 }
 
+export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 3 }>;
+
 export interface TreeSitterEngineConfig extends MergeableRecord {
 	readonly type:                'tree-sitter'
 	/**
@@ -392,7 +391,7 @@ export const FlowrConfig = {
 	 * Clones the given flowr config object.
 	 */
 	clone(config: FlowrConfig): FlowrConfig {
-		return deepClonePreserveUncloneable(config);
+		return deepClonePreserveUnclonable(config);
 	},
 	/**
 	 * Loads the flowr config from the given file or the default locations.
@@ -430,7 +429,7 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Config extends FlowrConfig, Path extends ObjectPath<Config>>(config: Config, key: Path, value: ObjectPathValue<Config, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths>(config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
 		objectPath.set(clone, key, value);
 		return clone;
@@ -439,7 +438,7 @@ export const FlowrConfig = {
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Config extends FlowrConfig, Path extends ObjectPath<Config>>(config: Config, key: Path, value: ObjectPathValue<Config, Path>): void {
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
 		objectPath.set(config, key, value);
 	}
 } as const;

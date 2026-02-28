@@ -390,6 +390,9 @@ export const FlowrConfig = {
 	},
 	/**
 	 * Loads the flowr config from the given file or the default locations.
+	 * Please note that you can also use this without a path parameter to
+	 * infer the config from flowR's default locations.
+	 * This is mostly useful foruser-facing features.
 	 */
 	fromFile(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
 		try {

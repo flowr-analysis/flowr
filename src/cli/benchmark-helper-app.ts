@@ -60,7 +60,7 @@ async function benchmark() {
 		fs.mkdirSync(directory, { recursive: true });
 	}
 
-	const config = FlowrConfig.default();
+	const config = FlowrConfig.fromFile();
 
 	// ensure the file exists
 	const fileStat = fs.statSync(options.input);

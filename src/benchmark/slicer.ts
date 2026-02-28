@@ -46,7 +46,7 @@ import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-typ
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfig, getEngineConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
@@ -148,9 +148,9 @@ export class BenchmarkSlicer {
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
 				if(this.parserName === 'r-shell') {
-					return new RShell(getEngineConfig(config, 'r-shell'));
+					return new RShell(FlowrConfig.getForEngine(config, 'r-shell'));
 				} else {
-					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
+					await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
 					return new TreeSitterExecutor();
 				}
 			}

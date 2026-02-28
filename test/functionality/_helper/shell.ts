@@ -43,7 +43,7 @@ import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/ut
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
-import { cloneConfig, defaultConfigOptions, type FlowrConfig } from '../../../src/config';
+import { FlowrConfig } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -401,7 +401,7 @@ export function assertDataflow(
 	expected: DataflowGraph | ((input: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
-	config = cloneConfig(defaultConfigOptions)
+	config = FlowrConfig.default()
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
@@ -643,7 +643,7 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			const context =  contextFromInput(input, FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()));
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}

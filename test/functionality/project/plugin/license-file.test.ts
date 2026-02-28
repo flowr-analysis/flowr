@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import { defaultConfigOptions } from '../../../../src/config';
+import { FlowrConfig } from '../../../../src/config';
 import {
 	FlowrAnalyzerLicenseFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-license-file-plugin';
@@ -10,7 +10,7 @@ import {
 
 describe('License-file', function() {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerLicenseFilePlugin()
 		], p => p.type)

@@ -1,4 +1,4 @@
-import { type FlowrConfig, defaultConfigOptions } from '../../../src/config';
+import { FlowrConfig } from '../../../src/config';
 import type { CommandCompletions } from '../../../src/cli/repl/core';
 import { assert, expect, test } from 'vitest';
 import { type ReplOutput, standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
@@ -24,7 +24,7 @@ export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
 /**
  *
  */
-export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = defaultConfigOptions, expectedParse }: ReplParserTestCase<QueryType>) {
+export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = FlowrConfig.default(), expectedParse }: ReplParserTestCase<QueryType>) {
 	test(label, () => {
 		const result = parser(discardingReplOutput, line, config as FlowrConfig);
 		assert.deepEqual(result, expectedParse);
@@ -44,7 +44,7 @@ export interface ReplCompletionTestCase {
 /**
  *
  */
-export function assertReplCompletions({ completer, label, startingNewArg, splitLine, config = defaultConfigOptions, expectedCompletions }: ReplCompletionTestCase) {
+export function assertReplCompletions({ completer, label, startingNewArg, splitLine, config = FlowrConfig.default(), expectedCompletions }: ReplCompletionTestCase) {
 	test(label, () => {
 		const result = completer(splitLine, startingNewArg, config as FlowrConfig);
 		expect(result.completions).toEqual(expectedCompletions);

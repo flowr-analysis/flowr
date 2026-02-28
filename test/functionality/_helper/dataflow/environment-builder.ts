@@ -9,10 +9,10 @@ import {
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
-import { defaultConfigOptions } from '../../../../src/config';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 
 /**
@@ -42,7 +42,7 @@ export function argumentInCall(nodeId: NodeId, options?: { name?: string, cds?: 
  * The constant global environment with all pre-defined functions.
  */
 export const defaultEnv = () => {
-	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
+	const ctx = new FlowrAnalyzerEnvironmentContext({ config: FlowrConfig.default() } as FlowrAnalyzerContext);
 	const global = ctx.makeCleanEnv();
 	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };

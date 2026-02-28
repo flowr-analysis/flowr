@@ -22,12 +22,9 @@ import {
 } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import {
-	amendConfig,
 	type EngineConfig,
-	type FlowrConfig,
-	getConfig,
+	FlowrConfig,
 	type KnownEngines,
-	parseConfig
 } from '../config';
 import { guard } from '../util/assert';
 import { type ScriptInformation, scripts } from './common/scripts-info';
@@ -104,7 +101,7 @@ function createConfig(): FlowrConfig {
 	let config: FlowrConfig | undefined;
 
 	if(options['config-json']) {
-		const passedConfig = parseConfig(options['config-json']);
+		const passedConfig = FlowrConfig.parse(options['config-json']);
 		if(passedConfig) {
 			log.info(`Using passed config ${JSON.stringify(passedConfig)}`);
 			config = passedConfig;
@@ -118,12 +115,12 @@ function createConfig(): FlowrConfig {
 				process.exit(1);
 			}
 		}
-		config = getConfig(options['config-file'] ?? defaultConfigFile);
+		config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 	}
 
 
 	// for all options that we manually supply that have a config equivalent, set them in the config
-	config = amendConfig(config, c => {
+	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
 		if(!options['engine.r-shell.disabled']) {

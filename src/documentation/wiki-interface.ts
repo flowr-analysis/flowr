@@ -9,7 +9,7 @@ import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { type FlowrConfig, DropPathsOption, flowrConfigFileSchema, InferWorkingDirectory, VariableResolve } from '../config';
+import { FlowrConfig, DropPathsOption, InferWorkingDirectory, VariableResolve } from '../config';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -311,7 +311,7 @@ ${codeBlock('json', JSON.stringify(
 
 <summary style='color:gray'>Full Configuration-File Schema</summary>
 
-${describeSchema(flowrConfigFileSchema, markdownFormatter)}
+${describeSchema(FlowrConfig.Schema, markdownFormatter)}
 
 </details>
 

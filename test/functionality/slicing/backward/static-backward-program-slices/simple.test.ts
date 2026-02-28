@@ -3,11 +3,11 @@ import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { describe } from 'vitest';
-import { defaultConfigOptions } from '../../../../../src/config';
+import { FlowrConfig } from '../../../../../src/config';
 
 describe.sequential('Simple', withShell(shell => {
 	describe('Constant assignments', () => {
-		const config = defaultConfigOptions;
+		const config = FlowrConfig.default();
 
 		for(const i of [1, 2, 3]) {
 			assertSliced(label(`slice constant assignment ${i}`, ['name-normal', 'numbers', ...OperatorDatabase['<-'].capabilities, 'newlines']),

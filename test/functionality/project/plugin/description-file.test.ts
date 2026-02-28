@@ -11,9 +11,9 @@ import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import { defaultConfigOptions } from '../../../../src/config';
 import { AuthorRole } from '../../../../src/util/r-author';
 import type { FlowrDescriptionFile } from '../../../../src/project/plugins/file-plugins/files/flowr-description-file';
+import { FlowrConfig } from '../../../../src/config';
 
 const DescriptionA = `Package: mypackage
 Title: What the Package Does (One Line, Title Case)
@@ -78,7 +78,7 @@ Date/Publication: 2025-12-31 23:00:00 UTC
 
 function contextWithFile(desc: string): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerDescriptionFilePlugin(),
 			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),

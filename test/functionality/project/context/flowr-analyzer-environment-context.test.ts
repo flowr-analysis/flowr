@@ -3,11 +3,11 @@ import { label } from '../../_helper/label';
 import { Environment } from '../../../../src/dataflow/environments/environment';
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
-import { defaultConfigOptions } from '../../../../src/config';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 describe('Initialization', () => {
-	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
+	const ctx = new FlowrAnalyzerEnvironmentContext({ config: FlowrConfig.default() } as FlowrAnalyzerContext);
 
 	test(label('Clean creation should have no info but the default information', ['global-scope'], ['other']), () => {
 		const clean = ctx.makeCleanEnv();

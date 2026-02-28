@@ -78,14 +78,14 @@ export function processEvalCall<OtherInfo>(
 
 		data = {
 			...data,
-			cds: [...(data.cds ?? []), { id: rootId, when: true }]
+			cds: code.length > 1 ? [...(data.cds ?? []), { id: rootId, when: true }] : data.cds
 		};
 		const originalInfo = { ...information };
 
 		const result: DataflowInformation[] = [];
 		for(const c of code) {
 			const codeRequest = requestFromInput(c);
-			const r = sourceRequest(rootId, codeRequest, data, originalInfo, idGenerator);
+			const r = sourceRequest(rootId, codeRequest, data, originalInfo, code.length > 1, idGenerator);
 			result.push(r);
 			// add a returns edge from the eval to the result
 			for(const e of r.exitPoints) {

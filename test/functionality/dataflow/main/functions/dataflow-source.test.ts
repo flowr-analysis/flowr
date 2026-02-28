@@ -6,8 +6,7 @@ import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
-import { type FlowrLaxSourcingOptions, amendConfig, defaultConfigOptions } from '../../../../../src/config';
-import { deepMergeObject } from '../../../../../src/util/objects';
+import { FlowrConfig } from '../../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
@@ -22,13 +21,7 @@ describe('source', withTreeSitter(parser => {
 
 	const addFiles = Object.entries(sources).map(([name, content]) => new FlowrInlineTextFile(name, content));
 
-	const config = amendConfig(defaultConfigOptions, c => {
-		c.solver.resolveSource = deepMergeObject(
-			defaultConfigOptions.solver.resolveSource,
-			{ repeatedSourceLimit: 0 }
-		) as FlowrLaxSourcingOptions;
-		return c;
-	});
+	const config = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.resolveSource.repeatedSourceLimit', 0);
 
 	assertDataflow(label('simple source', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'sourcing-external-files', 'newlines']), parser, 'source("simple")\ncat(N)', emptyGraph()
 		.use('5', 'N')
@@ -162,13 +155,8 @@ describe('source', withTreeSitter(parser => {
 			expectIsSubgraph: true,
 			addFiles
 		},
-		undefined, amendConfig(defaultConfigOptions, c => {
-			c.solver.resolveSource = deepMergeObject(
-				c.solver.resolveSource,
-				{ repeatedSourceLimit: 2 }
-			) as FlowrLaxSourcingOptions;
-			return c;
-		})
+		undefined,
+		FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.resolveSource.repeatedSourceLimit', 2)
 		);
 	});
 

@@ -46,7 +46,7 @@ import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-typ
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfigOptions, getEngineConfig } from '../config';
+import { type FlowrConfig, getEngineConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
@@ -140,7 +140,7 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 

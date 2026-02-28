@@ -132,3 +132,60 @@ export function compactRecord<T extends Record<string, unknown>>(record: T | und
 	}
 	return result as DefinedRecord<T>;
 }
+
+type Primitive =
+	| string
+	| number
+	| boolean
+	| bigint
+	| symbol
+	| null
+	| undefined
+	| Date
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+	| Function;
+
+/**
+ * Given an object type `T`, produces a union of string literal types representing all possible paths to primitive values within that object.
+ */
+type PathsOfObject<T, Prefix extends string = ''> =
+	T extends Primitive | readonly unknown[]
+		? never
+		: {
+			[K in keyof T & string]:
+			| `${Prefix}${K}`
+			| (T[K] extends Primitive | readonly unknown[]
+				? never
+				: PathsOfObject<T[K], `${Prefix}${K}.`>)
+		}[keyof T & string];
+
+type TypeOfPathInObject<T, P extends string> =
+	// If the current value can be undefined, propagate it
+	undefined extends T
+		? TypeOfPathInObject<Exclude<T, undefined>, P> | undefined
+		: P extends `${infer Head}.${infer Tail}`
+			? Head extends keyof T
+				? TypeOfPathInObject<T[Head], Tail>
+				: T extends readonly (infer U)[]
+					? Head extends `${number}`
+						? TypeOfPathInObject<U, Tail>
+						: never
+					: never
+			: P extends keyof T
+				? T[P]
+				: T extends readonly (infer U)[]
+					? P extends `${number}`
+						? U
+						: never
+					: never;
+
+/**
+ * Given an object type `T`, produces a union of string literal types representing all possible paths to primitive values within that object.
+ * The {@link ObjectPathValue} type can be used to get the type of the value at a specific path.
+ * @example
+ */
+export type ObjectPath<T> = PathsOfObject<T>;
+/**
+ * Given an object type `T` and a path `P`, produces the type of the value at that path within the object.
+ */
+export type ObjectPathValue<T, P extends PathsOfObject<T>> = TypeOfPathInObject<T, P>;

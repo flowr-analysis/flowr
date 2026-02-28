@@ -1,4 +1,4 @@
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrConfig } from '../config';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -146,7 +146,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 */
 	runFull(force?: boolean): Promise<void>;
 	/** This is the config used for the analyzer */
-	flowrConfig: FlowrConfigOptions;
+	flowrConfig: FlowrConfig;
 }
 
 
@@ -181,7 +181,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache = cache;
 	}
 
-	public get flowrConfig(): FlowrConfigOptions {
+	public get flowrConfig(): FlowrConfig {
 		return this.ctx.config;
 	}
 

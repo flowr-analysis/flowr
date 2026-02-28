@@ -4,7 +4,7 @@ import type { FlowrHelloResponseMessage } from './messages/message-hello';
 import type { FlowrErrorMessage } from './messages/message-error';
 import { type Server, type Socket, NetServer } from './net';
 import { FlowrLogger } from '../../../util/log';
-import type { FlowrConfigOptions, KnownEngines } from '../../../config';
+import type { FlowrConfig, KnownEngines } from '../../../config';
 import type { KnownParser } from '../../../r-bridge/parser';
 import { type VersionInformation, retrieveVersionInformation } from '../../../util/version';
 
@@ -22,13 +22,13 @@ export class FlowRServer {
 	private readonly defaultEngine:       keyof KnownEngines;
 	private versionInformation:           VersionInformation | undefined;
 	private readonly allowRSessionAccess: boolean;
-	private readonly config:              FlowrConfigOptions;
+	private readonly config:              FlowrConfig;
 
 	/** maps names to the respective connection */
 	private readonly connections = new Map<string, FlowRServerConnection>();
 	private nameCounter = 0;
 
-	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, config: FlowrConfigOptions, server: Server = new NetServer()) {
+	constructor(engines: KnownEngines, defaultEngine: keyof KnownEngines, allowRSessionAccess: boolean, config: FlowrConfig, server: Server = new NetServer()) {
 		this.server = server;
 		this.server.onConnect(c => this.onConnect(c));
 		this.engines = engines;

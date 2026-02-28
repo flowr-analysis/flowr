@@ -1,4 +1,4 @@
-import { type FlowrConfigOptions, type KnownEngines, getEngineConfig } from './config';
+import { type FlowrConfig, type KnownEngines, getEngineConfig } from './config';
 import { RShell, RShellReviveOptions } from './r-bridge/shell';
 import { bold, ColorEffect, Colors, formatter, italic } from './util/text/ansi';
 import { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -8,7 +8,7 @@ import { log } from './util/log';
  * Retrieve all requested engine instance.
  * Please make sure that if this includes the R engine, that you properly shut it down again!
  */
-export async function retrieveEngineInstances(config: FlowrConfigOptions, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
+export async function retrieveEngineInstances(config: FlowrConfig, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
 	const engines: KnownEngines = {};
 	if(getEngineConfig(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell')) {
 		// we keep an active shell session to allow other parse investigations :)

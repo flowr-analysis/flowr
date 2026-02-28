@@ -52,7 +52,7 @@ import {
 } from './catalog/control-flow-query/control-flow-query-format';
 import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrConfig } from '../config';
 import {
 	type InspectHigherOrderQuery,
 	InspectHigherOrderQueryDefinition
@@ -129,9 +129,9 @@ export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
 	/** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
+	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
 	/** optional query construction from an, e.g., repl line */
-	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)

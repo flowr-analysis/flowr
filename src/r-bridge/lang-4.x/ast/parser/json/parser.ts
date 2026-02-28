@@ -6,7 +6,7 @@ import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../parser';
-import { defaultConfigOptions, type FlowrConfigOptions, getEngineConfig } from '../../../../../config';
+import { defaultConfigOptions, type FlowrConfig, getEngineConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
 import { RProject } from '../../model/nodes/r-project';
 
@@ -43,7 +43,7 @@ export function normalizeButNotDecorated(
 export function normalizeTreeSitter(
 	parsed: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
-	config: FlowrConfigOptions = defaultConfigOptions
+	config: FlowrConfig = defaultConfigOptions
 ): NormalizedAst {
 	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
 	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed.files, lax), { getId });

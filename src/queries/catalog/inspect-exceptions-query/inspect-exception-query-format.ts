@@ -5,7 +5,7 @@ import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query'
 import { executeExceptionQuery } from './inspect-exception-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
@@ -30,7 +30,7 @@ export interface InspectExceptionQueryResult extends BaseQueryResult {
 	readonly exceptions: Record<NodeId, ExceptionPoint[]>;
 }
 
-function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'inspect-exception'> {
+function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'inspect-exception'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

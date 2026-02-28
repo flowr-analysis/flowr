@@ -1,4 +1,4 @@
-import { amendConfig, cloneConfig, defaultConfigOptions, type EngineConfig, type FlowrConfigOptions } from '../config';
+import { type EngineConfig, FlowrConfig } from '../config';
 import type { DeepWritable } from 'ts-essentials';
 import { FlowrAnalyzer } from './flowr-analyzer';
 import { retrieveEngineInstances } from '../engines';
@@ -36,7 +36,7 @@ import { makePlugin } from './plugins/plugin-registry';
  * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig: DeepWritable<FlowrConfigOptions> = cloneConfig(defaultConfigOptions);
+	private flowrConfig: DeepWritable<FlowrConfig> = FlowrConfig.default();
 	private parser?:     KnownParser;
 	private input?:      Omit<NormalizeRequiredInput, 'context'>;
 	private plugins:     Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
@@ -61,8 +61,8 @@ export class FlowrAnalyzerBuilder {
 	 * @param func - Receives the current configuration of the builder and allows for amendment.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-	public amendConfig(func: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions | void): this {
-		this.flowrConfig = amendConfig(this.flowrConfig, func);
+	public amendConfig(func: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): this {
+		this.flowrConfig = FlowrConfig.amend(this.flowrConfig, func);
 		return this;
 	}
 
@@ -70,9 +70,13 @@ export class FlowrAnalyzerBuilder {
 	 * Overwrite the configuration used by the resulting analyzer.
 	 * @param config - The new configuration.
 	 */
-	public setConfig(config: FlowrConfigOptions): this {
+	public setConfig(config: FlowrConfig): this {
 		this.flowrConfig = config;
 		return this;
+	}
+
+	public setInConfig(): FlowrConfig {
+		return this.flowrConfig;
 	}
 
 	/**

@@ -43,7 +43,7 @@ import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/ut
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
-import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../../src/config';
+import { cloneConfig, defaultConfigOptions, type FlowrConfig } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -557,7 +557,7 @@ interface TestCaseParams {
 	/** The RNode ID generator */
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
-	flowrConfig:          FlowrConfigOptions,
+	flowrConfig:          FlowrConfig,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
 }

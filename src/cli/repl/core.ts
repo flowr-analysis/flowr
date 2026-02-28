@@ -16,7 +16,7 @@ import { fileProtocol } from '../../r-bridge/retriever';
 import { type ReplOutput, standardReplOutput } from './commands/repl-main';
 import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
-import type { FlowrConfigOptions } from '../../config';
+import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
@@ -48,7 +48,7 @@ export interface CommandCompletions {
 /**
  * Used by the repl to provide automatic completions for a given (partial) input line
  */
-export function replCompleter(line: string, config: FlowrConfigOptions): [string[], string] {
+export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -85,7 +85,7 @@ export function replCompleter(line: string, config: FlowrConfigOptions): [string
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
-function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
+function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
 	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
 	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
@@ -105,7 +105,7 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 /**
  * Produces default readline options for the flowR REPL
  */
-export function makeDefaultReplReadline(config: FlowrConfigOptions): readline.ReadLineOptions {
+export function makeDefaultReplReadline(config: FlowrConfig): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
 		output:                  process.stdout,

@@ -5,7 +5,7 @@ import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../
 import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
-import { type FlowrConfigOptions, defaultConfigOptions } from '../../../../src/config';
+import { FlowrConfig } from '../../../../src/config';
 import { extractCfg } from '../../../../src/control-flow/extract-cfg';
 import { type DEFAULT_DATAFLOW_PIPELINE, type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
@@ -29,7 +29,7 @@ import { SourceRange } from '../../../../src/util/range';
  * The default flowR configuration options for performing abstract interpretation.
  * As resolving eval calls from string is only supported in the data flow graph, we have to disable it when visiting the control flow graph to correctly identify eval statements as unknown side effects.
  */
-const defaultAbsintConfig: FlowrConfigOptions = { ...defaultConfigOptions, solver: { ...defaultConfigOptions.solver, evalStrings: false } };
+const defaultAbsintConfig: FlowrConfig = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.evalStrings', false);
 
 /**
  * Whether the inferred values should match the actual values exactly, or should be an over-approximation of the actual values.
@@ -115,7 +115,7 @@ export function testDataFrameDomain(
 	code: string,
 	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
+	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
 	const { parser = shell, ...testConfig } = config ?? {};
 	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
@@ -146,7 +146,7 @@ export function testDataFrameDomainWithSource(
 	getCode: (arg: string) => string,
 	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape] | [SingleSlicingCriterion, ExpectedDataFrameShape, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
+	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
 	const { parser = shell, ...testConfig } = config ?? {};
 	criteria = criteria.map(([criterion, expected, matching]) => [criterion, expected, getDefaultMatchingType(expected, matching)]);
@@ -168,7 +168,7 @@ export function assertDataFrameDomain(
 	code: string,
 	expected: [SingleSlicingCriterion, ExpectedDataFrameShape | undefined][],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultConfigOptions
+	flowRConfig: FlowrConfig = FlowrConfig.default()
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
@@ -204,7 +204,7 @@ export function assertDataFrameOperation(
 	code: string,
 	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
+	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
 	const { name = code } = config ?? {};
 	let result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE | typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
@@ -243,7 +243,7 @@ export function testDataFrameDomainAgainstReal(
 	/** The matching options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
 	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
-	flowRConfig: FlowrConfigOptions = defaultAbsintConfig
+	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
 	const { parser = shell, name = code, skipRun = false } = config ?? {};
 

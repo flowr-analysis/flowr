@@ -1,4 +1,4 @@
-import { type MergeableRecord, deepMergeObject } from './util/objects';
+import { type ObjectPath, type ObjectPathValue, type MergeableRecord, deepMergeObject } from './util/objects';
 import path from 'path';
 import fs from 'fs';
 import { log } from './util/log';
@@ -10,6 +10,7 @@ import type { DeepWritable } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
+import objectPath from 'object-path';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -92,7 +93,12 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	readonly applyReplacements?:    Record<string, string>[]
 }
 
-export interface FlowrConfigOptions extends MergeableRecord {
+/**
+ * The configuration file format for flowR.
+ * @see {@link FlowrConfig#Default} for the default configuration.
+ * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
+ */
+export interface FlowrConfig extends MergeableRecord {
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
@@ -230,179 +236,210 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 	'r-shell':     { type: 'r-shell' }
 };
 
-export const defaultConfigOptions: FlowrConfigOptions = {
-	ignoreSourceCalls: false,
-	semantics:         {
-		environment: {
-			overwriteBuiltIns: {
-				loadDefaults: true,
-				definitions:  []
-			}
-		}
-	},
-	repl: {
-		quickStats:      false,
-		dfProcessorHeat: false
-	},
-	project: {
-		resolveUnknownPathsOnDisk: true
-	},
-	engines:       [],
-	defaultEngine: 'tree-sitter',
-	solver:        {
-		variables:     VariableResolve.Alias,
-		evalStrings:   true,
-		resolveSource: {
-			dropPaths:             DropPathsOption.No,
-			ignoreCapitalization:  true,
-			inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
-			searchPath:            [],
-			repeatedSourceLimit:   2
-		},
-		instrument: {
-			dataflowExtractors: undefined
-		},
-		slicer: {
-			threshold: 50
-		}
-	},
-	abstractInterpretation: {
-		wideningThreshold: 4,
-		dataFrame:         {
-			maxColNames:    50,
-			readLoadedData: {
-				readExternalFiles: true,
-				maxReadLines:      1e6
-			}
-		}
-	}
-};
-
-export const flowrConfigFileSchema = Joi.object({
-	ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
-	semantics:         Joi.object({
-		environment: Joi.object({
-			overwriteBuiltIns: Joi.object({
-				loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
-				definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
-			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
-		}).optional().description('Semantics regarding how to handle the R environment.')
-	}).description('Configure language semantics and how flowR handles them.'),
-	repl: Joi.object({
-		quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-		dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
-	}).description('Configuration options for the REPL.'),
-	project: Joi.object({
-		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
-	}).description('Project specific configuration options.'),
-	engines: Joi.array().items(Joi.alternatives(
-		Joi.object({
-			type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
-			wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
-			treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
-			lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
-		}).description('The configuration for the tree sitter engine.'),
-		Joi.object({
-			type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
-			rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
-		}).description('The configuration for the R shell engine.')
-	)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
-	defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
-	solver:        Joi.object({
-		variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-		evalStrings: Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
-		instrument:  Joi.object({
-			dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
-		}),
-		resolveSource: Joi.object({
-			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
-			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
-			inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
-			searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
-			repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-			applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
-		}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
-		slicer: Joi.object({
-			threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
-		}).optional().description('The configuration for the slicer.')
-	}).description('How to resolve constants, constraints, cells, ...'),
-	abstractInterpretation: Joi.object({
-		dataFrame: Joi.object({
-			maxColNames:       Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
-			wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
-			readLoadedData:    Joi.object({
-				readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
-				maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
-			}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
-		}).description('The configuration of the shape inference for data frames.')
-	}).description('The configuration options for abstract interpretation.')
-}).description('The configuration file format for flowR.');
-
 /**
- * Parses the given JSON string as a flowR config file.
+ * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
  */
-export function parseConfig(jsonString: string): FlowrConfigOptions | undefined {
-	try {
-		const parsed   = JSON.parse(jsonString) as FlowrConfigOptions;
-		const validate = flowrConfigFileSchema.validate(parsed);
-		if(!validate.error) {
-			// assign default values to all config options except for the specified ones
-			return deepMergeObject(defaultConfigOptions, parsed);
+export const FlowrConfig = {
+	/**
+	 * The default configuration for flowR, used when no config file is found or when a config file is missing some options.
+	 * You can use this as a base for your own config and only specify the options you want to change.
+	 */
+	default(): FlowrConfig {
+		return {
+			ignoreSourceCalls: false,
+			semantics:         {
+				environment: {
+					overwriteBuiltIns: {
+						loadDefaults: true,
+						definitions:  []
+					}
+				}
+			},
+			repl: {
+				quickStats:      false,
+				dfProcessorHeat: false
+			},
+			project: {
+				resolveUnknownPathsOnDisk: true
+			},
+			engines:       [],
+			defaultEngine: 'tree-sitter',
+			solver:        {
+				variables:     VariableResolve.Alias,
+				evalStrings:   true,
+				resolveSource: {
+					dropPaths:             DropPathsOption.No,
+					ignoreCapitalization:  true,
+					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
+					searchPath:            [],
+					repeatedSourceLimit:   2
+				},
+				instrument: {
+					dataflowExtractors: undefined
+				},
+				slicer: {
+					threshold: 50
+				}
+			},
+			abstractInterpretation: {
+				wideningThreshold: 4,
+				dataFrame:         {
+					maxColNames:    50,
+					readLoadedData: {
+						readExternalFiles: true,
+						maxReadLines:      1e6
+					}
+				}
+			}
+		};
+	},
+	/**
+	 * The Joi schema for validating a config file, use this to validate your config file before using it. You can also use this to generate documentation for the config file format.
+	 */
+	Schema: Joi.object({
+		ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
+		semantics:         Joi.object({
+			environment: Joi.object({
+				overwriteBuiltIns: Joi.object({
+					loadDefaults: Joi.boolean().optional().description('Should the default configuration still be loaded?'),
+					definitions:  Joi.array().items(Joi.object()).optional().description('The definitions to load/overwrite.')
+				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
+			}).optional().description('Semantics regarding how to handle the R environment.')
+		}).description('Configure language semantics and how flowR handles them.'),
+		repl: Joi.object({
+			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
+			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
+		}).description('Configuration options for the REPL.'),
+		project: Joi.object({
+			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
+		}).description('Project specific configuration options.'),
+		engines: Joi.array().items(Joi.alternatives(
+			Joi.object({
+				type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
+				wasmPath:           Joi.string().optional().description('The path to the tree-sitter-r WASM binary to use. If this is undefined, this uses the default path.'),
+				treeSitterWasmPath: Joi.string().optional().description('The path to the tree-sitter WASM binary to use. If this is undefined, this uses the default path.'),
+				lax:                Joi.boolean().optional().description('Whether to use the lax parser for parsing R code (allowing for syntax errors). If this is undefined, the strict parser will be used.')
+			}).description('The configuration for the tree sitter engine.'),
+			Joi.object({
+				type:  Joi.string().required().valid('r-shell').description('Use the R shell engine.'),
+				rPath: Joi.string().optional().description('The path to the R executable to use. If this is undefined, this uses the default path.')
+			}).description('The configuration for the R shell engine.')
+		)).min(1).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
+		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
+		solver:        Joi.object({
+			variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+			evalStrings: Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+			instrument:  Joi.object({
+				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
+			}),
+			resolveSource: Joi.object({
+				dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
+				ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),
+				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
+				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
+				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
+				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
+			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
+			slicer: Joi.object({
+				threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
+			}).optional().description('The configuration for the slicer.')
+		}).description('How to resolve constants, constraints, cells, ...'),
+		abstractInterpretation: Joi.object({
+			dataFrame: Joi.object({
+				maxColNames:       Joi.number().min(0).description('The maximum number of columns names to infer for data frames before over-approximating the column names to top.'),
+				wideningThreshold: Joi.number().min(1).description('The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration.'),
+				readLoadedData:    Joi.object({
+					readExternalFiles: Joi.boolean().description('Whether data frame shapes should be extracted from loaded external files, such as CSV files.'),
+					maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
+				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
+			}).description('The configuration of the shape inference for data frames.')
+		}).description('The configuration options for abstract interpretation.')
+	}).description('The configuration file format for flowR.'),
+	/**
+	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.
+	 */
+	parse(jsonString: string): FlowrConfig | undefined {
+		try {
+			const parsed   = JSON.parse(jsonString) as FlowrConfig;
+			const validate = FlowrConfig.Schema.validate(parsed);
+			if(!validate.error) {
+				// assign default values to all config options except for the specified ones
+				return deepMergeObject(FlowrConfig.default(), parsed);
+			} else {
+				log.error(`Failed to validate config ${jsonString}: ${validate.error.message}`);
+				return undefined;
+			}
+		} catch(e) {
+			log.error(`Failed to parse config ${jsonString}: ${(e as Error).message}`);
+		}
+	},
+	/**
+	 * Creates a new flowr config that has the updated values.
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	amend(config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
+		const newConfig = FlowrConfig.clone(config);
+		amendmentFunc(newConfig as DeepWritable<FlowrConfig>);
+		return newConfig;
+	},
+	/**
+	 * Clones the given flowr config object.
+	 */
+	clone(config: FlowrConfig): FlowrConfig {
+		return structuredClone(config);
+	},
+	/**
+	 * Loads the flowr config from the given file or the default locations.
+	 */
+	fromFile(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+		try {
+			return loadConfigFromFile(configFile, configWorkingDirectory);
+		} catch(e) {
+			log.error(`Failed to load config: ${(e as Error).message}`);
+			return FlowrConfig.default();
+		}
+	},
+	/**
+	 * Gets the configuration for the given engine type from the config.
+	 */
+	getForEngine<T extends EngineConfig['type']>(config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
+		const engines = config.engines;
+		if(engines.length > 0) {
+			return engines.find(e => e.type === engine) as EngineConfig & { type: T } | undefined;
 		} else {
-			log.error(`Failed to validate config ${jsonString}: ${validate.error.message}`);
-			return undefined;
+			return defaultEngineConfigs[engine];
 		}
-	} catch(e) {
-		log.error(`Failed to parse config ${jsonString}: ${(e as Error).message}`);
+	},
+	/**
+	 * Returns a new config object with the given value set at the given key, where the key is a dot-separated path to the value in the config object.
+	 * @see {@link setInConfigInPlace} for a version that modifies the config object in place instead of returning a new one.
+	 * @example
+	 * ```ts
+	 * const config = FlowrConfig.default();
+	 * const newConfig = FlowrConfig.setInConfig(config, 'solver.variables', VariableResolve.Builtin);
+	 * console.log(config.solver.variables); // Output: "alias"
+	 * console.log(newConfig.solver.variables); // Output: "builtin"
+	 * ```
+	 */
+	setInConfig<Config extends FlowrConfig, Path extends ObjectPath<Config>>(config: Config, key: Path, value: ObjectPathValue<Config, Path>): FlowrConfig {
+		const clone = FlowrConfig.clone(config);
+		objectPath.set(clone, key, value);
+		return clone;
+	},
+	/**
+	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
+	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
+	 */
+	setInConfigInPlace<Config extends FlowrConfig, Path extends ObjectPath<Config>>(config: Config, key: Path, value: ObjectPathValue<Config, Path>): void {
+		objectPath.set(config, key, value);
 	}
-}
+} as const;
 
-/**
- * Creates a new flowr config that has the updated values.
- */
-// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-export function amendConfig(config: FlowrConfigOptions, amendmentFunc: (config: DeepWritable<FlowrConfigOptions>) => FlowrConfigOptions | void): FlowrConfigOptions {
-	const newConfig = cloneConfig(config);
-	amendmentFunc(newConfig as DeepWritable<FlowrConfigOptions>);
-	return newConfig;
-}
-
-/**
- * Clones the given flowr config object.
- */
-export function cloneConfig(config: FlowrConfigOptions): FlowrConfigOptions {
-	return JSON.parse(JSON.stringify(config)) as FlowrConfigOptions;
-}
-
-/**
- * Loads the flowr config from the given file or the default locations.
- */
-export function getConfig(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfigOptions {
-	try {
-		return loadConfigFromFile(configFile, configWorkingDirectory);
-	} catch(e) {
-		log.error(`Failed to load config: ${(e as Error).message}`);
-		return defaultConfigOptions;
-	}
-}
-
-/**
- * Gets the configuration for the given engine type from the config.
- */
-export function getEngineConfig<T extends EngineConfig['type']>(config: FlowrConfigOptions, engine: T): EngineConfig & { type: T } | undefined {
-	const engines = config.engines;
-	if(!engines.length) {
-		return defaultEngineConfigs[engine];
-	} else {
-		return engines.find(e => e.type === engine) as EngineConfig & { type: T } | undefined;
-	}
-}
-
-function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfigOptions {
+function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {
 	if(configFile !== undefined) {
 		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
 			log.trace(`Found config at ${configFile} (absolute)`);
-			const ret = parseConfig(fs.readFileSync(configFile, { encoding: 'utf-8' }));
+			const ret = FlowrConfig.parse(fs.readFileSync(configFile, { encoding: 'utf-8' }));
 			if(ret) {
 				log.info(`Using config ${JSON.stringify(ret)}`);
 				return ret;
@@ -413,7 +450,7 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 			const configPath = path.join(searchPath, configFile);
 			if(fs.existsSync(configPath)) {
 				log.trace(`Found config at ${configPath}`);
-				const ret = parseConfig(fs.readFileSync(configPath, { encoding: 'utf-8' }));
+				const ret = FlowrConfig.parse(fs.readFileSync(configPath, { encoding: 'utf-8' }));
 				if(ret) {
 					log.info(`Using config ${JSON.stringify(ret)}`);
 					return ret;
@@ -424,6 +461,6 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 		} while(fs.existsSync(searchPath));
 	}
 
-	log.info(`Using default config ${JSON.stringify(defaultConfigOptions)}`);
-	return defaultConfigOptions;
+	log.info('Using default config');
+	return FlowrConfig.default();
 }

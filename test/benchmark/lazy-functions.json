@@ -3,7 +3,7 @@
     "sourcesRoot": "/home/jonas/Git/ba-thesis/ssoc-data/sources",
     "workerJs": "../../dist/test/benchmark/run-analysis.js",
     "resultsRoot": "./benchmark-results",
-    "repetitions": 15,
+    "repetitions": 10,
     "warmup": true,
     "collectStats": true,
     "skipCorrectness": false,

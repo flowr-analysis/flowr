@@ -404,12 +404,12 @@
 
                 const dataset = benchSet.get(names[0]) || [];
                 const unpaddedDatasets = names.map((name, j) => {
-                    const values = benchSet.get(name).filter(d => d.bench.value !== undefined && d.bench.value !== null);
+                    const values = benchSet.get(name)?.filter(d => d.bench.value !== undefined && d.bench.value !== null);
                     return {
                         label: name,
-                        data: values.map(d => d.bench.value),
-                        range: values.map(d => d.bench.range),
-                        extra: values.map(d => d.bench.extra),
+                        data: values?.map(d => d.bench.value) ?? [],
+                        range: values?.map(d => d.bench.range) ?? [],
+                        extra: values?.map(d => d.bench.extra) ?? [],
                         borderColor: cycleColors[(i + j) % cycleColors.length],
                         backgroundColor: 'transparent'
                     }
@@ -457,12 +457,12 @@
                                 return label;
                             },
                             afterLabel: item => {
-                                const it = benchSet.get(names[item.datasetIndex])[item.index].bench;
-                                if (it.range) {
+                                const it = benchSet.get(names[item.datasetIndex])[item.index]?.bench;
+                                if (it?.range) {
                                     const {unit} = dataset[item.index].bench
                                     return '\nRange: ' + Math.round(it.range) + ' ' + unit + (it.extra ? '; ' + it.extra : '');
                                 } else {
-                                    return it.extra ? '\n' + it.extra : '';
+                                    return it?.extra ? '\n' + it.extra : '';
                                 }
                             }
                         }

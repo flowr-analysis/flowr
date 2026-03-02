@@ -1,6 +1,8 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import {
+    ControlDependency,
 	type DataflowInformation,
+	ExitPoint,
 	ExitPointType,
 	overwriteExitPoints
 } from '../../../../../info';
@@ -25,7 +27,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import type { DataflowGraphVertexArgument, DataflowGraphVertexFunctionDefinition, DataflowGraphVertexLazyFunctionDefinition } from '../../../../../graph/vertex';
+import type { ContainerIndicesCollection, DataflowGraphVertexArgument, DataflowGraphVertexAstLink, DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
 import { VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
@@ -36,6 +38,156 @@ import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
+
+export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> implements DataflowGraphVertexFunctionDefinition {
+    readonly tag = VertexType.FunctionDefinition;
+    readonly lazy = true;
+    readonly id:                   NodeId;
+    public readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
+    private readonly name:         RSymbol<OtherInfo & ParentInformation>;
+    private readonly args:         readonly RFunctionArgument<OtherInfo & ParentInformation>[];
+    private readonly rootId:       NodeId;
+    private _subflow?:             DataflowFunctionFlowInformation;
+    private _exitPoints?:          readonly ExitPoint[];
+    private _params?:              Record<NodeId, boolean>;
+    private _environment?:         REnvironmentInformation;
+    private _cds?:                 ControlDependency[];
+    private _indicesCollection?:   ContainerIndicesCollection;
+    private _link?:                DataflowGraphVertexAstLink;
+    private _graph: DataflowGraph;
+    [x: string]:                unknown;
+
+    constructor(
+        id: NodeId,
+        name: RSymbol<OtherInfo & ParentInformation>,
+        args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+        rootId: NodeId,
+        data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+        graph: DataflowGraph
+    ) {
+        this.id = id;
+        this.name = name;
+        this.args = args;
+        this.rootId = rootId;
+        this.processorData = data;
+        this._graph = graph;
+    }
+
+    /**
+     * Materialize the lazy function definition by calling processFunctionDefinitionEagerly
+     * and copying all properties from the materialized vertex.
+     */
+    private materialize(): void {
+        if(this._materialized) {
+            return;
+        }
+
+        console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.name.content}`);
+
+        const info = processFunctionDefinitionEagerly(this.name, this.args, this.rootId, this.processorData);
+
+        /** vertex must have same id */
+        const materialized = info.graph.getVertex(this.id);
+        guard(
+            materialized !== undefined && materialized.tag === VertexType.FunctionDefinition,
+            () => `Failed to materialize lazy function definition for id=${this.id}`
+        );
+
+        // Copy all properties from the materialized vertex
+        this._subflow = materialized.subflow;
+        this._exitPoints = materialized.exitPoints;
+        this._params = materialized.params;
+        this._environment = materialized.environment;
+        this._cds = materialized.cds;
+        this._indicesCollection = materialized.indicesCollection;
+        this._link = materialized.link;
+
+        // merge the materialized vertex graph into parent graph
+        this._graph.mergeWith(info.graph, false);
+    }
+
+    get subflow(): DataflowFunctionFlowInformation {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        guard(this._subflow !== undefined, () => `Lazy function definition ${this.id} failed to materialize subflow`);
+        return this._subflow;
+    }
+
+    get exitPoints(): readonly ExitPoint[] {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        guard(this._exitPoints !== undefined, () => `Lazy function definition ${this.id} failed to materialize exitPoints`);
+        return this._exitPoints;
+    }
+
+    get params(): Record<NodeId, boolean> {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        guard(this._params !== undefined, () => `Lazy function definition ${this.id} failed to materialize params`);
+        return this._params;
+    }
+
+    get environment(): REnvironmentInformation | undefined {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        return this._environment;
+    }
+
+    get cds(): ControlDependency[] | undefined {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        return this._cds;
+    }
+
+    get indicesCollection(): ContainerIndicesCollection | undefined {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        return this._indicesCollection;
+    }
+
+    get link(): DataflowGraphVertexAstLink | undefined {
+        if(!this._materialized) {
+            this.materialize();
+        }
+        return this._link;
+    }
+
+    // Setters to allow property updates during materialization and merging
+    set subflow(value: DataflowFunctionFlowInformation) {
+        this._subflow = value;
+    }
+
+    set exitPoints(value: readonly ExitPoint[]) {
+        this._exitPoints = value;
+    }
+
+    set params(value: Record<NodeId, boolean>) {
+        this._params = value;
+    }
+
+    set environment(value: REnvironmentInformation) {
+        this._environment = value;
+    }
+
+    set cds(value: ControlDependency[]) {
+        this._cds = value;
+    }
+
+    set indicesCollection(value: ContainerIndicesCollection) {
+        this._indicesCollection = value;
+    }
+
+    set link(value: DataflowGraphVertexAstLink) {
+        this._link = value;
+    }
+}
+
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -48,23 +200,17 @@ export function processFunctionDefinition<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(data.ctx.config.optimizations.deferredFunctionEvaluation) {
-		/** create layz vertex stub */
+		/** create lazy vertex stub */
 		const graph = new DataflowGraph(data.completeAst.idMap);
 
 		/** get function body and guard against existence */
 		const functionBody = args.at(-1);
 		guard(functionBody !== undefined, () => `Function Definition ${name.content} has no body! This is bad!`);
 
-		graph.addVertex({
-			tag:           VertexType.FunctionDefinition,
-			id:            name.info.id,
-			cds:           data.cds,
-			lazy:          true,
-			name,
-			args,
-			rootId,
-			processorData: data
-		} as unknown as DataflowGraphVertexArgument, data.ctx.env.makeCleanEnv());
+		const lazyVertex = new DataflowGraphVertexLazyFunctionDefinition<OtherInfo>(name.info.id, name, args, rootId, data, graph);
+
+		graph.addVertex(lazyVertex as unknown as DataflowGraphVertexArgument, data.ctx.env.makeCleanEnv());
+
 		return {
 			unknownReferences: [],
 			in:                [],
@@ -80,29 +226,6 @@ export function processFunctionDefinition<OtherInfo>(
 		/** analyze eagerly */
 		return processFunctionDefinitionEagerly(name, args, rootId, data);
 	}
-}
-
-/**
- *
- */
-export function materializeLazyFunctionDefinitionVertex(
-	graph: DataflowGraph,
-	vertex: DataflowGraphVertexLazyFunctionDefinition
-): DataflowGraphVertexFunctionDefinition {
-	const { name, args, rootId, processorData, id } = vertex;
-
-	const info = processFunctionDefinitionEagerly(name, args, rootId, processorData);
-
-	const realVertex = info.graph.getVertex(id);
-	guard(
-		realVertex !== undefined && realVertex.tag === VertexType.FunctionDefinition,
-		() => `Failed to materialize lazy function definition for id=${id}`
-	);
-
-	// Merge the produced graph into the current one
-	graph.mergeWith(info.graph, false);
-
-	return realVertex as DataflowGraphVertexFunctionDefinition;
 }
 
 
@@ -285,7 +408,7 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 }
 
 function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
-	for(const [, info] of graph.vertices(false, false)) {
+	for(const [, info] of graph.vertices(false)) {
 		if(info.tag !== VertexType.FunctionCall || !info.origin.includes(BuiltInProcName.S3Dispatch)) {
 			continue;
 		}
@@ -314,7 +437,7 @@ function updateNestedFunctionClosures(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition, false)) {
+	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
 		const ingoingRefs = subflow.in;
 		const remainingIn: IdentifierReference[] = [];
 		for(const ingoing of ingoingRefs) {
@@ -351,80 +474,65 @@ export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation
 ) {
-	const processedCalls = new Set<NodeId>();
-	let foundCalls = true;
+	// track *all* function definitions - including those nested within the current graph,
+	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
+	for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(onlyBuiltin || !name) {
+			continue;
+		}
 
-	while(foundCalls) {
-		foundCalls = false;
-
-		// track *all* function definitions - including those nested within the current graph,
-		// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-		for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
-
-			if(processedCalls.has(id)) {
-				continue;
+		let effectiveEnvironment = outEnvironment;
+		// only the call environment counts!
+		if(environment) {
+			while(outEnvironment.level > environment.level) {
+				outEnvironment = popLocalEnvironment(outEnvironment);
 			}
-
-			if(onlyBuiltin || !name) {
-				continue;
+			while(outEnvironment.level < environment.level) {
+				outEnvironment = pushLocalEnvironment(outEnvironment);
 			}
+			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
+		}
 
-			processedCalls.add(id);
-			foundCalls = true;
-
-			let effectiveEnvironment = outEnvironment;
-			// only the call environment counts!
-			if(environment) {
-				while(outEnvironment.level > environment.level) {
-					outEnvironment = popLocalEnvironment(outEnvironment);
-				}
-				while(outEnvironment.level < environment.level) {
-					outEnvironment = pushLocalEnvironment(outEnvironment);
-				}
-				effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
-			}
-
-			const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
-			for(const target of targets) {
-				if(isBuiltIn(target)) {
-					graph.addEdge(id, target, EdgeType.Calls);
-					continue;
-				}
-				const targetVertex = graph.getVertex(target);
-				// support reads on symbols
-				if(targetVertex?.tag === VertexType.Use) {
-					graph.addEdge(id, target, EdgeType.Reads);
-					continue;
-				} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
-					continue;
-				}
+		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
+		for(const target of targets) {
+			if(isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);
-				for(const exitPoint of targetVertex.exitPoints) {
-					graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+				continue;
+			}
+			const targetVertex = graph.getVertex(target);
+			// support reads on symbols
+			if(targetVertex?.tag === VertexType.Use) {
+				graph.addEdge(id, target, EdgeType.Reads);
+				continue;
+			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+				continue;
+			}
+			graph.addEdge(id, target, EdgeType.Calls);
+			for(const exitPoint of targetVertex.exitPoints) {
+				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+			}
+			const ingoingRefs = targetVertex.subflow.in;
+			const remainingIn: IdentifierReference[] = [];
+			for(const ingoing of ingoingRefs) {
+				const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
+				if(resolved === undefined) {
+					remainingIn.push(ingoing);
+					continue;
 				}
-				const ingoingRefs = targetVertex.subflow.in;
-				const remainingIn: IdentifierReference[] = [];
-				for(const ingoing of ingoingRefs) {
-					const resolved = ingoing.name ? resolveByName(ingoing.name, effectiveEnvironment, ingoing.type) : undefined;
-					if(resolved === undefined) {
-						remainingIn.push(ingoing);
-						continue;
+				const inId = ingoing.nodeId;
+				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
+				for(const { nodeId } of resolved) {
+					if(!isBuiltIn(nodeId)) {
+						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
+						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					}
-					const inId = ingoing.nodeId;
-					expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
-					for(const { nodeId } of resolved) {
-						if(!isBuiltIn(nodeId)) {
-							graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
-							graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
-						}
-					}
 				}
-				expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
-
-				const linkedParameters = graph.idMap?.get(target);
-				if(linkedParameters?.type === RType.FunctionDefinition) {
-					linkArgumentsOnCall(args, linkedParameters.parameters, graph);
-				}
+			}
+			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
+			targetVertex.subflow.in = remainingIn;
+			const linkedParameters = graph.idMap?.get(target);
+			if(linkedParameters?.type === RType.FunctionDefinition) {
+				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
 			}
 		}
 	}

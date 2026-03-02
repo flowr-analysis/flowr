@@ -9,14 +9,15 @@ import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { guard } from '../../util/assert';
+import { processFunctionDefinitionEagerly } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 
 export enum VertexType {
-	Value              = 'value',
-	Use                = 'use',
-	FunctionCall       = 'fcall',
-	VariableDefinition = 'vdef',
-	FunctionDefinition = 'fdef'
+    Value = 'value',
+    Use = 'use',
+    FunctionCall = 'fcall',
+    VariableDefinition = 'vdef',
+    FunctionDefinition = 'fdef'
 }
 
 export const ValidVertexTypes: Set<string> = new Set(Object.values(VertexType));
@@ -31,7 +32,7 @@ export const ValidVertexTypeReverse = Object.fromEntries(Object.entries(VertexTy
  * ```
  */
 export interface UnnamedArgumentId {
-	readonly index: number,
+    readonly index: number,
 }
 
 /**
@@ -45,12 +46,12 @@ export interface UnnamedArgumentId {
  * ```
  */
 export interface NamedArgumentId {
-	/**
-	 * Index may be undefined, when no index information is available.
-	 */
-	readonly index: number | undefined;
+    /**
+     * Index may be undefined, when no index information is available.
+     */
+    readonly index: number | undefined;
 
-	readonly lexeme: string,
+    readonly lexeme: string,
 }
 
 /**
@@ -68,15 +69,15 @@ export type IndexIdentifier = UnnamedArgumentId | NamedArgumentId;
  * This can be e.g. a string, number or boolean index.
  */
 export interface ContainerLeafIndex {
-	/**
-	 * Distinctive identifier of index, see {@link IndexIdentifier}.
-	 */
-	readonly identifier: IndexIdentifier,
+    /**
+     * Distinctive identifier of index, see {@link IndexIdentifier}.
+     */
+    readonly identifier: IndexIdentifier,
 
-	/**
-	 * NodeId of index in graph.
-	 */
-	readonly nodeId: NodeId,
+    /**
+     * NodeId of index in graph.
+     */
+    readonly nodeId: NodeId,
 }
 
 /**
@@ -87,10 +88,10 @@ export interface ContainerLeafIndex {
  * @see {@link isParentContainerIndex} - to check if an index is a parent container index
  */
 export interface ContainerParentIndex extends ContainerLeafIndex {
-	/**
-	 * Sub-indices of index.
-	 */
-	readonly subIndices: ContainerIndices[],
+    /**
+     * Sub-indices of index.
+     */
+    readonly subIndices: ContainerIndices[],
 }
 
 /**
@@ -143,14 +144,14 @@ export function isSameIndex(a: ContainerIndex, b: ContainerIndex) {
  * List of indices of a single statement like `list(a=3, b=2)`
  */
 export interface ContainerIndices {
-	readonly indices:     ContainerIndex[],
-	/**
-	 * Differentiate between single and multiple indices.
-	 *
-	 * For `list(name = 'John')` `isContainer` would be true, because a list may define more than one index.
-	 * `isContainer` is true for e.g. single index assignments like `person$name <- 'John'`.
-	 */
-	readonly isContainer: boolean,
+    readonly indices:     ContainerIndex[],
+    /**
+     * Differentiate between single and multiple indices.
+     *
+     * For `list(name = 'John')` `isContainer` would be true, because a list may define more than one index.
+     * `isContainer` is true for e.g. single index assignments like `person$name <- 'John'`.
+     */
+    readonly isContainer: boolean,
 }
 
 /**
@@ -165,37 +166,37 @@ export type ContainerIndicesCollection = ContainerIndices[] | undefined
  * @see DataflowGraphVertexFunctionDefinition
  */
 interface DataflowGraphVertexBase extends MergeableRecord {
-	/**
-	 * Used to identify and separate different types of vertices.
-	 */
-	readonly tag:       VertexType
-	/**
-	 * The id of the node (the id assigned by the {@link ParentInformation} decoration).
-	 * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
-	 * as well as the corresponding {@link NormalizedAst|normalized AST}.
-	 */
-	id:                 NodeId
-	/**
-	 * The environment in which the vertex is set.
-	 */
-	environment?:       REnvironmentInformation
-	/**
-	 * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
-	 */
-	cds:                ControlDependency[] | undefined
-	/**
-	 * this attribute links a vertex to indices (pointer links) it may be affected by or related to
-	 */
-	indicesCollection?: ContainerIndicesCollection
-	/**
-	 * Describes the collection of AST vertices that contributed to this vertex.
-	 * For example, this is useful with replacement operators, telling you which assignment operator caused them
-	 */
-	link?:              DataflowGraphVertexAstLink
+    /**
+     * Used to identify and separate different types of vertices.
+     */
+    readonly tag:       VertexType
+    /**
+     * The id of the node (the id assigned by the {@link ParentInformation} decoration).
+     * This unanimously identifies the vertex in the {@link DataflowGraph|dataflow graph}
+     * as well as the corresponding {@link NormalizedAst|normalized AST}.
+     */
+    id:                 NodeId
+    /**
+     * The environment in which the vertex is set.
+     */
+    environment?:       REnvironmentInformation
+    /**
+     * @see {@link ControlDependency} - the collection of control dependencies which have an influence on whether the vertex is executed.
+     */
+    cds:                ControlDependency[] | undefined
+    /**
+     * this attribute links a vertex to indices (pointer links) it may be affected by or related to
+     */
+    indicesCollection?: ContainerIndicesCollection
+    /**
+     * Describes the collection of AST vertices that contributed to this vertex.
+     * For example, this is useful with replacement operators, telling you which assignment operator caused them
+     */
+    link?:              DataflowGraphVertexAstLink
 }
 
 export interface DataflowGraphVertexAstLink {
-	origin: NodeId[]
+    origin: NodeId[]
 }
 
 /**
@@ -219,8 +220,8 @@ export interface DataflowGraphVertexAstLink {
  * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
-	readonly tag:          VertexType.Value
-	readonly environment?: undefined
+    readonly tag:          VertexType.Value
+    readonly environment?: undefined
 }
 
 /**
@@ -228,9 +229,9 @@ export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
  * @see {@link isUseVertex} - to check if a vertex is a use vertex
  */
 export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
-	readonly tag:          VertexType.Use
-	/** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
-	readonly environment?: undefined
+    readonly tag:          VertexType.Use
+    /** Does not require an environment to be attached. If we promote the use to a function call, we attach the environment later.  */
+    readonly environment?: undefined
 }
 
 /**
@@ -240,22 +241,22 @@ export interface DataflowGraphVertexUse extends DataflowGraphVertexBase {
  * @see {@link isFunctionCallVertex} - to check if a vertex is a function call vertex
  */
 export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase {
-	readonly tag:  VertexType.FunctionCall
-	/**
-	 * Effective name of the function call,
-	 * Please be aware that this name can differ from the lexeme.
-	 * For example, if the function is a replacement function, in this case, the actually called fn will
-	 * have the compound name (e.g., `[<-`).
-	 */
-	readonly name: string
-	/** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
-	args:          FunctionArgument[]
-	/** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
-	onlyBuiltin:   boolean
-	/** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
-	environment:   REnvironmentInformation | undefined
-	/** More detailed Information on this function call */
-	origin:        FunctionOriginInformation[] | 'unnamed'
+    readonly tag:  VertexType.FunctionCall
+    /**
+     * Effective name of the function call,
+     * Please be aware that this name can differ from the lexeme.
+     * For example, if the function is a replacement function, in this case, the actually called fn will
+     * have the compound name (e.g., `[<-`).
+     */
+    readonly name: string
+    /** The arguments of the function call, in order (as they are passed to the respective call if executed in R). */
+    args:          FunctionArgument[]
+    /** a performance flag to indicate that the respective call is _only_ calling a builtin function without any df graph attached */
+    onlyBuiltin:   boolean
+    /** The environment attached to the call (if such an attachment is necessary, e.g., because it represents the calling closure */
+    environment:   REnvironmentInformation | undefined
+    /** More detailed Information on this function call */
+    origin:        FunctionOriginInformation[] | 'unnamed'
 }
 
 /** Describes the processor responsible for a function call */
@@ -266,11 +267,11 @@ export type FunctionOriginInformation = BuiltInProcName
  * @see {@link isVariableDefinitionVertex} - to check if a vertex is a variable definition vertex
  */
 export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVertexBase {
-	readonly tag:          VertexType.VariableDefinition
-	/** Does not require an environment, those are attached to the call */
-	readonly environment?: undefined
-	/** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
-	readonly par?:         true;
+    readonly tag:          VertexType.VariableDefinition
+    /** Does not require an environment, those are attached to the call */
+    readonly environment?: undefined
+    /** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
+    readonly par?:         true;
 }
 
 /**
@@ -278,64 +279,23 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
  * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag: VertexType.FunctionDefinition
-	/**
-	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
-	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
-	 * This is the `body` of the function.
-	 */
-	subflow:      DataflowFunctionFlowInformation
-	/**
-	 * All exit points of the function definitions.
-	 * In other words: last expressions/return calls
-	 */
-	exitPoints:   readonly ExitPoint[]
-	/** Maps each param to whether it is read, this is an estimate! */
-	params:       Record<NodeId, boolean>
-	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
-	environment?: REnvironmentInformation
+    readonly tag: VertexType.FunctionDefinition
+    /**
+     * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
+     * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
+     * This is the `body` of the function.
+     */
+    subflow:      DataflowFunctionFlowInformation
+    /**
+     * All exit points of the function definitions.
+     * In other words: last expressions/return calls
+     */
+    exitPoints:   readonly ExitPoint[]
+    /** Maps each param to whether it is read, this is an estimate! */
+    params:       Record<NodeId, boolean>
+    /** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
+    environment?: REnvironmentInformation
 }
-
-export interface DataflowGraphVertexLazyFunctionDefinition<OtherInfo = ParentInformation>
- extends Omit<DataflowGraphVertexFunctionDefinition, 'subflow' | 'exitPoints' | 'params'> {
-    readonly lazy: true;
-
-    readonly id:            NodeId;
-    readonly name:          RSymbol<OtherInfo & ParentInformation>;
-    readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[];
-    rootId:                 NodeId;
-    readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
-}
-
-/**
- *
- */
-export function isLazyFunctionDefinitionVertex<T>(
-	v: unknown
-): v is DataflowGraphVertexLazyFunctionDefinition<T> {
-	if(typeof v !== 'object' || v === null) {
-		return false;
-	}
-
-	const obj = v as Partial<DataflowGraphVertexLazyFunctionDefinition<T>>;
-
-	return obj.tag === VertexType.FunctionDefinition
-		&& obj.lazy === true
-		&& typeof obj.name !== 'undefined'
-		&& typeof obj.processorData !== 'undefined'
-		&& typeof obj.args !== 'undefined'
-		&& typeof obj.rootId !== 'undefined';
-}
-
-/**
- *
- */
-export function assertNotLazyFunctionDefinitionVertex(
-	v: DataflowGraphVertexFunctionDefinition
-): asserts v is DataflowGraphVertexFunctionDefinition {
-	guard(!isLazyFunctionDefinitionVertex<ParentInformation>(v), () => `Expected eager function definition vertex, got lazy one (id=${v.id})`);
-}
-
 
 /**
  * What is to be passed to construct a vertex in the {@link DataflowGraph|dataflow graph}

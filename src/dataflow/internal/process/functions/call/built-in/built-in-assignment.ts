@@ -358,7 +358,7 @@ function processAssignmentToString<OtherInfo>(
 }
 
 function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation): InGraphReferenceType {
-	const vert = sourceInfo.graph.peekVertex(source.info.id);
+	const vert = sourceInfo.graph.getVertex(source.info.id);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
 			return ReferenceType.Function;

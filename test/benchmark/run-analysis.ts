@@ -1,7 +1,6 @@
 import * as path from 'path';
 import * as fs from 'fs';
 import * as process from 'process';
-import { performance } from 'perf_hooks';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../src/dataflow/graph/diff-dataflow-graph';
 import type { FlowrAnalyzer } from '../../src/project/flowr-analyzer';
@@ -103,16 +102,12 @@ async function runOnce(
 	/** compute parsing and normailization  */
 	await analyzer.normalize();
 
-	const t0 = performance.now();
 
 	const result = await analyzer.dataflow();
 
-	const t1 = performance.now();
-	const wallMs = t1 - t0;
-
 	return {
-		wallMs,
-		graph: captureGraph ? result.graph : undefined,
+		wallMs: result['.meta'].timing,
+		graph:  captureGraph ? result.graph : undefined,
 	};
 }
 

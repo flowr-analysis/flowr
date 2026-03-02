@@ -20,7 +20,7 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	const lazyDf = await lazyAnalyzer.dataflow();
 	const eagerDf = await eagerAnalyzer.dataflow();
 
-	console.log(`Lazy Functions in vertices: ${lazyDf.graph.countLazyFunctionDefinitionsByScan()}`);
+	console.log(`Lazy Functions in vertices: ${lazyDf.graph.countLazyFunctionDefinitions()}`);
 
 	const lazyStats = lazyDf.graph.getLazyFunctionStatistics();
 	const eagerStats = eagerDf.graph.getLazyFunctionStatistics();

@@ -385,9 +385,23 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
 
+	/**
+	 * Applies the semantics of the provided condition node to the provided state and returns the filtered state.
+	 * Note that the provided state is modified in place, so a copy of the state should be passed if the original state should not be modified.
+	 * @param state - The abstract state to apply the condition semantics to.
+	 * @param _conditionNodeId - The ID of the condition node to apply the semantics of.
+	 * @param _trueBranch - If false, the semantics of the negated condition are applied.
+	 * @returns The abstract state resulting from applying the condition semantics.
+	 * @protected
+	 */
 	protected applyConditionSemantics(state: MutableStateAbstractDomain<Domain> | undefined, _conditionNodeId: NodeId, _trueBranch: boolean): MutableStateAbstractDomain<Domain> | undefined {
 		return state;
 	}
 
+	/**
+	 * Helper method to get the Bottom element of the abstract domain.
+	 * This is currently required to return bottom values in case the state domain is bottom.
+	 * @protected
+	 */
 	protected abstract getBottomValue(): Domain;
 }

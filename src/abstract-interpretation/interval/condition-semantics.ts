@@ -2,6 +2,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
+import { numericInferenceLogger } from './numeric-inference';
 import type { IntervalDomain } from '../domains/interval-domain';
 import { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
@@ -10,6 +11,7 @@ import { AbstractDomain } from '../domains/abstract-domain';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../../util/logic';
 import { FloatingPointComparison } from '../../util/floating-point';
+import { getMin } from '../../util/numbers';
 
 const IntervalConditionSemanticsMapper = [
 	[Identifier.make('!'), unaryOpSemantics(applyNegatedIntervalConditionSemantics), unaryOpSemantics(applyIntervalConditionSemantics)],
@@ -25,10 +27,35 @@ const IntervalConditionSemanticsMapper = [
 
 type IntervalConditionSemanticsMapperInfo = [identifier: Identifier, semantics: NAryFnSemantics, negatedSemantics: NAryFnSemantics];
 
+/**
+ * Condition semantics definition for unary operators.
+ * @param argNodeId - The node id of the argument of the unary operator.
+ * @param state - The state to retrieve the argument values and apply the semantics to.
+ * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
+ * @param dfg - The dataflow graph containing the vertex and its arguments.
+ * @returns The filtered state after applying the semantics.
+ */
 type UnaryOpSemantics = (argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
+/**
+ * Condition semantics definition for binary operators.
+ * @param leftNodeId - The node id of the left argument of the binary operator.
+ * @param rightNodeId - The node id of the right argument of the binary operator.
+ * @param state - The state to retrieve the argument values and apply the semantics to.
+ * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
+ * @param dfg - The dataflow graph containing the vertex and its arguments.
+ * @returns The filtered state after applying the semantics.
+ */
 type BinaryOpSemantics = (leftNodeId: NodeId, rightNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
+/**
+ * Condition semantics definition for n-ary functions, where the semantics can be applied to any number of arguments.
+ * @param argNodeIds - The node ids of the arguments of the function.
+ * @param state - The state to retrieve the argument values and apply the semantics to.
+ * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
+ * @param dfg - The dataflow graph containing the vertex and its arguments.
+ * @returns The filtered state after applying the semantics.
+ */
 type NAryFnSemantics = (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => MutableStateAbstractDomain<IntervalDomain> | undefined;
 
 /**
@@ -113,18 +140,34 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
 	return state;
 }
 
+/**
+ * Guard for unary operators, filtering all calls with more/less than 1 argument or with undefined argument.
+ * If the call has exactly 1 defined argument, the provided unary operator semantics is applied to it.
+ * Otherwise, the state is returned unmodified and a warning is logged.
+ * @param unaryOperatorSemantics - The semantics to apply if the call has exactly 1 defined argument.
+ * @returns The semantics to apply for a unary operator call, which includes the guard for the number of arguments.
+ */
 function unaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NAryFnSemantics {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 1 || isUndefined(argNodeIds[0])) {
+			numericInferenceLogger.warn('Called unary condition operator with more/less than 1 argument or with undefined argument.');
 			return state;
 		}
 		return unaryOperatorSemantics(argNodeIds[0], state, visitor, dfg);
 	};
 }
 
+/**
+ * Guard for binary operators, filtering all calls with more/less than 2 arguments or with undefined arguments.
+ * If the call has exactly 2 defined arguments, the provided binary operator semantics is applied to them.
+ * Otherwise, the state is returned unmodified and a warning is logged.
+ * @param binaryOperatorSemantics - The semantics to apply if the call has exactly 2 defined arguments.
+ * @returns The semantics to apply for a binary operator call, which includes the guard for the number of arguments.
+ */
 function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NAryFnSemantics {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 2 || isUndefined(argNodeIds[0]) || isUndefined(argNodeIds[1])) {
+			numericInferenceLogger.warn('Called binary condition operator with more/less than 2 arguments or with undefined arguments.');
 			return state;
 		}
 
@@ -195,13 +238,14 @@ function intervalGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutab
 		const [c, d] = rightValue.value;
 
 		if(c < b || FloatingPointComparison.isNearlyLess(c, b, leftValue.significantFigures) != Ternary.Never) {
+			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxAC = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				state.set(originNodeId, leftValue.create([maxAC, b]));
+				state.set(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
 			});
 			const minBD = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				state.set(originNodeId, rightValue.create([c, minBD]));
+				state.set(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
 			});
 			return state;
 		}
@@ -231,13 +275,14 @@ function intervalGreaterEqualOp(leftNodeId: NodeId, rightNodeId: NodeId, current
 		const [c, d] = rightValue.value;
 
 		if(c <= b || FloatingPointComparison.isNearlyLessOrEqual(c, b, leftValue.significantFigures) != Ternary.Never) {
+			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxAC = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				currentState.set(originNodeId, leftValue.create([maxAC, b]));
+				currentState.set(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
 			});
 			const minBD = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				currentState.set(originNodeId, rightValue.create([c, minBD]));
+				currentState.set(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
 			});
 			return currentState;
 		}
@@ -264,6 +309,6 @@ function intervalIsNaFn(argNodeId: NodeId, state: MutableStateAbstractDomain<Int
 	return state.bottom();
 }
 
-function intervalNegatedIsNaFn(argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined) {
+function intervalNegatedIsNaFn(_argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined) {
 	return state;
 }

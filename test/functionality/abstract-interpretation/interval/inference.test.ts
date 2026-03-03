@@ -534,6 +534,70 @@ describe('Interval Inference', () => {
 				'5@x': { domain: IntervalTests.scalar(-1) },
 				'7@x': { domain: IntervalTests.scalar(-1), matching: DomainMatchingType.Overapproximation }, // OA result from above
 			});
+
+			testIntervalDomain(`
+				x <- 13
+				if (x < 10) {
+				  x = x + 1
+				} else if (x < 20) {
+				  x = x + 2
+				} else {
+				  x = x + 3
+				}
+				print(x)
+			`, {
+				'1@x': { domain: IntervalTests.scalar(13) },
+				'3@x': { domain: IntervalTests.bottom() },
+				'5@x': { domain: IntervalTests.scalar(15) },
+				'7@x': { domain: IntervalTests.bottom() },
+				'9@x': { domain: IntervalTests.scalar(15) }
+			});
+
+			testIntervalDomain(`
+				x <- c(13)
+				if (x < 10) {
+				  x = x + 1
+				} else if (x < 20) {
+				  x = x + 2
+				} else {
+				  x = x + 3
+				}
+				print(x)
+			`, {
+				'1@x': { domain: IntervalTests.scalar(13), matching: DomainMatchingType.Overapproximation }, // OA due to vectorization of x@1
+				'3@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }, // OA due to vectorization of x@1
+				'5@x': { domain: IntervalTests.scalar(15), matching: DomainMatchingType.Overapproximation }, // OA due to vectorization of x@1
+				'7@x': { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }, // OA due to vectorization of x@1
+				'9@x': { domain: IntervalTests.scalar(15), matching: DomainMatchingType.Overapproximation } // OA due to vectorization of x@1
+			});
+
+			testIntervalDomain(`
+				x <- 1
+				y <- 2
+				if (x < 10) {
+					if (x * y < 5) {
+						x <- 2 * y + x
+					} else {
+						x <- -1
+					}
+					
+					if (x - y > 0) {
+						y = x - y
+					} else {
+						y = x + y
+					}
+				}
+				x;y;
+			`, {
+				'1@x':  { domain: IntervalTests.scalar(1) },
+				'2@y':  { domain: IntervalTests.scalar(2) },
+				'5@x':  { domain: IntervalTests.scalar(5) },
+				'7@x':  { domain: IntervalTests.bottom() },
+				'11@y': { domain: IntervalTests.scalar(3) },
+				'13@y': { domain: IntervalTests.bottom() },
+				'16@x': { domain: IntervalTests.scalar(5), matching: DomainMatchingType.Overapproximation }, // OA as there is a read edge from 16@x to 1@x, although else branch is bottom
+				'16@y': { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation } // OA as there is a read edge from 16@y to 2@y, although else branch is bottom
+			});
 		});
 	});
 });

@@ -1,15 +1,13 @@
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
 import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
-import { isBuiltIn } from '../../../dataflow/environments/built-in';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
 import type { PromotedLinkTo } from './call-context-query-executor';
@@ -52,7 +50,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
          * including any potential built-in mapping.
          */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
+		if(reResolved?.some(t => NodeId.isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
 	} else {
@@ -66,7 +64,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 		case CallTargets.Any:
 			return callTargets;
 		case CallTargets.OnlyGlobal:
-			if(callTargets.every(isBuiltIn)) {
+			if(callTargets.every(NodeId.isBuiltIn)) {
 				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';
@@ -98,7 +96,7 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 	const totalIndex = argument.name ? call.args.findIndex(arg => FunctionArgument.hasName(arg, argument.name)) : -1;
 	let refAtIndex: NodeId | undefined;
 	if(totalIndex < 0) {
-		const references = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference);
+		const references = call.args.filter(FunctionArgument.isPositional).map(FunctionArgument.getReference);
 		refAtIndex = references[argument.index];
 	} else {
 		const arg = call.args[totalIndex];

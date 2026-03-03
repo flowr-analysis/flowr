@@ -10,7 +10,7 @@ import { reconstructToCode } from '../../reconstruct/reconstruct';
 import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defaults';
 import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
 import { MermaidDefaultMarkStyle } from './info';
-import { collectAllIds } from '../../r-bridge/lang-4.x/ast/model/collect';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
@@ -28,7 +28,7 @@ export const MermaidEntryPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'st
 export const MermaidExitPointDefaultMarkStyle: MermaidMarkStyle['vertex'] = 'stroke:green,stroke-width:6.5px;';
 
 function getLexeme(n?: RNodeWithParent) {
-	return n ? n.info.fullLexeme ?? n.lexeme ?? '' : undefined;
+	return n ? RNode.lexeme(n) ?? '' : undefined;
 }
 
 
@@ -79,8 +79,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			if(!nastNode) {
 				continue;
 			}
-			const ids = collectAllIds(nastNode);
-			for(const childId of ids) {
+			for(const childId of RNode.collectAllIds(nastNode)) {
 				completed.add(childId);
 			}
 		}

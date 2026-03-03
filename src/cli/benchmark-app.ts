@@ -26,6 +26,7 @@ export interface BenchmarkCliOptions {
 	'per-file-time-limit'?:      number
 	'sampling-strategy':         string
 	cfg?:                        boolean
+	cg?:                         boolean
 }
 
 const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
@@ -106,6 +107,7 @@ async function benchmark() {
 		'--sampling-strategy', options['sampling-strategy'],
 		...(options.seed ? ['--seed', options.seed] : []),
 		...(options.cfg ? ['--cfg'] : []),
+		...(options.cg ? ['--cg'] : [])
 	]);
 
 	const runs = options.runs ?? 1;

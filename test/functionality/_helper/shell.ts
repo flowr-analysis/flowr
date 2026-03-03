@@ -24,7 +24,7 @@ import {
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
@@ -43,7 +43,7 @@ import type { GraphDifferenceReport, ProblematicDiffInfo } from '../../../src/ut
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { assertCfgSatisfiesProperties, type CfgProperty } from '../../../src/control-flow/cfg-properties';
-import { cloneConfig, defaultConfigOptions, type FlowrConfigOptions } from '../../../src/config';
+import { FlowrConfig } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
@@ -401,7 +401,7 @@ export function assertDataflow(
 	expected: DataflowGraph | ((input: ReadonlyFlowrAnalysisProvider) => Promise<DataflowGraph>),
 	userConfig?: Partial<DataflowTestConfiguration>,
 	startIndexForDeterministicIds = 0,
-	config = cloneConfig(defaultConfigOptions)
+	config = FlowrConfig.default()
 ): void {
 	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
@@ -557,7 +557,7 @@ interface TestCaseParams {
 	/** The RNode ID generator */
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
-	flowrConfig:          FlowrConfigOptions,
+	flowrConfig:          FlowrConfig,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
 }
@@ -643,7 +643,7 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			const context =  contextFromInput(input, FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()));
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}
@@ -661,10 +661,10 @@ export function assertSliced(
 					// check whether all ids are present in the slice result
 					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(n => normalizeIdToNumberIfPossible(n));
+						.map(NodeId.normalize);
 					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
-						.map(n => normalizeIdToNumberIfPossible(n));
+						.map(NodeId.normalize);
 					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
 				} else {
 					assert.strictEqual(

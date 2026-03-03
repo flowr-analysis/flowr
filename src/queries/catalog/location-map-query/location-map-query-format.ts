@@ -8,7 +8,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { SourceRange } from '../../../util/range';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
@@ -28,7 +28,7 @@ export interface LocationMapQueryResult extends BaseQueryResult {
 	}
 }
 
-function locationMapLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'location-map'> {
+function locationMapLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'location-map'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

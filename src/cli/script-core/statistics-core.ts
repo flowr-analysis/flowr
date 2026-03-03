@@ -12,7 +12,7 @@ import commandLineArgs from 'command-line-args';
 import { scripts } from '../common/scripts-info';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
-import type { FlowrConfigOptions } from '../../config';
+import type { FlowrConfig } from '../../config';
 
 const testRegex = /[^/]*\/test/i;
 const exampleRegex = /[^/]*\/example/i;
@@ -60,7 +60,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 /**
  * The core function for the 'flowr stats' script.
  */
-export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfigOptions) {
+export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfig) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
 		process.exit(0);

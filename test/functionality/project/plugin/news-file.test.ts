@@ -2,16 +2,16 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import { defaultConfigOptions } from '../../../../src/config';
 import {
 	FlowrAnalyzerNewsFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-news-file-plugin';
 import type { NewsChunk } from '../../../../src/project/plugins/file-plugins/files/flowr-news-file';
+import { FlowrConfig } from '../../../../src/config';
 
 
 describe('NEWS-file', function() {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerNewsFilePlugin()
 		], p => p.type)

@@ -92,7 +92,7 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'XLConnect', name: 'loadWorkbook',            argIdx: 0, argName: 'filename', resolveValue: true },
 	{ package: 'DiagrammeR', name: 'import_graph', argIdx: 0, argName: 'graph_file', resolveValue: true },
 	{ package: 'DiagrammeR', name: 'open_graph',   argIdx: 0, argName: 'file',       resolveValue: true },
-	{ package: 'highcharter', name: 'download_map_data', argIdx: 0, argName: 'url', resolveValue: true },
+	{ package: 'highcharter', name: 'download_map_data', argIdx: 0, argName: 'url', resolveValue: true, defaultValue: 'custom/world.js' },
 	{ package: 'rvest', name: 'read_html',      argIdx: 0, argName: 'x',   resolveValue: true },
 	{ package: 'rvest', name: 'read_html_live', argIdx: 0, argName: 'url', resolveValue: true },
 	{ package: 'stats', name: 'read.ftable',    argIdx: 0, argName: 'file', resolveValue: true },

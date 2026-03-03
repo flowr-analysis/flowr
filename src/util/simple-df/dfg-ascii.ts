@@ -1,6 +1,6 @@
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { graphlib, layout } from 'dagre';
-import { normalizeIdToNumberIfPossible, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge } from '../../dataflow/graph/edge';
 
@@ -162,7 +162,7 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 		const x = Math.round(node.x);
 		const y = Math.round(node.y);
 
-		const tag = dfg.getVertex(normalizeIdToNumberIfPossible(nodeId))?.tag;
+		const tag = dfg.getVertex(NodeId.normalize(nodeId))?.tag;
 		let e = '+';
 		if(tag && tag in type2Edge) {
 			e = type2Edge[tag as VertexType];

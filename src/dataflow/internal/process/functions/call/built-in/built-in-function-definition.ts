@@ -21,7 +21,7 @@ import {
 	EmptyArgument,
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import {
 	Identifier,
@@ -36,7 +36,7 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
-import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
@@ -305,7 +305,7 @@ export function updateNestedFunctionCalls(
 		const collectedNextMethods: Set<NodeId> = new Set();
 		const treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		for(const target of targets) {
-			if(isBuiltIn(target)) {
+			if(NodeId.isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);
 				continue;
 			}
@@ -345,7 +345,7 @@ export function updateNestedFunctionCalls(
 				const inId = ingoing.nodeId;
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
 				for(const { nodeId } of resolved) {
-					if(!isBuiltIn(nodeId)) {
+					if(!NodeId.isBuiltIn(nodeId)) {
 						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
 						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					}

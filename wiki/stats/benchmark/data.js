@@ -1,303 +1,8 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1771025670589,
+  "lastUpdate": 1772316538592,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "816c844036b361042c26d2af07b4d092e66b46fb",
-          "message": "[release:patch] Drop readlines/promises Dependency (Release v1.3.14)",
-          "timestamp": "2024-01-15T23:29:47+01:00",
-          "tree_id": "2383d566e88ea2e0dbe60dd73f7d7b92b3093407",
-          "url": "https://github.com/flowr-analysis/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
-        },
-        "date": 1705359154980,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Total per-file",
-            "value": 2967.1418025454545,
-            "unit": "ms",
-            "range": 3618.949366683997,
-            "extra": "median: 1927.64ms"
-          },
-          {
-            "name": "Retrieve AST from R code",
-            "value": 69.06575931818182,
-            "unit": "ms",
-            "range": 145.0290465282857,
-            "extra": "median: 30.99ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 95.2519069090909,
-            "unit": "ms",
-            "range": 153.1479590068876,
-            "extra": "median: 67.97ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 64.6035405,
-            "unit": "ms",
-            "range": 167.23909055295272,
-            "extra": "median: 16.84ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 1.8720710902829922,
-            "unit": "ms",
-            "range": 1.3532400635998951,
-            "extra": "median: 1.63ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 1.4122959211773074,
-            "unit": "ms",
-            "range": 1.281855192577784,
-            "extra": "median: 1.13ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.442741380921788,
-            "unit": "ms",
-            "range": 0.19367073211054742,
-            "extra": "median: 0.40ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 0,
-            "unit": "#",
-            "extra": "out of 7728 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 0,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.7329390759026896,
-            "unit": "#",
-            "extra": "std: 0.1494698363920617"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.720988345209971,
-            "unit": "#",
-            "extra": "std: 0.13987413604166843"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "d69018e52ccd36d2a4c6749a259bc7347a5c8a5d",
-          "message": "[release:patch] npm for WebSocket Server (Release v1.4.1)",
-          "timestamp": "2024-01-31T15:39:17+01:00",
-          "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
-          "url": "https://github.com/flowr-analysis/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
-        },
-        "date": 1706713170342,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Total per-file",
-            "value": 1511.494083,
-            "unit": "ms",
-            "range": 3708.3225553463017,
-            "extra": "median: 450.67ms"
-          },
-          {
-            "name": "Retrieve AST from R code",
-            "value": 64.46248863636363,
-            "unit": "ms",
-            "range": 125.66414120100016,
-            "extra": "median: 34.34ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 94.99519236363636,
-            "unit": "ms",
-            "range": 152.9376581920758,
-            "extra": "median: 66.70ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 65.2556795909091,
-            "unit": "ms",
-            "range": 167.18441854609554,
-            "extra": "median: 17.49ms"
-          },
-          {
-            "name": "Run abstract interpretation",
-            "value": 0.03478995454545455,
-            "unit": "ms",
-            "range": 0.01086253065474186,
-            "extra": "median: 0.03ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 1.8724288794806876,
-            "unit": "ms",
-            "range": 1.3873679811565907,
-            "extra": "median: 1.62ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 1.4074784311593942,
-            "unit": "ms",
-            "range": 1.3118563756339259,
-            "extra": "median: 1.13ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.4524929302663976,
-            "unit": "ms",
-            "range": 0.22636683004337768,
-            "extra": "median: 0.41ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 0,
-            "unit": "#",
-            "extra": "out of 7728 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 0,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.7329390759026896,
-            "unit": "#",
-            "extra": "std: 0.1494698363920617"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.720988345209971,
-            "unit": "#",
-            "extra": "std: 0.13987413604166843"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "78da42c867266e8832933ba9bcd2e1bc3951d5f9",
-          "message": "[release:patch] Dropping xmlparsedata, Benchmark Re-Runs, and Repl Fixes (Release v1.4.2)",
-          "timestamp": "2024-03-17T22:21:47+01:00",
-          "tree_id": "3f3bb3107a47ce4ffee7f569cb902e0c641dbe60",
-          "url": "https://github.com/flowr-analysis/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
-        },
-        "date": 1710711451253,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Retrieve AST from R code",
-            "value": 328.7877424545454,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 328.79ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 34.82602604545455,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 34.83ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 72.140976,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 72.14ms"
-          },
-          {
-            "name": "Total per-file",
-            "value": 1761.6346178636363,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 1761.63ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 1.4568277437917196,
-            "unit": "ms",
-            "range": 1.2805075743767247,
-            "extra": "median: 1.13ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.5308818860863364,
-            "unit": "ms",
-            "range": 0.3540321314721033,
-            "extra": "median: 0.46ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 2.0031037886510674,
-            "unit": "ms",
-            "range": 1.3820450513044555,
-            "extra": "median: 1.70ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 0,
-            "unit": "#",
-            "extra": "out of 4158 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 0,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.7329390759026897,
-            "unit": "#",
-            "extra": "std: 0.1494698363920617"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.7209834969577295,
-            "unit": "#",
-            "extra": "std: 0.13987450018862865"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -10589,304 +10294,346 @@ window.BENCHMARK_DATA = {
             "extra": "median: 30.93"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "df342afc378eafa402204138c8c37257b3a2f08a",
+          "message": "[release:patch] 2.9.11 RNode Helper Objects",
+          "timestamp": "2026-02-18T23:25:01+01:00",
+          "tree_id": "db6fbee544e2794e6052f89ebdd6cfb4430f81f9",
+          "url": "https://github.com/flowr-analysis/flowr/commit/df342afc378eafa402204138c8c37257b3a2f08a"
+        },
+        "date": 1771455337918,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 220.8571806818182,
+            "range": "99.92090209124284",
+            "unit": "ms",
+            "extra": "median: 194.71ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 13.984537477272726,
+            "range": "21.573219213850464",
+            "unit": "ms",
+            "extra": "median: 9.23ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 36.92396377272728,
+            "range": "63.73739768779351",
+            "unit": "ms",
+            "extra": "median: 22.20ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 583.8600749772728,
+            "range": "1067.439801921721",
+            "unit": "ms",
+            "extra": "median: 283.40ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 3.9835519772727275,
+            "range": "6.797566832087196",
+            "unit": "ms",
+            "extra": "median: 2.16ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.37939692606664643,
+            "range": "0.5056745940449068",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2290450980781574,
+            "range": "0.1808485214893697",
+            "unit": "ms",
+            "extra": "median: 0.11ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6192574103777541,
+            "range": "0.6638794260655108",
+            "unit": "ms",
+            "extra": "median: 0.34ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "1083b4274bd70f4e12686c08752cb8a936cf3b37",
+          "message": "[release:patch] 2.9.12 Improve Documentation, Dependency Query Updates",
+          "timestamp": "2026-02-19T23:30:27+01:00",
+          "tree_id": "17eca5d658fee9d6ac5b95afcb96ad5d75076c33",
+          "url": "https://github.com/flowr-analysis/flowr/commit/1083b4274bd70f4e12686c08752cb8a936cf3b37"
+        },
+        "date": 1771542204869,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 250.462722,
+            "range": "112.8232612400215",
+            "unit": "ms",
+            "extra": "median: 219.51ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 16.385925272727274,
+            "range": "25.346389597334646",
+            "unit": "ms",
+            "extra": "median: 10.35ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 42.46648377272727,
+            "range": "72.5843920295527",
+            "unit": "ms",
+            "extra": "median: 24.74ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 618.5649229545455,
+            "range": "1060.9235585592805",
+            "unit": "ms",
+            "extra": "median: 319.09ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.25798175,
+            "range": "7.2103807331678516",
+            "unit": "ms",
+            "extra": "median: 2.09ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.42677151544445324,
+            "range": "0.5663472339064589",
+            "unit": "ms",
+            "extra": "median: 0.17ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2439151467345873,
+            "range": "0.2001343868855073",
+            "unit": "ms",
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6843892357324928,
+            "range": "0.7471945270852864",
+            "unit": "ms",
+            "extra": "median: 0.34ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "24254c6fab4603711326583df502ae0165020669",
+          "message": "[release:patch] 2.9.13 FlowrConfig helper, General Bug-Fixes",
+          "timestamp": "2026-02-28T22:43:33+01:00",
+          "tree_id": "6343cec8164e48a9210d6140b8738cbebc676b9b",
+          "url": "https://github.com/flowr-analysis/flowr/commit/24254c6fab4603711326583df502ae0165020669"
+        },
+        "date": 1772316533778,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 226.4371995,
+            "range": "103.77212904885454",
+            "unit": "ms",
+            "extra": "median: 199.80ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 14.144089477272727,
+            "range": "22.043573913578612",
+            "unit": "ms",
+            "extra": "median: 9.01ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 36.93201777272727,
+            "range": "63.71876882577764",
+            "unit": "ms",
+            "extra": "median: 23.20ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 604.2337980227272,
+            "range": "1108.2075024928142",
+            "unit": "ms",
+            "extra": "median: 291.70ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.083301159090909,
+            "range": "7.207544921714838",
+            "unit": "ms",
+            "extra": "median: 2.09ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.2448779545454545,
+            "range": "3.980473757706247",
+            "unit": "ms",
+            "extra": "median: 1.19ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.3848856552542949,
+            "range": "0.5162884548255391",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24076857022571233,
+            "range": "0.1966245887445183",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6368152646197159,
+            "range": "0.6797401309720057",
+            "unit": "ms",
+            "extra": "median: 0.32ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite": [
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "816c844036b361042c26d2af07b4d092e66b46fb",
-          "message": "[release:patch] Drop readlines/promises Dependency (Release v1.3.14)",
-          "timestamp": "2024-01-15T23:29:47+01:00",
-          "tree_id": "2383d566e88ea2e0dbe60dd73f7d7b92b3093407",
-          "url": "https://github.com/flowr-analysis/flowr/commit/816c844036b361042c26d2af07b4d092e66b46fb"
-        },
-        "date": 1705359156307,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Total per-file",
-            "value": 5046.89271988,
-            "unit": "ms",
-            "range": 6042.128928598865,
-            "extra": "median: 2559.91ms"
-          },
-          {
-            "name": "Retrieve AST from R code",
-            "value": 73.85860644,
-            "unit": "ms",
-            "range": 69.28452321715349,
-            "extra": "median: 37.89ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 114.01183648,
-            "unit": "ms",
-            "range": 69.33746165288669,
-            "extra": "median: 81.81ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 163.82888334,
-            "unit": "ms",
-            "range": 279.6344141597903,
-            "extra": "median: 47.81ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 8.618077094909866,
-            "unit": "ms",
-            "range": 14.411839324447698,
-            "extra": "median: 6.42ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 8.092352677712956,
-            "unit": "ms",
-            "range": 14.275084427627904,
-            "extra": "median: 5.94ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.5170374517553479,
-            "unit": "ms",
-            "range": 0.28554733887508554,
-            "extra": "median: 0.46ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 9,
-            "unit": "#",
-            "extra": "out of 11321 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 967,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.898713819973478,
-            "unit": "#",
-            "extra": "std: 0.08614825965194707"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8579790415512589,
-            "unit": "#",
-            "extra": "std: 0.11594939184257376"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "d69018e52ccd36d2a4c6749a259bc7347a5c8a5d",
-          "message": "[release:patch] npm for WebSocket Server (Release v1.4.1)",
-          "timestamp": "2024-01-31T15:39:17+01:00",
-          "tree_id": "e208ae0ae2bb451ea46ccc05df594033cd4f95bc",
-          "url": "https://github.com/flowr-analysis/flowr/commit/d69018e52ccd36d2a4c6749a259bc7347a5c8a5d"
-        },
-        "date": 1706713172666,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Total per-file",
-            "value": 3566.86774236,
-            "unit": "ms",
-            "range": 5920.286185213901,
-            "extra": "median: 1072.56ms"
-          },
-          {
-            "name": "Retrieve AST from R code",
-            "value": 72.22227936,
-            "unit": "ms",
-            "range": 60.97026629229811,
-            "extra": "median: 43.58ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 113.02594858,
-            "unit": "ms",
-            "range": 70.71306906384982,
-            "extra": "median: 80.14ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 163.44175874,
-            "unit": "ms",
-            "range": 276.9623037407309,
-            "extra": "median: 48.05ms"
-          },
-          {
-            "name": "Run abstract interpretation",
-            "value": 0.06162254,
-            "unit": "ms",
-            "range": 0.02971958909151336,
-            "extra": "median: 0.06ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 8.599255365044066,
-            "unit": "ms",
-            "range": 14.312877376595168,
-            "extra": "median: 6.34ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 8.071953766135923,
-            "unit": "ms",
-            "range": 14.188089279803133,
-            "extra": "median: 5.84ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.5187709959800451,
-            "unit": "ms",
-            "range": 0.27627204677573897,
-            "extra": "median: 0.46ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 9,
-            "unit": "#",
-            "extra": "out of 11321 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 967,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.898713819973478,
-            "unit": "#",
-            "extra": "std: 0.08614825965194707"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8579790415512589,
-            "unit": "#",
-            "extra": "std: 0.11594939184257376"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "Florian Sihler",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
-          "id": "78da42c867266e8832933ba9bcd2e1bc3951d5f9",
-          "message": "[release:patch] Dropping xmlparsedata, Benchmark Re-Runs, and Repl Fixes (Release v1.4.2)",
-          "timestamp": "2024-03-17T22:21:47+01:00",
-          "tree_id": "3f3bb3107a47ce4ffee7f569cb902e0c641dbe60",
-          "url": "https://github.com/flowr-analysis/flowr/commit/78da42c867266e8832933ba9bcd2e1bc3951d5f9"
-        },
-        "date": 1710711452839,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Retrieve AST from R code",
-            "value": 314.59240092,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 314.59ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 34.330948840000005,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 34.33ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 183.7401157,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 183.74ms"
-          },
-          {
-            "name": "Total per-file",
-            "value": 3711.77919708,
-            "unit": "ms",
-            "range": 0,
-            "extra": "median: 3711.78ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 8.640449953634949,
-            "unit": "ms",
-            "range": 14.893197269568514,
-            "extra": "median: 6.26ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.49011368492753077,
-            "unit": "ms",
-            "range": 0.2360399526962079,
-            "extra": "median: 0.44ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 9.139501453399692,
-            "unit": "ms",
-            "range": 15.009902173338167,
-            "extra": "median: 6.75ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 7,
-            "unit": "#",
-            "extra": "out of 988 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 298,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.8935817303062389,
-            "unit": "#",
-            "extra": "std: 0.0919375252942165"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8531248144961375,
-            "unit": "#",
-            "extra": "std: 0.11962978374069927"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -21178,6 +20925,343 @@ window.BENCHMARK_DATA = {
             "extra": "median: 56.85"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "df342afc378eafa402204138c8c37257b3a2f08a",
+          "message": "[release:patch] 2.9.11 RNode Helper Objects",
+          "timestamp": "2026-02-18T23:25:01+01:00",
+          "tree_id": "db6fbee544e2794e6052f89ebdd6cfb4430f81f9",
+          "url": "https://github.com/flowr-analysis/flowr/commit/df342afc378eafa402204138c8c37257b3a2f08a"
+        },
+        "date": 1771455339507,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 243.73435601351352,
+            "range": "41.419757035951136",
+            "unit": "ms",
+            "extra": "median: 227.72ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 17.271720824324326,
+            "range": "9.927255662367243",
+            "unit": "ms",
+            "extra": "median: 13.82ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 57.112153216216214,
+            "range": "37.85083680930957",
+            "unit": "ms",
+            "extra": "median: 47.74ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1263.0084509054054,
+            "range": "1689.1994288468013",
+            "unit": "ms",
+            "extra": "median: 516.65ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.170108364864864,
+            "range": "4.912088949908256",
+            "unit": "ms",
+            "extra": "median: 7.00ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 1.9860318242002721,
+            "range": "3.463712836762295",
+            "unit": "ms",
+            "extra": "median: 0.65ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23269894553516593,
+            "range": "0.15762415042070813",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.225142847329934,
+            "range": "3.4943817917450644",
+            "unit": "ms",
+            "extra": "median: 0.83ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 10243 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8935199792886689,
+            "unit": "#",
+            "extra": "std: 0.09700840787074072"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8707105135836728,
+            "unit": "#",
+            "extra": "std: 0.12115269040740304"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.66234691722973,
+            "range": "79.04903545627704",
+            "unit": "KiB",
+            "extra": "median: 56.85"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "1083b4274bd70f4e12686c08752cb8a936cf3b37",
+          "message": "[release:patch] 2.9.12 Improve Documentation, Dependency Query Updates",
+          "timestamp": "2026-02-19T23:30:27+01:00",
+          "tree_id": "17eca5d658fee9d6ac5b95afcb96ad5d75076c33",
+          "url": "https://github.com/flowr-analysis/flowr/commit/1083b4274bd70f4e12686c08752cb8a936cf3b37"
+        },
+        "date": 1771542206382,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 248.65634513513515,
+            "range": "43.3456656310989",
+            "unit": "ms",
+            "extra": "median: 231.49ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 17.625898864864862,
+            "range": "10.145333096466988",
+            "unit": "ms",
+            "extra": "median: 14.64ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 57.712512810810814,
+            "range": "38.29333810221398",
+            "unit": "ms",
+            "extra": "median: 48.62ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1285.7133870540542,
+            "range": "1704.5156224836905",
+            "unit": "ms",
+            "extra": "median: 532.36ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.401801175675676,
+            "range": "5.428237741283227",
+            "unit": "ms",
+            "extra": "median: 7.05ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.0282184686255817,
+            "range": "3.555209636799336",
+            "unit": "ms",
+            "extra": "median: 0.64ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23997500079474673,
+            "range": "0.1793946916979975",
+            "unit": "ms",
+            "extra": "median: 0.17ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.274926445055431,
+            "range": "3.5938301859030726",
+            "unit": "ms",
+            "extra": "median: 0.86ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 10243 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8935199792886689,
+            "unit": "#",
+            "extra": "std: 0.09700840787074072"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8707105135836728,
+            "unit": "#",
+            "extra": "std: 0.12115269040740304"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.66234691722973,
+            "range": "79.04903545627704",
+            "unit": "KiB",
+            "extra": "median: 56.85"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "24254c6fab4603711326583df502ae0165020669",
+          "message": "[release:patch] 2.9.13 FlowrConfig helper, General Bug-Fixes",
+          "timestamp": "2026-02-28T22:43:33+01:00",
+          "tree_id": "6343cec8164e48a9210d6140b8738cbebc676b9b",
+          "url": "https://github.com/flowr-analysis/flowr/commit/24254c6fab4603711326583df502ae0165020669"
+        },
+        "date": 1772316535336,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 247.3937988783784,
+            "range": "42.443642742666825",
+            "unit": "ms",
+            "extra": "median: 228.78ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 17.83907922972973,
+            "range": "10.215774713299796",
+            "unit": "ms",
+            "extra": "median: 14.64ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 58.15267627027027,
+            "range": "37.99995568050886",
+            "unit": "ms",
+            "extra": "median: 49.48ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1277.0956741216216,
+            "range": "1686.2332992819227",
+            "unit": "ms",
+            "extra": "median: 539.63ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.254262013513513,
+            "range": "5.083660674530879",
+            "unit": "ms",
+            "extra": "median: 7.04ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 3.4242600270270267,
+            "range": "2.7590659182251307",
+            "unit": "ms",
+            "extra": "median: 2.21ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.0040350945263374,
+            "range": "3.4675270036617167",
+            "unit": "ms",
+            "extra": "median: 0.65ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23562964886445023,
+            "range": "0.15083887486781547",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.2461417384342743,
+            "range": "3.5000280337934546",
+            "unit": "ms",
+            "extra": "median: 0.85ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 10243 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8935199792886689,
+            "unit": "#",
+            "extra": "std: 0.09700840787074072"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8707105135836728,
+            "unit": "#",
+            "extra": "std: 0.12115269040740304"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.66234691722973,
+            "range": "79.04903545627704",
+            "unit": "KiB",
+            "extra": "median: 56.85"
+          }
+        ]
       }
     ],
     "\"artificial\" Benchmark Suite (tree-sitter)": [
@@ -27998,6 +28082,343 @@ window.BENCHMARK_DATA = {
             "extra": "median: 30.93"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "df342afc378eafa402204138c8c37257b3a2f08a",
+          "message": "[release:patch] 2.9.11 RNode Helper Objects",
+          "timestamp": "2026-02-18T23:25:01+01:00",
+          "tree_id": "db6fbee544e2794e6052f89ebdd6cfb4430f81f9",
+          "url": "https://github.com/flowr-analysis/flowr/commit/df342afc378eafa402204138c8c37257b3a2f08a"
+        },
+        "date": 1771455340872,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 12.93305759090909,
+            "range": "13.683679529429265",
+            "unit": "ms",
+            "extra": "median: 10.73ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 12.99582959090909,
+            "range": "17.21787379108173",
+            "unit": "ms",
+            "extra": "median: 9.68ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 44.33294277272727,
+            "range": "76.94729947806076",
+            "unit": "ms",
+            "extra": "median: 25.21ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 370.49245347727276,
+            "range": "917.0705992746587",
+            "unit": "ms",
+            "extra": "median: 114.80ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.119470454545454,
+            "range": "6.693545455995446",
+            "unit": "ms",
+            "extra": "median: 2.15ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.40780777783356886,
+            "range": "0.5468504831394475",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23413046319161743,
+            "range": "0.19267289257871606",
+            "unit": "ms",
+            "extra": "median: 0.13ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6551242675946832,
+            "range": "0.7230361484740631",
+            "unit": "ms",
+            "extra": "median: 0.33ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "1083b4274bd70f4e12686c08752cb8a936cf3b37",
+          "message": "[release:patch] 2.9.12 Improve Documentation, Dependency Query Updates",
+          "timestamp": "2026-02-19T23:30:27+01:00",
+          "tree_id": "17eca5d658fee9d6ac5b95afcb96ad5d75076c33",
+          "url": "https://github.com/flowr-analysis/flowr/commit/1083b4274bd70f4e12686c08752cb8a936cf3b37"
+        },
+        "date": 1771542207568,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 12.612174568181818,
+            "range": "13.038976538802173",
+            "unit": "ms",
+            "extra": "median: 10.58ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 12.65174365909091,
+            "range": "17.405776267235783",
+            "unit": "ms",
+            "extra": "median: 9.47ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 43.52080438636364,
+            "range": "78.81763827675869",
+            "unit": "ms",
+            "extra": "median: 22.74ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 375.2419106363636,
+            "range": "946.4320643151146",
+            "unit": "ms",
+            "extra": "median: 109.65ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.072100477272728,
+            "range": "6.8911065233004605",
+            "unit": "ms",
+            "extra": "median: 1.95ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.3867825306430655,
+            "range": "0.5282572238979243",
+            "unit": "ms",
+            "extra": "median: 0.14ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.22714892622819574,
+            "range": "0.18328531793927516",
+            "unit": "ms",
+            "extra": "median: 0.11ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6253082374350967,
+            "range": "0.6870406255845793",
+            "unit": "ms",
+            "extra": "median: 0.34ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "24254c6fab4603711326583df502ae0165020669",
+          "message": "[release:patch] 2.9.13 FlowrConfig helper, General Bug-Fixes",
+          "timestamp": "2026-02-28T22:43:33+01:00",
+          "tree_id": "6343cec8164e48a9210d6140b8738cbebc676b9b",
+          "url": "https://github.com/flowr-analysis/flowr/commit/24254c6fab4603711326583df502ae0165020669"
+        },
+        "date": 1772316536730,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.16960515909091,
+            "range": "14.163905408535376",
+            "unit": "ms",
+            "extra": "median: 10.89ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 13.433107295454544,
+            "range": "18.55687274285424",
+            "unit": "ms",
+            "extra": "median: 9.93ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 45.249320340909094,
+            "range": "80.24850157677233",
+            "unit": "ms",
+            "extra": "median: 25.53ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 374.22503497727274,
+            "range": "920.1477424456394",
+            "unit": "ms",
+            "extra": "median: 119.36ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.237436863636363,
+            "range": "7.48337696771179",
+            "unit": "ms",
+            "extra": "median: 2.00ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.348709318181818,
+            "range": "3.7758175621876613",
+            "unit": "ms",
+            "extra": "median: 1.61ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4027504091998022,
+            "range": "0.5333271053045145",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2367919446457015,
+            "range": "0.20432106607267433",
+            "unit": "ms",
+            "extra": "median: 0.12ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6525596695139823,
+            "range": "0.718569388045206",
+            "unit": "ms",
+            "extra": "median: 0.31ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 105.24240944602273,
+            "range": "267.4684952570673",
+            "unit": "KiB",
+            "extra": "median: 30.93"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -34786,6 +35207,343 @@ window.BENCHMARK_DATA = {
             "range": "6.131073688818302",
             "unit": "ms",
             "extra": "median: 0.82ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8848503516983088,
+            "unit": "#",
+            "extra": "std: 0.09165119536851331"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8453951283674861,
+            "unit": "#",
+            "extra": "std: 0.13154555527308656"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.98974609375,
+            "range": "92.24333006780319",
+            "unit": "KiB",
+            "extra": "median: 56.59"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "df342afc378eafa402204138c8c37257b3a2f08a",
+          "message": "[release:patch] 2.9.11 RNode Helper Objects",
+          "timestamp": "2026-02-18T23:25:01+01:00",
+          "tree_id": "db6fbee544e2794e6052f89ebdd6cfb4430f81f9",
+          "url": "https://github.com/flowr-analysis/flowr/commit/df342afc378eafa402204138c8c37257b3a2f08a"
+        },
+        "date": 1771455342523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 18.504701216216215,
+            "range": "8.509409289097047",
+            "unit": "ms",
+            "extra": "median: 17.72ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.80481275,
+            "range": "12.677389074704264",
+            "unit": "ms",
+            "extra": "median: 15.65ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 59.55900093243243,
+            "range": "46.0673520966421",
+            "unit": "ms",
+            "extra": "median: 45.53ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1344.6449083513512,
+            "range": "3540.2635097841758",
+            "unit": "ms",
+            "extra": "median: 289.73ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.024655371621622,
+            "range": "5.549029753091648",
+            "unit": "ms",
+            "extra": "median: 6.40ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.2139730385573655,
+            "range": "4.796794803547496",
+            "unit": "ms",
+            "extra": "median: 0.47ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23894748811683975,
+            "range": "0.15874214631883177",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.4598233505774876,
+            "range": "4.838923052721383",
+            "unit": "ms",
+            "extra": "median: 0.77ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8848503516983088,
+            "unit": "#",
+            "extra": "std: 0.09165119536851331"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8453951283674861,
+            "unit": "#",
+            "extra": "std: 0.13154555527308656"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.98974609375,
+            "range": "92.24333006780319",
+            "unit": "KiB",
+            "extra": "median: 56.59"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "1083b4274bd70f4e12686c08752cb8a936cf3b37",
+          "message": "[release:patch] 2.9.12 Improve Documentation, Dependency Query Updates",
+          "timestamp": "2026-02-19T23:30:27+01:00",
+          "tree_id": "17eca5d658fee9d6ac5b95afcb96ad5d75076c33",
+          "url": "https://github.com/flowr-analysis/flowr/commit/1083b4274bd70f4e12686c08752cb8a936cf3b37"
+        },
+        "date": 1771542209079,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 18.334698777027025,
+            "range": "8.339031375970759",
+            "unit": "ms",
+            "extra": "median: 17.46ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.521387155405403,
+            "range": "12.204100968441313",
+            "unit": "ms",
+            "extra": "median: 15.99ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 58.84003046621621,
+            "range": "45.253438849819126",
+            "unit": "ms",
+            "extra": "median: 45.41ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1337.2301300945944,
+            "range": "3549.3101135012903",
+            "unit": "ms",
+            "extra": "median: 291.41ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.045396844594594,
+            "range": "5.657167263605006",
+            "unit": "ms",
+            "extra": "median: 6.51ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.2031627229605046,
+            "range": "4.798778077469533",
+            "unit": "ms",
+            "extra": "median: 0.45ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.22896177430506834,
+            "range": "0.15234731773677387",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.438806769895403,
+            "range": "4.828587703112576",
+            "unit": "ms",
+            "extra": "median: 0.79ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8848503516983088,
+            "unit": "#",
+            "extra": "std: 0.09165119536851331"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8453951283674861,
+            "unit": "#",
+            "extra": "std: 0.13154555527308656"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 91.98974609375,
+            "range": "92.24333006780319",
+            "unit": "KiB",
+            "extra": "median: 56.59"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "24254c6fab4603711326583df502ae0165020669",
+          "message": "[release:patch] 2.9.13 FlowrConfig helper, General Bug-Fixes",
+          "timestamp": "2026-02-28T22:43:33+01:00",
+          "tree_id": "6343cec8164e48a9210d6140b8738cbebc676b9b",
+          "url": "https://github.com/flowr-analysis/flowr/commit/24254c6fab4603711326583df502ae0165020669"
+        },
+        "date": 1772316538582,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 18.694307202702703,
+            "range": "8.335389911360702",
+            "unit": "ms",
+            "extra": "median: 17.82ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 21.272404128378376,
+            "range": "12.722511310087308",
+            "unit": "ms",
+            "extra": "median: 16.27ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 61.124141986486485,
+            "range": "46.904962348141886",
+            "unit": "ms",
+            "extra": "median: 44.72ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1394.8139763918919,
+            "range": "3652.8210011174615",
+            "unit": "ms",
+            "extra": "median: 292.98ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.404757216216217,
+            "range": "6.1211723604402675",
+            "unit": "ms",
+            "extra": "median: 6.62ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 3.796361641891892,
+            "range": "3.935662909194453",
+            "unit": "ms",
+            "extra": "median: 2.23ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.2566078964336653,
+            "range": "4.901598309749117",
+            "unit": "ms",
+            "extra": "median: 0.47ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2616194295894325,
+            "range": "0.17655930576860226",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.525422261863523,
+            "range": "4.963176967791873",
+            "unit": "ms",
+            "extra": "median: 0.77ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

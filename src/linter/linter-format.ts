@@ -175,6 +175,15 @@ export const LintingResults = {
 		return new Set(res.results.flatMap(r => r.involvedId).filter(isNotUndefined));
 	},
 	/**
+	 * Gets all locations from the given linting results, i.e. the `loc` property of all results that have a location.
+	 */
+	allLocations<L extends LintingRuleNames>(this: void, res: LintingResults<L> | undefined): SourceLocation[] {
+		if(!res || LintingResults.isError(res)) {
+			return [];
+		}
+		return res.results.filter(LintingResults.hasLocation).map(r => r.loc);
+	},
+	/**
 	 * Stringifies the error contained in the given linting results error.
 	 */
 	stringifyError(this: void, { error }: LintingResultsError): string {
@@ -189,6 +198,12 @@ export const LintingResults = {
 		} catch{
 			return String(error);
 		}
+	},
+	/**
+	 * Checks whether the given linting result has a location, i.e. whether it has a `loc` property.
+	 */
+	hasLocation<R extends LintingResult>(this: void, res: R): res is R & { loc: SourceLocation } {
+		return 'loc' in res;
 	}
 } as const;
 

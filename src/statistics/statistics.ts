@@ -10,7 +10,7 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../core/steps/pipeline/default-pipeli
 import type { RShell } from '../r-bridge/shell';
 import { type Feature, type FeatureKey, type FeatureSelection, type FeatureStatistics, ALL_FEATURES, allFeatureNames } from './features/feature';
 import { ts2r } from '../r-bridge/lang-4.x/convert-values';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrConfig } from '../config';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 
 /**
@@ -41,7 +41,7 @@ type DataflowResult = PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>;
  */
 export async function extractUsageStatistics<T extends RParseRequestFromText | RParseRequestFromFile>(
 	shell: RShell,
-	config: FlowrConfigOptions,
+	config: FlowrConfig,
 	onRequest: (request: T) => void,
 	features: FeatureSelection,
 	requests: AsyncGenerator<T>,
@@ -95,7 +95,7 @@ function processMetaOnSuccessful<T extends RParseRequestFromText | RParseRequest
 
 const parser = new DOMParser();
 
-async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfigOptions): Promise<{ stats: FeatureStatistics, output: DataflowResult }> {
+async function extractSingle(result: FeatureStatistics, shell: RShell, request: RParseRequest, features: 'all' | Set<FeatureKey>, suffixFilePath: string | undefined, config: FlowrConfig): Promise<{ stats: FeatureStatistics, output: DataflowResult }> {
 	const slicerOutput = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 		context: contextFromInput(request, config), parser: shell
 	}).allRemainingSteps();

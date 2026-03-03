@@ -37,8 +37,6 @@ import {
 } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
@@ -48,7 +46,7 @@ import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-typ
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfigOptions, getEngineConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
 import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
@@ -59,6 +57,10 @@ import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-dom
 import fs from 'fs';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import type { CallGraph } from '../dataflow/graph/call-graph';
+import { computeCallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -122,6 +124,7 @@ export class BenchmarkSlicer {
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
+	private callGraph:           CallGraph | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -137,7 +140,7 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
@@ -145,9 +148,9 @@ export class BenchmarkSlicer {
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
 				if(this.parserName === 'r-shell') {
-					return new RShell(getEngineConfig(config, 'r-shell'));
+					return new RShell(FlowrConfig.getForEngine(config, 'r-shell'));
 				} else {
-					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
+					await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
 					return new TreeSitterExecutor();
 				}
 			}
@@ -213,9 +216,9 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0;
 		let commentChars = 0;
 		let commentCharsNoWhitespace = 0;
-		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
+		RProject.visitAst(this.normalizedAst.ast, t => {
 			nodes++;
-			const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
+			const comments = t.info.adToks?.filter(RComment.is);
 			if(comments && comments.length > 0) {
 				const content = comments.map(c => c.lexeme ?? '').join('');
 				commentChars += content.length;
@@ -333,6 +336,15 @@ export class BenchmarkSlicer {
 		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
 	}
 
+	public extractCG(): void {
+		benchmarkLogger.trace('try to extract the call graph');
+		this.guardActive();
+		const g = this.dataflow?.graph;
+		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
+
+		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
+	}
+
 	/**
 	 * Infer the shape of data frames using abstract interpretation with {@link inferDataFrameShapes}
 	 * @returns The statistics of the data frame shape inference
@@ -380,7 +392,7 @@ export class BenchmarkSlicer {
 			}
 		}
 
-		visitAst(this.normalizedAst.ast.files.map(file => file.root), node => {
+		RProject.visitAst(this.normalizedAst.ast, node => {
 			const operations = inference.getAbstractOperations(node.info.id);
 			const value = inference.getAbstractValue(node.info.id);
 
@@ -570,6 +582,7 @@ export class BenchmarkSlicer {
 		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
 		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
 		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
+		const callGraphTime = Number(this.stats.commonMeasurements.get('extract call graph'));
 		const dataFrameShapeTime = Number(this.stats.commonMeasurements.get('infer data frame shapes'));
 
 		this.stats.retrieveTimePerToken = {
@@ -588,14 +601,18 @@ export class BenchmarkSlicer {
 			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
 			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
 		};
-		this.stats.controlFlowTimePerToken = !isNaN(controlFlowTime) ? {
+		this.stats.controlFlowTimePerToken = Number.isNaN(controlFlowTime) ? undefined : {
 			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
 			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
-		this.stats.dataFrameShapeTimePerToken = !isNaN(dataFrameShapeTime) ? {
+		};
+		this.stats.callGraphTimePerToken = Number.isNaN(callGraphTime) ? undefined : {
+			raw:        callGraphTime / this.stats.input.numberOfRTokens,
+			normalized: callGraphTime / this.stats.input.numberOfNormalizedTokens,
+		};
+		this.stats.dataFrameShapeTimePerToken = Number.isNaN(dataFrameShapeTime) ? undefined : {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
+		};
 
 		return {
 			stats:     this.stats,

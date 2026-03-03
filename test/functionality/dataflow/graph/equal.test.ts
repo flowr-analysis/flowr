@@ -5,9 +5,9 @@ import type { GenericDiffConfiguration } from '../../../../src/util/diff';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import { jsonReplacer } from '../../../../src/util/json';
 import { argumentInCall } from '../../_helper/dataflow/environment-builder';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
 import { describe, assert, test } from 'vitest';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 function check(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
 	let res: GraphDifferenceReport | undefined = undefined;
@@ -77,10 +77,10 @@ describe('Dataflow Graph Comparisons', () => {
 			const graph = emptyGraph()
 				.use('0', 'a', { cds: [] })
 				.argument('3', '0')
-				.call('3', '[', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('['), '0', '1'], onlyBuiltIn: true })
+				.call('3', '[', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn('['), '0', '1'], onlyBuiltIn: true })
 				.argument('3', '1')
 				.argument('6', '3')
-				.call('6', '[', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: ['3', '4', builtInId('[')], onlyBuiltIn: true })
+				.call('6', '[', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: ['3', '4', NodeId.toBuiltIn('[')], onlyBuiltIn: true })
 				.argument('6', '4')
 				.constant('1')
 				.constant('4');

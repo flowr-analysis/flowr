@@ -3,7 +3,7 @@ import { isNotNull } from '../../../util/assert';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type FoldFunctions, foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RSymbol, isSpecialSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
@@ -18,7 +18,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 	foldNumber:   onLeaf,
 	foldString:   onLeaf,
 	foldLogical:  onLeaf,
-	foldSymbol:   (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
+	foldSymbol:   (symbol: RSymbol<ParentInformation>) => RSymbol.isSpecial(symbol) ? [] : [symbol.info.id],
 	foldAccess:   (_: unknown, name: NodeId[], access: readonly (typeof EmptyArgument | NodeId[])[]) => [...name, ...access.filter(isNotNull).flat()],
 	foldBinaryOp: onBinary,
 	foldPipe:     onBinary,

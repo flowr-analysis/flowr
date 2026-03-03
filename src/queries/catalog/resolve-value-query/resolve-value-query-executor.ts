@@ -21,8 +21,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 	const results: ResolveValueQueryResult['results'] = {};
 
 	const graph = (await analyzer.dataflow()).graph;
-	const ast = await analyzer.normalize();
-
+	const idMap = (await analyzer.normalize()).idMap;
 	for(const query of queries) {
 		const key = fingerPrintOfQuery(query);
 
@@ -31,8 +30,8 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 		}
 
 		const values = query.criteria
-			.map(criteria => slicingCriterionToId(criteria, ast.idMap))
-			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap: ast.idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
+			.map(criteria => slicingCriterionToId(criteria, idMap))
+			.flatMap(ident => resolveIdToValue(ident, { graph, full: true, idMap, resolve: analyzer.flowrConfig.solver.variables, ctx: analyzer.inspectContext() }));
 
 		results[key] = {
 			values: values

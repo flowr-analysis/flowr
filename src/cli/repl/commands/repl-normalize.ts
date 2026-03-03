@@ -6,7 +6,7 @@ import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipelin
 import { handleString } from '../core';
 import { DefaultMap } from '../../../util/collections/defaultmap';
 import type { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation): string {
 	return out.formatter.format(`Copied ${type} to clipboard (normalize: ${meta['.meta'].timing + 'ms'}).`, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
@@ -62,7 +62,7 @@ export const normalizeHashCommand: ReplCodeCommand = {
 		const counts = new DefaultMap<RType, number>(() => 0);
 		let total = 0;
 		const files = result.ast.files.length;
-		visitAst(result.ast.files.map(f => f.root), n => {
+		RProject.visitAst(result.ast, n => {
 			counts.set(n.type, counts.get(n.type) + 1);
 			total++;
 		});

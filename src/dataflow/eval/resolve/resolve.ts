@@ -3,7 +3,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
-import { BuiltInEvalHandlerMapper, builtInId, isBuiltIn } from '../../environments/built-in';
+import { BuiltInEvalHandlerMapper } from '../../environments/built-in';
 import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
@@ -14,6 +14,7 @@ import type { ResolveInfo } from './alias-tracking';
 import { resolveIdToValue } from './alias-tracking';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier } from '../../environments/identifier';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
@@ -40,12 +41,12 @@ export function resolveNode({ resolve, node, ctx, blocked, environment, graph, i
 		}
 		let builtInName;
 
-		if(isBuiltIn(origin.proc)) {
+		if(NodeId.isBuiltIn(origin.proc)) {
 			builtInName = origin.proc;
 		} else if(nt === RType.FunctionCall && node.named) {
-			builtInName = builtInId(Identifier.getName(node.functionName.content));
+			builtInName = NodeId.toBuiltIn(Identifier.getName(node.functionName.content));
 		} else if(nt === RType.BinaryOp || nt === RType.UnaryOp) {
-			builtInName = builtInId(node.operator);
+			builtInName = NodeId.toBuiltIn(node.operator);
 		} else {
 			return Top;
 		}

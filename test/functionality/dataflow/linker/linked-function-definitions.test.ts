@@ -5,8 +5,8 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { getAllLinkedFunctionDefinitions } from '../../../../src/dataflow/internal/linker';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
 import { label } from '../../_helper/label';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('Linked Function Definitions', withTreeSitter(ts => {
 	function expectLinkedFns(lab: string, code: string, expect: Record<string, { fns?: string[], bi?: string[] }>) {
@@ -38,10 +38,10 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 		'1@x': { fns: ['1@function'] }
 	});
 	expectLinkedFns('alias bi', 'x <- c', {
-		'1@x': { bi: [builtInId('c')] }
+		'1@x': { bi: [NodeId.toBuiltIn('c')] }
 	});
 	expectLinkedFns('alias bi with sconst', 'if(u) c <- 3\nx <- c', {
-		'2@x': { bi: [builtInId('c')] }
+		'2@x': { bi: [NodeId.toBuiltIn('c')] }
 	});
 	expectLinkedFns('one definition ho', 'x <- function(a) { a + 1 }\ny <- function() { x } \nh <- y()', {
 		'3@h': { fns: ['1@function'] }

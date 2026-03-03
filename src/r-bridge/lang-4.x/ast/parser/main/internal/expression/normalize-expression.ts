@@ -9,6 +9,8 @@ import { tryNormalizeFunctionDefinition } from '../functions/normalize-definitio
 import { RType } from '../../../../model/type';
 import { normalizeComment } from '../other/normalize-comment';
 import type { JsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RComment } from '../../../../model/nodes/r-comment';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -47,11 +49,11 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 
 	const children = normalizeExpressions(childData, childrenSource);
 
-	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter || x.type === RType.Comment);
+	const [delimiters, nodes] = partition(children, x => RDelimiter.is(x) || RComment.is(x));
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode;
-		result.info.adToks = [...result.info.adToks ?? [], ...delimiters];
+		result.info.adToks = result.info.adToks ? result.info.adToks.concat(delimiters) : delimiters.slice();
 		return result;
 	} else {
 		return {

@@ -8,8 +8,8 @@ import { label } from '../../_helper/label';
 import type { QueryResultsWithoutMeta } from '../../../../src/queries/query';
 import { CallTargets } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { describe } from 'vitest';
-import { builtInId } from '../../../../src/dataflow/environments/built-in';
 import { withTreeSitter } from '../../_helper/shell';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -78,9 +78,9 @@ describe('Call Context Query', withTreeSitter(parser => {
 		const code = 'if(x) { print <- function() {} }\nprint()';
 		testQuery('May be local or global', code, [q(/print/)], r([{ id: 12, name: 'print' }]));
 		testQuery('May be local or global (only local)', code, [q(/print/, { callTargets: CallTargets.OnlyLocal })], baseResult({}));
-		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. local)', code, [q(/print/, { callTargets: CallTargets.MustIncludeLocal })], r([{ id: 12, calls: [NodeId.toBuiltIn('print'), 7, 'built-in'], name: 'print' }]));
 		testQuery('May be local or global (only global)', code, [q(/print/, { callTargets: CallTargets.OnlyGlobal })], baseResult({}));
-		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [builtInId('print'), 7, 'built-in'], name: 'print' }]));
+		testQuery('May be local or global (incl. global)', code, [q(/print/, { callTargets: CallTargets.MustIncludeGlobal })], r([{ id: 12, calls: [NodeId.toBuiltIn('print'), 7, 'built-in'], name: 'print' }]));
 	});
 	describe('Linked Calls', () => {
 		testQuery('Link to Plot', 'plot(x)\nplot(x)\npoints(y)', [q(/points/, { linkTo: { type: 'link-to-last-call', callName: /plot/ } })], r([{ id: 11, linkedIds: [7], name: 'points' }]));
@@ -91,7 +91,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 	});
 	describe('Aliases', () => {
 		testQuery('Alias without inclusion', 'foo <- print\nfoo()', [q(/print/)], baseResult({}));
-		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [builtInId('print')], id: 4, name: 'print' }]));
+		testQuery('No alias with inclusion', 'foo <- print\nprint()', [q(/print/, { includeAliases: true })], r([{ aliasRoots: [NodeId.toBuiltIn('print')], id: 4, name: 'print' }]));
 		testQuery('Alias with inclusion', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 4, aliasRoots: [1], name: 'foo' }]));
 		testQuery('Alias with inclusion and explicit', 'foo <- print\nfoo()', [q(/print/, { includeAliases: true }), q(/foo/)], r([{ id: 4, aliasRoots: [1], name: 'foo' }, { id: 4, name: 'foo' }]));
 		testQuery('String alias with inclusion', 'foo <- get("print")\nfoo()', [q(/print/, { includeAliases: true })], r([{ id: 7, aliasRoots: [2], name: 'foo' }]));

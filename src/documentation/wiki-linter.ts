@@ -47,12 +47,12 @@ function prettyPrintExpectedOutput(expected: string): string {
 	//
 	lines = expected.trim().replace(/^\s*\[+\s*{*/m, '').replace(/\s*}*\s*]+\s*$/, '').split('\n').filter(l => l.trim() !== '');
 	/* take the indentation of the last line and remove it from all but the first: */
-	const indentation = lines[lines.length - 1].match(/^\s*/)?.[0] ?? '';
+	const indentation = lines.at(-1)?.match(/^\s*/)?.[0] ?? '';
 	return lines.map((line, i) => {
 		if(i === 0) {
 			return line;
 		}
-		return line.replace(new RegExp('^' + indentation, 'g'), '');
+		return line.replaceAll(new RegExp('^' + indentation, 'g'), '');
 	}).join('\n');
 }
 
@@ -283,7 +283,7 @@ We use tags to categorize linting rules for users. The following tags are availa
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
@@ -297,7 +297,7 @@ ${section('Rule Certainty', 3, 'rule-certainty')}
 | Rule Certainty | Description |
 | -------------- | :---------- |
 ${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
-	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
+	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
 	}) |`;
 }).join('\n')}
@@ -307,7 +307,7 @@ ${section('Result Certainty', 3, 'result-certainty')}
 | Result Certainty | Description |
 | ---------------- | :---------- |
 ${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
-	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} |`).join('\n')}
+	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} |`).join('\n')}
 
 `.trim();
 }

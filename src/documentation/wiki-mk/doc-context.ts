@@ -69,17 +69,17 @@ type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
 type StaticKeys<T> = T extends { prototype: infer P } ? Exclude<keyof T, keyof P> : never;
 
 export const ConstantWikiLinkInfo = {
-	'flowr:npm':           FlowrNpmRef,
-	'flowr:github':        FlowrGithubRef,
-	'flowr:wiki':          FlowrWikiBaseRef,
-	'flowr:docker':        FlowrDockerRef,
-	'flowr:vscode':        FlowrVsCode,
-	'flowr:positron':      FlowrPositron,
-	'flowr:rstudio-addin': FlowrRStudioAddin,
-	'flowr:radapter':      FlowrRAdapter,
-	'flowr:benchmarks':    'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark',
-	'flowr:docs':          'https://flowr-analysis.github.io/flowr/docs',
-	'flowr:zenodo':        'https://zenodo.org/doi/10.5281/zenodo.13319290'
+	'flowr:npm':           { url: FlowrNpmRef, name: 'flowR on npm' },
+	'flowr:github':        { url: FlowrGithubRef, name: 'flowR\'s GitHub' },
+	'flowr:wiki':          { url: FlowrWikiBaseRef, name: 'flowR\'s wiki' },
+	'flowr:docker':        { url: FlowrDockerRef, name: 'flowR\'s Docker Image' },
+	'flowr:vscode':        { url: FlowrVsCode, name: 'flowR extension for VS Code' },
+	'flowr:positron':      { url: FlowrPositron, name: 'flowR extension for Positron' },
+	'flowr:rstudio-addin': { url: FlowrRStudioAddin, name: 'flowR RStudio Addin' },
+	'flowr:radapter':      { url: FlowrRAdapter, name: 'flowR R Adapter' },
+	'flowr:benchmarks':    { url: 'https://flowr-analysis.github.io/flowr/wiki/stats/benchmark', name: 'flowR benchmark page' },
+	'flowr:docs':          { url: 'https://flowr-analysis.github.io/flowr/docs', name: 'flowR code docs' },
+	'flowr:zenodo':        { url: 'https://zenodo.org/doi/10.5281/zenodo.13319290', name: 'flowR on Zenodo' },
 } as const;
 
 /**
@@ -122,9 +122,14 @@ export interface GeneralDocContext {
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
 	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
-
+	/**
+	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the type/element name as link text.
+	 * This is similar to {@link GeneralDocContext#link}, but it uses the type/element name as link text, which is especially useful for types with long or complex names.
+	 */
+	linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -290,15 +295,14 @@ export function makeDocContextForTypes(
 	...rootFolders: string[]
 ): GeneralDocContext {
 	if(rootFolders.length === 0) {
-		rootFolders.push(path.resolve(__dirname, '../../../src'));
-		rootFolders.push(path.resolve(__dirname, '../../../test/functionality'));
+		rootFolders.push(path.resolve(__dirname, '../../../src'), path.resolve(__dirname, '../../../test/functionality'));
 	}
 	const { info, program } = getTypesFromFolder({ rootFolder: rootFolders, typeNameForMermaid: undefined });
 	return {
-		doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
+		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
-		link(element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
+		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
 		},
@@ -308,10 +312,14 @@ export function makeDocContextForTypes(
 			const fullName = `${className}${sep}${String(element)}`;
 			return this.link(fullName, fmt, filter);
 		},
-		linkFile(element: ElementIdOrRef): string {
+		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.link(fullName, fmt, filter);
+		},
+		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);
 		},
-		hierarchy(element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
+		hierarchy(this: void, element: ElementIdOrRef, fmt?: Omit<PrintHierarchyArguments, 'info' | 'program' | 'root'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for hierarchy');
 			return printHierarchy({
 				program, info,
@@ -319,44 +327,47 @@ export function makeDocContextForTypes(
 				...fmt
 			});
 		},
-		code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
+		code(this: void, element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string {
 			guard(filter === undefined, 'ElementFilter is not yet supported for code');
 			return printCodeOfElement({
 				program, info,
 				...fmt,
 			}, getNameFromElementIdOrRef(element));
 		},
-		async header(filename: string, purpose: string): Promise<string> {
+		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
-		mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
+		mermaid(this: void, element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
 			return visualizeMermaidClassDiagram(info, {
 				typeNameForMermaid: getNameFromElementIdOrRef(element),
 				...options
 			}) as string;
 		},
-		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
-			const text = linkText ?? pageName.split('/').pop() ?? pageName;
+		linkPage(this: void, pageName: ValidWikiDocumentTargetsNoSuffix | keyof typeof ConstantWikiLinkInfo, linkText?: string, segment?: string): string {
 			let link: string;
+			let text = linkText;
 			if(pageName in ConstantWikiLinkInfo) {
-				link = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
+				const i = ConstantWikiLinkInfo[pageName as keyof typeof ConstantWikiLinkInfo];
+				link = i.url;
+				text ??= i.name;
 			} else {
-				link = `${FlowrWikiBaseRef}/${pageName.toLowerCase().replace(/ /g, '-')}`;
+				link = `${FlowrGithubRef}/${pageName.toLowerCase().replaceAll(' ', '-')}`;
 			}
-			return `[${text}](${link}${segment ? `#${segment}` : ''})`;
+			text ??= pageName.split('/').pop() ?? pageName;
+			return `[${text}](${link}${segment ? '#' + segment : ''})`;
 		},
-		linkCode(path: PathLike, lineNumber?: number): string {
+		linkCode(this: void, path: PathLike, lineNumber?: number): string {
 			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();
 			return `[${path.toString()}](${encodeURIComponent(lnk)})`;
 		},
 		cliOption<
 			ScriptName extends keyof typeof scripts | 'flowr',
 			OptionName extends ScriptOptions<ScriptName>
-		>(scriptName: ScriptName, optionName: OptionName, withAlias = false, quote = true): string {
+		>(this: void, scriptName: ScriptName, optionName: OptionName, withAlias = false, quote = true): string {
 			return getCliLongOptionOf(scriptName, optionName, withAlias, quote);
 		},
-		replCmd(commandName: ReplCommandNames | string, quote = true, showStar = false): string {
+		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
 		}
 	};

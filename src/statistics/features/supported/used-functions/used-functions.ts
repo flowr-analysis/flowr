@@ -8,12 +8,12 @@ import {
 import { postProcess } from './post-process';
 import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
 import { DfEdge, EdgeType } from '../../../../dataflow/graph/edge';
 import { Identifier } from '../../../../dataflow/environments/identifier';
 import { SourceRange } from '../../../../util/range';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 const initialFunctionUsageInfo = {
 	allFunctionCalls: 0,
@@ -79,7 +79,7 @@ function visitCalls(info: FunctionUsageInfo, input: FeatureProcessorInput): void
 	const calls: RNodeWithParent[] = [];
 	const allCalls: FunctionCallInformation[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.FunctionCall) {
 				return;

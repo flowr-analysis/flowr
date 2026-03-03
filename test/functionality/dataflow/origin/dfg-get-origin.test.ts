@@ -3,11 +3,11 @@ import { withTreeSitter } from '../../_helper/shell';
 import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { type Origin, getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
-import { builtInId, BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe('Dataflow', withTreeSitter(ts => {
@@ -97,13 +97,13 @@ describe('Dataflow', withTreeSitter(ts => {
 			'2@c': [ro('1@c'), fo('1@function')]
 		});
 		chk('if(u) { print <- function(x) x }\nprint("hey")', {
-			'2@print': [ro('1@print'), fo('1@function'), bo(BuiltInProcName.Default, 'print', '2@print'), bo(builtInId('print'), 'print', '2@print')]
+			'2@print': [ro('1@print'), fo('1@function'), bo(BuiltInProcName.Default, 'print', '2@print'), bo(NodeId.toBuiltIn('print'), 'print', '2@print')]
 		});
 		chk('c <- 1\nc(1,2,3)', {
 			'2@c': [bo(BuiltInProcName.Vector, 'c', '2@c')]
 		});
 		chk('x <- print\nx("hey")', {
-			'2@x': [ro('1@x'), bo(builtInId('print'), 'x', '2@x')]
+			'2@x': [ro('1@x'), bo(NodeId.toBuiltIn('print'), 'x', '2@x')]
 		});
 		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n}\nprint(x)', {
 			'1@x':     [wo('1@x')],

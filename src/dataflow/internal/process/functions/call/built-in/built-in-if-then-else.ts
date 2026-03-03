@@ -17,8 +17,8 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { invertArgumentMap, pMatch } from '../../../../linker';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -45,9 +45,9 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			'...':              '...'
 		};
 		const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
-		condArg = unpackArg(getArgumentWithId(args, argMaps.get('cond')?.[0]));
-		thenArg = unpackArg(getArgumentWithId(args, argMaps.get('yes')?.[0]));
-		otherwiseArg = unpackArg(getArgumentWithId(args, argMaps.get('no')?.[0]));
+		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
+		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
+		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));
 	} else {
 		[condArg, thenArg, otherwiseArg] = args.map(e => unpackArg(e));
 	}

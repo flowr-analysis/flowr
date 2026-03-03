@@ -35,7 +35,7 @@ import { type QueryRequestMessage, type QueryResponseMessage, requestQueryMessag
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
@@ -54,7 +54,7 @@ export class FlowRServerConnection {
 	private readonly name:                string;
 	private readonly logger:              Logger<ILogObj>;
 	private readonly allowRSessionAccess: boolean;
-	private readonly config:              FlowrConfigOptions;
+	private readonly config:              FlowrConfig;
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -63,7 +63,7 @@ export class FlowRServerConnection {
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions) {
+	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfig) {
 		this.config = config;
 		this.socket = socket;
 		this.parser = parser;

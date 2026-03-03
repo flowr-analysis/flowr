@@ -8,7 +8,7 @@ import { executeResolveValueQuery } from './resolve-value-query-executor';
 import { stringifyValue } from '../../../dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
@@ -22,7 +22,7 @@ export interface ResolveValueQueryResult extends BaseQueryResult {
 	results: Record<string, { values: ResolveResult[] }>
 }
 
-function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'resolve-value'> {
+function resolveValueLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'resolve-value'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	if(!criteria || criteria.length == 0) {
 		output.stderr(output.formatter.format('Invalid resolve-value query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
@@ -44,6 +44,12 @@ export const ResolveValueQueryDefinition = {
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];
+		if(out === undefined || typeof out !== 'object' || !('.meta' in out)) {
+			result.push(
+				formatter.format('Resolve value failed (maybe your criterion does not exist?)!', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }),
+			);
+			return true;
+		}
 		result.push(`Query: ${bold('resolve-value', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [fingerprint, obj] of Object.entries(out.results)) {
 			const { criteria } = JSON.parse(fingerprint) as ResolveValueQuery;

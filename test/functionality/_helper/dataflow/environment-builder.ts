@@ -1,7 +1,4 @@
-import {
-	type NodeId,
-	normalizeIdToNumberIfPossible
-} from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierDefinition, ReferenceType } from '../../../../src/dataflow/environments/identifier';
 import type { FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import {
@@ -12,10 +9,10 @@ import {
 import { define } from '../../../../src/dataflow/environments/define';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../src/dataflow/environments/scoping';
 import type { ControlDependency } from '../../../../src/dataflow/info';
-import { defaultConfigOptions } from '../../../../src/config';
 import { appendEnvironment } from '../../../../src/dataflow/environments/append';
 import { FlowrAnalyzerEnvironmentContext } from '../../../../src/project/context/flowr-analyzer-environment-context';
 import type { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 
 /**
@@ -39,13 +36,13 @@ export function asFunction(name: string, definedAt: NodeId): IdentifierDefinitio
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, cds?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: normalizeIdToNumberIfPossible(nodeId), type: ReferenceType.Argument, name: options?.name, cds: options?.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) })) };
+	return { nodeId: NodeId.normalize(nodeId), type: ReferenceType.Argument, name: options?.name, cds: options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) };
 }
 /**
  * The constant global environment with all pre-defined functions.
  */
 export const defaultEnv = () => {
-	const ctx = new FlowrAnalyzerEnvironmentContext({ config: defaultConfigOptions } as FlowrAnalyzerContext);
+	const ctx = new FlowrAnalyzerEnvironmentContext({ config: FlowrConfig.default() } as FlowrAnalyzerContext);
 	const global = ctx.makeCleanEnv();
 	return new EnvironmentBuilder(global.current, global.current.parent, 0);
 };
@@ -146,9 +143,9 @@ export class EnvironmentBuilder implements REnvironmentInformation {
 	defineInEnv(def: IdentifierDefinition, superAssignment = false) {
 		const envWithDefinition = define({
 			...def,
-			definedAt: normalizeIdToNumberIfPossible(def.definedAt),
-			nodeId:    normalizeIdToNumberIfPossible(def.nodeId),
-			cds:       def.cds?.map(c => ({ ...c, id: normalizeIdToNumberIfPossible(c.id) }))
+			definedAt: NodeId.normalize(def.definedAt),
+			nodeId:    NodeId.normalize(def.nodeId),
+			cds:       def.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) }))
 		} as IdentifierDefinition & { name: string }, superAssignment, this);
 		return new EnvironmentBuilder(envWithDefinition.current, this.builtInEnv, envWithDefinition.level);
 	}

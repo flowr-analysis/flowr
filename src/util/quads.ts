@@ -232,15 +232,21 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quad
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
-	if(config.ignore(key, value)) {
-		return;
-	}
-	if(guardCycle(value)) {
+	if(config.ignore(key, value) || guardCycle(value)) {
 		return;
 	}
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config);
+		} else if(value instanceof Map) {
+			for(const [mapKey, mapValue] of value.entries()) {
+				processObjectEntry('key-' + String(mapKey), mapValue, obj, quads, config);
+			}
+		} else if(value instanceof Set) {
+			let i = 0;
+			for(const setValue of value.values()) {
+				processObjectEntry('idx-'+String(i++), setValue, obj, quads, config);
+			}
 		} else {
 			processObjectEntries(key, value, obj, quads, config);
 		}
@@ -254,10 +260,10 @@ let store = new Set();
 function guardCycle(obj: unknown) {
 	// @ts-expect-error we do not care about the type here
 	if(isObjectOrArray(obj) && 'id' in obj) {
-		if(store.has(obj.id)) {
+		if(store.has(obj)) {
 			return true;
 		}
-		store.add(obj.id);
+		store.add(obj);
 	}
 	return false;
 }

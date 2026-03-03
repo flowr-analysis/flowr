@@ -23,11 +23,12 @@ import {
 import { CallTargets } from '../call-context-query/identify-link-to-last-call-relation';
 import { getArgumentStringValue } from '../../../dataflow/eval/resolve/resolve-argument';
 import type { DataflowInformation } from '../../../dataflow/info';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { guard } from '../../../util/assert';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
 
 /**
@@ -117,7 +118,7 @@ function dropInfoOnLinkedIds(linkedIds: readonly (NodeId | { id: NodeId, info: o
 const readOnlyModes = new Set(['r', 'rt', 'rb']);
 const writeOnlyModes = new Set(['w', 'wt', 'wb', 'a', 'at', 'ab']);
 
-function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfigOptions, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
+function getResults(queries: readonly DependenciesQuery[], { dataflow, config, normalize }: { dataflow: DataflowInformation, config: FlowrConfig, normalize: NormalizedAst }, results: CallContextQueryResult, kind: DependencyCategoryName, functions: FunctionInfo[], data: BasicQueryData): DependencyInfo[] {
 	const defaultValue = getAllCategories(queries)[kind].defaultValue;
 	const vars = config.solver.variables;
 	const functionMap = new Map<string, FunctionInfo>(functions.map(f => [f.name, f]));
@@ -216,11 +217,11 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		if(get?.type === RType.Argument) {
 			get = get.value;
 		}
-		return get?.info.fullLexeme ?? get?.lexeme;
+		return RNode.lexeme(get);
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfigOptions, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}

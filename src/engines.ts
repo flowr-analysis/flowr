@@ -1,4 +1,4 @@
-import { type FlowrConfigOptions, type KnownEngines, getEngineConfig } from './config';
+import { FlowrConfig, type KnownEngines } from './config';
 import { RShell, RShellReviveOptions } from './r-bridge/shell';
 import { bold, ColorEffect, Colors, formatter, italic } from './util/text/ansi';
 import { TreeSitterExecutor } from './r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -8,11 +8,11 @@ import { log } from './util/log';
  * Retrieve all requested engine instance.
  * Please make sure that if this includes the R engine, that you properly shut it down again!
  */
-export async function retrieveEngineInstances(config: FlowrConfigOptions, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
+export async function retrieveEngineInstances(config: FlowrConfig, defaultOnly = false): Promise<{ engines: KnownEngines, default: keyof KnownEngines }> {
 	const engines: KnownEngines = {};
-	if(getEngineConfig(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell')) {
+	if(FlowrConfig.getForEngine(config, 'r-shell') && (!defaultOnly || config.defaultEngine === 'r-shell')) {
 		// we keep an active shell session to allow other parse investigations :)
-		engines['r-shell'] = new RShell(getEngineConfig(config, 'r-shell'), {
+		engines['r-shell'] = new RShell(FlowrConfig.getForEngine(config, 'r-shell'), {
 			revive:   RShellReviveOptions.Always,
 			onRevive: (code, signal) => {
 				const signalText = signal == null ? '' : ` and signal ${signal}`;
@@ -21,8 +21,8 @@ export async function retrieveEngineInstances(config: FlowrConfigOptions, defaul
 			}
 		});
 	}
-	if(getEngineConfig(config, 'tree-sitter') && (!defaultOnly || config.defaultEngine === 'tree-sitter')) {
-		await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
+	if(FlowrConfig.getForEngine(config, 'tree-sitter') && (!defaultOnly || config.defaultEngine === 'tree-sitter')) {
+		await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
 		engines['tree-sitter'] = new TreeSitterExecutor();
 	}
 	let defaultEngine = config.defaultEngine;

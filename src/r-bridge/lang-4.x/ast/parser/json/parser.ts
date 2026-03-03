@@ -6,10 +6,9 @@ import { normalizeRootObjToAst } from '../main/internal/structure/normalize-root
 import type { NormalizerData } from '../main/normalizer-data';
 import { normalizeTreeSitterTreeToAst } from '../../../tree-sitter/tree-sitter-normalize';
 import type { ParseStepOutput, ParseStepOutputSingleFile } from '../../../../parser';
-import { type FlowrConfigOptions, getEngineConfig } from '../../../../../config';
+import { FlowrConfig } from '../../../../../config';
 import type { Tree } from 'web-tree-sitter';
-import type { RProject } from '../../model/nodes/r-project';
-import { mergeProjects } from '../../model/nodes/r-project';
+import { RProject } from '../../model/nodes/r-project';
 
 export const parseLog = log.getSubLogger({ name: 'ast-parser' });
 
@@ -22,7 +21,7 @@ export function normalize(
 	parsed: ParseStepOutput<string>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0)
 ): NormalizedAst {
-	return decorateAst(mergeProjects(parsed.files.map(normalizeButNotDecorated)), { getId });
+	return decorateAst(RProject.merge(parsed.files.map(normalizeButNotDecorated)), { getId });
 }
 
 /**
@@ -44,9 +43,9 @@ export function normalizeButNotDecorated(
 export function normalizeTreeSitter(
 	parsed: ParseStepOutput<Tree>,
 	getId: IdGenerator<NoInfo> = deterministicCountingIdGenerator(0),
-	config: FlowrConfigOptions
+	config: FlowrConfig = FlowrConfig.default(),
 ): NormalizedAst {
-	const lax = getEngineConfig(config, 'tree-sitter')?.lax;
+	const lax = FlowrConfig.getForEngine(config, 'tree-sitter')?.lax;
 	const result = decorateAst(normalizeTreeSitterTreeToAst(parsed.files, lax), { getId });
 	result.hasError = parsed.files.some(p => p.parsed.rootNode.hasError);
 	return result;

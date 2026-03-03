@@ -1,7 +1,6 @@
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
 import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
-import { amendConfig } from '../../config';
 import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -15,6 +14,7 @@ import { SourceRange } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { FlowrConfig } from '../../config';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
@@ -62,7 +62,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 		let ctx = data.analyzer.inspectContext();
 		ctx = {
 			...ctx,
-			config: amendConfig(data.analyzer.flowrConfig, flowrConfig => {
+			config: FlowrConfig.amend(data.analyzer.flowrConfig, flowrConfig => {
 				if(config.readLoadedData !== undefined) {
 					(flowrConfig.abstractInterpretation.dataFrame.readLoadedData as { readExternalFiles: boolean }).readExternalFiles = config.readLoadedData;
 				}
@@ -111,7 +111,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			.map(({ nodeId, operand, ...accessed }) => ({
 				...accessed,
 				node:    data.normalize.idMap.get(nodeId),
-				operand: operand !== undefined ? data.normalize.idMap.get(operand) : undefined,
+				operand: operand === undefined ? undefined : data.normalize.idMap.get(operand),
 			}))
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,
@@ -127,10 +127,10 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Access of ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' ' +
-			(result.operand !== undefined ? `of \`${result.operand}\`` : `at \`${result.access}\``) + ` at ${SourceRange.format(result.range)}`,
+			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`,
 		[LintingPrettyPrintContext.Full]: result => `Accessed ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' does not exist ' +
-			(result.operand !== undefined ? `in \`${result.operand}\`` : `at \`${result.access}\``) + ` at ${SourceRange.format(result.range)}`
+			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`
 	},
 	info: {
 		name:          'Dataframe Access Validation',

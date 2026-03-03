@@ -10,7 +10,10 @@ import type {
 	OptimizationFlags,
 	WorkerResult,
 	LazyFunctionStats,
+	GraphMetrics,
+	SourceCharacteristics,
 } from './results-types';
+import { VertexType } from '../../src/dataflow/graph/vertex';
 
 export interface PerformanceMetrics {
     wallMs: number;
@@ -45,23 +48,25 @@ function percentile(xs: number[], p: number): number {
 }
 function stats(xs: number[]): PerformanceStats {
 	return {
-		mean:   mean(xs),
-		median: median(xs),
-		min:    Math.min(...xs),
-		max:    Math.max(...xs),
-		stddev: stddev(xs),
-		p90:    percentile(xs, 90),
-		p95:    percentile(xs, 95),
+		mean:       mean(xs),
+		median:     median(xs),
+		min:        Math.min(...xs),
+		max:        Math.max(...xs),
+		stddev:     stddev(xs),
+		p90:        percentile(xs, 90),
+		p95:        percentile(xs, 95),
+		dataPoints: xs,
 	};
 }
 
 // -------------------- analyzer builders --------------------
 async function buildOptimizedAnalyzer(flags: OptimizationFlags): Promise<FlowrAnalyzer> {
 	const builder = new FlowrAnalyzerBuilder();
-	if(flags.lazyFunctions) {
-		builder.enableDeferredFunctionEval();
-	}
-	// TODO: hook parallelFiles / parallelOperations
+	builder.amendConfig((config) => {
+        config.parallelFileProcessing = flags.parallelFiles;
+        config.parallelOperations = flags.parallelOperations;
+        config.lazyFunctions = flags.lazyFunctions;
+    });
 	return builder.build();
 }
 
@@ -88,6 +93,70 @@ function countFiles(dir: string): number {
 		}
 	}
 	return total;
+}
+
+// -------------------- metadata collectors (outside measurements) --------------------
+
+/**
+ * Extract graph metrics from dataflow graph
+ */
+function extractGraphMetrics(graph: DataflowGraph): GraphMetrics {
+	const nodeTypeDistribution: Record<string, number> = {};
+	let totalNodeCount = 0;
+
+	// Count nodes by type using the actual API
+	for(const type of Object.values(VertexType)) {
+		const ids = graph.vertexIdsOfType(type as any);
+		if(ids.length > 0) {
+			nodeTypeDistribution[type] = ids.length;
+			totalNodeCount += ids.length;
+		}
+	}
+
+	// Count side-effects
+	const sideEffectCount = graph.unknownSideEffects.size;
+
+	return {
+		nodeCount: totalNodeCount,
+		nodeTypeDistribution,
+		sideEffectCount,
+	};
+}
+
+/**
+ * Analyze source code characteristics
+ */
+function analyzeSourceCharacteristics(projectPath: string): SourceCharacteristics {
+	let lineCount = 0;
+	let totalBytes = 0;
+	let fileCount = 0;
+
+	function scanDir(dir: string) {
+		const entries = fs.readdirSync(dir, { withFileTypes: true });
+		for(const e of entries) {
+			const fullPath = path.join(dir, e.name);
+			if(e.isDirectory()) {
+				scanDir(fullPath);
+			} else {
+				try {
+					const stats = fs.statSync(fullPath);
+					totalBytes += stats.size;
+					fileCount++;
+
+					// Count lines only for R files
+					if(path.extname(e.name).toLowerCase() === '.r') {
+						const content = fs.readFileSync(fullPath, 'utf-8');
+						lineCount += content.split('\n').length;
+					}
+				} catch(err) {
+					// Skip files we can't read
+				}
+			}
+		}
+	}
+
+	scanDir(projectPath);
+	return { lineCount, totalBytes, fileCount };
 }
 
 // -------------------- runner --------------------
@@ -133,6 +202,10 @@ async function main(): Promise<void> {
 	fs.mkdirSync(outputDir, { recursive: true });
 	const fileCount = countFiles(projectPath);
 
+	// -------------------- metadata collection (before measurements) --------------------
+	console.log('Collecting source characteristics...');
+	const sourceCharacteristics = analyzeSourceCharacteristics(projectPath);
+
 	// -------------------- correctness --------------------
 	let correctness: WorkerResult['correctness'] = 'skipped';
 
@@ -159,13 +232,14 @@ async function main(): Promise<void> {
 	console.log('Measuring optimized performance...');
 	const wallMsArr: number[] = [];
 	let lazyStats: LazyFunctionStats | undefined;
+	let graphMetrics: GraphMetrics | undefined;
 
 	for(let i = 0; i < repetitions; i++) {
-		const captureGraph = i === 0; // Capture graph from first run to extract lazy stats
+		const captureGraph = i === 0; // Capture graph from first run to extract stats
 		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), captureGraph);
 		wallMsArr.push(run.wallMs);
 
-		// Collect lazy function statistics from first run (analysis is deterministic)
+		// Collect metadata from first run (analysis is deterministic)
 		if(i === 0 && run.graph) {
 			const graphStats = run.graph.getLazyFunctionStatistics();
 			lazyStats = {
@@ -173,19 +247,24 @@ async function main(): Promise<void> {
 				lazyFunctionsMaterialized: graphStats.lazyFunctionsMaterialized,
 				lazyFunctionsRemaining:    graphStats.totalFunctionDefinitions - graphStats.lazyFunctionsMaterialized,
 			};
+
+			// Extract graph metrics (outside perf measurement)
+			graphMetrics = extractGraphMetrics(run.graph);
 		}
 	}
 
 	const wallMsStats = stats(wallMsArr);
 
 	const result: WorkerResult = {
-		project:           path.resolve(projectPath),
-		threads:           undefined,
+		project:                path.resolve(projectPath),
+		threads:                undefined,
 		correctness,
 		fileCount,
-		timestamp:         new Date().toISOString(),
-		wallMs:            wallMsStats,
+		timestamp:              new Date().toISOString(),
+		wallMs:                 wallMsStats,
 		lazyFunctionStats: lazyStats,
+		graphMetrics,
+		sourceCharacteristics,
 	};
 
 	fs.writeFileSync(path.join(outputDir, 'result.json'), JSON.stringify(result, null, 2), 'utf-8');

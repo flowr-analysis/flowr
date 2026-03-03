@@ -178,6 +178,16 @@ type SuiteSummary = {
 		withDifferences: number;
 		skipped:         number;
 	};
+    aggregateGraphMetrics?: {
+		totalNodes:              number;
+		totalSideEffects:        number;
+		nodeTypeDistribution:    Record<string, number>;
+	};
+    aggregateSourceStats?: {
+		totalLineCount:  number;
+		totalBytes:      number;
+		totalFileCount:  number;
+	};
 };
 
 function collectResults(): SuiteSummary[] {
@@ -204,6 +214,12 @@ function collectResults(): SuiteSummary[] {
 		// Aggregate lazy function stats
 		let totalLazyFunctionStats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number; lazyFunctionsRemaining: number } | undefined;
 
+		// Aggregate graph metrics
+		let aggregateGraphMetrics: { totalNodes: number; totalSideEffects: number; nodeTypeDistribution: Record<string, number> } | undefined;
+
+		// Aggregate source stats
+		let aggregateSourceStats: { totalLineCount: number; totalBytes: number; totalFileCount: number } | undefined;
+
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
 			const resultPath = path.join(projectDir, 'result.json');
@@ -229,6 +245,28 @@ function collectResults(): SuiteSummary[] {
 				totalLazyFunctionStats.totalFunctionDefinitions += data.lazyFunctionStats.totalFunctionDefinitions;
 				totalLazyFunctionStats.lazyFunctionsMaterialized += data.lazyFunctionStats.lazyFunctionsMaterialized;
 				totalLazyFunctionStats.lazyFunctionsRemaining += data.lazyFunctionStats.lazyFunctionsRemaining;
+			}
+
+			// Aggregate graph metrics
+			if(data.graphMetrics) {
+				if(!aggregateGraphMetrics) {
+					aggregateGraphMetrics = { totalNodes: 0, totalSideEffects: 0, nodeTypeDistribution: {} };
+				}
+				aggregateGraphMetrics.totalNodes += data.graphMetrics.nodeCount;
+				aggregateGraphMetrics.totalSideEffects += data.graphMetrics.sideEffectCount;
+				for(const [type, count] of Object.entries(data.graphMetrics.nodeTypeDistribution)) {
+					aggregateGraphMetrics.nodeTypeDistribution[type] = (aggregateGraphMetrics.nodeTypeDistribution[type] ?? 0) + count;
+				}
+			}
+
+			// Aggregate source stats
+			if(data.sourceCharacteristics) {
+				if(!aggregateSourceStats) {
+					aggregateSourceStats = { totalLineCount: 0, totalBytes: 0, totalFileCount: 0 };
+				}
+				aggregateSourceStats.totalLineCount += data.sourceCharacteristics.lineCount;
+				aggregateSourceStats.totalBytes += data.sourceCharacteristics.totalBytes;
+				aggregateSourceStats.totalFileCount += data.sourceCharacteristics.fileCount;
 			}
 		}
 
@@ -270,8 +308,14 @@ function collectResults(): SuiteSummary[] {
 			console.log(`- Functions materialized: ${totalLazyFunctionStats.lazyFunctionsMaterialized}`);
 			console.log(`- Functions remaining lazy: ${totalLazyFunctionStats.lazyFunctionsRemaining}`);
 		}
+		if(aggregateGraphMetrics) {
+			console.log(`- Graph nodes: ${aggregateGraphMetrics.totalNodes}, side effects: ${aggregateGraphMetrics.totalSideEffects}`);
+		}
+		if(aggregateSourceStats) {
+			console.log(`- Source: ${aggregateSourceStats.totalLineCount} lines, ${(aggregateSourceStats.totalBytes / 1024 / 1024).toFixed(2)} MB, ${aggregateSourceStats.totalFileCount} files`);
+		}
 
-		suites.push({ suiteName, projects, totalRuntimeMs, meanProjectRuntimeMs, totalFiles, totalLazyFunctionStats, correctnessStats });
+		suites.push({ suiteName, projects, totalRuntimeMs, meanProjectRuntimeMs, totalFiles, totalLazyFunctionStats, correctnessStats, aggregateGraphMetrics, aggregateSourceStats });
 	}
 
 	return suites;
@@ -312,6 +356,34 @@ function writeSummary(suites: SuiteSummary[]) {
 		}
 	}
 
+	// Aggregate graph metrics across all suites
+	let totalGraphMetrics: { totalNodes: number; totalSideEffects: number; nodeTypeDistribution: Record<string, number> } | undefined;
+	for(const suite of suites) {
+		if(suite.aggregateGraphMetrics) {
+			if(!totalGraphMetrics) {
+				totalGraphMetrics = { totalNodes: 0, totalSideEffects: 0, nodeTypeDistribution: {} };
+			}
+			totalGraphMetrics.totalNodes += suite.aggregateGraphMetrics.totalNodes;
+			totalGraphMetrics.totalSideEffects += suite.aggregateGraphMetrics.totalSideEffects;
+			for(const [type, count] of Object.entries(suite.aggregateGraphMetrics.nodeTypeDistribution)) {
+				totalGraphMetrics.nodeTypeDistribution[type] = (totalGraphMetrics.nodeTypeDistribution[type] ?? 0) + count;
+			}
+		}
+	}
+
+	// Aggregate source stats across all suites
+	let totalSourceStats: { totalLineCount: number; totalBytes: number; totalFileCount: number } | undefined;
+	for(const suite of suites) {
+		if(suite.aggregateSourceStats) {
+			if(!totalSourceStats) {
+				totalSourceStats = { totalLineCount: 0, totalBytes: 0, totalFileCount: 0 };
+			}
+			totalSourceStats.totalLineCount += suite.aggregateSourceStats.totalLineCount;
+			totalSourceStats.totalBytes += suite.aggregateSourceStats.totalBytes;
+			totalSourceStats.totalFileCount += suite.aggregateSourceStats.totalFileCount;
+		}
+	}
+
 	console.log('\n=== Summary written ===');
 	console.log(`- ${summaryPath}`);
 	console.log(`Total suites: ${suites.length}`);
@@ -333,6 +405,21 @@ function writeSummary(suites: SuiteSummary[]) {
 			const materializationRate = ((totalLazyStats.lazyFunctionsMaterialized / totalLazyStats.totalFunctionDefinitions) * 100).toFixed(2);
 			console.log(`Materialization rate: ${materializationRate}%`);
 		}
+	}
+	if(totalGraphMetrics) {
+		console.log('\n=== Graph Metrics ===');
+		console.log(`Total nodes: ${totalGraphMetrics.totalNodes}`);
+		console.log(`Total side effects: ${totalGraphMetrics.totalSideEffects}`);
+		console.log('Node type distribution:');
+		for(const [type, count] of Object.entries(totalGraphMetrics.nodeTypeDistribution).sort((a, b) => b[1] - a[1])) {
+			console.log(`  ${type}: ${count}`);
+		}
+	}
+	if(totalSourceStats) {
+		console.log('\n=== Source Code Statistics ===');
+		console.log(`Total lines of code: ${totalSourceStats.totalLineCount}`);
+		console.log(`Total source size: ${(totalSourceStats.totalBytes / 1024 / 1024).toFixed(2)} MB`);
+		console.log(`Total files: ${totalSourceStats.totalFileCount}`);
 	}
 
 }

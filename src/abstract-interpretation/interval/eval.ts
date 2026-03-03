@@ -1,0 +1,130 @@
+import fs from 'node:fs';
+import { SourceLocation, SourceRange } from '../../util/range';
+import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
+import { fileProtocol } from '../../r-bridge/retriever';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+
+interface InstrumentAnnotation {
+	range:  SourceRange;
+	before: string;
+	after:  string;
+}
+
+/**
+ * Replace `outputFolder` content with all files from `folder` and instrument all .R files by inserting
+ * logging-statements for all POIs.
+ *
+ * Current POIs: Assignment calls (`<-`, `<<-`, `=`)
+ * @param folder - The source folder.
+ * @param outputFolder - The target folder for the instrumented files.
+ * @returns A promise that resolves when the instrumentation is complete.
+ */
+async function instrument(folder: string, outputFolder: string) {
+	// Empty the output folder
+	fs.rmSync(outputFolder, { recursive: true, force: true });
+	// Copy all files recursively from folder to outputFolder
+	fs.mkdirSync(outputFolder, { recursive: true });
+	fs.cpSync(folder, outputFolder, { recursive: true });
+
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.setEngine('tree-sitter')
+		.build();
+	analyzer.addRequest(fileProtocol + outputFolder);
+	await analyzer.dataflow();
+
+	// Get all locations of POIs
+	// In this case, our POIs are assignment calls
+	const locations = await analyzer.query([{
+		type:          'call-context',
+		callName:      '^(<-|<<-|=)$',
+		callNameExact: false,
+		kind:          'calls',
+		subkind:       'assignment'
+	}]);
+	const assignments = locations['call-context'].kinds['calls'].subkinds['assignment'];
+
+	const idMap = (await analyzer.normalize()).idMap;
+	const edits: DefaultMap<string, InstrumentAnnotation[]> = new DefaultMap(() => []);
+	for(const assignment of assignments) {
+		const resolved = idMap.get(assignment.id);
+		if(!resolved) {
+			continue;
+		}
+		const loc = SourceLocation.fromNode(resolved);
+		if(!loc) {
+			continue;
+		}
+		if(RBinaryOp.is(resolved)) {
+			const lhs = RNode.lexeme(resolved.lhs) ?? '';
+
+			edits.get(SourceLocation.getFile(loc) ?? 'unknown').push({
+				range:  SourceLocation.getRange(loc),
+				before: `${lhs} <- (function() { `,
+				after:  `; cat("${resolved.lhs.info.id}", typeof(${lhs}), tolower(as.character(is.numeric(${lhs}))), tolower(as.character(is.vector(${lhs}))), paste(length(${lhs}), collapse=""), paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), "\\n", sep=",", file="${SourceLocation.getFile(loc)?.slice(0, -2) ?? 'unknown'}.csv", append=TRUE); return(${lhs}) })();`,
+			});
+		}
+		// henrysgeileMaschine.com(resolved.info.id) => value
+	}
+
+	for(const [file, annotations] of edits.entries()) {
+		const fileLines = fs.readFileSync(file, 'utf-8').split('\n');
+		const insertedCharacters: [line: number, column: number, characters: number][] = [];
+		for(const annotation of annotations) {
+			const endLineIndex = SourceRange.getEnd(annotation.range)[0] - 1;
+			const endLineColumn = SourceRange.getEnd(annotation.range)[1];
+
+			const endLineColumnOffset = insertedCharacters.filter(x => x[0] === endLineIndex && x[1] <= endLineColumn).reduce((acc, x) => acc + x[2], 0);
+
+			fileLines[endLineIndex] = fileLines[endLineIndex].slice(0, endLineColumn + endLineColumnOffset) + annotation.after + fileLines[endLineIndex].slice(endLineColumn + endLineColumnOffset);
+			insertedCharacters.push([endLineIndex, endLineColumn, annotation.after.length]);
+
+			const startLineIndex = SourceRange.getStart(annotation.range)[0] - 1;
+			const startLineColumn = SourceRange.getStart(annotation.range)[1];
+
+			const startLineColumnOffset = insertedCharacters.filter(x => x[0] === startLineIndex && x[1] < startLineColumn).reduce((acc, x) => acc + x[2], 0);
+
+			fileLines[startLineIndex] = fileLines[startLineIndex].slice(0, startLineColumn - 1 + startLineColumnOffset) + annotation.before + fileLines[startLineIndex].slice(startLineColumn - 1 + startLineColumnOffset);
+			insertedCharacters.push([startLineIndex, startLineColumn - 1, annotation.before.length]);
+		}
+
+		// Assure that the csv header is printed at the beginning of the file
+		fileLines[0] = `(function() {cat("id,type,is_numeric,is_vector,length,value,\\n", file="${file.slice(0, -2)}.csv")})();` + fileLines[0];
+
+		fs.writeFileSync(file, fileLines.join('\n'), 'utf-8');
+	}
+}
+
+async function execute(folder: string) {
+	console.log('Running in', folder);
+	// return new Promise((resolve, reject) => {
+	// 	const process = spawn('Rscript', [folder + '/foo.R']);
+	// 	process.stdout.on('data', (data: Buffer) => {
+	// 		console.log(data.toString());
+	// 	});
+	// 	process.stderr.on('data', (data: Buffer) => {
+	// 		console.error(data.toString());
+	// 	});
+	// 	process.on('close', (code: number) => {
+	// 		if(code === 0) {
+	// 			resolve(null);
+	// 		} else {
+	// 			reject(new Error('Process exited with code ' + code));
+	// 		}s
+	// 	});
+	// });
+}
+
+if(process.argv.length < 4) {
+	console.error('Usage: ts-node src/abstract-interpretation/interval/eval.ts <folder> <output-folder>');
+	process.exit(1);
+}
+
+const folder = process.argv[2];
+const outputFolder = process.argv[3];
+
+void instrument(folder, outputFolder).then(() => execute(outputFolder)).catch(err => {
+	console.error('Error during analysis:', err);
+	process.exit(1);
+});

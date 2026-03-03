@@ -12,8 +12,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { invertArgumentMap, pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -59,7 +58,7 @@ export function processS7NewGeneric<OtherInfo>(
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
 	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
-	const genName = unpackArg(getArgumentWithId(args, argMaps.get('name')?.[0]));
+	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -78,10 +77,10 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	data = { ...data, currentS7name: accessedIdentifiers } as DataflowProcessorInformation<OtherInfo & ParentInformation>;
 
-	let funArg = unpackArg(getArgumentWithId(args, argMaps.get('fun')?.[0]))?.info.id;
+	let funArg = unpackArg(RArgument.getWithId(args, argMaps.get('fun')?.[0]))?.info.id;
 	const effectiveArgs = args.slice();
 	if(!funArg) {
-		const dispatchArg = unpackArg(getArgumentWithId(args, argMaps.get('dispatchArg')?.[0]));
+		const dispatchArg = unpackArg(RArgument.getWithId(args, argMaps.get('dispatchArg')?.[0]));
 		const newFun: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [dispatchArg?.lexeme ?? undefined], rootId, args.length, data.completeAst.idMap);
 		// fake it 'function([dispatch_args],...) S7_dispatch()'
 		effectiveArgs.push(newFun[0]);

@@ -6,7 +6,7 @@ import { executeDoesCallQuery } from './does-call-query-executor';
 import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { startAndEndsWith } from '../../../util/text/strings';
 import { SourceRange } from '../../../util/range';
@@ -92,7 +92,7 @@ function constraintParser(argument: string | undefined): { call: SingleSlicingCr
 	}
 }
 
-function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'does-call'> {
+function doesCallQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'does-call'> {
 	const constraint = constraintParser(line[0]);
 	if(!constraint || typeof constraint === 'string') {
 		output.stderr(output.formatter.format(`Invalid does-call query format:\n  ${constraint}`,

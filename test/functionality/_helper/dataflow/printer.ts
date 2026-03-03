@@ -2,8 +2,7 @@ import {
 	UnnamedFunctionCallPrefix
 } from '../../../../src/dataflow/internal/process/functions/call/unnamed-call-handling';
 import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { isBuiltIn } from '../../../../src/dataflow/environments/built-in';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../src/dataflow/environments/identifier';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
 import type { ControlDependency, ExitPoint } from '../../../../src/dataflow/info';
@@ -17,7 +16,7 @@ export function wrap(id: string | NodeId | undefined): string {
 		return 'undefined';
 	} else if(id === EmptyArgument) {
 		return 'EmptyArgument';
-	} else if(isBuiltIn(id)) {
+	} else if(NodeId.isBuiltIn(id)) {
 		return `builtInId(${id})`;
 	} else if(typeof id === 'string' && id.startsWith(UnnamedFunctionCallPrefix)) {
 		return `\`\${UnnamedFunctionCallPrefix}${id.slice(UnnamedFunctionCallPrefix.length)}\``;

@@ -5,7 +5,8 @@ import { postProcess } from './post-process';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { appendStatisticsFile } from '../../../output/statistics-file';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RLoopConstructs, RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 
 
 const initialLoopInfo = {
@@ -33,7 +34,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 	// holds number of loops and their nesting depths
 	const loopStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			switch(node.type) {
 				case RType.Next:         info.nextStatements++; return;
@@ -41,7 +42,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 				case RType.FunctionCall:
 					if(node.named && isImplicitLoop.test(node.functionName.lexeme)) {
 						info.implicitLoops++;
-						appendStatisticsFile(loops.name, 'implicit-loop', [node.functionName.info.fullLexeme ?? node.functionName.lexeme], input.filepath);
+						appendStatisticsFile(loops.name, 'implicit-loop', [RNode.lexeme(node.functionName)], input.filepath);
 					}
 					return;
 				case RType.ForLoop:
@@ -60,7 +61,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 				default: return;
 			}
 
-			appendStatisticsFile(loops.name, 'all-loops', [node.info.fullLexeme ?? node.lexeme], input.filepath);
+			appendStatisticsFile(loops.name, 'all-loops', [RNode.lexeme(node)], input.filepath);
 			if(loopStack.length > 0) {
 				info.nestedExplicitLoops++;
 				info.deepestExplicitNesting = Math.max(info.deepestExplicitNesting, loopStack.length);
@@ -69,7 +70,7 @@ function visitLoops(info: LoopInfo, input: FeatureProcessorInput): void {
 			loopStack.push(node);
 		}, node => {
 			// drop again :D
-			if(node.type === RType.ForLoop || node.type === RType.WhileLoop || node.type === RType.RepeatLoop) {
+			if(RLoopConstructs.is(node)) {
 				loopStack.pop();
 			}
 		}

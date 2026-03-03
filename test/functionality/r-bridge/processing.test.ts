@@ -3,10 +3,10 @@ import { numVal } from '../_helper/ast-builder';
 import { type RNodeWithParent, decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
-import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe, assert, test } from 'vitest';
 import { SourceRange } from '../../../src/util/range';
+import { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
@@ -98,7 +98,7 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 			test(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input);
 				const ast = decorateAst(baseAst.ast, {});
-				const ids = collectAllIds(ast.ast, stop);
+				const ids = stop ? RProject.collectAllIdsWithStop(ast.ast, stop) : RProject.collectAllIds(ast.ast);
 				assert.deepStrictEqual(ids, expected, `Ids do not match for input ${input}`);
 			});
 		}

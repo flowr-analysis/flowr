@@ -1,12 +1,11 @@
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../../src/util/mermaid/cfg';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { diffOfControlFlowGraphs } from '../../../../src/control-flow/diff-cfg';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
 import { type ControlFlowInformation, emptyControlFlowInformation } from '../../../../src/control-flow/control-flow-graph';
 import { type CfgProperty, assertCfgSatisfiesProperties } from '../../../../src/control-flow/cfg-properties';
-import { cloneConfig, defaultConfigOptions } from '../../../../src/config';
 import type { CfgSimplificationPassName } from '../../../../src/control-flow/cfg-simplification';
 import type { DataflowInformation } from '../../../../src/dataflow/info';
 import type { NormalizedAst } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -15,9 +14,10 @@ import { CfgKind } from '../../../../src/project/cfg-kind';
 import { label } from '../label';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
 import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
+import { FlowrConfig } from '../../../../src/config';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
-	return ids.map(normalizeIdToNumberIfPossible);
+	return ids.map(NodeId.normalize);
 }
 
 export interface AssertCfgOptions {
@@ -37,7 +37,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 	const expected: ControlFlowInformation = { ...emptyControlFlowInformation(), ...partialExpected };
 	const effectiveName = label(code, options?.testIds ?? [], ['controlflow']);
 	return test(effectiveName, async() => {
-		const config = cloneConfig(defaultConfigOptions);
+		const config = FlowrConfig.default();
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setConfig(config)
 			.setParser(parser)

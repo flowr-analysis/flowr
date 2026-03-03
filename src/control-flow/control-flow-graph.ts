@@ -1,8 +1,7 @@
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { normalizeIdToNumberIfPossible } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { MergeableRecord } from '../util/objects';
 import { RFalse, RTrue } from '../r-bridge/lang-4.x/convert-values';
-import { assertUnreachable, guard } from '../util/assert';
+import { assertUnreachable } from '../util/assert';
 
 /**
  * The type of a vertex in the {@link ControlFlowGraph}.
@@ -375,7 +374,7 @@ export const CfgVertex = {
 	 */
 	fromExitId(this: void, exitId: NodeId): NodeId {
 		if(typeof exitId === 'string' && exitId.endsWith('-e')) {
-			return normalizeIdToNumberIfPossible(exitId.slice(0, -2));
+			return NodeId.normalize(exitId.slice(0, -2));
 		} else {
 			return exitId;
 		}
@@ -674,7 +673,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 */
 	addVertex(vertex: Vertex, rootVertex = true): this {
 		const vid = CfgVertex.getId(vertex);
-		guard(!this.vtxInfos.has(vid), `Node with id ${vid} already exists`);
 
 		if(CfgVertex.isBlock(vertex)) {
 			this._mayBB = true;

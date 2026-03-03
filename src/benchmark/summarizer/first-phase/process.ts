@@ -10,11 +10,11 @@ import type { PerNodeStatsDfShape, PerSliceMeasurements, PerSliceStats, SlicerSt
 import type { SlicingCriteria } from '../../../slicing/criterion/parse';
 import { RShell } from '../../../r-bridge/shell';
 import { retrieveNormalizedAstFromRCode, retrieveNumberOfRTokensOfLastParse } from '../../../r-bridge/retriever';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { arraySum } from '../../../util/collections/arrays';
 import type { RShellEngineConfig } from '../../../config';
 import { DataFrameOperationNames } from '../../../abstract-interpretation/data-frame/semantics';
+import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RComment } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 
 const tempfile = (() => {
 	let _tempfile: tmp.FileResult | undefined = undefined;
@@ -135,9 +135,9 @@ export async function summarizeSlicerStats(
 			let numberOfNormalizedTokensNoComments = 0;
 			let commentChars = 0;
 			let commentCharsNoWhitespace = 0;
-			visitAst(reParsed.ast.files.map(f => f.root), t => {
+			RProject.visitAst(reParsed.ast, t => {
 				numberOfNormalizedTokens++;
-				const comments = t.info.adToks?.filter(t => t.type === RType.Comment);
+				const comments = t.info.adToks?.filter(RComment.is);
 				if(comments && comments.length > 0) {
 					const content = comments.map(c => c.lexeme ?? '').join('');
 					commentChars += content.length;

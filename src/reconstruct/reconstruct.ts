@@ -13,7 +13,7 @@ import type {
 	RNodeWithParent
 } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
@@ -56,7 +56,7 @@ type Code = PrettyPrintLine[];
 export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
 function getLexeme(n: RNodeWithParent) {
-	return n.info.fullLexeme ?? n.lexeme ?? '';
+	return RNode.lexeme(n) ?? '';
 }
 
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {

@@ -19,6 +19,7 @@ export type SourcePosition = [
  * Utility functions for {@link SourcePosition|source positions}.
  */
 export const SourcePosition = {
+	name: 'SourcePosition',
 	/**
 	 * Formats a {@link SourcePosition|source position} as a human-readable string.
 	 */
@@ -63,6 +64,7 @@ export type SourceRange = [
  * Utility functions for {@link SourceRange|source ranges}.
  */
 export const SourceRange = {
+	name: 'SourceRange',
 	/**
 	 * Prints a {@link SourceRange|range} as a human-readable string.
 	 */
@@ -188,6 +190,7 @@ export type SourceLocation = [...r: SourceRange, f?: string];
  * Utility functions for {@link SourceLocation|source locations}.
  */
 export const SourceLocation = {
+	name: 'SourceLocation',
 	/**
 	 * Formats a {@link SourceLocation|source location} as a human-readable string.
 	 */

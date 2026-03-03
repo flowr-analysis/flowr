@@ -82,7 +82,6 @@ export function processKnownFunctionCall<OtherInfo>(
 	{ name, args, rootId, data, reverseOrder = false, markAsNSE = undefined, forceArgs, patchData = d => d, hasUnknownSideEffect, origin }: ProcessKnownFunctionCallInput<OtherInfo>,
 ): ProcessKnownFunctionCallResult {
 	const functionName = processDataflowFor(name, data);
-
 	const finalGraph = new DataflowGraph(data.completeAst.idMap);
 	const functionCallName = name.content;
 	const processArgs = reverseOrder ? args.toReversed() : args;

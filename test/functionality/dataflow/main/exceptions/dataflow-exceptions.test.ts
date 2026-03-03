@@ -8,7 +8,7 @@ import { Q } from '../../../../../src/search/flowr-search-builder';
 import { graphToMermaidUrl } from '../../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 interface DFConstraints {
 	hasVertices:         SingleSlicingCriterion[];
@@ -118,7 +118,7 @@ indirect()
 						.addEdge('2@tryCatch', '$13', EdgeType.Reads | EdgeType.Calls | EdgeType.Argument)
 						.addEdge('$13', '2@sum', EdgeType.Reads | EdgeType.Calls)
 						.calls('2@sum', '1@function')
-						.addEdge('2@sum', builtInId('sum'), EdgeType.Calls | EdgeType.Reads)
+						.addEdge('2@sum', NodeId.toBuiltIn('sum'), EdgeType.Calls | EdgeType.Reads)
 					,
 					{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 				);

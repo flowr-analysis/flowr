@@ -31,6 +31,7 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { BuiltInProcName } from '../../../../../environments/built-in';
+import { EdgeType } from '../../../../../graph/edge';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -135,9 +136,8 @@ export function findSource(
 			const effectivePath = explore ? path.join(explore, tryPath) : tryPath;
 			const context = data.ctx.files;
 			const get = context.exists(effectivePath, capitalization) ?? context.exists(returnPlatformPath(effectivePath), capitalization);
-
-			if(get && !found.includes(effectivePath)) {
-				found.push(returnPlatformPath(effectivePath));
+			if(get && !found.includes(returnPlatformPath(get))) {
+				found.push(returnPlatformPath(get));
 			}
 		}
 	}
@@ -211,7 +211,7 @@ export function processSourceCall<OtherInfo>(
 				result = sourceRequest(rootId, {
 					request: 'file',
 					content: f
-				}, data, result, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
+				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
 			}
 			return result;
 		}
@@ -226,7 +226,7 @@ export function processSourceCall<OtherInfo>(
  * Processes a source request with the given dataflow processor information and existing dataflow information
  * Otherwise, this can be an {@link RProjectFile} representing a standalone source file
  */
-export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, getId?: IdGenerator<NoInfo>): DataflowInformation {
+export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest | RProjectFile<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, information: DataflowInformation, makeMaybe: boolean, getId?: IdGenerator<NoInfo>): DataflowInformation {
 	// parse, normalize and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
@@ -277,11 +277,20 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
-		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
-			dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
-		}
-		for(const out of dataflow.out) {
-			dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+		if(makeMaybe) {
+			if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+				dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
+			}
+			for(const out of dataflow.out) {
+				dataflow.graph.addControlDependency(out.nodeId, rootId, true);
+			}
+		} else {
+			if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
+				dataflow.graph.addEdge(dataflow.entryPoint, rootId, EdgeType.Reads);
+			}
+			for(const out of dataflow.out) {
+				dataflow.graph.addEdge(out.nodeId, rootId, EdgeType.Reads);
+			}
 		}
 	}
 
@@ -320,5 +329,5 @@ export function standaloneSourceFile<OtherInfo>(
 		...data,
 		environment:    information.environment,
 		referenceChain: [...data.referenceChain, file.filePath]
-	}, information);
+	}, information, false);
 }

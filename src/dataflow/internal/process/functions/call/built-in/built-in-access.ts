@@ -7,12 +7,12 @@ import {
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { builtInId, BuiltInProcName } from '../../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -127,7 +127,7 @@ function processNumberBasedAccess<OtherInfo>(
 ) {
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
-	const tableAssignId = builtInId(':=-table');
+	const tableAssignId = NodeId.toBuiltIn(':=-table');
 	data.environment.current.memory.set(':=', [{
 		type:      ReferenceType.BuiltInFunction,
 		definedAt: tableAssignId,

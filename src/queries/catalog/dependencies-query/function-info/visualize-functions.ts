@@ -19,4 +19,11 @@ export const VisualizeFunctions: FunctionInfo[] =
 		(GgPlotImplicitAddons as readonly string[]).concat(GgPlotAddons).map(f => ({ package: 'ggplot2', name: f, linkTo: LinkToPlotCreation })),
 		TinyPlotAddons.map(f => ({ package: 'tinyplot', name: f, linkTo: LinkToPlotCreation })),
 		GraphicsPlotAddons.map(f => ({ name: f, linkTo: LinkToPlotCreation }))
-	);
+	).map(f => {
+		if(f.name !== 'hist') {
+			return f;
+		} else {
+			// ignore if plot is false.
+			return { ...f, ignoreIf: 'arg-false', additionalArgs: { val: { argIdx: 17, argName: 'plot', resolveValue: true } } };
+		}
+	});

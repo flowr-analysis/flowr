@@ -7,7 +7,7 @@ import type { MergeableRecord } from '../../util/objects';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 
 export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
-export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes'] as const;
+export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes', 'extract call graph'] as const;
 export const CommonSlicerMeasurements = [...RequiredSlicerMeasurements, ...OptionalSlicerMeasurements] as const;
 export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number];
 
@@ -104,5 +104,6 @@ export interface SlicerStats {
 	dataflowTimePerToken:        TimePerToken<number>
 	totalCommonTimePerToken:     TimePerToken<number>
 	controlFlowTimePerToken?:    TimePerToken<number>
+	callGraphTimePerToken?:      TimePerToken<number>
 	dataFrameShapeTimePerToken?: TimePerToken<number>
 }

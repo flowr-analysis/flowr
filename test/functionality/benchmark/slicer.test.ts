@@ -2,12 +2,12 @@ import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-ph
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
 import { type CommonSlicerMeasurements, PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
-import { defaultConfigOptions } from '../../../src/config';
 import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
+import { FlowrConfig } from '../../../src/config';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -33,7 +33,7 @@ describe('Benchmark Slicer', () => {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer('r-shell');
 			const request = { request: 'text' as const, content: 'a <- b' };
-			await slicer.init(request, defaultConfigOptions);
+			await slicer.init(request, FlowrConfig.default());
 			await slicer.slice('1@a');
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
@@ -98,7 +98,7 @@ d <- b + 5
 cat(c, d)
 cat(d)`
 			};
-			await slicer.init(request, defaultConfigOptions);
+			await slicer.init(request, FlowrConfig.default());
 			await slicer.slice('2@a');
 			await slicer.slice('2@a', '4@c');
 			await slicer.slice('7@d');
@@ -167,7 +167,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
 				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
@@ -202,7 +202,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.equal(criteria.length, 3, '3 criteria are sliced');
 				}, { sampleCount: 3, sampleStrategy: 'random' });
@@ -229,7 +229,7 @@ e <- 5`,
 			test('Data frame shape inference', async() => {
 				const slicer = new BenchmarkSlicer('tree-sitter');
 				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				slicer.extractCFG();
 				slicer.inferDataFrameShapes();
 

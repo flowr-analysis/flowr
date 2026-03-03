@@ -292,6 +292,18 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 				.addEdge(CfgVertex.toExitId(14), CfgVertex.toExitId(13), CfgEdge.makeFd())
 				.addEdge(CfgVertex.toExitId(15), CfgVertex.toExitId(14), CfgEdge.makeFd())
 		}, { expectIsSubgraph: true });
+		describe('faulty uses', () => {
+			assertCfg(parser, 'ifelse()', {
+				entryPoints: [ 2 ],
+				exitPoints:  [ CfgVertex.toExitId(2) ],
+				graph:       new ControlFlowGraph()
+			}, { expectIsSubgraph: true });
+			assertCfg(parser, 'ifelse(x)', {
+				entryPoints: [ 2 ],
+				exitPoints:  [ CfgVertex.toExitId(2) ],
+				graph:       new ControlFlowGraph()
+			}, { expectIsSubgraph: true });
+		});
 	});
 	describe('With Basic Blocks', () => {
 		assertCfg(parser, '2 + 3', {

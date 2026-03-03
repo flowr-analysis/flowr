@@ -1,11 +1,10 @@
 import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsResult } from './does-call-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import { log } from '../../../util/log';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
-import { dropBuiltInPrefix, isBuiltIn } from '../../../dataflow/environments/built-in';
 import { Identifier } from '../../../dataflow/environments/identifier';
 
 /**
@@ -83,8 +82,8 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 			continue;
 		}
 		visited.add(cur);
-		if(isBuiltIn(cur)) {
-			const name = dropBuiltInPrefix(cur);
+		if(NodeId.isBuiltIn(cur)) {
+			const name = NodeId.fromBuiltIn(cur);
 			if(constraints({ id: cur, name } as Required<DataflowGraphVertexFunctionCall>, cg)) {
 				return { call: start };
 			}

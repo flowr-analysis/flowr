@@ -9,7 +9,7 @@ import { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-loop';
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
-import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { EmptyArgument, type RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
@@ -34,15 +34,15 @@ import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
+import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 
 const cfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
 	down: (n, down) => {
-		if(n.type === RType.FunctionDefinition) {
+		if(RFunctionDefinition.is(n)) {
 			return [down[0], true];
-		} else if(n.type === RType.ForLoop || n.type === RType.WhileLoop || n.type === RType.RepeatLoop) {
+		} else if(RLoopConstructs.is(n)) {
 			return [true, down[1]];
 		}
 		return down;
@@ -358,15 +358,12 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		graph.addEdge(CfgVertex.toExitId(forLoopId), breakPoint, CfgEdge.makeFd());
 	}
 
-	const isNotEndless = body.exitPoints.length > 0 || body.breaks.length > 0;
-	if(isNotEndless) {
-		graph.addVertex(CfgVertex.makeExitMarker(forLoopId));
-		for(const e of variable.exitPoints) {
-			graph.addEdge(CfgVertex.toExitId(forLoopId), e, CfgEdge.makeCdFalse(forLoopId));
-		}
+	graph.addVertex(CfgVertex.makeExitMarker(forLoopId));
+	for(const e of variable.exitPoints) {
+		graph.addEdge(CfgVertex.toExitId(forLoopId), e, CfgEdge.makeCdFalse(forLoopId));
 	}
 
-	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: isNotEndless ? [CfgVertex.toExitId(forLoopId)] : [], entryPoints: [forLoopId] };
+	return { graph, breaks: [], nexts: [], returns: body.returns, exitPoints: [CfgVertex.toExitId(forLoopId)], entryPoints: [forLoopId] };
 }
 
 function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, params: ControlFlowInformation[], body: ControlFlowInformation): ControlFlowInformation {
@@ -410,7 +407,7 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 }
 
 function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation {
-	if(call.named && call.functionName.content === 'ifelse') {
+	if(call.named && call.functionName.content === 'ifelse' && args.length > 1) {
 		// special built-in handling for ifelse as it is an expression that does not short-circuit
 		return cfgIfThenElse(
 			call as RNodeWithParent,

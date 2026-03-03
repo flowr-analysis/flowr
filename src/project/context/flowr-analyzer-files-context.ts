@@ -90,7 +90,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
-	 * (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @param path - The path to the file.
 	 *
 	 * If you do not know the exact path or, e.g., casing of the file, use {@link exists} instead.
@@ -101,7 +101,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @param path - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
-	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @returns The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
@@ -240,20 +240,38 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(!ignoreCase) {
 				return this.hasFile(p) ? p : undefined;
 			}
+			if(this.hasFile(p)) {
+				return p;
+			}
 			// walk the directory and find the first match
 			const dir = path.dirname(p);
-			const file = path.basename(p);
+			const file = path.basename(p).toLowerCase();
 			// try to find in local known files first
-			const localFound = Array.from(this.files.keys()).find(f => {
-				return path.dirname(f) === dir && path.basename(f).toLowerCase() === file.toLowerCase();
-
-			});
-			if(localFound) {
-				return localFound;
+			for(const f of this.files.keys()) {
+				if(path.dirname(f).toLowerCase() !== dir.toLowerCase()) {
+					continue;
+				}
+				const lf = path.basename(f).toLowerCase();
+				if(file === lf) {
+					return f;
+				}
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
-				const files = fs.readdirSync(dir);
-				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				let files: string[] | undefined;
+				if(fs.existsSync(dir)) {
+					files = fs.readdirSync(dir);
+				} else {
+					// try to find a dir in parent
+					const parentDir = path.dirname(dir);
+					if(fs.existsSync(parentDir)) {
+						const parentFiles = fs.readdirSync(parentDir);
+						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
+						if(foundDir) {
+							files = fs.readdirSync(path.join(parentDir, foundDir));
+						}
+					}
+				}
+				const found = files?.find(f => f.toLowerCase() === file);
 				return found ? path.join(dir, found) : undefined;
 			}
 			return undefined;

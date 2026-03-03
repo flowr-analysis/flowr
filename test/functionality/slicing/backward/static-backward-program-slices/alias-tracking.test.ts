@@ -4,13 +4,13 @@ import { Identifier } from '../../../../../src/dataflow/environments/identifier'
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { defaultConfigOptions } from '../../../../../src/config';
 import { setFrom } from '../../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../../src/dataflow/eval/values/general';
 import { Top } from '../../../../../src/dataflow/eval/values/r-value';
 import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resolve/alias-tracking';
 import type { FlowrAnalyzerContext } from '../../../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../../src/config';
 
 async function runPipeline(code: string, shell: RShell, ctx: FlowrAnalyzerContext) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -37,7 +37,7 @@ describe.sequential('Alias Tracking', withShell(shell => {
 			Identifier.make(identifier),
 			result.dataflow.environment,
 			{
-				resolve: defaultConfigOptions.solver.variables,
+				resolve: FlowrConfig.default().solver.variables,
 				ctx,
 				graph:   result.dataflow.graph,
 				idMap:   result.dataflow.graph.idMap

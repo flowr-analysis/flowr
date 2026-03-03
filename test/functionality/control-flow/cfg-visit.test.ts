@@ -5,9 +5,9 @@ import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { withTreeSitter } from '../_helper/shell';
 import { simplifyControlFlowInformation } from '../../../src/control-flow/cfg-simplification';
-import { defaultConfigOptions } from '../../../src/config';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { CfgVertex } from '../../../src/control-flow/control-flow-graph';
+import { FlowrConfig } from '../../../src/config';
 
 describe('Control Flow Graph', withTreeSitter(parser => {
 	function assertOrderBasic(
@@ -20,7 +20,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 	): void {
 		describe(label, () => {
 			it.each(['forward', 'backward'] as const)('%s', async(dir) => {
-				const config = defaultConfigOptions;
+				const config = FlowrConfig.default();
 				const order: NodeId[] = [];
 				class TestVisitor extends BasicCfgGuidedVisitor {
 					override onVisitNode(node: NodeId): void {

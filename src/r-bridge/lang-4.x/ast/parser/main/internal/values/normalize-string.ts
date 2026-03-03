@@ -1,10 +1,10 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
-import { string2ts } from '../../../../../convert-values';
 import type { RString } from '../../../../model/nodes/r-string';
 import { RType } from '../../../../model/type';
 import type { JsonEntry } from '../../../json/format';
+import { RStringValue } from '../../../../../convert-values';
 
 /**
  * Normalize the given object as a R string (see {@link string2ts}).
@@ -26,7 +26,7 @@ export function normalizeString(data: NormalizerData, obj: JsonEntry): RString {
 	return {
 		type:    RType.String,
 		location,
-		content: string2ts(stringContent),
+		content: RStringValue.fromRLexeme(stringContent),
 		lexeme:  stringContent,
 		info:    {
 			fullRange:  data.currentRange,

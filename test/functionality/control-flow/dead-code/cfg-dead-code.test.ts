@@ -123,4 +123,14 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			assertDeadCode('x <- 1\nabort()\n3',  { reachableFromStart: ['1@1'],  unreachableFromStart: ['3@3'], ids: ['exceptions-and-errors'] });
 		});
 	});
+
+	describe('next and break in loops', () => {
+		assertDeadCode(`for(i in v) {
+    next
+}
+print("dead")`, {
+			reachableFromStart:   ['1@i', '2@next', '4@print'],
+			unreachableFromStart: []
+		});
+	});
 }));

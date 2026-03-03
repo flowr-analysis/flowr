@@ -1,11 +1,10 @@
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
-import type { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import { RComment } from '../../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { visitAst } from '../../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { guard } from '../../util/assert';
 import type { SourceRange } from '../../util/range';
 import type { AutoSelectPredicate } from './auto-select-defaults';
+import { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 function getLoc({ location, info: { fullRange } }: RNode): SourceRange {
 	const loc = location ?? fullRange;
@@ -60,13 +59,13 @@ export function makeMagicCommentHandler(and?: AutoSelectPredicate): AutoSelectPr
 		if(!lines) {
 			lines = new Set<number>();
 			const startLineStack: number[] = [];
-			visitAst(normalizedAst.ast.files.map(f => f.root), n => {
+			RProject.visitAst(normalizedAst.ast, n => {
 				const comments = n.info.adToks;
 				if(!comments) {
 					return;
 				}
 				for(const c of comments) {
-					if(c.type !== RType.Comment || !c.lexeme.startsWith('# flowr@')) {
+					if(!RComment.is(c) || !c.lexeme.startsWith('# flowr@')) {
 						continue;
 					}
 					const match = commentTriggerRegex.exec(c.lexeme);

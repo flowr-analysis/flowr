@@ -79,6 +79,7 @@ export interface UltimateSlicerStats {
 	dataflowTimePerToken:        TimePerToken
 	totalCommonTimePerToken:     TimePerToken
 	controlFlowTimePerToken?:    TimePerToken
+	callGraphTimePerToken?:      TimePerToken
 	dataFrameShapeTimePerToken?: TimePerToken
 	sliceTimePerToken:           TimePerToken
 	reconstructTimePerToken:     TimePerToken

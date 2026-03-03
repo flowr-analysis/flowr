@@ -5,8 +5,8 @@ import { postProcess } from './post-process';
 import { unpackNonameArg } from '../../../../dataflow/internal/process/functions/call/argument/unpack-argument';
 import type { ParentInformation, RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import type { RExpressionList } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { RProject } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 const initialControlflowInfo = {
 	ifThen:           emptyCommonSyntaxTypeCounts(),
@@ -26,7 +26,7 @@ export type ControlflowInfo = Writable<typeof initialControlflowInfo>;
 function visitIfThenElse(info: ControlflowInfo, input: FeatureProcessorInput): void {
 	const ifThenElseStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(f => f.root),
+	RProject.visitAst(input.normalizedRAst.ast,
 		node => {
 			if(node.type !== RType.IfThenElse) {
 				if(node.type === RType.FunctionCall && node.named && node.functionName.content === 'switch') {

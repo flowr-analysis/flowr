@@ -1,6 +1,6 @@
 import { processCommandLineArgs } from './common/script';
 import { flowrScriptGetStats } from './script-core/statistics-core';
-import { getConfig } from '../config';
+import { FlowrConfig } from '../config';
 
 export interface StatsCliOptions {
 	readonly verbose:      boolean
@@ -25,4 +25,4 @@ const scriptOptions = processCommandLineArgs<StatsCliOptions>('stats', [], {
 	]
 });
 
-void flowrScriptGetStats(scriptOptions, getConfig());
+void flowrScriptGetStats(scriptOptions, FlowrConfig.fromFile());

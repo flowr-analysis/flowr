@@ -1,6 +1,6 @@
 import type { SourcePosition } from '../../util/range';
 import { expensiveTrace } from '../../util/log';
-import { normalizeIdToNumberIfPossible, type NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type {
 	AstIdMap,
 	RNodeWithParent
@@ -29,10 +29,12 @@ export class CriteriaParseError extends Error {
 export function slicingCriterionToId(criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
 	let resolved: NodeId | undefined;
 	if(criterion.startsWith('$')) {
-		resolved = normalizeIdToNumberIfPossible(criterion.substring(1)) as NodeId;
+		resolved = NodeId.normalize(criterion.substring(1)) as NodeId;
 	} else if(criterion.includes('@')) {
-		const [line, name] = criterion.split(/@(.*)/s); // only split at first occurrence
-		resolved = conventionalCriteriaToId(parseInt(line), name, idMap);
+		const at = criterion.indexOf('@');
+		const line = parseInt(criterion.substring(0, at));
+		const name = criterion.substring(at + 1);
+		resolved = conventionalCriteriaToId(line, name, idMap);
 	} else if(criterion.includes(':')) {
 		const [line, column] = criterion.split(':').map(c => parseInt(c));
 		resolved = locationToId([line, column], idMap);

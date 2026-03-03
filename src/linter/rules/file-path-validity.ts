@@ -57,7 +57,7 @@ export const FILE_PATH_VALIDITY = {
 		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
 		return {
 			results: elements.getElements().flatMap(element => {
-				const matchingRead = results.read.find(r => r.nodeId == element.node.info.id);
+				const matchingRead = results.read.find(r => r.nodeId === element.node.info.id);
 				if(!matchingRead) {
 					return [];
 				}

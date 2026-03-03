@@ -10,14 +10,14 @@ import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { builtInId, BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -31,15 +31,14 @@ import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
 	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
-	const readId = readName ? Identifier.getName(readName) : undefined;
-
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
+		const readId = readName ? Identifier.getName(readName) : undefined;
 		const has = remainingRead.get(readId);
 		if(has) {
-			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
+			if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
@@ -56,7 +55,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const rid = read.nodeId;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && isBuiltIn(target.definedAt)) {
+		if(NodeId.isBuiltIn(target.definedAt) && (read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
@@ -84,7 +83,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while(!current?.builtInEnv) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
-						if(!isBuiltIn(def.definedAt)) {
+						if(!NodeId.isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 						}
@@ -221,7 +220,7 @@ export function processExpressionList<OtherInfo>(
 			origin:                BuiltInProcName.ExpressionList
 		});
 
-		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);
+		nextGraph.addEdge(rootId, NodeId.toBuiltIn('{'), EdgeType.Reads | EdgeType.Calls);
 
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {

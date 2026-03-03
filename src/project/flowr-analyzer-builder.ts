@@ -174,18 +174,4 @@ export class FlowrAnalyzerBuilder {
 
 		return analyzer;
 	}
-
-	public enableDeferredFunctionEval(): this {
-		this.amendConfig((cfg) => {
-			cfg.optimizations.deferredFunctionEvaluation = true;
-		});
-		return this;
-	}
-
-	public disableDeferredFunctionEval(): this {
-		this.amendConfig((cfg) => {
-			cfg.optimizations.deferredFunctionEvaluation = false;
-		});
-		return this;
-	}
 }

@@ -179,9 +179,12 @@ function intervalEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutabl
 	const leftValue = visitor.getAbstractValue(leftNodeId, state);
 	const rightValue = visitor.getAbstractValue(rightNodeId, state);
 
-	const meet = AbstractDomain.meetAll([leftValue, rightValue].filter(isNotUndefined));
+	let meet: IntervalDomain | undefined = undefined;
+	if(isNotUndefined(leftValue) || isNotUndefined(rightValue)) {
+		meet = AbstractDomain.meetAll([leftValue, rightValue].filter(isNotUndefined));
+	}
 
-	if(meet.isBottom()) {
+	if(meet?.isBottom()) {
 		if(isNotUndefined(state)) {
 			return state.bottom();
 		}
@@ -193,10 +196,18 @@ function intervalEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutabl
 	}
 
 	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-		state.set(originNodeId, meet);
+		if(isUndefined(meet)) {
+			state.remove(originNodeId);
+		} else {
+			state.set(originNodeId, meet);
+		}
 	});
 	visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-		state.set(originNodeId, meet);
+		if(isUndefined(meet)) {
+			state.remove(originNodeId);
+		} else {
+			state.set(originNodeId, meet);
+		}
 	});
 
 	return state;

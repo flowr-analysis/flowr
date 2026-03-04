@@ -5,6 +5,9 @@ import { fileProtocol } from '../../r-bridge/retriever';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
+import path from 'path';
+import { NumericInferenceVisitor } from './numeric-inference';
+import { spawn } from 'child_process';
 
 interface InstrumentAnnotation {
 	range:  SourceRange;
@@ -13,26 +16,36 @@ interface InstrumentAnnotation {
 }
 
 /**
- * Replace `outputFolder` content with all files from `folder` and instrument all .R files by inserting
+ * Replace `workingDir` content with all files from `folder` and instrument all .R files by inserting
  * logging-statements for all POIs.
  *
  * Current POIs: Assignment calls (`<-`, `<<-`, `=`)
  * @param folder - The source folder.
- * @param outputFolder - The target folder for the instrumented files.
+ * @param workingDir - The target folder for the instrumented files.
+ * @param outputFolder - The folder where the csv files should be written to.
  * @returns A promise that resolves when the instrumentation is complete.
  */
-async function instrument(folder: string, outputFolder: string) {
+async function instrument(folder: string, workingDir: string, outputFolder: string) {
 	// Empty the output folder
-	fs.rmSync(outputFolder, { recursive: true, force: true });
-	// Copy all files recursively from folder to outputFolder
-	fs.mkdirSync(outputFolder, { recursive: true });
-	fs.cpSync(folder, outputFolder, { recursive: true });
+	fs.rmSync(workingDir, { recursive: true, force: true });
+	// Copy all files recursively from folder to workingDir
+	fs.mkdirSync(workingDir, { recursive: true });
+	fs.cpSync(folder, workingDir, { recursive: true });
 
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
 		.build();
-	analyzer.addRequest(fileProtocol + outputFolder);
+	analyzer.addRequest(fileProtocol + workingDir);
 	await analyzer.dataflow();
+
+	const visitor = new NumericInferenceVisitor({
+		normalizedAst: await analyzer.normalize(),
+		dfg:           (await analyzer.dataflow()).graph,
+		controlFlow:   await analyzer.controlflow(),
+		ctx:           analyzer.inspectContext()
+	});
+
+	visitor.start();
 
 	// Get all locations of POIs
 	// In this case, our POIs are assignment calls
@@ -59,13 +72,16 @@ async function instrument(folder: string, outputFolder: string) {
 		if(RBinaryOp.is(resolved)) {
 			const lhs = RNode.lexeme(resolved.lhs) ?? '';
 
+			const inferredValue = visitor.getAbstractValue(resolved.lhs.info.id);
+
+			const outputCsvPath = (path.join(outputFolder, SourceLocation.getFile(loc)?.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
+
 			edits.get(SourceLocation.getFile(loc) ?? 'unknown').push({
 				range:  SourceLocation.getRange(loc),
 				before: `${lhs} <- (function() { `,
-				after:  `; cat("${resolved.lhs.info.id}", typeof(${lhs}), tolower(as.character(is.numeric(${lhs}))), tolower(as.character(is.vector(${lhs}))), paste(length(${lhs}), collapse=""), paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), "\\n", sep=",", file="${SourceLocation.getFile(loc)?.slice(0, -2) ?? 'unknown'}.csv", append=TRUE); return(${lhs}) })();`,
+				after:  `; cat("${resolved.lhs.info.id}", typeof(${lhs}), tolower(as.character(is.numeric(${lhs}))), tolower(as.character(is.vector(${lhs}))), paste(length(${lhs}), collapse=""), paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), paste('"', "${inferredValue?.toString() ?? 'undefined'}", '"', sep=""), "\\n", sep=",", file="${outputCsvPath}", append=TRUE); return(${lhs}) })()`,
 			});
 		}
-		// henrysgeileMaschine.com(resolved.info.id) => value
 	}
 
 	for(const [file, annotations] of edits.entries()) {
@@ -89,42 +105,45 @@ async function instrument(folder: string, outputFolder: string) {
 			insertedCharacters.push([startLineIndex, startLineColumn - 1, annotation.before.length]);
 		}
 
+		const outputCsvPath = (path.join(outputFolder, file.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
+
 		// Assure that the csv header is printed at the beginning of the file
-		fileLines[0] = `(function() {cat("id,type,is_numeric,is_vector,length,value,\\n", file="${file.slice(0, -2)}.csv")})();` + fileLines[0];
+		fileLines[0] = `(function() {cat("id,type,is_numeric,is_vector,length,value,inferredValue,\\n", file="${outputCsvPath}")})();` + fileLines[0];
 
 		fs.writeFileSync(file, fileLines.join('\n'), 'utf-8');
 	}
 }
 
-async function execute(folder: string) {
+async function execute(folder: string, script: string) {
 	console.log('Running in', folder);
-	// return new Promise((resolve, reject) => {
-	// 	const process = spawn('Rscript', [folder + '/foo.R']);
-	// 	process.stdout.on('data', (data: Buffer) => {
-	// 		console.log(data.toString());
-	// 	});
-	// 	process.stderr.on('data', (data: Buffer) => {
-	// 		console.error(data.toString());
-	// 	});
-	// 	process.on('close', (code: number) => {
-	// 		if(code === 0) {
-	// 			resolve(null);
-	// 		} else {
-	// 			reject(new Error('Process exited with code ' + code));
-	// 		}s
-	// 	});
-	// });
+	return new Promise((resolve, reject) => {
+		const process = spawn('Rscript', [script], { cwd: folder });
+		process.stdout.on('data', (data: Buffer) => {
+			console.log(data.toString());
+		});
+		process.stderr.on('data', (data: Buffer) => {
+			console.error(data.toString());
+		});
+		process.on('close', (code: number) => {
+			if(code === 0) {
+				resolve(null);
+			} else {
+				reject(new Error('Process exited with code ' + code));
+			}
+		});
+	});
 }
 
-if(process.argv.length < 4) {
-	console.error('Usage: ts-node src/abstract-interpretation/interval/eval.ts <folder> <output-folder>');
+if(process.argv.length < 5) {
+	console.error('Usage: ts-node src/abstract-interpretation/interval/eval.ts <folder> <output-folder> <script>');
 	process.exit(1);
 }
 
 const folder = process.argv[2];
 const outputFolder = process.argv[3];
+const script = process.argv[4];
 
-void instrument(folder, outputFolder).then(() => execute(outputFolder)).catch(err => {
+void instrument(folder, path.join('/tmp', folder), outputFolder).then(() => execute(path.join('/tmp', folder), script)).catch(err => {
 	console.error('Error during analysis:', err);
 	process.exit(1);
 });

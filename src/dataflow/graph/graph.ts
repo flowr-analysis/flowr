@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge , EdgeType } from './edge';
+import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -26,7 +26,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
  * Describes the information we store per function body.
  * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
 /**
  * A reference with a name, e.g. `a` and `b` in the following function call:
@@ -55,7 +55,7 @@ export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'n
 }
 
 /** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
 /**
  * Check if the given argument is a {@link PositionalFunctionArgument}.
@@ -84,12 +84,12 @@ export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefine
 /**
  * Maps the edges target to the edge information
  */
-export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>;
 /**
  * Similar to {@link OutgoingEdges}, but inverted regarding the edge direction.
  * In other words, it maps the source to the edge information.
  */
-export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>;
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -102,10 +102,10 @@ export interface DataflowGraphJson {
 }
 
 export interface LazyFunctionStatistics {
-    /** Total count of function definition vertices registered in the graph */
-    totalFunctionDefinitions:  number;
-    /** Number of times lazy function vertices were materialized (called) */
-    lazyFunctionsMaterialized: number;
+	/** Total count of function definition vertices registered in the graph */
+	totalFunctionDefinitions:  number;
+	/** Number of times lazy function vertices were materialized (called) */
+	lazyFunctionsMaterialized: number;
 }
 
 /**
@@ -114,7 +114,37 @@ export interface LazyFunctionStatistics {
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
+export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
+
+/**
+ * A mutable reference to a dataflow graph. Used to track graph references that need to be updated
+ * when graphs are merged. When a graph is merged into a parent, all its references are updated
+ * to point to the unified graph, ensuring callbacks always return the current graph.
+ */
+export class GraphReference {
+	private graph: DataflowGraph;
+
+	constructor(graph: DataflowGraph) {
+		this.graph = graph;
+	}
+
+	/**
+	 * Returns the current graph this reference points to.
+	 */
+	get(): DataflowGraph {
+		return this.graph;
+	}
+
+	/**
+	 * Internal method to update what graph this reference points to.
+	 * Called by DataflowGraph when merges occur.
+	 */
+	updateGraph(graph: DataflowGraph): void {
+		this.graph = graph;
+	}
+}
+
+export type DataflowGraphMergeCallback = () => DataflowGraph;
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
@@ -144,6 +174,13 @@ export class DataflowGraph<
 	 */
 	private readonly _unknownSideEffects = new Set<UnknownSideEffect>();
 
+	/**
+	 * Graph references that were created from this graph via {@link createGraphCallback}.
+	 * When this graph is merged into a parent, all these references are updated
+	 * to point to the parent, ensuring they always return the current used graph in the dataflow analysis.
+	 */
+	private readonly _graphReferences: GraphReference[] = [];
+
 	constructor(idMap: AstIdMap | undefined) {
 		this._idMap = idMap;
 	}
@@ -156,6 +193,15 @@ export class DataflowGraph<
 	private edgeInformation:   Map<NodeId, OutgoingEdges<Edge>> = new Map<NodeId, OutgoingEdges<Edge>>();
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
+
+	public materializeAll(){
+		for(const [,vertex] of this.vertexInformation) {
+			if(vertex.tag === VertexType.FunctionDefinition){
+				/** force materialization */
+				const _ = vertex.subflow;
+			}
+		}
+	}
 
 	/**
 	 * Get the current lazy function evaluation statistics.
@@ -189,6 +235,9 @@ export class DataflowGraph<
 		return count;
 	}
 
+	public getCallbackReferences(): GraphReference[] {
+		return this._graphReferences;
+	}
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -429,6 +478,14 @@ export class DataflowGraph<
 		}
 
 		this.mergeEdges(otherGraph);
+
+		// Update all graph references from otherGraph to point to this unified graph
+		const otherRefs = otherGraph.getCallbackReferences();
+		for(const ref of otherRefs) {
+			ref.updateGraph(this);
+			this._graphReferences.push(ref);
+		}
+
 		return this;
 	}
 
@@ -517,6 +574,20 @@ export class DataflowGraph<
 		return this;
 	}
 
+	/**
+	 * Creates a getter callback that returns the current used graph.
+	 * The returned callback can be called to get the current graph at any time.
+	 * When this graph is merged into a parent, the callback will automatically
+	 * return the parent graph instead.
+	 * @returns A callback function that returns the current graph when invoked
+	 */
+	public createGraphCallback(): DataflowGraphMergeCallback {
+		const ref = new GraphReference(this);
+		this._graphReferences.push(ref);
+		// Return a callback that gets the graph from the reference
+		return () => ref.get();
+	}
+
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
@@ -569,10 +640,10 @@ function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex,
 }
 
 export interface IEnvironmentJson {
-    readonly id: number;
-    parent:      IEnvironmentJson;
-    memory:      Record<Identifier, IdentifierDefinition[]>;
-    builtInEnv:  true | undefined;
+	readonly id: number;
+	parent:      IEnvironmentJson;
+	memory:      Record<Identifier, IdentifierDefinition[]>;
+	builtInEnv:  true | undefined;
 }
 
 interface REnvironmentInformationJson {

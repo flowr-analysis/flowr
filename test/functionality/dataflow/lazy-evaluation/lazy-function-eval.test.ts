@@ -12,10 +12,13 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	console.log(`\n► Running test case: ${testCaseName}`);
 
 	const lazyAnalyzer = func(await new FlowrAnalyzerBuilder()
-		.enableDeferredFunctionEval().build()
-	);
+		.amendConfig((cfg) => {
+			cfg.optimizations.deferredFunctionEvaluation = true;
+		}).build());
 	const eagerAnalyzer = func(await new FlowrAnalyzerBuilder()
-		.disableDeferredFunctionEval().build());
+		.amendConfig((cfg) => {
+			cfg.optimizations.deferredFunctionEvaluation = false;
+		}).build());
 
 	const lazyDf = await lazyAnalyzer.dataflow();
 	const eagerDf = await eagerAnalyzer.dataflow();
@@ -25,6 +28,8 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	const lazyStats = lazyDf.graph.getLazyFunctionStatistics();
 	const eagerStats = eagerDf.graph.getLazyFunctionStatistics();
 
+	lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
+
 	const graphdiff = diffOfDataflowGraphs(
 		{ name: 'Lazy graph', graph: lazyDf.graph },
 		{ name: 'Eager graph', graph: eagerDf.graph }
@@ -33,8 +38,8 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	const comments = graphdiff.comments() || [];
 	const isEqual = graphdiff.isEqual();
 
-	console.log(`Lazy Function Stats: ${JSON.stringify(lazyStats, null, 2)}`);
-	console.log(`Eager Function Stats: ${JSON.stringify(eagerStats, null, 2)}`);
+	//console.log(`Lazy Function Stats: ${JSON.stringify(lazyStats, null, 2)}`);
+	//console.log(`Eager Function Stats: ${JSON.stringify(eagerStats, null, 2)}`);
 	console.log(`Graph Equality: ${isEqual}`);
 	if(comments.length > 0) {
 		console.log(`Differences: ${comments.join(', ')}`);

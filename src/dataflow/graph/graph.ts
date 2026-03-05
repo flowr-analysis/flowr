@@ -1,5 +1,6 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge, EdgeType } from './edge';
+import type { DataflowGraphEdge } from './edge';
+import { EdgeType, edgeIncludesType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -223,12 +224,19 @@ export class DataflowGraph<
 				continue;
 			}
 
-			// A lazy function definition is still lazy if it has not been used (called)
-			// Check if there are any incoming edges to this vertex
-			const hasIncoming = Array.from(this.edgeInformation.values()).some(edges => edges.has(id));
+			// A lazy function definition is still lazy if it has not been called
+			// Check if there are any incoming Calls edges to this vertex
+			let hasBeenCalled = false;
+			for(const [, outgoingEdges] of this.edgeInformation) {
+				const edgeToThis = outgoingEdges.get(id);
+				if(edgeToThis !== undefined && edgeIncludesType(edgeToThis.types, EdgeType.Calls)) {
+					hasBeenCalled = true;
+					break;
+				}
+			}
 
 			// Count lazy definitions that have not been called
-			if(!hasIncoming) {
+			if(!hasBeenCalled) {
 				count++;
 			}
 		}
@@ -474,7 +482,9 @@ export class DataflowGraph<
 		this.mergeVertices(otherGraph, mergeRootVertices);
 		for(const [type, ids] of otherGraph.types) {
 			const existing = this.types.get(type);
-			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
+			/** filter ids to avoid duplicates (needed for lazy functions) */
+			const filteredIds = existing ? ids.filter(id => !existing.includes(id)) : ids;
+			this.types.set(type, existing ? existing.concat(filteredIds) : filteredIds.slice());
 		}
 
 		this.mergeEdges(otherGraph);

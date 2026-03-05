@@ -4,12 +4,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { BuiltInProcName } from '../environments/built-in';
-import type { DataflowProcessorInformation } from '../processor';
-import type { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { guard } from '../../util/assert';
-import { processFunctionDefinitionEagerly } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 
 export enum VertexType {

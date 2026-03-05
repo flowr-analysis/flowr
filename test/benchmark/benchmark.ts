@@ -179,14 +179,14 @@ type SuiteSummary = {
 		skipped:         number;
 	};
     aggregateGraphMetrics?: {
-		totalNodes:              number;
-		totalSideEffects:        number;
-		nodeTypeDistribution:    Record<string, number>;
+		totalNodes:           number;
+		totalSideEffects:     number;
+		nodeTypeDistribution: Record<string, number>;
 	};
     aggregateSourceStats?: {
-		totalLineCount:  number;
-		totalBytes:      number;
-		totalFileCount:  number;
+		totalLineCount: number;
+		totalBytes:     number;
+		totalFileCount: number;
 	};
 };
 

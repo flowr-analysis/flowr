@@ -63,10 +63,10 @@ function stats(xs: number[]): PerformanceStats {
 async function buildOptimizedAnalyzer(flags: OptimizationFlags): Promise<FlowrAnalyzer> {
 	const builder = new FlowrAnalyzerBuilder();
 	builder.amendConfig((config) => {
-        config.parallelFileProcessing = flags.parallelFiles;
-        config.parallelOperations = flags.parallelOperations;
-        config.lazyFunctions = flags.lazyFunctions;
-    });
+		config.parallelFileProcessing = flags.parallelFiles;
+		config.parallelOperations = flags.parallelOperations;
+		config.lazyFunctions = flags.lazyFunctions;
+	});
 	return builder.build();
 }
 
@@ -106,7 +106,7 @@ function extractGraphMetrics(graph: DataflowGraph): GraphMetrics {
 
 	// Count nodes by type using the actual API
 	for(const type of Object.values(VertexType)) {
-		const ids = graph.vertexIdsOfType(type as any);
+		const ids = graph.vertexIdsOfType(type);
 		if(ids.length > 0) {
 			nodeTypeDistribution[type] = ids.length;
 			totalNodeCount += ids.length;
@@ -148,7 +148,7 @@ function analyzeSourceCharacteristics(projectPath: string): SourceCharacteristic
 						const content = fs.readFileSync(fullPath, 'utf-8');
 						lineCount += content.split('\n').length;
 					}
-				} catch(err) {
+				} catch{
 					// Skip files we can't read
 				}
 			}
@@ -256,12 +256,12 @@ async function main(): Promise<void> {
 	const wallMsStats = stats(wallMsArr);
 
 	const result: WorkerResult = {
-		project:                path.resolve(projectPath),
-		threads:                undefined,
+		project:           path.resolve(projectPath),
+		threads:           undefined,
 		correctness,
 		fileCount,
-		timestamp:              new Date().toISOString(),
-		wallMs:                 wallMsStats,
+		timestamp:         new Date().toISOString(),
+		wallMs:            wallMsStats,
 		lazyFunctionStats: lazyStats,
 		graphMetrics,
 		sourceCharacteristics,

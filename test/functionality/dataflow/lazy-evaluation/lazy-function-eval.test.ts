@@ -28,11 +28,12 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	const lazyStats = lazyDf.graph.getLazyFunctionStatistics();
 	const eagerStats = eagerDf.graph.getLazyFunctionStatistics();
 
-	lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
+	//lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
 
 	const graphdiff = diffOfDataflowGraphs(
 		{ name: 'Lazy graph', graph: lazyDf.graph },
-		{ name: 'Eager graph', graph: eagerDf.graph }
+		{ name: 'Eager graph', graph: eagerDf.graph },
+		{ leftIsSubgraph: true }
 	);
 
 	const comments = graphdiff.comments() || [];

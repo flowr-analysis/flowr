@@ -89,15 +89,22 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	 * Materialize the lazy function definition by calling processFunctionDefinitionEagerly
 	 * and copying all properties from the materialized vertex.
 	 */
-	private materialize(): void {
+	public materialize(): void {
 		if(this._materialized) {
 			return;
 		}
 
 		console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
 
+        const settings = this.processorData.ctx.config.optimizations.deferredFunctionEvaluation;
+        const originalSetting = settings.enabled;
+        if(settings.onlyTopLevel) {
+            settings.enabled = false;
+        }
+
 		const info = processFunctionDefinitionEagerly(this.astNode, this.args, this.rootId, this.processorData);
 
+        settings.enabled = originalSetting;
 		/** vertex must have same id */
 		const materialized = info.graph.getVertex(this.id);
 		guard(
@@ -208,6 +215,12 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	set link(value: DataflowGraphVertexAstLink) {
 		this._link = value;
 	}
+}
+
+export function isLazyFunctionDefinitionVertex(
+	vertex: DataflowGraphVertexFunctionDefinition
+): vertex is DataflowGraphVertexLazyFunctionDefinition {
+	return vertex instanceof DataflowGraphVertexLazyFunctionDefinition;
 }
 
 

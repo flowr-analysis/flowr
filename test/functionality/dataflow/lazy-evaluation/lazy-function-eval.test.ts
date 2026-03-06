@@ -13,11 +13,11 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 
 	const lazyAnalyzer = func(await new FlowrAnalyzerBuilder()
 		.amendConfig((cfg) => {
-			cfg.optimizations.deferredFunctionEvaluation = true;
+			cfg.optimizations.deferredFunctionEvaluation.enabled = true;
 		}).build());
 	const eagerAnalyzer = func(await new FlowrAnalyzerBuilder()
 		.amendConfig((cfg) => {
-			cfg.optimizations.deferredFunctionEvaluation = false;
+			cfg.optimizations.deferredFunctionEvaluation.enabled = false;
 		}).build());
 
 	const lazyDf = await lazyAnalyzer.dataflow();
@@ -30,28 +30,49 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 
 	//lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
 
+    /**
+     * Compare lazy graph as subgraph of eager graph
+     */
+
 	const graphdiff = diffOfDataflowGraphs(
 		{ name: 'Lazy graph', graph: lazyDf.graph },
 		{ name: 'Eager graph', graph: eagerDf.graph },
 		{ leftIsSubgraph: true }
 	);
 
-	const comments = graphdiff.comments() || [];
-	const isEqual = graphdiff.isEqual();
+	let comments = graphdiff.comments() || [];
+	let isEqual = graphdiff.isEqual();
 
-	//console.log(`Lazy Function Stats: ${JSON.stringify(lazyStats, null, 2)}`);
-	//console.log(`Eager Function Stats: ${JSON.stringify(eagerStats, null, 2)}`);
-	console.log(`Graph Equality: ${isEqual}`);
+	console.log(`Sub-Graph Equality: ${isEqual}`);
 	if(comments.length > 0) {
 		console.log(`Differences: ${comments.join(', ')}`);
 		console.log(graphdiff.problematic());
 	}
+	assert.isTrue(isEqual, `Dataflow graphs should be equal for testCase ${testCaseName}`);
 
+    /**
+     * Compare full materialized graph to eager graph
+     */
+
+    // materialize complete graph
+    lazyDf.graph.materializeAll();
+
+	const graphdiffFull = diffOfDataflowGraphs(
+		{ name: 'Lazy graph', graph: lazyDf.graph },
+		{ name: 'Eager graph', graph: eagerDf.graph }
+    );
+
+	comments = graphdiffFull.comments() || [];
+	isEqual = graphdiffFull.isEqual();
+
+	console.log(`Full Graph Equality: ${isEqual}`);
+	if(comments.length > 0) {
+		console.log(`Differences: ${comments.join(', ')}`);
+		console.log(graphdiffFull.problematic());
+	}
 	assert.isTrue(isEqual, `Dataflow graphs should be equal for testCase ${testCaseName}`);
 
 	return {
-		graphsEqual: isEqual,
-		comments,
 		lazyStats,
 		eagerStats
 	};
@@ -280,7 +301,6 @@ result <- is_even(x)
 describe('Basic lazy evaluation tests', () => {
 	test('Single unused function is not analyzed in lazy mode', async() => {
 		const result = await compareWithLazyStats('UnusedFunction', UnusedFunction);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -295,7 +315,6 @@ describe('Basic lazy evaluation tests', () => {
 
 	test('Multiple unused functions are not analyzed in lazy mode', async() => {
 		const result = await compareWithLazyStats('MultipleUnusedFunctions', MultipleUnusedFunctions);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -313,7 +332,6 @@ describe('Advanced lazy evaluation tests', () => {
 
 	test('Nested unused functions are not analyzed in lazy mode', async() => {
 		const result = await compareWithLazyStats('NestedUnusedFunctions', NestedUnusedFunctions);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -327,7 +345,6 @@ describe('Advanced lazy evaluation tests', () => {
 	});
 	test('Deep call chains analyze all functions in call path', async() => {
 		const result = await compareWithLazyStats('DeepCallChain', DeepCallChain);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -343,7 +360,6 @@ describe('Advanced lazy evaluation tests', () => {
 
 	test('Conditional function calls analyze both branches (dataflow limitation)', async() => {
 		const result = await compareWithLazyStats('ConditionalFunctionCall', ConditionalFunctionCall);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -357,7 +373,6 @@ describe('Advanced lazy evaluation tests', () => {
 describe('Complex Usage for lazy evaluation tests', () => {
 	test('Function returned but not called is not analyzed in lazy mode', async() => {
 		const result = await compareWithLazyStats('FunctionReturnedButNotCalled', FunctionReturnedButNotCalled);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -372,7 +387,6 @@ describe('Complex Usage for lazy evaluation tests', () => {
 
 	test('Mutually recursive functions are analyzed when called', async() => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctions', MutuallyRecursiveFunctions);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
@@ -388,7 +402,6 @@ describe('Complex Usage for lazy evaluation tests', () => {
 
 	test('Mutually recursive functions wit hunkown data are analyzed when called', async() => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctionsUnknownData', MutuallyRecursiveFunctionsUnknownData);
-		assert.isTrue(result.graphsEqual);
 
 		const stats = result.lazyStats;
 		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;

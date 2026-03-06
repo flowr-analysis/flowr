@@ -288,7 +288,10 @@ ${codeBlock('json', JSON.stringify(
 			optimizations: {
 				fileParallelization:              false,
 				dataflowOperationParallelization: false,
-				deferredFunctionEvaluation:       false
+				deferredFunctionEvaluation:       {
+                    enabled:      false,
+                    onlyTopLevel: false
+                }
 			}
 		} satisfies FlowrConfigOptions,
 		null, 2))

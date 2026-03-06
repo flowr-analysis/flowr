@@ -22,6 +22,7 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
+import { isLazyFunctionDefinitionVertex } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 /**
  * Describes the information we store per function body.
@@ -197,9 +198,8 @@ export class DataflowGraph<
 
 	public materializeAll(){
 		for(const [,vertex] of this.vertexInformation) {
-			if(vertex.tag === VertexType.FunctionDefinition){
-				/** force materialization */
-				const _ = vertex.subflow;
+			if(vertex.tag === VertexType.FunctionDefinition && isLazyFunctionDefinitionVertex(vertex)) {
+				vertex.materialize();
 			}
 		}
 	}

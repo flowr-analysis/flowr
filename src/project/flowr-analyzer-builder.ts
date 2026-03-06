@@ -79,6 +79,9 @@ export class FlowrAnalyzerBuilder {
 	}
 
 	// we have a type safe export to ease auto-completion
+	/**
+	 * Set a specific value in the configuration used by the resulting analyzer.
+	 */
 	public configure<K extends AutocompletablePaths<FlowrConfig>>(
 		key: K,
 		value: PathValue<FlowrConfig, K>

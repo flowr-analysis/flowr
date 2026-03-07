@@ -30,9 +30,9 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 
 	//lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
 
-    /**
-     * Compare lazy graph as subgraph of eager graph
-     */
+	/**
+	 * Compare lazy graph as subgraph of eager graph
+	 */
 
 	const graphdiff = diffOfDataflowGraphs(
 		{ name: 'Lazy graph', graph: lazyDf.graph },
@@ -50,20 +50,23 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	}
 	assert.isTrue(isEqual, `Dataflow graphs should be equal for testCase ${testCaseName}`);
 
-    /**
-     * Compare full materialized graph to eager graph
-     */
+	/**
+	 * Compare full materialized graph to eager graph
+	 */
 
-    // materialize complete graph
-    lazyDf.graph.materializeAll();
+	// materialize complete graph
+	//lazyDf.graph.materializeAll();
 
 	const graphdiffFull = diffOfDataflowGraphs(
 		{ name: 'Lazy graph', graph: lazyDf.graph },
 		{ name: 'Eager graph', graph: eagerDf.graph }
-    );
+	);
 
 	comments = graphdiffFull.comments() || [];
 	isEqual = graphdiffFull.isEqual();
+
+	const edges = lazyDf.graph.edges();
+	console.log('Edges in lazy graph:', [...edges]);
 
 	console.log(`Full Graph Equality: ${isEqual}`);
 	if(comments.length > 0) {

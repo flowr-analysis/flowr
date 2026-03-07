@@ -94,7 +94,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 			return;
 		}
 
-		console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
+		//console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
 
 		const settings = this.processorData.ctx.config.optimizations.deferredFunctionEvaluation;
 		const originalSetting = settings.enabled;
@@ -512,6 +512,9 @@ export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
 	outEnvironment: REnvironmentInformation
 ) {
+	// Track remaining refs for lazy functions to avoid mutating shared vertices during iteration
+	const lazyFunctionRemainingRefs = new Map<NodeId, Set<IdentifierReference>>();
+
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
@@ -560,6 +563,7 @@ export function updateNestedFunctionCalls(
 				}
 				const inId = ingoing.nodeId;
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
+
 				for(const { nodeId } of resolved) {
 					if(!isBuiltIn(nodeId)) {
 						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
@@ -568,12 +572,40 @@ export function updateNestedFunctionCalls(
 				}
 			}
 			expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${id}`);
-			targetVertex.subflow.in = remainingIn;
+
+			// Lazy vertices are shared across calls - don't mutate during iteration
+			if(isLazyFunctionDefinitionVertex(targetVertex)) {
+				const existing = lazyFunctionRemainingRefs.get(target);
+				if(!existing) {
+					lazyFunctionRemainingRefs.set(target, new Set(remainingIn));
+				} else {
+					// Keep intersection: refs that remain unresolved in all calls
+					const intersection = new Set<IdentifierReference>();
+					for(const ref of remainingIn) {
+						for(const e of existing) {
+							if(e.nodeId === ref.nodeId) {
+								intersection.add(ref);
+								break;
+							}
+						}
+					}
+					lazyFunctionRemainingRefs.set(target, intersection);
+				}
+			} else {
+				targetVertex.subflow.in = remainingIn;
+			}
+
 			const linkedParameters = graph.idMap?.get(target);
 			if(linkedParameters?.type === RType.FunctionDefinition) {
 				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
 			}
 		}
+	}
+
+	// Update lazy functions with final remaining refs after all calls processed
+	for(const [targetId, remainingRefs] of lazyFunctionRemainingRefs) {
+		const vertex = graph.getVertex(targetId) as DataflowGraphVertexFunctionDefinition;
+		vertex.subflow.in = Array.from(remainingRefs);
 	}
 }
 

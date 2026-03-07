@@ -236,8 +236,16 @@ export class DataflowGraph<
 				}
 			}
 
-			// Count lazy definitions that have not been called
-			if(!hasBeenCalled) {
+			const funcDefVertex = vertex as DataflowGraphVertexFunctionDefinition;
+			const isLazyAndUnmaterialized = isLazyFunctionDefinitionVertex(funcDefVertex) && funcDefVertex.materialized === false;
+
+			// Sanity check: vertices that have been called should always be materialized
+			if(hasBeenCalled && isLazyAndUnmaterialized) {
+				guard(`Function definition ${id} has been called but is not materialized`);
+			}
+
+			// Count lazy definitions that have not been called and are not yet materialized
+			if(!hasBeenCalled && isLazyAndUnmaterialized) {
 				count++;
 			}
 		}

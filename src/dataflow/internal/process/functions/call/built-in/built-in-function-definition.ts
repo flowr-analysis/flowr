@@ -57,12 +57,17 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 
 	private _materialized = false;
 	/**
+	 * Store pending closure update information to be applied when the function materializes.
+	 * This ensures lazy functions properly resolve their closures against their parent environment.
+	 */
+	private _pendingClosureUpdate?: { outEnvironment: REnvironmentInformation; fnId: NodeId };
+	/**
 	 * A getter callback that returns the current unified graph.
 	 * This is called explicitly when the lazy vertex needs the graph.
 	 * When the graph is merged into a parent, this callback automatically returns the unified graph.
 	 */
-	private _getCurrentGraph: () => DataflowGraph;
-	[x: string]:              unknown;
+	private _getCurrentGraph:       () => DataflowGraph;
+	[x: string]:                    unknown;
 
 	constructor(
 		id: NodeId,
@@ -94,7 +99,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 			return;
 		}
 
-		//console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
+		console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
 
 		const settings = this.processorData.ctx.config.optimizations.deferredFunctionEvaluation;
 		const originalSetting = settings.enabled;
@@ -130,6 +135,22 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		currentGraph.mergeWith(info.graph, false);
 		currentGraph.moveVertexToEnd(this.id);
 
+		// Update parent function's parameter tracking and resolve closures for the materialized function
+		if(this._pendingClosureUpdate) {
+			// Only process the newly materialized function and its nested functions
+			updateFunctionAndNestedClosures(
+				currentGraph,
+				this.id,
+				this._pendingClosureUpdate.outEnvironment,
+				this._pendingClosureUpdate.fnId
+			);
+			updateParentParameterTracking(currentGraph, this._pendingClosureUpdate.fnId);
+		}
+
+	}
+
+	public get materialized(): boolean {
+		return this._materialized;
 	}
 
 	get subflow(): DataflowFunctionFlowInformation {
@@ -464,6 +485,142 @@ function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): v
 }
 
 /**
+ * Update parent function parameter tracking after nested functions have been resolved.
+ * When nested functions reference parent parameters, we need to:
+ * 1. Mark those parameters as read in the parent function
+ * 2. Add Reads edges from call sites to arguments for those parameters
+ * @param graph - dataflow graph containing the functions
+ * @param fnId  - id of the parent function definition
+ */
+function updateParentParameterTracking(
+	graph: DataflowGraph,
+	fnId: NodeId
+) {
+	const parentVertex = graph.getVertex(fnId);
+	if(!parentVertex || parentVertex.tag !== VertexType.FunctionDefinition) {
+		return;
+	}
+
+	// Check each parameter to see if it now has Reads edges (from nested functions)
+	for(const paramId in parentVertex.params) {
+		const ingoing = graph.ingoingEdges(Number(paramId));
+		const isRead = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
+
+		if(isRead && !parentVertex.params[paramId]) {
+			// Parameter is now read, update tracking
+			parentVertex.params[paramId] = true;
+
+			// Find call sites that use this parameter and add Reads edges
+			const outgoing = graph.outgoingEdges(Number(paramId));
+			if(outgoing) {
+				for(const [argId, argEdgeInfo] of outgoing) {
+					if(edgeIncludesType(argEdgeInfo.types, EdgeType.DefinedByOnCall)) {
+						// Found an argument linked to this parameter
+						const argIncoming = graph.ingoingEdges(argId);
+						if(argIncoming) {
+							for(const [callId, callEdgeInfo] of argIncoming) {
+								if(edgeIncludesType(callEdgeInfo.types, EdgeType.Argument)) {
+									// Add Reads edge from call to argument
+									graph.addEdge(callId, argId, EdgeType.Reads);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+/**
+ * Process closure references for a single function definition vertex
+ * @param graph          - dataflow graph containing the function
+ * @param id             - node ID of the function to process
+ * @param vertex         - the function definition vertex
+ * @param outEnvironment - environment to resolve closures against
+ * @param fnId           - id of the parent function definition (for logging)
+ * @returns true if processed, false if deferred (lazy unmaterialized)
+ */
+function processFunctionClosures(
+	graph: DataflowGraph,
+	id: NodeId,
+	vertex: DataflowGraphVertexFunctionDefinition,
+	outEnvironment: REnvironmentInformation,
+	fnId: NodeId
+): boolean {
+	// For unmaterialized lazy functions, store the closure environment for later
+	if(isLazyFunctionDefinitionVertex(vertex) && !vertex.materialized) {
+		vertex['_pendingClosureUpdate'] = { outEnvironment, fnId };
+		return false;
+	}
+
+	const { subflow } = vertex;
+	const ingoingRefs = subflow.in;
+	const remainingIn: IdentifierReference[] = [];
+
+	for(const ingoing of ingoingRefs) {
+		const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, ingoing.type) : undefined;
+		if(resolved === undefined) {
+			remainingIn.push(ingoing);
+			continue;
+		}
+		const inId = ingoing.nodeId;
+		expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
+		let allBuiltIn = true;
+		for(const ref of resolved) {
+			graph.addEdge(inId, ref.nodeId, EdgeType.Reads);
+			if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+				allBuiltIn = false;
+			}
+		}
+		if(allBuiltIn) {
+			remainingIn.push(ingoing);
+		}
+	}
+	expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
+	subflow.in = remainingIn;
+	return true;
+}
+
+/**
+ * Update closure links for a specific function and its nested functions (optimization to avoid iterating all vertices)
+ * @param graph          - dataflow graph containing the function
+ * @param functionId     - ID of the function to process (and its nested functions)
+ * @param outEnvironment - active environment on resolving closures
+ * @param fnId           - id of the parent function definition
+ */
+function updateFunctionAndNestedClosures(
+	graph: DataflowGraph,
+	functionId: NodeId,
+	outEnvironment: REnvironmentInformation,
+	fnId: NodeId
+) {
+	const rootVertex = graph.getVertex(functionId);
+	if(!rootVertex || rootVertex.tag !== VertexType.FunctionDefinition) {
+		return;
+	}
+
+	// Process the function itself and collect nested function IDs from its subflow graph
+	const functionsToProcess = new Set<NodeId>([functionId]);
+	if(rootVertex.subflow?.graph) {
+		for(const nestedId of rootVertex.subflow.graph) {
+			const nestedVertex = graph.getVertex(nestedId);
+			if(nestedVertex?.tag === VertexType.FunctionDefinition) {
+				functionsToProcess.add(nestedId);
+			}
+		}
+	}
+
+	// Process each function using the shared logic
+	for(const id of functionsToProcess) {
+		const vertex = graph.getVertex(id);
+		if(vertex?.tag === VertexType.FunctionDefinition) {
+			processFunctionClosures(graph, id, vertex, outEnvironment, fnId);
+		}
+	}
+}
+
+/**
  * Update the closure links of all nested function definitions
  * @param graph          - dataflow graph to collect the function definitions from and to update the closure links for
  * @param outEnvironment - active environment on resolving closures (i.e., exit of the function definition)
@@ -474,35 +631,11 @@ function updateNestedFunctionClosures(
 	outEnvironment: REnvironmentInformation,
 	fnId: NodeId
 ) {
-	// track *all* function definitions - including those nested within the current graph,
-	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { subflow }] of graph.verticesOfType(VertexType.FunctionDefinition)) {
-		const ingoingRefs = subflow.in;
-		const remainingIn: IdentifierReference[] = [];
-		for(const ingoing of ingoingRefs) {
-			const resolved = ingoing.name ? resolveByName(ingoing.name, outEnvironment, ingoing.type) : undefined;
-			if(resolved === undefined) {
-				remainingIn.push(ingoing);
-				continue;
-			}
-			const inId = ingoing.nodeId;
-			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
-			let allBuiltIn = true;
-			for(const ref of resolved) {
-				graph.addEdge(inId, ref.nodeId, EdgeType.Reads);
-				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
-					allBuiltIn = false;
-				}
-			}
-			if(allBuiltIn) {
-				remainingIn.push(ingoing);
-			}
-		}
-		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
-		subflow.in = remainingIn;
+	// Track *all* function definitions - including those nested within the current graph
+	for(const [id, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		processFunctionClosures(graph, id, vertex, outEnvironment, fnId);
 	}
 }
-
 
 /**
  * Update the closure links of all nested function calls, this is probably to be done once at the end of the script

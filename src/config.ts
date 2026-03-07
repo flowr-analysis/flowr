@@ -216,9 +216,9 @@ export interface FlowrConfigOptions extends MergeableRecord {
             /**
              * Whether to defer the analysis of the function until the values are needed.
              */
-            enabled: boolean;
+            enabled:      boolean;
             /**
-             * Whether to only defer the analysis of the function at the top level, meaning that if the function is called within another function, 
+             * Whether to only defer the analysis of the function at the top level, meaning that if the function is called within another function,
              * it will still be analyzed immediately.
              */
             onlyTopLevel: boolean;
@@ -309,9 +309,9 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		fileParallelization:              false,
 		dataflowOperationParallelization: false,
 		deferredFunctionEvaluation:       {
-            enabled:      true,
-            onlyTopLevel: false
-        }
+			enabled:      true,
+			onlyTopLevel: false
+		}
 	}
 };
 

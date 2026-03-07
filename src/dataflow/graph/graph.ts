@@ -353,19 +353,63 @@ export class DataflowGraph<
 	 * @see #edges
 	 */
 	public* vertices(includeDefinedFunctions: boolean): MapIterator<[NodeId, Vertex]> {
-		if(includeDefinedFunctions) {
-			yield* this.vertexInformation.entries();
-		} else {
-			for(const id of this.rootVertices) {
-				yield [id, this.vertexInformation.get(id) as Vertex];
+		const seen = new Set<NodeId>();
+
+		while(true) {
+			let foundNew = false;
+
+			if(includeDefinedFunctions) {
+				for(const [id, vertex] of this.vertexInformation.entries()) {
+					if(seen.has(id)) {
+						continue;
+					}
+					seen.add(id);
+					foundNew = true;
+					yield [id, vertex];
+				}
+			} else {
+				for(const id of this.rootVertices) {
+					if(seen.has(id)) {
+						continue;
+					}
+					const vertex = this.vertexInformation.get(id);
+					if(vertex === undefined) {
+						continue;
+					}
+					seen.add(id);
+					foundNew = true;
+					yield [id, vertex];
+				}
+			}
+
+			if(!foundNew) {
+				break;
 			}
 		}
 	}
 
 	public* verticesOfType<T extends Vertex['tag']>(type: T): MapIterator<[NodeId, Vertex & { tag: T }]> {
-		const ids = this.types.get(type) ?? [];
-		for(const id of ids) {
-			yield [id, this.vertexInformation.get(id) as Vertex & { tag: T }];
+		const seen = new Set<NodeId>();
+
+		while(true) {
+			let foundNew = false;
+			const ids = this.types.get(type) ?? [];
+			for(const id of ids) {
+				if(seen.has(id)) {
+					continue;
+				}
+				seen.add(id);
+				const vertex = this.vertexInformation.get(id);
+				if(vertex?.tag !== type) {
+					continue;
+				}
+				foundNew = true;
+				yield [id, vertex as Vertex & { tag: T }];
+			}
+
+			if(!foundNew) {
+				break;
+			}
 		}
 	}
 
@@ -378,7 +422,23 @@ export class DataflowGraph<
 	 * @see #vertices
 	 */
 	public* edges(): MapIterator<[NodeId, OutgoingEdges]> {
-		yield* this.edgeInformation.entries();
+		const seen = new Set<NodeId>();
+
+		while(true) {
+			let foundNew = false;
+			for(const [id, outgoing] of this.edgeInformation.entries()) {
+				if(seen.has(id)) {
+					continue;
+				}
+				seen.add(id);
+				foundNew = true;
+				yield [id, outgoing];
+			}
+
+			if(!foundNew) {
+				break;
+			}
+		}
 	}
 
 	/**

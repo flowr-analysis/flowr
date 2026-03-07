@@ -26,11 +26,13 @@ export interface DataflowGraphCluster {
  * Find all clusters in the given dataflow graph.
  */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
+	graph.materializeAll();
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
 	const notReached = new Set<NodeId>(graph.vertices(true).map(([id]) => id).toArray().reverse());
 	while(notReached.size > 0){
 		const [startNode] = notReached;
+		guard(startNode !== undefined, 'No start node available while notReached still contains elements');
 		notReached.delete(startNode);
 		clusters.push({
 			startNode:             startNode,

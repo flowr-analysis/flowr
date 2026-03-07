@@ -128,6 +128,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 
 		// merge the materialized vertex graph into the current unified graph
 		currentGraph.mergeWith(info.graph, false);
+		currentGraph.moveVertexToEnd(this.id);
 
 	}
 

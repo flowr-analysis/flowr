@@ -248,6 +248,19 @@ export class DataflowGraph<
 		return this._graphReferences;
 	}
 
+	/**
+	 * Re-inserts an existing vertex to the end of insertion order.
+	 * Useful when lazy materialization should mirror eager construction order.
+	 */
+	public moveVertexToEnd(id: NodeId): void {
+		const info = this.vertexInformation.get(id);
+		if(info === undefined) {
+			return;
+		}
+		this.vertexInformation.delete(id);
+		this.vertexInformation.set(id, info);
+	}
+
 	toJSON(): DataflowGraphJson {
 		return {
 			rootVertices:        Array.from(this.rootVertices),

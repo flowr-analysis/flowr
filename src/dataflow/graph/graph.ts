@@ -197,9 +197,10 @@ export class DataflowGraph<
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
 	public materializeAll(){
-		for(const [,vertex] of this.vertexInformation) {
-			if(vertex.tag === VertexType.FunctionDefinition && isLazyFunctionDefinitionVertex(vertex)) {
-				vertex.materialize();
+		for(const [, vertex] of this.verticesOfType(VertexType.FunctionDefinition)) {
+			const funcDefVertex = vertex as DataflowGraphVertexFunctionDefinition;
+			if(isLazyFunctionDefinitionVertex(funcDefVertex)) {
+				funcDefVertex.materialize();
 			}
 		}
 	}

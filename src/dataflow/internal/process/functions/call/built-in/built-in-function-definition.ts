@@ -35,7 +35,7 @@ import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { edgeIncludesType, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
 import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 
@@ -58,9 +58,10 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	private _materialized = false;
 	/**
 	 * Store pending closure update information to be applied when the function materializes.
-	 * This ensures lazy functions properly resolve their closures against their parent environment.
+	 * Maps from parent function ID to its closure update. This ensures each parent function's
+	 * environment is used exactly once to resolve closures, even if multiple deference calls occur.
 	 */
-	private _pendingClosureUpdate?: { outEnvironment: REnvironmentInformation; fnId: NodeId };
+	private _pendingClosureUpdates: Map<NodeId, { outEnvironment: REnvironmentInformation; fnId: NodeId }> = new Map();
 	/**
 	 * A getter callback that returns the current unified graph.
 	 * This is called explicitly when the lazy vertex needs the graph.
@@ -99,8 +100,6 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 			return;
 		}
 
-		console.trace(`Materializing lazy function definition for id=${this.id}, name=${this.astNode.content}`);
-
 		const settings = this.processorData.ctx.config.optimizations.deferredFunctionEvaluation;
 		const originalSetting = settings.enabled;
 		if(settings.onlyTopLevel) {
@@ -135,16 +134,29 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		currentGraph.mergeWith(info.graph, false);
 		currentGraph.moveVertexToEnd(this.id);
 
-		// Update parent function's parameter tracking and resolve closures for the materialized function
-		if(this._pendingClosureUpdate) {
-			// Only process the newly materialized function and its nested functions
-			updateFunctionAndNestedClosures(
-				currentGraph,
-				this.id,
-				this._pendingClosureUpdate.outEnvironment,
-				this._pendingClosureUpdate.fnId
-			);
-			updateParentParameterTracking(currentGraph, this._pendingClosureUpdate.fnId);
+		// The materialized function has been processed by processFunctionDefinitionEagerly which calls
+		// updateNestedFunctionClosures at line ~420. That already attempted to resolve closures but deferred
+		// this lazy function. Now that we've materialized, we need to try closure resolution again in the
+		// unified graph context with all parent environments that deferred this function.
+		if(this._pendingClosureUpdates.size > 0) {
+			// Apply each pending closure update from unique parent functions
+			for(const { outEnvironment, fnId } of this._pendingClosureUpdates.values()) {
+				updateFunctionAndNestedClosures(
+					currentGraph,
+					this.id,
+					outEnvironment,
+					fnId,
+					this.processorData.ctx
+				);
+			}
+
+			updateParentParameterTracking(currentGraph, this.id);
+
+			// Update parameter tracking for all parent functions
+			const parentFnIds = new Set<NodeId>(this._pendingClosureUpdates.keys());
+			for(const fnId of parentFnIds) {
+				updateParentParameterTracking(currentGraph, fnId);
+			}
 		}
 
 	}
@@ -328,7 +340,6 @@ export function processFunctionDefinitionEagerly<OtherInfo>(
 		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
-
 	const body = processDataflowFor(bodyArg, data);
 	// As we know, parameters cannot technically duplicate (i.e., their names are unique), we overwrite their environments.
 	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
@@ -550,7 +561,9 @@ function processFunctionClosures(
 ): boolean {
 	// For unmaterialized lazy functions, store the closure environment for later
 	if(isLazyFunctionDefinitionVertex(vertex) && !vertex.materialized) {
-		vertex['_pendingClosureUpdate'] = { outEnvironment, fnId };
+		// Store in map keyed by parent fnId - this ensures we keep the latest environment from each unique parent
+		// In the normal flow, each parent should contribute exactly once, but this handles edge cases
+		vertex['_pendingClosureUpdates'].set(fnId, { outEnvironment, fnId });
 		return false;
 	}
 
@@ -593,12 +606,17 @@ function updateFunctionAndNestedClosures(
 	graph: DataflowGraph,
 	functionId: NodeId,
 	outEnvironment: REnvironmentInformation,
-	fnId: NodeId
+	fnId: NodeId,
+	ctx: FlowrAnalyzerContext
 ) {
 	const rootVertex = graph.getVertex(functionId);
 	if(!rootVertex || rootVertex.tag !== VertexType.FunctionDefinition) {
 		return;
 	}
+
+	const nestedOutEnvironment = rootVertex.subflow.environment
+		? retrieveActiveEnvironment(outEnvironment, rootVertex.subflow.environment, ctx)
+		: outEnvironment;
 
 	// Process the function itself and collect nested function IDs from its subflow graph
 	const functionsToProcess = new Set<NodeId>([functionId]);
@@ -611,11 +629,17 @@ function updateFunctionAndNestedClosures(
 		}
 	}
 
-	// Process each function using the shared logic
+	// Process each function
 	for(const id of functionsToProcess) {
 		const vertex = graph.getVertex(id);
 		if(vertex?.tag === VertexType.FunctionDefinition) {
-			processFunctionClosures(graph, id, vertex, outEnvironment, fnId);
+			processFunctionClosures(
+				graph,
+				id,
+				vertex,
+				id === functionId ? outEnvironment : nestedOutEnvironment,
+				id === functionId ? fnId : functionId
+			);
 		}
 	}
 }

@@ -370,7 +370,6 @@ export class DataflowGraph<
 
 	/**
 	 * @param includeDefinedFunctions - If true this will iterate over function definitions as well and not just the toplevel
-	 * @param materializeLazy - If true, this will materialize lazy function definition vertices and return them
 	 * @returns the ids of all toplevel vertices in the graph together with their vertex information
 	 * @see #edges
 	 */
@@ -381,13 +380,26 @@ export class DataflowGraph<
 			let foundNew = false;
 
 			if(includeDefinedFunctions) {
-				for(const [id, vertex] of this.vertexInformation.entries()) {
+				for(const [id] of this.vertexInformation.entries()) {
 					if(seen.has(id)) {
 						continue;
 					}
+
+					const vertex = this.vertexInformation.get(id);
+					if(vertex === undefined) {
+						continue;
+					}
+
+					if(vertex.tag === VertexType.FunctionDefinition) {
+						const fn = vertex as DataflowGraphVertexFunctionDefinition;
+						if(isLazyFunctionDefinitionVertex(fn) && !fn.materialized) {
+							fn.materialize();
+						}
+					}
+
 					seen.add(id);
 					foundNew = true;
-					yield [id, vertex];
+					yield [id, this.vertexInformation.get(id) ?? vertex];
 				}
 			} else {
 				for(const id of this.rootVertices) {

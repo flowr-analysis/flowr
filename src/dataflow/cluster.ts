@@ -28,10 +28,13 @@ export interface DataflowGraphCluster {
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
 	graph.materializeAll();
 	const clusters: DataflowGraphClusters = [];
+	const rootIds = new Set<NodeId>(graph.vertices(false).map(([id]) => id).toArray());
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
 	const notReached = new Set<NodeId>(graph.vertices(true).map(([id]) => id).toArray().reverse());
 	while(notReached.size > 0){
-		const [startNode] = notReached;
+		// Prefer root-level vertices as cluster seeds so nested function content
+		// is absorbed by parent function clusters first.
+		const startNode = Array.from(notReached).find(id => rootIds.has(id)) ?? Array.from(notReached)[0];
 		guard(startNode !== undefined, 'No start node available while notReached still contains elements');
 		notReached.delete(startNode);
 		clusters.push({

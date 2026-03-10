@@ -9,12 +9,14 @@ import { getMin, getMinMax } from '../../util/numbers';
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper = [
+const IntervalExpressionSemanticsMapper = [
 	[Identifier.make('+'), unaryBinaryOpSemantics(intervalPositiveOp, intervalAddOp)],
 	[Identifier.make('-'), unaryBinaryOpSemantics(intervalNegativeOp, intervalSubtractOp)],
 	[Identifier.make('*'), binaryOpSemantics(intervalMultiplyOp)],
 	[Identifier.make('length'), unaryFnSemantics(intervalLengthFn)],
 ] as const satisfies readonly IntervalSemanticsMapperInfo[];
+
+type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
 
 /**
  * Semantics definition function for unary numeric operators.
@@ -51,8 +53,6 @@ type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericInferenceVisitor
  */
 type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
 
-type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
-
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
  * @param functionIdentifier - The {@link Identifier} of the function/operator.
@@ -62,7 +62,11 @@ type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSem
  * @returns The resulting interval after applying the semantics.
  */
 export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
-	const match = IntervalSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+	if(visitor.currentState.isBottom()) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
 		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);

@@ -2,12 +2,14 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexVariableDefinition
 	, VertexType } from '../graph/vertex';
 import { type EdgeTypeBits , edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { isNotUndefined } from '../../util/assert';
 import { isBuiltIn } from '../environments/built-in';
+import { isLazyFunctionDefinitionVertex } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 
 export const enum OriginType {
@@ -94,7 +96,23 @@ export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
  * This returns undefined only if there is no dataflow correspondence (e.g. in case of unevaluated non-standard eval).
  */
 export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
-	const vtx = dfg.getVertex(id);
+	let vtx = dfg.getVertex(id);
+	if(vtx === undefined) {
+		const idMap = dfg.idMap;
+		for(const [, vertex] of dfg.verticesOfType(VertexType.FunctionDefinition)) {
+			const fnVertex = vertex as DataflowGraphVertexFunctionDefinition;
+			if(!isLazyFunctionDefinitionVertex(fnVertex)) {
+				continue;
+			}
+			if(fnVertex.materialized) {
+				continue;
+			}
+			if(fnVertex.materializeIfContainsNode(id, idMap)) {
+				vtx = dfg.getVertex(id);
+				break;
+			}
+		}
+	}
 	switch(vtx?.tag) {
 		case undefined:
 			return undefined;

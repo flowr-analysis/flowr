@@ -17,7 +17,7 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { guard } from '../../../../../../util/assert';
 import { dataflowLogger } from '../../../../../logger';
-import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
 	EmptyArgument,
@@ -162,6 +162,27 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 
 	public get materialized(): boolean {
 		return this._materialized;
+	}
+
+	/**
+	 * Materialize this lazy function only if the given node is part of its AST subtree.
+	 * @returns true if this call materialized the function definition, false otherwise.
+	 */
+	public materializeIfContainsNode(nodeId: NodeId, idMap: AstIdMap | undefined): boolean {
+		if(this._materialized || idMap === undefined) {
+			return false;
+		}
+
+		let current = idMap.get(nodeId);
+		while(current?.info?.parent !== undefined) {
+			if(current.info.parent === this.id) {
+				this.materialize();
+				return true;
+			}
+			current = idMap.get(current.info.parent);
+		}
+
+		return false;
 	}
 
 	get subflow(): DataflowFunctionFlowInformation {

@@ -78,8 +78,21 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 
 			edits.get(SourceLocation.getFile(loc) ?? 'unknown').push({
 				range:  SourceLocation.getRange(loc),
-				before: `${lhs} <- (function() { `,
-				after:  `; cat("${resolved.lhs.info.id}", "${lhs}", paste('"', "${SourceLocation.getRange(loc).slice(0, 4).toString()}", '"', sep=""), typeof(${lhs}), tolower(as.character(is.numeric(${lhs}))), tolower(as.character(is.vector(${lhs}))), paste(length(${lhs}), collapse=""), paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), paste('"', "${inferredValue?.toString() ?? 'undefined'}", '"', sep=""), "\\n", sep=",", file="${outputCsvPath}", append=TRUE); return(${lhs}) })()`,
+				before: '{ ',
+				after:  '; ' +
+							'cat(' +
+								`"${resolved.lhs.info.id}", ` +
+								`"${lhs}", ` +
+								`paste('"', "${SourceLocation.getRange(loc).slice(0, 4).toString()}", '"', sep=""), ` +
+								`typeof(${lhs}), ` +
+								`tolower(as.character(is.numeric(${lhs}))), ` +
+								`tolower(as.character(is.vector(${lhs}))), ` +
+								`paste(length(${lhs}), collapse=""), ` +
+								`paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), ` +
+								`paste('"', "${inferredValue?.toString() ?? 'undefined'}", '"', sep=""), ` +
+								'"\\n", ' +
+								`sep=",", file="${outputCsvPath}", append=TRUE)` +
+						' }',
 			});
 		}
 	}
@@ -108,7 +121,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		const outputCsvPath = (path.join(outputFolder, file.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
 
 		// Assure that the csv header is printed at the beginning of the file
-		fileLines[0] = `(function() {cat("id,name,source_location,type,is_numeric,is_vector,length,value,inferredValue,\\n", file="${outputCsvPath}")})();` + fileLines[0];
+		fileLines[0] = `(function() {if (!dir.exists("${path.dirname(outputCsvPath)}")) {dir.create("${path.dirname(outputCsvPath)}")}; cat("id,name,source_location,type,is_numeric,is_vector,length,value,inferredValue,\\n", file="${outputCsvPath}")})();` + fileLines[0];
 
 		fs.writeFileSync(file, fileLines.join('\n'), 'utf-8');
 	}

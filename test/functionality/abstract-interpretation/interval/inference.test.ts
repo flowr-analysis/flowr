@@ -600,4 +600,79 @@ describe('Interval Inference', () => {
 			});
 		});
 	});
+
+	describe('for semantics', () => {
+		testIntervalDomain(`
+			x <- 0
+			b <- c("1", "2", "3")
+			for (a in b) {
+				x = x+1
+			}
+			x
+		`, {
+			'1@x': { domain: IntervalTests.scalar(0) },
+			'4@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+			'6@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+		});
+	});
+
+	describe('unknown side effects', () => {
+		testIntervalDomain(`
+			x <- length(a)
+			if (x < 3) {
+				x = x-1
+				assign(paste("timepoint_", count, sep=""), df$precincts.results)
+				x
+			}
+			x
+		`, {
+			'1@x': { domain: IntervalTests.interval(0, Infinity) },
+			'3@x': { domain: IntervalTests.interval(-1, 2) },
+			'5@x': { domain: IntervalTests.interval(-1, 2), matching: DomainMatchingType.Overapproximation },
+			'7@x': { domain: IntervalTests.interval(-1, Infinity), matching: DomainMatchingType.Overapproximation },
+		});
+
+		describe('unknown side effects inside loops are currently not handled correctly', { fails: true }, () => {
+			testIntervalDomain(`
+				x <- 0
+				b <- c("1", "2", "3")
+				for (a in b) {
+					x = x+1
+					assign(paste("x", "", sep=""), 8)
+				}
+				x
+			`, {
+				// In the second iteration, the unknown side effect is forgotten, and we assume that x resolves only to l.1: 0 (but in fact would resolve to l.5: 8)
+				'4@x': { domain: IntervalTests.interval(1, 9), matching: DomainMatchingType.Overapproximation },
+				'7@x': { domain: IntervalTests.scalar(8) }
+			});
+
+			testIntervalDomain(`
+				x <- 0
+				while (x < 3) {
+					x = x+1
+					assign(paste("x", "", sep=""), x + 1)
+				}
+				x
+			`, {
+				'3@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+				'6@x': { domain: IntervalTests.scalar(4) },
+			});
+
+			testIntervalDomain(`
+				x <- 0
+				repeat {
+					x = x+1
+					if (x >= 3) {
+						break
+					}
+					assign(paste("x", "", sep=""), x + 1)
+				}
+				x
+			`, {
+				'3@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+				'9@x': { domain: IntervalTests.scalar(3) },
+			});
+		});
+	});
 });

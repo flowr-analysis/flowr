@@ -158,7 +158,6 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 				updateParentParameterTracking(currentGraph, fnId);
 			}
 		}
-
 	}
 
 	public get materialized(): boolean {

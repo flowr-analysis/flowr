@@ -18,6 +18,7 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { CallGraph } from '../../dataflow/graph/call-graph';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
+import { updateNestedFunctionCalls } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
     parser:  Parser;
@@ -185,7 +186,18 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 */
 	public async callGraph(force?: boolean): Promise<CallGraph> {
 		if(!this.callGraphCache || force) {
-			this.callGraphCache = computeCallGraph((await this.dataflow(force)).graph);
+			const dataflow = await this.dataflow(force);
+			/**
+			 * Really stupid fix for lazy evaluation of functions. Currently undiscovered function calls will not be linked properly
+			 * after dataflow analysis has concluded. Therefore the first call needs to materialize all needed vertices and then we can link them again.
+			 * Optimization for future: Only toplevel traversal to trigger materialization
+			 */
+			if(this.args.context.config.optimizations.deferredFunctionEvaluation.enabled) {
+				// Trigger lazy materialization and re-link nested calls in lazy mode.
+				computeCallGraph(dataflow.graph);
+				updateNestedFunctionCalls(dataflow.graph, dataflow.environment);
+			}
+			this.callGraphCache = computeCallGraph(dataflow.graph);
 		}
 		return this.callGraphCache;
 	}

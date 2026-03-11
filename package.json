@@ -207,6 +207,7 @@
     "command-line-usage": "^7.0.3",
     "commonmark": "^0.31.2",
     "dagre": "^0.8.5",
+    "diff": "^8.0.3",
     "gray-matter": "^4.0.3",
     "joi": "^18.0.1",
     "lz-string": "^1.5.0",

@@ -141,10 +141,10 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
  * (leaving this as a legacy mode :D)
  */
 export class RShell implements AsyncParser<string> {
-
 	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
+	public readonly incremental = false;
 	private session:         RShellSession;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;

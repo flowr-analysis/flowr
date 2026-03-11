@@ -246,7 +246,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 		}
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx.inc);
 		const normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;

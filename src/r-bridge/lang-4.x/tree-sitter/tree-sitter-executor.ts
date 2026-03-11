@@ -6,6 +6,9 @@ import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type {
+	FlowrAnalyzerIncrementalAnalysisContext
+} from '../../../project/context/flowr-analyzer-incremental-analysis-context';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
@@ -16,10 +19,10 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
  * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
  */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
-
 	public readonly name = 'tree-sitter';
 	private readonly parser: Parser;
 	private static language: Parser.Language;
+	public incremental = true;
 
 	/**
 	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
@@ -69,12 +72,31 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.getLanguage().version;
 	}
 
-	public parse(request: RParseRequest): Parser.Tree {
+	public parse(request: RParseRequest & { filePath?: string }, inc: FlowrAnalyzerIncrementalAnalysisContext | undefined): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file') {
 			sourceCode = fs.readFileSync(request.content, 'utf8');
 		} else {
 			sourceCode = request.content;
+		}
+		const parseActions = inc?.getReparseActions();
+		console.log(request);
+
+		if(request.filePath !== undefined && parseActions && parseActions.length > 0) {
+			const previosParse = inc?.getParse();
+			const previousFile = previosParse?.files.find(f => f.filePath === request.filePath);
+			if(previousFile && typeof previousFile.parsed !== 'string') {
+				const previous = previousFile.parsed;
+				previous.edit({
+					startIndex:     0,
+					oldEndIndex:    3,
+					newEndIndex:    5,
+					startPosition:  { row: 0, column: 0 },
+					oldEndPosition: { row: 0, column: 3 },
+					newEndPosition: { row: 0, column: 5 },
+				});
+				return this.parser.parse(sourceCode, previous);
+			}
 		}
 		return this.parser.parse(sourceCode);
 	}

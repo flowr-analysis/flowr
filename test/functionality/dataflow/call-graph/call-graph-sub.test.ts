@@ -11,8 +11,7 @@ import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { ExitPointType } from '../../../../src/dataflow/info';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
@@ -24,7 +23,7 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			analyzer.addRequest(requestFromInput(code));
 			const cg = await analyzer.callGraph();
 			const idMap = (await analyzer.normalize()).idMap;
-			const resolvedEntries = entries.map(e => slicingCriterionToId(e as SingleSlicingCriterion, idMap));
+			const resolvedEntries = entries.map(e => SingleSlicingCriterion.parse(e as SingleSlicingCriterion, idMap));
 			const subCg = getSubCallGraph(cg, new Set(resolvedEntries));
 			const expectedResolved = Dataflow.resolve(expectedGraph, analyzer.inspectContext(), idMap);
 			const diff = Dataflow.diff({

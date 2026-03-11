@@ -3,7 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { onlyLoopsOnce } from '../../../src/control-flow/useless-loop';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 
 
@@ -17,7 +17,7 @@ describe('One Iteration Loop Detection', withTreeSitter(shell => {
 			const cfg = extractCfg(result.normalize, contextFromInput(''), result.dataflow.graph);
 
 			const actual = onlyLoopsOnce(
-				slicingCriterionToId(node, result.normalize.idMap),
+				SingleSlicingCriterion.parse(node, result.normalize.idMap),
 				result.dataflow.graph, cfg,
 				result.normalize,
 				context

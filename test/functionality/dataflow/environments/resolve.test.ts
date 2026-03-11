@@ -11,7 +11,7 @@ import { Bottom, isBottom, isTop, type Lift, Top, type Value } from '../../../..
 import { withShell } from '../../_helper/shell';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { intervalFromValues } from '../../../../src/dataflow/eval/values/intervals/interval-constants';
 import { getScalarFromInteger } from '../../../../src/dataflow/eval/values/scalar/scalar-constants';
 import { vectorFrom } from '../../../../src/dataflow/eval/values/vectors/vector-constants';
@@ -75,7 +75,7 @@ describe.sequential('Resolve', withShell(shell => {
 				context
 			}).allRemainingSteps();
 
-			const resolved = resolveIdToValue(slicingCriterionToId(identifier, dataflow.normalize.idMap), {
+			const resolved = resolveIdToValue(SingleSlicingCriterion.parse(identifier, dataflow.normalize.idMap), {
 				environment: withEnv === With.Environment ? dataflow.dataflow.environment : undefined,
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,

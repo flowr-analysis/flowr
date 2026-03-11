@@ -5,7 +5,7 @@ import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-prin
 import { type FlowrSearchLike, getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { arrayEqual } from '../../../src/util/collections/arrays';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { flowrSearchToAscii } from '../../../src/search/flowr-search-printer';
 import type { FlowrSearchElement } from '../../../src/search/flowr-search';
@@ -58,7 +58,7 @@ export function assertSearch(
 						expected = expected.map(id => {
 							try {
 								guard(isNotUndefined(ast), 'Normalized AST must be defined');
-								return slicingCriterionToId(id as SingleSlicingCriterion, ast.idMap);
+								return SingleSlicingCriterion.parse(id as SingleSlicingCriterion, ast.idMap);
 							} catch{
 								/* just keep it :D */
 								return id as NodeId;
@@ -83,7 +83,7 @@ export function assertSearch(
 
 
 /**
- *
+ * checks whether the flowR search has the expected enrichments
  */
 export function assertSearchEnrichment(
 	name: string | TestLabel,

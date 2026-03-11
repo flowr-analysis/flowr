@@ -1,8 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import {
-	type SingleSlicingCriterion,
-	slicingCriterionToId
+	SingleSlicingCriterion,
 } from '../../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -21,13 +20,13 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 			const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
 			analyzer.addRequest(requestFromInput(code));
 			const idMap = (await analyzer.normalize()).idMap;
-			const id = slicingCriterionToId(c as SingleSlicingCriterion, idMap);
+			const id = SingleSlicingCriterion.parse(c as SingleSlicingCriterion, idMap);
 			const expIds: ExceptionPoint[] = exp.map(e => {
 				if(typeof (e as unknown) === 'string') {
-					return { id: slicingCriterionToId(e as SingleSlicingCriterion, idMap), cds: undefined };
+					return { id: SingleSlicingCriterion.parse(e as SingleSlicingCriterion, idMap), cds: undefined };
 				} else {
 					const s = e as { id: SingleSlicingCriterion, cds: ControlDependency[] | undefined };
-					return { id: slicingCriterionToId(s.id, idMap), cds: s.cds };
+					return { id: SingleSlicingCriterion.parse(s.id, idMap), cds: s.cds };
 				}
 			});
 			// move up the error message :sparkles:

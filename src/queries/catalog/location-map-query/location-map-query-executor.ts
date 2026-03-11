@@ -1,8 +1,8 @@
 import type { LocationMapQuery, LocationMapQueryResult } from './location-map-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import type { AstIdMap, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { isNotUndefined } from '../../../util/assert';
+import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 
 const fileIdRegex = /^(?<file>.*(\.[rR]))-/;
 
@@ -32,7 +32,7 @@ export async function executeLocationMapQuery({ analyzer }: BasicQueryData, quer
 	const start = Date.now();
 	const criteriaOfInterest = new Set(queries
 		.flatMap(q => q.ids ?? [])
-		.map(c => tryResolveSliceCriterionToId(c, ast.idMap))
+		.map(c => SingleSlicingCriterion.tryParse(c, ast.idMap))
 		.filter(isNotUndefined))
 	;
 	const locationMap: LocationMapQueryResult['map'] = {

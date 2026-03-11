@@ -2,8 +2,7 @@ import type { InspectHigherOrderQuery, InspectHigherOrderQueryResult } from './i
 import type { BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isFunctionHigherOrder } from '../../../dataflow/fn/higher-order-function';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
@@ -30,7 +29,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 	const filterFor = new Set<NodeId>();
 	if(filters) {
 		for(const f of filters) {
-			const i = tryResolveSliceCriterionToId(f, ast.idMap);
+			const i = SingleSlicingCriterion.tryParse(f, ast.idMap);
 			if(i !== undefined) {
 				filterFor.add(i);
 			}

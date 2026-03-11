@@ -1,6 +1,6 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { type Origin, getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -23,7 +23,7 @@ describe('Dataflow', withTreeSitter(ts => {
 				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
 					guard(analysis !== undefined);
 					const want = expected[interest];
-					const interestedId = slicingCriterionToId(interest, analysis.normalize.idMap);
+					const interestedId = SingleSlicingCriterion.parse(interest, analysis.normalize.idMap);
 					const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
 					try {
 						if(want === undefined) {
@@ -33,7 +33,7 @@ describe('Dataflow', withTreeSitter(ts => {
 							origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							const wantMapped = want.map(e => ({
 								...e,
-								id: slicingCriterionToId(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+								id: SingleSlicingCriterion.parse(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
 							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							assert.deepStrictEqual(origins, wantMapped);
 						}

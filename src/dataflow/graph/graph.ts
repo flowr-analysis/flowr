@@ -171,7 +171,8 @@ export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
+ * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}.
+ * The helper object associated with the DFG is {@link Dataflow}.
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.

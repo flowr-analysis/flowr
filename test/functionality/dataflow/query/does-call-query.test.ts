@@ -7,8 +7,7 @@ import type {
 	DoesCallQuery,
 	DoesCallQueryResult
 } from '../../../../src/queries/catalog/does-call-query/does-call-query-format';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 
 describe('Does Call Query', withTreeSitter(parser => {
@@ -28,7 +27,7 @@ describe('Does Call Query', withTreeSitter(parser => {
 			const expectedResults: DoesCallQueryResult['results'] = {};
 			let i = 0;
 			for(const v of results) {
-				expectedResults[String(++i)] = v === false ? false : { call: slicingCriterionToId(v, idMap) };
+				expectedResults[String(++i)] = v === false ? false : { call: SingleSlicingCriterion.parse(v, idMap) };
 			}
 			return {
 				'does-call': {

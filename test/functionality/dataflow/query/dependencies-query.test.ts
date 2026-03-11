@@ -1,6 +1,6 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
@@ -23,8 +23,8 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 			continue;
 		}
 		out[key] = value.map(({ nodeId, ...rest }) => ({
-			nodeId:    typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap),
-			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : slicingCriterionToId(String(lid) as SingleSlicingCriterion, idMap)),
+			nodeId:    typeof nodeId === 'number' ? nodeId : SingleSlicingCriterion.parse(String(nodeId) as SingleSlicingCriterion, idMap),
+			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : SingleSlicingCriterion.parse(String(lid) as SingleSlicingCriterion, idMap)),
 			...rest
 		}));
 	}

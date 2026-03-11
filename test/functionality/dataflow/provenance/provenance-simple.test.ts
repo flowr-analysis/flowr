@@ -2,8 +2,7 @@ import { describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { calculateProvenance } from '../../../../src/dataflow/graph/provenance-graph';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { guard } from '../../../../src/util/assert';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 
@@ -14,7 +13,7 @@ describe('Provenance Test', withTreeSitter((ts => {
 			analyzer.addRequest(code);
 			const df = await analyzer.dataflow();
 			const nast = await analyzer.normalize();
-			const provenanceId = tryResolveSliceCriterionToId(provenanceFor, nast.idMap);
+			const provenanceId = SingleSlicingCriterion.tryParse(provenanceFor, nast.idMap);
 			guard(provenanceId !== undefined, `could not resolve slicing criterion ${provenanceFor} to an id`);
 			const provenance = calculateProvenance(
 				provenanceId,

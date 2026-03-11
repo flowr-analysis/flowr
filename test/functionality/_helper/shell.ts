@@ -27,9 +27,8 @@ import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
-	type SingleSlicingCriterion,
+	SingleSlicingCriterion,
 	type SlicingCriteria,
-	slicingCriterionToId, tryResolveSliceCriterionToId
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -446,7 +445,7 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveVertices) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
-						return tryResolveSliceCriterionToId(id as SingleSlicingCriterion, normalize.idMap) ?? id;
+						return SingleSlicingCriterion.tryParse(id as SingleSlicingCriterion, normalize.idMap) ?? id;
 					}));
 				}
 				for(const id of userConfig.mustNotHaveVertices) {
@@ -456,8 +455,8 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveEdges) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
-						const resolvedFrom = tryResolveSliceCriterionToId(from as SingleSlicingCriterion, normalize.idMap) ?? from;
-						const resolvedTo = tryResolveSliceCriterionToId(to as SingleSlicingCriterion, normalize.idMap) ?? to;
+						const resolvedFrom = SingleSlicingCriterion.tryParse(from as SingleSlicingCriterion, normalize.idMap) ?? from;
+						const resolvedTo = SingleSlicingCriterion.tryParse(to as SingleSlicingCriterion, normalize.idMap) ?? to;
 						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
 					});
 				}
@@ -658,7 +657,7 @@ export function assertSliced(
 			try {
 				if(Array.isArray(expected)) {
 					// check whether all ids are present in the slice result
-					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
+					const decodedExpected = expected.map(e => SingleSlicingCriterion.parse(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
 					const inSlice = Array.from(result.slice.result)

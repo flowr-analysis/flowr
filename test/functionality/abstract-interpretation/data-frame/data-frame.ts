@@ -18,7 +18,7 @@ import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/proces
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
@@ -369,7 +369,7 @@ function getInferredDomainForCriterion(
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
-	const nodeId = slicingCriterionToId(criterion, idMap);
+	const nodeId = SingleSlicingCriterion.parse(criterion, idMap);
 	const node = idMap.get(nodeId);
 
 	if(node === undefined) {
@@ -389,7 +389,7 @@ function getInferredOperationsForCriterion(
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): Readonly<DataFrameOperations> {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
-	const nodeId = slicingCriterionToId(criterion, idMap);
+	const nodeId = SingleSlicingCriterion.parse(criterion, idMap);
 	let node = idMap.get(nodeId);
 
 	if(node?.info.role === RoleInParent.FunctionCallName) {

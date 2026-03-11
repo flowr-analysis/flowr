@@ -9,11 +9,10 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SingleSlicingCriterion } from '../../slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 
 /**
- * This is the root helper object to work with
+ * This is the root helper object to work with the {@link DataflowGraph}.
  */
 export const Dataflow = {
 	/**
@@ -70,7 +69,7 @@ export const Dataflow = {
 			if(cached !== undefined) {
 				return cached;
 			}
-			const resolved = tryResolveSliceCriterionToId(id as SingleSlicingCriterion, resolveMap) ?? id as NodeId;
+			const resolved = SingleSlicingCriterion.tryParse(id, resolveMap) ?? id as NodeId;
 
 			cache.set(id as string, resolved);
 			return resolved;
@@ -111,10 +110,10 @@ export const Dataflow = {
 	}
 } as const;
 
-// TODO: slicing criterion helper for parsing and dispatch
 // TODO: helper for unknown helpers
 // TODO: call graph
 // TODO: mermaid helper
 // TODO: quads helper
 // TODO: vertex helper
 // TODO: then do provenance
+// TODO: document

@@ -1,7 +1,6 @@
 import { withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
-import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { CfgSimplificationPassName } from '../../../src/control-flow/cfg-simplification';
@@ -24,7 +23,7 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 			const cfg = await analyzer.controlflow(simplifications);
 			const norm = await analyzer.normalize();
 			const translateIds = selectedVertices?.map(v =>
-				tryResolveSliceCriterionToId(v, norm.idMap)
+				SingleSlicingCriterion.tryParse(v, norm.idMap)
 			).filter(isNotUndefined) ?? [];
 			const mermaid = cfgToMermaid(cfg, norm, {
 				prefix:         '',

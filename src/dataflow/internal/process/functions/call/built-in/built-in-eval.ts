@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { requestFromInput } from '../../../../../../r-bridge/retriever';
 import {
@@ -54,7 +54,7 @@ export function processEvalCall<OtherInfo>(
 
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
-		: initializeCleanDataflowInformation(rootId, data);
+		: DataflowInformation.initialize(rootId, data);
 	const evalArgument = args[0];
 
 	if(config.includeFunctionCall) {

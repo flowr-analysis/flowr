@@ -1,8 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { mapProblematicNodesToIds, withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../../../../src/dataflow/graph/call-graph';
-import { getSubCallGraph } from '../../../../src/dataflow/graph/call-graph';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -24,7 +23,7 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			const cg = await analyzer.callGraph();
 			const idMap = (await analyzer.normalize()).idMap;
 			const resolvedEntries = entries.map(e => SingleSlicingCriterion.parse(e as SingleSlicingCriterion, idMap));
-			const subCg = getSubCallGraph(cg, new Set(resolvedEntries));
+			const subCg = CallGraph.computeSubCallGraph(cg, new Set(resolvedEntries));
 			const expectedResolved = Dataflow.resolve(expectedGraph, analyzer.inspectContext(), idMap);
 			const diff = Dataflow.diff({
 				graph: subCg,

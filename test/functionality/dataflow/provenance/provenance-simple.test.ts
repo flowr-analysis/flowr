@@ -4,7 +4,7 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { calculateProvenance } from '../../../../src/dataflow/graph/provenance-graph';
 import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { guard } from '../../../../src/util/assert';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Provenance Test', withTreeSitter((ts => {
 	function assertProvenance(code: string, provenanceFor: SingleSlicingCriterion): void {
@@ -21,7 +21,7 @@ describe('Provenance Test', withTreeSitter((ts => {
 				nast,
 				analyzer.context()
 			);
-			console.log(graphToMermaidUrl(provenance));
+			console.log(Dataflow.visualize.mermaidUrl(provenance));
 		});
 	}
 

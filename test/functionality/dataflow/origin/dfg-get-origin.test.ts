@@ -6,9 +6,9 @@ import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../.
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -39,7 +39,7 @@ describe('Dataflow', withTreeSitter(ts => {
 						}
 					} catch(e) {
 						const dfg = analysis.dataflow.graph;
-						console.error('dfg:', graphToMermaidUrl(dfg));
+						console.error('dfg:', Dataflow.visualize.mermaidUrl(dfg));
 						throw e;
 					}
 				});

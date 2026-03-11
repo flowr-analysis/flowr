@@ -25,7 +25,7 @@ import {
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
-import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SingleSlicingCriterion,
 	type SlicingCriteria,
@@ -49,8 +49,8 @@ import { contextFromInput } from '../../../src/project/context/flowr-analyzer-co
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
-import { dropTransitiveEdges } from '../../../src/dataflow/graph/call-graph';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -423,7 +423,7 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const graph = userConfig?.context === 'call-graph' ? dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
+		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);
@@ -663,11 +663,11 @@ export function assertSliced(
 					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
-					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
+					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
 				} else {
 					assert.strictEqual(
 						result.reconstruct.code, expected,
-						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
 				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');

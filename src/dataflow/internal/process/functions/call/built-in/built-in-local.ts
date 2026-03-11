@@ -1,7 +1,6 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation, alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -50,7 +49,7 @@ export function processLocal<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
-	const dfEnv = env ? processDataflowFor(env, data) : initializeCleanDataflowInformation(rootId, data);
+	const dfEnv = env ? processDataflowFor(env, data) : DataflowInformation.initialize(rootId, data);
 	if(alwaysExits(dfEnv)) {
 		patchFunctionCall({
 			nextGraph:             dfEnv.graph,

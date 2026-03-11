@@ -3,9 +3,9 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { executeDataflowLensQuery } from './dataflow-lens-query-executor';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /**
  * Returns a simplified view on the dataflow graph of the analysis
@@ -24,7 +24,7 @@ export const DataflowLensQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-lens'>['dataflow-lens'];
 		result.push(`Query: ${bold('dataflow-lens', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Simplified Graph](${graphToMermaidUrl(out.simplifiedGraph, false, undefined, true)})`);
+		result.push(`   ╰ [Simplified Graph](${Dataflow.visualize.mermaidUrl(out.simplifiedGraph, false, undefined, true)})`);
 		return true;
 	},
 	schema: Joi.object({

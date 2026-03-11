@@ -6,10 +6,10 @@ import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/d
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { withShell } from '../../_helper/shell';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -58,7 +58,7 @@ describe('Graph Clustering', () => {
 				try {
 					compareClusters(actual, resolved);
 				} catch(e) {
-					console.log(dataflowGraphToMermaidUrl(info.dataflow));
+					console.log(Dataflow.visualize.mermaidUrl(info.dataflow));
 					throw e;
 				}
 			});

@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { removeRQuotes, type RParseRequest, type RParseRequestFromText } from '../../../../../../r-bridge/retriever';
@@ -168,7 +168,7 @@ export function processSourceCall<OtherInfo>(
 	}
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
-		: initializeCleanDataflowInformation(rootId, data);
+		: DataflowInformation.initialize(rootId, data);
 
 	const sourceFileArgument = args[0];
 

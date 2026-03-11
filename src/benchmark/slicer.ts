@@ -59,8 +59,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
-import type { CallGraph } from '../dataflow/graph/call-graph';
-import { computeCallGraph } from '../dataflow/graph/call-graph';
+import { CallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -120,7 +119,7 @@ export class BenchmarkSlicer {
 	private readonly parserName: KnownParserName;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType[] | undefined;
+	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
@@ -342,7 +341,7 @@ export class BenchmarkSlicer {
 		const g = this.dataflow?.graph;
 		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
-		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
+		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**

@@ -13,8 +13,8 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import { CfgKind } from '../../../../src/project/cfg-kind';
 import { label } from '../label';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
-import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { FlowrConfig } from '../../../../src/config';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 function normAllIds(ids: readonly NodeId[]): NodeId[] {
 	return ids.map(NodeId.normalize);
@@ -78,7 +78,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			}
 			console.error(`expected: ${cfgToMermaidUrl(expected, await analyzer.normalize())}`);
 			console.error(`actual: ${cfgToMermaidUrl(cfg, await analyzer.normalize())}`);
-			console.error('Dataflow:', dataflowGraphToMermaidUrl(await analyzer.dataflow()));
+			console.error('Dataflow:', Dataflow.visualize.mermaidUrl(await analyzer.dataflow()));
 			throw e;
 		}
 	});

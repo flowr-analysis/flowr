@@ -4,7 +4,8 @@ import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse'
 import { isFunctionRecursive } from '../../../../src/dataflow/fn/recursive-function';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 
 describe('is-recursive-function', withTreeSitter(ts => {
 	function testRec(
@@ -28,8 +29,8 @@ describe('is-recursive-function', withTreeSitter(ts => {
 						assert.strictEqual(isFunctionRecursive(id, await analyzer.callGraph()), exp);
 					} catch(e) {
 						console.error(`Error while testing criterion ${c} in code:\n${code}`);
-						console.log('CG', graphToMermaidUrl(await analyzer.callGraph()));
-						console.log('DFG', graphToMermaidUrl((await analyzer.dataflow()).graph));
+						console.log('CG', CallGraph.visualize.mermaidUrl(await analyzer.callGraph()));
+						console.log('DFG', Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph));
 						throw e;
 					}
 				});

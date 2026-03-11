@@ -18,7 +18,6 @@ import { log } from '../../../src/util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser } from '../../../src/r-bridge/parser';
 import type { DataflowInformation } from '../../../src/dataflow/info';
-import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
@@ -27,6 +26,7 @@ import { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 
 
 /**
@@ -123,7 +123,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		try {
 			assert.deepEqual(results.results.map(r => cleanup(r, ast )), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
-			console.error('dfg:', graphToMermaidUrl((await analyzer.dataflow()).graph));
+			console.error('dfg:', Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph));
 			console.error('cfg:', cfgToMermaidUrl(await analyzer.controlflow(), await analyzer.normalize()));
 			throw e;
 		}

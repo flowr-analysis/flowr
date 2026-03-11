@@ -10,20 +10,24 @@ import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/deco
 import { guard } from '../../util/assert';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
+import { DataflowMermaid } from '../../util/mermaid/dfg';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
  */
 export const Dataflow = {
+	name:      'Dataflow',
 	/**
 	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
 	 * @see {@link DataflowGraph}
 	 */
-	graph: DataflowGraph,
+	graph:     DataflowGraph,
 	/**
 	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
 	 */
-	edge:  DfEdge,
+	edge:      DfEdge,
+	/** Maps to the mermaid-centric visualization helper for dataflow graphs */
+	visualize: DataflowMermaid,
 	/**
 	 * Compare two dataflow graphs and return a report on the differences.
 	 * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
@@ -109,6 +113,8 @@ export const Dataflow = {
 		return resultGraph;
 	}
 } as const;
+
+// TODO: add views bt remove the key from callgraph
 
 // TODO: helper for unknown helpers
 // TODO: call graph

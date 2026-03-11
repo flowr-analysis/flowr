@@ -2,11 +2,11 @@ import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { getAllLinkedFunctionDefinitions } from '../../../../src/dataflow/internal/linker';
 import { label } from '../../_helper/label';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Linked Function Definitions', withTreeSitter(ts => {
 	function expectLinkedFns(lab: string, code: string, expect: Record<string, { fns?: string[], bi?: string[] }>) {
@@ -28,7 +28,7 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 			} catch(e) {
 				console.log(e);
 				console.log('Code:\n' + code);
-				console.log(graphToMermaidUrl(df.graph));
+				console.log(Dataflow.visualize.mermaidUrl(df.graph));
 				throw e;
 			}
 		});

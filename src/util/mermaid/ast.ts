@@ -1,4 +1,3 @@
-import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -8,6 +7,7 @@ import { FlowrFile } from '../../project/context/flowr-file';
 import type { MermaidGraphPrinterInfo } from './info';
 import { MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { Mermaid } from './mermaid';
 
 function identifyMermaidDirection(prefix: string): string {
 	const directionMatch = prefix.match(/flowchart (TD|LR|RL|BT)/);
@@ -28,7 +28,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 		}
 
 		const name = `${n.type} (${n.info.id})\\n${n.lexeme ?? ' '}`;
-		output += `    n${n.info.id}(["${escapeMarkdown(name)}"])\n`;
+		output += `    n${n.info.id}(["${Mermaid.escape(name)}"])\n`;
 		if(mark?.has(n.info.id)) {
 			output += `    style n${n.info.id} ${markStyle.vertex}\n`;
 		}
@@ -61,7 +61,7 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 			// add a subgraph for each file
 			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {
 				const direction = identifyMermaidDirection(prefix);
-				output += `    subgraph "File: ${escapeMarkdown(f.filePath ?? FlowrFile.INLINE_PATH)}" direction ${direction}\n`;
+				output += `    subgraph "File: ${Mermaid.escape(f.filePath ?? FlowrFile.INLINE_PATH)}" direction ${direction}\n`;
 				showAst(f.root);
 				output += '    end\n';
 			} else {
@@ -79,5 +79,5 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
  * Use mermaid to visualize the normalized AST.
  */
 export function normalizedAstToMermaidUrl(ast: RProject<ParentInformation> | RNodeWithParent, info?: MermaidGraphPrinterInfo): string {
-	return mermaidCodeToUrl(normalizedAstToMermaid(ast, info ?? {}));
+	return Mermaid.codeToUrl(normalizedAstToMermaid(ast, info ?? {}));
 }

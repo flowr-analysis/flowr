@@ -1,5 +1,5 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
 import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
@@ -87,7 +87,7 @@ export function processReplacementFunction<OtherInfo>(
 
 	/* now, we soft-inject other arguments, so that calls like `x[y] <- 3` are linked correctly */
 	const { callArgs } = processAllArguments({
-		functionName:   initializeCleanDataflowInformation(rootId, data),
+		functionName:   DataflowInformation.initialize(rootId, data),
 		args:           convertedArgs,
 		data,
 		functionRootId: rootId,

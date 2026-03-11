@@ -1,5 +1,4 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import { graphToMermaid } from '../../util/mermaid/dfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -12,8 +11,8 @@ import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { MermaidMarkdownMark } from '../../util/mermaid/info';
-import { computeCallGraph } from '../../dataflow/graph/call-graph';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import { CallGraph } from '../../dataflow/graph/call-graph';
 
 
 /**
@@ -22,7 +21,7 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-${codeBlock('mermaid', graphToMermaid({
+${codeBlock('mermaid', Dataflow.visualize.convertToMermaid({
 	graph,
 	prefix: 'flowchart LR',
 	mark,
@@ -75,7 +74,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { c
 	}
 
 	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
-	const graph = callGraph ? computeCallGraph(result.dataflow.graph) : result.dataflow.graph;
+	const graph = callGraph ? CallGraph.compute(result.dataflow.graph) : result.dataflow.graph;
 	const dfGraph = printDfGraph(graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';
 	const graphName = callGraph ? 'Call Graph' : 'Dataflow Graph';

@@ -5,10 +5,11 @@ import {
 } from '../../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { ExceptionPoint } from '../../../../src/dataflow/fn/exceptions-of-function';
 import { calculateExceptionsOfFunction } from '../../../../src/dataflow/fn/exceptions-of-function';
 import type { ControlDependency } from '../../../../src/dataflow/info';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('get-exceptions-of-function', withTreeSitter(ts => {
 	function testExceptions(
@@ -36,8 +37,8 @@ describe('get-exceptions-of-function', withTreeSitter(ts => {
 				assert.deepStrictEqual(e[id], expIds);
 			} catch(e) {
 				console.error(`Error while testing criterion ${c} in code:\n${code}`);
-				console.log('CG', graphToMermaidUrl(await analyzer.callGraph()));
-				console.log('DFG', graphToMermaidUrl((await analyzer.dataflow()).graph));
+				console.log('CG', CallGraph.visualize.mermaidUrl(await analyzer.callGraph()));
+				console.log('DFG', Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph));
 				throw e;
 			}
 		});

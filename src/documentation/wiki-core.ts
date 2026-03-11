@@ -14,7 +14,7 @@ import { processAccess } from '../dataflow/internal/process/functions/call/built
 import { processForLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-repeat-loop';
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
-import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
+import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
 import {
 	createDataflowPipeline,
@@ -372,7 +372,7 @@ We use the ${ctx.link(produceDataFlowGraph)} function as an entry point to the d
 The function is mainly backed by its ${ctx.link('processors')} object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 
 To understand these handlers, let's start with the simplest one, ${ctx.link(processUninterestingLeaf)} signals that 
-we do not care about this node and just produce an empty dataflow information (using ${ctx.link(initializeCleanDataflowInformation)}). 
+we do not care about this node and just produce an empty dataflow information (using ${ctx.linkO(DataflowInformation, 'initialize')}). 
 Looking at the function showcases the general structure of a processor:
 
 ${ctx.hierarchy(processUninterestingLeaf, { maxDepth: 2, openTop: true })}

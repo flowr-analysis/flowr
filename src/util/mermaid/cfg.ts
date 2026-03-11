@@ -1,4 +1,3 @@
-import { escapeMarkdown, mermaidCodeToUrl } from './mermaid';
 import type { NormalizedAst, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	CfgEdge,
@@ -11,6 +10,7 @@ import { doNotAutoSelect } from '../../reconstruct/auto-select/auto-select-defau
 import type { MermaidMarkStyle, MermaidGraphPrinterInfo, MermaidMarkdownMark } from './info';
 import { MermaidDefaultMarkStyle } from './info';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { Mermaid } from './mermaid';
 
 
 export interface MermaidCfgGraphPrinterInfo extends MermaidGraphPrinterInfo {
@@ -36,7 +36,7 @@ function cfgOfNode(vert: CfgVertex, normalizedVertex: RNodeWithParent | undefine
 	if(normalizedVertex && content !== undefined) {
 		const start = CfgVertex.isExpression(vert) ? '([' : '[';
 		const end = CfgVertex.isExpression(vert) ? '])' : ']';
-		const name = `"\`${escapeMarkdown(normalizedVertex.type)} (${id})${content ? '\n' + escapeMarkdown(JSON.stringify(content)) : ''}${CfgVertex.getCallTargets(vert) ? '\n calls:' + escapeMarkdown(JSON.stringify([...CfgVertex.getCallTargets(vert) as Set<NodeId>])) : ''}\`"`;
+		const name = `"\`${Mermaid.escape(normalizedVertex.type)} (${id})${content ? '\n' + Mermaid.escape(JSON.stringify(content)) : ''}${CfgVertex.getCallTargets(vert) ? '\n calls:' + Mermaid.escape(JSON.stringify([...CfgVertex.getCallTargets(vert) as Set<NodeId>])) : ''}\`"`;
 		output += `    n${id}${start}${name}${end}\n`;
 	} else {
 		output += String(id).endsWith('-exit') ? `    n${id}((${id}))\n` : `    n${id}[[${id}]]\n`;
@@ -107,7 +107,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 
 				const ids = elems?.map(CfgVertex.getId) ?? [];
 				const reconstruct = limitTo(reconstructToCode(normalizedAst, { nodes: new Set(ids) }, doNotAutoSelect).code, basicBlockCharacterLimit);
-				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${escapeMarkdown(reconstruct)}\`"`;
+				const name = `"\`${includeBasicBlockLabel ? `Basic Block (${id})\n` : ''}${Mermaid.escape(reconstruct)}\`"`;
 				output += `    n${id}[[${name}]]\n`;
 				diagramIncludedIds.add(CfgVertex.getId(vertex));
 			} else {
@@ -155,7 +155,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
 			const isCd = CfgEdge.isControlDependency(edge);
 			const edgeType = isCd ? '-->' : '-.->';
 			const edgeSuffix = isCd ? ` (${CfgEdge.unpackWhen(edge)})` : '';
-			output += `    n${from} ${edgeType}|"${escapeMarkdown(CfgEdge.typeToString(edge))}${edgeSuffix}"| n${to}\n`;
+			output += `    n${from} ${edgeType}|"${Mermaid.escape(CfgEdge.typeToString(edge))}${edgeSuffix}"| n${to}\n`;
 		}
 	}
 
@@ -183,7 +183,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
  * Use mermaid to visualize the normalized AST.
  */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
-	return mermaidCodeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
+	return Mermaid.escape(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }
 
 /**

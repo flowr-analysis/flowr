@@ -11,9 +11,9 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
-import { invertDfg } from '../../dataflow/graph/invert-dfg';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -47,7 +47,7 @@ export function staticSlice(
 	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){
-		graph = invertDfg(graph, ctx.env.makeCleanEnv());
+		graph = Dataflow.invert(graph, ctx.env.makeCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);

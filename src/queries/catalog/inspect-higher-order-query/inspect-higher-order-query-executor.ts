@@ -6,7 +6,7 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { invertDfg } from '../../../dataflow/graph/invert-dfg';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /**
  * Execute higher-order function inspection queries on the given analyzer.
@@ -44,7 +44,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 
 	let invertedGraph: DataflowGraph | undefined;
 	if(filterFor.size === 0 || filterFor.size > 10) {
-		invertedGraph = invertDfg(graph, analyzer.inspectContext().env.makeCleanEnv());
+		invertedGraph = Dataflow.invert(graph, analyzer.inspectContext().env.makeCleanEnv());
 	}
 
 	const result: Record<NodeId, boolean> = {};

@@ -6,8 +6,6 @@ import { getSubCallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
-import { resolveDataflowGraph } from '../../../../src/dataflow/graph/resolve-graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
@@ -16,6 +14,7 @@ import { ExitPointType } from '../../../../src/dataflow/info';
 import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {
@@ -27,8 +26,8 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			const idMap = (await analyzer.normalize()).idMap;
 			const resolvedEntries = entries.map(e => slicingCriterionToId(e as SingleSlicingCriterion, idMap));
 			const subCg = getSubCallGraph(cg, new Set(resolvedEntries));
-			const expectedResolved = resolveDataflowGraph(expectedGraph, analyzer.inspectContext(), idMap);
-			const diff = diffOfDataflowGraphs({
+			const expectedResolved = Dataflow.resolve(expectedGraph, analyzer.inspectContext(), idMap);
+			const diff = Dataflow.diff({
 				graph: subCg,
 				name:  'Got'
 			}, {

@@ -3,8 +3,6 @@ import { graphToMermaid } from '../../util/mermaid/dfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
-import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { printAsMs } from '../../util/text/time';
@@ -15,6 +13,7 @@ import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { MermaidMarkdownMark } from '../../util/mermaid/info';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 
 /**
@@ -32,6 +31,9 @@ ${codeBlock('mermaid', graphToMermaid({
 	`;
 }
 
+/**
+ * Options for {@link printDfGraphForCode}.
+ */
 export interface PrintDataflowGraphOptions {
 	readonly mark?:               ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?:           boolean;
@@ -41,7 +43,6 @@ export interface PrintDataflowGraphOptions {
 	readonly simplified?:         boolean;
 	readonly callGraph?:          boolean;
 }
-
 
 /**
  * Visualizes a side effect for documentation purposes.
@@ -114,8 +115,8 @@ export async function verifyExpectedSubgraph(parser: KnownParser, code: string, 
 	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph, context);
-	const report: GraphDifferenceReport = diffOfDataflowGraphs(
+	expectedSubgraph = Dataflow.resolve(expectedSubgraph, context);
+	const report: GraphDifferenceReport = Dataflow.diff(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
 		{

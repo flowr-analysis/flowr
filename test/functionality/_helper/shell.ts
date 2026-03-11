@@ -23,7 +23,6 @@ import {
 	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
@@ -34,7 +33,6 @@ import {
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
-import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
 import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -53,6 +51,7 @@ import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { dropTransitiveEdges } from '../../../src/dataflow/graph/call-graph';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -116,7 +115,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
-		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
+		} else if(ignoreColumns && (key === 'location' || key === 'fullRange') && Array.isArray(value) && value.length === 4) {
 			value = [value[0], 0, value[2], 0];
 		} else if(key === 'tsId') {
 			// we ignore tree-sitter-specific metadata
@@ -431,10 +430,10 @@ export function assertDataflow(
 		expected.setIdMap(normalize.idMap);
 
 		if(userConfig?.resolveIdsAsCriterion) {
-			expected = resolveDataflowGraph(expected, analyzer.inspectContext());
+			expected = Dataflow.resolve(expected, analyzer.inspectContext());
 		}
 
-		const report: GraphDifferenceReport = diffOfDataflowGraphs(
+		const report: GraphDifferenceReport = Dataflow.diff(
 			{ name: 'expected', graph: expected },
 			{ name: 'got',      graph: graph },
 			{

@@ -7,7 +7,7 @@ import { guard } from '../../../../util/assert';
  * Finally, it provides access to the single cells, and all cells fused together as one R file.
  * So far, this does *not* support `\Sexpr` calls.
  */
-export class FlowrSweaveFile extends FlowrFile<string> {
+export class FlowrSweaveFile extends FlowrFile {
 	private readonly wrapped: FlowrFileProvider<string>;
 	private data?:            SweaveInfo;
 

@@ -7,7 +7,7 @@ import { FileRole, FlowrFile } from '../../../context/flowr-file';
  * This decorates a text file and parses its contents as a Jupyter file.
  * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrJupyterFile extends FlowrFile<string> {
+export class FlowrJupyterFile extends FlowrFile {
 	private readonly wrapped: FlowrFileProvider<string>;
 
 	/**

@@ -20,6 +20,8 @@ import fs from 'fs';
 import path from 'path';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrAnalyzer } from '../flowr-analyzer';
+import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -129,6 +131,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private files:                    Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
 	private inlineFiles:              FlowrFileProvider[] = [];
 	private readonly fileLoaders:     readonly FlowrAnalyzerFilePlugin[];
+	private readonly context:         FlowrAnalyzerContext;
 	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
 	private readonly consideredFiles: string[] = [];
 
@@ -136,11 +139,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 
 	constructor(
+		context: FlowrAnalyzerContext,
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
 		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
 		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
 	) {
 		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
+		this.context = context;
 		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
 	}
@@ -210,6 +215,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
 		const f = this.fileLoadPlugins(wrapFile(file, roles));
+
+		f.addOnInvalidate(c => {
+			this.context.analyzer?.receive(c);
+		});
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);

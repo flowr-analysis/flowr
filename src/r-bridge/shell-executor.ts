@@ -23,6 +23,7 @@ const executorLog = log.getSubLogger({ name: 'RShellExecutor' });
  */
 export class RShellExecutor implements SyncParser<string> {
 	public readonly name = 'r-shell';
+	public readonly incremental = false;
 	public readonly options:        Readonly<RShellExecutionOptions>;
 	private readonly prerequisites: string[];
 

@@ -1,37 +1,52 @@
 import { assertUnreachable } from '../../util/assert';
+import type { FlowrFileProvider, StringableContent } from '../context/flowr-file';
 
-export const enum CacheInvalidationEventType {
-	Full = 'full'
+export const enum InvalidationEventType {
+	Full = 'full',
+	FileInvalidate = 'file-invalidate',
 }
-export type CacheInvalidationEvent =
-	{ type: CacheInvalidationEventType.Full };
 
-export interface CacheInvalidationEventReceiver {
-	receive(event: CacheInvalidationEvent): void
+export interface FileContentInvalidateEvent<Content extends StringableContent = StringableContent> {
+	readonly type:       InvalidationEventType.FileInvalidate;
+	readonly oldContent: Content | undefined;
+	readonly file:       FlowrFileProvider<Content>;
+}
+
+export type InvalidationEvent<Content extends StringableContent = StringableContent> =
+	{ type: InvalidationEventType.Full }
+ |  FileContentInvalidateEvent<Content>;
+
+
+export type InvalidationEventHandler<Content extends StringableContent = StringableContent> = (event: InvalidationEvent<Content>) => void;
+
+export interface InvalidationEventReceiver<Content extends StringableContent = StringableContent> {
+	receive: InvalidationEventHandler<Content>
 }
 
 /**
  * Central class for caching analysis results in FlowR.
  */
-export abstract class FlowrCache<Cache> implements CacheInvalidationEventReceiver {
+export abstract class FlowrCache<Cache> implements InvalidationEventReceiver {
 	private value:      Cache | undefined = undefined;
-	private dependents: CacheInvalidationEventReceiver[] = [];
+	private dependents: InvalidationEventReceiver[] = [];
 
-	public registerDependent(dependent: CacheInvalidationEventReceiver) {
+	public registerDependent(dependent: InvalidationEventReceiver) {
 		this.dependents.push(dependent);
 	}
-	public removeDependent(dependent: CacheInvalidationEventReceiver) {
+	public removeDependent(dependent: InvalidationEventReceiver) {
 		this.dependents = this.dependents.filter(d => d !== dependent);
 	}
 
-	receive(event: CacheInvalidationEvent): void {
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
 		/* we will update this as soon as we support incremental update patterns */
-		switch(event.type) {
-			case CacheInvalidationEventType.Full:
+		switch(type) {
+			case InvalidationEventType.Full:
+			case InvalidationEventType.FileInvalidate:
 				this.value = undefined;
 				break;
 			default:
-				assertUnreachable(event.type);
+				assertUnreachable(type);
 		}
 		/* in the future we want to defer this *after* the dataflow is re-computed, then all receivers can decide whether they need to update */
 		this.notifyDependents(event);
@@ -40,7 +55,7 @@ export abstract class FlowrCache<Cache> implements CacheInvalidationEventReceive
 	/**
 	 * Notify all dependents of a cache invalidation event.
 	 */
-	public notifyDependents(event: CacheInvalidationEvent) {
+	public notifyDependents(event: InvalidationEvent) {
 		for(const dependent of this.dependents) {
 			dependent.receive(event);
 		}

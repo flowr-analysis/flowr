@@ -10,7 +10,7 @@ import { log } from '../../../../util/log';
  * This decorates a text file and parses its contents as a R Markdown file.
  * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrRMarkdownFile extends FlowrFile<string> {
+export class FlowrRMarkdownFile extends FlowrFile {
 	private data?:            RmdInfo;
 	private readonly wrapped: FlowrFileProvider<string>;
 

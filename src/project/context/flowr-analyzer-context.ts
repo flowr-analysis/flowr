@@ -31,6 +31,12 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
+import type {
+	ReadOnlyFlowrAnalyzerIncrementalAnalysisContext
+} from './flowr-analyzer-incremental-analysis-context';
+import {
+	FlowrAnalyzerIncrementalAnalysisContext
+} from './flowr-analyzer-incremental-analysis-context';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -54,6 +60,10 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * The environment context provides access to the environment information used during analysis.
 	 */
 	readonly env:                ReadOnlyFlowrAnalyzerEnvironmentContext;
+	/**
+	 * The incremental context provides potential information for the next incremental analysis run
+	 */
+	readonly inc:                ReadOnlyFlowrAnalyzerIncrementalAnalysisContext;
 	/**
 	 * The configuration options used by the analyzer.
 	 */
@@ -81,6 +91,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	// TODO: docment this in the wiki-analyzer wiki!
+	public readonly inc:   FlowrAnalyzerIncrementalAnalysisContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
 
 	public readonly config: FlowrConfig;
@@ -88,9 +100,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
 		this.config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
-		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
+		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
+		this.inc   = new FlowrAnalyzerIncrementalAnalysisContext();
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.meta = new FlowrAnalyzerMetaContext();
@@ -144,6 +157,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files.reset();
 		this.deps.reset();
 		this.meta.reset();
+		this.inc.reset();
 	}
 }
 

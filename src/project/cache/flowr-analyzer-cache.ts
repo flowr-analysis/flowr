@@ -1,5 +1,5 @@
 import type { KnownParser } from '../../r-bridge/parser';
-import { type CacheInvalidationEvent, CacheInvalidationEventType, FlowrCache } from './flowr-cache';
+import { type InvalidationEvent, InvalidationEventType, FlowrCache } from './flowr-cache';
 import {
 	createDataflowPipeline,
 	type DEFAULT_DATAFLOW_PIPELINE,
@@ -18,6 +18,12 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { CallGraph } from '../../dataflow/graph/call-graph';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
+import type {
+	ReparseAction } from '../incremental/incremental-parse/incremental-parse';
+import {
+	coarseCheckWhetherToInvalidate,
+	shouldWeReparse
+} from '../incremental/incremental-parse/incremental-parse';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
@@ -49,37 +55,52 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.initCacheProviders();
 	}
 
-	private initCacheProviders() {
+	private initCacheProviders(reparse?: readonly ReparseAction[]) {
+		this.args.context.inc.reset();
+		this.args.context.inc.storeParse(
+			this.peekParse(),
+			reparse
+		);
 		this.pipeline = createDataflowPipeline(this.args.parser, {
 			context: this.args.context,
 			getId:   this.args.getId
 		}) as AnalyzerPipelineExecutor<Parser>;
 		this.controlFlowCache = new FlowrAnalyzerControlFlowCache();
 		this.callGraphCache = undefined;
+		this.computeIfAbsent(true, () => this.pipeline?.getResults(true));
 	}
 
 	public static create<Parser extends KnownParser>(data: FlowrAnalyzerCacheOptions<Parser>): FlowrAnalyzerCache<Parser> {
 		return new FlowrAnalyzerCache<Parser>(data);
 	}
 
-	public override receive(event: CacheInvalidationEvent): void {
+	public override receive(event: InvalidationEvent): void {
 		super.receive(event);
-		switch(event.type) {
-			case CacheInvalidationEventType.Full:
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
 				this.initCacheProviders();
 				break;
+			case InvalidationEventType.FileInvalidate: {
+				if(!coarseCheckWhetherToInvalidate(this.args.context, event)) {
+					return;
+				}
+				const reparse = shouldWeReparse(this.args.context, event);
+				this.initCacheProviders(reparse === 'full' ? undefined : reparse);
+				break;
+			}
 			default:
-				assertUnreachable(event.type);
+				assertUnreachable(type);
 		}
 	}
 
 	private get(): AnalyzerCacheType<Parser> {
 		/* this will do a ref assignment, so indirect force */
-		return this.computeIfAbsent(false, () => this.pipeline.getResults(true));
+		return this.computeIfAbsent(false, () => this.pipeline?.getResults(true));
 	}
 
 	public reset() {
-		this.receive({ type: CacheInvalidationEventType.Full });
+		this.receive({ type: InvalidationEventType.Full });
 	}
 
 	private async runTapeUntil<T>(force: boolean | undefined, until: () => T | undefined): Promise<T> {
@@ -112,7 +133,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#parse} - to get the parse output, parsing if necessary.
 	 */
 	public peekParse(): NonNullable<AnalyzerCacheType<Parser>['parse']> | undefined {
-		return this.get().parse;
+		return this.get()?.parse;
 	}
 
 	/**
@@ -131,7 +152,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#normalize} - to get the normalized AST, normalizing if necessary.
 	 */
 	public peekNormalize(): NonNullable<AnalyzerCacheType<Parser>['normalize']> | undefined {
-		return this.get().normalize;
+		return this.get()?.normalize;
 	}
 
 	/**
@@ -150,7 +171,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 * @see {@link FlowrAnalyzerCache#dataflow} - to get the dataflow graph, computing if necessary.
 	 */
 	public peekDataflow(): NonNullable<AnalyzerCacheType<Parser>['dataflow']> | undefined {
-		return this.get().dataflow;
+		return this.get()?.dataflow;
 	}
 
 	/**

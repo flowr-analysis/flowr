@@ -13,18 +13,17 @@ import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { VertexType } from '../../dataflow/graph/vertex';
-import { FunctionArgument } from '../../dataflow/graph/graph';
 import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { pMatch } from '../../dataflow/internal/linker';
+import { getArgsOfName } from '../../dataflow/internal/process/functions/call/built-in/built-in-try-catch';
+import { valueSetGuard } from '../../dataflow/eval/values/general';
 
 export interface StopWithCallResult extends LintingResult {
 	readonly loc: SourceLocation
 }
 
-export interface StopWithCallConfig extends MergeableRecord {
-	foo?: boolean;
-}
+export type StopWithCallConfig = MergeableRecord;
 
 export interface StopWithCallMetadata extends MergeableRecord {
 	consideredNodes: number
@@ -32,7 +31,7 @@ export interface StopWithCallMetadata extends MergeableRecord {
 
 export const STOP_WITH_CALL_ARG = {
 	createSearch:        () => Q.var('stop').filter(VertexType.FunctionCall),
-	processSearchResult: (elements, _config, _data) => {
+	processSearchResult: (elements, _config, { dataflow, analyzer }) => {
 		const meta: StopWithCallMetadata = {
 			consideredNodes: 0
 		};
@@ -41,30 +40,30 @@ export const STOP_WITH_CALL_ARG = {
 				elements.getElements()
 					.filter(element => {
 						//only built-in functions
-						const origins = getOriginInDfg(_data.dataflow.graph, element.node.info.id);
-						if(isNotUndefined(origins)){
-							let builtIn = true;
-							for(let i = 0; i < origins.length; i++){
-								if(origins[i].type !== OriginType.BuiltInFunctionOrigin){
-									builtIn = false;
-								}
-							}
+						const origins = getOriginInDfg(dataflow.graph, element.node.info.id);
+						if(isNotUndefined(origins)) {
+							const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
 							if(!builtIn){
 								return false;
 							}
 						}
 
-						const fCall = _data.dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
+						const fCall = dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
 
 						//filter out function calls with argument "call." set to false
-						for(let i = 0; i < fCall.args.length; i++){
-							if(FunctionArgument.hasName(fCall.args[i], 'call.')){
-								const argId = FunctionArgument.getReference(fCall.args[i]) as NodeId;
-								const res = resolveIdToValue(argId, { graph: _data.dataflow.graph, environment: fCall.environment, ctx: _data.analyzer.inspectContext() });
-								if(res.type === 'set' && res.elements.length != 0){
-									if(res.elements[0].type === 'logical'){
-										return res.elements[0].value;
-									}
+						const stopParamMap = {
+							'...':    '...',
+							'call.':  'call.',
+							'domain': 'domain'
+						};
+						const mapping = pMatch(fCall.args, stopParamMap);
+						const mappedToStop = getArgsOfName(mapping, 'call.');
+						for(const argId of mappedToStop) {
+							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: analyzer.inspectContext() });
+							const values = valueSetGuard(res);
+							if(values?.type === 'set' && values.elements.length !== 0){
+								if(values.elements[0].type === 'logical'){
+									return values.elements[0].value;
 								}
 							}
 						}

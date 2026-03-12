@@ -26,7 +26,10 @@ import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { expensiveTrace } from '../../../../../../util/log';
 
 
-function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
+/**
+ *
+ */
+export function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
 	return new Set(argMaps.entries().filter(([, v]) => v === name).map(([k]) => k));
 }
 

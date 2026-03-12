@@ -158,6 +158,10 @@ df[6, "value"]
 		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
 		'for(i in c(1)) { print(i) }', tagTypes);
 
+	rule(knownParser,
+		'stop-call', 'StopWithCallConfig', 'STOP_WITH_CALL_ARG', 'lint-stop-call',
+		'stop(42)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

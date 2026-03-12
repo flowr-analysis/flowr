@@ -15,11 +15,11 @@ describe('Provenance Test', withTreeSitter((ts => {
 			const nast = await analyzer.normalize();
 			const provenanceId = SingleSlicingCriterion.tryParse(provenanceFor, nast.idMap);
 			guard(provenanceId !== undefined, `could not resolve slicing criterion ${provenanceFor} to an id`);
+			// TODO: move this to helper object
 			const provenance = calculateProvenance(
 				provenanceId,
-				df,
-				nast,
-				analyzer.context()
+				df.graph,
+				nast.idMap
 			);
 			console.log(Dataflow.visualize.mermaid.url(provenance));
 		});

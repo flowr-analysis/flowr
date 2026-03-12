@@ -4,6 +4,8 @@ import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { REnvironmentInformation } from '../environments/environment';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -47,5 +49,38 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin: getOriginInDfg
+	origin: getOriginInDfg,
+	/**
+	 * Only returns the sub-part of the graph that is determined by the given selection.
+	 * In other words, this will return a graph with only vertices that are part of the selected ids,
+	 * and edges that are between such selected vertices.
+	 * @param graph - the dataflow graph to slice for
+	 * @param select - the ids to select in the reduced graph
+	 */
+	reduceGraph(this: void, graph: DataflowGraph, select: ReadonlySet<NodeId>): DataflowGraph {
+		const df = new DataflowGraph(graph.idMap);
+		const roots = graph.rootIds();
+		for(const [id, vtx] of graph.vertices(true)) {
+			if(select.has(id)) {
+				df.addVertex(
+					vtx,
+					vtx.environment as unknown as REnvironmentInformation,
+					roots.has(id)
+				);
+			}
+		}
+		for(const [from, targets] of graph.edges()) {
+			for(const [tar, { types }] of targets.entries()) {
+				df.addEdge(from, tar, types);
+			}
+		}
+		for(const u of graph.unknownSideEffects) {
+			if(typeof u === 'object' && select.has(u.id)) {
+				df.markIdForUnknownSideEffects(u.id, u.linkTo);
+			} else if(select.has(u as NodeId)) {
+				df.markIdForUnknownSideEffects(u as NodeId);
+			}
+		}
+		return df;
+	}
 } as const;

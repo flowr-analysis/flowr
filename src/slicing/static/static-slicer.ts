@@ -14,6 +14,7 @@ import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
 import { invertDfg } from '../../dataflow/graph/invert-dfg';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { updateNestedFunctionCalls } from '../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -43,6 +44,9 @@ export function staticSlice(
 	expensiveTrace(slicerLogger,
 		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
+
+	info.graph.materializeAll();
+	updateNestedFunctionCalls(info.graph, info.environment);
 
 	let { graph } = info;
 

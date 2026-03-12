@@ -33,7 +33,7 @@ import { BuiltInProcName } from '../environments/built-in-proc-name';
  * Creates an empty dataflow graph.
  * Should only be used in tests and documentation.
  */
-export function emptyGraph(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
+export function emptyGraph(this: void, cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(cleanEnv, idMap);
 }
 

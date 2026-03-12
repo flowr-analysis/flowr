@@ -164,10 +164,3 @@ export const Dataflow = {
 	 */
 	origin: getOriginInDfg
 } as const;
-
-// TODO: vertex helper
-// TODO: same helper for control flow and normalized AST
-// TODO: RDocumnetation helper objet
-// TODO: document all helpers in the wiki, also add some tutrial releated semantic sugar
-// TOdO: helper object for linker object with subcategories like calls, arguments etc.
-// TODO: then do provenance

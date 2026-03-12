@@ -21,6 +21,7 @@ import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/ro
 import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
+import { materializeLazyFunctionDefinitionsContainingNodes } from '../../../dataflow/internal/process/functions/call/built-in/built-in-function-definition';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -232,6 +233,16 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	/* promote all strings to regex patterns */
 	const { promotedQueries, requiresCfg } = promoteQueryCallNames(queries);
+
+	if(promotedQueries.some(q => q.ignoreParameterValues !== true)) {
+		const parameterDefaultValueIds = new Set<NodeId>();
+		for(const node of ast.idMap.values()) {
+			if(node.info.role === RoleInParent.ParameterDefaultValue) {
+				parameterDefaultValueIds.add(node.info.id);
+			}
+		}
+		materializeLazyFunctionDefinitionsContainingNodes(dataflow.graph, parameterDefaultValueIds, ast.idMap);
+	}
 
 	let cfg = undefined;
 	if(requiresCfg) {

@@ -324,7 +324,6 @@ export function materializeLazyFunctionDefinitionsContainingNodes(
 	}
 }
 
-
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
  * If `deferredFunctionEvaluation` is enabled in the config, a lazy function definition vertex is created instead of eagerly analyzing the function body.

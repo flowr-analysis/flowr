@@ -29,8 +29,8 @@ describe('is-recursive-function', withTreeSitter(ts => {
 						assert.strictEqual(isFunctionRecursive(id, await analyzer.callGraph()), exp);
 					} catch(e) {
 						console.error(`Error while testing criterion ${c} in code:\n${code}`);
-						console.log('CG', CallGraph.visualize.mermaidUrl(await analyzer.callGraph()));
-						console.log('DFG', Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph));
+						console.log('CG', CallGraph.visualize.mermaid.url(await analyzer.callGraph()));
+						console.log('DFG', Dataflow.visualize.mermaid.url((await analyzer.dataflow()).graph));
 						throw e;
 					}
 				});

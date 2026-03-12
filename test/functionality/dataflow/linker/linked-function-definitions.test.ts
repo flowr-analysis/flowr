@@ -28,7 +28,7 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 			} catch(e) {
 				console.log(e);
 				console.log('Code:\n' + code);
-				console.log(Dataflow.visualize.mermaidUrl(df.graph));
+				console.log(Dataflow.visualize.mermaid.url(df.graph));
 				throw e;
 			}
 		});

@@ -78,7 +78,7 @@ export function assertCfg(parser: KnownParser, code: string, partialExpected: Pa
 			}
 			console.error(`expected: ${cfgToMermaidUrl(expected, await analyzer.normalize())}`);
 			console.error(`actual: ${cfgToMermaidUrl(cfg, await analyzer.normalize())}`);
-			console.error('Dataflow:', Dataflow.visualize.mermaidUrl(await analyzer.dataflow()));
+			console.error('Dataflow:', Dataflow.visualize.mermaid.url(await analyzer.dataflow()));
 			throw e;
 		}
 	});

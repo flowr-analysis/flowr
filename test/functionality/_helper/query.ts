@@ -103,9 +103,9 @@ export function assertQuery<
 			) : expected);
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
-			console.error('Dataflow-Graph', Dataflow.visualize.mermaidUrl(await analyzer.dataflow()));
+			console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(await analyzer.dataflow()));
 			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalize(), analyzer.inspectContext(), (await analyzer.dataflow()).graph), await analyzer.normalize()));
-			console.error('Call-Graph', CallGraph.visualize.mermaidUrl(CallGraph.compute((await analyzer.dataflow()).graph)));
+			console.error('Call-Graph', CallGraph.visualize.mermaid.url(CallGraph.compute((await analyzer.dataflow()).graph)));
 			throw e;
 		}
 	});

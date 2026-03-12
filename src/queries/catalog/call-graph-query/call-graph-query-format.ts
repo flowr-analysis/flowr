@@ -24,7 +24,7 @@ export const CallGraphQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'call-graph'>['call-graph'];
 		result.push(`Query: ${bold('call-graph', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Call Graph](${CallGraph.visualize.mermaidUrl(out.graph)})`);
+		result.push(`   ╰ [Call Graph](${CallGraph.visualize.mermaid.url(out.graph)})`);
 		return true;
 	},
 	schema: Joi.object({

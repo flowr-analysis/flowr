@@ -21,7 +21,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.convertToMermaid({ graph: result.graph, includeEnvironments: false }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -41,7 +41,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaidUrl(result.graph, false);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false);
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -103,7 +103,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.convertToMermaid({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -122,7 +122,7 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaidUrl(result.graph, false, undefined, true);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true);
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');

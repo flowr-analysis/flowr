@@ -19,8 +19,8 @@ const staticDataflowCommon = {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       dataflowGraphToJson,
 		[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
-		[StepOutputFormat.Mermaid]:    Dataflow.visualize.mermaidRaw,
-		[StepOutputFormat.MermaidUrl]: Dataflow.visualize.mermaidUrl
+		[StepOutputFormat.Mermaid]:    Dataflow.visualize.mermaid.raw,
+		[StepOutputFormat.MermaidUrl]: Dataflow.visualize.mermaid.url
 	},
 	dependencies: [ 'normalize' ],
 } as const;

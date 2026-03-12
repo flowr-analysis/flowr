@@ -272,8 +272,8 @@ export interface LabeledDiffGraph {
 /** uses same id map but ensures, it is different from the rhs so that mermaid can work with that */
 export function diffGraphsToMermaid(left: LabeledDiffGraph, right: LabeledDiffGraph, prefix: string): string {
 	// we add the prefix ourselves
-	const { string: leftGraph, mermaid } = DataflowMermaid.convertToMermaid({ graph: left.graph, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark });
-	const { string: rightGraph } = DataflowMermaid.convertToMermaid({ graph: right.graph, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges });
+	const { string: leftGraph, mermaid } = DataflowMermaid.convert({ graph: left.graph, prefix: '', idPrefix: `l-${left.label}`, includeEnvironments: true, mark: left.mark });
+	const { string: rightGraph } = DataflowMermaid.convert({ graph: right.graph, prefix: '', idPrefix: `r-${right.label}`, includeEnvironments: true, mark: right.mark, presentEdges: mermaid.presentEdges });
 
 	return `${prefix}flowchart BT\nsubgraph "${left.label}"\n${leftGraph}\nend\nsubgraph "${right.label}"\n${rightGraph}\nend`;
 }
@@ -295,16 +295,16 @@ export const DataflowMermaid = {
 	 * Converts a dataflow graph to mermaid graph code that visualizes the graph.
 	 * @see {@link DataflowMermaid.url} - render the given graph to a url to mermaid.live
 	 */
-	convertToMermaid(this: void, config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
-		const mermaid = graphToMermaidGraph(config.includeOnlyIds ? config.includeOnlyIds : config.graph.rootIds(), config);
+	convert(this: void, config: MermaidGraphConfiguration): { string: string, mermaid: MermaidGraph } {
+		const mermaid = graphToMermaidGraph(config.includeOnlyIds ?? config.graph.rootIds(), config);
 		return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 	},
 	/**
 	 * This is a simplified version of {@link DataflowMermaid.convertToMermaid}
 	 */
-	mermaidRaw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
+	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
 		graph = DataflowInformation.is(graph) ? graph.graph : graph;
-		return DataflowMermaid.convertToMermaid({ graph, includeEnvironments, mark, simplified }).string;
+		return DataflowMermaid.convert({ graph, includeEnvironments, mark, simplified }).string;
 	},
 	/**
 	 * Converts a dataflow graph to a mermaid url that visualizes the graph.
@@ -314,8 +314,8 @@ export const DataflowMermaid = {
 	 * @param mark                - which vertices to highlight in the visualization
 	 * @param simplified          - whether to show a simplified use of the graph with fewer details on the vertices and edges
 	 */
-	mermaidUrl(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
-		return Mermaid.codeToUrl(DataflowMermaid.mermaidRaw(graph, includeEnvironments, mark, simplified));
+	url(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
+		return Mermaid.codeToUrl(DataflowMermaid.raw(graph, includeEnvironments, mark, simplified));
 	}
 
 } as const;

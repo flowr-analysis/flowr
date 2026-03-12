@@ -39,7 +39,7 @@ describe('Dataflow', withTreeSitter(ts => {
 						}
 					} catch(e) {
 						const dfg = analysis.dataflow.graph;
-						console.error('dfg:', Dataflow.visualize.mermaidUrl(dfg));
+						console.error('dfg:', Dataflow.visualize.mermaid.url(dfg));
 						throw e;
 					}
 				});

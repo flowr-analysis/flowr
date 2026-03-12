@@ -12,7 +12,7 @@ import { getAllFunctionCallTargets } from '../internal/linker';
 import { DfEdge, EdgeType } from './edge';
 import { BuiltInProcName } from '../environments/built-in';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { Dataflow } from './df-helper';
+import { Dataflow, GraphHelper } from './df-helper';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
@@ -197,9 +197,8 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
  * @see {@link CallGraph}
  */
 export const CallGraph = {
-	...Dataflow,
 	name: 'CallGraph',
-
+	...GraphHelper,
 	/**
 	 * Extracts the sub call graph from the given call graph, starting from the given entry points.
 	 */
@@ -242,10 +241,7 @@ export const CallGraph = {
 			if(visited.has(currentId)) {
 				continue;
 			}
-			if(currentId === to) {
-				knownReachability.get(from).add(to);
-				return true;
-			} else if(knownReachability.get(currentId).has(to)) {
+			if(currentId === to || knownReachability.get(currentId).has(to)) {
 				knownReachability.get(from).add(to);
 				return true;
 			}

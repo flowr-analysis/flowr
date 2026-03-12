@@ -39,11 +39,11 @@ describe('repl', () => {
 					output = await flowrRepl([`:df ${replCode}`, `:n ${replCode}`, `:df* ${replCode}`, `:n* ${replCode}`, ':quit']);
 				});
 				test(':df', () => {
-					const expect = Dataflow.visualize.convertToMermaid({ graph: dfOut }).string;
+					const expect = Dataflow.visualize.mermaid.convert({ graph: dfOut }).string;
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':df*', () => {
-					const expect = Dataflow.visualize.mermaidUrl(dfOut);
+					const expect = Dataflow.visualize.mermaid.url(dfOut);
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n', () => {

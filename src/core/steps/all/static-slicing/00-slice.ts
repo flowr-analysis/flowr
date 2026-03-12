@@ -6,6 +6,7 @@ import type { SlicingCriteria } from '../../../../slicing/criterion/parse';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { staticSlice } from '../../../../slicing/static/static-slicer';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
+import { SliceDirection } from '../../../../util/slice-direction';
 
 export interface SliceRequiredInput {
 	/** The slicing criterion is only of interest if you actually want to slice the R code */
@@ -16,11 +17,6 @@ export interface SliceRequiredInput {
 	readonly direction?: SliceDirection
 	/** The context of the analysis */
 	readonly context?:   ReadOnlyFlowrAnalyzerContext
-}
-
-export enum SliceDirection {
-	Backward = 'backward',
-	Forward = 'forward'
 }
 
 function processor(results: { dataflow?: DataflowInformation, normalize?: NormalizedAst }, input: Partial<SliceRequiredInput>) {

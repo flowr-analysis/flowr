@@ -34,7 +34,6 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
-import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
@@ -49,6 +48,7 @@ import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
+import { SliceDirection } from '../util/slice-direction';
 
 
 registerQueryDocumentation('call-context', {

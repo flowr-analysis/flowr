@@ -123,7 +123,7 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 		try {
 			assert.deepEqual(results.results.map(r => cleanup(r, ast )), expected.map(r => cleanup(r, ast)), `Expected ${ruleName} to return ${JSON.stringify(expected)}, but got ${JSON.stringify(results)}`);
 		} catch(e) {
-			console.error('dfg:', Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph));
+			console.error('dfg:', Dataflow.visualize.mermaid.url((await analyzer.dataflow()).graph));
 			console.error('cfg:', cfgToMermaidUrl(await analyzer.controlflow(), await analyzer.normalize()));
 			throw e;
 		}

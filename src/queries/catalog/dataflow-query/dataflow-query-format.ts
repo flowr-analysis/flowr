@@ -25,7 +25,7 @@ export const DataflowQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
 		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Dataflow Graph](${Dataflow.visualize.mermaidUrl(out.graph)})`);
+		result.push(`   ╰ [Dataflow Graph](${Dataflow.visualize.mermaid.url(out.graph)})`);
 		return true;
 	},
 	schema: Joi.object({

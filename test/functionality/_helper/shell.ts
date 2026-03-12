@@ -663,11 +663,11 @@ export function assertSliced(
 					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
-					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
+					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`);
 				} else {
 					assert.strictEqual(
 						result.reconstruct.code, expected,
-						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
 				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');

@@ -72,7 +72,7 @@ export function assertSearch(
 						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
 					}
 				} /* v8 ignore next 4 */ catch(e: unknown) {
-					console.error('Dataflow-Graph', Dataflow.visualize.mermaidUrl(dataflow));
+					console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(dataflow));
 					console.error('Search', flowrSearchToAscii(search));
 					throw e;
 				}

@@ -11,23 +11,28 @@ import { guard } from '../../util/assert';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 import { DataflowMermaid } from '../../util/mermaid/dfg';
+import { CallGraph } from './call-graph';
+import { df2quads } from './quads';
+import { emptyGraph } from './dataflowgraph-builder';
 
 /**
- * This is the root helper object to work with the {@link DataflowGraph}.
+ * The underlying functions which work for any graph* like view
+ * **Please do not use this object directly but use the helpers**
+ * - {@link Dataflow}
+ * - {@link CallGraph}
  */
-export const Dataflow = {
-	name:      'Dataflow',
-	/**
-	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
-	 * @see {@link DataflowGraph}
-	 */
-	graph:     DataflowGraph,
-	/**
-	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
-	 */
-	edge:      DfEdge,
-	/** Maps to the mermaid-centric visualization helper for dataflow graphs */
-	visualize: DataflowMermaid,
+export const GraphHelper = {
+	/** Maps to the mermaid-centric visualization helper for dataflow graphs and their views */
+	visualize: {
+		/**
+		 * Mermaid rendering helper for dataflow graphs
+		 * - {@link DataflowMermaid.url}, {@link DataflowMermaid.raw} - to render the graph as a mermaid graph (e.g., in markdown or the mermaid live editor)
+		 * - {@link DataflowMermaid.convert} - for the underyling transformation
+		 * @see {@link DataflowMermaid}
+		 */
+		mermaid: DataflowMermaid,
+		quads:   { convert: df2quads }
+	},
 	/**
 	 * Compare two dataflow graphs and return a report on the differences.
 	 * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
@@ -114,7 +119,45 @@ export const Dataflow = {
 	}
 } as const;
 
-// TODO: add views bt remove the key from callgraph
+/**
+ * This is the root helper object to work with the {@link DataflowGraph}.
+ *
+ * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
+ * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
+ * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
+ */
+export const Dataflow = {
+	name:  'Dataflow',
+	/**
+	 * Maps to flowR's main graph object to store and manipulate the dataflow graph
+	 * @see {@link DataflowGraph}
+	 */
+	graph: DataflowGraph,
+	...GraphHelper,
+	/**
+	 * Maps to flowR's dataflow edge helper to work with the edges in the dataflow graph
+	 */
+	edge:  DfEdge,
+	/**
+	 * Dispatches to helper objects that relate to (sub-) views of the dataflow graph, e.g. the call graph.
+	 */
+	views: {
+		/**
+		 * Maps to flowR's helper object for the call-graph
+		 */
+		callGraph: CallGraph,
+	},
+	/**
+	 * Dispatches to helper functions to create new dataflow graphs, e.g. from a pipeline or an empty graph.
+	 */
+	create: {
+		/**
+		 * Creates an empty dataflow graph with the given id map (or a new one if not provided).
+		 * @see {@link emptyGraph}
+		 */
+		empty: emptyGraph
+	}
+} as const;
 
 // TODO: helper for unknown helpers
 // TODO: call graph

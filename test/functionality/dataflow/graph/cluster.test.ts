@@ -58,7 +58,7 @@ describe('Graph Clustering', () => {
 				try {
 					compareClusters(actual, resolved);
 				} catch(e) {
-					console.log(Dataflow.visualize.mermaidUrl(info.dataflow));
+					console.log(Dataflow.visualize.mermaid.url(info.dataflow));
 					throw e;
 				}
 			});

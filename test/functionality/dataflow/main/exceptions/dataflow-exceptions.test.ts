@@ -33,7 +33,7 @@ describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 					}
 				}
 			} catch(e: unknown) {
-				console.error('DF', Dataflow.visualize.mermaidUrl(df.graph));
+				console.error('DF', Dataflow.visualize.mermaid.url(df.graph));
 				throw e;
 			}
 		});

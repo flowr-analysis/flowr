@@ -21,7 +21,7 @@ import { CallGraph } from '../../dataflow/graph/call-graph';
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-${codeBlock('mermaid', Dataflow.visualize.convertToMermaid({
+${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({
 	graph,
 	prefix: 'flowchart LR',
 	mark,

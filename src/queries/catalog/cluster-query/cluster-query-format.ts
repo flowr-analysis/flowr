@@ -31,7 +31,7 @@ export const ClusterQueryDefinition = {
 			let suffix = '';
 			if(formatter === markdownFormatter) {
 				suffix = `([marked](${
-					Dataflow.visualize.mermaidUrl((await analyzer.dataflow()).graph, false, new Set(cluster.members))
+					Dataflow.visualize.mermaid.url((await analyzer.dataflow()).graph, false, new Set(cluster.members))
 				}))`;
 			}
 			result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(formatter, cluster.members)}} ${suffix}`);

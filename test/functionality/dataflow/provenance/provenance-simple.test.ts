@@ -21,7 +21,7 @@ describe('Provenance Test', withTreeSitter((ts => {
 				nast,
 				analyzer.context()
 			);
-			console.log(Dataflow.visualize.mermaidUrl(provenance));
+			console.log(Dataflow.visualize.mermaid.url(provenance));
 		});
 	}
 

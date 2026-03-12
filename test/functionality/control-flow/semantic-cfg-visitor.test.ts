@@ -36,7 +36,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 			try {
 				assert(v);
 			} catch(error) {
-				console.error('dfg: ', Dataflow.visualize.mermaidUrl(data.dataflow.graph));
+				console.error('dfg: ', Dataflow.visualize.mermaid.url(data.dataflow.graph));
 				console.error('cfg: ', cfgToMermaidUrl(cfg, data.normalize));
 				throw error;
 			}

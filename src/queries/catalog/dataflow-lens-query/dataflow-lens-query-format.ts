@@ -24,7 +24,7 @@ export const DataflowLensQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-lens'>['dataflow-lens'];
 		result.push(`Query: ${bold('dataflow-lens', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Simplified Graph](${Dataflow.visualize.mermaidUrl(out.simplifiedGraph, false, undefined, true)})`);
+		result.push(`   ╰ [Simplified Graph](${Dataflow.visualize.mermaid.url(out.simplifiedGraph, false, undefined, true)})`);
 		return true;
 	},
 	schema: Joi.object({

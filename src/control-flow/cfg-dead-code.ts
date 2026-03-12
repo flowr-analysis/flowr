@@ -167,6 +167,8 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		log.warn('cfgAnalyzeDeadCode called without ast or dfg, skipping dead code analysis');
 		return cfg;
 	}
+	// Ensure lazy function bodies are available so unconditional jumps in function scopecan be recognized during dead-code analysis.
+	info.dfg.materializeAll();
 	const visitor = new CfgConditionalDeadCodeRemoval({
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,

@@ -166,20 +166,35 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 
 	/**
 	 * Materialize this lazy function only if the given node is part of its AST subtree.
+	 * @param nodeId - node id to check for materialization
+	 * @param idMap - AST id map to check for parent relationships
 	 * @returns true if this call materialized the function definition, false otherwise.
 	 */
 	public materializeIfContainsNode(nodeId: NodeId, idMap: AstIdMap | undefined): boolean {
+		return this.materializeIfContainsAnyNode([nodeId], idMap);
+	}
+
+	/**
+	 * Materialize this lazy function if any given node is part of its AST subtree.
+	 * Stops on first hit.
+	 * @param nodeIds - node ids to check for materialization
+	 * @param idMap - AST id map to check for parent relationships. If undefined, no materialization will occur
+	 * @returns true if this call materialized the function definition, false otherwise.
+	 */
+	public materializeIfContainsAnyNode(nodeIds: Iterable<NodeId>, idMap: AstIdMap | undefined): boolean {
 		if(this._materialized || idMap === undefined) {
 			return false;
 		}
 
-		let current = idMap.get(nodeId);
-		while(current?.info?.parent !== undefined) {
-			if(current.info.parent === this.id) {
-				this.materialize();
-				return true;
+		for(const nodeId of nodeIds) {
+			let current = idMap.get(nodeId);
+			while(current?.info?.parent !== undefined) {
+				if(current.info.parent === this.id) {
+					this.materialize();
+					return true;
+				}
+				current = idMap.get(current.info.parent);
 			}
-			current = idMap.get(current.info.parent);
 		}
 
 		return false;
@@ -278,6 +293,35 @@ export function isLazyFunctionDefinitionVertex(
 	vertex: DataflowGraphVertexFunctionDefinition
 ): vertex is DataflowGraphVertexLazyFunctionDefinition {
 	return vertex instanceof DataflowGraphVertexLazyFunctionDefinition;
+}
+
+/**
+ * Materializes all lazy function definitions in the graph that contain any of the given node ids in their AST subtree.
+ * @param graph - dataflow graph
+ * @param nodeIds - node ids to check for materialization
+ * @param idMap - AST id map to check for parent relationships
+ */
+export function materializeLazyFunctionDefinitionsContainingNodes(
+	graph: DataflowGraph,
+	nodeIds: Iterable<NodeId>,
+	idMap: AstIdMap | undefined
+): void {
+	if(idMap === undefined) {
+		return;
+	}
+
+	const targets = Array.from(nodeIds);
+	if(targets.length === 0) {
+		return;
+	}
+
+	for(const [, vertex] of graph.verticesOfType(VertexType.FunctionDefinition)) {
+		const fnVertex = vertex as DataflowGraphVertexFunctionDefinition;
+		if(!isLazyFunctionDefinitionVertex(fnVertex) || fnVertex.materialized) {
+			continue;
+		}
+		fnVertex.materializeIfContainsAnyNode(targets, idMap);
+	}
 }
 
 

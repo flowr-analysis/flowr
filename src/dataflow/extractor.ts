@@ -19,7 +19,10 @@ import { EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
+import {
+	materializeLazyFunctionDefinitionsContainingNodes,
+	updateNestedFunctionCalls
+} from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
@@ -139,6 +142,20 @@ export function produceDataFlowGraph<OtherInfo>(
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
 		df = standaloneSourceFile(i, files[i], dfData, df);
+	}
+
+	// In lazy mode, materialize only functions that contain `UseMethod(...)` so S3 call edges
+	// are available without forcing unrelated lazy functions.
+	if(ctx.config.optimizations.deferredFunctionEvaluation.enabled) {
+		const useMethodSymbolIds = new Set<NodeId>();
+		for(const node of completeAst.idMap.values()) {
+			if(node.type === RType.Symbol && node.lexeme === 'UseMethod') {
+				useMethodSymbolIds.add(node.info.id);
+			}
+		}
+		if(useMethodSymbolIds.size > 0) {
+			materializeLazyFunctionDefinitionsContainingNodes(df.graph, useMethodSymbolIds, completeAst.idMap);
+		}
 	}
 
 	// finally, resolve linkages

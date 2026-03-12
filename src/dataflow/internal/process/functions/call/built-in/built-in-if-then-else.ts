@@ -17,8 +17,8 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { invertArgumentMap, pMatch } from '../../../../linker';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {

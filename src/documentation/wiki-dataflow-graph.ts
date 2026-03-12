@@ -59,11 +59,12 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -235,7 +236,7 @@ ${block({
 	content: `
 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 	as there are some edge-cases that require special attention.
-	In general, the ${ctx.link(getOriginInDfg)} function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
+	In general, the ${ctx.link(getOriginInDfg)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
 	`
 })}
 
@@ -1272,7 +1273,7 @@ ${section('Handling Origins', 3, 'dfg-handling-origins')}
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the ${ctx.link(getOriginInDfg)} function provides you with a collection of ${ctx.link('Origin')} objects:
+For this, the ${ctx.link(getOriginInDfg)} (this is also accessible with ${ctx.linkO(Dataflow, 'origin')}) function provides you with a collection of ${ctx.link('Origin')} objects:
 
 ${ctx.hierarchy('Origin', { openTop: true })}
 

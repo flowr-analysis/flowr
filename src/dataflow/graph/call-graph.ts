@@ -10,9 +10,9 @@ import type { REnvironmentInformation } from '../environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { DfEdge, EdgeType } from './edge';
-import { BuiltInProcName } from '../environments/built-in';
 import { DefaultMap } from '../../util/collections/defaultmap';
 import { Dataflow, GraphHelper } from './df-helper';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.

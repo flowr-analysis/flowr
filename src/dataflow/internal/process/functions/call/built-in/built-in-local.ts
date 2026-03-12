@@ -10,9 +10,9 @@ import { invertArgumentMap, pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 export interface LocalFunctionConfiguration {

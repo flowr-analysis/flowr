@@ -30,8 +30,8 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { EdgeType } from '../../../../../graph/edge';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Infers working directories based on the given option and reference chain

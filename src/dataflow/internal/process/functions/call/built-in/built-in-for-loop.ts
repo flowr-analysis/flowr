@@ -22,8 +22,8 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**

@@ -15,6 +15,7 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -105,8 +106,8 @@ ${await printNormalizedAstForCode(treeSitter, 'x <- 2 * 3 + 1', { showCode: fals
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 
-Indicative of the normalization is the root ${ctx.link('RProject')} node, which is present in every normalized AST
-and provides the ${ctx.link('RExpressionList')} nodes for each file in the project.
+Indicative of the normalization is the root ${ctx.link(RProject)} node, which is present in every normalized AST
+and provides the ${ctx.link(RExpressionList)} nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -122,7 +123,7 @@ In general, we provide node types for:
 Every node is a link, which directly refers to the implementation in the source code.
 Grayed-out parts are used for structuring the AST, grouping together related nodes.
 
-${codeBlock('mermaid', ctx.mermaid('RNode'))}
+${codeBlock('mermaid', ctx.mermaid(RNode))}
 
 </details>
 
@@ -134,7 +135,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${details('Normalized AST Node Types',
-	ctx.hierarchy('RNode', { collapseFromNesting: Number.MAX_VALUE, ignoredTypes: ['Info', 'LogLevel'] })
+	ctx.hierarchy(RNode, { collapseFromNesting: Number.MAX_VALUE, ignoredTypes: ['Info', 'LogLevel'] })
 )}
 
 The following segments intend to give you an overview of how to work with the normalized AST:

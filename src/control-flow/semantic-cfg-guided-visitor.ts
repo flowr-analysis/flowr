@@ -21,11 +21,12 @@ import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -246,7 +247,7 @@ export class SemanticCfgGuidedVisitor<
 					if(target.length === 1) {
 						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
 						if(targetOut) {
-							const source = [...targetOut.entries()].filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id);
+							const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
 							if(source.length === 1) {
 								return this.onAssignmentCall({ call, target: target[0][0], source: source[0][0] });
 							}
@@ -338,7 +339,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dfg, id);
+		return Dataflow.origin(this.config.dfg, id);
 	}
 
 	/**

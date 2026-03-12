@@ -3,7 +3,7 @@ import type { CallGraph } from '../graph/call-graph';
 import { VertexType } from '../graph/vertex';
 import type { ControlDependency } from '../info';
 import { ExitPointType } from '../info';
-import { BuiltInProcName } from '../environments/built-in';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {

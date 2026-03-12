@@ -18,12 +18,12 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
 import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { expensiveTrace } from '../../../../../../util/log';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {

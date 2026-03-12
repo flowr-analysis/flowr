@@ -3,7 +3,7 @@ import type { NodeId } from '../lang-4.x/ast/model/processing/node-id';
 import type { RoxygenTag, RoxygenTagParam } from './roxygen-ast';
 import { KnownRoxygenTags } from './roxygen-ast';
 import { RType } from '../lang-4.x/ast/model/type';
-import type { RNode } from '../lang-4.x/ast/model/model';
+import { RNode } from '../lang-4.x/ast/model/model';
 import { parseRoxygenComment, parseRoxygenCommentsOfNode } from './roxygen-parse';
 
 export interface DocumentationInfo {
@@ -17,7 +17,7 @@ const CommentRetriever: CommentRetrievers = {
 	[RType.Comment]:   n => parseRoxygenComment([n.lexeme]),
 	[RType.Parameter]: (n, idMap) => {
 		// get the documentation of the parent function
-		const doc = n.info.parent ? getDocumentationOf(n.info.parent, idMap) : undefined;
+		const doc = n.info.parent ? RNode.documentation(n.info.parent, idMap) : undefined;
 		const paramName = n.lexeme;
 		if(doc && paramName) {
 			if(Array.isArray(doc)) {

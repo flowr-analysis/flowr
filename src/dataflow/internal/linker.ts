@@ -24,12 +24,12 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { BuiltInProcName } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 

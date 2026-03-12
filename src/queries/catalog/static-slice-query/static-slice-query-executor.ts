@@ -5,7 +5,7 @@ import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-de
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../../util/slice-direction';
 
 /**
  * Produce a fingerprint string for a static slice query

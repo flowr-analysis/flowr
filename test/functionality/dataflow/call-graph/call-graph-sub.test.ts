@@ -8,11 +8,11 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
-import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { ExitPointType } from '../../../../src/dataflow/info';
 import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {

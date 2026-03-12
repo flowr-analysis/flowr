@@ -5,7 +5,7 @@ import type { DataflowInformation } from '../info';
 import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
-import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../util/slice-direction';
 
 /**
  * Given the id of a vertex (usually a variable use),

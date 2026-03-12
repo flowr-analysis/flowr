@@ -1,14 +1,14 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { type Origin, getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
+import { type Origin, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
-import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
@@ -24,7 +24,7 @@ describe('Dataflow', withTreeSitter(ts => {
 					guard(analysis !== undefined);
 					const want = expected[interest];
 					const interestedId = SingleSlicingCriterion.parse(interest, analysis.normalize.idMap);
-					const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
+					const origins = Dataflow.origin(analysis.dataflow.graph, interestedId);
 					try {
 						if(want === undefined) {
 							assert.isUndefined(origins);

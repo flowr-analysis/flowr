@@ -18,8 +18,8 @@ import type { ResolveInfo } from '../../../../../eval/resolve/alias-tracking';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { SourceRange } from '../../../../../../util/range';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 export interface RegisterHookConfig {
 	/** name of the hook to register, 'fn-exit' if it triggers on exit */

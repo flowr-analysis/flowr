@@ -160,9 +160,7 @@ export const Dataflow = {
 	},
 	/**
 	 * Returns the origin of a vertex in the dataflow graph
-	 * @see {@link getOriginInDfg}
-	 * // TODO: resolve value to id
-	 * // TODO: move these
+	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
 	origin: getOriginInDfg
 } as const;

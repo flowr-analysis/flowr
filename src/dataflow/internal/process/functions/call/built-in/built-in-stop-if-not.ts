@@ -13,8 +13,8 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Processes a built-in 'stopifnot' function call.

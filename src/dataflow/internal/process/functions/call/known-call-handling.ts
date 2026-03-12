@@ -14,7 +14,7 @@ import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
-import { BuiltInProcName } from '../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	/** The name of the function being called. */

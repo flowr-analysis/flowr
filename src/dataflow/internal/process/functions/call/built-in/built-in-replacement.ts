@@ -15,7 +15,7 @@ import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
 import { S7DispatchSeparator } from './built-in-s-seven-dispatch';
@@ -23,6 +23,7 @@ import { toUnnamedArgument } from '../argument/make-argument';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { FunctionArgument } from '../../../../../graph/graph';
 import { SourceRange } from '../../../../../../util/range';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**

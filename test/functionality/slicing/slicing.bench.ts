@@ -5,11 +5,11 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { Q } from '../../../src/search/flowr-search-builder';
 import { guard } from '../../../src/util/assert';
 import { staticSlice } from '../../../src/slicing/static/static-slicer';
-import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { SliceDirection } from '../../../src/util/slice-direction';
 
 
 describe('slicing', () => {

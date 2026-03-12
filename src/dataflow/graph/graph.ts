@@ -134,6 +134,9 @@ export const FunctionArgument = {
 	},
 	/**
 	 * Checks whether the given argument is a named argument with the specified name.
+	 * Please note that this only checks whether the name is exactly identical and not whether
+	 * R's argument matching resolves to the correct argument.
+	 * For this, please refer to the {@link pMatch} function!
 	 * @see {@link isNamed}
 	 */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {

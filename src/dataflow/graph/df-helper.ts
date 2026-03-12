@@ -14,6 +14,7 @@ import { DataflowMermaid } from '../../util/mermaid/dfg';
 import { CallGraph } from './call-graph';
 import { df2quads } from './quads';
 import { emptyGraph } from './dataflowgraph-builder';
+import { getOriginInDfg } from '../origin/dfg-get-origin';
 
 /**
  * The underlying functions which work for any graph* like view
@@ -156,13 +157,19 @@ export const Dataflow = {
 		 * @see {@link emptyGraph}
 		 */
 		empty: emptyGraph
-	}
+	},
+	/**
+	 * Returns the origin of a vertex in the dataflow graph
+	 * @see {@link getOriginInDfg}
+	 * // TODO: resolve value to id
+	 * // TODO: move these
+	 */
+	origin: getOriginInDfg
 } as const;
 
-// TODO: helper for unknown helpers
-// TODO: call graph
-// TODO: mermaid helper
-// TODO: quads helper
 // TODO: vertex helper
+// TODO: same helper for control flow and normalized AST
+// TODO: RDocumnetation helper objet
+// TODO: document all helpers in the wiki, also add some tutrial releated semantic sugar
+// TOdO: helper object for linker object with subcategories like calls, arguments etc.
 // TODO: then do provenance
-// TODO: document

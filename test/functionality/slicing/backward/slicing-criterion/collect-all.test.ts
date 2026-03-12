@@ -3,7 +3,7 @@ import { type TestLabel, label, decorateLabelContext } from '../../../_helper/la
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
-import { type SlicingCriteria, convertAllSlicingCriteriaToIds } from '../../../../../src/slicing/criterion/parse';
+import { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
@@ -15,10 +15,10 @@ function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: 
 		const ast = await retrieveNormalizedAst(shell, input);
 		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
+			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap))
 			.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme }));
 		const expectedMapped = expected
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap));
+			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap));
 
 		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
 	});

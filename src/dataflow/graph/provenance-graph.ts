@@ -4,7 +4,6 @@ import { staticSlice } from '../../slicing/static/static-slicer';
 import type { DataflowInformation } from '../info';
 import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import { SliceDirection } from '../../util/slice-direction';
 
 /**
@@ -17,7 +16,7 @@ export function calculateProvenance(id: NodeId, info: DataflowInformation, nast:
 		ctx,
 		info,
 		nast,
-		['$' + id] as SlicingCriteria,
+		[id],
 		SliceDirection.Backward
 	);
 	console.log(slice);

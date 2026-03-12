@@ -44,10 +44,48 @@ export const SingleSlicingCriterion = {
 			const [line, column] = criterion.split(':').map(c => parseInt(c));
 			return locationToId([line, column], idMap);
 		}
+	},
+	/**
+	 * Converts a node id to a slicing criterion in the form of `$id`
+	 */
+	fromId(this: void, id: NodeId): SingleSlicingCriterion {
+		return `$${id}`;
 	}
 } as const;
 
+/**
+ * A slicing criterion is a list of single slicing criteria, which can be in the form of `line:column`, `line@variable-name`, or `$id`.
+ */
 export type SlicingCriteria = SingleSlicingCriterion[];
+
+
+export interface DecodedCriterion {
+	criterion: SingleSlicingCriterion,
+	id:        NodeId
+}
+
+export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
+
+/**
+ * The helper object associated with {@link SlicingCriteria} which makes it easy to parse, validate and resolve slicing criteria.
+ */
+export const SlicingCriteria = {
+	/**
+	 * Decodes all slicing criteria to their corresponding node ids
+	 * @throws CriteriaParseError if any of the criteria can not be resolved
+	 * @see {@link SlicingCriteria.convertAll}
+	 */
+	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
+		return criteria.map(l => ({ criterion: l, id: SingleSlicingCriterion.parse(l, decorated) }));
+	},
+	/**
+	 * Converts all criteria to their id in the AST if possible, this keeps the original criterion if it can not be resolved.
+	 * @see {@link SlicingCriteria.decodeAll}
+	 */
+	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
+		return criteria.map(l => SingleSlicingCriterion.tryParse(l, decorated) ?? l);
+	}
+} as const;
 
 /**
  * Thrown if the given slicing criteria can not be found
@@ -94,17 +132,3 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
 	return candidate?.info.id;
 }
 
-export interface DecodedCriterion {
-	criterion: SingleSlicingCriterion,
-	id:        NodeId
-}
-
-export type DecodedCriteria = ReadonlyArray<DecodedCriterion>;
-
-/**
- * Converts all slicing criteria to their corresponding node ids
- * @throws CriteriaParseError if any of the criteria can not be resolved
- */
-export function convertAllSlicingCriteriaToIds(criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
-	return criteria.map(l => ({ criterion: l, id: SingleSlicingCriterion.parse(l, decorated) }));
-}

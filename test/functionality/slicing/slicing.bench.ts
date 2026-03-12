@@ -46,7 +46,7 @@ for(i in 1:5) {
 				ids = (await analyzer.runSearch(Q.var('print').first())).getElements().map(n => n.node.info.id);
 			}
 			guard(ids !== undefined, () => 'no result');
-			staticSlice(result.ctx, result.dataflow, result.normalize, [`$${ids[0]}`], SliceDirection.Backward, threshold);
+			staticSlice(result.ctx, result.dataflow, result.normalize, [ids[0]], SliceDirection.Backward, threshold);
 		});
 	}
 });

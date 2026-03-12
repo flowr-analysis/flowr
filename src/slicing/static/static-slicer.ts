@@ -1,11 +1,10 @@
 import { assertUnreachable, guard } from '../../util/assert';
-import { expensiveTrace, log } from '../../util/log';
+import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
 import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { convertAllSlicingCriteriaToIds, type SlicingCriteria } from '../criterion/parse';
 import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -24,7 +23,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param ctx  - The analyzer context used for slicing.
  * @param info      - The dataflow information used for slicing.
  * @param idMap     - The mapping from node ids to their information in the AST.
- * @param criteria  - The criteria to slice on.
+ * @param ids       - The seed ids to slice with. Must be at least one.
  * @param direction - The direction to slice in.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
@@ -33,19 +32,13 @@ export function staticSlice(
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
-	criteria: SlicingCriteria,
+	ids: readonly NodeId[],
 	direction: SliceDirection,
 	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
-	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
-	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);
-	expensiveTrace(slicerLogger,
-		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
-	);
-
+	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
 	let { graph } = info;
-
 	if(direction === SliceDirection.Forward){
 		graph = Dataflow.invert(graph, ctx.env.makeCleanEnv());
 	}
@@ -58,7 +51,7 @@ export function staticSlice(
 	{
 		const emptyEnv = ctx.env.makeCleanEnv();
 		const basePrint = ctx.env.getCleanEnvFingerprint();
-		for(const { id: startId } of decodedCriteria) {
+		for(const startId of ids) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
 			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nesting ?? minNesting);
@@ -130,7 +123,7 @@ export function staticSlice(
 		}
 	}
 
-	return { ...queue.status(), decodedCriteria };
+	return { ...queue.status(), slicedFor: ids };
 }
 
 /**

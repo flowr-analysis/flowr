@@ -6,6 +6,7 @@ import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import { SliceDirection } from '../../../util/slice-direction';
+import { SlicingCriteria } from '../../../slicing/criterion/parse';
 
 /**
  * Produce a fingerprint string for a static slice query
@@ -30,7 +31,8 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		}
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
-		const slice = staticSlice(analyzer.inspectContext(), await analyzer.dataflow(), await analyzer.normalize(), criteria, query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
+		const n = await analyzer.normalize();
+		const slice = staticSlice(analyzer.inspectContext(), await analyzer.dataflow(), n, SlicingCriteria.convertAll(criteria, n.idMap), query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

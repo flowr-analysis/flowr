@@ -2,29 +2,28 @@ import { DataflowGraph } from './graph';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo } from './vertex';
-import {
-	VertexType
+	DataflowGraphVertexInfo
 } from './vertex';
+import { VertexType } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
 import { DfEdge, EdgeType } from './edge';
-import { DefaultMap } from '../../util/collections/defaultmap';
-import { Dataflow, GraphHelper } from './df-helper';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { GraphHelper } from './graph-helper';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
- * You can create a call graph from a dataflow graph using {@link computeCallGraph}.
- * If you want to extract a sub call graph, use {@link getSubCallGraph}.
+ * You can create a call graph from a dataflow graph using {@link CallGraph.compute}.
+ * If you want to extract a sub call graph, use {@link CallGraph.computeSubCallGraph}.
  * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
  */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
 >;
 
-interface State {
+export interface State {
 	visited:    Set<NodeId>;
 	// links to be added if not otherwise found
 	potentials: [NodeId, Set<NodeId>][]
@@ -190,7 +189,6 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 }
 
 
-
 /**
  * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
  * @see {@link Dataflow}
@@ -279,8 +277,8 @@ export const CallGraph = {
 	/**
 	 * Computes the call graph from the given dataflow graph.
 	 * @see {@link CallGraph} - for details
-	 * @see {@link getSubCallGraph} - to extract sub call graphs
-	 * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
+	 * @see {@link CallGraph.computeSubCallGraph} - to extract sub call graphs
+	 * @see {@link CallGraph.dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
 	 */
 	compute(this: void, graph: DataflowGraph): CallGraph {
 		const result: CallGraph = new DataflowGraph(graph.idMap);

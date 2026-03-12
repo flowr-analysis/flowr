@@ -1,7 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { mapProblematicNodesToIds, withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -13,6 +12,7 @@ import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse'
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {

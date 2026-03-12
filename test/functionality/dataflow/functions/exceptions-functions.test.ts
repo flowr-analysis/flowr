@@ -8,8 +8,8 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import type { ExceptionPoint } from '../../../../src/dataflow/fn/exceptions-of-function';
 import { calculateExceptionsOfFunction } from '../../../../src/dataflow/fn/exceptions-of-function';
 import type { ControlDependency } from '../../../../src/dataflow/info';
-import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 
 describe('get-exceptions-of-function', withTreeSitter(ts => {
 	function testExceptions(

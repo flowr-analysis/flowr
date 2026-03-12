@@ -2,10 +2,10 @@ import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsR
 import type { BasicQueryData } from '../../base-query-format';
 import { log } from '../../../util/log';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { CallGraph } from '../../../dataflow/graph/call-graph';
 
 /**
  * Execute does call queries on the given analyzer.

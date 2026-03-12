@@ -1,9 +1,9 @@
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../graph/call-graph';
 import { VertexType } from '../graph/vertex';
 import type { ControlDependency } from '../info';
 import { ExitPointType } from '../info';
 import { BuiltInProcName } from '../environments/built-in-proc-name';
+import type { CallGraph } from '../graph/call-graph';
 
 const CatchHandlers: ReadonlySet<string> = new Set<BuiltInProcName>([BuiltInProcName.Try]);
 export interface ExceptionPoint {

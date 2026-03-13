@@ -66,6 +66,7 @@ export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgumen
  * @see {@link EmptyArgument} - the marker for empty arguments
  */
 export const FunctionArgument = {
+	name: 'FunctionArgument',
 	/**
 	 * Checks whether the given argument is a positional argument.
 	 * @example

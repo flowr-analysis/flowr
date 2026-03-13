@@ -1,4 +1,4 @@
-import { DataflowGraph } from '../dataflow/graph/graph';
+import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
@@ -1211,7 +1211,8 @@ ${await printDfGraphForCode(treeSitter, 'alias <- unknown\nalias()', { callGraph
 ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
-Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
+Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
+Genrally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type: 'variable' })} helper object!
 
 * The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
@@ -1223,9 +1224,9 @@ Depending on what you are interested in, there exists a plethora of functions an
 
 FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
 
-* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
-* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
-* ${ctx.link('FunctionArgument', undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+* ${ctx.link(DfEdge, undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link(Identifier, undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
+* ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
@@ -1266,8 +1267,8 @@ ${await(async() => {
 			}
 			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
-You can use ${ctx.link('DfEdge::splitTypes')} to get the individual bitmasks of all included types, and 
-${ctx.link('DfEdge::includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use ${ctx.linkO(DfEdge, 'splitTypes')} to get the individual bitmasks of all included types, and 
+${ctx.linkO(DfEdge, 'includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
 
 ${section('Handling Origins', 3, 'dfg-handling-origins')}
 

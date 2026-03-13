@@ -153,39 +153,36 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
- * Returns all argument ids that map to the given target parameter id.
- */
-export function getAllIdsWithTarget<Targets extends NodeId>(maps: Map<NodeId, Targets>, target: Targets): NodeId[] {
-	return maps.entries().filter(([, v]) => v === target).map(([k]) => k).toArray();
-}
-
-/**
- * Inverts the argument to parameter map to a parameter to argument map.
- */
-export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targets>): Map<Targets, NodeId[]> {
-	const inverted = new Map<Targets, NodeId[]>();
-	for(const [arg, param] of maps.entries()) {
-		const existing = inverted.get(param);
-		if(existing) {
-			existing.push(arg);
-		} else {
-			inverted.set(param, [arg]);
-		}
-	}
-	return inverted;
-}
-
-/**
  * Links the given arguments to the given parameters within the given graph by name only.
+ * @example
+ * ```ts
+ * const parameterSpec = {
+ *   'paramName':         'paramId',
+ *   'anotherParamName':  'anotherParamId',
+ *   // we recommend to always add '...' to your specification
+ *   // this way you can collect all arguments that could not be matched!
+ *   '...':               '...'
+ * };
+ *
+ * const match = pMatch(convertFnArguments(args), parameterSpec);
+ * const addParam = match.get('paramId');
+ * ```
  * @note
  * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
  * or convert them with {@link convertFnArguments}.
- * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
  */
-export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
+export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
 
-	const maps = new Map<NodeId, Targets>();
+	const maps = new Map<Targets, NodeId[]>();
+	function addToMaps(key: Targets, value: NodeId): void {
+		const e = maps.get(key);
+		if(e) {
+			e.push(value);
+		} else {
+			maps.set(key, [value]);
+		}
+	}
 
 	const sid = params['...'];
 	const paramNames = Object.keys(params);
@@ -198,10 +195,10 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
 		const param = params[pmatchName];
 		if(param) {
-			maps.set(argId, param);
+			addToMaps(param, argId);
 			matchedParameters.add(name);
 		} else if(sid) {
-			maps.set(argId, sid);
+			addToMaps(sid, argId);
 		}
 	}
 
@@ -216,13 +213,13 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 		const aid = arg.nodeId;
 		if(remainingParameter.length <= i) {
 			if(sid) {
-				maps.set(aid, sid);
+				addToMaps(sid, aid);
 			}
 			continue;
 		}
 		const param = params[remainingParameter[i]];
 		if(param) {
-			maps.set(aid, param);
+			addToMaps(param, aid);
 		}
 	}
 	return maps;

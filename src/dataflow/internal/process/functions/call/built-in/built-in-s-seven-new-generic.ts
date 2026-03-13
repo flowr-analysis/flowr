@@ -9,7 +9,7 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -57,7 +57,7 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+	const argMaps = pMatch(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

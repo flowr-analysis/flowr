@@ -7,7 +7,7 @@ import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
@@ -48,7 +48,7 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	};
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+	const argMaps = pMatch(convertFnArguments(args), params);
 	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

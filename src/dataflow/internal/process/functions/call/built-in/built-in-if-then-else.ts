@@ -16,7 +16,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -44,7 +44,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+		const argMaps = pMatch(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));

@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
-import { slicingCriterionToId, type SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
 import { decorateLabelContext } from '../../_helper/label';
@@ -13,7 +13,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 	test(decorateLabelContext(name, ['other']), async() => {
 		const { dataflow, normalize } = await createDataflowPipeline(shell, { context: contextFromInput(input.trim()) }).allRemainingSteps();
 
-		const symbolId = slicingCriterionToId(symbol, normalize.idMap);
+		const symbolId = SingleSlicingCriterion.parse(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);
 
 		// If we don't expect any renames make sure there are none
@@ -23,7 +23,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 		}
 
 		// Otherwise check renames and output
-		const expectedRenameIds = expectedRefs.map(c => slicingCriterionToId(c, normalize.idMap));
+		const expectedRenameIds = expectedRefs.map(c => SingleSlicingCriterion.parse(c, normalize.idMap));
 		assert.deepEqual(refs, expectedRenameIds);
 
 		// Apply Renames
@@ -39,7 +39,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 				range[3] = range[1] + (node.lexeme as string).length - 1;
 				return range;
 			})
-			.sort((a, b) => a[0] == b[0] ? b[1] - a[1] : b[0] - a[0]);
+			.sort((a, b) => a[0] === b[0] ? b[1] - a[1] : b[0] - a[0]);
 
 		for(const range of replacements) {
 			const line = newInput[range[0] - 1];

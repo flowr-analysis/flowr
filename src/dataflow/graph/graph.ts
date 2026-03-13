@@ -66,6 +66,7 @@ export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgumen
  * @see {@link EmptyArgument} - the marker for empty arguments
  */
 export const FunctionArgument = {
+	name: 'FunctionArgument',
 	/**
 	 * Checks whether the given argument is a positional argument.
 	 * @example
@@ -134,6 +135,9 @@ export const FunctionArgument = {
 	},
 	/**
 	 * Checks whether the given argument is a named argument with the specified name.
+	 * Please note that this only checks whether the name is exactly identical and not whether
+	 * R's argument matching resolves to the correct argument.
+	 * For this, please refer to the {@link pMatch} function!
 	 * @see {@link isNamed}
 	 */
 	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
@@ -171,7 +175,8 @@ export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
+ * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}.
+ * The helper object associated with the DFG is {@link Dataflow}.
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.

@@ -2,10 +2,9 @@ import type { ControlFlowInformation } from '../control-flow/control-flow-graph'
 import { CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
-import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
+import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -16,6 +15,8 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -311,7 +312,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 
 	/** Gets each variable origin that has already been visited and whose assignment has already been processed */
 	protected getVariableOrigins(nodeId: NodeId): NodeId[] {
-		return getOriginInDfg(this.config.dfg, nodeId)
+		return Dataflow.origin(this.config.dfg, nodeId)
 			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 			.map(origin => origin.id)
 			.filter(origin => this.trace.has(origin) && !this.unassigned.has(origin)) ?? [];

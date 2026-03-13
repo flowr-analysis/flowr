@@ -1,4 +1,4 @@
-import { DataflowGraph } from '../dataflow/graph/graph';
+import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
@@ -59,11 +59,12 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -235,7 +236,7 @@ ${block({
 	content: `
 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 	as there are some edge-cases that require special attention.
-	In general, the ${ctx.link(getOriginInDfg)} function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
+	In general, the ${ctx.link(getOriginInDfg)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
 	`
 })}
 
@@ -1210,7 +1211,8 @@ ${await printDfGraphForCode(treeSitter, 'alias <- unknown\nalias()', { callGraph
 ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
-Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
+Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
+Generally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type: 'variable' })} helper object!
 
 * The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
@@ -1222,9 +1224,9 @@ Depending on what you are interested in, there exists a plethora of functions an
 
 FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
 
-* ${ctx.link('DfEdge', undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
-* ${ctx.link('Identifier', undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
-* ${ctx.link('FunctionArgument', undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+* ${ctx.link(DfEdge, undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link(Identifier, undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
+* ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
 
 Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
 If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
@@ -1265,14 +1267,14 @@ ${await(async() => {
 			}
 			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
-You can use ${ctx.link('DfEdge::splitTypes')} to get the individual bitmasks of all included types, and 
-${ctx.link('DfEdge::includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use ${ctx.linkO(DfEdge, 'splitTypes')} to get the individual bitmasks of all included types, and 
+${ctx.linkO(DfEdge, 'includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
 
 ${section('Handling Origins', 3, 'dfg-handling-origins')}
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the ${ctx.link(getOriginInDfg)} function provides you with a collection of ${ctx.link('Origin')} objects:
+For this, the ${ctx.link(getOriginInDfg)} (this is also accessible with ${ctx.linkO(Dataflow, 'origin')}) function provides you with a collection of ${ctx.link('Origin')} objects:
 
 ${ctx.hierarchy('Origin', { openTop: true })}
 

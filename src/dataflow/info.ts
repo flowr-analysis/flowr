@@ -165,22 +165,34 @@ export interface DataflowInformation extends DataflowCfgInformation {
 }
 
 /**
- * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
- * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
- * @see {@link DataflowInformation}
+ * Helper object for {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
-	return {
-		unknownReferences: [],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(undefined),
-		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
-		hooks:             []
-	};
-}
+export const DataflowInformation = {
+	name: 'DataflowInformation',
+	/**
+	 * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
+	 * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
+	 * @see {@link DataflowInformation}
+	 */
+	initialize<T>(this: void, entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+		return {
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			environment:       data.environment,
+			graph:             new DataflowGraph(undefined),
+			entryPoint,
+			exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
+			hooks:             []
+		};
+	},
+	/**
+	 * Type guard to check whether the given information is a {@link DataflowInformation}.
+	 */
+	is(info: unknown): info is DataflowInformation {
+		return typeof info === 'object' && info !== null && 'entryPoint' in info && 'exitPoints' in info && 'hooks' in info;
+	}
+} as const;
 
 /**
  * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,

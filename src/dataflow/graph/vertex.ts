@@ -3,8 +3,8 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { BuiltInProcName } from '../environments/built-in';
 import type { Identifier } from '../environments/identifier';
+import type { BuiltInProcName } from '../environments/built-in-proc-name';
 
 
 export enum VertexType {

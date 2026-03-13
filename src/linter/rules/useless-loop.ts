@@ -1,11 +1,11 @@
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
-import type { BuiltInProcName } from '../../dataflow/environments/built-in';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import type { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 export interface UselessLoopResult extends LintingResult {
 	name: string,

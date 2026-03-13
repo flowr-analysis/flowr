@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
-import { type SingleSlicingCriterion, type SlicingCriteria, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
 describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
@@ -11,9 +11,9 @@ describe.sequential('Get Symbol Refs Test', withTreeSitter(shell => {
 			const { dataflow, normalize } =
 				await createDataflowPipeline(shell, { context: contextFromInput(code.trim()) }).allRemainingSteps();
 
-			const refs = getAllRefsToSymbol(dataflow.graph, slicingCriterionToId(criterion, normalize.idMap));
+			const refs = getAllRefsToSymbol(dataflow.graph, SingleSlicingCriterion.parse(criterion, normalize.idMap));
 			if(expected !== undefined) {
-				const expectedIds = expected.map(c => slicingCriterionToId(c, normalize.idMap));
+				const expectedIds = expected.map(c => SingleSlicingCriterion.parse(c, normalize.idMap));
 				assert.deepEqual(refs, expectedIds);
 			} else {
 				assert.isUndefined(refs);

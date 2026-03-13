@@ -1,6 +1,6 @@
 import { prefixLines } from './doc-general';
-import { escapeId } from '../../util/mermaid/mermaid';
 import { joinWithLast } from '../../util/text/strings';
+import { Mermaid } from '../../util/mermaid/mermaid';
 
 export interface DetailsOptions {
 	readonly color?:       string;
@@ -42,7 +42,7 @@ ${prefixLines(content, '> ')}
 /**
  *
  */
-export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor = escapeId(title)): string {
+export function section(title: string, depth: 1 | 2 | 3 | 4 | 5 | 6 = 2, anchor = Mermaid.escapeId(title)): string {
 	return `<h${depth} id="${anchor}">${title}</h${depth}>`;
 }
 
@@ -53,7 +53,7 @@ function strToLink(str: string): string {
 		const [, name, link] = match;
 		return `[${name}](${link})`;
 	}
-	return `[${str}](#${escapeId(str)})`;
+	return `[${str}](#${Mermaid.escapeId(str)})`;
 }
 /**
  * Supported pattern: `Name@link`

@@ -4,9 +4,9 @@ import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processin
 import type { FlowrSearchElement } from './flowr-search';
 import type { CallTargetsContent } from './search-executor/search-enrichers';
 import { Enrichment, enrichmentContent } from './search-executor/search-enrichers';
-import type { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { DataflowInformation } from '../dataflow/info';
 import { Identifier } from '../dataflow/environments/identifier';
+import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {

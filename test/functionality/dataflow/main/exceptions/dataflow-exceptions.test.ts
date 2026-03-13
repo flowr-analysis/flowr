@@ -5,10 +5,10 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
 import type { SingleSlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Q } from '../../../../../src/search/flowr-search-builder';
-import { graphToMermaidUrl } from '../../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 
 interface DFConstraints {
 	hasVertices:         SingleSlicingCriterion[];
@@ -33,7 +33,7 @@ describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {
 					}
 				}
 			} catch(e: unknown) {
-				console.error('DF', graphToMermaidUrl(df.graph));
+				console.error('DF', Dataflow.visualize.mermaid.url(df.graph));
 				throw e;
 			}
 		});

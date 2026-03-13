@@ -36,10 +36,11 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {

@@ -1,5 +1,5 @@
-import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import type { SingleSlicingCriterion, SlicingCriteria } from '../../../slicing/criterion/parse';
+import { SliceDirection } from '../../../util/slice-direction';
 
 /**
  * Checks whether the given argument represents a slicing direction with an `f` suffix.

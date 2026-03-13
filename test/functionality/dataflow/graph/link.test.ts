@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { withShell } from '../../_helper/shell';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
@@ -13,7 +13,7 @@ describe.sequential('dataflow graph links', withShell(shell => {
 			}).allRemainingSteps();
 
 			const graph = info.dataflow.graph;
-			const id = slicingCriterionToId(criterion, graph.idMap ?? info.normalize.idMap);
+			const id = SingleSlicingCriterion.parse(criterion, graph.idMap ?? info.normalize.idMap);
 			const link = graph.getLinked(id);
 			if(expect === undefined) {
 				assert.isUndefined(link);

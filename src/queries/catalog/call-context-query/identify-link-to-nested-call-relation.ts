@@ -2,9 +2,9 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { LinkToNestedCall } from './call-context-query-format';
 import type { PromotedLinkTo } from './call-context-query-executor';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { getSubCallGraph } from '../../../dataflow/graph/call-graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { CallGraph } from '../../../dataflow/graph/call-graph';
 
 /**
  * **Please refer to {@link identifyLinkToRelation}.**
@@ -26,7 +26,7 @@ export async function identifyLinkToNestedRelation(
 	const test = callName instanceof RegExp ? (t: string) => callName.test(t) : callName;
 	const found: NodeId[] = [];
 	const cg = await analyzer.callGraph();
-	const subCg = getSubCallGraph(cg, new Set([from]));
+	const subCg = CallGraph.computeSubCallGraph(cg, new Set([from]));
 	for(const [,t] of subCg.vertices(true)) {
 		if(!isFunctionCallVertex(t)) {
 			continue;

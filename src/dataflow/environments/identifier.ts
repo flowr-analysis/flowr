@@ -35,6 +35,7 @@ const dotDotDotAccess = /^\.\.\d+$/;
  * ```
  */
 export const Identifier = {
+	name: 'Identifier',
 	/**
 	 * Create an identifier from its name and optional namespace.
 	 * Please note that for `internal` to count, a namespace must be provided!

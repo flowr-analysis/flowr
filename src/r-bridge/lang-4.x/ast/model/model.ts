@@ -31,6 +31,7 @@ import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
 import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
 import { assertUnreachable } from '../../../../util/assert';
+import { getDocumentationOf } from '../../../roxygen2/documentation-provider';
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -404,7 +405,12 @@ export const RNode = {
 	 */
 	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
 		return node?.info.fullLexeme ?? node?.lexeme as string;
-	}
+	},
+	/**
+	 * Return the (roxygen) documentation associated with the given node, if available.
+	 * @see {@link getDocumentationOf}
+	 */
+	documentation: getDocumentationOf
 } as const;
 
 export type OtherInfoNode = RNode | RDelimiter;

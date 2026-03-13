@@ -34,7 +34,6 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
-import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
@@ -49,6 +48,8 @@ import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
+import { SliceDirection } from '../util/slice-direction';
+import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -643,7 +644,7 @@ To specify a variable of interest, you have to present flowR with a [slicing cri
 
 To exemplify the capabilities, consider the following code:
 ${codeBlock('r', exampleCode)}
-If you are interested in the parts required for the use of \`x\` in the last line, you can use the following query:
+If you are interested in the parts required for the use of \`x\` in the last line and \`z\`, you can use the following query:
 
 ${
 	await showQuery(shell, exampleCode, [{
@@ -678,6 +679,34 @@ ${
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
 This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
 		`;
+	}
+});
+
+
+registerQueryDocumentation('provenance', {
+	name:             'Provenance Query',
+	type:             'active',
+	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
+	functionName:     executeProvenanceQuery.name,
+	functionFile:     '../queries/catalog/provenance-query/provenance-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
+		const criterion: SingleSlicingCriterion = '4@x';
+		return `
+Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion), flowR will return the provenance
+of the given program element (i.e., all related vertices in a non-interprocedural and non-context sensitive backward slice).
+
+To exemplify the capabilities, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the provenance of the \`x\` in the last line you can use:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'provenance',
+		criterion
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+}
+`;
 	}
 });
 

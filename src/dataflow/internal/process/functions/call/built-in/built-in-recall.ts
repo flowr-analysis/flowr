@@ -5,13 +5,13 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { log } from '../../../../../../util/log';
 import { EdgeType } from '../../../../../graph/edge';
 import { isFunctionCallVertex } from '../../../../../graph/vertex';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**

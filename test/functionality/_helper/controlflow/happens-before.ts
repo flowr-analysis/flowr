@@ -1,4 +1,4 @@
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { assert, describe, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { Ternary } from '../../../../src/util/logic';
@@ -26,8 +26,8 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 				context
 			}).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, context);
-			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
-			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
+			const aResolved = SingleSlicingCriterion.parse(a, result.normalize.idMap);
+			const bResolved = SingleSlicingCriterion.parse(b, result.normalize.idMap);
 			try {
 				assert.strictEqual(happensBefore(cfg.graph, aResolved, bResolved), expected, `expected ${a} (resolved to ${aResolved}) to ${expected} happen before ${b} (resolved to ${bResolved})`);
 				if(expected === Ternary.Always) {

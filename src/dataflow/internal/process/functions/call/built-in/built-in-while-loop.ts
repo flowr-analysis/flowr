@@ -27,8 +27,8 @@ import {
 	applyCdsToAllInGraphButConstants,
 	applyCdToReferences
 } from '../../../../../environments/reference-to-maybe';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { appendEnvironment } from '../../../../../environments/append';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**

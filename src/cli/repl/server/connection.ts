@@ -36,13 +36,13 @@ import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
 import type { FlowrConfig } from '../../../config';
-import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import type { Tree } from 'web-tree-sitter';
+import { SliceDirection } from '../../../util/slice-direction';
 
 /**
  * Each connection handles a single client, answering to its requests.

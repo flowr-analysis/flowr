@@ -1,5 +1,4 @@
 import { VariableResolve } from '../../../config';
-import { BuiltInProcName } from '../../../dataflow/environments/built-in';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
@@ -18,6 +17,7 @@ import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../sha
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 
 /** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {

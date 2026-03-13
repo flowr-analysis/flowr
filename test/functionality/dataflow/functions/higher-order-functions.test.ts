@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { isFunctionHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
@@ -22,7 +22,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 						context: context
 					}).allRemainingSteps();
 
-					const id = tryResolveSliceCriterionToId(c, df.normalize.idMap);
+					const id = SingleSlicingCriterion.tryParse(c, df.normalize.idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 

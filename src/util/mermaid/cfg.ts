@@ -183,7 +183,7 @@ export function cfgToMermaid(cfg: ControlFlowInformation, normalizedAst: Normali
  * Use mermaid to visualize the normalized AST.
  */
 export function cfgToMermaidUrl(cfg: ControlFlowInformation, normalizedAst: NormalizedAst, info?: MermaidCfgGraphPrinterInfo): string {
-	return Mermaid.escape(cfgToMermaid(cfg, normalizedAst, info ?? {}));
+	return Mermaid.codeToUrl(cfgToMermaid(cfg, normalizedAst, info ?? {}));
 }
 
 /**

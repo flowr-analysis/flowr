@@ -1212,7 +1212,7 @@ ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
 Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
-Genrally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type: 'variable' })} helper object!
+Generally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type: 'variable' })} helper object!
 
 * The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program

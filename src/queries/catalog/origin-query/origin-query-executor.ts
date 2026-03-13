@@ -24,7 +24,7 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 			log.warn(`Duplicate Key for origin-query: ${key}, skipping...`);
 		}
 
-		const astId = SingleSlicingCriterion.parse(key, (await analyzer.normalize()).idMap);
+		const astId = SingleSlicingCriterion.tryParse(key, (await analyzer.normalize()).idMap);
 		if(astId === undefined) {
 			log.warn(`Could not resolve id for ${key}, skipping...`);
 			continue;

@@ -12,7 +12,7 @@ import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 function check(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
 	let res: GraphDifferenceReport | undefined = undefined;
 	try {
-		res = Dataflow.diff({
+		res = Dataflow.diffGraphs({
 			name:  'left (a)',
 			graph: a
 		}, {

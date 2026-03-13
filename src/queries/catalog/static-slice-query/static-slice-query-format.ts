@@ -18,7 +18,7 @@ import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SliceDirection } from '../../../util/slice-direction';
 
-/** Calculates and returns all clusters encountered in the dataflow graph. */
+/** Calculates and returns the static backward or forward slice from the given criteria */
 export interface StaticSliceQuery extends BaseQueryFormat {
 	readonly type:              'static-slice';
 	/** The slicing criteria to use */
@@ -48,7 +48,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'static-slice'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	const direction = sliceDirectionParser(line[0]);
-	if(!criteria || criteria.length == 0) {
+	if(!criteria || criteria.length === 0) {
 		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
 		return { query: [] };

@@ -39,8 +39,8 @@ export function staticSlice(
 ): Readonly<SliceResult> {
 	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
 	let { graph } = info;
-	if(direction === SliceDirection.Forward){
-		graph = Dataflow.invert(graph, ctx.env.makeCleanEnv());
+	if(direction === SliceDirection.Forward) {
+		graph = Dataflow.invertGraph(graph, ctx.env.makeCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);

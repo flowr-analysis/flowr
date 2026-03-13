@@ -36,7 +36,7 @@ export const GraphHelper = {
 	 * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
 	 * @see {@link diffOfControlFlowGraphs} - for control flow graphs
 	 */
-	diff(this: void, left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
+	diffGraphs(this: void, left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 		if(left.graph === right.graph) {
 			return new GraphDifferenceReport();
 		}
@@ -47,7 +47,7 @@ export const GraphHelper = {
 	/**
 	 * Inverts the given dataflow graph by reversing all edges.
 	 */
-	invert(this: void, graph: DataflowGraph, cleanEnv: REnvironmentInformation): DataflowGraph {
+	invertGraph(this: void, graph: DataflowGraph, cleanEnv: REnvironmentInformation): DataflowGraph {
 		const invertedGraph = new DataflowGraph(graph.idMap);
 		for(const [, v] of graph.vertices(true)) {
 			invertedGraph.addVertex(v, cleanEnv);
@@ -65,7 +65,7 @@ export const GraphHelper = {
 	 * The main use-case for this is testing - if you do not know/want to fix the specific id,
 	 * you can use, e.g. `2@x` as a placeholder for the first x in the second line!
 	 */
-	resolve(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): DataflowGraph {
+	resolveGraphCriteria(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): DataflowGraph {
 		const resolveMap = idMap ?? graph.idMap;
 		guard(resolveMap !== undefined, 'idMap must be provided to resolve the graph');
 

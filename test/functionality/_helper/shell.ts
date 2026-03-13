@@ -429,10 +429,10 @@ export function assertDataflow(
 		expected.setIdMap(normalize.idMap);
 
 		if(userConfig?.resolveIdsAsCriterion) {
-			expected = Dataflow.resolve(expected, analyzer.inspectContext());
+			expected = Dataflow.resolveGraphCriteria(expected, analyzer.inspectContext());
 		}
 
-		const report: GraphDifferenceReport = Dataflow.diff(
+		const report: GraphDifferenceReport = Dataflow.diffGraphs(
 			{ name: 'expected', graph: expected },
 			{ name: 'got',      graph: graph },
 			{

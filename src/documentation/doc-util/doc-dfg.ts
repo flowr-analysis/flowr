@@ -114,8 +114,8 @@ export async function verifyExpectedSubgraph(parser: KnownParser, code: string, 
 	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = Dataflow.resolve(expectedSubgraph, context);
-	const report: GraphDifferenceReport = Dataflow.diff(
+	expectedSubgraph = Dataflow.resolveGraphCriteria(expectedSubgraph, context);
+	const report: GraphDifferenceReport = Dataflow.diffGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
 		{

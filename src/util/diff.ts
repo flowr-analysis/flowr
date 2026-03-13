@@ -49,12 +49,12 @@ export interface GenericDifferenceInformation<Report extends WriteableDifference
 
 export interface GenericDiffConfiguration {
 	/**
-	 * The left graph may contain more vertices and or edges than the right graph.
+	 * The left/first graph may contain more vertices and or edges than the right/second graph.
 	 * However, those which are the same (based on their ids) have to be equal
 	 */
 	readonly rightIsSubgraph?: boolean
 	/**
-	 * Similar to {@link rightIsSubgraph}, but for the left graph.
+	 * Similar to {@link rightIsSubgraph}, but for the left/first graph.
 	 */
 	readonly leftIsSubgraph?:  boolean
 }

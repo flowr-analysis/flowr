@@ -43,7 +43,7 @@ export async function executeHigherOrderQuery({ analyzer }: BasicQueryData, quer
 
 	let invertedGraph: DataflowGraph | undefined;
 	if(filterFor.size === 0 || filterFor.size > 10) {
-		invertedGraph = Dataflow.invert(graph, analyzer.inspectContext().env.makeCleanEnv());
+		invertedGraph = Dataflow.invertGraph(graph, analyzer.inspectContext().env.makeCleanEnv());
 	}
 
 	const result: Record<NodeId, boolean> = {};

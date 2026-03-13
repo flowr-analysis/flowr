@@ -24,8 +24,8 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			const idMap = (await analyzer.normalize()).idMap;
 			const resolvedEntries = entries.map(e => SingleSlicingCriterion.parse(e as SingleSlicingCriterion, idMap));
 			const subCg = CallGraph.computeSubCallGraph(cg, new Set(resolvedEntries));
-			const expectedResolved = Dataflow.resolve(expectedGraph, analyzer.inspectContext(), idMap);
-			const diff = Dataflow.diff({
+			const expectedResolved = Dataflow.resolveGraphCriteria(expectedGraph, analyzer.inspectContext(), idMap);
+			const diff = Dataflow.diffGraphs({
 				graph: subCg,
 				name:  'Got'
 			}, {

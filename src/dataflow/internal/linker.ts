@@ -162,7 +162,7 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
  *   // we recommend to always add '...' to your specification
  *   // this way you can collect all arguments that could not be matched!
  *   '...':               '...'
- * };
+ * } as const;
  *
  * const match = pMatch(convertFnArguments(args), parameterSpec);
  * const addParam = match.get('paramId');

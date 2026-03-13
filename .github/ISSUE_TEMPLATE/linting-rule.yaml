@@ -31,6 +31,7 @@ body:
         - Naming Convention
         - Network Functions
         - Seeded Randomness
+        - Stop without call.=False argument
         - Unused Definitions
         - Useless Loops
       default: 0

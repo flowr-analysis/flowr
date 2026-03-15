@@ -4,7 +4,7 @@ import type { SliceResult } from './slicer-types';
 import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
-import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
@@ -13,6 +13,8 @@ import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -123,7 +125,33 @@ export function staticSlice(
 		}
 	}
 
-	return { ...queue.status(), slicedFor: ids };
+	if(ctx.config.solver.slicer?.autoExtend) {
+		return { ...queue.status(), slicedFor: ids, result: extendSlices(queue.status().result, idMap) };
+	} else {
+		return { ...queue.status(), slicedFor: ids };
+	}
+}
+
+function extendSlices(
+	results: ReadonlySet<NodeId>,
+	ast: AstIdMap,
+): Set<NodeId> {
+	const res = new Set<NodeId>();
+	for(const id of results) {
+		res.add(id);
+		let parent = ast.get(id);
+
+		while(parent && parent.info.role !== RoleInParent.Root && parent.info.role !== RoleInParent.ExpressionListChild) {
+			parent = parent.info.parent ? ast.get(parent.info.parent) : undefined;
+		}
+		if(!parent) {
+			continue; // no parent, no need to extend
+		}
+		for(const id of RNode.collectAllIds(parent)) {
+			res.add(id);
+		}
+	}
+	return res;
 }
 
 /**

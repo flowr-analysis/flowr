@@ -13,7 +13,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 import { DfEdge } from './edge';
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { CallGraph } from './call-graph';
 
 /**
  * The underlying functions which work for any graph* like view

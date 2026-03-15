@@ -24,6 +24,7 @@ export interface RFunctionDefinition<Info = NoInfo> extends RAstNodeBase<Info>, 
  * Helper for working with {@link RFunctionDefinition} AST nodes.
  */
 export const RFunctionDefinition = {
+	...RNode,
 	name: 'RFunctionDefinition',
 	/**
 	 * Type guard for {@link RFunctionDefinition} nodes.

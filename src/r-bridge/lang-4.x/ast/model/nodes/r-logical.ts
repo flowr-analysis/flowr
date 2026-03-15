@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 
 export type RLogicalValue = boolean;
@@ -15,6 +16,7 @@ export interface RLogical<Info = NoInfo> extends Leaf<Info>, Location {
  * Helper for working with {@link RLogical} AST nodes.
  */
 export const RLogical = {
+	...RNode,
 	name: 'RLogical',
 	/**
 	 * Type guard for {@link RLogical} nodes.

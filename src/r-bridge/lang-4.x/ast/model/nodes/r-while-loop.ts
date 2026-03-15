@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
@@ -17,6 +18,7 @@ export interface RWhileLoop<Info = NoInfo> extends RAstNodeBase<Info>, Location 
  * Helper for working with {@link RWhileLoop} AST nodes.
  */
 export const RWhileLoop = {
+	...RNode,
 	name: 'RWhileLoop',
 	/**
 	 * Type guard for {@link RWhileLoop} nodes.

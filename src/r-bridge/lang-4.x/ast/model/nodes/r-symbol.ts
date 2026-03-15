@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import { RNa, RNull } from '../../../convert-values';
 import type { Identifier } from '../../../../../dataflow/environments/identifier';
@@ -18,6 +19,7 @@ export interface RSymbol<Info = NoInfo, T extends Identifier = Identifier> exten
  * Helper for working with {@link RSymbol} AST nodes.
  */
 export const RSymbol = {
+	...RNode,
 	name: 'RSymbol',
 	/**
 	 * Type guard for {@link RSymbol} nodes.

@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
@@ -40,6 +41,7 @@ export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFu
  * Helper for working with {@link RFunctionCall} AST nodes.
  */
 export const RFunctionCall = {
+	...RNode,
 	name: 'RFunctionCall',
 	/**
 	 * Type guard for {@link RFunctionCall} nodes.

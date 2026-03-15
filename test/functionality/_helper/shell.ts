@@ -571,7 +571,7 @@ export function assertSliced(
 	input: string,
 	criteria: SlicingCriteria,
 	expected: string | SingleSlicingCriterion[],
-	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[] },
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[], extendSlice?: boolean },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(testConfig);
@@ -642,6 +642,9 @@ export function assertSliced(
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
 			const context =  contextFromInput(input, FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()));
+			if(testConfig?.extendSlice) {
+				FlowrConfig.setInConfigInPlace(context.config, 'solver.slicer.autoExtend', true);
+			}
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}

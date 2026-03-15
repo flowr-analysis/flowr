@@ -12,6 +12,8 @@ import { guard } from '../../util/assert';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
 import { DfEdge } from './edge';
+import { DefaultMap } from '../../util/collections/defaultmap';
+import { CallGraph } from './call-graph';
 
 /**
  * The underlying functions which work for any graph* like view
@@ -25,7 +27,7 @@ export const GraphHelper = {
 		/**
 		 * Mermaid rendering helper for dataflow graphs
 		 * - {@link DataflowMermaid.url}, {@link DataflowMermaid.raw} - to render the graph as a mermaid graph (e.g., in markdown or the mermaid live editor)
-		 * - {@link DataflowMermaid.convert} - for the underyling transformation
+		 * - {@link DataflowMermaid.convert} - for the underlying transformation
 		 * @see {@link DataflowMermaid}
 		 */
 		mermaid: DataflowMermaid,
@@ -36,7 +38,7 @@ export const GraphHelper = {
 	 * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
 	 * @see {@link diffOfControlFlowGraphs} - for control flow graphs
 	 */
-	diffGraphs(this: void, left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
+	diffGraphs<G extends DataflowGraph>(this: void, left: NamedGraph<G>, right: NamedGraph<G>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 		if(left.graph === right.graph) {
 			return new GraphDifferenceReport();
 		}
@@ -47,7 +49,7 @@ export const GraphHelper = {
 	/**
 	 * Inverts the given dataflow graph by reversing all edges.
 	 */
-	invertGraph(this: void, graph: DataflowGraph, cleanEnv: REnvironmentInformation): DataflowGraph {
+	invertGraph<G extends DataflowGraph>(this: void, graph: G, cleanEnv: REnvironmentInformation): G {
 		const invertedGraph = new DataflowGraph(graph.idMap);
 		for(const [, v] of graph.vertices(true)) {
 			invertedGraph.addVertex(v, cleanEnv);
@@ -57,7 +59,7 @@ export const GraphHelper = {
 				invertedGraph.addEdge(to, from, types);
 			}
 		}
-		return invertedGraph;
+		return invertedGraph as G;
 	},
 	/**
 	 * Resolves the dataflow graph ids from slicing criterion form to ids.
@@ -65,7 +67,7 @@ export const GraphHelper = {
 	 * The main use-case for this is testing - if you do not know/want to fix the specific id,
 	 * you can use, e.g. `2@x` as a placeholder for the first x in the second line!
 	 */
-	resolveGraphCriteria(graph: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): DataflowGraph {
+	resolveGraphCriteria<G extends DataflowGraph>(graph: G, ctx: ReadOnlyFlowrAnalyzerContext, idMap?: AstIdMap): G {
 		const resolveMap = idMap ?? graph.idMap;
 		guard(resolveMap !== undefined, 'idMap must be provided to resolve the graph');
 
@@ -113,6 +115,30 @@ export const GraphHelper = {
 			}
 		}
 
-		return resultGraph;
-	}
+		return resultGraph as G;
+	},
+	/**
+	 * Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction)
+	 */
+	reaches<G extends DataflowGraph>(this: void, from: NodeId, to: NodeId, graph: G, knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set())): boolean {
+		const visited: Set<NodeId> = new Set();
+		const toVisit: NodeId[] = [from];
+
+		while(toVisit.length > 0) {
+			const currentId = toVisit.pop() as NodeId;
+			if(visited.has(currentId)) {
+				continue;
+			}
+			if(currentId === to || knownReachability.get(currentId).has(to)) {
+				knownReachability.get(from).add(to);
+				return true;
+			}
+			visited.add(currentId);
+			for(const [tar] of graph.outgoingEdges(currentId) ?? []) {
+				toVisit.push(tar);
+			}
+		}
+		return false;
+	},
+
 } as const;

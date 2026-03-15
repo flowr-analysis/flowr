@@ -228,30 +228,6 @@ export const CallGraph = {
 	},
 
 	/**
-	 * Determines whether there is a path from `from` to `to` in the given graph (via any edge type, only respecting direction)
-	 */
-	reaches(this: void, from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set())): boolean {
-		const visited: Set<NodeId> = new Set();
-		const toVisit: NodeId[] = [from];
-
-		while(toVisit.length > 0) {
-			const currentId = toVisit.pop() as NodeId;
-			if(visited.has(currentId)) {
-				continue;
-			}
-			if(currentId === to || knownReachability.get(currentId).has(to)) {
-				knownReachability.get(from).add(to);
-				return true;
-			}
-			visited.add(currentId);
-			for(const [tar] of graph.outgoingEdges(currentId) ?? []) {
-				toVisit.push(tar);
-			}
-		}
-		return false;
-	},
-
-	/**
 	 * Reduces the call graph by dropping all transitive edges.
 	 */
 	dropTransitiveEdges(this: void, graph: CallGraph): CallGraph {

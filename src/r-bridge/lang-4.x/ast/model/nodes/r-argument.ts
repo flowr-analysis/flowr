@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { ParentInformation } from '../processing/decorate';
@@ -30,6 +31,7 @@ export interface RUnnamedArgument<Info = NoInfo> extends RArgument<Info> {
  * Helper for working with {@link RArgument} AST nodes.
  */
 export const RArgument = {
+	...RNode,
 	name: 'RArgument',
 	/**
 	 * Type guard for {@link RArgument} nodes.

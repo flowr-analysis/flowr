@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { OperatorInformationValue } from '../operators';
 import { OperatorDatabase } from '../operators';
@@ -17,6 +18,7 @@ export interface RBinaryOp<Info = NoInfo> extends RAstNodeBase<Info>, Location {
  * Helper for working with {@link RBinaryOp} AST nodes.
  */
 export const RBinaryOp = {
+	...RNode,
 	name: 'RBinaryOp',
 	/**
 	 * Type guard for {@link RBinaryOp} nodes.

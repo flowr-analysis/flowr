@@ -270,6 +270,9 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 
 /**
  * Helper object to provide helper functions for {@link RNode|RNodes}.
+ * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
+ * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
+ * so you can check for that as well if needed.
  * @see {@link DefaultNormalizedAstFold} - for a more powerful way to traverse the normalized AST
  */
 export const RNode = {

@@ -7,10 +7,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
 /**
- * Execute static slice queries, catching duplicates with the same fingerprint
- * @param analyzer - The basic query data containing the analyzer
- * @param queries - The static slice queries to execute
- * @returns The results of the static slice queries
+ * Execute a provenance query collection, {@link Dataflow.provenance}
  */
 export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queries: readonly ProvenanceQuery[]): Promise<ProvenanceQueryResult> {
 	const start = Date.now();

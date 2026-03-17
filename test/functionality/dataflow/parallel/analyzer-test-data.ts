@@ -64,8 +64,8 @@ export const ConditionalDefinitions: AnalyzerSetupFunction = (analyzer) => {
 };
 
 export const LoopsWithCrossFile: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'data <- readline()' });
-	analyzer.addRequest({ request: 'text', content: 'sum <- 0\nfor (val in data) { sum <- sum + val }' });
+	analyzer.addRequest({ request: 'text', content: 'dataList <- readline()' });
+	analyzer.addRequest({ request: 'text', content: 'sum <- 0\nfor (val in dataList) { sum <- sum + val }' });
 	analyzer.addRequest({ request: 'text', content: 'print(sum)' });
 	return analyzer;
 };

@@ -82,12 +82,12 @@ export function assertNoMemoryLeaks(
 	before: LeakSnapshot,
 	after: LeakSnapshot,
 	thresholdBytes: number = 5 * 1024 * 1024
-): LeakCheckResult {
+): LeakCheckResult & { memoryDelta: number } {
 	const diff = diffLeakSnapshots(before, after);
 	if(diff.memoryUsage.heapUsed > thresholdBytes) {
-		return { ok: false, reason: `Heap Used increased by ${diff.memoryUsage.heapUsed} bytes` };
+		return { ok: false, reason: `Heap Used increased by ${diff.memoryUsage.heapUsed} bytes`, memoryDelta: diff.memoryUsage.heapUsed };
 	}
-	return { ok: true };
+	return { ok: true, memoryDelta: diff.memoryUsage.heapUsed };
 }
 
 /** Trigger GC if available */
@@ -124,12 +124,17 @@ export async function withLeakCheck(
 	await forceGarbageCollection();
 	const after = takeLeakSnapshot();
 
+	const memoryDiff = assertNoMemoryLeaks(before, after, opts?.memoryThresholdBytes);
+
+	console.log(`Reported Memory Delta is ${memoryDiff.memoryDelta} bytes`);
+
+
 	return {
 		before,
 		after,
 		diff:         diffLeakSnapshots(before, after),
 		portLeak:     assertNoPortLeaks(before, after),
 		handleLeak:   assertNoHandleLeaks(before, after),
-		memoryStable: assertNoMemoryLeaks(before, after, opts?.memoryThresholdBytes),
+		memoryStable: memoryDiff,
 	};
 }

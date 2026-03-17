@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import type { AnalyzerSetupCluster, AnalyzerSetupFunction } from './analyzer-test-data';
-import { complexDataflowTests, LoopsWithCrossFile, simpleDataflowTests, sourceBasedDataflowTests } from './analyzer-test-data';
+import { complexDataflowTests, ComplexVariableChains, simpleDataflowTests, sourceBasedDataflowTests } from './analyzer-test-data';
 
 async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunction) {
 	console.log(`\n► Running test case: ${testCaseName}`);
@@ -30,36 +30,22 @@ async function checkGraphEquality(testCaseName: string, func: AnalyzerSetupFunct
 	assert.isTrue(graphdiff.isEqual(), `Dataflow graphs should be equal for testCase ${testCaseName}`);
 }
 
-async function checkGraphEqualityForCluster(clusterName: string, testCluster: AnalyzerSetupCluster) {
-	console.log(`\n${'='.repeat(60)}`);
-	console.log(`Testing Cluster: ${clusterName} (${testCluster.length} test cases)`);
-	console.log(`${'='.repeat(60)}`);
-
+function registerClusterTests(clusterName: string, testCluster: AnalyzerSetupCluster) {
 	for(const testCase of testCluster) {
-		await checkGraphEquality(testCase.name, testCase.setup);
+		test(`${clusterName} :: ${testCase.name}`, async() => {
+			await checkGraphEquality(testCase.name, testCase.setup);
+		});
 	}
-
-	console.log(`\n${'='.repeat(60)}`);
-	console.log(`✓ All ${testCluster.length} test cases in "${clusterName}" completed`);
-	console.log(`${'='.repeat(60)}\n`);
 }
 
 describe.sequential('Parallel Dataflow test', () => {
 
-	test('some test test', async() => {
-		await checkGraphEquality('LoopsWithCrossFile', LoopsWithCrossFile);
+	test('ComplexVariableChains', async() => {
+		await checkGraphEquality('LoopsWithCrossFile', ComplexVariableChains);
 	});
 
-	test('Simple File Analysis', async() => {
-		await checkGraphEqualityForCluster('Simple File Analysis', simpleDataflowTests);
-	});
-
-	test('Complex File Analysis', async() => {
-		await checkGraphEqualityForCluster('Complex File Analysis', complexDataflowTests);
-	});
-
-	test('Source Based File Analysis', async() => {
-		await checkGraphEqualityForCluster('Source Based File Analysis', sourceBasedDataflowTests);
-	});
+	registerClusterTests('Simple File Analysis', simpleDataflowTests);
+	registerClusterTests('Complex File Analysis', complexDataflowTests);
+	registerClusterTests('Source Based File Analysis', sourceBasedDataflowTests);
 
 });

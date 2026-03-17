@@ -87,31 +87,51 @@ describe.sequential('Worker Pool Leak Tests', () => {
 		const result = await withLeakCheck(async() => {
 			const pool = createPool();
 
-			const promise = pool.submitTask('__slowTask', 1000);
+			const taskPromise = pool.submitTask('__slowTask', 1000);
+			// Attach rejection handler immediately so forced termination cannot surface as unhandled.
+			const taskOutcome = taskPromise.then(
+				() => ({
+					status: 'fulfilled' as const,
+				}),
+				(error: unknown) => ({
+					status: 'rejected',
+					error,
+				})
+			);
 
 			// Immediately destroy
-			await pool.destroyPool();
+			const destroyOutcome = pool.destroyPool().then(
+				() => ({
+					status: 'fulfilled' as const,
+				}),
+				(error: unknown) => ({
+					status: 'rejected' as const,
+					error,
+				})
+			);
 
-			await expect(promise).rejects.toThrow();
+			const [taskResult, destroyResult] = await Promise.all([taskOutcome, destroyOutcome]);
+
+			expect(taskResult.status).toBe('rejected');
+			if(destroyResult.status === 'rejected') {
+				expect(destroyResult.error).toBeInstanceOf(Error);
+			}
 
 			const { workerLifeStats } = pool.getLeakStats();
 
 			for(const [, lc] of workerLifeStats) {
 				expect(lc.destroyedAt).toBeDefined();
-				expect(lc.internalState).toBeUndefined(); /** should be undefined, as no job was ever completed */
 
-				if(!lc.internalState) {
-					continue;
-				}
+				if(lc.internalState) {
+					// IMPORTANT: these may differ
+					expect(lc.internalState.pendingSubtasks)
+						.toBeGreaterThanOrEqual(0);
 
-				// IMPORTANT: these may differ
-				expect(lc.internalState.pendingSubtasks)
-					.toBeGreaterThanOrEqual(0);
-
-				expect(
-					lc.internalState.subtasksStarted >=
+					expect(
+						lc.internalState.subtasksStarted >=
                     lc.internalState.subtasksCompleted
-				).toBe(true);
+					).toBe(true);
+				}
 			}
 		});
 

@@ -18,7 +18,7 @@ import { RoleInParent } from '../../../../src/r-bridge/lang-4.x/ast/model/proces
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { KnownParser } from '../../../../src/r-bridge/parser';
 import type { RShell } from '../../../../src/r-bridge/shell';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { assertUnreachable, guard, isNotUndefined } from '../../../../src/util/assert';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
@@ -79,7 +79,7 @@ type ExpectedDataFrameOperation = {
  * Stores the inferred data frame constraints and AST node for a tested slicing criterion.
  */
 interface CriterionTestEntry {
-	criterion:  SingleSlicingCriterion,
+	criterion:  SlicingCriterion,
 	inferred:   DataFrameDomain | undefined,
 	node:       RSymbol<ParentInformation>,
 	lineNumber: number,
@@ -113,7 +113,7 @@ export interface DataFrameTestOptions extends Partial<TestConfiguration> {
 export function testDataFrameDomain(
 	shell: RShell,
 	code: string,
-	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[],
+	criteria: ([SlicingCriterion, ExpectedDataFrameShape | undefined] | [SlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
@@ -144,7 +144,7 @@ export function testDataFrameDomainWithSource(
 	shell: RShell,
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
-	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape] | [SingleSlicingCriterion, ExpectedDataFrameShape, Partial<DataFrameShapeMatching>])[],
+	criteria: ([SlicingCriterion, ExpectedDataFrameShape] | [SlicingCriterion, ExpectedDataFrameShape, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
@@ -166,7 +166,7 @@ export function testDataFrameDomainWithSource(
 export function assertDataFrameDomain(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, ExpectedDataFrameShape | undefined][],
+	expected: [SlicingCriterion, ExpectedDataFrameShape | undefined][],
 	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfig = FlowrConfig.default()
 ) {
@@ -202,7 +202,7 @@ export function assertDataFrameDomain(
 export function assertDataFrameOperation(
 	parser: KnownParser,
 	code: string,
-	expected: [SingleSlicingCriterion, ExpectedDataFrameOperation[]][],
+	expected: [SlicingCriterion, ExpectedDataFrameOperation[]][],
 	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
@@ -241,7 +241,7 @@ export function testDataFrameDomainAgainstReal(
 	shell: RShell,
 	code: string,
 	/** The matching options describe whether the inferred properties should match exactly the actual properties or can be an over-approximation (defaults to exact for all properties) */
-	criteria: (SingleSlicingCriterion | [SingleSlicingCriterion, Partial<DataFrameShapeMatching>])[],
+	criteria: (SlicingCriterion | [SlicingCriterion, Partial<DataFrameShapeMatching>])[],
 	config?: DataFrameTestOptions,
 	flowRConfig: FlowrConfig = defaultAbsintConfig
 ) {
@@ -323,7 +323,7 @@ function assertPropertyMatches<K extends keyof AbstractDataFrameShape, T extends
 }
 
 function createCodeForOutput(
-	criterion: SingleSlicingCriterion,
+	criterion: SlicingCriterion,
 	symbol: string
 ): string {
 	const marker = getOutputMarker(criterion);
@@ -365,11 +365,11 @@ function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, ma
 
 function getInferredDomainForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
-	criterion: SingleSlicingCriterion,
+	criterion: SlicingCriterion,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): [DataFrameDomain | undefined, RNode<ParentInformation>] {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
-	const nodeId = SingleSlicingCriterion.parse(criterion, idMap);
+	const nodeId = SlicingCriterion.parse(criterion, idMap);
 	const node = idMap.get(nodeId);
 
 	if(node === undefined) {
@@ -385,11 +385,11 @@ function getInferredDomainForCriterion(
 
 function getInferredOperationsForCriterion(
 	result: PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>,
-	criterion: SingleSlicingCriterion,
+	criterion: SlicingCriterion,
 	ctx: ReadOnlyFlowrAnalyzerContext
 ): Readonly<DataFrameOperations> {
 	const idMap = result.dataflow.graph.idMap ?? result.normalize.idMap;
-	const nodeId = SingleSlicingCriterion.parse(criterion, idMap);
+	const nodeId = SlicingCriterion.parse(criterion, idMap);
 	let node = idMap.get(nodeId);
 
 	if(node?.info.role === RoleInParent.FunctionCallName) {
@@ -403,7 +403,7 @@ function getInferredOperationsForCriterion(
 }
 
 function getRealDomainFromOutput(
-	criterion: SingleSlicingCriterion,
+	criterion: SlicingCriterion,
 	output: string[]
 ): ExpectedDataFrameShape | undefined {
 	const marker = getOutputMarker(criterion);
@@ -426,12 +426,12 @@ function getRealDomainFromOutput(
 	return undefined;
 }
 
-function getOutputMarker(criterion: SingleSlicingCriterion): string {
+function getOutputMarker(criterion: SlicingCriterion): string {
 	return `SHAPE INFERENCE ${criterion}:`;
 }
 
 function guardValidCriteria(
-	criteria: ([SingleSlicingCriterion, ExpectedDataFrameShape | undefined] | [SingleSlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[]
+	criteria: ([SlicingCriterion, ExpectedDataFrameShape | undefined] | [SlicingCriterion, ExpectedDataFrameShape | undefined, Partial<DataFrameShapeMatching>])[]
 ): void {
 	for(const [criterion, domain, matching] of criteria) {
 		if(domain !== undefined) {

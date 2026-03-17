@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { isFunctionRecursive } from '../../../../src/dataflow/fn/recursive-function';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
@@ -12,8 +12,8 @@ describe('is-recursive-function', withTreeSitter(ts => {
 		label: string,
 		code: string,
 		expect: {
-			pos?: SingleSlicingCriterion[]
-			neg?: SingleSlicingCriterion[]
+			pos?: SlicingCriterion[]
+			neg?: SlicingCriterion[]
 		}
 	) {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
@@ -22,7 +22,7 @@ describe('is-recursive-function', withTreeSitter(ts => {
 					const analyzer = new FlowrAnalyzerBuilder().setParser(ts).buildSync();
 					analyzer.addRequest(requestFromInput(code));
 					const idMap = (await analyzer.normalize()).idMap;
-					const id = SingleSlicingCriterion.tryParse(c, idMap);
+					const id = SlicingCriterion.tryParse(c, idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 					try {

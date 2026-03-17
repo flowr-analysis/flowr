@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -15,11 +15,11 @@ import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parse
 export interface OriginQuery extends BaseQueryFormat {
 	readonly type:      'origin';
 	/** The slicing criteria to use */
-	readonly criterion: SingleSlicingCriterion,
+	readonly criterion: SlicingCriterion,
 }
 
 export interface OriginQueryResult extends BaseQueryResult {
-	results: Record<SingleSlicingCriterion, Origin[] | undefined>
+	results: Record<SlicingCriterion, Origin[] | undefined>
 }
 
 function originQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'origin'> {

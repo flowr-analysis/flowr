@@ -2,7 +2,7 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { ProvenanceQuery, ProvenanceQueryResult } from './provenance-query-format';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 
@@ -20,9 +20,9 @@ export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queri
 	for(const query of queries) {
 		const key = query.criterion;
 		if(results[key]) {
-			log.warn(`Duplicate Key for provenance query: ${key}, skipping...`);
+			log.warn(`Duplicate key for provenance query: ${key}, skipping...`);
 		}
-		const criterionId = SingleSlicingCriterion.tryParse(key, nast.idMap) ?? key;
+		const criterionId = SlicingCriterion.tryParse(key, nast.idMap) ?? key;
 
 		const provenanceNode = nast.idMap.get(criterionId);
 		const fdef = RFunctionDefinition.wrappingFunctionDefinition(provenanceNode, nast.idMap);

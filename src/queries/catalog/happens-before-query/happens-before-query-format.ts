@@ -4,13 +4,13 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import { executeHappensBefore } from './happens-before-query-executor';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { Ternary } from '../../../util/logic';
 
 export interface HappensBeforeQuery extends BaseQueryFormat {
 	readonly type: 'happens-before';
-	readonly a:    SingleSlicingCriterion;
-	readonly b:    SingleSlicingCriterion;
+	readonly a:    SlicingCriterion;
+	readonly b:    SlicingCriterion;
 }
 
 export interface HappensBeforeQueryResult extends BaseQueryResult {

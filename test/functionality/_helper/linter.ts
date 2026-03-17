@@ -22,7 +22,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { SlicingCriteria } from '../../../src/slicing/criterion/parse';
-import { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
@@ -66,7 +66,7 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 		...result,
 		involvedId: (Array.isArray(result.involvedId) ? result.involvedId : result.involvedId !== undefined ? [result.involvedId] : []).map(s => {
 			try {
-				return SingleSlicingCriterion.parse(s as SingleSlicingCriterion, ast.idMap);
+				return SlicingCriterion.parse(s as SlicingCriterion, ast.idMap);
 			} catch{
 				return s as NodeId;
 			}

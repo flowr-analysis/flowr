@@ -27,7 +27,7 @@ import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
-	SingleSlicingCriterion,
+	SlicingCriterion,
 	type SlicingCriteria,
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
@@ -445,7 +445,7 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveVertices) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
-						return SingleSlicingCriterion.tryParse(id as SingleSlicingCriterion, normalize.idMap) ?? id;
+						return SlicingCriterion.tryParse(id as SlicingCriterion, normalize.idMap) ?? id;
 					}));
 				}
 				for(const id of userConfig.mustNotHaveVertices) {
@@ -455,8 +455,8 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveEdges) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
-						const resolvedFrom = SingleSlicingCriterion.tryParse(from as SingleSlicingCriterion, normalize.idMap) ?? from;
-						const resolvedTo = SingleSlicingCriterion.tryParse(to as SingleSlicingCriterion, normalize.idMap) ?? to;
+						const resolvedFrom = SlicingCriterion.tryParse(from as SlicingCriterion, normalize.idMap) ?? from;
+						const resolvedTo = SlicingCriterion.tryParse(to as SlicingCriterion, normalize.idMap) ?? to;
 						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
 					});
 				}
@@ -535,7 +535,7 @@ export function assertSlicedF(
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string | SingleSlicingCriterion[],
+	expected: string | SlicingCriterion[],
 	testConfig?: Partial<TestConfigurationWithOutput & TestCaseParams>
 ) {
 	return assertSliced(name, shell, input, criteria, expected, { ...testConfig, sliceDirection: SliceDirection.Forward });
@@ -563,14 +563,14 @@ interface TestCaseParams {
 /**
  * Ensure that slicing for a given criteria returns the code you expect. Please be aware that for ease of use
  * this actually checks against the reconstructed code (which may contain additional tokens to support executability).
- * If you want to check against the actual ids, please provide an array of {@link SingleSlicingCriterion}s as the expected value.
+ * If you want to check against the actual ids, please provide an array of {@link SlicingCriterion}s as the expected value.
  */
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string | SingleSlicingCriterion[],
+	expected: string | SlicingCriterion[],
 	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[], extendSlice?: boolean },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
@@ -660,7 +660,7 @@ export function assertSliced(
 			try {
 				if(Array.isArray(expected)) {
 					// check whether all ids are present in the slice result
-					const decodedExpected = expected.map(e => SingleSlicingCriterion.parse(e, result.normalize.idMap))
+					const decodedExpected = expected.map(e => SlicingCriterion.parse(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
 					const inSlice = Array.from(result.slice.result)

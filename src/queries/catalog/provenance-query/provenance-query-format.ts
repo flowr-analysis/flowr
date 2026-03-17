@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -15,7 +15,7 @@ import { Dataflow } from '../../../dataflow/graph/df-helper';
 export interface ProvenanceQuery extends BaseQueryFormat {
 	readonly type:          'provenance';
 	/** The slicing criterion to use as a start*/
-	readonly criterion:     SingleSlicingCriterion,
+	readonly criterion:     SlicingCriterion,
 	/** Whether to stop on fdef boundaries */
 	readonly restrictFdef?: boolean;
 }

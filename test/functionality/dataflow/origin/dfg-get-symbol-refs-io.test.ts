@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
-import { SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
 import { decorateLabelContext } from '../../_helper/label';
@@ -9,11 +9,11 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-function testRename(shell: RShell, name: string, input: string, symbol: SingleSlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
+function testRename(shell: RShell, name: string, input: string, symbol: SlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
 		const { dataflow, normalize } = await createDataflowPipeline(shell, { context: contextFromInput(input.trim()) }).allRemainingSteps();
 
-		const symbolId = SingleSlicingCriterion.parse(symbol, normalize.idMap);
+		const symbolId = SlicingCriterion.parse(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);
 
 		// If we don't expect any renames make sure there are none
@@ -23,7 +23,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 		}
 
 		// Otherwise check renames and output
-		const expectedRenameIds = expectedRefs.map(c => SingleSlicingCriterion.parse(c, normalize.idMap));
+		const expectedRenameIds = expectedRefs.map(c => SlicingCriterion.parse(c, normalize.idMap));
 		assert.deepEqual(refs, expectedRenameIds);
 
 		// Apply Renames

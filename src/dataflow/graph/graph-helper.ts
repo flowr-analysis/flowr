@@ -10,7 +10,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { guard } from '../../util/assert';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { SingleSlicingCriterion } from '../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../slicing/criterion/parse';
 import { DfEdge } from './edge';
 import { DefaultMap } from '../../util/collections/defaultmap';
 
@@ -77,7 +77,7 @@ export const GraphHelper = {
 			if(cached !== undefined) {
 				return cached;
 			}
-			const resolved = SingleSlicingCriterion.tryParse(id, resolveMap) ?? id as NodeId;
+			const resolved = SlicingCriterion.tryParse(id, resolveMap) ?? id as NodeId;
 
 			cache.set(id as string, resolved);
 			return resolved;

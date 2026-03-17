@@ -9,19 +9,19 @@ import { slicerLogger } from '../static/static-slicer';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
-export type SingleSlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`;
+export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`;
 
 /**
- * The helper object associated with {@link SingleSlicingCriterion} which makes it easy
+ * The helper object associated with {@link SlicingCriterion} which makes it easy
  * to parse, validate and resolve slicing criteria.
  */
-export const SingleSlicingCriterion = {
+export const SlicingCriterion = {
 	/**
 	 * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
-	 * @see {@link SingleSlicingCriterion.tryParse} for a version that does not throw an error
+	 * @see {@link SlicingCriterion.tryParse} for a version that does not throw an error
 	 */
-	parse(this: void, criterion: SingleSlicingCriterion, idMap: AstIdMap): NodeId {
-		const resolved = SingleSlicingCriterion.tryParse(criterion, idMap);
+	parse(this: void, criterion: SlicingCriterion, idMap: AstIdMap): NodeId {
+		const resolved = SlicingCriterion.tryParse(criterion, idMap);
 		if(resolved === undefined) {
 			throw new CriteriaParseError(`invalid slicing criterion ${criterion}`);
 		}
@@ -29,9 +29,9 @@ export const SingleSlicingCriterion = {
 	},
 	/**
 	 * Tries to resolve a slicing criterion to an id, but does not throw an error if it fails.
-	 * @see {@link SingleSlicingCriterion.parse} for the version that throws an error
+	 * @see {@link SlicingCriterion.parse} for the version that throws an error
 	 */
-	tryParse(this: void, criterion: SingleSlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
+	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {
 		criterion = criterion.toString(); // in case it's a number
 		if(criterion.startsWith('$')) {
 			return NodeId.normalize(criterion.substring(1)) as NodeId;
@@ -48,7 +48,7 @@ export const SingleSlicingCriterion = {
 	/**
 	 * Converts a node id to a slicing criterion in the form of `$id`
 	 */
-	fromId(this: void, id: NodeId): SingleSlicingCriterion {
+	fromId(this: void, id: NodeId): SlicingCriterion {
 		return `$${id}`;
 	}
 } as const;
@@ -56,11 +56,11 @@ export const SingleSlicingCriterion = {
 /**
  * A slicing criterion is a list of single slicing criteria, which can be in the form of `line:column`, `line@variable-name`, or `$id`.
  */
-export type SlicingCriteria = SingleSlicingCriterion[];
+export type SlicingCriteria = SlicingCriterion[];
 
 
 export interface DecodedCriterion {
-	criterion: SingleSlicingCriterion,
+	criterion: SlicingCriterion,
 	id:        NodeId
 }
 
@@ -76,14 +76,14 @@ export const SlicingCriteria = {
 	 * @see {@link SlicingCriteria.convertAll}
 	 */
 	decodeAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): DecodedCriteria {
-		return criteria.map(l => ({ criterion: l, id: SingleSlicingCriterion.parse(l, decorated) }));
+		return criteria.map(l => ({ criterion: l, id: SlicingCriterion.parse(l, decorated) }));
 	},
 	/**
 	 * Converts all criteria to their id in the AST if possible, this keeps the original criterion if it can not be resolved.
 	 * @see {@link SlicingCriteria.decodeAll}
 	 */
 	convertAll(this: void, criteria: SlicingCriteria, decorated: AstIdMap): NodeId[] {
-		return criteria.map(l => SingleSlicingCriterion.tryParse(l, decorated) ?? l);
+		return criteria.map(l => SlicingCriterion.tryParse(l, decorated) ?? l);
 	}
 } as const;
 

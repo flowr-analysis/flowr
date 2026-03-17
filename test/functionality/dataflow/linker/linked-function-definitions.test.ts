@@ -5,7 +5,7 @@ import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { getAllLinkedFunctionDefinitions } from '../../../../src/dataflow/internal/linker';
 import { label } from '../../_helper/label';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Linked Function Definitions', withTreeSitter(ts => {
@@ -17,12 +17,12 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 			const idMap = (await a.normalize()).idMap;
 			try {
 				for(const [call, { fns, bi }] of Object.entries(expect)) {
-					const callId = SingleSlicingCriterion.tryParse(call, idMap) ?? call;
+					const callId = SlicingCriterion.tryParse(call, idMap) ?? call;
 					const [lfns, lbi] = getAllLinkedFunctionDefinitions(new Set([callId]), df.graph);
 
 					assert.deepStrictEqual(Array.from(lbi).sort(), (bi ?? []).sort(), `linked bi for call ${call}`);
 					// decode linked function names
-					const expected = (fns ?? []).map(n => SingleSlicingCriterion.tryParse(n, idMap) ?? n).sort();
+					const expected = (fns ?? []).map(n => SlicingCriterion.tryParse(n, idMap) ?? n).sort();
 					assert.deepStrictEqual(Array.from(lfns, l => l.id).sort(), expected, `linked fns for call ${call}`);
 				}
 			} catch(e) {

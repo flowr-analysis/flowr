@@ -1,6 +1,6 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { type Origin, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -12,7 +12,7 @@ import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
-		function chk(code: string, expected: Record<SingleSlicingCriterion, readonly Origin[] | undefined>): void  {
+		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>): void  {
 			describe(code, () => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 				beforeAll(async() => {
@@ -20,10 +20,10 @@ describe('Dataflow', withTreeSitter(ts => {
 						context: contextFromInput(code)
 					}).allRemainingSteps();
 				});
-				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
+				test.each(Object.keys(expected) as SlicingCriterion[])('%s', (interest: SlicingCriterion) => {
 					guard(analysis !== undefined);
 					const want = expected[interest];
-					const interestedId = SingleSlicingCriterion.parse(interest, analysis.normalize.idMap);
+					const interestedId = SlicingCriterion.parse(interest, analysis.normalize.idMap);
 					const origins = Dataflow.origin(analysis.dataflow.graph, interestedId);
 					try {
 						if(want === undefined) {
@@ -33,7 +33,7 @@ describe('Dataflow', withTreeSitter(ts => {
 							origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							const wantMapped = want.map(e => ({
 								...e,
-								id: SingleSlicingCriterion.parse(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+								id: SlicingCriterion.parse(e.id as SlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
 							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							assert.deepStrictEqual(origins, wantMapped);
 						}

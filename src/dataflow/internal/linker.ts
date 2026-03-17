@@ -344,10 +344,26 @@ export function getAllLinkedFunctionDefinitions(
  * @param givenInputs                        - The existing list of inputs that might be extended
  * @param graph                              - The graph to enter the found links
  * @param maybeForRemaining                  - Each input that can not be linked, will be added to `givenInputs`. If this flag is `true`, it will be marked as `maybe`.
+ * @param replaceBuiltInPlaceholders         - If set, built-in read placeholders of already-linked references are replaced when the new resolution is purely user-defined.
  * @returns the given inputs, possibly extended with the remaining inputs (those of `referencesToLinkAgainstEnvironment` that could not be linked against the environment)
  */
-export function linkInputs(referencesToLinkAgainstEnvironment: readonly IdentifierReference[], environmentInformation: REnvironmentInformation, givenInputs: IdentifierReference[], graph: DataflowGraph, maybeForRemaining: boolean): IdentifierReference[] {
+export function linkInputs(
+	referencesToLinkAgainstEnvironment: readonly IdentifierReference[],
+	environmentInformation: REnvironmentInformation,
+	givenInputs: IdentifierReference[],
+	graph: DataflowGraph,
+	maybeForRemaining: boolean,
+	replaceBuiltInPlaceholders = false
+): IdentifierReference[] {
 	for(const bodyInput of referencesToLinkAgainstEnvironment) {
+		const existingReadTargets = replaceBuiltInPlaceholders
+			? [...(graph.outgoingEdges(bodyInput.nodeId)?.entries() ?? [])]
+				.filter(([, edge]) => edgeIncludesType(edge.types, EdgeType.Reads))
+				.map(([target]) => target)
+			: [];
+		const hasOnlyBuiltInReads = existingReadTargets.length > 0
+			&& existingReadTargets.every(target => isBuiltIn(target));
+
 		const probableTarget = bodyInput.name ? resolveByName(bodyInput.name, environmentInformation, bodyInput.type) : undefined;
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
@@ -364,6 +380,20 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
 					allBuiltIn = false;
 				}
 			}
+
+			if(replaceBuiltInPlaceholders && hasOnlyBuiltInReads && !allBuiltIn) {
+				const onlyUserDefinedTargets = probableTarget.every(target =>
+					!isReferenceType(target.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)
+				);
+				if(onlyUserDefinedTargets) {
+					for(const target of existingReadTargets) {
+						if(isBuiltIn(target)) {
+							graph.removeEdge(bodyInput.nodeId, target);
+						}
+					}
+				}
+			}
+
 			if(allBuiltIn) {
 				givenInputs.push(bodyInput);
 			}

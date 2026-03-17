@@ -208,6 +208,18 @@ export class DataflowGraph<
 
 	private types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
+	private rebuildTypeIndex(): void {
+		this.types = new Map<Vertex['tag'], NodeId[]>();
+		for(const [id, vertex] of this.vertexInformation.entries()) {
+			const existing = this.types.get(vertex.tag);
+			if(existing) {
+				existing.push(id);
+			} else {
+				this.types.set(vertex.tag, [id]);
+			}
+		}
+	}
+
 
 	toJSON(): DataflowGraphJson {
 		return {
@@ -498,6 +510,8 @@ export class DataflowGraph<
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
 			vertex.cds = reference.controlDependencies;
 		} else {
+			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
+			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
 		}
 	}
@@ -558,6 +572,7 @@ export class DataflowGraph<
 		const graph = new DataflowGraph(undefined);
 		graph.rootVertices = new Set<NodeId>(data.rootVertices);
 		graph.vertexInformation = new Map<NodeId, DataflowGraphVertexInfo>(data.vertexInformation);
+		graph.rebuildTypeIndex();
 		for(const [, vertex] of graph.vertexInformation) {
 			if(vertex.environment) {
 				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);

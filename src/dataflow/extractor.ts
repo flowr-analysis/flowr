@@ -31,8 +31,8 @@ import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-reg
 import type { REnvironmentInformation } from './environments/environment';
 import { linkInputs } from './internal/linker';
 import type { IdentifierReference } from './environments/identifier';
-import { isReferenceType, ReferenceType } from './environments/identifier';
-import { resolveByName } from './environments/resolve-by-name';
+import { ReferenceType } from './environments/identifier';
+import { isBuiltIn } from './environments/built-in';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -107,99 +107,49 @@ function resolveCrossFileReferences(
 	graph: DataflowGraph,
 	environment: REnvironmentInformation,
 ): void {
-	/** get all unresolved reads in the dataflow graph, ignore nothing */
-	const unresolved: IdentifierReference[] = [];
+	const asIdentifierReference = (
+		nodeId: NodeId,
+		controlDependencies: IdentifierReference['controlDependencies'],
+		type: ReferenceType.Variable | ReferenceType.Function,
+		fallbackName?: string
+	): IdentifierReference => ({
+		nodeId,
+		name: recoverName(nodeId, graph.idMap) ?? fallbackName,
+		controlDependencies,
+		type
+	});
 
-	for(const [nodeId, vertex] of graph.verticesOfType(VertexType.Use)){
-		const outgoing = graph.outgoingEdges(nodeId);
+	/** collect references that can benefit from an environment-based relink */
+	const candidates: IdentifierReference[] = [];
 
-		const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
-			([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
-		);
-
-		if(!hasReads) {
-			unresolved.push({
-				nodeId,
-				name:                recoverName(nodeId, graph.idMap),
-				controlDependencies: vertex.cds,
-				type:                ReferenceType.Variable
-			});
-		}
-	}
-
-	for(const [nodeId, vertex] of graph.verticesOfType(VertexType.FunctionCall)){
-		const outgoing = graph.outgoingEdges(nodeId);
-
-		const hasReads = (outgoing !== undefined) && [...outgoing.entries()].some(
-			([,edge]) => edgeIncludesType(edge.types, EdgeType.Reads)
-		);
-
-		if(!hasReads) {
-			unresolved.push({
-				nodeId,
-				name:                recoverName(nodeId, graph.idMap) ?? vertex.name,
-				controlDependencies: vertex.cds,
-				type:                ReferenceType.Function
-			});
-		}
-	}
-
-	console.log('Found following unresolved references: ', unresolved);
-
-	linkInputs(unresolved, environment, [], graph, false);
-
-	/** resolve vertices with only builtins again and update if placeholder */
-	/** why do i need to do this? */
-	for(const [nodeId,] of graph.verticesOfType(VertexType.Use)) {
-		const name = recoverName(nodeId, graph.idMap);
-		if(!name) {
+	for(const [nodeId, vertex] of graph.vertices(true)) {
+		if(vertex.tag !== VertexType.Use && vertex.tag !== VertexType.FunctionCall) {
 			continue;
 		}
 
-		const type = ReferenceType.Variable;
-		const outgoing = graph.outgoingEdges(nodeId);
+		const readTargets = [...(graph.outgoingEdges(nodeId)?.entries() ?? [])]
+			.filter(([, edge]) => edgeIncludesType(edge.types, EdgeType.Reads))
+			.map(([target]) => target);
+		const hasReads = readTargets.length > 0;
 
-		/* Check if this node currently only has built-in edges */
-		const allEdgesAreBuiltIns = outgoing !== undefined && [...outgoing.entries()].every(([target]) =>
-			typeof target === 'string' && target.includes('built-in')
-		);
+		if(!hasReads) {
+			candidates.push(
+				vertex.tag === VertexType.Use
+					? asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable)
+					: asIdentifierReference(nodeId, vertex.cds, ReferenceType.Function, vertex.name)
+			);
+			continue;
+		}
 
-		if(allEdgesAreBuiltIns) {
-			/* Try to resolve in the merged environment */
-			const targets = resolveByName(name, environment, type);
-			if(targets && targets.length > 0) {
-				// Get user-defined targets only
-				const userDefinedTargets = targets.filter(t =>
-					!isReferenceType(t.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)
-				);
-
-				if(userDefinedTargets.length > 0) {
-					/* Check if targets only includes user-defined (no built-in fallbacks) */
-					const onlyUserDefined = userDefinedTargets.length === targets.length;
-
-					if(onlyUserDefined) {
-						/* Remove placeholder built-in edges since we have pure user-defined targets */
-						if(outgoing) {
-							for(const [target] of outgoing) {
-								if(typeof target === 'string' && target.includes('built-in')) {
-									graph.removeEdge(nodeId, target);
-								}
-							}
-						}
-					}
-
-					/* Add edges to user-defined targets (whether or not we removed built-ins) */
-					for(const target of userDefinedTargets) {
-						const outgoing = graph.outgoingEdges(nodeId);
-						const alreadyLinked = outgoing?.has(target.nodeId);
-						if(!alreadyLinked) {
-							graph.addEdge(nodeId, target.nodeId, EdgeType.Reads);
-						}
-					}
-				}
-			}
+		// Keep historical behavior: only variable reads are upgraded from built-in placeholders here.
+		if(vertex.tag === VertexType.Use && readTargets.every(target => isBuiltIn(target))) {
+			candidates.push(asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable));
 		}
 	}
+
+	console.log('Found references eligible for cross-file resolution: ', candidates);
+
+	const unresolved = linkInputs(candidates, environment, [], graph, false, true);
 
 	if(unresolved.length > 0){
 		console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` +

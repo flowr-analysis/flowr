@@ -162,6 +162,10 @@ df[6, "value"]
 		'stop-call', 'StopWithCallConfig', 'STOP_WITH_CALL_ARG', 'lint-stop-call',
 		'stop(42)', tagTypes);
 
+	rule(knownParser,
+		'roxygen-arguments', 'RoxygenArgsConfig', 'ROXYGEN_ARGS', 'lint-roxygen-arguments',
+		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

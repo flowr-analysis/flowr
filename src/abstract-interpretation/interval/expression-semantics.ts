@@ -9,12 +9,14 @@ import { getMin, getMinMax } from '../../util/numbers';
 /**
  * Maps function/operator names to the semantic functions.
  */
-const IntervalSemanticsMapper = [
-	[Identifier.make('+'), unaryBinaryOpSemantics(intervalPositiveOp, intervalAddOp)],
-	[Identifier.make('-'), unaryBinaryOpSemantics(intervalNegativeOp, intervalSubtractOp)],
-	[Identifier.make('*'), binaryOpSemantics(intervalMultiplyOp)],
-	[Identifier.make('length'), unaryFnSemantics(intervalLengthFn)],
+const IntervalExpressionSemanticsMapper = [
+	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalPositiveOp, intervalAddOp)],
+	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegativeOp, intervalSubtractOp)],
+	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
+	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
 ] as const satisfies readonly IntervalSemanticsMapperInfo[];
+
+type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
 
 /**
  * Semantics definition function for unary numeric operators.
@@ -51,8 +53,6 @@ type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericInferenceVisitor
  */
 type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
 
-type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
-
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
  * @param functionIdentifier - The {@link Identifier} of the function/operator.
@@ -62,7 +62,11 @@ type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSem
  * @returns The resulting interval after applying the semantics.
  */
 export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
-	const match = IntervalSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+	if(visitor.currentState.isBottom()) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
 		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
@@ -83,7 +87,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
  * @param binaryOperatorSemantics - The semantics function for the binary operator.
  * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
-function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
+function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
 	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		// Usage as unary operator
 		if(args.length === 1) {
@@ -96,7 +100,7 @@ function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binary
 			return unaryOperatorSemantics(arg, significantFigures);
 		}
 
-		return binaryOpSemantics(binaryOperatorSemantics)(args, visitor, significantFigures);
+		return binaryExprOpSemantics(binaryOperatorSemantics)(args, visitor, significantFigures);
 	};
 }
 
@@ -107,7 +111,7 @@ function unaryBinaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binary
  * @param binaryOperatorSemantics - The semantics function for the binary operator.
  * @returns A semantics function for n-ary functions that applies the provided binary numeric operator semantics if the call has exactly 2 non-empty numeric arguments, and logs a warning and returns bottom otherwise.
  */
-function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
+function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
 	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 2) {
 			numericInferenceLogger.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
@@ -133,7 +137,7 @@ function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSe
  * @param unaryFunctionSemantics - The semantics function for the unary function.
  * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
  */
-function unaryFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
+function unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
 	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');

@@ -116,6 +116,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
 					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
+					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result is not an overapproximation but an exact match.').toBe(false);
 				} else {
 					assertUnreachable(criterionExpected.matching);
 				}
@@ -127,6 +128,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
 					// At least one domain is undefined (Top), so the inferred domain has to be undefined (Top) to be an overapproximation of the expected domain.
 					expect(inferredIntervalDomain, 'Result differs: ' + errorContext).toBeUndefined();
+					expect(inferredIntervalDomain?.value, 'Result is not an overapproximation but an exact match.').not.toBe(criterionExpected.domain?.value);
 				} else {
 					assertUnreachable(criterionExpected.matching);
 				}

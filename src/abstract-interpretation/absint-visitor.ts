@@ -1,5 +1,5 @@
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertex } from '../control-flow/control-flow-graph';
+import { CfgEdge, CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in';
@@ -17,10 +17,11 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { guard, isNotUndefined } from '../util/assert';
+import { guard, isNotUndefined, isUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
+import { RTrue } from '../r-bridge/lang-4.x/convert-values';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -88,6 +89,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
+		if(state?.isBottom()) {
+			return this.getBottomValue();
+		}
+
 		if(node === undefined) {
 			return;
 		} else if(state?.has(node.info.id)) {
@@ -98,7 +103,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			const values = this.getVariableOrigins(node.info.id).map(origin => state?.get(origin));
+			const values = this.getVariableOrigins(node.info.id).map(origin => this.trace.get(origin)?.isBottom() ? this.getBottomValue() : state?.get(origin));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
@@ -189,7 +194,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			return true;
 		}
 		const predecessors = this.getPredecessorNodes(CfgVertex.getId(vertex));
-		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
+		const predecessorStates = this.getPredecessorDomains(vertex);
 
 		// retrieve new abstract state by joining states of predecessor nodes
 		if(predecessorStates.length === 1) {
@@ -227,7 +232,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this.trace.set(nodeId, this._currentState);
 			this.stateCopied = false;
 
-			const predecessorVisits = predecessors.map(pred => this.visited.get(pred) ?? 0);
+			const predecessorVisits = predecessors.map(pred => this.visited.get(pred.id) ?? 0);
 			const visitedCount = this.visited.get(nodeId) ?? 0;
 			this.visited.set(nodeId, visitedCount + 1);
 
@@ -298,24 +303,41 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	protected onFunctionCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
-	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices */
-	protected getPredecessorNodes(vertexId: NodeId): NodeId[] {
-		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.keys()  // outgoing dependency edges are ingoing CFG edges
-			.map(id => this.getCfgVertex(id))
-			.flatMap(vertex => {
+	/** Gets all AST nodes for the predecessor vertices that are leaf nodes and exit vertices (root vertex instead of exit vertex for widening points) */
+	protected getPredecessorNodes(vertexId: NodeId, pathEdges: CfgEdge[] = []): { id: NodeId, edges: CfgEdge[] }[] {
+		return this.config.controlFlow.graph.outgoingEdges(vertexId)?.entries()  // outgoing dependency edges are ingoing CFG edges
+			.map(([id, edge]: [NodeId, CfgEdge]): [CfgVertex | undefined, CfgEdge[]] => [this.getCfgVertex(id), [...pathEdges, edge]])
+			.flatMap(([vertex, path]) => {
 				if(vertex === undefined) {
 					return [];
 				} else if(this.shouldSkipVertex(vertex)) {
-					return this.getPredecessorNodes(CfgVertex.getId(vertex));
+					return this.getPredecessorNodes(CfgVertex.getId(vertex), path);
 				} else {
-					return [CfgVertex.getRootId(vertex)];
+					return [{ id: CfgVertex.getRootId(vertex), edges: path }];
 				}
 			})
 			.toArray() ?? [];
 	}
 
+	protected getPredecessorDomains(vertex: CfgVertex): MutableStateAbstractDomain<Domain>[] {
+		return this.getPredecessorNodes(CfgVertex.getId(vertex))
+			.map(pred => {
+				const predState = this.trace.get(pred.id);
+				const cfdEdge = pred.edges.find(CfgEdge.isControlDependency);
+				if(isNotUndefined(cfdEdge)) {
+					const branchType = CfgEdge.getWhen(cfdEdge);
+					if(isNotUndefined(branchType)) {
+						// Apply Condition Semantics to copy of predecessor state, as we do not want to modify the trace
+						const copiedState = isUndefined(predState) ? undefined : predState.create(predState.value);
+						return this.applyConditionSemantics(copiedState, pred.id, branchType === RTrue);
+					}
+				}
+				return predState;
+			}).filter(isNotUndefined);
+	}
+
 	/** Gets each variable origin that has already been visited and whose assignment has already been processed */
-	protected getVariableOrigins(nodeId: NodeId): NodeId[] {
+	public getVariableOrigins(nodeId: NodeId): NodeId[] {
 		return getOriginInDfg(this.config.dfg, nodeId)
 			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 			.map(origin => origin.id)
@@ -363,4 +385,24 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	protected shouldWiden(wideningPoint: CfgVertex): boolean {
 		return (this.visited.get(CfgVertex.getId(wideningPoint)) ?? 0) >= this.config.ctx.config.abstractInterpretation.wideningThreshold;
 	}
+
+	/**
+	 * Applies the semantics of the provided condition node to the provided state and returns the filtered state.
+	 * Note that the provided state is modified in place, so a copy of the state should be passed if the original state should not be modified.
+	 * @param state - The abstract state to apply the condition semantics to.
+	 * @param _conditionNodeId - The ID of the condition node to apply the semantics of.
+	 * @param _trueBranch - If false, the semantics of the negated condition are applied.
+	 * @returns The abstract state resulting from applying the condition semantics.
+	 * @protected
+	 */
+	protected applyConditionSemantics(state: MutableStateAbstractDomain<Domain> | undefined, _conditionNodeId: NodeId, _trueBranch: boolean): MutableStateAbstractDomain<Domain> | undefined {
+		return state;
+	}
+
+	/**
+	 * Helper method to get the Bottom element of the abstract domain.
+	 * This is currently required to return bottom values in case the state domain is bottom.
+	 * @protected
+	 */
+	protected abstract getBottomValue(): Domain;
 }

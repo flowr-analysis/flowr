@@ -1,0 +1,36 @@
+import { assertQuery } from '../../_helper/query';
+import { label } from '../../_helper/label';
+import { withTreeSitter } from '../../_helper/shell';
+import { describe } from 'vitest';
+import type {
+	InputSourcesQuery,
+	InputSourcesQueryResult
+} from '../../../../src/queries/catalog/input-sources-query/input-sources-query-format';
+import { InputTraceType, InputType } from '../../../../src/queries/catalog/input-sources-query/simple-input-classifier';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+
+describe.sequential('Input Source Test', withTreeSitter(parser => {
+	function testQuery(name: string, code: string, query: readonly InputSourcesQuery[], expectedOutput: InputSourcesQueryResult['results']) {
+		assertQuery(label(name), parser, code, query, d => {
+			const nast = d.normalize.idMap;
+			for(const [key, value] of Object.entries(expectedOutput)) {
+				expectedOutput[key] = value.map(v => ({
+					...v,
+					id: SlicingCriterion.tryParse(v.id, nast) ?? v.id
+				}));
+			}
+			return {
+				'input-sources': { results: expectedOutput }
+			};
+		});
+	}
+
+	// TODO: allow for and then resovl the slicing criterias for these ideas, // TODO: also support the witness traces
+	testQuery('Eval-parse simple', "eval(parse(text='x'))", [{ type: 'input-sources', criterion: '1@eval' }], {
+		'1@eval': [{
+			id:    '1@parse', // TODO: find the correct one!
+			type:  InputType.DerivedConstant, trace: InputTraceType.Pure
+		}]
+	});
+}));
+

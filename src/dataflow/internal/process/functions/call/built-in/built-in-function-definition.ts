@@ -137,9 +137,9 @@ export function processFunctionDefinition<OtherInfo>(
 		if(p === EmptyArgument) {
 			return EmptyArgument;
 		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content };
+			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content, valueId: p.value.defaultValue?.info.id };
 		} else if(p.name) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
+			return { type: ReferenceType.Argument, valueId: p.value?.info.id, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
 		} else {
 			return EmptyArgument;
 		}

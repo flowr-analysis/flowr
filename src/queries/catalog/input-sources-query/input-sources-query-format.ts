@@ -5,25 +5,14 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { InputClassifierConfig, InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
+import { SourceLocation } from '../../../util/range';
 
-export type InputSourceCategory = 'constant' | 'derivedConstant' | 'controlDependent' | 'parameter' | 'network' | 'randomness' | 'configurable' | 'other';
-export type InputSourceBuckets = Record<InputSourceCategory, NodeId[]>;
-
-export interface InputSourcesQueryConfig {
-	readonly networkFunctions?:      string[];
-	readonly randomnessConsumers?:   string[];
-	readonly randomnessProducers?:   { type: 'function' | 'assignment', name: string }[];
-	readonly configurableFunctions?: string[];
-	/**
-	 * Functions that are considered deterministic and therefore keep constant inputs constant.
-	 */
-	readonly pureFunctions?:         string[];
-}
-
+export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
  * Calculates provenance for all inputs and their transformations
  * based on the `provenance` of a given function.
@@ -35,7 +24,8 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 }
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
-	results: Record<string, InputSourceBuckets>
+	/** For each query key, a list of classified input sources (each with id and all traces) */
+	results: Record<string, InputSources>
 }
 
 function inputSourcesueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
@@ -54,19 +44,24 @@ function inputSourcesueryLineParser(output: ReplOutput, line: readonly string[],
 
 export const InputSourcesDefinition = {
 	executor:        executeInputSourcesQuery,
-	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
+	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'input-sources'>['input-sources'];
 		result.push(`Query: ${bold('input-sources', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		for(const [key, obj] of Object.entries(out.results)) {
+		const nast = (await analyzer.normalize()).idMap;
+		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			// TODO:
-			console.log(obj);
+			for(const { id, trace, type } of sources) {
+				const kNode = nast.get(id);
+				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
+				result.push(
+					`           ╰ ${kLoc} (id: ${id}), type: ${type}`
+				);
+			}
 		}
 		return true;
 	},
 	fromLine: inputSourcesueryLineParser,
 	schema:   Joi.object({
-		// TODO
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion to use.'),
 		config:    Joi.object({
@@ -81,8 +76,8 @@ export const InputSourcesDefinition = {
 		const flattened: NodeId[] = [];
 		const out = queryResults as QueryResults<'input-sources'>['input-sources'];
 		for(const obj of Object.values(out.results)) {
-			for(const ids of Object.values(obj)) {
-				flattened.push(...ids);
+			for(const e of obj) {
+				flattened.push(e.id);
 			}
 		}
 		return flattened;

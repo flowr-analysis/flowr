@@ -102,10 +102,11 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
 	} else {
 		return {
-			nodeId: arg.info.id,
-			name:   arg.name.content,
-			cds:    undefined,
-			type:   ReferenceType.Argument
+			nodeId:  arg.info.id,
+			valueId: arg.value?.info.id,
+			name:    arg.name.content,
+			cds:     undefined,
+			type:    ReferenceType.Argument
 		};
 	}
 }
@@ -174,7 +175,7 @@ export function processAllArguments<OtherInfo>(
 		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);

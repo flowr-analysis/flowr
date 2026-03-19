@@ -36,7 +36,8 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' 
  * @see PositionalFunctionArgument
  */
 export interface NamedFunctionArgument extends IdentifierReference {
-	readonly name: string
+	readonly name:    string
+	readonly valueId: NodeId | undefined
 }
 
 /**
@@ -121,17 +122,34 @@ export const FunctionArgument = {
 		return arg !== EmptyArgument;
 	},
 	/**
+	 * Returns the id of a non-empty argument.
+	 * @example
+	 * ```r
+	 * foo(a=3, 2) # returns the node id of either `a` or `2`
+	 * ```
+	 * @see {@link FunctionArgument.getReference}
+	 */
+	getId(this: void, arg: FunctionArgument): NodeId | undefined {
+		if(arg !== EmptyArgument) {
+			return arg?.nodeId;
+		}
+		return undefined;
+	},
+	/**
 	 * Returns the reference of a non-empty argument.
 	 * @example
 	 * ```r
 	 * foo(a=3, 2) # returns the node id of either `3` or `2`, but skips a
 	 * ```
+	 * @see {@link FunctionArgument.getId}
 	 */
 	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
-		if(arg !== EmptyArgument) {
-			return arg?.nodeId;
+		if(arg === EmptyArgument) {
+			return undefined;
+		} else if(arg.name === undefined) {
+			return arg.nodeId;
 		}
-		return undefined;
+		return arg.valueId;
 	},
 	/**
 	 * Checks whether the given argument is a named argument with the specified name.

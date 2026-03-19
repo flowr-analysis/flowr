@@ -133,10 +133,11 @@ export function processApply<OtherInfo>(
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:   counterpart.name?.content,
-				cds:    data.cds,
-				type:   ReferenceType.Argument,
-				nodeId: arg.entryPoint
+				name:    counterpart.name?.content,
+				valueId: counterpart.value?.info.id,
+				cds:     data.cds,
+				type:    ReferenceType.Argument,
+				nodeId:  arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;

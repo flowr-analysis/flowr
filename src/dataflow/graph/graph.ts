@@ -6,8 +6,7 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
-	type DataflowGraphVertices,
-	VertexType
+	type DataflowGraphVertices, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -46,7 +45,6 @@ export interface NamedFunctionArgument extends IdentifierReference {
  * ```r
  * foo(3, 2)
  * ```
- * @see #isPositionalArgument
  * @see NamedFunctionArgument
  */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
@@ -504,8 +502,9 @@ export class DataflowGraph<
 	/**
 	 * Marks a vertex in the graph to be a definition
 	 * @param reference - The reference to the vertex to mark as definition
+	 * @param sourceIds - The id of the source vertex of the def, if available
 	 */
-	public setDefinitionOfVertex(reference: IdentifierReference): void {
+	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
@@ -513,6 +512,9 @@ export class DataflowGraph<
 		} else {
 			const oldTag = vertex.tag;
 			(vertex as { tag: VertexType }).tag = VertexType.VariableDefinition;
+			if(sourceIds) {
+				(vertex as unknown as { source: readonly NodeId[] | undefined }).source = sourceIds;
+			}
 			this.types.set(oldTag, (this.types.get(oldTag) ?? []).filter(id => id !== reference.nodeId));
 			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 		}

@@ -107,7 +107,7 @@ export const Dataflow = {
 	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>): Set<NodeId> {
 		const queue = [id];
 		const visited = new Set<NodeId>();
-		const followEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+		const followEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 		while(queue.length > 0) {
 			const nodeId = queue.pop();

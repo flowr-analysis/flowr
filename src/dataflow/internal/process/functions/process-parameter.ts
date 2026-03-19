@@ -27,7 +27,7 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 	for(const writtenNode of writtenNodes) {
 		const wid = writtenNode.nodeId;
 		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
-		graph.setDefinitionOfVertex(writtenNode);
+		graph.setDefinitionOfVertex(writtenNode, defaultValue?.entryPoint ? [defaultValue?.entryPoint] : []);
 		environment = define(writtenNode, false, environment);
 
 		if(defaultValue !== undefined) {

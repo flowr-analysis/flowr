@@ -19,9 +19,8 @@ export interface ProblematicEvalConfig extends MergeableRecord {
 	considerAsEval: string
 }
 
-export interface ProblematicEvalMetadata extends MergeableRecord {
-	// TODO:
-}
+// TODO:
+export type ProblematicEvalMetadata = MergeableRecord;
 
 // TODO: doc
 export const PROBLEMATIC_EVAL = {
@@ -31,7 +30,7 @@ export const PROBLEMATIC_EVAL = {
 		callName:      config.considerAsEval,
 		callNameExact: false
 	}),
-	processSearchResult: (elements, config, data): { results: ProblematicEvalResult[], '.meta': ProblematicEvalMetadata } => {
+	processSearchResult: (elements, _config, _data): { results: ProblematicEvalResult[], '.meta': ProblematicEvalMetadata } => {
 		const metadata: ProblematicEvalMetadata = {
 			totalConsidered: 0
 		};

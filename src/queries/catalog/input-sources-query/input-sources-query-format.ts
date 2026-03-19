@@ -54,7 +54,7 @@ export const InputSourcesDefinition = {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${type}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${type}, trace: ${trace}`
 				);
 			}
 		}

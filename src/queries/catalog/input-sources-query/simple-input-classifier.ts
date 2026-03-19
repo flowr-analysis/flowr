@@ -3,11 +3,16 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import type { MergeableRecord } from '../../../util/objects';
 import type { Identifier as IdentifierType } from '../../../dataflow/environments/identifier';
-import type { DataflowGraphVertexInfo, DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
+import type {
+	DataflowGraphVertexInfo,
+	DataflowGraphVertexFunctionCall,
+	DataflowGraphVertexVariableDefinition
+} from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 
 class InputClassifier {
 	private readonly dfg:    DataflowGraph;
@@ -33,8 +38,9 @@ class InputClassifier {
 				return this.setAndReturn(vertex.id, { id: vertex.id, type: InputType.Constant, trace: InputTraceType.Unknown });
 			case VertexType.FunctionCall:
 				return this.classifyFunctionCall(vertex);
-			case VertexType.Use:
 			case VertexType.VariableDefinition:
+				return this.classifyVariableDefinition(vertex);
+			case VertexType.Use:
 				return this.classifyVariable(vertex);
 			default:
 				return this.setAndReturn(vertex.id, { id: vertex.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
@@ -74,13 +80,11 @@ class InputClassifier {
 				continue;
 			}
 			const ref = FunctionArgument.getReference(arg);
-			console.log(arg, ref);
 			if(ref === undefined) {
 				argTypes.push(InputType.Unknown);
 				continue;
 			}
 			const argVtx = this.dfg.getVertex(ref);
-			console.log('ref', argVtx);
 			if(!argVtx) {
 				argTypes.push(InputType.Unknown);
 				continue;
@@ -104,6 +108,7 @@ class InputClassifier {
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
 		const origins = Dataflow.origin(this.dfg, vtx.id);
+
 		if(origins === undefined) {
 			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
 		}
@@ -120,6 +125,11 @@ class InputClassifier {
 			if(o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin) {
 				const v = this.dfg.getVertex(o.id);
 				if(v) {
+					// if this is a variable definition that is a parameter, classify as Parameter
+					if(v.tag === VertexType.VariableDefinition && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
+						types.push(InputType.Parameter);
+						continue;
+					}
 					const c = this.classifyEntry(v);
 					types.push(c.type);
 					if(c.trace === InputTraceType.Pure) {
@@ -147,6 +157,40 @@ class InputClassifier {
 
 			// unknown origin type
 			types.push(InputType.Unknown);
+		}
+
+		const t = types.length === 0 ? InputType.Unknown : worstInputType(types);
+		const trace = anyPure ? InputTraceType.Pure : InputTraceType.Alias;
+		return this.setAndReturn(vtx.id, { id: vtx.id, type: t, trace });
+	}
+
+	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
+		// parameter definitions are classified as Parameter
+		if(this.dfg.idMap?.get(vtx.id)?.info.role === RoleInParent.ParameterName) {
+			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Parameter, trace: InputTraceType.Unknown });
+		}
+
+		const sources = vtx.source;
+
+		if(sources === undefined || sources.length === 0) {
+			// fallback to unknown if we cannot find the value
+			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
+		}
+
+		const types: InputType[] = [];
+		let anyPure = false;
+
+		for(const tid of sources) {
+			const tv = this.dfg.getVertex(tid);
+			if(tv) {
+				const c = this.classifyEntry(tv);
+				types.push(c.type);
+				if(c.trace === InputTraceType.Pure) {
+					anyPure = true;
+				}
+			} else {
+				types.push(InputType.Unknown);
+			}
 		}
 
 		const t = types.length === 0 ? InputType.Unknown : worstInputType(types);

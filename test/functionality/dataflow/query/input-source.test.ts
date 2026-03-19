@@ -25,11 +25,36 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	}
 
-	// TODO: allow for and then resovl the slicing criterias for these ideas, // TODO: also support the witness traces
+	// TODO: read, randomness, network, with control dependencies etc.
+
 	testQuery('Eval-parse simple', "eval(parse(text='x'))", [{ type: 'input-sources', criterion: '1@eval' }], {
 		'1@eval': [{
-			id:    '1@parse', // TODO: find the correct one!
+			id:    '1@parse',
 			type:  InputType.DerivedConstant, trace: InputTraceType.Pure
+		}]
+	});
+	testQuery('Eval-parse simple with indirect', "x <- 'x'\neval(parse(text=x))", [{ type: 'input-sources', criterion: '2@eval' }], {
+		'2@eval': [{
+			id:    '2@parse',
+			type:  InputType.DerivedConstant, trace: InputTraceType.Pure
+		}]
+	});
+	testQuery('Eval-parse simple but with variable', 'eval(parse(text=x))', [{ type: 'input-sources', criterion: '1@eval' }], {
+		'1@eval': [{
+			id:    '1@parse',
+			type:  InputType.Unknown, trace: InputTraceType.Known
+		}]
+	});
+	testQuery('Eval-parse to param', 'function(x) eval(parse(text=x))', [{ type: 'input-sources', criterion: '1@eval' }], {
+		'1@eval': [{
+			id:    '1@parse',
+			type:  InputType.Parameter, trace: InputTraceType.Known
+		}]
+	});
+	testQuery('Eval-parse to param with indirect', 'function(x) { y <- x\neval(parse(text=y))}', [{ type: 'input-sources', criterion: '2@eval' }], {
+		'2@eval': [{
+			id:    '2@parse',
+			type:  InputType.Parameter, trace: InputTraceType.Known
 		}]
 	});
 }));

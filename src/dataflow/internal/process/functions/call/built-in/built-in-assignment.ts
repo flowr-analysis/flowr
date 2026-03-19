@@ -408,7 +408,7 @@ export function markAsAssignment<OtherInfo>(
 	assignmentConfig?: AssignmentConfiguration
 ) {
 	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
-	information.graph.setDefinitionOfVertex(nodeToDefine);
+	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
 	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {

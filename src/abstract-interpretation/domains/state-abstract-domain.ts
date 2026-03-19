@@ -155,6 +155,14 @@ export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain> extend
 		return new MutableStateAbstractDomain(value, bottom ?? this._isBottom);
 	}
 
+	public static top<Domain extends AnyAbstractDomain>(): MutableStateAbstractDomain<Domain> {
+		return new MutableStateAbstractDomain<Domain>(new Map());
+	}
+
+	public static bottom<Domain extends AnyAbstractDomain>(): MutableStateAbstractDomain<Domain> {
+		return new MutableStateAbstractDomain<Domain>(new Map(), true);
+	}
+
 	public set(key: NodeId, value: Domain): void {
 		super.set(key, value);
 	}

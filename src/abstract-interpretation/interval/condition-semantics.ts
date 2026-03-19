@@ -14,15 +14,15 @@ import { FloatingPointComparison } from '../../util/floating-point';
 import { getMin } from '../../util/numbers';
 
 const IntervalConditionSemanticsMapper = [
-	[Identifier.make('!'), unaryOpSemantics(applyNegatedIntervalConditionSemantics), unaryOpSemantics(applyIntervalConditionSemantics)],
-	[Identifier.make('('), unaryOpSemantics(applyIntervalConditionSemantics), unaryOpSemantics(applyNegatedIntervalConditionSemantics)],
-	[Identifier.make('=='), binaryOpSemantics(intervalEqualsOp), binaryOpSemantics(intervalNotEqualsOp)],
-	[Identifier.make('!='), binaryOpSemantics(intervalNotEqualsOp), binaryOpSemantics(intervalEqualsOp)],
-	[Identifier.make('>'), binaryOpSemantics(intervalGreaterOp), binaryOpSemantics(intervalLessEqualOp)],
-	[Identifier.make('>='), binaryOpSemantics(intervalGreaterEqualOp), binaryOpSemantics(intervalLessOp)],
-	[Identifier.make('<'), binaryOpSemantics(intervalLessOp), binaryOpSemantics(intervalGreaterEqualOp)],
-	[Identifier.make('<='), binaryOpSemantics(intervalLessEqualOp), binaryOpSemantics(intervalGreaterOp)],
-	[Identifier.make('is.na'), unaryOpSemantics(intervalIsNaFn), unaryOpSemantics(intervalNegatedIsNaFn)]
+	[Identifier.make('!'), unaryCondOpSemantics(applyNegatedIntervalConditionSemantics), unaryCondOpSemantics(applyIntervalConditionSemantics)],
+	[Identifier.make('('), unaryCondOpSemantics(applyIntervalConditionSemantics), unaryCondOpSemantics(applyNegatedIntervalConditionSemantics)],
+	[Identifier.make('=='), binaryCondOpSemantics(intervalEqualsOp), binaryCondOpSemantics(intervalNotEqualsOp)],
+	[Identifier.make('!='), binaryCondOpSemantics(intervalNotEqualsOp), binaryCondOpSemantics(intervalEqualsOp)],
+	[Identifier.make('>'), binaryCondOpSemantics(intervalGreaterOp), binaryCondOpSemantics(intervalLessEqualOp)],
+	[Identifier.make('>='), binaryCondOpSemantics(intervalGreaterEqualOp), binaryCondOpSemantics(intervalLessOp)],
+	[Identifier.make('<'), binaryCondOpSemantics(intervalLessOp), binaryCondOpSemantics(intervalGreaterEqualOp)],
+	[Identifier.make('<='), binaryCondOpSemantics(intervalLessEqualOp), binaryCondOpSemantics(intervalGreaterOp)],
+	[Identifier.make('is.na'), unaryCondOpSemantics(intervalIsNaFn), unaryCondOpSemantics(intervalUnaryIdentity)]
 ] as const satisfies IntervalConditionSemanticsMapperInfo[];
 
 type IntervalConditionSemanticsMapperInfo = [identifier: Identifier, semantics: NAryFnSemantics, negatedSemantics: NAryFnSemantics];
@@ -90,10 +90,7 @@ export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, s
 	// evaluating an expression and evaluating a condition, we can just apply the semantics for evaluating an expression
 	// in this case.
 	if(argState?.isValue() && argState.value[0] == 0 && argState.value[1] == 0) {
-		if(isNotUndefined(state)) {
-			return state.bottom();
-		}
-		return new MutableStateAbstractDomain(new Map(), true);
+		return state?.bottom() ?? MutableStateAbstractDomain.bottom();
 	}
 
 	return state;
@@ -131,10 +128,7 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
 	// evaluating a negated expression and evaluating a negated condition, we can just apply the semantics for
 	// evaluating a negated expression in this case.
 	if(argState?.isValue() && (0 < argState.value[0] || argState.value[1] < 0)) {
-		if(isNotUndefined(state)) {
-			return state.bottom();
-		}
-		return new MutableStateAbstractDomain(new Map(), true);
+		return state?.bottom() ?? MutableStateAbstractDomain.bottom();
 	}
 
 	return state;
@@ -147,7 +141,7 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
  * @param unaryOperatorSemantics - The semantics to apply if the call has exactly 1 defined argument.
  * @returns The semantics to apply for a unary operator call, which includes the guard for the number of arguments.
  */
-function unaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NAryFnSemantics {
+function unaryCondOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NAryFnSemantics {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 1 || isUndefined(argNodeIds[0])) {
 			numericInferenceLogger.warn('Called unary condition operator with more/less than 1 argument or with undefined argument.');
@@ -164,7 +158,7 @@ function unaryOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NAryFnSeman
  * @param binaryOperatorSemantics - The semantics to apply if the call has exactly 2 defined arguments.
  * @returns The semantics to apply for a binary operator call, which includes the guard for the number of arguments.
  */
-function binaryOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NAryFnSemantics {
+function binaryCondOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NAryFnSemantics {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: MutableStateAbstractDomain<IntervalDomain> | undefined, visitor: NumericInferenceVisitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 2 || isUndefined(argNodeIds[0]) || isUndefined(argNodeIds[1])) {
 			numericInferenceLogger.warn('Called binary condition operator with more/less than 2 arguments or with undefined arguments.');
@@ -180,19 +174,21 @@ function intervalEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutabl
 	const rightValue = visitor.getAbstractValue(rightNodeId, state);
 
 	let meet: IntervalDomain | undefined = undefined;
-	if(isNotUndefined(leftValue) || isNotUndefined(rightValue)) {
-		meet = AbstractDomain.meetAll([leftValue, rightValue].filter(isNotUndefined));
-	}
-
-	if(meet?.isBottom()) {
-		if(isNotUndefined(state)) {
-			return state.bottom();
-		}
-		return new MutableStateAbstractDomain(new Map(), true);
+	// TOP = undefined is the neutral element in the meet
+	if(isUndefined(leftValue)) {
+		meet = rightValue;
+	} else if(isUndefined(rightValue)) {
+		meet = leftValue;
+	} else {
+		meet = AbstractDomain.meetAll([leftValue, rightValue]);
 	}
 
 	if(isUndefined(state)) {
-		state = new MutableStateAbstractDomain(new Map());
+		state = MutableStateAbstractDomain.top();
+	}
+
+	if(meet?.isBottom()) {
+		return state.bottom();
 	}
 
 	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
@@ -222,10 +218,7 @@ function intervalNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mut
 		const [c, d] = rightValue.value;
 
 		if(a == b && c == d && leftValue?.equals(rightValue)) {
-			if(isNotUndefined(state)) {
-				return state.bottom();
-			}
-			return new MutableStateAbstractDomain(new Map(), true);
+			return state?.bottom() ?? MutableStateAbstractDomain.bottom();
 		}
 	}
 
@@ -250,13 +243,13 @@ function intervalGreaterOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutab
 
 		if(c < b || FloatingPointComparison.isNearlyLess(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
-			const maxAC = a < c ? c : a;
+			const maxLowerBound = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				state.set(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
+				state.set(originNodeId, leftValue.create([maxLowerBound, b], smallestSignificantFigures));
 			});
-			const minBD = b < d ? b : d;
+			const minUpperBound = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				state.set(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
+				state.set(originNodeId, rightValue.create([c, minUpperBound], smallestSignificantFigures));
 			});
 			return state;
 		}
@@ -320,6 +313,6 @@ function intervalIsNaFn(argNodeId: NodeId, state: MutableStateAbstractDomain<Int
 	return state.bottom();
 }
 
-function intervalNegatedIsNaFn(_argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined) {
+function intervalUnaryIdentity(_argNodeId: NodeId, state: MutableStateAbstractDomain<IntervalDomain> | undefined) {
 	return state;
 }

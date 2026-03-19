@@ -675,4 +675,24 @@ describe('Interval Inference', () => {
 			});
 		});
 	});
+
+	describe('user defined function', () => {
+		testIntervalDomain(`
+			x <- function(y) {
+				if (y <= 5) {
+					x <- 3
+				} else {
+					x <- -3
+				}
+				y+x
+			}
+			z <- x(5)
+		`, {
+			'2@y': { domain: IntervalTests.top() },
+			'3@x': { domain: IntervalTests.scalar(3) },
+			'5@x': { domain: IntervalTests.scalar(-3) },
+			'7@x': { domain: IntervalTests.interval(-3, 3) },
+			'9@z': { domain: IntervalTests.scalar(8), matching: DomainMatchingType.Overapproximation },
+		});
+	});
 });

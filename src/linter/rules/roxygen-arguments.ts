@@ -13,62 +13,70 @@ import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { parseRoxygenCommentsOfNode } from '../../r-bridge/roxygen2/roxygen-parse';
+import type { RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
 import { KnownRoxygenTags } from '../../r-bridge/roxygen2/roxygen-ast';
-import type { RoxygenBlock } from '../../r-bridge/roxygen2/roxygen-ast';
-import type { DataflowInformation } from '../../dataflow/info';
-import type { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
+import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 export interface RoxygenArgsResult extends LintingResult {
 	readonly loc: SourceLocation
 }
 
 export type RoxygenArgsConfig = MergeableRecord;
 
-export interface RoxygenArgsMetadata extends MergeableRecord {
-	consideredNodes: number
+export type RoxygenArgsMetadata = MergeableRecord;
+
+function getDocumentation(id: NodeId, idMap: AstIdMap): readonly RoxygenTag[] | undefined {
+	const comment = getDocumentationOf(id, idMap);
+	if(comment === undefined){
+		return undefined;
+	}
+	return Array.isArray(comment) ? comment : [comment] as readonly RoxygenTag[];
+}
+
+function doParameterNamesDiffer(functionParamNames: string[], roxygenParamNames: unknown[]) {
+	functionParamNames.sort();
+	roxygenParamNames.sort();
+	for(let i = 0; i < functionParamNames.length; i++) {
+		if(functionParamNames[i] !== roxygenParamNames[i]) {
+			return false;
+		}
+	}
+	return true;
 }
 
 export const ROXYGEN_ARGS = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionDefinition),
-	processSearchResult: (elements, _config, { dataflow }) => {
-		const meta: RoxygenArgsMetadata = {
-			consideredNodes: 0
-		};
+	processSearchResult: (elements, _config, { normalize }) => {
 		return {
 			results:
 				elements.getElements()
-					//only functions with a comment
-					.filter(element => isNotUndefined(parseRoxygenCommentsOfNode(element.node, dataflow.graph.idMap)))
-					.map(element => ({
-						element:    element,
-						comment:    parseRoxygenCommentsOfNode(element.node, dataflow.graph.idMap) as RoxygenBlock,
-						parameters: getParameters(element.node.info.id, dataflow)
-					}))
-					.filter(({ comment, parameters }) => {
+					.filter(element => {
+						const comments = getDocumentation(element.node.info.id, normalize.idMap);
+						if(!comments) {
+							return false;
+						}
+						const parameters = getParameters(element.node);
 						//get parameter names
 						const functionParamNames = parameters.map(p => p.name.content.toString());
-						const roxygenParamNames = comment.tags.filter(tag => tag.type===KnownRoxygenTags.Param).map(tag => tag.value.name);
+						const roxygenParamNames = comments
+							.filter(tag => tag.type === KnownRoxygenTags.Param)
+							.map(tag => tag.value.name);
 						//test whether same list
-						let sameParams = false;
-						if(functionParamNames !== null && roxygenParamNames !== null && functionParamNames.length === roxygenParamNames.length){
-							sameParams = true;
-							for(let i = 0; i < functionParamNames.length; i++){
-								if(functionParamNames.sort()[i] !== roxygenParamNames.sort()[i]){
-									sameParams = false;
-									break;
-								}
-							}
+						if(functionParamNames === null || functionParamNames.length !== roxygenParamNames.length) {
+							return false;
 						}
-						return !sameParams;
+						return doParameterNamesDiffer(functionParamNames, roxygenParamNames);
 					})
-					.map(({ element }) => ({
+					.map(element => ({
 						certainty:  LintingResultCertainty.Uncertain,
 						involvedId: element.node.info.id,
 						loc:        SourceLocation.fromNode(element.node)
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<RoxygenArgsResult>[],
-			'.meta': meta
+			'.meta': {}
 		};
 	},
 	prettyPrint: {
@@ -84,6 +92,6 @@ export const ROXYGEN_ARGS = {
 	}
 } as const satisfies LintingRule<RoxygenArgsResult, RoxygenArgsMetadata, RoxygenArgsConfig>;
 
-function getParameters(id: NodeId, dataflow: DataflowInformation): RParameter[]{
-	return (dataflow.graph.idMap?.get(id) as RFunctionDefinition).parameters;
+function getParameters(node: RNode): RParameter[]{
+	return RFunctionDefinition.is(node) ? node.parameters : [];
 }

@@ -23,8 +23,10 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('Unparameterized function, not commented', parser, 'f = function(){return 42;}', 'roxygen-arguments', []);
 		assertLinter('Different @param documented than implemented', parser, '#\' @param a some variable\nf = function(b){return b;}', 'roxygen-arguments', [
 			{
-				certainty: LintingResultCertainty.Uncertain,
-				loc:       SourceRange.from(2, 5, 2, 26)
+				certainty:       LintingResultCertainty.Uncertain,
+				loc:             SourceRange.from(2, 5, 2, 26),
+				overDocumented:  ['a'],
+				underDocumented: ['b']
 			}
 		]);
 		assertLinter('@param documented, but function not parameterized', parser, '#\' @param a some variable\nf = function(){return 42;}', 'roxygen-arguments', [

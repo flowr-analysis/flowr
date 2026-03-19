@@ -21,7 +21,9 @@ import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provid
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 export interface RoxygenArgsResult extends LintingResult {
-	readonly loc: SourceLocation
+	readonly loc:              SourceLocation
+	readonly overDocumented?:  string[]
+	readonly underDocumented?: string[]
 }
 
 export type RoxygenArgsConfig = MergeableRecord;
@@ -71,9 +73,10 @@ export const ROXYGEN_ARGS = {
 						return doParameterNamesDiffer(functionParamNames, roxygenParamNames);
 					})
 					.map(element => ({
-						certainty:  LintingResultCertainty.Uncertain,
-						involvedId: element.node.info.id,
-						loc:        SourceLocation.fromNode(element.node)
+						certainty:      LintingResultCertainty.Uncertain,
+						involvedId:     element.node.info.id,
+						loc:            SourceLocation.fromNode(element.node),
+						overDocumented: ['a'],
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<RoxygenArgsResult>[],
 			'.meta': {}

@@ -6,10 +6,6 @@ import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
-// Defaults
-const configurableFunctions = ['options', 'Sys.getenv'];
-const defaultPure = ['parse', 'paste', 'paste0', 'sprintf', 'format', 'toString', 'as.character'];
-
 /**
  * Execute an input sources query
  */
@@ -37,6 +33,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		// TODO: run classification, we want to know:
 		// all ultimate inputs, whether they pass thruogh trustworthy functiosn ( TODO: to be replaced by thomas taint tracking later)
 		// TODO:for sources separate constant, random, unknown, etc.
+		// TODO: get with `a.b.c` string for flowr config
 	}
 
 	return {

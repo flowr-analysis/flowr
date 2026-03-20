@@ -16,6 +16,7 @@ export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `
  * to parse, validate and resolve slicing criteria.
  */
 export const SlicingCriterion = {
+	name: 'SlicingCriterion',
 	/**
 	 * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
 	 * @see {@link SlicingCriterion.tryParse} for a version that does not throw an error

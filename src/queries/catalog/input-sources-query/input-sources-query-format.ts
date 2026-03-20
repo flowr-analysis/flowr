@@ -32,7 +32,7 @@ export interface InputSourcesQueryResult extends BaseQueryResult {
 	results: Record<string, InputSources>
 }
 
-function inputSourcesueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
+function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'input-sources'> {
 	const criterion = sliceCriteriaParser(line[0]);
 	if(!criterion || criterion.length !== 1) {
 		output.stderr(output.formatter.format('Invalid provenance query format, a single slicing criterion must be given in the form "(criterion1)"',
@@ -64,7 +64,7 @@ export const InputSourcesDefinition = {
 		}
 		return true;
 	},
-	fromLine: inputSourcesueryLineParser,
+	fromLine: inputSourcesQueryLineParser,
 	schema:   Joi.object({
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion to use.'),

@@ -2,17 +2,20 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import type { MergeableRecord } from '../../../util/objects';
-import type { Identifier as IdentifierType } from '../../../dataflow/environments/identifier';
 import type {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexVariableDefinition
+	DataflowGraphVertexVariableDefinition, DataflowGraphVertexArgument
 } from '../../../dataflow/graph/vertex';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { isNotUndefined } from '../../../util/assert';
+import { uniqueArray } from '../../../util/collections/arrays';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 
 class InputClassifier {
 	private readonly dfg:    DataflowGraph;
@@ -35,7 +38,7 @@ class InputClassifier {
 
 		switch(vertex.tag) {
 			case VertexType.Value:
-				return this.setAndReturn(vertex.id, { id: vertex.id, type: InputType.Constant, trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: InputType.Constant, trace: InputTraceType.Unknown });
 			case VertexType.FunctionCall:
 				return this.classifyFunctionCall(vertex);
 			case VertexType.VariableDefinition:
@@ -43,38 +46,53 @@ class InputClassifier {
 			case VertexType.Use:
 				return this.classifyVariable(vertex);
 			default:
-				return this.setAndReturn(vertex.id, { id: vertex.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
 		}
 	}
 
 	private classifyFunctionCall(call: DataflowGraphVertexFunctionCall): InputSource {
-		// If the function itself is known to read from files/network/randomness, classify directly
-		const fn = call.name;
-		const matchesList = (list: readonly IdentifierType[] | undefined): boolean => {
-			if(!list || list.length === 0) {
-				return false;
-			}
-			for(const id of list) {
-				if(Identifier.matches(id, fn)) {
-					return true;
+		if(call.origin.includes(BuiltInProcName.IfThenElse) || call.origin.includes(BuiltInProcName.WhileLoop)) {
+			const condition = FunctionArgument.getReference(call.args[0]);
+			if(condition) {
+				const vtx = this.dfg.getVertex(condition);
+				if(vtx) {
+					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
 				}
 			}
-			return false;
-		};
-
-		if(matchesList(this.config.readFileFns)) {
-			return this.setAndReturn(call.id, { id: call.id, type: InputType.File, trace: InputTraceType.Unknown });
-		} else if(matchesList(this.config.networkFns)) {
-			return this.setAndReturn(call.id, { id: call.id, type: InputType.Network, trace: InputTraceType.Unknown });
-		} else if(matchesList(this.config.randomFns)) {
-			return this.setAndReturn(call.id, { id: call.id, type: InputType.Random, trace: InputTraceType.Unknown });
-		} else if(!matchesList(this.config.pureFns)) {
-			// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
-			return this.setAndReturn(call.id, { id: call.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
+		} else if(call.origin.includes(BuiltInProcName.ForLoop)) {
+			const condition = FunctionArgument.getReference(call.args[1]);
+			if(condition) {
+				const vtx = this.dfg.getVertex(condition);
+				if(vtx) {
+					return this.classifyCdsAndReturn(call, this.classifyEntry(vtx));
+				}
+			}
 		}
+		if(!matchesList(call, this.config.pureFns)) {
+			if(matchesList(call, this.config.readFileFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: InputType.File, trace: InputTraceType.Unknown });
+			} else if(matchesList(call, this.config.networkFns)) {
+				return this.classifyCdsAndReturn(call, {
+					id:    call.id,
+					type:  InputType.Network,
+					trace: InputTraceType.Unknown
+				});
+			} else if(matchesList(call, this.config.randomFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: InputType.Random, trace: InputTraceType.Unknown });
+			} else {
+				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
+				return this.classifyCdsAndReturn(call, {
+					id:    call.id,
+					type:  InputType.Unknown,
+					trace: InputTraceType.Unknown
+				});
+			}
+		}
+
 
 		// Otherwise, classify by arguments; pure functions get Known/Pure handling
 		const argTypes: InputType[] = [];
+		const cdTypes: InputType[] = [];
 		for(const arg of call.args) {
 			if(FunctionArgument.isEmpty(arg)) {
 				continue;
@@ -91,30 +109,30 @@ class InputClassifier {
 			}
 			const classified = this.classifyEntry(argVtx);
 			argTypes.push(classified.type);
+			if(classified.cds) {
+				cdTypes.push(...classified.cds);
+			}
 		}
 
 		const allConstLike = argTypes.length > 0 && argTypes.every(t => t === InputType.Constant || t === InputType.DerivedConstant);
+		const cds = cdTypes.length > 0 ? undefined : uniqueArray(cdTypes);
 		if(allConstLike) {
-			return this.setAndReturn(call.id, { id: call.id, type: InputType.DerivedConstant, trace: InputTraceType.Pure });
+			return this.classifyCdsAndReturn(call, { id: call.id, type: InputType.DerivedConstant, trace: InputTraceType.Pure, cds });
 		}
 
-		// If function is known pure, mark trace as Known (we know its semantics even if result not constant)
-		if(matchesList(this.config.pureFns)) {
-			return this.setAndReturn(call.id, { id: call.id, type: worstInputType(argTypes), trace: InputTraceType.Known });
-		}
-
-		return this.setAndReturn(call.id, { id: call.id, type: worstInputType(argTypes), trace: InputTraceType.Unknown });
+		return this.classifyCdsAndReturn(call, { id: call.id, type: worstInputType(argTypes), trace: InputTraceType.Known, cds });
 	}
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
 		const origins = Dataflow.origin(this.dfg, vtx.id);
 
 		if(origins === undefined) {
-			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
-		let anyPure = false;
+		const cds: InputType[] = [];
+		let allPure = true;
 
 		for(const o of origins) {
 			if(o.type === OriginType.ConstantOrigin) {
@@ -132,8 +150,11 @@ class InputClassifier {
 					}
 					const c = this.classifyEntry(v);
 					types.push(c.type);
-					if(c.trace === InputTraceType.Pure) {
-						anyPure = true;
+					if(c.cds) {
+						cds.push(...c.cds);
+					}
+					if(c.trace !== InputTraceType.Pure) {
+						allPure = false;
 					}
 				} else {
 					types.push(InputType.Unknown);
@@ -146,8 +167,11 @@ class InputClassifier {
 				if(v) {
 					const c = this.classifyEntry(v);
 					types.push(c.type);
-					if(c.trace === InputTraceType.Pure) {
-						anyPure = true;
+					if(c.cds) {
+						cds.push(...c.cds);
+					}
+					if(c.trace !== InputTraceType.Pure) {
+						allPure = false;
 					}
 				} else {
 					types.push(InputType.Unknown);
@@ -160,33 +184,37 @@ class InputClassifier {
 		}
 
 		const t = types.length === 0 ? InputType.Unknown : worstInputType(types);
-		const trace = anyPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.setAndReturn(vtx.id, { id: vtx.id, type: t, trace });
+		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
 	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
 		// parameter definitions are classified as Parameter
 		if(this.dfg.idMap?.get(vtx.id)?.info.role === RoleInParent.ParameterName) {
-			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Parameter, trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: InputType.Parameter, trace: InputTraceType.Unknown });
 		}
 
 		const sources = vtx.source;
 
 		if(sources === undefined || sources.length === 0) {
 			// fallback to unknown if we cannot find the value
-			return this.setAndReturn(vtx.id, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: InputType.Unknown, trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
-		let anyPure = false;
+		const cds: InputType[] = [];
+		let allPure = true;
 
 		for(const tid of sources) {
 			const tv = this.dfg.getVertex(tid);
 			if(tv) {
 				const c = this.classifyEntry(tv);
 				types.push(c.type);
-				if(c.trace === InputTraceType.Pure) {
-					anyPure = true;
+				if(c.cds) {
+					cds.push(...c.cds);
+				}
+				if(c.trace !== InputTraceType.Pure) {
+					allPure = false;
 				}
 			} else {
 				types.push(InputType.Unknown);
@@ -194,12 +222,28 @@ class InputClassifier {
 		}
 
 		const t = types.length === 0 ? InputType.Unknown : worstInputType(types);
-		const trace = anyPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.setAndReturn(vtx.id, { id: vtx.id, type: t, trace });
+		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
-	private setAndReturn(id: NodeId, src: InputSource): InputSource {
-		this.cache.set(id, src);
+	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
+		if(vtx.cds) {
+			const cds = uniqueArray(vtx.cds.flatMap(c => {
+				const cv = this.dfg.getVertex(c.id);
+				if(!cv) {
+					return undefined;
+				}
+				const e = this.classifyEntry(cv);
+				return e.cds ? [e.type, ...e.cds] : [e.type];
+			}).filter(isNotUndefined).concat(src.cds ?? []));
+			if(cds.length > 0) {
+				src.cds = cds;
+			}
+		}
+		if(src.cds?.length === 0) {
+			delete src.cds;
+		}
+		this.cache.set(vtx.id, src);
 		return src;
 	}
 }
@@ -276,6 +320,8 @@ export interface InputSource extends MergeableRecord {
 	id:    NodeId,
 	type:  InputType,
 	trace: InputTraceType,
+	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
+	cds?:  InputType[]
 	/** cycle free witness trace */
 	// witness: NodeId[] (optional)
 }
@@ -286,24 +332,45 @@ export interface InputSource extends MergeableRecord {
  */
 export type InputSources = InputSource[];
 
+/**
+ * This is either an {@link NodeId|id} of a known functions all of that category (e.g., you can issue a dependencies query before and then pass all
+ * identified ids to this query here).
+ */
+export type InputClassifierFunctionIdentifier = Identifier | NodeId;
+
+function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputClassifierFunctionIdentifier[] | undefined): boolean {
+	if(!list || list.length === 0) {
+		return false;
+	}
+	for(const id of list) {
+		if(fn.id === id || Identifier.matches(id as BrandedIdentifier, fn.name)) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
+ * For the specifications of `pureFns` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
+ */
 export interface InputClassifierConfig extends MergeableRecord {
 	/**
 	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
 	 */
-	pureFns:     readonly IdentifierType[]
+	pureFns:     readonly InputClassifierFunctionIdentifier[]
 	/**
 	 * Functions that read from the network
 	 */
-	networkFns:  readonly IdentifierType[]
+	networkFns:  readonly InputClassifierFunctionIdentifier[]
 	/**
 	 * Functions that produce a random value
 	 * Note: may need to check with respect to seeded randomness
 	 */
-	randomFns:   readonly IdentifierType[]
+	randomFns:   readonly InputClassifierFunctionIdentifier[]
 	/**
 	 * Functions that read from the file system
 	 */
-	readFileFns: readonly IdentifierType[]
+	readFileFns: readonly InputClassifierFunctionIdentifier[]
 }
 
 /**

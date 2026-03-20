@@ -115,10 +115,17 @@ export const Dataflow = {
 				continue;
 			}
 			visited.add(nodeId);
-			for(const [to, types] of graph.outgoingEdges(nodeId) ?? []) {
+			const vtx = graph.get(nodeId);
+			if(vtx === undefined) {
+				continue;
+			}
+			for(const [to, types] of vtx[1]) {
 				if(DfEdge.includesType(types, followEdges)) {
 					queue.push(to);
 				}
+			}
+			for(const cd of vtx[0].cds ?? []) {
+				queue.push(cd.id);
 			}
 		}
 		return visited;

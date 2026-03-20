@@ -9,6 +9,7 @@ import type { InputSources } from './simple-input-classifier';
 import { classifyInput } from './simple-input-classifier';
 import { NETWORK_FUNCTIONS } from '../../../linter/rules/network-functions';
 import { SEEDED_RANDOMNESS } from '../../../linter/rules/seeded-randomness';
+import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 
 /**
  * Execute an input sources query
@@ -40,7 +41,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 			randomFns:  query.config?.randomFns ?? SEEDED_RANDOMNESS.info.defaultConfig.randomnessConsumers,
 			pureFns:    query.config?.pureFns ?? ['paste', 'paste0', 'parse', '+', '-', '*',
 				'/', '^', '%%', '%/%', '&', '|', '!', '&&', '||',
-				'<', '>', '<=', '>=', '==', '!=',
+				'<', '>', '<=', '>=', '==', '!=', ':',
 				'abs', 'sign', 'sqrt', 'exp', 'log', 'log10', 'log2',
 				'sin', 'cos', 'tan', 'asin', 'acos', 'atan',
 				'length', 'nchar', 'dim', 'nrow', 'ncol',
@@ -53,9 +54,10 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				'apply', 'lapply', 'sapply', 'vapply', 'tapply',
 				'matrix', 'array',
 				'rownames', 'colnames',
-				'list.files'
-			], // TODO support REadFunctions etc. but with their cehcks similar to the read functions query!
-			readFileFns: query.config?.readFileFns ?? []
+				'list.files', 'tolower', 'toupper', 'printf',
+				'<-', '->', '=', '<<-', '->>', 'assign', 'get'
+			],
+			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name)
 		});
 	}
 

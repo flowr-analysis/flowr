@@ -25,7 +25,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	for(const query of queries) {
 		const key = query.criterion;
 		if(results[key]) {
-			log.warn(`Duplicate key for provenance query: ${key}, skipping...`);
+			log.warn(`Duplicate key for input-sources query: ${key}, skipping...`);
 		}
 		const criterionId = SlicingCriterion.tryParse(key, nast.idMap) ?? key;
 		const provenanceNode = nast.idMap.get(criterionId);

@@ -7,7 +7,7 @@ import type { InputSources } from '../../queries/catalog/input-sources-query/sim
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { executeQueries } from '../../queries/query';
 import type { InputSourcesQuery, InputSourcesQueryResult } from '../../queries/catalog/input-sources-query/input-sources-query-format';
-import type { SlicingCriterion } from '../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../slicing/criterion/parse';
 
 /**
  * Format a list of input sources either as a single-line string (inline) or a block.
@@ -25,7 +25,7 @@ function formatInputSources(inputs: InputSources, inline = true): string | strin
 }
 
 /**
- *
+ * Describes a linting result for a problematic eval usage, including the location of the eval call and the computed input sources that lead to it.
  */
 export interface ProblematicEvalResult extends LintingResult {
 	loc:     SourceLocation
@@ -55,10 +55,11 @@ export const PROBLEMATIC_EVAL = {
 			const nid = element.node.info.id;
 
 			// run an input-sources query for this eval-like call
-			const q: InputSourcesQuery = { type: 'input-sources', criterion: nid as unknown as SlicingCriterion };
+			const criterion = SlicingCriterion.fromId(nid);
+			const q: InputSourcesQuery = { type: 'input-sources', criterion };
 			const all = await executeQueries({ analyzer: data.analyzer }, [q]) as unknown as Record<'input-sources', InputSourcesQueryResult> & { '.meta'?: unknown };
 			const inputSourcesResult = all['input-sources'];
-			const sources = inputSourcesResult?.results?.[String(nid)] ?? [];
+			const sources = inputSourcesResult?.results?.[criterion] ?? [];
 
 			// if any input is not a constant or derived constant, flag it
 			const problematic = sources.some(s => s.type !== InputType.Constant && s.type !== InputType.DerivedConstant);

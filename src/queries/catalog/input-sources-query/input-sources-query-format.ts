@@ -19,6 +19,10 @@ export type InputSourcesQueryConfig = InputClassifierConfig;
  */
 export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly type:      'input-sources';
+	/**
+	 * This takes a criterion (or a numerical id works too)
+	 * {@link SlicingCriterion.fromId}
+	 */
 	readonly criterion: SlicingCriterion,
 	readonly config?:   InputSourcesQueryConfig
 }

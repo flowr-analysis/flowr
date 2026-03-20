@@ -93,7 +93,7 @@ export const PROBLEMATIC_EVAL = {
 	info: {
 		name:          'Problematic eval',
 		description:   'Detects uses of eval-like functions whose inputs are not statically constant. Prints the computed input-sources for the eval and flags usages that depend on non-constant/trusted inputs.',
-		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability],
+		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			considerAsEval: '^eval$'

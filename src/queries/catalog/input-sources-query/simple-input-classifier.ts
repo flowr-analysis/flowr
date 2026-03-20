@@ -2,6 +2,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
 import type { MergeableRecord } from '../../../util/objects';
+import { compactRecord } from '../../../util/objects';
 import type {
 	DataflowGraphVertexInfo,
 	DataflowGraphVertexFunctionCall,
@@ -115,12 +116,12 @@ class InputClassifier {
 		}
 
 		const allConstLike = argTypes.length > 0 && argTypes.every(t => t === InputType.Constant || t === InputType.DerivedConstant);
-		const cds = cdTypes.length > 0 ? undefined : uniqueArray(cdTypes);
+		const cds = cdTypes.length > 0 ? uniqueArray(cdTypes) : undefined;
 		if(allConstLike) {
-			return this.classifyCdsAndReturn(call, { id: call.id, type: InputType.DerivedConstant, trace: InputTraceType.Pure, cds });
+			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: InputType.DerivedConstant, trace: InputTraceType.Pure, cds }));
 		}
 
-		return this.classifyCdsAndReturn(call, { id: call.id, type: worstInputType(argTypes), trace: InputTraceType.Known, cds });
+		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: worstInputType(argTypes), trace: InputTraceType.Known, cds }));
 	}
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {

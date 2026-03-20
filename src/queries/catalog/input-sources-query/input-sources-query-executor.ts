@@ -11,9 +11,10 @@ import { NETWORK_FUNCTIONS } from '../../../linter/rules/network-functions';
 import { SEEDED_RANDOMNESS } from '../../../linter/rules/seeded-randomness';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 
+
+
 /**
  * Execute an input sources query
- * // TODO: fix
  */
 export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, queries: readonly InputSourcesQuery[]): Promise<InputSourcesQueryResult> {
 	const start = Date.now();

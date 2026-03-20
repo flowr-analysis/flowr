@@ -6,8 +6,7 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
-	type DataflowGraphVertices,
-	VertexType
+	type DataflowGraphVertices, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -36,7 +35,8 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' 
  * @see PositionalFunctionArgument
  */
 export interface NamedFunctionArgument extends IdentifierReference {
-	readonly name: string
+	readonly name:    string
+	readonly valueId: NodeId | undefined
 }
 
 /**
@@ -45,7 +45,6 @@ export interface NamedFunctionArgument extends IdentifierReference {
  * ```r
  * foo(3, 2)
  * ```
- * @see #isPositionalArgument
  * @see NamedFunctionArgument
  */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
@@ -121,17 +120,34 @@ export const FunctionArgument = {
 		return arg !== EmptyArgument;
 	},
 	/**
+	 * Returns the id of a non-empty argument.
+	 * @example
+	 * ```r
+	 * foo(a=3, 2) # returns the node id of either `a` or `2`
+	 * ```
+	 * @see {@link FunctionArgument.getReference}
+	 */
+	getId(this: void, arg: FunctionArgument): NodeId | undefined {
+		if(arg !== EmptyArgument) {
+			return arg?.nodeId;
+		}
+		return undefined;
+	},
+	/**
 	 * Returns the reference of a non-empty argument.
 	 * @example
 	 * ```r
 	 * foo(a=3, 2) # returns the node id of either `3` or `2`, but skips a
 	 * ```
+	 * @see {@link FunctionArgument.getId}
 	 */
 	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
-		if(arg !== EmptyArgument) {
-			return arg?.nodeId;
+		if(arg === EmptyArgument) {
+			return undefined;
+		} else if(arg.name === undefined) {
+			return arg.nodeId;
 		}
-		return undefined;
+		return arg.valueId;
 	},
 	/**
 	 * Checks whether the given argument is a named argument with the specified name.
@@ -486,8 +502,9 @@ export class DataflowGraph<
 	/**
 	 * Marks a vertex in the graph to be a definition
 	 * @param reference - The reference to the vertex to mark as definition
+	 * @param sourceIds - The id of the source vertex of the def, if available
 	 */
-	public setDefinitionOfVertex(reference: IdentifierReference): void {
+	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
 		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
@@ -495,6 +512,9 @@ export class DataflowGraph<
 		} else {
 			const oldTag = vertex.tag;
 			(vertex as { tag: VertexType }).tag = VertexType.VariableDefinition;
+			if(sourceIds) {
+				(vertex as unknown as { source: readonly NodeId[] | undefined }).source = sourceIds;
+			}
 			this.types.set(oldTag, (this.types.get(oldTag) ?? []).filter(id => id !== reference.nodeId));
 			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 		}

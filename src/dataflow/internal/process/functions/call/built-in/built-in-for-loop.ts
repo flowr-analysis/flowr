@@ -89,7 +89,7 @@ export function processForLoop<OtherInfo>(
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
-		nextGraph.setDefinitionOfVertex(write);
+		nextGraph.setDefinitionOfVertex(write, [vector.entryPoint]);
 	}
 
 	applyCdToReferences(body.out, cd);

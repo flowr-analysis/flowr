@@ -6,7 +6,7 @@ import Joi from 'joi';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
@@ -15,7 +15,7 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
 	/** Optional list of ids to filter the results by. If not provided, all ids will be included. */
-	readonly ids?: readonly SingleSlicingCriterion[];
+	readonly ids?: readonly SlicingCriterion[];
 }
 
 export type FileId = number & { readonly __fileId?: unique symbol };

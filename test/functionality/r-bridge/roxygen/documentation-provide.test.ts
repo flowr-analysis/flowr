@@ -1,5 +1,5 @@
 import { assert, describe, test } from 'vitest';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { Documentation } from '../../../../src/r-bridge/roxygen2/documentation-provider';
 import { getDocumentationOf } from '../../../../src/r-bridge/roxygen2/documentation-provider';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
@@ -8,12 +8,12 @@ import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast'
 
 
 describe('Provide Comments', withTreeSitter(ts => {
-	function check(code: string, requests: Record<SingleSlicingCriterion, Documentation>): void {
+	function check(code: string, requests: Record<SlicingCriterion, Documentation>): void {
 		test.each(Object.entries(requests))('Provide docs for criterion $0', async(request, expect) => {
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 			analyzer.addRequest(code);
 			const normalize = await analyzer.normalize();
-			const criterion = SingleSlicingCriterion.parse(request as SingleSlicingCriterion, normalize.idMap);
+			const criterion = SlicingCriterion.parse(request as SlicingCriterion, normalize.idMap);
 			const docs = getDocumentationOf(criterion, normalize.idMap);
 			assert.deepStrictEqual(docs, expect);
 		});

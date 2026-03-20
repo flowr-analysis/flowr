@@ -4,7 +4,7 @@ import { Ternary } from '../../../util/logic';
 import { log } from '../../../util/log';
 import { extractCfgQuick } from '../../../control-flow/extract-cfg';
 import { happensBefore } from '../../../control-flow/happens-before';
-import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 
 /**
  * Execute happens-before queries on the given analyzer.
@@ -23,8 +23,8 @@ export async function executeHappensBefore({ analyzer }: BasicQueryData, queries
 		}
 
 		try {
-			const resolvedA = SingleSlicingCriterion.parse(a, ast.idMap);
-			const resolvedB = SingleSlicingCriterion.parse(b, ast.idMap);
+			const resolvedA = SlicingCriterion.parse(a, ast.idMap);
+			const resolvedB = SlicingCriterion.parse(b, ast.idMap);
 
 			results[fingerprint] = happensBefore(cfg.graph, resolvedA, resolvedB);
 		} catch(e) {

@@ -38,7 +38,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -546,7 +546,7 @@ registerQueryDocumentation('df-shape', {
 	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
-		const criterion = '2@x' as SingleSlicingCriterion;
+		const criterion = '2@x' as SlicingCriterion;
 		return `
 This query infers all shapes of dataframes within the code. For example, you can use:
 ${
@@ -691,7 +691,7 @@ registerQueryDocumentation('provenance', {
 	functionFile:     '../queries/catalog/provenance-query/provenance-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
-		const criterion: SingleSlicingCriterion = '4@x';
+		const criterion: SlicingCriterion = '4@x';
 		return `
 Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion), flowR will return the provenance
 of the given program element (i.e., all related vertices in a non-interprocedural and non-context sensitive backward slice).

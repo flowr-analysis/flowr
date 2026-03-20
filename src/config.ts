@@ -446,7 +446,7 @@ export const FlowrConfig = {
 	 */
 	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
 		objectPath.set(config, key, value);
-	}
+	},
 } as const;
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {

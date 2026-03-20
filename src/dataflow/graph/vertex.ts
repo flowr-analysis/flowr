@@ -131,6 +131,8 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 	readonly environment?: undefined
 	/** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
 	readonly par?:         true;
+	/** Points to the source ids of the "value" if there is one, this is more of a best-effort flag and not guaranteed to be there */
+	readonly source?:      readonly NodeId[];
 }
 
 /**

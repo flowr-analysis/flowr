@@ -3,7 +3,7 @@ import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../../src/r-bridge/retriever';
-import type { SingleSlicingCriterion } from '../../../../../src/slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../../../src/slicing/criterion/parse';
 import { Q } from '../../../../../src/search/flowr-search-builder';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -11,8 +11,8 @@ import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processin
 import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 
 interface DFConstraints {
-	hasVertices:         SingleSlicingCriterion[];
-	doesNotHaveVertices: SingleSlicingCriterion[];
+	hasVertices:         SlicingCriterion[];
+	doesNotHaveVertices: SlicingCriterion[];
 }
 
 describe('Dataflow, Handle Exceptions', withTreeSitter(ts  => {

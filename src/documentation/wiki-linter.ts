@@ -162,6 +162,14 @@ df[6, "value"]
 		'stop-call', 'StopWithCallConfig', 'STOP_WITH_CALL_ARG', 'lint-stop-call',
 		'stop(42)', tagTypes);
 
+	rule(knownParser,
+		'problematic-eval', 'ProblematicEvalConfig', 'PROBLEMATIC_EVAL', 'lint-problematic-eval',
+		`
+function(x) {
+	eval(x)
+}
+`, tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

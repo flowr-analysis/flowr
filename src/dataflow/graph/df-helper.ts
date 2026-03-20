@@ -58,7 +58,7 @@ export const Dataflow = {
 	 * @param select                - the ids to select in the reduced graph
 	 * @param includeMissingTargets - if set to true, this will include edges which target vertices that are not selected!
 	 */
-	reduceGraph(this: void, graph: DataflowGraph, select: ReadonlySet<NodeId>, includeMissingTargets = false): DataflowGraph {
+	reduceGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, includeMissingTargets = false): G {
 		const df = new DataflowGraph(graph.idMap);
 		const roots = graph.rootIds();
 		// if the graph has no root ids all selected vertices are non-root in this case we just break the fdef selection and promote all to root!
@@ -92,7 +92,7 @@ export const Dataflow = {
 				df.markIdForUnknownSideEffects(u as NodeId);
 			}
 		}
-		return df;
+		return df as G;
 	},
 
 	/**
@@ -107,7 +107,7 @@ export const Dataflow = {
 	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>): Set<NodeId> {
 		const queue = [id];
 		const visited = new Set<NodeId>();
-		const followEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+		const followEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 		while(queue.length > 0) {
 			const nodeId = queue.pop();
@@ -115,10 +115,17 @@ export const Dataflow = {
 				continue;
 			}
 			visited.add(nodeId);
-			for(const [to, types] of graph.outgoingEdges(nodeId) ?? []) {
+			const vtx = graph.get(nodeId);
+			if(vtx === undefined) {
+				continue;
+			}
+			for(const [to, types] of vtx[1]) {
 				if(DfEdge.includesType(types, followEdges)) {
 					queue.push(to);
 				}
+			}
+			for(const cd of vtx[0].cds ?? []) {
+				queue.push(cd.id);
 			}
 		}
 		return visited;

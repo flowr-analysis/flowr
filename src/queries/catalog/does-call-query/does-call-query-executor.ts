@@ -4,7 +4,7 @@ import { log } from '../../../util/log';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
 import { Identifier } from '../../../dataflow/environments/identifier';
-import { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { CallGraph } from '../../../dataflow/graph/call-graph';
 
 /**
@@ -21,7 +21,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 			log.warn(`Duplicate query id '${id}' in does-call queries, SKIP.`);
 			continue;
 		}
-		const nodeId = SingleSlicingCriterion.tryParse(query.call, idMap);
+		const nodeId = SlicingCriterion.tryParse(query.call, idMap);
 		if(!nodeId) {
 			results[id] = false;
 			continue;

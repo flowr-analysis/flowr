@@ -8,7 +8,7 @@ import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
 import { ExitPointType } from '../../../../src/dataflow/info';
-import { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
@@ -22,7 +22,7 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			analyzer.addRequest(requestFromInput(code));
 			const cg = await analyzer.callGraph();
 			const idMap = (await analyzer.normalize()).idMap;
-			const resolvedEntries = entries.map(e => SingleSlicingCriterion.parse(e as SingleSlicingCriterion, idMap));
+			const resolvedEntries = entries.map(e => SlicingCriterion.parse(e as SlicingCriterion, idMap));
 			const subCg = CallGraph.computeSubCallGraph(cg, new Set(resolvedEntries));
 			const expectedResolved = Dataflow.resolveGraphCriteria(expectedGraph, analyzer.inspectContext(), idMap);
 			const diff = Dataflow.diffGraphs({

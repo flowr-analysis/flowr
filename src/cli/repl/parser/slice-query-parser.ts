@@ -1,4 +1,4 @@
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../../../slicing/criterion/parse';
 import { SliceDirection } from '../../../util/slice-direction';
 
 /**
@@ -12,10 +12,10 @@ export function sliceDirectionParser(argument: string): SliceDirection {
 /**
  * Parses a single slicing criterion from the given argument.
  */
-export function sliceCriterionParser(argument: string | undefined): SingleSlicingCriterion | undefined {
+export function sliceCriterionParser(argument: string | undefined): SlicingCriterion | undefined {
 	if(argument?.startsWith('(') && argument.includes(')')) {
 		const endBracket = argument.indexOf(')');
-		return argument.slice(1, endBracket) as SingleSlicingCriterion;
+		return argument.slice(1, endBracket) as SlicingCriterion;
 	}
 }
 

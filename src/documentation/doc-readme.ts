@@ -293,7 +293,8 @@ We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboard
 
 *flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) and (since October 1st 2025) [Oliver Gerstl](https://www.linkedin.com/in/oliver-gerstl) under the
 [GPLv3 License](LICENSE).\\
-It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector").
+It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector")
+and received an unrestricted gift from [Posit](https://posit.co/), the open-source data science company. 
 
 ----
 

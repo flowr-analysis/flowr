@@ -115,7 +115,7 @@ class InputClassifier {
 			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
 		}
 
-		const types = argTypes.length === 0 ? [InputType.Unknown] : uniqueArray(argTypes);
+		const types = argTypes.length === 0 ? [InputType.DerivedConstant] : uniqueArray(argTypes);
 		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: types, trace: InputTraceType.Known, cds }));
 	}
 
@@ -269,8 +269,6 @@ export enum InputType {
 	DerivedConstant = 'dconst',
 	Unknown = 'unknown',
 }
-
-// NOTE: We now track a set of all observed input types instead of collapsing to a single lub value
 
 export enum InputTraceType {
 	/** Derived only from aliasing */

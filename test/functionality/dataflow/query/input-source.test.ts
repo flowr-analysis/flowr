@@ -117,7 +117,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		testQuery('Nested pure constants -> derived constant', 'a <- 1\nb <- 2\nc <- a + b\nfoo(c)', [{ type: 'input-sources', criterion: '4@foo' }], {
 			'4@foo': [{ id: '4@c', type: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
 		});
-		testQuery('Read and Randomr', 'if(u) x <- read.csv("a") else x <- runif(1)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+		testQuery('Read and Random', 'if(u) x <- read.csv("a") else x <- runif(1)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', type: [InputType.File, InputType.Random], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
 		});
 

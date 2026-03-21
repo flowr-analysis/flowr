@@ -120,7 +120,6 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		testQuery('Read and Random', 'if(u) x <- read.csv("a") else x <- runif(1)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', type: [InputType.File, InputType.Random], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
 		});
-
 	});
 }));
 

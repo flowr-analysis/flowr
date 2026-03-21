@@ -30,7 +30,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		const criterionId = SlicingCriterion.tryParse(key, nast.idMap) ?? key;
 		const provenanceNode = nast.idMap.get(criterionId);
 
-		const fdef = RFunctionDefinition.wrappingFunctionDefinition(provenanceNode, nast.idMap);
+		const fdef = RFunctionDefinition.rootFunctionDefinition(provenanceNode, nast.idMap);
 		const provenance = Dataflow.provenanceGraph(
 			criterionId,
 			df.graph,
@@ -53,10 +53,15 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				'min', 'max', 'range', 'sum', 'prod', 'mean', 'median', 'var', 'sd',
 				'head', 'tail', 'seq', 'rep',
 				'apply', 'lapply', 'sapply', 'vapply', 'tapply',
-				'matrix', 'array',
+				'matrix', 'array', 'substitute', 'quote', 'bquote', 'enquote', 'enexpr', 'enexprs', 'enquo', 'enquos',
+				'expression', 'call', 'as.call', 'as.expression',
 				'rownames', 'colnames',
 				'list.files', 'tolower', 'toupper', 'printf',
-				'<-', '->', '=', '<<-', '->>', 'assign', 'get'
+				'<-', '->', '=', '<<-', '->>', 'assign', 'get',
+				'[', '[[', '$', 'length<-', 'dim<-', 'names<-', 'colnames<-', 'rownames<-',
+				'as.character', 'as.numeric', 'as.logical', 'as.list', 'as.data.frame', 'as.matrix', 'as.array',
+				'identity', 'invisible', 'return', 'force', 'missing',
+				'print', 'cat', 'message', 'warning', 'stop'
 			],
 			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name)
 		});

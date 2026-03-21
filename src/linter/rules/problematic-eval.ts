@@ -19,9 +19,9 @@ function formatInputSources(inputs: InputSources, inline = true): string | strin
 		return inline ? '' : [];
 	}
 	if(inline) {
-		return inputs.map(s => `${s.id} (type: ${Array.isArray(s.type) ? s.type.join(',') : s.type}, trace: ${s.trace}${s.cds ? ', cds: [' + s.cds.join(',') + ']' : ''})`).join('; ');
+		return inputs.map(s => `${s.id} (type: ${Array.isArray(s.type) ? '[' + s.type.join(',') + ']' : s.type}, trace: ${s.trace}${s.cds ? ', cds: [' + s.cds.join(',') + ']' : ''})`).join('; ');
 	}
-	return inputs.map(s => `- ${s.id}: type=${Array.isArray(s.type) ? s.type.join(',') : s.type}, trace=${s.trace}${s.cds ? ', cds=[' + s.cds.join(',') + ']' : ''}`);
+	return inputs.map(s => `- ${s.id}: type=${Array.isArray(s.type) ? '[' + s.type.join(',') + ']' : s.type}, trace=${s.trace}${s.cds ? ', cds=[' + s.cds.join(',') + ']' : ''}`);
 }
 
 /**

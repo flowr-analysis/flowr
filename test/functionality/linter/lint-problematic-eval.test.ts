@@ -11,7 +11,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('unknown eval', parser, 'eval(parse(text=x))', 'problematic-eval', [{
 			certainty: LintingResultCertainty.Uncertain,
 			loc:       SourceRange.from(1, 1, 1, 19),
-			sources:   [{ id: 5, trace: InputTraceType.Known, type: InputType.Unknown }]
+			sources:   [{ id: 5, trace: InputTraceType.Known, type: [InputType.Unknown] }]
 		}]);
 	});
 }));

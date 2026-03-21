@@ -19,9 +19,9 @@ function formatInputSources(inputs: InputSources, inline = true): string | strin
 		return inline ? '' : [];
 	}
 	if(inline) {
-		return inputs.map(s => `${s.id} (type: ${s.type}, trace: ${s.trace}${s.cds ? ', cds: [' + s.cds.join(',') + ']' : ''})`).join('; ');
+		return inputs.map(s => `${s.id} (type: ${Array.isArray(s.type) ? s.type.join(',') : s.type}, trace: ${s.trace}${s.cds ? ', cds: [' + s.cds.join(',') + ']' : ''})`).join('; ');
 	}
-	return inputs.map(s => `- ${s.id}: type=${s.type}, trace=${s.trace}${s.cds ? ', cds=[' + s.cds.join(',') + ']' : ''}`);
+	return inputs.map(s => `- ${s.id}: type=${Array.isArray(s.type) ? s.type.join(',') : s.type}, trace=${s.trace}${s.cds ? ', cds=[' + s.cds.join(',') + ']' : ''}`);
 }
 
 /**
@@ -62,11 +62,14 @@ export const PROBLEMATIC_EVAL = {
 			const sources = inputSourcesResult?.results?.[criterion] ?? [];
 
 			// if any input is not a constant or derived constant, flag it
-			const problematic = sources.some(s => s.type !== InputType.Constant && s.type !== InputType.DerivedConstant);
+			const problematic = sources.some(s => Array.isArray(s.type)
+				? s.type.some(t => t !== InputType.Constant && t !== InputType.DerivedConstant)
+				: (s.type !== InputType.Constant && s.type !== InputType.DerivedConstant)
+			);
 			if(problematic) {
 				results.push({
 					involvedId: nid,
-					certainty:  sources.some(s => s.type === InputType.Unknown) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+					certainty:  sources.some(s => Array.isArray(s.type) ? s.type.includes(InputType.Unknown) : s.type === InputType.Unknown) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
 					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
 					sources
 				} as ProblematicEvalResult);

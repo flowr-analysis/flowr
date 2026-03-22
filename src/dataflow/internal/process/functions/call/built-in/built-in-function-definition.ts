@@ -285,21 +285,11 @@ export function updateNestedFunctionCalls(
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { onlyBuiltin, environment, name, args, origin }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(onlyBuiltin || !name) {
+		if(onlyBuiltin || name === undefined) {
 			continue;
 		}
 
-		let effectiveEnvironment = outEnvironment;
-		// only the call environment counts!
-		if(environment) {
-			while(outEnvironment.level > environment.level) {
-				outEnvironment = popLocalEnvironment(outEnvironment);
-			}
-			while(outEnvironment.level < environment.level) {
-				outEnvironment = pushLocalEnvironment(outEnvironment);
-			}
-			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
-		}
+		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		const collectedNextMethods: Set<NodeId> = new Set();
@@ -311,10 +301,10 @@ export function updateNestedFunctionCalls(
 			}
 			const targetVertex = graph.getVertex(target);
 			// support reads on symbols
-			if(targetVertex?.tag === VertexType.Use) {
-				graph.addEdge(id, target, EdgeType.Reads);
-				continue;
-			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+				if(targetVertex?.tag === VertexType.Use) {
+					graph.addEdge(id, target, EdgeType.Reads);
+				}
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);

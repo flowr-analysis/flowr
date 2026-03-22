@@ -1,0 +1,630 @@
+import { assertAst, withShell } from '../../../_helper/shell';
+import { exprList, numVal } from '../../../_helper/ast-builder';
+import { label } from '../../../_helper/label';
+import { RType } from '../../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { describe } from 'vitest';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { SourceRange } from '../../../../../src/util/range';
+
+describe.sequential('Parse function calls', withShell(shell => {
+	describe('functions without arguments', () => {
+		assertAst(label('f()', ['call-normal', 'name-normal']),
+			shell, 'f()', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {},
+				},
+				arguments: [],
+			})
+		);
+	});
+	describe('functions with arguments', () => {
+		assertAst(label('f(1, 2)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers']),
+			shell, 'f(1, 2)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     undefined,
+						info:     {},
+						lexeme:   '1',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: SourceRange.from(1, 6, 1, 6),
+						name:     undefined,
+						lexeme:   '2',
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 6, 1, 6),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				],
+			})
+		);
+		assertAst(label('f(1,)', ['name-normal', 'call-normal', 'unnamed-arguments', 'numbers', 'empty-arguments']),
+			shell, 'f(1,)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     undefined,
+						info:     {},
+						lexeme:   '1',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, EmptyArgument],
+			})
+		);
+	});
+	describe('functions with named arguments', () => {
+		assertAst(label('f(x=)', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, 'f(x=)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  undefined
+					}
+				]
+			})
+		);
+		assertAst(label('f(x=1)', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, 'f(x=1)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(1, 5, 1, 5),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}
+				]
+			})
+		);
+		assertAst(label('f(x=1) with comment', ['name-normal', 'call-normal', 'named-arguments']),
+			shell, `f(x= # comment
+1)`, exprList({
+				type:     RType.FunctionCall,
+				named:    true,
+				location: SourceRange.from(1, 1, 1, 1),
+				lexeme:   'f',
+				info:     {
+					adToks: [{
+						type:     RType.Comment,
+						location: SourceRange.from(1, 6, 1, 14),
+						lexeme:   '# comment',
+						info:     {},
+					}]
+				},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'x',
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(2, 1, 2, 1),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}
+				]
+			}), { skipTreeSitter: true }
+		);
+		assertAst(label('f(1, x=2, 4, y=3)', ['name-normal', 'call-normal', 'unnamed-arguments', 'named-arguments', 'numbers']),
+			shell, 'f(1, x=2, 4, y=3)', exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 1),
+				lexeme:       'f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'f',
+					content:  'f',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						name:     undefined,
+						info:     {},
+						lexeme:   '1',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: SourceRange.from(1, 6, 1, 6),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 6, 1, 6),
+							lexeme:   'x',
+							content:  'x',
+							info:     {}
+						},
+						lexeme: 'x',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(1, 8, 1, 8),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: SourceRange.from(1, 11, 1, 11),
+						name:     undefined,
+						info:     {},
+						lexeme:   '4',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 11, 1, 11),
+							lexeme:   '4',
+							content:  numVal(4),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: SourceRange.from(1, 14, 1, 14),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 14, 1, 14),
+							lexeme:   'y',
+							content:  'y',
+							info:     {}
+						},
+						lexeme: 'y',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(1, 16, 1, 16),
+							lexeme:   '3',
+							content:  numVal(3),
+							info:     {}
+						}
+					}
+				],
+			})
+		);
+		for(const quote of ['"', "'", '`']) {
+			describe(`Escaped Arguments Using Quote ${quote}`, () => {
+				for(const firstArgName of ['a', 'a b', 'a(1)']) {
+					const argLength = firstArgName.length;
+					const arg = `${quote}${firstArgName}${quote}`;
+					assertAst(label(`${firstArgName}`, ['name-normal', 'call-normal', 'string-arguments', 'strings']),
+						shell, `f(${arg}=3)`,
+						exprList({
+							type:         RType.FunctionCall,
+							named:        true,
+							location:     SourceRange.from(1, 1, 1, 1),
+							lexeme:       'f',
+							info:         {},
+							functionName: {
+								type:     RType.Symbol,
+								location: SourceRange.from(1, 1, 1, 1),
+								lexeme:   'f',
+								content:  'f',
+								info:     {}
+							},
+							arguments: [
+								{
+									type:     RType.Argument,
+									location: SourceRange.from(1, 3, 1, 4 + argLength),
+									name:     {
+										type:     RType.Symbol,
+										location: SourceRange.from(1, 3, 1, 4 + argLength),
+										lexeme:   arg,
+										content:  firstArgName,
+										info:     {}
+									},
+									lexeme: arg,
+									info:   {},
+									value:  {
+										type:     RType.Number,
+										location: SourceRange.from(1, 4 + argLength + 2, 1, 4 + argLength + 2),
+										lexeme:   '3',
+										content:  numVal(3),
+										info:     {}
+									}
+								}
+							]
+						}));
+				}
+			});
+		}
+	});
+	describe('directly called functions', () => {
+		assertAst(label('Directly call with 2', ['call-anonymous', 'formals-named', 'numbers', 'name-normal', 'normal-definition', 'grouping']),
+			shell, '(function(x) { x })(2)', exprList({
+				type:           RType.FunctionCall,
+				named:          undefined,
+				location:       SourceRange.from(1, 1, 1, 19),
+				lexeme:         '(function(x) { x })',
+				info:           {},
+				calledFunction: {
+					type:     RType.ExpressionList,
+					location: undefined,
+					lexeme:   undefined,
+					info:     {},
+					grouping: [{
+						type:     RType.Symbol,
+						location: SourceRange.from(1, 1, 1, 1),
+						lexeme:   '(',
+						content:  '(',
+						info:     {},
+					}, {
+						type:     RType.Symbol,
+						location: SourceRange.from(1, 19, 1, 19),
+						lexeme:   ')',
+						content:  ')',
+						info:     {},
+					}],
+					children: [{
+						type:       RType.FunctionDefinition,
+						location:   SourceRange.from(1, 2, 1, 9),
+						lexeme:     'function',
+						parameters: [{
+							type:         RType.Parameter,
+							location:     SourceRange.from(1, 11, 1, 11),
+							special:      false,
+							lexeme:       'x',
+							defaultValue: undefined,
+							name:         {
+								type:     RType.Symbol,
+								location: SourceRange.from(1, 11, 1, 11),
+								lexeme:   'x',
+								content:  'x',
+								info:     {}
+							},
+							info: {},
+						}],
+						body: {
+							type:     RType.ExpressionList,
+							location: undefined,
+							lexeme:   undefined,
+							info:     {},
+							grouping: [{
+								type:     RType.Symbol,
+								location: SourceRange.from(1, 14, 1, 14),
+								lexeme:   '{',
+								content:  '{',
+								info:     {},
+							}, {
+								type:     RType.Symbol,
+								location: SourceRange.from(1, 18, 1, 18),
+								lexeme:   '}',
+								content:  '}',
+								info:     {},
+							}],
+							children: [{
+								type:     RType.Symbol,
+								location: SourceRange.from(1, 16, 1, 16),
+								lexeme:   'x',
+								content:  'x',
+								info:     {}
+							}]
+						},
+						info: {}
+					}]
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 21, 1, 21),
+						name:     undefined,
+						info:     {},
+						lexeme:   '2',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 21, 1, 21),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				]
+			}), {
+				ignoreAdToks: true
+			}
+		);
+		assertAst(label('Double call with only the second one being direct', ['call-anonymous', 'numbers', 'name-normal', 'normal-definition']),
+			shell, 'a(1)(2)', exprList({
+				type:           RType.FunctionCall,
+				named:          undefined,
+				location:       SourceRange.from(1, 1, 1, 4),
+				lexeme:         'a(1)',
+				info:           {},
+				calledFunction: {
+					type:         RType.FunctionCall,
+					named:        true,
+					functionName: {
+						type:     RType.Symbol,
+						location: SourceRange.from(1, 1, 1, 1),
+						lexeme:   'a',
+						content:  'a',
+						info:     {}
+					},
+					location:  SourceRange.from(1, 1, 1, 1),
+					lexeme:    'a',
+					arguments: [{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 3, 1, 3),
+						lexeme:   '1',
+						name:     undefined,
+						info:     {},
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 3, 1, 3),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}],
+					info: {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 6, 1, 6),
+						name:     undefined,
+						info:     {},
+						lexeme:   '2',
+						value:    {
+							type:     RType.Number,
+							location: SourceRange.from(1, 6, 1, 6),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				]
+			})
+		);
+	});
+	describe('functions with explicit namespacing', () => {
+		assertAst(label('x::f()', ['name-normal', 'call-normal', 'accessing-exported-names']),
+			shell, 'x::f()',
+			exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 4),
+				lexeme:       'x::f',
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 4, 1, 4),
+					lexeme:   'f',
+					content:  Identifier.make('f', 'x'),
+					info:     {}
+				},
+				arguments: [],
+			})
+		);
+	});
+	describe('functions which are called as string', () => {
+		assertAst(label("'f'()", ['name-quoted', 'call-normal']),
+			shell, "'f'()",
+			exprList({
+				type:         RType.FunctionCall,
+				named:        true,
+				location:     SourceRange.from(1, 1, 1, 3),
+				lexeme:       "'f'",
+				info:         {},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 3),
+					lexeme:   "'f'",
+					content:  'f',
+					info:     {}
+				},
+				arguments: [],
+			})
+		);
+	});
+	describe('Intermixing Comments', () => {
+		assertAst(label('comment interspersed in arglist', ['name-normal', 'call-normal', 'numbers', 'comments']),
+			shell, 'data.frame(A = 1, # this is a comment\n' +
+			'                B = 2)', exprList({
+				type:     RType.FunctionCall,
+				named:    true,
+				location: SourceRange.from(1, 1, 1, 10),
+				lexeme:   'data.frame',
+				info:     {
+					adToks: [{
+						type:     RType.Comment,
+						location: SourceRange.from(1, 19, 1, 37),
+						lexeme:   '# this is a comment',
+						info:     {}
+					}]
+				},
+				functionName: {
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 10),
+					lexeme:   'data.frame',
+					content:  'data.frame',
+					info:     {}
+				},
+				arguments: [
+					{
+						type:     RType.Argument,
+						location: SourceRange.from(1, 12, 1, 12),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(1, 12, 1, 12),
+							lexeme:   'A',
+							content:  'A',
+							info:     {}
+						},
+						info:   {},
+						lexeme: 'A',
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(1, 16, 1, 16),
+							lexeme:   '1',
+							content:  numVal(1),
+							info:     {}
+						}
+					}, {
+						type:     RType.Argument,
+						location: SourceRange.from(2, 17, 2, 17),
+						name:     {
+							type:     RType.Symbol,
+							location: SourceRange.from(2, 17, 2, 17),
+							lexeme:   'B',
+							content:  'B',
+							info:     {}
+						},
+						lexeme: 'B',
+						info:   {},
+						value:  {
+							type:     RType.Number,
+							location: SourceRange.from(2, 21, 2, 21),
+							lexeme:   '2',
+							content:  numVal(2),
+							info:     {}
+						}
+					}
+				]
+			})
+		);
+	});
+	describe('Next and break as functions', () => {
+		assertAst(label('next()', ['name-normal', 'call-normal', 'next']),
+			shell, 'next()', exprList({
+				type:     RType.Next,
+				location: SourceRange.from(1, 1, 1, 4),
+				lexeme:   'next',
+				info:     {}
+			})
+		);
+	});
+	assertAst(label('break()', ['name-normal', 'call-normal', 'break']),
+		shell, 'break()', exprList({
+			type:     RType.Break,
+			location: SourceRange.from(1, 1, 1, 5),
+			lexeme:   'break',
+			info:     {}
+
+		})
+	);
+})
+);

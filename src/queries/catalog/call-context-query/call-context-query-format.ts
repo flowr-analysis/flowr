@@ -29,7 +29,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	readonly type:                   'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
 	readonly callName:               RegexType;
-	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match? */
+	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match, we now also allow '.' etc. to have their conventional meaning if you pass in the regex as a string? */
 	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:                  string;

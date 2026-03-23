@@ -61,7 +61,8 @@ export function normalizedAstToMermaid(ast: RProject<ParentInformation> | RNodeW
 			// add a subgraph for each file
 			if(ast.files.length !== 1 || (f.filePath && f.filePath !== FlowrFile.INLINE_PATH)) {
 				const direction = identifyMermaidDirection(prefix);
-				output += `    subgraph "File: ${Mermaid.escape(f.filePath ?? FlowrFile.INLINE_PATH)}" direction ${direction}\n`;
+				output += `    subgraph "File: ${Mermaid.escape(f.filePath ?? FlowrFile.INLINE_PATH)}"\n`;
+				output += `    direction ${direction}\n`;
 				showAst(f.root);
 				output += '    end\n';
 			} else {

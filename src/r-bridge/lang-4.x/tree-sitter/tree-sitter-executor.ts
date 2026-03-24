@@ -79,23 +79,15 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		} else {
 			sourceCode = request.content;
 		}
-		const parseActions = inc?.getReparseActions();
-		console.log(request);
 
-		if(request.filePath !== undefined && parseActions && parseActions.length > 0) {
-			const previosParse = inc?.getParse();
-			const previousFile = previosParse?.files.find(f => f.filePath === request.filePath);
+		const parseInfo = inc?.getParseInfo();
+		const nextReparseAction = parseInfo?.nextReparseAction;
+		if(request.filePath !== undefined && nextReparseAction) {
+			const previousFile = parseInfo.lastParseStepOutput?.files.find(f => f.filePath === request.filePath);
 			if(previousFile && typeof previousFile.parsed !== 'string') {
-				const previous = previousFile.parsed;
-				previous.edit({
-					startIndex:     0,
-					oldEndIndex:    3,
-					newEndIndex:    5,
-					startPosition:  { row: 0, column: 0 },
-					oldEndPosition: { row: 0, column: 3 },
-					newEndPosition: { row: 0, column: 5 },
-				});
-				return this.parser.parse(sourceCode, previous);
+				const previousTree = previousFile.parsed;
+				previousTree.edit(nextReparseAction.edit);
+				return this.parser.parse(sourceCode, previousTree);
 			}
 		}
 		return this.parser.parse(sourceCode);

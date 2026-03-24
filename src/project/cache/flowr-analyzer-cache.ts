@@ -22,7 +22,7 @@ import type {
 	ReparseAction } from '../incremental/incremental-parse/incremental-parse';
 import {
 	coarseCheckWhetherToInvalidate,
-	shouldWeReparse
+	computeReparseAction
 } from '../incremental/incremental-parse/incremental-parse';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
@@ -55,12 +55,12 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.initCacheProviders();
 	}
 
-	private initCacheProviders(reparse?: readonly ReparseAction[]) {
+	private initCacheProviders(reparseAction?: ReparseAction) {
 		this.args.context.inc.reset();
-		this.args.context.inc.storeParse(
-			this.peekParse(),
-			reparse
-		);
+		this.args.context.inc.storeParseInfo({
+			lastParseStepOutput: this.peekParse(),
+			nextReparseAction:   reparseAction
+		});
 		this.pipeline = createDataflowPipeline(this.args.parser, {
 			context: this.args.context,
 			getId:   this.args.getId
@@ -85,8 +85,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 				if(!coarseCheckWhetherToInvalidate(this.args.context, event)) {
 					return;
 				}
-				const reparse = shouldWeReparse(this.args.context, event);
-				this.initCacheProviders(reparse === 'full' ? undefined : reparse);
+				const reparseAction = computeReparseAction(event);
+				this.initCacheProviders(reparseAction);
 				break;
 			}
 			default:

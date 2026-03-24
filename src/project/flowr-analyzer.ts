@@ -215,12 +215,13 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
+		console.log('parseStandalone');
 		const request = isParseRequest(data) ? data : requestFromInput(data);
 		if(this.parser.name === 'tree-sitter') {
-			return this.parser.parse(request, undefined);
+			return this.parser.parse(request, this.ctx.inc);
 		} else {
 			const ts = new TreeSitterExecutor();
-			return ts.parse(request, undefined);
+			return ts.parse(request, this.ctx.inc);
 		}
 	}
 

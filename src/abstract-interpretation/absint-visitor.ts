@@ -17,6 +17,7 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
+import { isUnsupportedFunctionCall } from './unsupported-functions';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -222,8 +223,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		} else {
 			this.onVisitNode(vertexId);
 
-			// discard the inferred abstract state when encountering functions with unknown side effects (e.g. `eval`)
-			if(this.config.dfg.unknownSideEffects.has(nodeId)) {
+			// discard the inferred abstract state when encountering unsupported (environment-changing) functions (e.g. `eval`, `load`, `attach`, `rm`, ...)
+			if(isUnsupportedFunctionCall(this.getDataflowGraph(nodeId))) {
 				this._currentState = this._currentState.top();
 				this.stateCopied = true;
 			}

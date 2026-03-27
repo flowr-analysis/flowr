@@ -117,7 +117,17 @@ function expandInheritOfTag(tag: RoxygenTag, otherTags: readonly RoxygenTag[], i
 	} else if(tag.type === KnownRoxygenTags.InheritParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value, idMap);
 		const alreadyExplainedParams = new Set(otherTags.filter(t => t.type === KnownRoxygenTags.Param).map(t => t.value.name));
-		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name));
+		const filteredDoc = filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag |RoxygenTag[] |undefined;
+		if(!filteredDoc){
+			return filteredDoc;
+		} else if(Array.isArray(filteredDoc)){
+			for(const f of filteredDoc){
+				f.inherited = true;
+			}
+		} else {
+			filteredDoc.inherited = true;
+		}
+		return filteredDoc;
 	}
 	return tag;
 }

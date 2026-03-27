@@ -177,9 +177,10 @@ export function getUnresolvedSymbolsInExpression(
 	RNode.visitAst(expression, node => {
 		if(node.type === RType.Symbol) {
 			const vertex = dfg.get(node.info.id);
+			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
-			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0) {
-				unresolvedSymbols.push(Identifier.mapName(node.content, unquoteArgument));
+			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+				unresolvedSymbols.push(symbolName);
 			}
 		}
 	});

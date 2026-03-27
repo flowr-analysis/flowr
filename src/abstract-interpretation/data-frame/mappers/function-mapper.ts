@@ -12,7 +12,7 @@ import { requestFromInput, type RParseRequest } from '../../../r-bridge/retrieve
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../util/assert';
 import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
-import type { ConstraintType } from '../semantics';
+import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
@@ -31,37 +31,37 @@ enum DataFrameType {
  * including information about the origin library of the functions and the type of the returned data frame.
  */
 const DataFrameFunctionMapper = {
-	'data.frame':    { mapper: mapDataFrameCreate,    library: 'base',  returnType: DataFrameType.DataFrame },
-	'as.data.frame': { mapper: mapDataFrameConvert,   library: 'base',  returnType: DataFrameType.DataFrame },
-	'read.table':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
-	'read.csv':      { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
-	'read.csv2':     { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
-	'read.delim':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
-	'read.delim2':   { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame },
-	'read_table':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
-	'read_csv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
-	'read_csv2':     { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
-	'read_tsv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
-	'read_delim':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble    },
+	'data.frame':    { mapper: mapDataFrameCreate,    library: 'base',  returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'as.data.frame': { mapper: mapDataFrameConvert,   library: 'base',  returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read.table':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read.csv':      { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read.csv2':     { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read.delim':    { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read.delim2':   { mapper: mapDataFrameRead,      library: 'utils', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'read_table':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
+	'read_csv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
+	'read_csv2':     { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
+	'read_tsv':      { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
+	'read_delim':    { mapper: mapDataFrameRead,      library: 'readr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
 	'cbind':         { mapper: mapDataFrameColBind,   library: 'base',  returnType: DataFrameType.DataFrame },
 	'rbind':         { mapper: mapDataFrameRowBind,   library: 'base',  returnType: DataFrameType.DataFrame },
 	'head':          { mapper: mapDataFrameHeadTail,  library: 'utils', returnType: DataFrameType.DataFrame },
 	'tail':          { mapper: mapDataFrameHeadTail,  library: 'utils', returnType: DataFrameType.DataFrame },
 	'subset':        { mapper: mapDataFrameSubset,    library: 'base',  returnType: DataFrameType.DataFrame },
-	'filter':        { mapper: mapDataFrameFilter,    library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'select':        { mapper: mapDataFrameSelect,    library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'mutate':        { mapper: mapDataFrameMutate,    library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'transform':     { mapper: mapDataFrameMutate,    library: 'base',  returnType: DataFrameType.DataFrame },
-	'group_by':      { mapper: mapDataFrameGroupBy,   library: 'dplyr', returnType: DataFrameType.Tibble    },
-	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'inner_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'left_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'right_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'full_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'merge':         { mapper: mapDataFrameJoin,      library: 'base',  returnType: DataFrameType.DataFrame },
-	'relocate':      { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame },
-	'arrange':       { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame }
+	'filter':        { mapper: mapDataFrameFilter,    library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'select':        { mapper: mapDataFrameSelect,    library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'mutate':        { mapper: mapDataFrameMutate,    library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'transform':     { mapper: mapDataFrameMutate,    library: 'base',  returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'group_by':      { mapper: mapDataFrameGroupBy,   library: 'dplyr', returnType: DataFrameType.Tibble,    alwaysDataFrame: true },
+	'summarise':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'summarize':     { mapper: mapDataFrameSummarize, library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'inner_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'left_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'right_join':    { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'full_join':     { mapper: mapDataFrameJoin,      library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'merge':         { mapper: mapDataFrameJoin,      library: 'base',  returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'relocate':      { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true },
+	'arrange':       { mapper: mapDataFrameIdentity,  library: 'dplyr', returnType: DataFrameType.DataFrame, alwaysDataFrame: true }
 } as const satisfies Record<string, DataFrameFunctionMapperInfo<never>>;
 
 /**
@@ -70,6 +70,11 @@ const DataFrameFunctionMapper = {
 const OtherDataFrameFunctions = [
 	{
 		type:       'entry_point',
+		names:      ['as.data.frame.matrix'],
+		library:    'base',
+		returnType: DataFrameType.DataFrame
+	}, {
+		type:       'entry_point',
 		names:      ['anova', 'AIC', 'BIC'],
 		library:    'anova',
 		returnType: DataFrameType.DataFrame
@@ -77,11 +82,6 @@ const OtherDataFrameFunctions = [
 		type:       'entry_point',
 		names:      ['Anova', 'Manova'],
 		library:    'car',
-		returnType: DataFrameType.DataFrame
-	}, {
-		type:       'entry_point',
-		names:      ['lmer'],
-		library:    'lme4',
 		returnType: DataFrameType.DataFrame
 	}, {
 		type:       'entry_point',
@@ -121,7 +121,7 @@ const OtherDataFrameFunctions = [
 		dataFrame:  { pos: 0, name: 'object' }
 	}, {
 		type:       'transformation',
-		names:      ['unique', 't'],
+		names:      ['unique', 'droplevels'],
 		library:    'base',
 		returnType: DataFrameType.DataFrame,
 		dataFrame:  { pos: 0, name: 'x' }
@@ -155,9 +155,10 @@ const OtherDataFrameFunctions = [
 			'transmute', 'distinct', 'distinct_prepare', 'group_by_prepare', 'rename', 'rename_with', 'reframe',
 			'slice', 'slice_head', 'slice_tail', 'slice_min', 'slice_max', 'slice_sample'
 		],
-		library:    'dplyr',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: '.data' }
+		library:         'dplyr',
+		returnType:      DataFrameType.DataFrame,
+		alwaysDataFrame: true,
+		dataFrame:       { pos: 0, name: '.data' }
 	}, {
 		type:  'transformation',
 		names: [
@@ -167,9 +168,10 @@ const OtherDataFrameFunctions = [
 			'summarize_if', 'summarise_if', 'summarize_at', 'summarise_at', 'summarize_all', 'summarise_all',
 			'arrange_if', 'arrange_at', 'arrange_all', 'rename_if', 'rename_at', 'rename_all'
 		],
-		library:    'dplyr',
-		returnType: DataFrameType.Tibble,
-		dataFrame:  { pos: 0, name: '.tbl' }
+		library:         'dplyr',
+		returnType:      DataFrameType.Tibble,
+		alwaysDataFrame: true,
+		dataFrame:       { pos: 0, name: '.tbl' }
 	}, {
 		type:  'transformation',
 		names: [
@@ -177,14 +179,16 @@ const OtherDataFrameFunctions = [
 			'ungroup', 'count', 'tally', 'add_count', 'add_tally',
 			'rows_insert', 'rows_append', 'rows_update', 'rows_patch', 'rows_upsert', 'rows_delete'
 		],
-		library:    'dplyr',
-		returnType: DataFrameType.DataFrame,
-		dataFrame:  { pos: 0, name: 'x' }
+		library:         'dplyr',
+		returnType:      DataFrameType.DataFrame,
+		alwaysDataFrame: true,
+		dataFrame:       { pos: 0, name: 'x' }
 	}, {
-		type:       'transformation',
-		names:      ['bind_cols', 'bind_rows'],
-		library:    'dplyr',
-		returnType: DataFrameType.DataFrame
+		type:            'transformation',
+		names:           ['bind_cols', 'bind_rows'],
+		library:         'dplyr',
+		returnType:      DataFrameType.DataFrame,
+		alwaysDataFrame: true
 	}, {
 		type:  'transformation',
 		names: [
@@ -195,17 +199,32 @@ const OtherDataFrameFunctions = [
 		returnType: DataFrameType.DataFrame,
 		dataFrame:  { pos: 0, name: 'data' }
 	}, {
-		type:       'transformation',
-		names:      ['add_column', 'add_row', 'add_case'],
-		library:    'tibble',
-		returnType: DataFrameType.Tibble,
-		dataFrame:  { pos: 0, name: '.data' }
+		type:            'transformation',
+		names:           ['add_column', 'add_row', 'add_case'],
+		library:         'tibble',
+		returnType:      DataFrameType.Tibble,
+		alwaysDataFrame: true,
+		dataFrame:       { pos: 0, name: '.data' }
 	}, {
 		type:       'transformation',
 		names:      ['melt', 'dcast'],
 		library:    'data.table',
 		returnType: DataFrameType.DataTable,
 		dataFrame:  { pos: 0, name: 'data' }
+	}, {
+		type:           'modification',
+		names:          ['setNames'],
+		library:        'stats',
+		constraintType: ConstraintType.OperandModification,
+		returnType:     DataFrameType.DataFrame,
+		dataFrame:      { pos: 0, name: 'object' }
+	}, {
+		type:           'modification',
+		names:          ['unname'],
+		library:        'base',
+		constraintType: ConstraintType.OperandModification,
+		returnType:     DataFrameType.DataFrame,
+		dataFrame:      { pos: 0, name: 'obj' }
 	}
 ] as const satisfies OtherDataFrameFunctionMapping[];
 
@@ -525,9 +544,10 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 };
 
 interface DataFrameFunctionMapperInfo<Params extends object> {
-	readonly mapper:     DataFrameFunctionMapping<Params>;
-	readonly library:    string;
-	readonly returnType: DataFrameType;
+	readonly mapper:           DataFrameFunctionMapping<Params>;
+	readonly library:          string;
+	readonly returnType:       DataFrameType;
+	readonly alwaysDataFrame?: boolean;
 }
 
 interface OtherDataFrameFunctionBase {
@@ -544,8 +564,9 @@ interface OtherDataFrameEntryPoint extends OtherDataFrameFunctionBase {
 
 /** Other data frame transformations that are not explicitly supported but return data frames if an argument is a data frame */
 interface OtherDataFrameTransformation extends OtherDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
-	readonly type:       'transformation';
-	readonly dataFrame?: FunctionParameterLocation;
+	readonly type:             'transformation';
+	readonly dataFrame?:       FunctionParameterLocation;
+	readonly alwaysDataFrame?: boolean;
 }
 
 /** Other data frame functions that are not explicitly supported but modify data frames arguments in place */
@@ -603,29 +624,31 @@ export function mapDataFrameFunctionCall<Name extends DataFrameFunction>(
 		return;
 	}
 	const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx };
+	const functionName = Identifier.getName(node.functionName.content);
 
-	const n = Identifier.getName(node.functionName.content);
-	if(isDataFrameFunction(n)) {
-		const functionName = n as Name;
-		const mapper = DataFrameFunctionMapper[functionName].mapper as DataFrameFunctionMapping<DataFrameFunctionParams<Name>>;
+	if(isDataFrameFunction(functionName)) {
+		const mapping = DataFrameFunctionMapper[functionName] as DataFrameFunctionMapperInfo<DataFrameFunctionParams<Name>>;
 		const params = DataFrameFunctionParamsMapper[functionName] as DataFrameFunctionParams<Name> & { critical?: FunctionParameterLocation<unknown>[] };
 		const args = getFunctionArguments(node, dfg);
 
 		if(hasCriticalArgument(args, params.critical, resolveInfo)) {
 			return [{ operation: 'unknown', operand: undefined }];
 		} else {
-			return mapper(args, params, inference, resolveInfo);
+			return mapping.mapper(args, params, inference, resolveInfo) ?? (mapping.alwaysDataFrame ? [{ operation: 'unknown', operand: undefined }] : undefined);
 		}
 	} else {
-		const mapping = getOtherDataFrameFunction(Identifier.getName(node.functionName.content));
+		const mapping = getOtherDataFrameFunction(functionName);
 
 		if(mapping === undefined) {
 			return;
 		} else if(mapping.type === 'entry_point') {
 			return [{ operation: 'unknown', operand: undefined }];
-		} else if(mapping.type === 'transformation' || mapping.type === 'modification') {
+		} else if(mapping.type === 'transformation') {
 			const args = getFunctionArguments(node, dfg);
-			return mapDataFrameUnknown(args, mapping, inference, resolveInfo);
+			return mapDataFrameUnknown(args, mapping, inference, resolveInfo) ?? (mapping.alwaysDataFrame ? [{ operation: 'unknown', operand: undefined }] : undefined);
+		} else if(mapping.type === 'modification') {
+			const args = getFunctionArguments(node, dfg);
+			return mapDataFrameUnknown(args, { ...mapping, constraintType: ConstraintType.OperandModification }, inference, resolveInfo);
 		} else {
 			assertUnreachable(mapping);
 		}
@@ -759,7 +782,7 @@ function mapDataFrameRead(
 	if(header) {
 		colnames = filterValidNames(firstLine, checkNames, noDupNames, params.noEmptyNames);
 	} else if(firstLine !== undefined) {
-		colnames = Array((firstLine as unknown[]).length).fill(undefined);
+		colnames = Array(firstLine.length).fill(undefined);
 	}
 	return [{
 		operation: 'read',
@@ -1386,12 +1409,12 @@ function getRequestFromRead(
 		const text = resolveIdToArgValue(textArg, info);
 
 		if(typeof text === 'string') {
-			source = text;
 			request = requestFromInput(unescapeSpecialChars(text));
 		}
 	}
-	request = request ? info.ctx.files.resolveRequest(request).r : undefined;
-
+	if(request?.request === 'file' && info.ctx.files.hasCached(request.content)) {
+		request = info.ctx.files.resolveRequest(request).r;
+	}
 	return { source, request };
 }
 
@@ -1399,10 +1422,11 @@ function getRequestFromRead(
  * Gets all entries from a line of a CSV file using a custom separator char, quote char, and comment char
  */
 function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = '"', comment: string = '', trim: boolean = true): (string | undefined)[] {
+	sep = sep.length > 0 ? sep : '\\s';  // default to whitespace separator
 	sep = escapeRegExp(sep, true);  // only allow tokens like `\s`, `\t`, or `\n` in separator, quote, and comment chars
 	quote = escapeRegExp(quote);
 	comment = escapeRegExp(comment);
-	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-sparated files
+	const quantifier = sep === '\\s' ? '+' : '*';  // do not allow unquoted empty entries in whitespace-separated files
 
 	const LineCommentRegex = new RegExp(`[${comment}].*`);
 	const CsvEntryRegex = new RegExp(`(?<=^|[${sep}])(?:[${quote}]((?:[^${quote}]|[${quote}]{2})*)[${quote}]|([^${sep}]${quantifier}))`, 'g');

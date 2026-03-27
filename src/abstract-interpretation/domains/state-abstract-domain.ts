@@ -133,14 +133,20 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain> extends Mappe
 		return super.toString();
 	}
 
+	public isTop(): boolean;
+	public isTop(): this is this;
 	public isTop(): this is this {
 		return this.value.size === 0;
 	}
 
+	public isBottom(): boolean;
+	public isBottom(): this is this;
 	public isBottom(): this is this {
 		return this._isBottom ?? false;
 	}
 
+	public isValue(): boolean;
+	public isValue(): this is this;
 	public isValue(): this is this {
 		return !this._isBottom;
 	}

@@ -49,10 +49,8 @@ import { equidistantSampling } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
-import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
-import { Top } from '../abstract-interpretation/domains/lattice';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -379,13 +377,14 @@ export class BenchmarkSlicer {
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
+
 		stats.numberOfResultConstraints = result.value.size;
-		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
+		stats.sizeOfInfo = safeSizeOf(inference.getAbstractTrace().entries().toArray());
 
 		for(const value of result.value.values()) {
 			if(value.isTop()) {
 				stats.numberOfResultingTop++;
-			} else if((value as DataFrameDomain).isBottom()) {
+			} else if(value.isBottom()) {
 				stats.numberOfResultingBottom++;
 			} else {
 				stats.numberOfResultingValues++;
@@ -437,7 +436,7 @@ export class BenchmarkSlicer {
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.value.range === Top ? Infinity : value.value.range.size;
+				return value.isFinite() ? value.value.range.size : Infinity;
 			} else {
 				return value.value[1] - value.value[0];
 			}
@@ -449,15 +448,11 @@ export class BenchmarkSlicer {
 		if(value.isTop()) {
 			return 'top';
 		} else if(value.isValue()) {
-			if(value instanceof SetRangeDomain) {
-				if(value.value.range === Top) {
-					return 'infinite';
-				}
+			if(!value.isFinite()) {
+				return 'infinite';
+			} else if(value instanceof SetRangeDomain) {
 				return Math.floor(value.value.min.size + (value.value.range.size / 2));
 			} else {
-				if(!isFinite(value.value[1])) {
-					return 'infinite';
-				}
 				return Math.floor((value.value[0] + value.value[1]) / 2);
 			}
 		}

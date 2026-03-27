@@ -143,14 +143,20 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
+	public isTop(): boolean;
+	public isTop(): this is this;
 	public isTop(): this is this {
 		return Object.values(this.value).every(value => value.isTop());
 	}
 
+	public isBottom(): boolean;
+	public isBottom(): this is this;
 	public isBottom(): this is this {
 		return Object.values(this.value).every(value => value.isBottom());
 	}
 
+	public isValue(): boolean;
+	public isValue(): this is this;
 	public isValue(): this is this {
 		return true;
 	}

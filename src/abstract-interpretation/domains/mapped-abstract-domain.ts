@@ -218,14 +218,20 @@ export class MappedAbstractDomain<Key, Domain extends AnyAbstractDomain>
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${domainElementToString(key)} -> ${value.toString()}`).join(', ') + ')';
 	}
 
+	public isTop(): boolean;
+	public isTop(): this is this;
 	public isTop(): this is this {
 		return this.value.values().some(entry => entry.isTop());
 	}
 
+	public isBottom(): boolean;
+	public isBottom(): this is this;
 	public isBottom(): this is this {
 		return this.value.size === 0;
 	}
 
+	public isValue(): boolean;
+	public isValue(): this is this;
 	public isValue(): this is this {
 		return true;
 	}

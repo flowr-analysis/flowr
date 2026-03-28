@@ -39,50 +39,28 @@ function getDocumentation(id: NodeId, idMap: AstIdMap): readonly RoxygenTag[] | 
 	return Array.isArray(comment) ? comment : [comment] as readonly RoxygenTag[];
 }
 
-/**
- * Please note that this actually modifies the parameters to only leave those that differ!
- */
-function calculateArgumentDiff(inheritedParams: string[], remainingFunctionParam: string[], remainingRoxygenParam: string[]): boolean{
-	const notOverdocumented = remainingFunctionParam.includes('...');
-	remainingFunctionParam.sort();
-	remainingRoxygenParam.sort();
-	inheritedParams.sort();
-	let i = 0;
-	let j = 0;
+function calculateArgumentDiff(inheritedParams: string[], functionParam: string[], roxygenParam: string[]): [boolean, string[], string[]]{
+
 	//match documented against existing params
-	while(i < remainingFunctionParam.length && j < remainingRoxygenParam.length){
-		if(remainingFunctionParam[i] === remainingRoxygenParam[j]){
-			remainingFunctionParam.splice(i, 1);
-			remainingRoxygenParam.splice(j, 1);
-		} else if(remainingFunctionParam[i] < remainingRoxygenParam[j]){
-			i++;
-		} else {
-			j++;
-		}
-	}
-	i = 0;
-	j = 0;
-	//case: '...'
-	if(notOverdocumented){
+	let underDocumented = new Set(functionParam);
+	let overDocumented = new Set(roxygenParam);
+	const commonParams = underDocumented.intersection(overDocumented);
+	underDocumented = underDocumented.difference(commonParams);
+	overDocumented = overDocumented.difference(commonParams);
+
+	//case: '...', overdocumentation not possible
+	if(functionParam.includes('...')){
 		//if still remaining overdocumented parameters, "..." doesn't need to be documented
-		if(remainingRoxygenParam.length > 0){
-			remainingFunctionParam = remainingFunctionParam.filter(a => a !== '...');
+		if(overDocumented.size > 0){
+			underDocumented.delete('...');
 		}
 		//can't be overdocumented
-		remainingRoxygenParam = [];
+		overDocumented.clear();
 	}
 	//inherited params removed from list of overdocumented params
-	while(i < remainingRoxygenParam.length && j < inheritedParams.length){
-		if(remainingRoxygenParam[i] === inheritedParams[j]){
-			remainingRoxygenParam.splice(i, 1);
-			inheritedParams.splice(j, 1);
-		} else if(remainingRoxygenParam[i] < inheritedParams[j]){
-			i++;
-		} else {
-			j++;
-		}
-	}
-	return remainingFunctionParam.length !== 0 || remainingRoxygenParam.length !== 0;
+	overDocumented = overDocumented.difference(new Set(inheritedParams));
+
+	return [underDocumented.size !== 0 || overDocumented.size !== 0, Array.from(underDocumented), Array.from(overDocumented)];
 }
 
 export const ROXYGEN_ARGS = {
@@ -111,10 +89,10 @@ export const ROXYGEN_ARGS = {
 						if(functionParamNames === null || roxygenParamNames == null){
 							return false;
 						}
-						const differs = calculateArgumentDiff(inheritedParams, functionParamNames, roxygenParamNames);
-						underDocumented.push(...functionParamNames);
-						overDocumented.push(...roxygenParamNames);
-						return differs;
+						const result = calculateArgumentDiff(inheritedParams, functionParamNames, roxygenParamNames);
+						underDocumented.push(...result[1]);
+						overDocumented.push(...result[2]);
+						return result[0];
 					})
 					.map(({ element, overDocumented, underDocumented }) => ({
 						certainty:       LintingResultCertainty.Uncertain,

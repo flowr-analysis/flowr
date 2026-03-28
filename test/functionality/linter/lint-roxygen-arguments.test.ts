@@ -95,7 +95,7 @@ f = function(a, b){return a;}`, 'roxygen-arguments', [
 				certainty:       LintingResultCertainty.Uncertain,
 				loc:             SourceRange.from(2, 6, 2, 34),
 				overDocumented:  [],
-				underDocumented: ['...', 'a']
+				underDocumented: ['a', '...']
 			},
 		]);
 		assertLinter('Inheriting param + \'...\'', parser, '#\' @param a this is a param\n#\' @param b this is a param\nf1 <- function(a, b, h){return a-b-h;}\n#\' @inheritParams f1\n#\' @param c this is a param\nf2 <- function(c, ...){return c;}', 'roxygen-arguments', [

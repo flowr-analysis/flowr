@@ -245,6 +245,8 @@ class InputClassifier {
 
 /**
  * Lattice flattening until we have a taint engine :)
+ * Please note that the classifier considers this basis with a set-lift,
+ * joining differing lattice elements.
  *
  *```
  *            [ Unknown ]

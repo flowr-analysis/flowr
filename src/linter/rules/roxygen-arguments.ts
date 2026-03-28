@@ -39,8 +39,11 @@ function getDocumentation(id: NodeId, idMap: AstIdMap): readonly RoxygenTag[] | 
 	return Array.isArray(comment) ? comment : [comment] as readonly RoxygenTag[];
 }
 
-function doParameterNamesDiffer(inheritedParams: string[], remainingFunctionParam: string[], remainingRoxygenParam: string[]): boolean{
-	const notOverdocumented = remainingFunctionParam.filter(a => a === '...').length > 0;
+/**
+ * Please note that this actually modifies the parameters to only leave those that differ!
+ */
+function calculateArgumentDiff(inheritedParams: string[], remainingFunctionParam: string[], remainingRoxygenParam: string[]): boolean{
+	const notOverdocumented = remainingFunctionParam.includes('...');
 	remainingFunctionParam.sort();
 	remainingRoxygenParam.sort();
 	inheritedParams.sort();
@@ -69,7 +72,7 @@ function doParameterNamesDiffer(inheritedParams: string[], remainingFunctionPara
 		remainingRoxygenParam = [];
 	}
 	//inherited params removed from list of overdocumented params
-	while(i < remainingRoxygenParam.length && inheritedParams !== null && j < inheritedParams.length){
+	while(i < remainingRoxygenParam.length && j < inheritedParams.length){
 		if(remainingRoxygenParam[i] === inheritedParams[j]){
 			remainingRoxygenParam.splice(i, 1);
 			inheritedParams.splice(j, 1);
@@ -79,11 +82,7 @@ function doParameterNamesDiffer(inheritedParams: string[], remainingFunctionPara
 			j++;
 		}
 	}
-	if(remainingFunctionParam.length === 0 && remainingRoxygenParam.length === 0){
-		return false;
-	} else {
-		return true;
-	}
+	return remainingFunctionParam.length !== 0 || remainingRoxygenParam.length !== 0;
 }
 
 export const ROXYGEN_ARGS = {
@@ -97,12 +96,12 @@ export const ROXYGEN_ARGS = {
 						underDocumented: [] as string[],
 						overDocumented:  [] as string[]
 					}))
-					.filter(({ element, underDocumented, overDocumented }) => {
-						const comments = getDocumentation(element.node.info.id, normalize.idMap);
+					.filter(({ element: { node }, underDocumented, overDocumented }) => {
+						const comments = getDocumentation(node.info.id, normalize.idMap);
 						if(!comments) {
 							return false;
 						}
-						const parameters = getParameters(element.node);
+						const parameters = getParameters(node);
 						//get parameter names
 						const functionParamNames = parameters.map(p => p.name.content.toString());
 						const inheritedParams = comments.filter(tag => (tag?.inherited && tag.type === KnownRoxygenTags.Param)).map(tag => ((tag as RoxygenTagParam).value.name));
@@ -112,7 +111,7 @@ export const ROXYGEN_ARGS = {
 						if(functionParamNames === null || roxygenParamNames == null){
 							return false;
 						}
-						const differs = doParameterNamesDiffer(inheritedParams, functionParamNames, roxygenParamNames);
+						const differs = calculateArgumentDiff(inheritedParams, functionParamNames, roxygenParamNames);
 						underDocumented.push(...functionParamNames);
 						overDocumented.push(...roxygenParamNames);
 						return differs;

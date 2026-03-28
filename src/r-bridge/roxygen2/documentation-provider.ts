@@ -95,14 +95,23 @@ function getDocumentationOfByName(name: string, idMap: AstIdMap<ParentInformatio
 	}
 }
 
-function filterDocumentationForParams(doc: Documentation | undefined, filter: (r: RoxygenTag) => boolean): Documentation | undefined {
+function filterDocumentationForParamsInherited(doc: Documentation | undefined, filter: (r: RoxygenTag) => boolean): Documentation | undefined {
 	if(!doc) {
 		return doc;
 	}
 	if(Array.isArray(doc)) {
-		return doc.filter(filter) as readonly RoxygenTag[];
+		const ds = doc.filter(filter) as RoxygenTag[];
+		for(const d of ds) {
+			d.inherited = true;
+		}
+		return ds as readonly RoxygenTag[];
 	} else {
-		return filter(doc as RoxygenTag) ? doc : undefined;
+		const d = doc as RoxygenTag;
+		if(filter(d)) {
+			d.inherited = true;
+			return d;
+		}
+		return undefined;
 	}
 
 }
@@ -110,24 +119,14 @@ function filterDocumentationForParams(doc: Documentation | undefined, filter: (r
 function expandInheritOfTag(tag: RoxygenTag, otherTags: readonly RoxygenTag[], idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
 	if(tag.type === KnownRoxygenTags.Inherit) {
 		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
-		return filterDocumentationForParams(inheritDoc, t => tag.value.components.includes(t.type));
+		return filterDocumentationForParamsInherited(inheritDoc, t => tag.value.components.includes(t.type));
 	} else if(tag.type === KnownRoxygenTags.InheritDotParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
-		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && t.value.name === '...');
+		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && t.value.name === '...');
 	} else if(tag.type === KnownRoxygenTags.InheritParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value, idMap);
 		const alreadyExplainedParams = new Set(otherTags.filter(t => t.type === KnownRoxygenTags.Param).map(t => t.value.name));
-		const filteredDoc = filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag |RoxygenTag[] |undefined;
-		if(!filteredDoc){
-			return filteredDoc;
-		} else if(Array.isArray(filteredDoc)){
-			for(const f of filteredDoc){
-				f.inherited = true;
-			}
-		} else {
-			filteredDoc.inherited = true;
-		}
-		return filteredDoc;
+		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag |RoxygenTag[] |undefined;
 	}
 	return tag;
 }

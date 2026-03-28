@@ -6,7 +6,11 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('roxygen arguments', () => {
-		assertLinter('More @param documented than implemented', parser, '#\' This is a function.\n#\' An interesting function.\n#\' @param a some variable\n#\' @param b does not exist\nf = function(a){return a;}', 'roxygen-arguments', [
+		assertLinter('More @param documented than implemented', parser, `#' This is a function.
+#' An interesting function.
+#' @param a some variable
+#' @param b does not exist
+f = function(a){return a;}`, 'roxygen-arguments', [
 			{
 				certainty:       LintingResultCertainty.Uncertain,
 				loc:             SourceRange.from(5, 5, 5, 26),
@@ -14,7 +18,10 @@ describe('flowR linter', withTreeSitter(parser => {
 				underDocumented: []
 			}
 		]);
-		assertLinter('Less @param documented than implemented', parser, '#\' This is a function.\n#\' An interesting function.\n#\' @param a some variable\nf = function(a, b){return a;}', 'roxygen-arguments', [
+		assertLinter('Less @param documented than implemented', parser, `#' This is a function.
+#' An interesting function.
+#' @param a some variable
+f = function(a, b){return a;}`, 'roxygen-arguments', [
 			{
 				certainty:       LintingResultCertainty.Uncertain,
 				loc:             SourceRange.from(4, 5, 4, 29),

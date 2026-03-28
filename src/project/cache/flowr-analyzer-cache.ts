@@ -16,8 +16,7 @@ import type { ControlFlowInformation } from '../../control-flow/control-flow-gra
 import type { CfgKind } from '../cfg-kind';
 import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
-import type { CallGraph } from '../../dataflow/graph/call-graph';
-import { computeCallGraph } from '../../dataflow/graph/call-graph';
+import { CallGraph } from '../../dataflow/graph/call-graph';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
@@ -185,7 +184,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 	 */
 	public async callGraph(force?: boolean): Promise<CallGraph> {
 		if(!this.callGraphCache || force) {
-			this.callGraphCache = computeCallGraph((await this.dataflow(force)).graph);
+			this.callGraphCache = CallGraph.compute((await this.dataflow(force)).graph);
 		}
 		return this.callGraphCache;
 	}

@@ -35,6 +35,7 @@ const dotDotDotAccess = /^\.\.\d+$/;
  * ```
  */
 export const Identifier = {
+	name: 'Identifier',
 	/**
 	 * Create an identifier from its name and optional namespace.
 	 * Please note that for `internal` to count, a namespace must be provided!
@@ -48,6 +49,22 @@ export const Identifier = {
 		} else {
 			return name;
 		}
+	},
+	/**
+	 * Verify whether an unknown element has a valid identifier shape!
+	 */
+	is(this: void, id: unknown): id is Identifier {
+		if(typeof id === 'string') {
+			return true;
+		}
+		if(Array.isArray(id)) {
+			if(id.length === 2) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string';
+			} else if(id.length === 3) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string' && typeof id[2] === 'boolean';
+			}
+		}
+		return false;
 	},
 	/**
 	 * Parse an identifier from its string representation,

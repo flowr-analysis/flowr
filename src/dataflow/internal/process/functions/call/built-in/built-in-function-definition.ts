@@ -36,10 +36,10 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
@@ -137,9 +137,9 @@ export function processFunctionDefinition<OtherInfo>(
 		if(p === EmptyArgument) {
 			return EmptyArgument;
 		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content };
+			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content, valueId: p.value.defaultValue?.info.id };
 		} else if(p.name) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
+			return { type: ReferenceType.Argument, valueId: p.value?.info.id, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
 		} else {
 			return EmptyArgument;
 		}
@@ -285,21 +285,11 @@ export function updateNestedFunctionCalls(
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
 	for(const [id, { onlyBuiltin, environment, name, args, origin }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(onlyBuiltin || !name) {
+		if(onlyBuiltin || name === undefined) {
 			continue;
 		}
 
-		let effectiveEnvironment = outEnvironment;
-		// only the call environment counts!
-		if(environment) {
-			while(outEnvironment.level > environment.level) {
-				outEnvironment = popLocalEnvironment(outEnvironment);
-			}
-			while(outEnvironment.level < environment.level) {
-				outEnvironment = pushLocalEnvironment(outEnvironment);
-			}
-			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
-		}
+		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
 		const collectedNextMethods: Set<NodeId> = new Set();
@@ -311,10 +301,10 @@ export function updateNestedFunctionCalls(
 			}
 			const targetVertex = graph.getVertex(target);
 			// support reads on symbols
-			if(targetVertex?.tag === VertexType.Use) {
-				graph.addEdge(id, target, EdgeType.Reads);
-				continue;
-			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+				if(targetVertex?.tag === VertexType.Use) {
+					graph.addEdge(id, target, EdgeType.Reads);
+				}
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);

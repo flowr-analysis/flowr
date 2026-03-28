@@ -18,20 +18,12 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { isUndefined } from '../../../../../../util/assert';
 import { EdgeType } from '../../../../../graph/edge';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { Identifier, type IdentifierReference } from '../../../../../environments/identifier';
 import { isReferenceType, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { expensiveTrace } from '../../../../../../util/log';
-
-
-/**
- *
- */
-export function getArgsOfName(argMaps: Map<NodeId, string>, name: string): Set<NodeId> {
-	return new Set(argMaps.entries().filter(([, v]) => v === name).map(([k]) => k));
-}
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a built-in try-catch or similar handler.
@@ -70,9 +62,9 @@ export function processTryCatch<OtherInfo>(
 	const argMaps = pMatch(res.callArgs, params);
 	const info = res.information;
 
-	const blockArg = getArgsOfName(argMaps, 'block');
-	const errorArg = getArgsOfName(argMaps, 'error');
-	const finallyArg = getArgsOfName(argMaps, 'finally');
+	const blockArg = new Set(argMaps.get('block'));
+	const errorArg = new Set(argMaps.get('error'));
+	const finallyArg = new Set(argMaps.get('finally'));
 	// only take those exit points from the block
 	// check whether blockArg has *always* happening exceptions, if so we do not constrain the error handler
 	const blockErrorExitPoints: (ControlDependency | undefined)[] = [];

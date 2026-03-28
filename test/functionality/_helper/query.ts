@@ -7,7 +7,6 @@ import type { VirtualQueryArgumentsWithType } from '../../../src/queries/virtual
 import { type TestLabel, decorateLabelContext } from './label';
 import type { VirtualCompoundConstraint } from '../../../src/queries/virtual-query/compound-query';
 import { log } from '../../../src/util/log';
-import { dataflowGraphToMermaidUrl } from '../../../src/core/print/dataflow-printer';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../src/core/steps/pipeline/pipeline';
 import { assert, test } from 'vitest';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
@@ -15,8 +14,8 @@ import type { KnownParser, ParseStepOutput } from '../../../src/r-bridge/parser'
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { Tree } from 'web-tree-sitter';
-import { computeCallGraph } from '../../../src/dataflow/graph/call-graph';
-import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
 
 function normalizeResults<Queries extends Query>(result: QueryResults<Queries['type']>): QueryResultsWithoutMeta<Queries> {
@@ -104,9 +103,9 @@ export function assertQuery<
 			) : expected);
 			assert.deepStrictEqual(normalized, expectedNormalized, 'The result of the query does not match the expected result');
 		} /* v8 ignore next 3 */ catch(e: unknown) {
-			console.error('Dataflow-Graph', dataflowGraphToMermaidUrl(await analyzer.dataflow()));
+			console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(await analyzer.dataflow()));
 			console.error('Control-Flow-Graph', cfgToMermaidUrl(extractCfg(await analyzer.normalize(), analyzer.inspectContext(), (await analyzer.dataflow()).graph), await analyzer.normalize()));
-			console.error('Call-Graph', graphToMermaidUrl(computeCallGraph((await analyzer.dataflow()).graph)));
+			console.error('Call-Graph', CallGraph.visualize.mermaid.url(CallGraph.compute((await analyzer.dataflow()).graph)));
 			throw e;
 		}
 	});

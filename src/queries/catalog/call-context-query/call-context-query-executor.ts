@@ -60,17 +60,21 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 export type PromotedCallTest = (t: string) => boolean;
 
 /**
- *
+ * Convert a name to a predicate that checks whether an input conforms to this name.
  */
 export function promoteCallName(callName: CallNameTypes, exact = false): PromotedCallTest {
 	if(Array.isArray(callName)) {
 		const s = new Set<string>(callName);
 		return (t: string) => s.has(t);
-	} else if(exact) {
-		const s = new Set([typeof callName === 'string' ? callName : callName.source]);
-		return (t: string) => s.has(t);
+	} else if(typeof callName === 'string') {
+		if(exact) {
+			return (t: string) => t === callName;
+		} else {
+			const r = new RegExp(callName);
+			return (t: string) => r.test(t);
+		}
 	} else {
-		const r = new RegExp(callName);
+		const r = new RegExp(exact ? '^' + callName.source + '$' : callName.source);
 		return (t: string) => r.test(t);
 	}
 }

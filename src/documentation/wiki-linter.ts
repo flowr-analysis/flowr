@@ -166,6 +166,14 @@ df[6, "value"]
 		'roxygen-arguments', 'RoxygenArgsConfig', 'ROXYGEN_ARGS', 'lint-roxygen-arguments',
 		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
 
+	rule(knownParser,
+		'problematic-eval', 'ProblematicEvalConfig', 'PROBLEMATIC_EVAL', 'lint-problematic-eval',
+		`
+function(x) {
+	eval(x)
+}
+`, tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

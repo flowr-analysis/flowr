@@ -10,7 +10,7 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 import { SourceLocation } from '../../../util/range';
 import type { ExceptionPoint } from '../../../dataflow/fn/exceptions-of-function';
 import { happensInEveryBranch } from '../../../dataflow/info';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 
 /**
  * Either returns all function definitions alongside exception information,
@@ -19,7 +19,7 @@ import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
 export interface InspectExceptionQuery extends BaseQueryFormat {
 	readonly type:    'inspect-exception';
 	/** If given, only function definitions that match one of the given slicing criteria are considered. */
-	readonly filter?: SingleSlicingCriterion[];
+	readonly filter?: SlicingCriterion[];
 }
 
 export interface InspectExceptionQueryResult extends BaseQueryResult {

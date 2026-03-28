@@ -1,5 +1,5 @@
 import { FunctionArgument, type OutgoingEdges } from './graph';
-import { type GenericDiffConfiguration, type GenericDifferenceInformation, setDifference } from '../../util/diff';
+import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
@@ -10,24 +10,15 @@ import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
-import { type GraphDiffContext, type NamedGraph, initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 
-/**
- * Compare two dataflow graphs and return a report on the differences.
- * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- * @see {@link diffOfControlFlowGraphs} - for control flow graphs
- */
-export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
-	if(left.graph === right.graph) {
-		return new GraphDifferenceReport();
-	}
-	const ctx = initDiffContext(left, right, config);
-	diffDataflowGraph(ctx);
-	return ctx.report;
-}
 
-function diffDataflowGraph(ctx: GraphDiffContext): void {
+/**
+ * This is the underlying function to calculate the difference based on a given context.
+ * Use {@link Dataflow.diff} to calculate the diff of two graphs.
+ */
+export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
 	diffOutgoingEdges(ctx);
@@ -87,21 +78,6 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 		return;
 	}
 	diffIdentifierReferences(a, b, ctx);
-}
-
-/**
- * Checks whether two function argument lists are equal.
- */
-export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
-	const ctx: GenericDifferenceInformation<GraphDifferenceReport> = {
-		report:    new GraphDifferenceReport(),
-		leftname:  'left',
-		rightname: 'right',
-		position:  '',
-		config:    {}
-	};
-	diffFunctionArguments(fn, a, b, ctx);
-	return ctx.report.isEqual();
 }
 
 /**

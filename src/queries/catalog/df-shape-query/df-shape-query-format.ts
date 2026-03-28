@@ -4,7 +4,7 @@ import type { StateAbstractDomain } from '../../../abstract-interpretation/domai
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
@@ -15,11 +15,11 @@ import { AbstractDomain } from '../../../abstract-interpretation/domains/abstrac
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
 	readonly type:       'df-shape';
-	readonly criterion?: SingleSlicingCriterion;
+	readonly criterion?: SlicingCriterion;
 }
 
 export interface DfShapeQueryResult extends BaseQueryResult {
-	domains: StateAbstractDomain<DataFrameDomain> | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
+	domains: StateAbstractDomain<DataFrameDomain> | Map<SlicingCriterion, DataFrameDomain | undefined>
 }
 
 function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'df-shape'> {

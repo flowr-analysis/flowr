@@ -17,8 +17,8 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.

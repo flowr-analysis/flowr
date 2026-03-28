@@ -9,11 +9,10 @@ import {
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -25,6 +24,7 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import { SourceRange } from '../../../../../../util/range';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /** e.g. new_generic(name, dispatch_args, fun=NULL) */
 interface S7GenericDispatchConfig {
@@ -57,7 +57,7 @@ export function processS7NewGeneric<OtherInfo>(
 	}
 	params[config.args.fun] = 'fun';
 	params['...'] = '...';
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+	const argMaps = pMatch(convertFnArguments(args), params);
 	const genName = unpackArg(RArgument.getWithId(args, argMaps.get('name')?.[0]));
 	if(!genName) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

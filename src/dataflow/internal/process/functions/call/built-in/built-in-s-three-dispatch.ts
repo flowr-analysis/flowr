@@ -1,15 +1,13 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation, alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { BuiltInProcName } from '../../../../../environments/built-in';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
@@ -18,6 +16,7 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { SourceRange } from '../../../../../../util/range';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
@@ -49,13 +48,13 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	};
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+	const argMaps = pMatch(convertFnArguments(args), params);
 	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
 	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
-	const dfObj = obj ? processDataflowFor(obj, data) : initializeCleanDataflowInformation(rootId, data);
+	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
 
 	if(alwaysExits(dfObj)) {
 		patchFunctionCall({

@@ -7,7 +7,7 @@ import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
@@ -20,6 +20,7 @@ import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -114,7 +115,7 @@ export const Enrichments = {
 			const n = await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
 			if(callVertex?.tag === VertexType.FunctionCall) {
-				const origins = getOriginInDfg(df.graph, callVertex.id);
+				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {

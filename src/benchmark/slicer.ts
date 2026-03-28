@@ -24,7 +24,7 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
+import { SlicingCriteria } from '../slicing/criterion/parse';
 import {
 	createSlicePipeline,
 	type DEFAULT_SLICING_PIPELINE,
@@ -59,8 +59,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
-import type { CallGraph } from '../dataflow/graph/call-graph';
-import { computeCallGraph } from '../dataflow/graph/call-graph';
+import { CallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -120,7 +119,7 @@ export class BenchmarkSlicer {
 	private readonly parserName: KnownParserName;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType[] | undefined;
+	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
@@ -294,7 +293,8 @@ export class BenchmarkSlicer {
 
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
-		stats.slicingCriteria = [...slicedOutput.decodedCriteria];
+		const decodedCriteria = SlicingCriteria.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
+		stats.slicingCriteria = Array.from(decodedCriteria);
 
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code');
 
@@ -304,9 +304,9 @@ export class BenchmarkSlicer {
 		const results = this.executor.getResults(false);
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
-			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
-				const node = results.normalize.idMap.get(c.id);
-				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
+			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.slicedFor.map(id => {
+				const node = results.normalize.idMap.get(id);
+				return `\n-   id: ${id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
 			}).join('')}`);
 		}
 
@@ -342,7 +342,7 @@ export class BenchmarkSlicer {
 		const g = this.dataflow?.graph;
 		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
-		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
+		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**

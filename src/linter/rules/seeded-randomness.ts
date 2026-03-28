@@ -28,7 +28,7 @@ import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
-import { BuiltInProcName } from '../../dataflow/environments/built-in';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string

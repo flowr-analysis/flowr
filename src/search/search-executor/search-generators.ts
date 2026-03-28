@@ -4,7 +4,7 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteria, slicingCriterionToId } from '../../slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
@@ -176,7 +176,7 @@ async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { sour
 async function generateCriterion(input: ReadonlyFlowrAnalysisProvider, args: { criterion: SlicingCriteria }): Promise<FlowrSearchElements<ParentInformation>> {
 	const idMap = (await input.normalize()).idMap;
 	return new FlowrSearchElements(
-		args.criterion.map(c => ({ node: idMap.get(slicingCriterionToId(c, idMap)) as RNodeWithParent }))
+		args.criterion.map(c => ({ node: idMap.get(SlicingCriterion.parse(c, idMap)) as RNodeWithParent }))
 	);
 }
 

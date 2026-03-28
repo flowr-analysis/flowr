@@ -8,7 +8,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**

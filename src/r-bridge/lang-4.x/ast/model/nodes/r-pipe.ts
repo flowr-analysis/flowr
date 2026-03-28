@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import { SemVer } from 'semver';
 import { MIN_VERSION_PIPE } from '../versions';
@@ -16,6 +17,7 @@ export interface RPipe<Info = NoInfo> extends RAstNodeBase<Info>, Location {
  * Helper for working with {@link RPipe} AST nodes.
  */
 export const RPipe = {
+	...RNode,
 	name: 'RPipe',
 	/**
 	 * Type guard for {@link RPipe} nodes.

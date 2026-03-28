@@ -1,19 +1,12 @@
-import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { RShell } from '../../r-bridge/shell';
-import { createDataflowPipeline, createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
+import { createNormalizePipeline } from '../../core/steps/pipeline/default-pipelines';
 import {
-	deterministicCountingIdGenerator,
 	type ParentInformation,
 	type RNodeWithParent
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
-import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
-import { guard } from '../../util/assert';
 import { normalizedAstToMermaid } from '../../util/mermaid/ast';
 import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
-import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 
@@ -72,30 +65,4 @@ ${normalizedAstToMermaid(result.normalize.ast, { prefix })}
 
 ` : '\n(' + metaInfo + ')\n\n')
 	;
-}
-
-
-/**
- * returns resolved expected df graph
- */
-export async function verifyExpectedSubgraph(shell: RShell, code: string, expectedSubgraph: DataflowGraph): Promise<DataflowGraph> {
-	/* we verify that we get what we want first! */
-	const context = contextFromInput(code);
-	const info = await createDataflowPipeline(shell, {
-		context: context,
-		getId:   deterministicCountingIdGenerator(0)
-	}).allRemainingSteps();
-
-	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph, context);
-	const report: GraphDifferenceReport = diffOfDataflowGraphs(
-		{ name: 'expected', graph: expectedSubgraph },
-		{ name: 'got',      graph: info.dataflow.graph },
-		{
-			leftIsSubgraph: true
-		}
-	);
-
-	guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
-	return expectedSubgraph;
 }

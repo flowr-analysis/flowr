@@ -77,6 +77,14 @@ import type {
 import {
 	InspectExceptionQueryDefinition
 } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
+import type {
+	InputSourcesQuery,
+} from './catalog/input-sources-query/input-sources-query-format';
+import {
+	InputSourcesDefinition
+} from './catalog/input-sources-query/input-sources-query-format';
+import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
+import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -105,6 +113,8 @@ export type Query = CallContextQuery
 	| ProjectQuery
 	| OriginQuery
 	| LinterQuery
+	| ProvenanceQuery
+	| InputSourcesQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -160,6 +170,8 @@ export const SupportedQueries = {
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
 	'static-slice':         StaticSliceQueryDefinition,
+	'provenance':           ProvenanceQueryDefinition,
+	'input-sources':        InputSourcesDefinition,
 	'dependencies':         DependenciesQueryDefinition,
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,

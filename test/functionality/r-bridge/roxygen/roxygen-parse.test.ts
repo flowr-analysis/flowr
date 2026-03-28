@@ -3,8 +3,7 @@ import type { RoxygenTag } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { KnownRoxygenTags } from '../../../../src/r-bridge/roxygen2/roxygen-ast';
 import { parseRoxygenCommentsOfNode, parseRoxygenComment } from '../../../../src/r-bridge/roxygen2/roxygen-parse';
 import { withTreeSitter } from '../../_helper/shell';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { guard } from '../../../../src/util/assert';
@@ -98,12 +97,12 @@ describe('Parse Comments', () => {
 		]);
 	});
 	describe('From R Code', withTreeSitter(ts => {
-		function check(name: string, code: string, asks: SingleSlicingCriterion[], expected: readonly RoxygenTag[]) {
+		function check(name: string, code: string, asks: SlicingCriterion[], expected: readonly RoxygenTag[]) {
 			test.each(asks)(name, async(ask) => {
 				const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 				analyzer.addRequest(requestFromInput(code));
 				const nast = await analyzer.normalize();
-				const criterion = slicingCriterionToId(ask, nast.idMap);
+				const criterion = SlicingCriterion.parse(ask, nast.idMap);
 				const vertex = nast.idMap.get(criterion);
 				guard(vertex !== undefined, `No vertex found for criterion ${JSON.stringify(ask)}`);
 				const comments = parseRoxygenCommentsOfNode(vertex, nast.idMap);

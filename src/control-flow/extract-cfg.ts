@@ -30,11 +30,11 @@ import { type CfgSimplificationPassName, simplifyControlFlowInformation } from '
 import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 

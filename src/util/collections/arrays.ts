@@ -253,6 +253,13 @@ export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[
 }
 
 /**
+ * Returns a duplicate-free array.
+ */
+export function uniqueArray<T>(a: Iterable<T>): T[] {
+	return Array.from(new Set(a));
+}
+
+/**
  * Groups the elements of the given array by the key returned by the given key function.
  */
 export function arraysGroupBy<T, K>(arr: readonly T[], keyFn: (elem: T) => K): Map<K, T[]> {

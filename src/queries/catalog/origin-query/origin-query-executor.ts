@@ -1,13 +1,13 @@
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { OriginQuery, OriginQueryResult } from './origin-query-format';
-import { getOriginInDfg } from '../../../dataflow/origin/dfg-get-origin';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /**
  * Produce a fingerprint string for an origin query
  */
-export function fingerPrintOfQuery(query: OriginQuery): SingleSlicingCriterion {
+export function fingerPrintOfQuery(query: OriginQuery): SlicingCriterion {
 	return query.criterion;
 }
 
@@ -24,12 +24,12 @@ export async function executeResolveValueQuery({ analyzer }: BasicQueryData, que
 			log.warn(`Duplicate Key for origin-query: ${key}, skipping...`);
 		}
 
-		const astId = slicingCriterionToId(key, (await analyzer.normalize()).idMap);
+		const astId = SlicingCriterion.tryParse(key, (await analyzer.normalize()).idMap);
 		if(astId === undefined) {
 			log.warn(`Could not resolve id for ${key}, skipping...`);
 			continue;
 		}
-		results[key] = getOriginInDfg((await analyzer.dataflow()).graph, astId);
+		results[key] = Dataflow.origin((await analyzer.dataflow()).graph, astId);
 	}
 
 	return {

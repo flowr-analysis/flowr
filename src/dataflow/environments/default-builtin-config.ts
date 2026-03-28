@@ -6,10 +6,10 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
-import { BuiltInProcName } from './built-in';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 import { KnownHooks } from '../hooks';
 import { Identifier } from './identifier';
+import { BuiltInProcName } from './built-in-proc-name';
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',

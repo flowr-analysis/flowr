@@ -2,7 +2,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { DfEdge, EdgeType } from '../graph/edge';
 import type { DataflowGraph } from '../graph/graph';
 import { happensInEveryBranch } from '../info';
-import { getOriginInDfg } from './dfg-get-origin';
+import { Dataflow } from '../graph/df-helper';
 
 /**
  * Finds the definition of a variable and all other uses from that point on
@@ -22,7 +22,7 @@ import { getOriginInDfg } from './dfg-get-origin';
  */
 export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId[] | undefined {
 	// Get all origins and filter for ones that happen for sure
-	const origins = getOriginInDfg(graph, nodeId);
+	const origins = Dataflow.origin(graph, nodeId);
 	if(origins === undefined) {
 		return undefined;
 	}
@@ -36,13 +36,13 @@ export function getAllRefsToSymbol(graph: DataflowGraph, nodeId: NodeId): NodeId
 
 	// Gather all the references
 	const res = new Set<NodeId>();
-	for(const origin of definitiveOrigins) {
-		res.add(origin.id);
-		graph.ingoingEdges(origin.id)
+	for(const { id } of definitiveOrigins) {
+		res.add(id);
+		graph.ingoingEdges(id)
 			?.entries()
 			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Reads))
 			.forEach(([node, _]) => res.add(node));
-		graph.outgoingEdges(origin.id)
+		graph.outgoingEdges(id)
 			?.entries()
 			.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.DefinedByOnCall))
 			.forEach(([node, _]) => res.add(node));

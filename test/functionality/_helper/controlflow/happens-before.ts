@@ -1,4 +1,4 @@
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { assert, describe, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { Ternary } from '../../../../src/util/logic';
@@ -17,7 +17,7 @@ import { contextFromInput } from '../../../../src/project/context/flowr-analyzer
  * @param b        - The second slicing criterion that is compared against the first.
  * @param expected - The expected Ternary result indicating the happens-before relationship.
  */
-export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicingCriterion, b: SingleSlicingCriterion, expected: Ternary) {
+export function assertHappensBefore(shell: RShell, code: string, a: SlicingCriterion, b: SlicingCriterion, expected: Ternary) {
 	// shallow copy is important to avoid killing the CFG :c
 	return describe(code, () => {
 		test.each([shell, new TreeSitterExecutor()])('%s', async parser => {
@@ -26,8 +26,8 @@ export function assertHappensBefore(shell: RShell, code: string, a: SingleSlicin
 				context
 			}).allRemainingSteps();
 			const cfg = extractCfg(result.normalize, context);
-			const aResolved = slicingCriterionToId(a, result.normalize.idMap);
-			const bResolved = slicingCriterionToId(b, result.normalize.idMap);
+			const aResolved = SlicingCriterion.parse(a, result.normalize.idMap);
+			const bResolved = SlicingCriterion.parse(b, result.normalize.idMap);
 			try {
 				assert.strictEqual(happensBefore(cfg.graph, aResolved, bResolved), expected, `expected ${a} (resolved to ${aResolved}) to ${expected} happen before ${b} (resolved to ${bResolved})`);
 				if(expected === Ternary.Always) {

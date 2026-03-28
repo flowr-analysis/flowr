@@ -3,9 +3,9 @@ import { describe } from 'vitest';
 import { assertCfg } from '../../_helper/controlflow/assert-control-flow-graph';
 import { ControlFlowGraph } from '../../../../src/control-flow/control-flow-graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
 import { canReach } from '../../../../src/control-flow/simple-visitor';
 import type { SupportedFlowrCapabilityId } from '../../../../src/r-bridge/data/get';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 
 interface CfgDeadCodeArgs {
 	readonly reachableFromStart:   readonly NodeId[];
@@ -25,7 +25,7 @@ describe('Control Flow Graph', withTreeSitter(parser => {
 			testIds:              ids,
 			additionalAsserts:    (cfg, ast) => {
 				for(const [n, i] of [...reachableFromStart.map(n => [n, false] as const), ...unreachableFromStart.map(n => [n, true] as const)]) {
-					const resolved = tryResolveSliceCriterionToId(n, ast.idMap) ?? n;
+					const resolved = SlicingCriterion.tryParse(n, ast.idMap) ?? n;
 					if(i === canReach(cfg.graph, cfg.entryPoints, resolved)) {
 						throw new Error(`Expected node ${n} (${resolved}) to be ${i ? 'unreachable' : 'reachable'} from the start (${JSON.stringify(cfg.entryPoints)}), but it is not.`);
 					}

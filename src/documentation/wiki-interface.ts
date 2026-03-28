@@ -19,8 +19,8 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { explainWritingCode } from './data/interface/doc-writing-code';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();

@@ -702,17 +702,19 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 * @see {@link ControlFlowGraph#addEdges|addEdges()} - to add multiple edges at once
 	 */
 	addEdge(from: NodeId, to: NodeId, edge: CfgEdge): this {
-		const edgesFrom = this.edgeInfos.get(from) ?? new Map<NodeId, CfgEdge>();
-		if(!this.edgeInfos.has(from)) {
-			this.edgeInfos.set(from, edgesFrom);
+		const edgesFrom = this.edgeInfos.get(from);
+		if(!edgesFrom) {
+			this.edgeInfos.set(from, new Map<NodeId, CfgEdge>([[to, edge]]));
+		} else {
+			edgesFrom.set(to, edge);
 		}
-		edgesFrom.set(to, edge);
 
-		const edgesTo = this.revEdgeInfos.get(to) ?? new Map<NodeId, CfgEdge>();
-		if(!this.revEdgeInfos.has(to)) {
-			this.revEdgeInfos.set(to, edgesTo);
+		const edgesTo = this.revEdgeInfos.get(to);
+		if(!edgesTo) {
+			this.revEdgeInfos.set(to, new Map<NodeId, CfgEdge>([[from, edge]]));
+		} else {
+			edgesTo.set(from, edge);
 		}
-		edgesTo.set(from, edge);
 		return this;
 	}
 
@@ -900,7 +902,7 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 		const roots = other.roots;
 		if(this._mayBB) {
 			for(const [id, node] of other.vtxInfos) {
-				this.addVertex(node, forceNested ? false : roots.has(id));
+				this.addVertex(node, !forceNested && roots.has(id));
 			}
 		} else {
 			for(const [id, node] of other.vtxInfos) {

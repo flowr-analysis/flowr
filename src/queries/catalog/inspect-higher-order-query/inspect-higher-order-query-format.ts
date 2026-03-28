@@ -4,7 +4,7 @@ import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeHigherOrderQuery } from './inspect-higher-order-query-executor';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
@@ -16,7 +16,7 @@ import { SourceLocation } from '../../../util/range';
  */
 export interface InspectHigherOrderQuery extends BaseQueryFormat {
 	readonly type:    'inspect-higher-order';
-	readonly filter?: SingleSlicingCriterion[]
+	readonly filter?: SlicingCriterion[]
 }
 
 export interface InspectHigherOrderQueryResult extends BaseQueryResult {

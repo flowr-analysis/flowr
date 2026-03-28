@@ -8,8 +8,8 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a special built-in binary operator, possibly lazily.

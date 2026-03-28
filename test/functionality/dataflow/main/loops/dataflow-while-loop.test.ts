@@ -3,9 +3,9 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe.sequential('While', withShell(shell => {
 	assertDataflow(label('simple constant while', ['while-loop', 'logical', 'numbers']), shell, 'while (TRUE) 2', emptyGraph()

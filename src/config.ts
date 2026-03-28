@@ -171,7 +171,11 @@ export interface FlowrConfig extends MergeableRecord {
 			/**
 			 * The maximum number of iterations to perform on a single function call during slicing
 			 */
-			readonly threshold?: number
+			readonly threshold?:  number
+			/**
+			 * If set, the slicer will gain an additional post-pass
+			 */
+			readonly autoExtend?: boolean
 		}
 	}
 	/**
@@ -284,7 +288,8 @@ export const FlowrConfig = {
 					dataflowExtractors: undefined
 				},
 				slicer: {
-					threshold: 50
+					threshold:  50,
+					autoExtend: false
 				}
 			},
 			abstractInterpretation: {
@@ -347,7 +352,8 @@ export const FlowrConfig = {
 				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
-				threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
+				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),
+				autoExtend: Joi.boolean().optional().description('If set, the slicer will gain an additional post-pass.')
 			}).optional().description('The configuration for the slicer.')
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
@@ -440,7 +446,7 @@ export const FlowrConfig = {
 	 */
 	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
 		objectPath.set(config, key, value);
-	}
+	},
 } as const;
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {

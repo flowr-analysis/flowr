@@ -1,4 +1,4 @@
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReconstructionResult } from '../../reconstruct/reconstruct';
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
@@ -18,7 +18,7 @@ export type ElapsedTime = bigint;
 
 export interface PerSliceStats {
 	measurements:                Map<PerSliceMeasurements, ElapsedTime>
-	slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
+	slicingCriteria:             { criterion: SlicingCriterion, id: NodeId }[]
 	reconstructedCode:           ReconstructionResult
 	numberOfDataflowNodesSliced: number
 	timesHitThreshold:           number

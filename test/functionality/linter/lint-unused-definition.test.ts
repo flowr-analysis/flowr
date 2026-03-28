@@ -1,7 +1,7 @@
 import { describe } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import { type SlicingCriteria, convertAllSlicingCriteriaToIds } from '../../../src/slicing/criterion/parse';
+import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
 import { SourceLocation, SourceRange } from '../../../src/util/range';
@@ -39,7 +39,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
-					const ids = convertAllSlicingCriteriaToIds(criteria.split(';') as SlicingCriteria, ast.idMap);
+					const ids = SlicingCriteria.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {
 						const node = ast.idMap.get(id);
 						guard(node !== undefined, `Expected node for id ${id} to be defined, but got undefined`);

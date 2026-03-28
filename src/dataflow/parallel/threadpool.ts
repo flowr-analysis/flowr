@@ -34,8 +34,6 @@ export interface WorkerPoolSettings {
     idleTimeout:              number;
     /** Amount of tasks each worker can compute */
     concurrentTasksPerWorker: number;
-    /** Timeout for waiting on worker stats gathering */
-    workerStatsTimeout:       number;
     /**
      * Data that is given to each worker via the workerData
      * Important: data needs to be clonable and data is copied for each worker
@@ -53,7 +51,6 @@ export const WorkerpoolDefaultSettings: WorkerPoolSettings = {
 	workerPath:               './worker.js',
 	idleTimeout:              30_000, // 30 seconds timeout
 	concurrentTasksPerWorker: 2,
-	workerStatsTimeout:       5000, // 5 seconds
 	workerData:               {},
 };
 
@@ -104,8 +101,6 @@ export class Workerpool {
 	private readonly workerLifeStats = new Map<number, WorkerLifecycle>();
 	private readonly portCleanup = new Map<number, () => void>();
 
-	private shutdownTimeout: number; // ms
-
 	constructor(settings: WorkerPoolSettings = WorkerpoolDefaultSettings, flowrConfig = cloneConfig(defaultConfigOptions)) {
 		console.log('workerPool: ', __dirname, process.env.NODE_ENV, settings.workerPath);
 		let workers = settings.nofMaxWorkers;
@@ -118,7 +113,6 @@ export class Workerpool {
 			resolve(__dirname, settings.workerPath);
 
 		console.log(finalPath);
-		this.shutdownTimeout = settings.workerStatsTimeout;
 		// create tiny pool instance
 		this.pool = new Piscina({
 			minThreads:               Math.max(settings.nofMinWorkers, 0),

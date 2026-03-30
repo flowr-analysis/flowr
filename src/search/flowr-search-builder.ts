@@ -19,6 +19,8 @@ import type TreeSitter from 'web-tree-sitter';
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
+
+const AllGeneratorObj = { type: 'generator', name: 'all', args: undefined } as const;
 /**
  * This object holds all the methods to generate search queries.
  * For compatibility, please use the {@link Q} identifier object to access these methods.
@@ -51,7 +53,7 @@ export const FlowrSearchGenerator = {
 	 * Returns all elements (nodes/dataflow vertices) from the given data.
 	 */
 	all(): FlowrSearchBuilder<'all'> {
-		return new FlowrSearchBuilder({ type: 'generator', name: 'all', args: undefined });
+		return new FlowrSearchBuilder(AllGeneratorObj);
 	},
 	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
@@ -60,7 +62,7 @@ export const FlowrSearchGenerator = {
 	 */
 	get(filter: FlowrSearchGetFilter): FlowrSearchBuilder<'get'> {
 		guard(!filter.nameIsRegex || filter.name, 'If nameIsRegex is set, a name should be provided');
-		guard(!filter.line || filter.line != 0, 'If line is set, it must be different from 0 as there is no 0 line');
+		guard(!filter.line || filter.line !== 0, 'If line is set, it must be different from 0 as there is no 0 line');
 		guard(!filter.column || filter.column > 0, 'If column is set, it must be greater than 0, but was ' + filter.column);
 		return new FlowrSearchBuilder({ type: 'generator', name: 'get', args: { filter } });
 	},

@@ -31,6 +31,7 @@ body:
         - Naming Convention
         - Network Functions
         - Problematic eval
+        - Roxygen Arguments
         - Seeded Randomness
         - Stop without call.=False argument
         - Unused Definitions

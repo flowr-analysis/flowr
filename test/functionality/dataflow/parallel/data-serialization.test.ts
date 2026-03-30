@@ -5,8 +5,9 @@ import { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { VertexType } from '../../../../src/dataflow/graph/vertex';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import type { AnalyzerSetupCluster, AnalyzerSetupFunction } from './analyzer-test-data';
-import { complexDataflowTests, simpleDataflowTests, sourceBasedDataflowTests } from './analyzer-test-data';
+import type { AnalyzerSetupFunction } from './test-data/types';
+import type { TestSuite } from './test-data/test-suites';
+import { simpleDataflowTests, complexDataflowTests, sourceBasedDataflowTests } from './test-data/test-suites';
 
 type EnvironmentLike = {
 	builtInEnv?: true;
@@ -148,7 +149,7 @@ function assertEnvironmentLevelwiseEquality(original: EnvironmentLike, parsed: E
 	}
 }
 
-function registerGraphClusterTests(clusterName: string, testCluster: AnalyzerSetupCluster): void {
+function registerGraphClusterTests(clusterName: string, testCluster: TestSuite): void {
 	for(const testCase of testCluster) {
 		test(`${clusterName} :: ${testCase.name}`, async() => {
 			await checkDataflowGraphSerializationStrict(testCase.name, testCase.setup);
@@ -156,7 +157,7 @@ function registerGraphClusterTests(clusterName: string, testCluster: AnalyzerSet
 	}
 }
 
-function registerEnvironmentClusterTests(clusterName: string, testCluster: AnalyzerSetupCluster): void {
+function registerEnvironmentClusterTests(clusterName: string, testCluster: TestSuite): void {
 	for(const testCase of testCluster) {
 		test(`${clusterName} :: ${testCase.name}`, async() => {
 			await checkEnvironmentSerializationStrict(testCase.name, testCase.setup);

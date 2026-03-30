@@ -34,6 +34,87 @@ import type { IdentifierReference } from './environments/identifier';
 import { ReferenceType } from './environments/identifier';
 import { isBuiltIn } from './environments/built-in';
 
+function snapshotBuiltInDefinitions(environment: REnvironmentInformation): Set<string> {
+	let current = environment.current;
+	while(!current.builtInEnv) {
+		current = current.parent;
+	}
+
+	return new Set(current.memory.keys());
+}
+
+function scanRedefinedBuiltIns(
+	environment: REnvironmentInformation,
+	builtInDefinitions: ReadonlySet<string>,
+	knownRedefinitions?: ReadonlySet<string>
+): Set<string> {
+	const redefined = knownRedefinitions ? new Set(knownRedefinitions) : new Set<string>();
+	let current = environment.current;
+
+	while(!current.builtInEnv) {
+		for(const [name, definitions] of current.memory.entries()) {
+			if(redefined.has(name) || !builtInDefinitions.has(name) || definitions.length === 0) {
+				continue;
+			}
+
+			if(definitions.some(definition => !isBuiltIn(definition.definedAt))) {
+				redefined.add(name);
+			}
+		}
+
+		current = current.parent;
+	}
+
+	return redefined;
+}
+
+function findUsedRedefinedBuiltIns(
+	graph: DataflowGraph,
+	redefinedBuiltIns: ReadonlySet<string>
+): Set<string> {
+	const used = new Set<string>();
+
+	if(redefinedBuiltIns.size === 0) {
+		return used;
+	}
+
+	for(const [, vertex] of graph.vertices(true)) {
+		if(vertex.tag === VertexType.FunctionCall && redefinedBuiltIns.has(vertex.name)) {
+			used.add(vertex.name);
+		}
+	}
+
+	return used;
+}
+
+function collectFunctionCallCandidates(targetGraph: DataflowGraph): IdentifierReference[] {
+	const candidates: IdentifierReference[] = [];
+	const seenNodeIds = new Set<NodeId>();
+	const hasBuiltInCallEdge = (nodeId: NodeId): boolean =>
+		[...(targetGraph.outgoingEdges(nodeId)?.entries() ?? [])]
+			.some(([target, edge]) => edgeIncludesType(edge.types, EdgeType.Calls) && isBuiltIn(target));
+
+	for(const [nodeId, vertex] of targetGraph.vertices(true)) {
+		if(vertex.tag !== VertexType.FunctionCall || seenNodeIds.has(nodeId)) {
+			continue;
+		}
+
+		if(isBuiltIn(vertex.name) || hasBuiltInCallEdge(nodeId)) {
+			continue;
+		}
+
+		seenNodeIds.add(nodeId);
+		candidates.push({
+			nodeId,
+			name:                recoverName(nodeId, targetGraph.idMap) ?? vertex.name,
+			controlDependencies: vertex.cds,
+			type:                ReferenceType.Function
+		});
+	}
+
+	return candidates;
+}
+
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
  * Maps every {@link RType} in the normalized AST to a processor.
@@ -106,6 +187,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 function resolveCrossFileReferences(
 	graph: DataflowGraph,
 	environment: REnvironmentInformation,
+	functionCallCandidates: readonly IdentifierReference[],
 ): void {
 	const asIdentifierReference = (
 		nodeId: NodeId,
@@ -119,11 +201,31 @@ function resolveCrossFileReferences(
 		type
 	});
 
-	/** collect references that can benefit from an environment-based relink */
-	const candidates: IdentifierReference[] = [];
+	const clearReadsFromFunctionCalls = (calls: readonly IdentifierReference[]): void => {
+		for(const call of calls) {
+			const outgoingEdges = graph.outgoingEdges(call.nodeId);
+			if(outgoingEdges === undefined) {
+				continue;
+			}
+
+			for(const [target, edge] of [...outgoingEdges.entries()]) {
+				if(!edgeIncludesType(edge.types, EdgeType.Reads)) {
+					continue;
+				}
+
+				edge.types &= ~EdgeType.Reads;
+				if(edge.types === 0) {
+					graph.removeEdge(call.nodeId, target);
+				}
+			}
+		}
+	};
+
+	/** collect use references that may have builtin upgrades */
+	const useCandidates: IdentifierReference[] = [];
 
 	for(const [nodeId, vertex] of graph.vertices(true)) {
-		if(vertex.tag !== VertexType.Use && vertex.tag !== VertexType.FunctionCall) {
+		if(vertex.tag !== VertexType.Use) {
 			continue;
 		}
 
@@ -133,23 +235,26 @@ function resolveCrossFileReferences(
 		const hasReads = readTargets.length > 0;
 
 		if(!hasReads) {
-			candidates.push(
-				vertex.tag === VertexType.Use
-					? asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable)
-					: asIdentifierReference(nodeId, vertex.cds, ReferenceType.Function, vertex.name)
-			);
+			useCandidates.push(asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable));
 			continue;
 		}
 
-		// Keep historical behavior: only variable reads are upgraded from built-in placeholders here.
-		if(vertex.tag === VertexType.Use && readTargets.every(target => isBuiltIn(target))) {
-			candidates.push(asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable));
+		// For Use references, only process if reads are to builtins (to upgrade them)
+		if(readTargets.every(target => isBuiltIn(target))) {
+			useCandidates.push(asIdentifierReference(nodeId, vertex.cds, ReferenceType.Variable));
 		}
 	}
 
-	console.log('Found references eligible for cross-file resolution: ', candidates);
+	// Reset function-call reads and relink them against the current merged environment.
+	clearReadsFromFunctionCalls(functionCallCandidates);
 
-	const unresolved = linkInputs(candidates, environment, [], graph, false, true);
+	// Resolve function calls without builtin placeholder upgrading.
+	const unresolvedFunctions = linkInputs(functionCallCandidates, environment, [], graph, false, false);
+
+	// Resolve use references with builtin placeholder upgrading
+	const unresolvedUses = linkInputs(useCandidates, environment, [], graph, false, true);
+
+	const unresolved = unresolvedFunctions.concat(unresolvedUses);
 
 	if(unresolved.length > 0){
 		console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` +
@@ -189,6 +294,8 @@ export async function produceDataFlowGraph<OtherInfo>(
 	};
 
 	if(fileParallelization && workerPool){
+		const builtInDefinitions = snapshotBuiltInDefinitions(dfData.environment);
+
 		// parse data
 		const parsed = SerializeDataflowProcessorInformation(dfData);
 		const result = await workerPool.submitTasks<DataflowPayload<OtherInfo>, DataflowReturnPayload<OtherInfo>>(
@@ -211,23 +318,56 @@ export async function produceDataFlowGraph<OtherInfo>(
 
 		let df = parsedResult[0].dataflow;
 		console.log('result length: ', parsedResult.length);
+		let shouldFallbackToSequential = false;
+		let trackedRedefinedBuiltIns;
+		let fallbackIteration: number | undefined;
 
 		// merge dataflowinformation via folding
 		for(let i = 1; i < result.length; i++){
 			console.log('merging dataflow for file-', i);
+			const functionCallCandidates = new Map<NodeId, IdentifierReference>();
+			for(const candidate of collectFunctionCallCandidates(df.graph)) {
+				functionCallCandidates.set(candidate.nodeId, candidate);
+			}
+			for(const candidate of collectFunctionCallCandidates(parsedResult[i].dataflow.graph)) {
+				functionCallCandidates.set(candidate.nodeId, candidate);
+			}
+
 			df = mergeDataflowInformation('file-'+i, parsedResult[i].processorInfo, files[i].filePath, df, parsedResult[i].dataflow);
-			resolveCrossFileReferences(df.graph, df.environment);
+
+			trackedRedefinedBuiltIns = scanRedefinedBuiltIns(df.environment, builtInDefinitions, trackedRedefinedBuiltIns);
+
+			const usedRedefinedBuiltIns = findUsedRedefinedBuiltIns(df.graph, trackedRedefinedBuiltIns);
+			if(usedRedefinedBuiltIns.size > 0) {
+				console.warn(
+					`Dataflow:: Detected usage of redefined built-ins in merged graph (${[...usedRedefinedBuiltIns].join(', ')}). ` +
+					'Aborting parallel merge and falling back to sequential computation.'
+				);
+				shouldFallbackToSequential = true;
+				fallbackIteration = i;
+				break;
+			}
+			resolveCrossFileReferences(df.graph, df.environment, [...functionCallCandidates.values()]);
 		}
 
+		if(shouldFallbackToSequential) {
+			// Mark debug information before falling through to sequential analysis
+			if(fallbackIteration !== undefined) {
+				df.reanalysisTriggered = true;
+				df.reanalysisIteration = fallbackIteration;
+				df.reanalysisFileIndex = fallbackIteration;
+			}
+			// fall through to sequential analysis below
+		} else {
 
-		// finally, resolve linkages
-		updateNestedFunctionCalls(df.graph, df.environment);
+			// finally, resolve linkages
+			updateNestedFunctionCalls(df.graph, df.environment);
 
-		const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+			const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
 
-		// performance optimization: return cfgQuick as part of the result to avoid recomputation
-		return { ...df, cfgQuick };
-
+			// performance optimization: return cfgQuick as part of the result to avoid recomputation
+			return { ...df, cfgQuick };
+		}
 	}
 
 	if(!workerPool && fileParallelization){

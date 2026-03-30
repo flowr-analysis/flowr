@@ -103,21 +103,30 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	 * as we have not yet seen the assignment!
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
-	unknownReferences: readonly IdentifierReference[]
+	unknownReferences:    readonly IdentifierReference[]
 	/**
 	 * References which are read within the current subtree.
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
-	in:                readonly IdentifierReference[]
+	in:                   readonly IdentifierReference[]
 	/**
 	 * References which are written to within the current subtree
 	 * @see {@link IdentifierReference} - a reference on a variable, parameter, function call, ...
 	 */
-	out:               readonly IdentifierReference[]
+	out:                  readonly IdentifierReference[]
 	/** Current environments used for name resolution, probably updated on the next expression-list processing */
-	environment:       REnvironmentInformation
+	environment:          REnvironmentInformation
 	/** The current constructed dataflow graph */
-	graph:             DataflowGraph
+	graph:                DataflowGraph
+	/**
+	 * Debug information tracking parallel merge re-analysis behavior.
+	 * Only set when file parallelization is enabled and a fallback occurs.
+	 */
+	reanalysisTriggered?: boolean
+	/** Which merge iteration triggered the re-analysis fallback (0-indexed) */
+	reanalysisIteration?: number
+	/** Which file index was being merged when re-analysis was triggered (0-indexed) */
+	reanalysisFileIndex?: number
 }
 
 /**

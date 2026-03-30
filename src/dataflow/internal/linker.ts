@@ -44,6 +44,10 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 		const name = recoverName(id, graph.idMap);
 		const origin = graph.getVertex(id, true);
 
+		if(id === 13){
+			console.log('outgoing:', outgoing);
+		}
+
 		if(outgoing === undefined) {
 			nonLocalReads.push({
 				name:                recoverName(id, graph.idMap),
@@ -57,6 +61,9 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
 				if(!name) {
 					dataflowLogger.warn('found non-local read without name for id ' + id);
+				}
+				if(id === 13){
+					console.log(target, ' ', ids, ' ', !ids.has(target));
 				}
 				nonLocalReads.push({
 					name:                recoverName(id, graph.idMap),

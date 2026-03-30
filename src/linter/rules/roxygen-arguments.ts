@@ -39,17 +39,18 @@ function getDocumentation(id: NodeId, idMap: AstIdMap): readonly RoxygenTag[] | 
 	return Array.isArray(comment) ? comment : [comment] as readonly RoxygenTag[];
 }
 
-function calculateArgumentDiff(inheritedParams: string[], functionParam: string[], roxygenParam: string[]): [boolean, string[], string[]]{
+function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] }{
 
 	//match documented against existing params
 	let underDocumented = new Set(functionParam);
+	const notOverDocumented = underDocumented.has('...');
 	let overDocumented = new Set(roxygenParam);
 	const commonParams = underDocumented.intersection(overDocumented);
 	underDocumented = underDocumented.difference(commonParams);
 	overDocumented = overDocumented.difference(commonParams);
 
 	//case: '...', overdocumentation not possible
-	if(functionParam.includes('...')){
+	if(notOverDocumented){
 		//if still remaining overdocumented parameters, "..." doesn't need to be documented
 		if(overDocumented.size > 0){
 			underDocumented.delete('...');
@@ -60,7 +61,7 @@ function calculateArgumentDiff(inheritedParams: string[], functionParam: string[
 	//inherited params removed from list of overdocumented params
 	overDocumented = overDocumented.difference(new Set(inheritedParams));
 
-	return [underDocumented.size !== 0 || overDocumented.size !== 0, Array.from(underDocumented), Array.from(overDocumented)];
+	return underDocumented.size === 0 && overDocumented.size === 0 ? false : { under: Array.from(underDocumented), over: Array.from(overDocumented) };
 }
 
 export const ROXYGEN_ARGS = {
@@ -90,9 +91,12 @@ export const ROXYGEN_ARGS = {
 							return false;
 						}
 						const result = calculateArgumentDiff(inheritedParams, functionParamNames, roxygenParamNames);
-						underDocumented.push(...result[1]);
-						overDocumented.push(...result[2]);
-						return result[0];
+						if(result === false){
+							return false;
+						}
+						underDocumented.push(...result.under);
+						overDocumented.push(...result.over);
+						return true;
 					})
 					.map(({ element, overDocumented, underDocumented }) => ({
 						certainty:       LintingResultCertainty.Uncertain,

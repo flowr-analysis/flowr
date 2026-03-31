@@ -53,10 +53,10 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
 
-	constructor(config: Config) {
+	constructor(config: Config, domain: Domain) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
-		this._currentState = new MutableStateAbstractDomain<Domain>(new Map());
+		this._currentState = MutableStateAbstractDomain.top(domain);
 	}
 
 	public get currentState(): StateAbstractDomain<Domain> {
@@ -149,7 +149,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const exitNodes = exitPoints.map(CfgVertex.getRootId).filter(isNotUndefined);
 		const states = exitNodes.map(node => this.trace.get(node)).filter(isNotUndefined);
 
-		return AbstractDomain.joinAll(states, this._currentState.top());
+		return AbstractDomain.joinAll(states, this._currentState.bottom());
 	}
 
 	/**
@@ -196,19 +196,19 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
 
 		// retrieve new abstract state by joining states of predecessor nodes
-		if(predecessorStates.length === 1) {
-			this._currentState = predecessorStates[0];
+		if(predecessorStates.length <= 1) {
+			this._currentState = predecessorStates[0] ?? this._currentState.top();
 		} else {
-			this._currentState = AbstractDomain.joinAll(predecessorStates, this._currentState.top());
+			this._currentState = AbstractDomain.joinAll(predecessorStates);
 			this.stateCopied = true;
 		}
 		const nodeId = CfgVertex.getRootId(vertex);
 
 		// differentiate between widening points and other vertices
 		if(this.isWideningPoint(nodeId)) {
-			const oldState = this.trace.get(nodeId) ?? this._currentState.top();
+			const oldState = this.trace.get(nodeId);
 
-			if(this.shouldWiden(vertex)) {
+			if(oldState !== undefined && this.shouldWiden(vertex)) {
 				this._currentState = oldState.widen(this._currentState);
 				this.stateCopied = true;
 			}
@@ -219,7 +219,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			this.visited.set(nodeId, visitedCount + 1);
 
 			// continue visiting after widening point if visited for the first time or the state changed
-			return visitedCount === 0 || !oldState.equals(this._currentState);
+			return visitedCount === 0 || !oldState?.equals(this._currentState);
 		} else {
 			this.onVisitNode(vertexId);
 

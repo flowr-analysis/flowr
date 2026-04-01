@@ -258,7 +258,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['ifelse', 'fifelse', 'IfElse'],                processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'test', yes: 'yes', no: 'no' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['if_else'],                                    processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'condition', yes: 'true', no: 'false' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['get'],                                        processor: BuiltInProcName.Get,                 config: {},                                                                            assumePrimitive: false },
-	{ type: 'function', names: [Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: [Identifier.make('from', 'import'),  Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='],                                    processor: BuiltInProcName.Assignment,          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
 	{ type: 'function', names: [':='],                                         processor: BuiltInProcName.Assignment,          config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
@@ -305,6 +305,7 @@ export const DefaultBuiltinConfig = [
 			'sys.on.exit', 'par', 'tpar', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
+			Identifier.make('use', 'base'),
 			/* weird env attachments */
 			'attach', 'unname', 'data',
 			/* file creation/removal */

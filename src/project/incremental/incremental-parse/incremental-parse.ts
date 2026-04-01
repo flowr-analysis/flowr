@@ -15,9 +15,11 @@ export function coarseCheckWhetherToInvalidate(ctx: FlowrAnalyzerContext, event:
 		return false;
 	}
 
+	/*
 	if(!ctx.files.consideredFilesList().includes(event.file.path())) {
 		return false;
 	}
+	*/
 
 	return event.oldContent !== event.file.content();
 }

@@ -9,27 +9,27 @@ import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 describe('Function Call Pipes', withTreeSitter(ts => {
 	const pipeConfig = { minRVersion: RPipe.hasPlaceHolderFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 	describe('Basic Joining', () => {
-		assertDataflow(label('Basic Pipe', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f()',
+		assertDataflow(label('Basic Pipe', ['pipe-and-pipe-bind']), ts, 'x |> f()',
 			emptyGraph()
 				.addEdge('1@f', '1@x', EdgeType.Argument | EdgeType.Reads)
 				.call('1@f', 'f', [argumentInCall('1@x')]),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe With Placeholder', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(_)',
+		assertDataflow(label('Basic Pipe With Placeholder', ['pipe-and-pipe-bind']), ts, 'x |> f(_)',
 			emptyGraph()
 				.reads('1@_', '1@x')
 				.reads('1@f', '1@_')
 				.call('1@f', 'f', [argumentInCall('1@_')]),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe With Placeholder and Argument Name', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(a=_)',
+		assertDataflow(label('Basic Pipe With Placeholder and Argument Name', ['pipe-and-pipe-bind']), ts, 'x |> f(a=_)',
 			emptyGraph()
 				.reads('1@_', '1@x')
 				.reads('1@f', '$4')
 				.call('1@f', 'f', [argumentInCall(4)], { omitArgs: true }),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe As Second Arg', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(y, _)',
+		assertDataflow(label('Basic Pipe As Second Arg', ['pipe-and-pipe-bind']), ts, 'x |> f(y, _)',
 			emptyGraph()
 				.reads('1@_', '1@x')
 				.reads('1@f', '1@y')
@@ -37,7 +37,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@_')]),
 			pipeConfig
 		);
-		assertDataflow(label('Basic Pipe As Access in Arg', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(y, k=_$a)',
+		assertDataflow(label('Basic Pipe As Access in Arg', ['pipe-and-pipe-bind']), ts, 'x |> f(y, k=_$a)',
 			emptyGraph()
 				.reads('1@_', '1@x')
 				.reads('1@f', '1@y')
@@ -45,7 +45,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 			pipeConfig
 		);
 		describe('magrittr', () => {
-			assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',
+			assertDataflow(label('With %>%', ['pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',
 				emptyGraph()
 					.reads('1@.', '1@x')
 					.reads('1@f', '1@y')
@@ -53,7 +53,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 					.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@.')]),
 				{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 			);
-			assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f',
+			assertDataflow(label('With %>%', ['pipe-and-pipe-bind']), ts, 'x %>% f',
 				emptyGraph()
 					.reads('1@f', '1@x')
 					.call('1@f', 'f', [argumentInCall('1@x')]),
@@ -62,7 +62,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 		});
 	});
 	describe('Assignment Joins', () => {
-		assertDataflow(label('With %<>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %<>% f(y, .)',
+		assertDataflow(label('With %<>%', ['pipe-and-pipe-bind']), ts, 'x %<>% f(y, .)',
 			emptyGraph()
 				.reads('1@.', '1@x')
 				.reads('1@f', '1@y')
@@ -71,7 +71,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@.')]),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
-		assertDataflow(label('With %<>% and pre-use', ['built-in-pipe-and-pipe-bind']), ts, 'x <- 42\nx %<>% f(y, .)',
+		assertDataflow(label('With %<>% and pre-use', ['pipe-and-pipe-bind']), ts, 'x <- 42\nx %<>% f(y, .)',
 			emptyGraph()
 				.reads('2@.', '2@x')
 				.reads('2@f', '2@y')
@@ -83,12 +83,12 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 		);
 	});
 	describe('T Joins', () => {
-		assertDataflow(label('With T return', ['built-in-pipe-and-pipe-bind']), ts, 'x %T>% f(y)',
+		assertDataflow(label('With T return', ['pipe-and-pipe-bind']), ts, 'x %T>% f(y)',
 			emptyGraph()
 				.addEdge(8, '1@x', EdgeType.Returns | EdgeType.Argument),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
-		assertDataflow(label('No T return', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y)',
+		assertDataflow(label('No T return', ['pipe-and-pipe-bind']), ts, 'x %>% f(y)',
 			emptyGraph()
 				.addEdge(8, '1@f', EdgeType.Returns | EdgeType.Argument),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }

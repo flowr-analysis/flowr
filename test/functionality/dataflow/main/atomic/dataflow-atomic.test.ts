@@ -525,7 +525,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 
 	describe('Pipes', () => {
 		describe('Passing one argument', () => {
-			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind', 'name-normal', 'call-normal']),
+			assertDataflow(label('No parameter function', ['pipe-and-pipe-bind', 'name-normal', 'call-normal']),
 				shell, 'x |> f()',  emptyGraph()
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
@@ -537,7 +537,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.calls(4, NodeId.toBuiltIn('|>')),
 				{ minRVersion: MIN_VERSION_PIPE }
 			);
-			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']),
+			assertDataflow(label('Nested calling', ['pipe-and-pipe-bind', 'call-normal', 'pipe-and-pipe-bind', 'name-normal']),
 				shell, 'x |> f() |> g()', emptyGraph()
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
@@ -556,7 +556,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.calls(8, NodeId.toBuiltIn('|>')),
 				{ minRVersion: MIN_VERSION_PIPE }
 			);
-			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
+			assertDataflow(label('Multi-Parameter function', ['pipe-and-pipe-bind', 'call-normal', 'pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
 				shell, 'x |> f(y,z)',  emptyGraph()
 					.use(0, 'x')
 					.use(3, 'y')

@@ -126,12 +126,24 @@ export const FunctionArgument = {
 	 * foo(a=3, 2) # returns the node id of either `a` or `2`
 	 * ```
 	 * @see {@link FunctionArgument.getReference}
+	 * @see {@link FunctionArgument.getName}
 	 */
 	getId(this: void, arg: FunctionArgument): NodeId | undefined {
 		if(arg !== EmptyArgument) {
 			return arg?.nodeId;
 		}
 		return undefined;
+	},
+	/**
+	 * Returns the name of a named argument.
+	 * @example
+	 * ```r
+	 * foo(a = 3, 2) # returns 'a' or undefined
+	 * ```
+	 * @see {@link FunctionArgument.getId}
+	 */
+	getName(this: void, arg: FunctionArgument): string | undefined {
+		return FunctionArgument.isNamed(arg) ? arg.name : undefined;
 	},
 	/**
 	 * Returns the reference of a non-empty argument.

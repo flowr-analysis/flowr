@@ -167,11 +167,12 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		const type = event.type;
 		switch(type) {
 			case InvalidationEventType.Full:
-			case InvalidationEventType.FileInvalidate:
+				this.meta.reset();
 				this.files.reset();
 				this.deps.reset();
-				this.meta.reset();
 				this.inc.reset();
+				break;
+			case InvalidationEventType.FileInvalidate:
 				break;
 			default:
 				assertUnreachable(type);

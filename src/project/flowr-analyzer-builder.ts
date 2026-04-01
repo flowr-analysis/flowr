@@ -189,7 +189,6 @@ export class FlowrAnalyzerBuilder {
 		);
 
 		// we do it here to save time later if the analyzer is to be duplicated
-		context.resolvePreAnalysis();
 
 		return analyzer;
 	}

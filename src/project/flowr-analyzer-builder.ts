@@ -182,15 +182,10 @@ export class FlowrAnalyzerBuilder {
 			...(this.input ?? {})
 		});
 
-		const analyzer = new FlowrAnalyzer(
+		return new FlowrAnalyzer(
 			this.parser,
 			context,
 			cache
 		);
-
-		// we do it here to save time later if the analyzer is to be duplicated
-		context.resolvePreAnalysis();
-
-		return analyzer;
 	}
 }

@@ -17,7 +17,6 @@ describe('License-file', function() {
 	);
 
 	ctx.addFile(new FlowrInlineTextFile('LICENSE', 'Hey'));
-	ctx.resolvePreAnalysis();
 
 	test('Get the License!', () => {
 		const files = ctx.files.getFilesByRole(FileRole.License);

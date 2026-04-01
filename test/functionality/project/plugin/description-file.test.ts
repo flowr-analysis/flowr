@@ -89,7 +89,6 @@ function contextWithFile(desc: string): FlowrAnalyzerContext {
 	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', desc));
 	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
 	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
-	ctx.resolvePreAnalysis();
 	return ctx;
 }
 

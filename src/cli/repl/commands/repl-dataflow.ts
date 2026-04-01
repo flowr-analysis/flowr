@@ -90,7 +90,6 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 				` - ${(longVertexName + ':').padEnd(longestVertexType+1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
 			);
 		}
-		console.log(result.environment.current.memory.get('vars'));
 	}
 };
 

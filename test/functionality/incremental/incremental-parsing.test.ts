@@ -1,8 +1,9 @@
-import { assert, describe, it } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
 import type { NormalizedAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { printNormalizedAstToMermaid } from '../../../src/core/print/normalize-printer';
+import type { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 
 interface IncrementalParsingTestInput {
@@ -53,7 +54,23 @@ async function executeIncrementalParse(inputs: readonly IncrementalParsingTestIn
 		f?.updateInlineContent(input.updatedContent);
 	}
 
-	return (await analyzer.normalize());
+	const parser = analyzer['parser'] as TreeSitterExecutor;
+	const parseSpy = vi.spyOn(parser, 'parse');
+	const result = await analyzer.normalize();
+
+	const parseCalls = parseSpy.mock.calls;
+	let callIdx = 0;
+	for(const input of inputs ?? []) {
+		if(input.originalContent.trim() !== '' && input.updatedContent !== input.originalContent) {
+			// check if incremental parse was attempted, i.e., if a previousTree was provided when parsing again
+			const [, previousTreeArg] = parseCalls[callIdx];
+			expect(previousTreeArg, `file ${input.path}: expected incremental parse`).toBeDefined();
+
+			callIdx++;
+		}
+	}
+
+	return result;
 }
 
 
@@ -572,289 +589,5 @@ describe('Incremental Parsing produces same results as Full Parsing', () => {
 				await executeAndCompareResults(inputs);
 			});
 		});
-	});
-});
-
-
-
-
-
-
-
-
-describe('Incremental Parsing produces same results as Full Parsing for one file for', () => {
-	describe('no change', () => {
-		describe('to an empty file', async() => {
-			const inputs: IncrementalParsingTestInput[] = [{
-				originalContent: '',
-				updatedContent:  '',
-				path:            'a.R'
-			}];
-			await executeAndCompareResults(inputs);
-		});
-		describe('to a file with content', async() => {
-			const inputs: IncrementalParsingTestInput[] = [{
-				originalContent: 'x <- 42',
-				updatedContent:  'x <- 42',
-				path:            'a.R'
-			}];
-			await executeAndCompareResults(inputs);
-		});
-	});
-	describe('one line', () => {
-		describe('inserted', () => {
-			describe('into an empty file', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: '',
-					updatedContent:  'x <- 42',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at the start', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42',
-					updatedContent:  'y <- 21\nx <- 42',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at the end', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42',
-					updatedContent:  'x <- 42\nprint(x)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('in the middle', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nprint(x)',
-					updatedContent:  'x <- 42\nx <- 2 * x\nprint(x)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-		describe('removed', () => {
-			describe('such that the file becomes empty', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42',
-					updatedContent:  '',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at the start', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'y <- 21\nx <- 42',
-					updatedContent:  'x <- 42',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at the end', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nprint(x)',
-					updatedContent:  'x <- 42',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('in the middle', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nx <- 2 * x\nprint(x)',
-					updatedContent:  'x <- 42\nprint(x)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-		describe('replaced', () => {
-			describe('at the start', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'y <- 21\nx <- 42',
-					updatedContent:  'x <- 21\nx <- 42',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at the end', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nprint(x)',
-					updatedContent:  'x <- 42\nx <- x * x',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('in the middle', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nx <- 2 * x\nprint(x)',
-					updatedContent:  'x <- 42\nx <- 21\nprint(x)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-	});
-	describe('multiple lines', () => {
-		describe('inserted', () => {
-			describe('into an empty file', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: '',
-					updatedContent:  'x <- 42\ny <- 21\nz <- 10',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at different positions', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\nprint(x)',
-					updatedContent:  'y <- 21\nx <- 42\ny <- y * 2\nprint(x)\nprint(y)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-		describe('removed', () => {
-			describe('such that the file becomes empty', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'x <- 42\ny <- 21\nz <- 10',
-					updatedContent:  '',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('at different positions', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'y <- 21\nx <- 42\ny <- y * 2\nprint(x)\nprint(y)',
-					updatedContent:  'x <- 42\nprint(x)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-		describe('replaced', () => {
-			describe('partially', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'y <- 21\nx <- 42\ny <- y * 2\nprint(x)\nprint(y)',
-					updatedContent:  'y <- 21\nx <- 21\ny <- y * y\nprint(x)\nprint(y + 2)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-			describe('fully', async() => {
-				const inputs: IncrementalParsingTestInput[] = [{
-					originalContent: 'y <- 21\nx <- 42\ny <- y * 2\nprint(x)\nprint(y)',
-					updatedContent:  'z <- 10\nz <- z + 32\nprint(z)',
-					path:            'a.R'
-				}];
-				await executeAndCompareResults(inputs);
-			});
-		});
-	});
-});
-
-
-describe('Incremental Parsing produces same results as Full Parsing across multiple files for', () => {
-	it('editing only the first file while the second file stays unchanged', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 42\nprint(x)',
-				updatedContent:  'x <- 42\nx <- x + 1\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: 'y <- 21\nprint(y)',
-				updatedContent:  'y <- 21\nprint(y)',
-				path:            'b.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
-	});
-
-	it('editing only the second file while the first file stays unchanged', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 42\nprint(x)',
-				updatedContent:  'x <- 42\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: 'y <- 21\nprint(y)',
-				updatedContent:  'y <- 21\ny <- y * 2\nprint(y)',
-				path:            'b.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
-	});
-
-	it('editing both files independently in the same run', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 1\nprint(x)',
-				updatedContent:  'x <- 2\nx <- x * 3\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: 'y <- 10\nprint(y)',
-				updatedContent:  'z <- 10\nprint(z + 1)',
-				path:            'b.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
-	});
-
-	it('adding a new file while another file stays unchanged', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 42\nprint(x)',
-				updatedContent:  'x <- 42\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: '',
-				updatedContent:  'foo <- function(x) x * 2\nprint(foo(21))',
-				path:            'b.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
-	});
-
-	it('removing one file while another file stays unchanged', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 42\nprint(x)',
-				updatedContent:  'x <- 42\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: 'tmp <- 1\nprint(tmp)',
-				updatedContent:  '',
-				path:            'b.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
-	});
-
-	it('mixing file modification, file addition, and file removal in one run', async() => {
-		const inputs: IncrementalParsingTestInput[] = [
-			{
-				originalContent: 'x <- 1\nprint(x)',
-				updatedContent:  'x <- 1\nx <- x + 1\nprint(x)',
-				path:            'a.R'
-			},
-			{
-				originalContent: '',
-				updatedContent:  'y <- 21\nprint(y)',
-				path:            'b.R'
-			},
-			{
-				originalContent: 'obsolete <- TRUE\nprint(obsolete)',
-				updatedContent:  '',
-				path:            'c.R'
-			}
-		];
-		await executeAndCompareResults(inputs);
 	});
 });

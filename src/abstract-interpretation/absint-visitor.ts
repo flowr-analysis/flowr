@@ -17,7 +17,7 @@ import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { StateAbstractDomain } from './domains/state-abstract-domain';
 import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
-import { isUnsupportedFunctionCall } from './unsupported-functions';
+import { UnsupportedFunctions } from './unsupported-functions';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -223,8 +223,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		} else {
 			this.onVisitNode(vertexId);
 
-			// discard the inferred abstract state when encountering unsupported (environment-changing) functions (e.g. `eval`, `load`, `attach`, `rm`, ...)
-			if(isUnsupportedFunctionCall(this.getDataflowGraph(nodeId))) {
+			// discard the inferred abstract state when encountering unsupported function calls
+			if(this.isUnsupportedFunctionCall(nodeId)) {
 				this._currentState = this._currentState.top();
 				this.stateCopied = true;
 			}
@@ -324,6 +324,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			?.filter(origin => origin.type === OriginType.ReadVariableOrigin)
 			.map(origin => origin.id)
 			.filter(origin => this.trace.has(origin) && !this.unassigned.has(origin)) ?? [];
+	}
+
+	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
+	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId));
 	}
 
 	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one ingoing CFG edge */

@@ -9,7 +9,7 @@ export type ConcreteState<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
 type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
 /** The type of the Top element of the state abstract domain as (empty) map of keys to domain values */
-type StateDomainTop<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
+type StateDomainTop = ReadonlyMap<NodeId, never>;
 /** The type of the Bottom element of the state abstract domain as {@link Bottom} symbol */
 type StateDomainBottom = typeof Bottom;
 /** The type of the abstract values of the state abstract domain that are Top, Bottom, or actual values */
@@ -22,7 +22,7 @@ type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
-	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop<Domain>, StateDomainBottom, Value> {
+	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value> {
 
 	protected domain: Domain;
 
@@ -40,8 +40,8 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainTop<Domain>> {
-		return new StateAbstractDomain(new Map(), domain) as StateAbstractDomain<Domain, StateDomainTop<Domain>>;
+	public static top<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainTop> {
+		return new StateAbstractDomain(new Map<NodeId, never>(), domain);
 	}
 
 	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainBottom> {
@@ -69,8 +69,8 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		}
 	}
 
-	public top(): this & StateAbstractDomain<Domain, StateDomainTop<Domain>>;
-	public top(): StateAbstractDomain<Domain, StateDomainTop<Domain>> {
+	public top(): this & StateAbstractDomain<Domain, StateDomainTop>;
+	public top(): StateAbstractDomain<Domain, StateDomainTop> {
 		return StateAbstractDomain.top(this.domain);
 	}
 
@@ -264,7 +264,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${domainElementToString(key)} -> ${value.toString()}`).join(', ') + ')';
 	}
 
-	public isTop(): this is this & StateAbstractDomain<Domain, StateDomainTop<Domain>> {
+	public isTop(): this is this & StateAbstractDomain<Domain, StateDomainTop> {
 		return this.value !== Bottom && this.value.size === 0;
 	}
 
@@ -288,12 +288,12 @@ export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain, Value 
 		return new MutableStateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainTop<Domain>> {
-		return new MutableStateAbstractDomain<Domain>(new Map(), domain) as MutableStateAbstractDomain<Domain, StateDomainTop<Domain>>;
+	public static top<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainTop> {
+		return new MutableStateAbstractDomain(new Map<NodeId, never>(), domain);
 	}
 
 	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainBottom> {
-		return new MutableStateAbstractDomain<Domain>(Bottom, domain) as MutableStateAbstractDomain<Domain, StateDomainBottom>;
+		return new MutableStateAbstractDomain(Bottom, domain);
 	}
 
 	public set(key: NodeId, value: Domain): void {

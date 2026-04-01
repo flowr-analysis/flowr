@@ -1,7 +1,10 @@
 import { Identifier } from '../dataflow/environments/identifier';
 import { type DataflowGraphVertexArgument, isFunctionCallVertex } from '../dataflow/graph/vertex';
 
-export const UnsupportedFunctions = {
+/**
+ * List of known function calls that may change the environment unresolvable/implicitly.
+ */
+const UnsupportedFunctionsList = {
 	'.Primitive':          { package: 'base' },
 	'.Internal':           { package: 'base' },
 	'.External':           { package: 'base' },
@@ -28,8 +31,13 @@ export const UnsupportedFunctions = {
 } as const satisfies Record<string, { package: string }>;
 
 /**
- * Checks whether a data flow graph vertex represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
+ * Helper for unsupported functions that may change the environment.
  */
-export function isUnsupportedFunctionCall(vertex: DataflowGraphVertexArgument | undefined): boolean {
-	return isFunctionCallVertex(vertex) && Object.hasOwn(UnsupportedFunctions, Identifier.getName(vertex.name));
-}
+export const UnsupportedFunctions = {
+	/**
+	 * Checks whether a data flow graph vertex represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
+	 */
+	isUnsupportedCall(vertex: DataflowGraphVertexArgument | undefined): boolean {
+		return isFunctionCallVertex(vertex) && Object.hasOwn(UnsupportedFunctionsList, Identifier.getName(vertex.name));
+	}
+};

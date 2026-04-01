@@ -175,10 +175,12 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 	}
 
 	private refine(): this {
-		const reduced = this.reduce(this.value);
+		if(!this.isTop() || this.isBottom()) {
+			const reduced = this.reduce(this.value);
 
-		if(reduced !== this.value) {
-			return this.create(reduced);
+			if(reduced !== this.value) {
+				return this.create(reduced);
+			}
 		}
 		return this;
 	}

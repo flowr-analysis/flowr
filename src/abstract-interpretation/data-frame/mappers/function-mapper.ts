@@ -14,8 +14,9 @@ import { DataFrameDomain } from '../dataframe-domain';
 import { resolveIdToArgName, resolveIdToArgValue, resolveIdToArgValueSymbolName, resolveIdToArgVectorLength, unescapeSpecialChars } from '../resolve-args';
 import { ConstraintType } from '../semantics';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
-import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isNamedArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
+import { escapeRegExp, filterValidNames, getArgumentValue, getEffectiveArgs, getFunctionArgument, getFunctionArguments, getUnresolvedSymbolsInExpression, hasCriticalArgument, isDataFrameArgument, isRNull, parseRequestContent, type FunctionParameterLocation } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 /**
  * Represents the different types of data frames in R
@@ -70,7 +71,7 @@ const DataFrameFunctionMapper = {
 const OtherDataFrameFunctions = [
 	{
 		type:       'entry_point',
-		names:      ['as.data.frame.matrix'],
+		names:      ['as.data.frame.matrix'], // S3 dispatch of `as.data.frame`
 		library:    'base',
 		returnType: DataFrameType.DataFrame
 	}, {
@@ -544,16 +545,23 @@ const DataFrameFunctionParamsMapper: DataFrameFunctionParamsMapping = {
 };
 
 interface DataFrameFunctionMapperInfo<Params extends object> {
+	/** Mapper function mapping the function call with the given arguments to abstract operations */
 	readonly mapper:           DataFrameFunctionMapping<Params>;
+	/** Package/library of the functions */
 	readonly library:          string;
+	/** The return type of the function (data frame, tibble, or data table) */
 	readonly returnType:       DataFrameType;
+	/** Whether the function always returns a data frame (including tibbles, data tables, etc.) */
 	readonly alwaysDataFrame?: boolean;
 }
 
 interface OtherDataFrameFunctionBase {
 	readonly type:       string;
+	/** The function names of the other (not explicitly) supported functions for this type and library */
 	readonly names:      readonly string[];
+	/** Package/library of the functions */
 	readonly library:    string;
+	/** The return type of the function (data frame, tibble, or data table) */
 	readonly returnType: DataFrameType;
 }
 
@@ -565,7 +573,9 @@ interface OtherDataFrameEntryPoint extends OtherDataFrameFunctionBase {
 /** Other data frame transformations that are not explicitly supported but return data frames if an argument is a data frame */
 interface OtherDataFrameTransformation extends OtherDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
 	readonly type:             'transformation';
+	/** The parameter that has to be a data frame for the function to return a data frame */
 	readonly dataFrame?:       FunctionParameterLocation;
+	/** Whether the transformation always returns a data frame even if the data frame argument cannot be resolved to a data frame */
 	readonly alwaysDataFrame?: boolean;
 }
 
@@ -573,6 +583,7 @@ interface OtherDataFrameTransformation extends OtherDataFrameFunctionBase, Reado
 interface OtherDataFrameModification extends OtherDataFrameFunctionBase, Readonly<Parameters<typeof mapDataFrameUnknown>[1]> {
 	readonly type:           'modification';
 	readonly constraintType: ConstraintType.OperandModification;
+	/** The parameter of the data frame operand that is modified in place by the function  */
 	readonly dataFrame:      FunctionParameterLocation;
 }
 
@@ -1066,7 +1077,7 @@ function mapDataFrameSelect(
 
 	const mixedAccess = accessedCols.some(col => typeof col === 'string') && accessedCols.some(col => typeof col === 'number');
 	const duplicateAccess = accessedCols.some((col, _, list) => col !== undefined && list.filter(other => other === col).length > 1);
-	const renamedCols = selectArgs.some(isNamedArgument);
+	const renamedCols = selectArgs.some(RArgument.isNamed);
 
 	// map to top if columns are selected mixed by string and number, or are selected duplicate
 	if(mixedAccess || duplicateAccess) {
@@ -1198,9 +1209,9 @@ function mapDataFrameGroupBy(
 	const byArgs = args.filter(arg => arg !== dataFrame);
 
 	const accessedNames = byArgs.flatMap(arg => getUnresolvedSymbolsInExpression(arg, info.graph)).map(Identifier.toString);
-	const byNames = byArgs.map(arg => isNamedArgument(arg) ? resolveIdToArgName(arg, info) : resolveIdToArgValueSymbolName(arg, info));
+	const byNames = byArgs.map(arg => RArgument.isNamed(arg) ? resolveIdToArgName(arg, info) : resolveIdToArgValueSymbolName(arg, info));
 
-	const mutatedCols = byArgs.some(isNamedArgument) || byNames.some(isUndefined);
+	const mutatedCols = byArgs.some(RArgument.isNamed) || byNames.some(isUndefined);
 
 	if(accessedNames.length > 0) {
 		result.push({
@@ -1342,7 +1353,7 @@ function mapDataFrameIdentity(
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
-	} else if(params.disallowNamedArgs && args.some(isNamedArgument)) {
+	} else if(params.disallowNamedArgs && args.some(RArgument.isNamed)) {
 		return [{ operation: 'unknown', operand: dataFrame.value.info.id }];
 	}
 	return [{

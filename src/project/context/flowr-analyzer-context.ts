@@ -98,7 +98,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
-	// TODO: docment this in the wiki-analyzer wiki!
 	public readonly inc:   FlowrAnalyzerIncrementalAnalysisContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
 

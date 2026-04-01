@@ -210,7 +210,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	public receive(event: InvalidationEvent): void {
-		// TODO: ctx
+		this.ctx.receive(event);
 		this.cache.receive(event);
 	}
 

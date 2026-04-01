@@ -138,6 +138,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                  processor: BuiltInProcName.Apply,               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
 	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                   processor: BuiltInProcName.Apply,               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['print', 'message', 'warning', 'warn', 'info'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
+	{ type: 'function', names: ['invisible'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all' },                                  assumePrimitive: true },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -270,7 +271,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['&&', '&'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
 	{ type: 'function', names: ['||', '|'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
 	{ type: 'function', names: ['|>'],                                         processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '_' }, assumePrimitive: true  },
-	{ type: 'function', names: ['%>%'],                                        processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.' }, assumePrimitive: true  },
+	{ type: 'function', names: ['%>%', '%!>%'],                                processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.' }, assumePrimitive: true  },
 	{ type: 'function', names: ['function', '\\'],                             processor: BuiltInProcName.FunctionDefinition, config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
@@ -287,7 +288,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: BuiltInProcName.List,                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                              assumePrimitive: false },
+	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                               assumePrimitive: false },
+	{ type: 'function', names: ['sys.function'],                               processor: BuiltInProcName.Recall,              config: { libFn: true, unknownOnNonZeroArg: true },                                    assumePrimitive: false },
 	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
 	{
 		type:      'function',

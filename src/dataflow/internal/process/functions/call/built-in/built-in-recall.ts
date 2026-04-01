@@ -2,8 +2,11 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import type { RNumber } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { log } from '../../../../../../util/log';
 import { EdgeType } from '../../../../../graph/edge';
@@ -13,6 +16,10 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
 import { Identifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
+interface RecallConfig {
+	/** whether to not handle as a recall function but rather as an unknown side effect if the argument is non-constant non-zero */
+	unknownOnNonZeroArg?: boolean;
+}
 
 /**
  * Processes a built-in 'Recall' function call, linking
@@ -23,6 +30,7 @@ export function processRecall<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: RecallConfig,
 ): DataflowInformation {
 	const { information } = processKnownFunctionCall({
 		name,
@@ -31,6 +39,20 @@ export function processRecall<OtherInfo>(
 		data,
 		origin: BuiltInProcName.Recall
 	});
+
+	// If requested, treat Recall as an unknown side effect when a single argument is provided and it is not the numeric literal 0.
+	if(config?.unknownOnNonZeroArg) {
+		if(args.length === 1 && args[0] !== EmptyArgument && args[0].value) {
+			const v = args[0].value;
+			// only allow the normal recall handling if the single arg is the literal 0
+			if(!(v.type === RType.Number && (v as RNumber).content.num === 0)) {
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
+		}
+	}
+
+
 
 	let cur = data.environment.current;
 	let closure: NodeId | undefined;

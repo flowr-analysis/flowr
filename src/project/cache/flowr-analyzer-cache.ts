@@ -18,12 +18,10 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { CallGraph } from '../../dataflow/graph/call-graph';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
-import type {
-	ReparseAction } from '../incremental/incremental-parse/incremental-parse';
 import {
-	coarseCheckWhetherToInvalidate,
-	computeReparseAction
+	coarseCheckWhetherToInvalidate
 } from '../incremental/incremental-parse/incremental-parse';
+import { computeEditRegion } from '../incremental/incremental-parse/edit-computation';
 
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
@@ -55,12 +53,10 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.initCacheProviders();
 	}
 
-	private initCacheProviders(reparseAction?: ReparseAction) {
-		this.args.context.inc.reset();
-		this.args.context.inc.storeParseInfo({
-			lastParseStepOutput: this.peekParse(),
-			nextReparseAction:   reparseAction
-		});
+	private initCacheProviders(resetInc: boolean = true) {
+		if(resetInc) {
+			this.args.context.inc.reset();
+		}
 		this.pipeline = createDataflowPipeline(this.args.parser, {
 			context: this.args.context,
 			getId:   this.args.getId
@@ -85,8 +81,18 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 				if(!coarseCheckWhetherToInvalidate(this.args.context, event)) {
 					return;
 				}
-				const reparseAction = computeReparseAction(event);
-				this.initCacheProviders(reparseAction);
+
+				const oldContent = event.oldContent?.toString() ?? '';
+				const newContent = event.file.content().toString();
+				const editRegion = computeEditRegion(oldContent, newContent);
+				const previousTree = this.peekParse()?.files.find(f => f.filePath === event.file.path())?.parsed;
+				const reparseInfo = {
+					previousTree,
+					editRegion
+				};
+
+				this.args.context.inc.storeReparseInfo(event.file.path(), reparseInfo);
+				this.initCacheProviders(false);
 				break;
 			}
 			default:

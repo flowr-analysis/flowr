@@ -1,10 +1,9 @@
-import type { ParseStepOutput } from '../../r-bridge/parser';
-import type { Tree } from 'web-tree-sitter';
-import type { ReparseAction } from '../incremental/incremental-parse/incremental-parse';
+import type Parser from 'web-tree-sitter';
 
-export interface ParseInfo {
-	lastParseStepOutput: ParseStepOutput<Tree | string> | undefined;
-	nextReparseAction:   ReparseAction | undefined;
+
+export interface ReparseInfo {
+	previousTree: string | Parser.Tree | undefined;
+	editRegion:   Parser.Edit;
 }
 
 export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
@@ -13,7 +12,7 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	 */
 	readonly name: string;
 
-	getParseInfo(): ParseInfo | undefined;
+	getAndRemoveParseInfo(filePath: string): ReparseInfo | undefined;
 }
 
 /**
@@ -22,17 +21,21 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	public readonly name = 'flowr-analyzer-incremental-analysis-context';
 
-	private parseInfo?: ParseInfo;
+	private reparseInfoMap: Map<string, ReparseInfo> = new Map();
 
 	public reset(): void {
-		this.parseInfo = undefined;
+		this.reparseInfoMap = new Map();
 	}
 
-	public storeParseInfo(parseInfo?: ParseInfo): void {
-		this.parseInfo = parseInfo;
+	public storeReparseInfo(filePath: string, reparseInfo?: ReparseInfo): void {
+		if(reparseInfo) {
+			this.reparseInfoMap.set(filePath, reparseInfo);
+		}
 	}
 
-	public getParseInfo(): ParseInfo | undefined {
-		return this.parseInfo;
+	public getAndRemoveParseInfo(filePath: string): ReparseInfo | undefined {
+		const reparseInfo = this.reparseInfoMap.get(filePath);
+		this.reparseInfoMap.delete(filePath);
+		return reparseInfo;
 	}
 }

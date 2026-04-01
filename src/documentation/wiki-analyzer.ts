@@ -39,7 +39,9 @@ import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flowr-analyzer-incremental-analysis-context';
 import { FlowrConfig } from '../config';
+import { FlowrInlineTextFile } from '../project/context/flowr-file';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -99,11 +101,12 @@ ${
 			'How to add a new plugin': undefined,
 		},
 		'Context Information': {
-			'Files Context':         undefined,
-			'Loading Order Context': undefined,
-			'Dependencies Context':  undefined,
-			'Environment Context':   undefined,
-			'Meta Context':          undefined,
+			'Files Context':                undefined,
+			'Loading Order Context':        undefined,
+			'Dependencies Context':         undefined,
+			'Environment Context':          undefined,
+			'Meta Context':                 undefined,
+			'Incremental Analysis Context': undefined,
 		},
 		'Caching': undefined
 	})
@@ -476,6 +479,43 @@ the project version via
 ${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectVersion', { codeFont: true, realNameWrapper: 'i' })},
 and the project namespace via
 ${ctx.linkM(FlowrAnalyzerMetaContext, 'getNamespace', { codeFont: true, realNameWrapper: 'i' })}.
+
+
+${section('Incremental Analysis Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerIncrementalAnalysisContext)} is a context that stores analysis information needed for making the next analysis run incremental by reusing the previous analysis results:
+
+${ctx.hierarchy(FlowrAnalyzerIncrementalAnalysisContext, { showImplSnippet: false })}
+
+This context is not an analysis-result cache by itself.
+Instead, it carries forward the minimal state needed by future incremental phases after an invalidation happened.
+At the moment, it is used for incremental parsing with Tree-sitter, but it is intended to become the shared context for additional incremental analysis stages as well.
+
+If the analyzer or context is reset, the incremental information is discarded via
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}.
+Likewise, a full cache rebuild resets this context before recreating the analysis pipeline.
+In other words, this context only transports incremental handoff state between analysis runs.
+
+${section('Incremental Parsing', 4)}
+
+Currently, the implemented use of this context is Tree-sitter's incremental parsing support.
+When a file is represented by a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} and its content is invalidated via
+${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
+the analyzer cache receives a file invalidation event.
+For relevant source-like files, the cache compares the old and new file contents, computes a minimal edit region,
+and stores two pieces of information in this context under the file path:
+
+* the previous Tree-sitter parse tree
+* the ${ctx.link('Parser.Edit')} describing the changed source region
+
+On the next parse run, the Tree-sitter parser consumes this information via
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getAndRemoveParseInfo', { codeFont: true, realNameWrapper: 'i' })},
+applies the edit to the old tree, and reparses incrementally instead of starting from scratch.
+The stored entry is removed as soon as it is consumed, so the context only carries information across a single invalidation boundary.
+
+${section('Incremental Dataflow', 4)}
+
+This context is planned to also support future incremental dataflow graph computation.
 
 
 ${section('Caching', 2)}

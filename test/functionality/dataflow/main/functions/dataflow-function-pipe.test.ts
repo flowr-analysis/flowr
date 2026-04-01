@@ -1,0 +1,47 @@
+import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
+import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
+import { label } from '../../../_helper/label';
+import { describe } from 'vitest';
+import { RPipe } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-pipe';
+import { EdgeType } from '../../../../../src/dataflow/graph/edge';
+import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
+
+describe('Function Call Pipes', withTreeSitter(ts => {
+	const pipeConfig = { minRVersion: RPipe.hasPlaceHolderFromRVersion().toString(), expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
+	assertDataflow(label('Basic Pipe', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f()',
+		emptyGraph()
+			.addEdge('1@f', '1@x', EdgeType.Argument | EdgeType.Reads)
+			.call('1@f', 'f', [argumentInCall('1@x')]),
+		pipeConfig
+	);
+	assertDataflow(label('Basic Pipe With Placeholder', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(_)',
+		emptyGraph()
+			.reads('1@_', '1@x')
+			.reads('1@f', '1@_')
+			.call('1@f', 'f', [argumentInCall('1@_')]),
+		pipeConfig
+	);
+	assertDataflow(label('Basic Pipe With Placeholder and Argument Name', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(a=_)',
+		emptyGraph()
+			.reads('1@_', '1@x')
+			.reads('1@f', '$4')
+			.call('1@f', 'f', [argumentInCall(4)], { omitArgs: true }),
+		pipeConfig
+	);
+	assertDataflow(label('Basic Pipe As Second Arg', ['built-in-pipe-and-pipe-bind']), ts, 'x |> f(y, _)',
+		emptyGraph()
+			.reads('1@_', '1@x')
+			.reads('1@f', '1@y')
+			.reads('1@f', '1@_')
+			.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@_')]),
+		pipeConfig
+	);
+	assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',
+		emptyGraph()
+			.reads('1@.', '1@x')
+			.reads('1@f', '1@y')
+			.reads('1@f', '1@.')
+			.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@.')]),
+		{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+	);
+}));

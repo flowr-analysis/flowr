@@ -6,23 +6,34 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import { EdgeType } from '../../../../../graph/edge';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import type { BrandedIdentifier } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { log } from '../../../../../../util/log';
+
+/**
+ * Configuration options for the basic R pipe
+ */
+interface PipeConfiguration {
+	pipePlaceholderName: BrandedIdentifier
+}
 
 
 /**
- * Suport for R's pipe functions like `|>`.
+ * Suport for R's pipe functions like `|>` or magrittr's `%>%`
  */
 export function processPipe<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	{ pipePlaceholderName }: PipeConfiguration
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
 	if(args.length !== 2) {
@@ -38,17 +49,35 @@ export function processPipe<OtherInfo>(
 		const functionCallNode = information.graph.getVertex(rhs.info.id);
 		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 
-		// make the lhs an argument node:
+		// make the lhs an argument node (or link it to placeholders within the rhs call):
 		const argId = lhs.info.id;
 
-		dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
-		functionCallNode.args.unshift({
-			name:   undefined,
-			nodeId: argId,
-			cds:    data.cds,
-			type:   ReferenceType.Function
+		// find all symbol occurrences inside the rhs function call AST that match the placeholder name
+		const occurrenceIds: NodeId[] = [];
+		RNode.visitAst<OtherInfo & ParentInformation>(rhs, (node) => {
+			if(node.type === RType.Symbol && node.content === pipePlaceholderName) {
+				occurrenceIds.push(node.info.id);
+			}
+			return false;
 		});
-		information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+
+		if(occurrenceIds.length > 0) {
+			if(occurrenceIds.length !== 1) {
+				log.warn(`Expected exactly one occurrence of the pipe placeholder '${Identifier.toString(pipePlaceholderName)}' in the rhs of the pipe, but found ${occurrenceIds.length}. Linking all occurrences to the lhs.`);
+			}
+			for(const occId of occurrenceIds) {
+				information.graph.addEdge(occId, argId, EdgeType.Reads);
+			}
+		} else {
+			dataflowLogger.trace(`Linking pipe arg ${argId} as first argument of ${rhs.info.id}`);
+			functionCallNode.args.unshift({
+				name:   undefined,
+				nodeId: argId,
+				cds:    data.cds,
+				type:   ReferenceType.Function
+			});
+			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+		}
 	} else {
 		dataflowLogger.warn(`Expected rhs of pipe to be a function call, but got ${rhs.type} instead.`);
 	}

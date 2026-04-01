@@ -37,6 +37,13 @@ import type {
 import {
 	FlowrAnalyzerIncrementalAnalysisContext
 } from './flowr-analyzer-incremental-analysis-context';
+import type {
+	InvalidationEvent,
+	InvalidationEventReceiver } from '../cache/flowr-cache';
+import {
+	InvalidationEventType
+} from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -86,7 +93,7 @@ export interface ReadOnlyFlowrAnalyzerContext {
  * {@link deps.getDependency}.
  * If you are just interested in inspecting the context, you can use {@link ReadOnlyFlowrAnalyzerContext} instead (e.g., via {@link inspect}).
  */
-export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
+export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, InvalidationEventReceiver {
 	public readonly meta:  FlowrAnalyzerMetaContext;
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
@@ -102,10 +109,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
-		this.env   = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc   = new FlowrAnalyzerIncrementalAnalysisContext();
+		this.env = new FlowrAnalyzerEnvironmentContext(this);
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
 		const functions = new FlowrAnalyzerFunctionsContext(this);
-		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		this.deps = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.meta = new FlowrAnalyzerMetaContext();
 	}
 
@@ -154,10 +161,22 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
 	 */
 	public reset(): void {
-		this.files.reset();
-		this.deps.reset();
-		this.meta.reset();
-		this.inc.reset();
+		this.receive( { type: InvalidationEventType.Full });
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+			case InvalidationEventType.FileInvalidate:
+				this.files.reset();
+				this.deps.reset();
+				this.meta.reset();
+				this.inc.reset();
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 }
 

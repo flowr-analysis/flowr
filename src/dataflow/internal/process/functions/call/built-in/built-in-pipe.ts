@@ -32,6 +32,10 @@ interface PipeConfiguration {
 	 * Whether to return the lhs (e.g., with the TPipe)
 	 */
 	returnLhs:           boolean;
+	/**
+	 * If so, also allow a symbol instead of a function as rhs, if it is the case, this automatically converts the symbol on the rhs to a function call
+	 */
+	rhsMightBeSymbol?:   boolean;
 }
 
 
@@ -43,7 +47,7 @@ export function processPipe<OtherInfo>(
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ pipePlaceholderName, assignLhs, returnLhs }: PipeConfiguration
+	{ pipePlaceholderName, assignLhs, returnLhs, rhsMightBeSymbol = false }: PipeConfiguration
 ): DataflowInformation {
 	const fCallInfo = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
 	const processedArguments = fCallInfo.processedArguments;
@@ -76,7 +80,26 @@ export function processPipe<OtherInfo>(
 		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, {} as AssignmentConfiguration);
 	}
 
-	if(rhs.type === RType.FunctionCall) {
+	let treatedAsFunctionCall = false;
+	if(rhs.type === RType.Symbol && rhsMightBeSymbol) {
+		// convert a plain symbol on the RHS into a function-call vertex so we can treat it like `df %>% head`
+		const maybeVertex = information.graph.getVertex(rhs.info.id);
+		if(maybeVertex && maybeVertex.tag === VertexType.Use) {
+			information.graph.updateToFunctionCall({
+				tag:         VertexType.FunctionCall,
+				id:          rhs.info.id,
+				name:        rhs.content,
+				args:        [],
+				environment: data.environment,
+				onlyBuiltin: false,
+				cds:         data.cds,
+				origin:      [BuiltInProcName.Function]
+			});
+			treatedAsFunctionCall = true;
+		}
+	}
+
+	if(treatedAsFunctionCall || rhs.type === RType.FunctionCall) {
 		const functionCallNode = information.graph.getVertex(rhs.info.id);
 		guard(functionCallNode?.tag === VertexType.FunctionCall, () => `Expected function call node with id ${rhs.info.id} to be a function call node, but got ${functionCallNode?.tag} instead.`);
 

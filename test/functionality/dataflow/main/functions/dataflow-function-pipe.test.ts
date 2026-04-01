@@ -44,14 +44,22 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall(10)]),
 			pipeConfig
 		);
-		assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',
-			emptyGraph()
-				.reads('1@.', '1@x')
-				.reads('1@f', '1@y')
-				.reads('1@f', '1@.')
-				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@.')]),
-			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
-		);
+		describe('magrittr', () => {
+			assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',
+				emptyGraph()
+					.reads('1@.', '1@x')
+					.reads('1@f', '1@y')
+					.reads('1@f', '1@.')
+					.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall('1@.')]),
+				{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			);
+			assertDataflow(label('With %>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f',
+				emptyGraph()
+					.reads('1@f', '1@x')
+					.call('1@f', 'f', [argumentInCall('1@x')]),
+				{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+			);
+		});
 	});
 	describe('Assignment Joins', () => {
 		assertDataflow(label('With %<>%', ['built-in-pipe-and-pipe-bind']), ts, 'x %<>% f(y, .)',
@@ -75,14 +83,14 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 		);
 	});
 	describe('T Joins', () => {
-		assertDataflow(label('No T return', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y)',
-			emptyGraph()
-				.addEdge(8, '1@f', EdgeType.Returns | EdgeType.Argument),
-			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
-		);
 		assertDataflow(label('With T return', ['built-in-pipe-and-pipe-bind']), ts, 'x %T>% f(y)',
 			emptyGraph()
 				.addEdge(8, '1@x', EdgeType.Returns | EdgeType.Argument),
+			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
+		);
+		assertDataflow(label('No T return', ['built-in-pipe-and-pipe-bind']), ts, 'x %>% f(y)',
+			emptyGraph()
+				.addEdge(8, '1@f', EdgeType.Returns | EdgeType.Argument),
 			{ resolveIdsAsCriterion: true, expectIsSubgraph: true }
 		);
 	});

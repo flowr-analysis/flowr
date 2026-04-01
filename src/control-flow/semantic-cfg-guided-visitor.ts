@@ -4,7 +4,7 @@ import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfigurati
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getOriginInDfg, type Origin } from '../dataflow/origin/dfg-get-origin';
+import { type Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -318,6 +318,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onUnnamedCall({ call });
 			case BuiltInProcName.Recall:
 				return this.onRecallCall({ call });
+			case BuiltInProcName.PurrFormula:
+				return this.onPurrFormulaCall({ call });
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
@@ -726,4 +728,9 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onRecallCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
+	 */
+	protected onPurrFormulaCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 }

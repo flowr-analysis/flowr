@@ -1,6 +1,7 @@
 import type { Writable } from 'ts-essentials';
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
+import { Record } from '../../util/record';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct = Record<string, AnyAbstractDomain>;
@@ -20,7 +21,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
 	constructor(value: Product) {
-		super(Object.fromEntries(Object.entries(value).map(([key, value]) => [key, value.create(value.value)])) as Product);
+		super(Record.mapProperties(value, entry => entry.create(entry.value)) as Product);
 		(this._value as Writable<Product>) = this.reduce(this.value);
 	}
 
@@ -142,7 +143,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 	}
 
 	public toJson(): unknown {
-		return Object.fromEntries(Object.entries(this.value).map(([key, value]) => [key, value.toJson()]));
+		return Record.mapProperties(this.value, entry => entry.toJson());
 	}
 
 	public toString(): string {

@@ -37,7 +37,7 @@ export const UnsupportedFunctions = {
 	/**
 	 * Checks whether a data flow graph vertex represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...)
 	 */
-	isUnsupportedCall(vertex: DataflowGraphVertexArgument | undefined): boolean {
+	isUnsupportedCall(this: void, vertex: DataflowGraphVertexArgument | undefined): boolean {
 		return isFunctionCallVertex(vertex) && Object.hasOwn(UnsupportedFunctionsList, Identifier.getName(vertex.name));
 	}
 };

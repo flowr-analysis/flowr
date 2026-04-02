@@ -398,6 +398,27 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.progress', '.ptype']
 	} },
+	{ type:      'function', names:     [Identifier.make('across', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.cols' },
+		},
+		'.f':   { index: 1, name: '.fns' },
+		ignore: ['.names', '.unpack']
+	} },
+	{ type:      'function', names:     [Identifier.make('filter', 'dplyr'), Identifier.make('filter_out', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.data' },
+		},
+		'.f':   { index: 1, name: '...' },
+		ignore: ['.by', '.preserve']
+	} },
+	{ type:      'function', names:     [Identifier.make('rename_with', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.data' },
+		},
+		'.f':   { index: 1, name: '.fn' },
+		ignore: ['.cols']
+	} },
 	{ type: 'function', names: ['function', '\\'],                             processor: BuiltInProcName.FunctionDefinition, config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },

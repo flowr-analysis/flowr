@@ -1,5 +1,7 @@
+import type { Writable } from 'ts-essentials';
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
+import { Record } from '../../util/record';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct = Record<string, AnyAbstractDomain>;
@@ -17,6 +19,11 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
  */
 export abstract class ProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
+
+	constructor(value: Product) {
+		super(Record.mapProperties(value, entry => entry.create(entry.value)) as Product);
+		(this._value as Writable<Product>) = this.reduce(this.value);
+	}
 
 	public abstract create(value: Product): this;
 
@@ -68,7 +75,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		for(const key in result.value) {
 			result._value[key] = result.value[key].join(other.value[key]);
 		}
-		return result;
+		return result.refine();
 	}
 
 	public meet(other: this): this {
@@ -77,7 +84,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		for(const key in result.value) {
 			result._value[key] = result.value[key].meet(other.value[key]);
 		}
-		return result;
+		return result.refine();
 	}
 
 	public widen(other: this): this {
@@ -86,7 +93,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		for(const key in result.value) {
 			result._value[key] = result.value[key].widen(other.value[key]);
 		}
-		return result;
+		return result.refine();
 	}
 
 	public narrow(other: this): this {
@@ -95,7 +102,7 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 		for(const key in result.value) {
 			result._value[key] = result.value[key].narrow(other.value[key]);
 		}
-		return result;
+		return result.refine();
 	}
 
 	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
@@ -132,26 +139,50 @@ export abstract class ProductDomain<Product extends AbstractProduct>
 			const concreteValues = new Set(concrete.values().map(value => value[key]));
 			result._value[key] = result.value[key].abstract(concreteValues);
 		}
-		return result;
+		return result.refine();
 	}
 
 	public toJson(): unknown {
-		return Object.fromEntries(Object.entries(this.value).map(([key, value]) => [key, value.toJson()]));
+		return Record.mapProperties(this.value, entry => entry.toJson());
 	}
 
 	public toString(): string {
 		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
+	public isTop(): boolean;
+	public isTop(): this is this;
 	public isTop(): this is this {
 		return Object.values(this.value).every(value => value.isTop());
 	}
 
+	public isBottom(): boolean;
+	public isBottom(): this is this;
 	public isBottom(): this is this {
 		return Object.values(this.value).every(value => value.isBottom());
 	}
 
+	public isValue(): boolean;
+	public isValue(): this is this;
 	public isValue(): this is this {
 		return true;
+	}
+
+	/**
+	 * Optional reduction function for a reduced product domain.
+	 */
+	protected reduce(value: Product): Product {
+		return value;
+	}
+
+	private refine(): this {
+		if(!this.isTop() || this.isBottom()) {
+			const reduced = this.reduce(this.value);
+
+			if(reduced !== this.value) {
+				return this.create(reduced);
+			}
+		}
+		return this;
 	}
 }

@@ -47,13 +47,13 @@ g <- function(x, arg1, arg2) { }
 		'15@g': [
 			{ type: KnownRoxygenTags.Text, value: 'Another function' },
 			// is expanded!
-			{ type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } },
-			{ type: KnownRoxygenTags.Param, value: { name: 'special.arg', description: 'A special argument' } },
+			{ type: KnownRoxygenTags.Param, inherited: true, value: { name: 'arg2', description: 'Description for argument two.' } },
+			{ type: KnownRoxygenTags.Param, inherited: true, value: { name: 'special.arg', description: 'A special argument' } },
 			{ type: KnownRoxygenTags.Param, value: { name: 'x', description: 'Some x value' } },
 			{ type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } }
 		],
 		'$21': { type: KnownRoxygenTags.Param, value: { name: 'x', description: 'Some x value' } },
 		'$23': { type: KnownRoxygenTags.Param, value: { name: 'arg1', description: 'Description for argument one.' } },
-		'$25': { type: KnownRoxygenTags.Param, value: { name: 'arg2', description: 'Description for argument two.' } } // expanded
+		'$25': { type: KnownRoxygenTags.Param, inherited: true, value: { name: 'arg2', description: 'Description for argument two.' } } // expanded
 	});
 }));

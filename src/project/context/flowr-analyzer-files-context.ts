@@ -88,6 +88,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 */
 	getAllFiles(): FlowrFileProvider[];
 	/**
+	 * Check if the context has a cached file with the given path.
+	 * @param path - The path to the file.
+	 */
+	hasCached(path: string): boolean;
+	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
 	 * (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
@@ -228,11 +233,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return f;
 	}
 
+	public hasCached(path: string): boolean {
+		return this.files.has(path);
+	}
+
 	public hasFile(path: string): boolean {
-		return this.files.has(path)
-			|| (
-				this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path)
-			);
+		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path));
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {

@@ -41,16 +41,28 @@ export const RArgument = {
 		return node?.type === RType.Argument;
 	},
 	/**
+	 * Type guard for arguments that are empty, i.e. {@link EmptyArgument}.
+	 */
+	isEmpty<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is typeof EmptyArgument {
+		return node === EmptyArgument;
+	},
+	/**
+	 * Type guard for arguments that are _not_ empty, i.e. _not_ {@link EmptyArgument}.
+	 */
+	isNotEmpty<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RArgument<Info> {
+		return node !== EmptyArgument && RArgument.is(node);
+	},
+	/**
 	 * Type guard for named arguments, i.e. arguments with a name.
 	 */
-	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> & { name: RSymbol<Info, BrandedIdentifier> } {
-		return RArgument.is(node) && node.name !== undefined;
+	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RArgument<Info> & { name: RSymbol<Info, BrandedIdentifier> } {
+		return node !== EmptyArgument && RArgument.is(node) && node.name !== undefined;
 	},
 	/**
 	 * Type guard for unnamed arguments, i.e. arguments without a name.
 	 */
-	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedArgument<Info> {
-		return RArgument.is(node) && node.name === undefined && node.value !== undefined;
+	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | typeof EmptyArgument | undefined): node is RUnnamedArgument<Info> {
+		return node !== EmptyArgument && RArgument.is(node) && node.name === undefined && node.value !== undefined;
 	},
 	/**
 	 * Type guard for arguments with a value, i.e. arguments that are not just placeholders without a value.

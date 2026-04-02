@@ -6,6 +6,7 @@ import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
+import type { DataflowGraphVertexInfo } from './vertex';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -99,15 +100,15 @@ export const Dataflow = {
 	 * Given the id of a vertex (usually a variable use),
 	 * this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids!
 	 * You can obtain the corresponding graph using {@link Dataflow.reduceGraph}.
-	 * @param id       - The id to use as a seed for provenance calculation
-	 * @param graph    - The graph to perform the provenance calculation on
-	 * @param consider - The ids to restrict the calculation too (e.g., the ids contained within a function definition to restrict the analysis to)
+	 * @param id          - The id to use as a seed for provenance calculation
+	 * @param graph       - The graph to perform the provenance calculation on
+	 * @param consider    - The ids to restrict the calculation too (e.g., the ids contained within a function definition to restrict the analysis to)
+	 * @param followEdges - Which edges to consider in the provenance traversal, if you set this to undefined this will automatically track all edges
 	 * @see {@link Dataflow.provenanceGraph} - for a convenience wrapper to directly obtain the graph of the provenance.
 	 */
-	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>): Set<NodeId> {
+	provenance(this: void, id: NodeId, graph: DataflowGraph, consider?: ReadonlySet<NodeId>, followEdges: number | undefined = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall): Set<NodeId> {
 		const queue = [id];
 		const visited = new Set<NodeId>();
-		const followEdges = EdgeType.Calls | EdgeType.Reads | EdgeType.Returns | EdgeType.Argument | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
 
 		while(queue.length > 0) {
 			const nodeId = queue.pop();
@@ -120,7 +121,7 @@ export const Dataflow = {
 				continue;
 			}
 			for(const [to, types] of vtx[1]) {
-				if(DfEdge.includesType(types, followEdges)) {
+				if(followEdges === undefined || DfEdge.includesType(types, followEdges)) {
 					queue.push(to);
 				}
 			}
@@ -129,6 +130,37 @@ export const Dataflow = {
 			}
 		}
 		return visited;
+	},
+	/**
+	 * A simple visitor akin to {@link RNode.visitAst} to traverse the dataflow graph starting from the start id and only
+	 * respecting edge direction.
+	 * @param graph      - The dataflow graph to operate on.
+	 * @param start      - The start id of the visitation.
+	 * @param onVertex   - The function to execute for each vertex, if this returns `true` the visitation will stop from this vertex.
+	 */
+	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
+	visitDfg(this: void, graph: DataflowGraph, start: NodeId, onVertex: (vtx: DataflowGraphVertexInfo) => (boolean | void)) {
+		const queue = [start];
+		const visited = new Set<NodeId>();
+
+		while(queue.length > 0) {
+			const nodeId = queue.pop();
+			if(nodeId === undefined || visited.has(nodeId)) {
+				continue;
+			}
+			visited.add(nodeId);
+			const vtx = graph.get(nodeId);
+			if(vtx === undefined) {
+				continue;
+			}
+			const shouldStop = onVertex(vtx[0]);
+			if(shouldStop) {
+				continue;
+			}
+			for(const [to] of vtx[1]) {
+				queue.push(to);
+			}
+		}
 	},
 	/**
 	 * A convenience wrapper for {@link Dataflow.reduceGraph|reducing} the {@link Dataflow.provenance|provenance} of a graph.

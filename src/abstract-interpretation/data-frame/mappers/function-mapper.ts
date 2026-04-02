@@ -5,7 +5,7 @@ import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { requestFromInput, type RParseRequest } from '../../../r-bridge/retriever';
@@ -597,7 +597,7 @@ type OtherDataFrameFunctionMapping = OtherDataFrameEntryPoint | OtherDataFrameTr
  * - `info` contains the resolve information
  */
 type DataFrameFunctionMapping<Params extends object> = (
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: Params,
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -676,7 +676,7 @@ function getOtherDataFrameFunction(functionName: string): OtherDataFrameFunction
 }
 
 function mapDataFrameCreate(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		checkNames: FunctionParameterLocation<boolean>,
 		noDupNames: FunctionParameterLocation<boolean>,
@@ -712,7 +712,7 @@ function mapDataFrameCreate(
 }
 
 function mapDataFrameConvert(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -729,7 +729,7 @@ function mapDataFrameConvert(
 }
 
 function mapDataFrameRead(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		fileName:      FunctionParameterLocation,
 		text?:         FunctionParameterLocation,
@@ -805,7 +805,7 @@ function mapDataFrameRead(
 }
 
 function mapDataFrameColBind(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { special: string[] },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -853,7 +853,7 @@ function mapDataFrameColBind(
 }
 
 function mapDataFrameRowBind(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { special: string[] },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -900,7 +900,7 @@ function mapDataFrameRowBind(
 }
 
 function mapDataFrameHeadTail(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, amount: FunctionParameterLocation<number> },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -938,7 +938,7 @@ function mapDataFrameHeadTail(
 }
 
 function mapDataFrameSubset(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame: FunctionParameterLocation,
 		subset:    FunctionParameterLocation,
@@ -1018,7 +1018,7 @@ function mapDataFrameSubset(
 }
 
 function mapDataFrameFilter(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -1056,7 +1056,7 @@ function mapDataFrameFilter(
 }
 
 function mapDataFrameSelect(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -1121,7 +1121,7 @@ function mapDataFrameSelect(
 }
 
 function mapDataFrameMutate(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame:   FunctionParameterLocation,
 		special:     string[],
@@ -1188,7 +1188,7 @@ function mapDataFrameMutate(
 }
 
 function mapDataFrameGroupBy(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame: FunctionParameterLocation,
 		by:        FunctionParameterLocation,
@@ -1231,7 +1231,7 @@ function mapDataFrameGroupBy(
 }
 
 function mapDataFrameSummarize(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: { dataFrame: FunctionParameterLocation, special: string[] },
 	inference: DataFrameShapeInferenceVisitor,
 	info: ResolveInfo
@@ -1269,7 +1269,7 @@ function mapDataFrameSummarize(
 }
 
 function mapDataFrameJoin(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame:      FunctionParameterLocation,
 		otherDataFrame: FunctionParameterLocation,
@@ -1339,7 +1339,7 @@ function mapDataFrameJoin(
 }
 
 function mapDataFrameIdentity(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame:          FunctionParameterLocation,
 		special:            string[],
@@ -1363,7 +1363,7 @@ function mapDataFrameIdentity(
 }
 
 function mapDataFrameUnknown(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	params: {
 		dataFrame?:      FunctionParameterLocation,
 		constraintType?: Exclude<ConstraintType, ConstraintType.OperandPrecondition>
@@ -1390,8 +1390,8 @@ function mapDataFrameUnknown(
 }
 
 function getRequestFromRead(
-	fileNameArg: RFunctionArgument<ParentInformation> | undefined,
-	textArg: RFunctionArgument<ParentInformation> | undefined,
+	fileNameArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
+	textArg: PotentiallyEmptyRArgument<ParentInformation> | undefined,
 	params: DataFrameFunctionParams<'read.table'>,
 	info: ResolveInfo
 ) {
@@ -1453,7 +1453,7 @@ function getEntriesFromCsvLine(line: string, sep: string = ',', quote: string = 
 /**
  * Resolves all selected columns in a select expression, such as `id`, `"id"`, `1`, `c(id, name)`, `c("id", "name")`, `1:2`, `-id`, `-1`, `-c(id, name)`, `c(-1, -2)`, etc.
  */
-function getSelectedColumns(args: readonly (RFunctionArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
+function getSelectedColumns(args: readonly (PotentiallyEmptyRArgument<ParentInformation> | undefined)[], info: ResolveInfo) {
 	let selectedCols: (string | number | undefined)[] | undefined = [];
 	let unselectedCols: (string | number | undefined)[] | undefined = [];
 	const joinColumns = (columns1: (string | number | undefined)[] | undefined, columns2: (string | number | undefined)[] | undefined) =>

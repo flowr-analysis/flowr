@@ -4,7 +4,7 @@ import { ExitPointType } from '../../../../info';
 import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
@@ -20,7 +20,7 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	/** The name of the function being called. */
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	/** The arguments to the function call. */
-	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
 	/** The node ID to use for the function call vertex. */
 	readonly rootId:                NodeId
 	/** The dataflow processor information at the point of the function call. */

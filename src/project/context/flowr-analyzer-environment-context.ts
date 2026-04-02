@@ -36,6 +36,11 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	 * Create a new {@link REnvironmentInformation|environment} with an empty built-in environment as base.
 	 */
 	makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation;
+
+	/**
+	 * A completely empty {@link REnvironmentInformation|environment}.
+	 */
+	makeEmptyEnv(): REnvironmentInformation;
 }
 
 /**
@@ -85,6 +90,13 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
 		return {
 			current: new Environment(this.emptyBuiltInEnv),
+			level:   0
+		};
+	}
+
+	public makeEmptyEnv(): REnvironmentInformation {
+		return {
+			current: new Environment(undefined as unknown as Environment, true),
 			level:   0
 		};
 	}

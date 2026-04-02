@@ -26,7 +26,7 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -63,18 +63,18 @@ import { processS7NewGeneric } from '../internal/process/functions/call/built-in
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
-import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purr-formula';
+import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ) => DataflowInformation;
 
 export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: Config
@@ -119,7 +119,7 @@ export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
@@ -185,7 +185,7 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	{ useAsProcessor = BuiltInProcName.Default, forceArgs }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs'>

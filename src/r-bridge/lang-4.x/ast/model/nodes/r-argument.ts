@@ -4,7 +4,7 @@ import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { ParentInformation } from '../processing/decorate';
 import type { NodeId } from '../processing/node-id';
-import type { RFunctionArgument } from './r-function-call';
+import type { PotentiallyEmptyRArgument } from './r-function-call';
 import { EmptyArgument } from './r-function-call';
 import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
 
@@ -70,7 +70,7 @@ export const RArgument = {
 	isWithValue<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RArgument<Info> & { value: RNode<Info> } {
 		return RArgument.is(node) && node.value !== undefined;
 	},
-	getWithId<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<RFunctionArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
+	getWithId<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): Exclude<PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, typeof EmptyArgument> | undefined {
 		if(id === undefined) {
 			return undefined;
 		}
@@ -87,7 +87,7 @@ export const RArgument = {
 	/**
 	 * Retrieve the value of the argument with the given id from the list of arguments.
 	 */
-	getValue<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RNode<OtherInfo> | undefined {
+	getValue<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], id: NodeId | undefined): RNode<OtherInfo> | undefined {
 		return RArgument.getWithId(args, id)?.value;
 	}
 } as const;

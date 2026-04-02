@@ -421,6 +421,8 @@ export const DefaultBuiltinConfig = [
 	} },
 	{ type: 'function', names: ['function', '\\'],                             processor: BuiltInProcName.FunctionDefinition, config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.make('enquo', 'rlang'), Identifier.make('enquos', 'rlang'), Identifier.make('quo', 'rlang'), Identifier.make('quos', 'rlang'), Identifier.make('sym', 'rlang'), Identifier.make('syms', 'rlang'), Identifier.make('ensym', 'rlang'), Identifier.make('ensyms', 'rlang'), Identifier.make('expr', 'rlang'), Identifier.make('exprs', 'rlang'), Identifier.make('quo_name', 'rlang'), Identifier.make('as_name', 'rlang'), Identifier.make('as_label', 'rlang'), Identifier.make('as_string', 'rlang')], processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.make('call2', 'rlang'), Identifier.make('exec', 'rlang'), Identifier.make('invoke', 'purrr'), Identifier.make('invoke_map', 'purrr')],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
 	{ type: 'function', names: ['for'],                                        processor: BuiltInProcName.ForLoop,            config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['repeat'],                                     processor: BuiltInProcName.RepeatLoop,         config: {},                                                                            assumePrimitive: true  },
@@ -469,6 +471,7 @@ export const DefaultBuiltinConfig = [
 		type:  'function',
 		names: [
 			'tinytheme', 'theme_set',
+			Identifier.make('context', 'testthat'),
 			/* downloader and installer functions (R, devtools, BiocManager) */
 			'library.dynam', 'install.packages', 'install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
 		],

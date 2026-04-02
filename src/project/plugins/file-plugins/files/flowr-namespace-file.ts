@@ -12,7 +12,7 @@ import type {
 import { foldAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import { Identifier } from '../../../../dataflow/environments/identifier';
 import { isNotUndefined } from '../../../../util/assert';
-import type { RFunctionArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument, RFunctionCall } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import {
@@ -260,15 +260,15 @@ function wrapRNodeInNotCall(node: RNode<ParentInformation>, idMap: AstIdMap): RF
 		arguments: [toUnnamedArgument(node, idMap)]
 	};
 }
-function handleExportCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleExportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	g.current.exportedSymbols.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? removeRQuotes(a.lexeme) : undefined).filter(isNotUndefined));
 	return g;
 }
-function handleExportPatternCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleExportPatternCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	g.current.exportedPatterns.push(...args.filter(a => a !== EmptyArgument).map(a => a.lexeme ? unquoteArgument(a.lexeme) : undefined).filter(isNotUndefined));
 	return g;
 }
-function handleS3MethodCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleS3MethodCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	if(args.length !== 2) {
 		return g;
 	}
@@ -287,7 +287,7 @@ function handleS3MethodCall(g: NamespaceFormat, args: readonly RFunctionArgument
 	arr.push(func);
 	return g;
 }
-function handleImportCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleImportCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	if(args.length !== 1) {
 		return g;
 	}
@@ -300,7 +300,7 @@ function handleImportCall(g: NamespaceFormat, args: readonly RFunctionArgument<P
 	return g;
 }
 
-function handleImportFromCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleImportFromCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	if(args.length < 2) {
 		return g;
 	}
@@ -324,7 +324,7 @@ function handleImportFromCall(g: NamespaceFormat, args: readonly RFunctionArgume
 	}
 	return g;
 }
-function handleUseDynLibCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	if(args.length < 1) {
 		return g;
 	}
@@ -346,7 +346,7 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly RFunctionArgumen
 	g[pkg].loadsWithSideEffects = true;
 	return g;
 }
-function handleExportClassesCall(g: NamespaceFormat, args: readonly RFunctionArgument<ParentInformation>[]): NamespaceFormat {
+function handleExportClassesCall(g: NamespaceFormat, args: readonly PotentiallyEmptyRArgument<ParentInformation>[]): NamespaceFormat {
 	if(args.length !== 1) {
 		return g;
 	}

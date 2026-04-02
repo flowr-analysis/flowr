@@ -9,7 +9,7 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -39,7 +39,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
  */
 export function processEvalCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: {
@@ -155,7 +155,7 @@ function getAsString(config: FlowrConfig, val: RNode<ParentInformation> | undefi
 	return undefined;
 }
 
-function handlePaste(config: FlowrConfig, args: readonly RFunctionArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[], ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function handlePaste(config: FlowrConfig, args: readonly PotentiallyEmptyRArgument<ParentInformation>[], env: REnvironmentInformation, idMap: AstIdMap, sepDefault: string[], ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	const sepArg = args.find(v => v !== EmptyArgument && v.name?.content === 'sep');
 	if(sepArg) {
 		const res = sepArg !== EmptyArgument && sepArg.value ? getAsString(config, sepArg.value, env, idMap, ctx) : undefined;

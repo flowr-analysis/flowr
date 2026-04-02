@@ -7,7 +7,7 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
@@ -33,7 +33,7 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/** The last one has to be the value */
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { makeMaybe?: boolean, constructName?: 's7', assignmentOperator?: '<-' | '<<-', readIndices?: boolean, assignRootId?: NodeId } & ForceArguments
@@ -65,7 +65,7 @@ export function processReplacementFunction<OtherInfo>(
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
 	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
-		[targetArg, args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
+		[targetArg, args.at(-1) as PotentiallyEmptyRArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{

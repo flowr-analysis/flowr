@@ -5,7 +5,7 @@ import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
@@ -32,7 +32,7 @@ export interface IfThenElseConfig {
 	}
 }
 
-function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
+function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
 	let condArg: RNode<OtherInfo & ParentInformation> | undefined;
 	let thenArg: RNode<OtherInfo & ParentInformation> | undefined;
 	let otherwiseArg: RNode<OtherInfo & ParentInformation> | undefined;
@@ -61,7 +61,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
  */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config?: IfThenElseConfig

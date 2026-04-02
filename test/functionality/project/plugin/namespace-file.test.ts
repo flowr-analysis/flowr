@@ -53,7 +53,6 @@ importFrom(stats,setNames)`));
 
 	ctx.addFile(new FlowrInlineTextFile('test.R', 'x <- 1'));
 	ctx.addRequests([{ request: 'file', content: 'test.R' }]);
-	ctx.resolvePreAnalysis();
 
 	describe('Basic exports', function() {
 		test('Functions are exported', () => {

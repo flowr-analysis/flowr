@@ -138,6 +138,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                  processor: BuiltInProcName.Apply,               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
 	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                   processor: BuiltInProcName.Apply,               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['print', 'message', 'warning', 'warn', 'info'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
+	{ type: 'function', names: ['invisible'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all' },                                  assumePrimitive: true },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -258,7 +259,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['ifelse', 'fifelse', 'IfElse'],                processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'test', yes: 'yes', no: 'no' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['if_else'],                                    processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'condition', yes: 'true', no: 'false' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['get'],                                        processor: BuiltInProcName.Get,                 config: {},                                                                            assumePrimitive: false },
-	{ type: 'function', names: [Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: [Identifier.make('from', 'import'),  Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='],                                    processor: BuiltInProcName.Assignment,          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
 	{ type: 'function', names: [':='],                                         processor: BuiltInProcName.Assignment,          config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
@@ -269,7 +270,134 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['->>'],                                        processor: BuiltInProcName.Assignment,          config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true },  assumePrimitive: true  },
 	{ type: 'function', names: ['&&', '&'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
 	{ type: 'function', names: ['||', '|'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
-	{ type: 'function', names: ['|>', '%>%'],                                  processor: BuiltInProcName.Pipe,                config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['|>'],                                         processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '_' }, assumePrimitive: true  },
+	{ type: 'function', names: ['%>%', '%!>%'],                                processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type: 'function', names: ['%<>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type: 'function', names: ['%T>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type:      'function', names:     ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     ['pmap', 'pmap_lgl', 'pmap_int', 'pmap_dbl', 'pmap_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     ['map2', 'map2_lgl', 'map2_int', 'map2_dbl', 'map2_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     ['modify', 'imodify', 'imap', 'imap_lgl', 'imap_int', 'imap_dbl', 'imap_chr', 'imap_vec', 'lmap'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     ['modify2'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     ['map_at', 'modify_at'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':  { index: 0, name: '.x' },
+			'.at': { index: 1, name: '.at' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     ['lmap_at'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':  { index: 0, name: '.x' },
+			'.at': { index: 1, name: '.at' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     ['map_if', 'modify_if', 'lmap_if'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.p': { index: 1, name: '.p' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.else']
+	} },
+	{ type:      'function', names:     ['walk'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     ['iwalk'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    [],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     ['pwalk'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.l'
+	} },
+	{ type:      'function', names:     ['walk2'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':      { index: 2, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     ['map_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
+	{ type:      'function', names:     ['pmap_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
+	{ type:      'function', names:     ['map_depth', 'modify_depth'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':     { index: 0, name: '.x' },
+			'.depth': { index: 2, name: '.depth' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.ragged', '.is_node']
+	} },
+	{ type:      'function', names:     ['map2_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
 	{ type: 'function', names: ['function', '\\'],                             processor: BuiltInProcName.FunctionDefinition, config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
@@ -286,7 +414,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: BuiltInProcName.List,                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                              assumePrimitive: false },
+	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                               assumePrimitive: false },
+	{ type: 'function', names: ['sys.function'],                               processor: BuiltInProcName.Recall,              config: { libFn: true, unknownOnNonZeroArg: true },                                    assumePrimitive: false },
 	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
 	{
 		type:      'function',
@@ -305,6 +434,7 @@ export const DefaultBuiltinConfig = [
 			'sys.on.exit', 'par', 'tpar', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
+			Identifier.make('use', 'base'),
 			/* weird env attachments */
 			'attach', 'unname', 'data',
 			/* file creation/removal */

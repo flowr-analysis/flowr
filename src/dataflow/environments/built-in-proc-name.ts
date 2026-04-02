@@ -38,6 +38,11 @@ export enum BuiltInProcName {
 	Local = 'builtin:local',
 	/** for the pipe operators, see {@link processPipe} */
 	Pipe = 'builtin:pipe',
+	/**
+	 * Support for purrr's functional style of formulas with implicit arguments,
+	 * for example, supports `map(g, ~ .x + 2)`
+	 */
+	PurrrFormula = 'builtin:purrr-formula',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote = 'builtin:quote',
 	/**

@@ -261,6 +261,40 @@ print(df)
 			shell,
 			`
 df <- data.frame(id = 1:5)
+while (ncol(df) < 2) {
+	df <- cbind(df, name = "A")
+
+	if (runif(1) < 0.5) {
+		df <- rbind(df, c(6, "A"))
+		next
+	}
+}
+print(df)
+			`.trim(),
+			[['10@df', { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, Infinity] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+while (nrow(df) < 10) {
+	df <- rbind(df, 6)
+
+	if (runif(1) < 0.5) {
+		next
+	}
+	break
+}
+print(df)
+			`.trim(),
+			[['10@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
 while (TRUE) {
 	df[2] <- 6:10
 	break
@@ -322,6 +356,19 @@ print(df)
 				['3@df', undefined, DataFrameShapeOverapproximation]
 			]
 		);
+
+		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+if (2 < 1) {
+	df <- data.frame(id = 1:5)
+}
+print(df)
+				`.trim(),
+				[['4@df', DataFrameShapeOverapproximation]]
+			);
+		});
 	});
 
 	describe('Create', () => {
@@ -822,6 +869,15 @@ result <- df[1, ]
 		testDataFrameDomain(
 			shell,
 			`
+df <- data.frame(id = 1, name = "A")
+result <- df[, 1]
+			`.trim(),
+			[['2@result', undefined]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c("id", "name")]
 			`.trim(),
@@ -1120,6 +1176,15 @@ result <- df[c(1, 1, 1, 1, 1), ]
 		);
 
 		describe('Unsupported', { fails: true }, () => {
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3)
+result <- df[1, ]
+				`.trim(),
+				[['2@result', DataFrameShapeOverapproximation]]
+			);
+
 			testDataFrameDomainAgainstReal(
 				shell,
 				`
@@ -2820,6 +2885,17 @@ df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, select = rep("id", times = 12))
 				`.trim(),
 				[['2@result', DataFrameShapeOverapproximation]]
+			);
+
+			testDataFrameDomainAgainstReal(
+				shell,
+				`
+df <- data.frame(id = 1:3, name = 4:6, label = "A")
+result <- subset(df, select = -c(3, 4, 5))
+				`.trim(),
+				[
+					['2@result', DataFrameShapeOverapproximation]
+				]
 			);
 
 			testDataFrameDomainAgainstReal(

@@ -41,35 +41,30 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/**
 	 * The meta context provides access to the project metadata such as name, version, and namespace.
 	 */
-	readonly meta:               ReadOnlyFlowrAnalyzerMetaContext;
+	readonly meta:   ReadOnlyFlowrAnalyzerMetaContext;
 	/**
 	 * The files context provides access to the files to be analyzed and their loading order.
 	 */
-	readonly files:              ReadOnlyFlowrAnalyzerFilesContext;
+	readonly files:  ReadOnlyFlowrAnalyzerFilesContext;
 	/**
 	 * The dependencies context provides access to the identified dependencies and their versions.
 	 */
-	readonly deps:               ReadOnlyFlowrAnalyzerDependenciesContext;
+	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
 	/**
 	 * The environment context provides access to the environment information used during analysis.
 	 */
-	readonly env:                ReadOnlyFlowrAnalyzerEnvironmentContext;
+	readonly env:    ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/**
 	 * The configuration options used by the analyzer.
 	 */
-	readonly config:             FlowrConfig;
-	/**
-	 * Run all resolution steps that can be done before the main analysis run.
-	 */
-	readonly resolvePreAnalysis: () => void;
+	readonly config: FlowrConfig;
 }
 
 /**
  * This summarizes the other context layers used by the {@link FlowrAnalyzer}.
  * Have a look at the attributes and layers listed below (e.g., {@link files} and {@link deps})
  * to get an idea of the capabilities provided by this context.
- * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods alongside the
- * {@link resolvePreAnalysis} method that conducts all the steps that can be done before the main analysis run.
+ * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods.
  * In general, you do not have to worry about these details, as the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer} take care of them.
  *
  * To inspect, e.g., the loading order, you can do so via {@link files.loadingOrder.getLoadingOrder}. To get information on a specific library, use
@@ -120,12 +115,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 
 	public addFiles(f: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		this.files.addFiles(f);
-	}
-
-	/** this conducts all the step that can be done before the main analysis run */
-	public resolvePreAnalysis(): void {
-		this.files.computeLoadingOrder();
-		this.deps.resolveStaticDependencies();
 	}
 
 	/**

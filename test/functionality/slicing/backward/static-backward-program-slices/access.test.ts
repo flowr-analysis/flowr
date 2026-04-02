@@ -31,7 +31,7 @@ data <- data ${pipe} filter(age >= 30)
 print(data)
 		`.trim();
 
-			assertSliced(label(`${pipe}-pipe with access`, ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'replacement-functions', 'newlines', 'built-in-pipe-and-pipe-bind']),
+			assertSliced(label(`${pipe}-pipe with access`, ['name-normal', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['+'].capabilities, 'dollar-access', 'replacement-functions', 'newlines', 'pipe-and-pipe-bind']),
 				shell, code, ['5@print'], code, {
 					minRVersion: MIN_VERSION_PIPE
 				});

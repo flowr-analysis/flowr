@@ -163,6 +163,10 @@ df[6, "value"]
 		'stop(42)', tagTypes);
 
 	rule(knownParser,
+		'roxygen-arguments', 'RoxygenArgsConfig', 'ROXYGEN_ARGS', 'lint-roxygen-arguments',
+		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
+
+	rule(knownParser,
 		'problematic-eval', 'ProblematicEvalConfig', 'PROBLEMATIC_EVAL', 'lint-problematic-eval',
 		`
 function(x) {

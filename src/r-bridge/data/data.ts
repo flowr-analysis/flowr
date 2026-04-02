@@ -539,7 +539,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									name:        'Pipe and Pipe-Bind',
 									id:          'pipe-and-pipe-bind',
 									supported:   'partially',
-									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; similarly support the other pipe binds'
+									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; Similarly support the other pipe binds'
 								},
 								{
 									name:        'Sequencing',

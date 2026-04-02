@@ -77,7 +77,7 @@ export function processPipe<OtherInfo>(
 			location: name.location
 		} as RSymbol<OtherInfo & ParentInformation>;
 
-		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, {} as AssignmentConfiguration);
+		information = processAssignment(assignSym, [targetArg, sourceArg], rootId, data, { canBeReplacement: true, mayHaveMoreArgs: true } as AssignmentConfiguration);
 	}
 
 	let treatedAsFunctionCall = false;

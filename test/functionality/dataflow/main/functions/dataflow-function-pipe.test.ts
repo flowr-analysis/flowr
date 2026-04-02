@@ -42,7 +42,7 @@ describe('Function Call Pipes', withTreeSitter(ts => {
 				.reads('1@_', '1@x')
 				.reads('1@f', '1@y')
 				.call('1@f', 'f', [argumentInCall('1@y'), argumentInCall(10)]),
-			pipeConfig
+			{ ...pipeConfig, minRVersion: RPipe.hasAccessPlaceHolderFromRVersion().toString() }
 		);
 		describe('magrittr', () => {
 			assertDataflow(label('With %>%', ['pipe-and-pipe-bind']), ts, 'x %>% f(y, .)',

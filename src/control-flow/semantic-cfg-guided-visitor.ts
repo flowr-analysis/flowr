@@ -318,7 +318,7 @@ export class SemanticCfgGuidedVisitor<
 				return this.onUnnamedCall({ call });
 			case BuiltInProcName.Recall:
 				return this.onRecallCall({ call });
-			case BuiltInProcName.PurrFormula:
+			case BuiltInProcName.PurrrFormula:
 				return this.onPurrFormulaCall({ call });
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:

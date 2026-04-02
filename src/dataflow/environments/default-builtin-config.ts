@@ -274,21 +274,21 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['%>%', '%!>%'],                                processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
 	{ type: 'function', names: ['%<>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
 	{ type: 'function', names: ['%T>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
-	{ type:      'function', names:     ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map', 'map_lgl', 'map_int', 'map_dbl', 'map_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     ['pmap', 'pmap_lgl', 'pmap_int', 'pmap_dbl', 'pmap_chr'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['pmap', 'pmap_lgl', 'pmap_int', 'pmap_dbl', 'pmap_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.l': { index: 0, name: '.l' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     ['map2', 'map2_lgl', 'map2_int', 'map2_dbl', 'map2_chr'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map2', 'map2_lgl', 'map2_int', 'map2_dbl', 'map2_chr'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.y': { index: 1, name: '.y' },
@@ -296,14 +296,14 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     ['modify', 'imodify', 'imap', 'imap_lgl', 'imap_int', 'imap_dbl', 'imap_chr', 'imap_vec', 'lmap'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['modify', 'imodify', 'imap', 'imap_lgl', 'imap_int', 'imap_dbl', 'imap_chr', 'imap_vec', 'lmap'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: []
 	} },
-	{ type:      'function', names:     ['modify2'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['modify2'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.y': { index: 1, name: '.y' }
@@ -311,7 +311,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: []
 	} },
-	{ type:      'function', names:     ['map_at', 'modify_at'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map_at', 'modify_at'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x':  { index: 0, name: '.x' },
 			'.at': { index: 1, name: '.at' },
@@ -319,7 +319,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.progress']
 	} },
-	{ type:      'function', names:     ['lmap_at'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['lmap_at'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x':  { index: 0, name: '.x' },
 			'.at': { index: 1, name: '.at' },
@@ -327,7 +327,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: []
 	} },
-	{ type:      'function', names:     ['map_if', 'modify_if', 'lmap_if'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map_if', 'modify_if', 'lmap_if'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.p': { index: 1, name: '.p' },
@@ -335,7 +335,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.else']
 	} },
-	{ type:      'function', names:     ['walk'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['walk'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
@@ -343,7 +343,7 @@ export const DefaultBuiltinConfig = [
 		ignore:    ['.progress'],
 		returnArg: '.x'
 	} },
-	{ type:      'function', names:     ['iwalk'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['iwalk'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
@@ -351,7 +351,7 @@ export const DefaultBuiltinConfig = [
 		ignore:    [],
 		returnArg: '.x'
 	} },
-	{ type:      'function', names:     ['pwalk'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['pwalk'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.l': { index: 0, name: '.l' }
 		},
@@ -359,7 +359,7 @@ export const DefaultBuiltinConfig = [
 		ignore:    ['.progress'],
 		returnArg: '.l'
 	} },
-	{ type:      'function', names:     ['walk2'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['walk2'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.y': { index: 1, name: '.y' }
@@ -368,21 +368,21 @@ export const DefaultBuiltinConfig = [
 		ignore:    ['.progress'],
 		returnArg: '.x'
 	} },
-	{ type:      'function', names:     ['map_vec'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress', '.ptype']
 	} },
-	{ type:      'function', names:     ['pmap_vec'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['pmap_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.l': { index: 0, name: '.l' }
 		},
 		'.f':   { index: 1, name: '.f' },
 		ignore: ['.progress', '.ptype']
 	} },
-	{ type:      'function', names:     ['map_depth', 'modify_depth'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map_depth', 'modify_depth'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x':     { index: 0, name: '.x' },
 			'.depth': { index: 2, name: '.depth' }
@@ -390,7 +390,7 @@ export const DefaultBuiltinConfig = [
 		'.f':   { index: 2, name: '.f' },
 		ignore: ['.ragged', '.is_node']
 	} },
-	{ type:      'function', names:     ['map2_vec'], processor: BuiltInProcName.PurrFormula, config:    {
+	{ type:      'function', names:     ['map2_vec'], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {
 			'.x': { index: 0, name: '.x' },
 			'.y': { index: 1, name: '.y' }

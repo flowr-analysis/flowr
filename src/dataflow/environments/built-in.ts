@@ -63,7 +63,7 @@ import { processS7NewGeneric } from '../internal/process/functions/call/built-in
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
-import { processPurrFormula } from '../internal/process/functions/call/built-in/built-in-purr-formula';
+import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purr-formula';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -217,7 +217,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.List]:               processList,
 	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.Pipe]:               processPipe,
-	[BuiltInProcName.PurrFormula]:        processPurrFormula,
+	[BuiltInProcName.PurrrFormula]:       processPurrrFormula,
 	[BuiltInProcName.Quote]:              processQuote,
 	[BuiltInProcName.Recall]:             processRecall,
 	[BuiltInProcName.RegisterHook]:       processRegisterHook,

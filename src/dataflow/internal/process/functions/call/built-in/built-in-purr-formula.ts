@@ -17,7 +17,7 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import { FunctionArgument } from '../../../../../graph/graph';
 
-interface BuiltInPurrFormulaConfiguration {
+interface BuiltInPurrrFormulaConfiguration {
 	/**
 	 * Maps the created variable/variable to bind in the formula, to the argument that produces it.
 	 * For example:
@@ -45,14 +45,14 @@ interface BuiltInPurrFormulaConfiguration {
 /**
  * Support for R's purr formula: `map(df, ~ .x + 1)`.
  */
-export function processPurrFormula<OtherInfo>(
+export function processPurrrFormula<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	config: BuiltInPurrFormulaConfiguration
+	config: BuiltInPurrrFormulaConfiguration
 ): DataflowInformation {
-	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Pipe });
+	const { information, callArgs } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.PurrrFormula });
 
 	const params: Record<string, string> = {};
 	for(const key of Object.keys(config.args)) {

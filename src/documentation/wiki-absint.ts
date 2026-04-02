@@ -1,8 +1,10 @@
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { IntervalDomain } from '../abstract-interpretation/domains/interval-domain';
+import { BottomSymbol } from '../abstract-interpretation/domains/lattice';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { Identifier } from '../dataflow/environments/identifier';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../dataflow/graph/vertex';
 import { CfgKind } from '../project/cfg-kind';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -14,7 +16,6 @@ import { codeBlock } from './doc-util/doc-code';
 import { details, section } from './doc-util/doc-structure';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { Identifier } from '../dataflow/environments/identifier';
 
 class IntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
 	protected override onNumberConstant({ vertex, node }: { vertex: DataflowGraphVertexValue, node: RNumber<ParentInformation> }): void {
@@ -62,14 +63,14 @@ async function inferIntervals(): Promise<string> {
 	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
 	const ctx = analyzer.inspectContext();
 
-	const inference = new IntervalInferenceVisitor({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx });
+	const inference = new IntervalInferenceVisitor({ controlFlow: cfg, dfg: dfg, normalizedAst: ast, ctx: ctx }, IntervalDomain.top());
 	inference.start();
 
 	const result = inference.getEndState();
 
-	return result.value.entries().toArray()
+	return result.isValue() ? result.value.entries().toArray()
 		.map(([id, value]) => `${nodeIdToSlicingCriterion(id, ast.idMap)} -> ${value.toString()}`)
-		.join('\n');
+		.join('\n') : BottomSymbol;
 }
 
 function nodeIdToSlicingCriterion(id: NodeId, idMap: AstIdMap): string {
@@ -152,7 +153,7 @@ If we now want to run the interval inference, we can write the following code:
 
 ${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5 })}
 
-We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. For performance reasons, we construct the control flow graph without simplification passes, data flow information, and function definitions. We then create a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, and analyzer context, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
+We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, context of the flowR anaylzer, and provide a value domain for the state domain. For performance reasons, we construct the control flow graph without simplification passes, data flow information, and function definitions. We then create a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, and analyzer context, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
 
 If we now print the inferred abstract state at the end of the program, we get the following output:
 

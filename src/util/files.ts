@@ -126,7 +126,7 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer;
+	let line: Buffer | null;
 
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
@@ -154,7 +154,7 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer;
+	let line: Buffer | null;
 
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign

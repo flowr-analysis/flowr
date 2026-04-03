@@ -7,7 +7,7 @@ const OutputRedirects = [
 
 export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'save',        argName: 'file',               resolveValue: true },
-	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },

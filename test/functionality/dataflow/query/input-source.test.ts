@@ -47,19 +47,19 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		testQuery('Eval-parse simple but with variable', 'eval(parse(text=x))', [{ type: 'input-sources', criterion: '1@eval' }], {
 			'1@eval': [{
 				id:    '1@parse',
-				type:  [InputType.Unknown], trace: InputTraceType.Known
+				type:  [InputType.Unknown, InputType.DerivedConstant], trace: InputTraceType.Known
 			}]
 		});
 		testQuery('Eval-parse to param', 'function(x) eval(parse(text=x))', [{ type: 'input-sources', criterion: '1@eval' }], {
 			'1@eval': [{
 				id:    '1@parse',
-				type:  [InputType.Parameter], trace: InputTraceType.Known
+				type:  [InputType.Parameter, InputType.DerivedConstant], trace: InputTraceType.Known
 			}]
 		});
 		testQuery('Eval-parse to param with indirect', 'function(x) { y <- x\neval(parse(text=y))}', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{
 				id:    '2@parse',
-				type:  [InputType.Parameter], trace: InputTraceType.Known
+				type:  [InputType.Parameter, InputType.DerivedConstant], trace: InputTraceType.Known
 			}]
 		});
 	});
@@ -96,7 +96,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 	});
 	describe('Control Dependencies', () => {
 		testQuery('Control dependency: file vs constant', 'if(runif(1) > 0.5) { x <- read.csv("a") } else { x <- 2 }\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', type: [InputType.File, InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.Random, InputType.Constant] }]
+			'2@foo': [{ id: '2@x', type: [InputType.File, InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.Random, InputType.Constant, InputType.DerivedConstant] }]
 		});
 	});
 	describe('Loops and Recursion', () => {

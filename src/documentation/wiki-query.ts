@@ -50,6 +50,7 @@ import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-ca
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 import { SliceDirection } from '../util/slice-direction';
 import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
+import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -682,7 +683,6 @@ This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#me
 	}
 });
 
-
 registerQueryDocumentation('provenance', {
 	name:             'Provenance Query',
 	type:             'active',
@@ -703,6 +703,37 @@ If you are interested in the provenance of the \`x\` in the last line you can us
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'provenance',
+		criterion
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+}
+`;
+	}
+});
+
+registerQueryDocumentation('input-sources', {
+	name:             'Input Sources Query',
+	type:             'active',
+	shortDescription: 'Classify the input sources of function calls',
+	functionName:     executeInputSourcesQuery.name,
+	functionFile:     '../queries/catalog/input-sources-query/input-sources-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = `
+f <- function(x) {
+	x <- x * 2
+	print(x)
+}`.trim();
+		const criterion: SlicingCriterion = '3@print';
+		return `
+Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) to
+something like a function call, flowR classifies the types of all input sources (e.g., arguments).
+
+To exemplify the query, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the input-sources of the \`print\` call, you can use:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'input-sources',
 		criterion
 	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
 }

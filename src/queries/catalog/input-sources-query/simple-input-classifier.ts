@@ -115,8 +115,8 @@ class InputClassifier {
 			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
 		}
 
-		const types = argTypes.length === 0 ? [InputType.DerivedConstant] : uniqueArray(argTypes);
-		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: types, trace: InputTraceType.Known, cds }));
+		argTypes.push(InputType.DerivedConstant);
+		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
 	}
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
@@ -132,7 +132,7 @@ class InputClassifier {
 
 		for(const o of origins) {
 			if(o.type === OriginType.ConstantOrigin) {
-				types.push(InputType.Constant);
+				types.push(InputType.DerivedConstant);
 				continue;
 			}
 

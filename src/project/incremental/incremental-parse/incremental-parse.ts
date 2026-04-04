@@ -1,25 +1,47 @@
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import type { InvalidationEvent } from '../../cache/flowr-cache';
-import { InvalidationEventType } from '../../cache/flowr-cache';
-import { FileRole } from '../../context/flowr-file';
+import type Parser from 'web-tree-sitter';
+import type { FilePath } from '../../context/flowr-file';
+import { computeEditRegion } from './edit-computation';
+
+
+export interface ReparseInfo {
+	readonly previousTree: Parser.Tree;
+	readonly editRegion:   Parser.Edit | undefined;
+}
+
 
 /**
- * Is this file even relevant to us?
+ * Computes the information needed to reparse a file incrementally with tree-sitter.
+ * Returns `undefined` if incremental reparsing is not possible.
  */
-export function coarseCheckWhetherToInvalidate(ctx: FlowrAnalyzerContext, event: InvalidationEvent): boolean {
-	if(event?.type === InvalidationEventType.Full) {
-		return true;
+export function computeReparseInfo(ctx: FlowrAnalyzerContext, filePath: FilePath): ReparseInfo | undefined {
+	const previousTree = ctx.inc.getOldParseResultOf(filePath);
+	if(!previousTree) {
+		// this file was not parsed before
+		return undefined;
 	}
 
-	if(!event.file.roles?.includes(FileRole.Source) && !event.file.roles?.includes(FileRole.Description)) {
-		return false;
+	const oldContent = ctx.inc.getAndRemoveOldContentOf(filePath);
+	if(oldContent === undefined) {
+		// this file has not been invalidated since the last parse, no reparse needed
+		return {
+			previousTree,
+			editRegion: undefined
+		};
 	}
 
-	/*
-	if(!ctx.files.consideredFilesList().includes(event.file.path())) {
-		return false;
+	const newContent = ctx.files.getFile(filePath)?.content().toString() ?? '';
+	if(newContent === oldContent) {
+		// this file was invalidated, but the content did not change, no reparse needed
+		return {
+			previousTree,
+			editRegion: undefined
+		};
 	}
-	*/
 
-	return event.oldContent !== event.file.content();
+	const editRegion = computeEditRegion(oldContent, newContent);
+	return {
+		previousTree,
+		editRegion
+	};
 }

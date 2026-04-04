@@ -1,5 +1,5 @@
 import { assertUnreachable } from '../../util/assert';
-import type { FlowrFileProvider, StringableContent } from '../context/flowr-file';
+import type { StringableContent } from '../context/flowr-file';
 
 export const enum InvalidationEventType {
 	Full = 'full',
@@ -9,7 +9,7 @@ export const enum InvalidationEventType {
 export interface FileContentInvalidateEvent<Content extends StringableContent = StringableContent> {
 	readonly type:       InvalidationEventType.FileInvalidate;
 	readonly oldContent: Content | undefined;
-	readonly file:       FlowrFileProvider<Content>;
+	readonly filePath:   string;
 }
 
 export type InvalidationEvent<Content extends StringableContent = StringableContent> =

@@ -1,4 +1,4 @@
-import type { KnownParser } from '../../r-bridge/parser';
+import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
 import { type InvalidationEvent, InvalidationEventType, FlowrCache } from './flowr-cache';
 import {
 	createDataflowPipeline,
@@ -18,11 +18,7 @@ import type { FlowrAnalyzerContext } from '../context/flowr-analyzer-context';
 import { FlowrAnalyzerControlFlowCache } from './flowr-analyzer-controlflow-cache';
 import type { CallGraph } from '../../dataflow/graph/call-graph';
 import { computeCallGraph } from '../../dataflow/graph/call-graph';
-import {
-	coarseCheckWhetherToInvalidate
-} from '../incremental/incremental-parse/incremental-parse';
-import { computeEditRegion } from '../incremental/incremental-parse/edit-computation';
-
+import type { Tree } from 'web-tree-sitter';
 interface FlowrAnalyzerCacheOptions<Parser extends KnownParser> {
 	parser:  Parser;
 	context: FlowrAnalyzerContext;
@@ -53,10 +49,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.initCacheProviders();
 	}
 
-	private initCacheProviders(resetInc: boolean = true) {
-		if(resetInc) {
-			this.args.context.inc.reset();
-		}
+	private initCacheProviders() {
 		this.pipeline = createDataflowPipeline(this.args.parser, {
 			context: this.args.context,
 			getId:   this.args.getId
@@ -75,26 +68,9 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		const type = event.type;
 		switch(type) {
 			case InvalidationEventType.Full:
+			case InvalidationEventType.FileInvalidate:
 				this.initCacheProviders();
 				break;
-			case InvalidationEventType.FileInvalidate: {
-				if(!coarseCheckWhetherToInvalidate(this.args.context, event)) {
-					return;
-				}
-
-				const oldContent = event.oldContent?.toString() ?? '';
-				const newContent = event.file.content().toString();
-				const editRegion = computeEditRegion(oldContent, newContent);
-				const previousTree = this.peekParse()?.files.find(f => f.filePath === event.file.path())?.parsed;
-				const reparseInfo = {
-					previousTree,
-					editRegion
-				};
-
-				this.args.context.inc.storeReparseInfo(event.file.path(), reparseInfo);
-				this.initCacheProviders(false);
-				break;
-			}
 			default:
 				assertUnreachable(type);
 		}
@@ -119,8 +95,24 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		while((g = until()) === undefined && this.pipeline.hasNextStep()) {
 			await this.pipeline.nextStep();
 		}
+
+		this.storeIncrementalSnapshotIfAvailable();
+
 		guard(g !== undefined, 'Could not reach the desired pipeline step, invalid cache state(?)');
 		return g;
+	}
+
+	private storeIncrementalSnapshotIfAvailable(): void {
+		if(this.args.parser.name !== 'tree-sitter') {
+			return;
+		}
+
+		const parse = this.peekParse();
+		if(parse !== undefined) {
+			this.args.context.inc.storeOldParseResults(
+				parse as ParseStepOutput<Tree> // cast needed because of TypeScript's limited narrowing capabilities
+			);
+		}
 	}
 
 	/**

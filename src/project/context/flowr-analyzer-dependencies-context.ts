@@ -4,6 +4,9 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
@@ -39,7 +42,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
  *
  * If you are interested in inspecting these dependencies, refer to {@link ReadOnlyFlowrAnalyzerDependenciesContext}.
  */
-export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
+export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
@@ -50,6 +53,20 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public reset(): void {
 		this.dependencies = new Map();
 		this.staticsLoaded = false;
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.FileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {

@@ -218,10 +218,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		console.log('parseStandalone');
 		const request = isParseRequest(data) ? data : requestFromInput(data);
 		if(this.parser.name === 'tree-sitter') {
-			return this.parser.parse(request, this.ctx.inc);
+			return this.parser.parse(request, this.ctx);
 		} else {
 			const ts = new TreeSitterExecutor();
-			return ts.parse(request, this.ctx.inc);
+			return ts.parse(request, this.ctx);
 		}
 	}
 

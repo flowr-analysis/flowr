@@ -6,9 +6,8 @@ import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import type {
-	FlowrAnalyzerIncrementalAnalysisContext
-} from '../../../project/context/flowr-analyzer-incremental-analysis-context';
+import type { FlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { computeReparseInfo } from '../../../project/incremental/incremental-parse/incremental-parse';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
@@ -72,7 +71,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.getLanguage().version;
 	}
 
-	public parse(request: RParseRequest & { filePath?: string }, inc: FlowrAnalyzerIncrementalAnalysisContext | undefined): Parser.Tree {
+	public parse(request: RParseRequest & { filePath?: string }, ctx: FlowrAnalyzerContext): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file') {
 			sourceCode = fs.readFileSync(request.content, 'utf8');
@@ -80,15 +79,23 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 			sourceCode = request.content;
 		}
 
-		if(inc && request.filePath !== undefined) {
-			const reparseInfo = inc.getAndRemoveParseInfo(request.filePath);
-			if(reparseInfo && reparseInfo.previousTree && typeof reparseInfo.previousTree !== 'string') {
-				const previousTree = reparseInfo.previousTree;
-				previousTree.edit(reparseInfo.editRegion);
-				return this.parser.parse(sourceCode, previousTree);
-			}
+		if(request.filePath === undefined) {
+			return this.parser.parse(sourceCode);
 		}
-		return this.parser.parse(sourceCode);
+
+		const reparseInfo = computeReparseInfo(ctx, request.filePath);
+		if(!reparseInfo) {
+			// incremental parsing not possible
+			return this.parser.parse(sourceCode);
+		}
+
+		if(!reparseInfo.editRegion) {
+			return reparseInfo.previousTree;
+		}
+
+		const previousTree = reparseInfo.previousTree;
+		previousTree.edit(reparseInfo.editRegion);
+		return this.parser.parse(sourceCode, previousTree);
 	}
 
 	public createQuery(source: string): Query {

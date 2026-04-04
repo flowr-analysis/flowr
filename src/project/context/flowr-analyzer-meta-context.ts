@@ -1,4 +1,7 @@
 import type { SemVer } from 'semver';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 
 
 export interface ReadOnlyFlowrAnalyzerMetaContext {
@@ -30,7 +33,7 @@ export interface ReadOnlyFlowrAnalyzerMetaContext {
  *
  * If you are interested in inspecting this metadata, refer to {@link ReadOnlyFlowrAnalyzerMetaContext}.
  */
-export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContext {
+export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-meta-context';
 	private projectName:    string | undefined;
 	private projectTitle:   string | undefined;
@@ -42,6 +45,20 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 		this.projectTitle = undefined;
 		this.projectVersion = undefined;
 		this.namespace = undefined;
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.FileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 
 	public setProjectName(name: string): void {

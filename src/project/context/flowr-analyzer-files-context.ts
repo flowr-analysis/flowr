@@ -4,7 +4,7 @@ import type {
 	RParseRequest,
 	RParseRequestFromFile } from '../../r-bridge/retriever';
 import { isParseRequest } from '../../r-bridge/retriever';
-import { guard } from '../../util/assert';
+import { assertUnreachable, guard } from '../../util/assert';
 import type {
 	FlowrAnalyzerLoadingOrderContext,
 	ReadOnlyFlowrAnalyzerLoadingOrderContext
@@ -22,6 +22,9 @@ import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-fil
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrAnalyzer } from '../flowr-analyzer';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
 
@@ -123,7 +126,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
  * If you are interested in inspecting these files, refer to {@link ReadOnlyFlowrAnalyzerFilesContext}.
  * Plugins, however, can use this context directly to modify files.
  */
-export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
+export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-files-context';
 
 	public readonly loadingOrder:     FlowrAnalyzerLoadingOrderContext;
@@ -156,6 +159,20 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.consideredFiles.length = 0;
 		this.inlineFiles.length = 0;
 		this.byRole = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.FileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
+		}
 	}
 
 	/**
@@ -356,5 +373,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getAllFiles(): FlowrFileProvider[] {
 		return [...this.files.values(), ...this.inlineFiles];
+	}
+
+	public getFile(path: FilePath): FlowrFileProvider | undefined {
+		return this.files.get(path);
 	}
 }

@@ -43,7 +43,6 @@ import type {
 import {
 	InvalidationEventType
 } from '../cache/flowr-cache';
-import { assertUnreachable } from '../../util/assert';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -109,7 +108,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
-		this.inc = new FlowrAnalyzerIncrementalAnalysisContext();
+		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.meta = new FlowrAnalyzerMetaContext();
@@ -164,19 +163,10 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	}
 
 	receive(event: InvalidationEvent): void {
-		const type = event.type;
-		switch(type) {
-			case InvalidationEventType.Full:
-				this.meta.reset();
-				this.files.reset();
-				this.deps.reset();
-				this.inc.reset();
-				break;
-			case InvalidationEventType.FileInvalidate:
-				break;
-			default:
-				assertUnreachable(type);
-		}
+		this.meta.receive(event);
+		this.files.receive(event);
+		this.deps.receive(event);
+		this.inc.receive(event);
 	}
 }
 

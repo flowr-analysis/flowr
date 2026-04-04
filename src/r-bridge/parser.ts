@@ -5,7 +5,6 @@ import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-exec
 import type { Query, QueryCapture, SyntaxNode } from 'web-tree-sitter';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import type { FlowrAnalyzerIncrementalAnalysisContext } from '../project/context/flowr-analyzer-incremental-analysis-context';
 
 interface ParserContent<T> {
 	readonly name:        string;
@@ -16,10 +15,10 @@ interface ParserContent<T> {
 	information(analyzer: FlowrAnalysisProvider): BaseParserInformation;
 
 	/**
-	 * Parses the given request and uses the provided incremental context (only if the parser
+	 * Parses the given request and uses the provided context (only if the parser
 	 * itself supports incrementality {@link ParserContent#incremental}).
 	 */
-	parse(request: RParseRequestFromText & { filePath?: string }, inc: FlowrAnalyzerIncrementalAnalysisContext | undefined): T;
+	parse(request: RParseRequestFromText & { filePath?: string }, inc: FlowrAnalyzerContext | undefined): T;
 	close(): void;
 }
 
@@ -112,7 +111,7 @@ Promise<ParseStepOutput<T>> {
 		/* sadly we cannot Promise.all with the Rshell as it has to process commands in order and is not thread safe */
 		const files: ParseStepOutputSingleFile<T>[] = [];
 		for(const req of translatedRequests) {
-			const parsed = await (input.parser).parse(req.r, ctx.inc);
+			const parsed = await (input.parser).parse(req.r, ctx);
 			files.push({
 				parsed,
 				filePath:      req.path,
@@ -128,7 +127,7 @@ Promise<ParseStepOutput<T>> {
 			files: translatedRequests.map(r => {
 				const withPath: RParseRequestFromText & { filePath?: string } = r.r;
 				withPath.filePath = r.path;
-				const parsed = p.parse(withPath, ctx.inc);
+				const parsed = p.parse(withPath, ctx);
 				return {
 					parsed,
 					filePath:      r.path,

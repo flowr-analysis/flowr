@@ -14,8 +14,8 @@ export function computeEditRegion(oldContent: string, newContent: string): Parse
 	let startIndex = 0;
 	while(
 		startIndex < oldLen &&
-        startIndex < newLen &&
-        oldContent[startIndex] === newContent[startIndex]
+		startIndex < newLen &&
+		oldContent[startIndex] === newContent[startIndex]
 	) {
 		startIndex++;
 	}
@@ -25,8 +25,8 @@ export function computeEditRegion(oldContent: string, newContent: string): Parse
 	let newSuffixIndex = newLen;
 	while(
 		oldSuffixIndex > startIndex &&
-        newSuffixIndex > startIndex &&
-        oldContent[oldSuffixIndex - 1] === newContent[newSuffixIndex - 1]
+		newSuffixIndex > startIndex &&
+		oldContent[oldSuffixIndex - 1] === newContent[newSuffixIndex - 1]
 	) {
 		oldSuffixIndex--;
 		newSuffixIndex--;

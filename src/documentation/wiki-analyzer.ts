@@ -493,7 +493,6 @@ At the moment, it is used for incremental parsing with Tree-sitter, but it is in
 
 If the analyzer or context is reset, the incremental information is discarded via
 ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'reset', { codeFont: true, realNameWrapper: 'i' })}.
-Likewise, a full cache rebuild resets this context before recreating the analysis pipeline.
 In other words, this context only transports incremental handoff state between analysis runs.
 
 ${section('Incremental Parsing', 4)}
@@ -501,17 +500,25 @@ ${section('Incremental Parsing', 4)}
 Currently, the implemented use of this context is Tree-sitter's incremental parsing support.
 When a file is represented by a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} and its content is invalidated via
 ${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
-the analyzer cache receives a file invalidation event.
-For relevant source-like files, the cache compares the old and new file contents, computes a minimal edit region,
-and stores two pieces of information in this context under the file path:
+the analyzer receives a file invalidation event.
+At that point, the incremental context only records the file path together with the old source text.
+No edit region is computed eagerly during invalidation.
 
-* the previous Tree-sitter parse tree
-* the ${ctx.link('Parser.Edit')} describing the changed source region
+After a successful parse-oriented analysis run, the analyzer cache stores the latest Tree-sitter parse trees in this context via
+${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'storeOldParseResults', { codeFont: true, realNameWrapper: 'i' })}.
+This gives the next parse run access to the last completed parse snapshot for each file path.
 
-On the next parse run, the Tree-sitter parser consumes this information via
-${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getAndRemoveParseInfo', { codeFont: true, realNameWrapper: 'i' })},
-applies the edit to the old tree, and reparses incrementally instead of starting from scratch.
-The stored entry is removed as soon as it is consumed, so the context only carries information across a single invalidation boundary.
+On the next parse run, Tree-sitter combines both pieces of information lazily:
+
+* the previous parse tree obtained from
+  ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldParseResultOf', { codeFont: true, realNameWrapper: 'i' })}
+* the old source text obtained from
+  ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getAndRemoveOldContentOf', { codeFont: true, realNameWrapper: 'i' })}
+
+Using these together with the current file content, flowR computes a minimal ${ctx.link('Parser.Edit')} only when a new parse is actually requested.
+If the file content did not change, the previous tree can be reused directly.
+Otherwise, the edit is applied to the previous tree and Tree-sitter reparses incrementally instead of starting from scratch.
+The stored old-content entry is consumed when it is used, so invalidation state only survives until the next relevant parse.
 
 ${section('Incremental Dataflow', 4)}
 

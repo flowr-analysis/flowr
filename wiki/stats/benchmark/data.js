@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775563051117,
+  "lastUpdate": 1775563055924,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -28938,6 +28938,123 @@ window.BENCHMARK_DATA = {
             "extra": "median: 32.17"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "956db1a6d4b680b40fc5ef1572c17eb7eaaf8358",
+          "message": "[release:patch] 2.10.3 Migrate Tree-Sitter-R",
+          "timestamp": "2026-04-07T13:23:49+02:00",
+          "tree_id": "8d7a25bc6de80772b31e284bdf665b74eb4381e3",
+          "url": "https://github.com/flowr-analysis/flowr/commit/956db1a6d4b680b40fc5ef1572c17eb7eaaf8358"
+        },
+        "date": 1775563053312,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 12.8227945,
+            "range": "13.625630957914012",
+            "unit": "ms",
+            "extra": "median: 10.62ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 12.460419477272726,
+            "range": "16.68572403266245",
+            "unit": "ms",
+            "extra": "median: 9.40ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 43.14074018181819,
+            "range": "75.3911671419882",
+            "unit": "ms",
+            "extra": "median: 25.52ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 397.68667177272727,
+            "range": "1009.0968020689494",
+            "unit": "ms",
+            "extra": "median: 115.02ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.453002863636363,
+            "range": "8.043962868327618",
+            "unit": "ms",
+            "extra": "median: 2.18ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.2442698636363634,
+            "range": "3.7896098176549953",
+            "unit": "ms",
+            "extra": "median: 1.51ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.3842277157168149,
+            "range": "0.5113844564442331",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23414538473017713,
+            "range": "0.18235117197330003",
+            "unit": "ms",
+            "extra": "median: 0.12ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6382263582937532,
+            "range": "0.6787927476701513",
+            "unit": "ms",
+            "extra": "median: 0.32ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 107.77064098011364,
+            "range": "272.83458689767207",
+            "unit": "KiB",
+            "extra": "median: 32.17"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -36414,6 +36531,123 @@ window.BENCHMARK_DATA = {
             "range": "4.888398841033577",
             "unit": "ms",
             "extra": "median: 0.78ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8848118013043365,
+            "unit": "#",
+            "extra": "std: 0.09167665770288042"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8453490802293895,
+            "unit": "#",
+            "extra": "std: 0.13156690062169096"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 94.43916279560811,
+            "range": "94.76429259236029",
+            "unit": "KiB",
+            "extra": "median: 57.67"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "956db1a6d4b680b40fc5ef1572c17eb7eaaf8358",
+          "message": "[release:patch] 2.10.3 Migrate Tree-Sitter-R",
+          "timestamp": "2026-04-07T13:23:49+02:00",
+          "tree_id": "8d7a25bc6de80772b31e284bdf665b74eb4381e3",
+          "url": "https://github.com/flowr-analysis/flowr/commit/956db1a6d4b680b40fc5ef1572c17eb7eaaf8358"
+        },
+        "date": 1775563055917,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 19.504630358108106,
+            "range": "9.008143195801795",
+            "unit": "ms",
+            "extra": "median: 18.09ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 21.373426810810813,
+            "range": "13.140231552897353",
+            "unit": "ms",
+            "extra": "median: 17.27ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 63.2045949527027,
+            "range": "48.63207625209031",
+            "unit": "ms",
+            "extra": "median: 50.15ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1398.8549426013512,
+            "range": "3763.5779653040768",
+            "unit": "ms",
+            "extra": "median: 295.46ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 9.045956472972975,
+            "range": "6.621601877663661",
+            "unit": "ms",
+            "extra": "median: 7.20ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 3.8115745810810813,
+            "range": "3.8806718666137727",
+            "unit": "ms",
+            "extra": "median: 2.24ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.2674481710695518,
+            "range": "5.027502161504705",
+            "unit": "ms",
+            "extra": "median: 0.43ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24697522008370376,
+            "range": "0.18443091228421007",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.5250081783648226,
+            "range": "5.0706143999934215",
+            "unit": "ms",
+            "extra": "median: 0.77ms"
           },
           {
             "name": "failed to reconstruct/re-parse",

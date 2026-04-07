@@ -322,8 +322,6 @@ export interface InputSource extends MergeableRecord {
 	trace: InputTraceType,
 	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
 	cds?:  InputType[]
-	/** cycle free witness trace */
-	// witness: NodeId[] (optional)
 }
 
 

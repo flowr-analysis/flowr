@@ -38,6 +38,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		);
 
 		results[key] = classifyInput(criterionId, provenance, {
+			fullDfg:    df.graph,
 			networkFns: query.config?.networkFns ?? NETWORK_FUNCTIONS.info.defaultConfig.fns,
 			randomFns:  query.config?.randomFns ?? SEEDED_RANDOMNESS.info.defaultConfig.randomnessConsumers,
 			pureFns:    query.config?.pureFns ?? ['paste', 'paste0', 'parse', '+', '-', '*',

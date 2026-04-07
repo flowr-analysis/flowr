@@ -11,6 +11,7 @@ import type {
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
@@ -26,6 +27,11 @@ class InputClassifier {
 	constructor(dfg: DataflowGraph, config: InputClassifierConfig) {
 		this.dfg = dfg;
 		this.config = config;
+	}
+
+	private isDefinedByOnCall(id: NodeId): boolean {
+		const out = (this.config.fullDfg ?? this.dfg).outgoingEdges(id) ?? new Map<NodeId, DfEdge>();
+		return out.values().some(e => DfEdge.includesType(e, EdgeType.DefinedByOnCall));
 	}
 
 	public classifyEntry(vertex: DataflowGraphVertexInfo): InputSource {
@@ -123,7 +129,7 @@ class InputClassifier {
 		const origins = Dataflow.origin(this.dfg, vtx.id);
 
 		if(origins === undefined) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: this.isDefinedByOnCall(vtx.id) ? [InputType.Scope] : [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
@@ -139,6 +145,11 @@ class InputClassifier {
 			if(o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin) {
 				const v = this.dfg.getVertex(o.id);
 				if(v) {
+					// if the referenced definition is linked via defined-by-on-call to another
+					// id (e.g., a parameter linked to a caller argument), mark it as a Scope origin
+					if(this.isDefinedByOnCall(v.id)) {
+						types.push(InputType.Scope);
+					}
 					// if this is a variable definition that is a parameter, classify as Parameter
 					if(v.tag === VertexType.VariableDefinition && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
 						types.push(InputType.Parameter);
@@ -216,6 +227,7 @@ class InputClassifier {
 				types.push(InputType.Unknown);
 			}
 		}
+
 		const t = types.length === 0 ? [InputType.Unknown] : uniqueArray(types);
 		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
 		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
@@ -342,6 +354,10 @@ export interface InputClassifierConfig extends MergeableRecord {
 	 * Functions that read from the file system
 	 */
 	readFileFns: readonly InputClassifierFunctionIdentifier[]
+	/**
+	 * For the scope escape analysis, pass on the full, non-reduced DFG here
+	 */
+	fullDfg?:    DataflowGraph
 }
 
 /**

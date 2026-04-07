@@ -121,5 +121,11 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', type: [InputType.File, InputType.Random], trace: InputTraceType.Alias, cds: [InputType.Unknown] }]
 		});
 	});
+
+	describe('Catch Scope Escapes', () => {
+		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
+			'2@eval': [{ id: '2@x', type: [InputType.Scope], trace: InputTraceType.Unknown }]
+		});
+	});
 }));
 

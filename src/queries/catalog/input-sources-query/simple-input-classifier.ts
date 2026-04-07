@@ -82,6 +82,14 @@ class InputClassifier {
 				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Network], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.randomFns)) {
 				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Random], trace: InputTraceType.Unknown });
+			} else if(matchesList(call, this.config.systemFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.System], trace: InputTraceType.Unknown });
+			} else if(matchesList(call, this.config.ffiFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Ffi], trace: InputTraceType.Unknown });
+			} else if(matchesList(call, this.config.langFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Lang], trace: InputTraceType.Unknown });
+			} else if(matchesList(call, this.config.optionsFns)) {
+				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Options], trace: InputTraceType.Unknown });
 			} else {
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
 				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
@@ -262,13 +270,13 @@ class InputClassifier {
  * joining differing lattice elements.
  *
  *```
- *            [ Unknown ]
- *     /     /     |     \       \
- *[Param] [File] [Net] [Rand] [Scope]
- *     \     \    |      /      /
- *        [ DerivedConstant ]
- *               |
- *          [ Constant ]
+ *              [ Unknown ]
+ *                   |
+	*[Param] [File] [Net] [Rand] [System] [FFI] [Lang] [Options] [Scope]
+ *                   |
+ *            [ DerivedConstant ]
+ *                   |
+ *              [ Constant ]
  *```
  *
  */
@@ -277,6 +285,14 @@ export enum InputType {
 	File = 'file',
 	Network = 'net',
 	Random = 'rand',
+	/** Calls to system/system2 and similar */
+	System = 'system',
+	/** Calls to .C / Fortran interfaces */
+	Ffi = 'ffi',
+	/** Language objects (quote/substitute/etc.) */
+	Lang = 'lang',
+	/** Global options / option accessors (options, getOption) */
+	Options = 'options',
 	Constant = 'const',
 	/** Read from environment/call scope */
 	Scope = 'scope',
@@ -356,9 +372,25 @@ export interface InputClassifierConfig extends MergeableRecord {
 	 */
 	readFileFns: readonly InputClassifierFunctionIdentifier[]
 	/**
+	 * Functions that call system utilities (system/system2)
+	 */
+	systemFns?:  readonly InputClassifierFunctionIdentifier[];
+	/**
+	 * Functions that call native code via .C/.Fortran interfaces
+	 */
+	ffiFns?:     readonly InputClassifierFunctionIdentifier[];
+	/**
+	 * Functions that produce language objects such as quote/substitute
+	 */
+	langFns?:    readonly InputClassifierFunctionIdentifier[];
+	/**
+	 * Functions that access or set global options
+	 */
+	optionsFns?: readonly InputClassifierFunctionIdentifier[];
+	/**
 	 * For the scope escape analysis, pass on the full, non-reduced DFG here
 	 */
-	fullDfg?:    DataflowGraph
+	fullDfg?:    DataflowGraph;
 }
 
 /**

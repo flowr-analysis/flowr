@@ -122,6 +122,24 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Other categories', () => {
+		testQuery('System call source', 'x <- system("echo hi")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', type: [InputType.System], trace: InputTraceType.Alias }]
+		});
+
+		testQuery('FFI call source', "x <- .C('foo')\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', type: [InputType.Ffi], trace: InputTraceType.Alias }]
+		});
+
+		testQuery('Language object source', 'x <- substitute(a)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', type: [InputType.Lang], trace: InputTraceType.Alias }]
+		});
+
+		testQuery('Options / getOption source', "x <- getOption('digits')\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', type: [InputType.Options], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Catch Scope Escapes', () => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{ id: '2@x', type: [InputType.Scope], trace: InputTraceType.Unknown }]

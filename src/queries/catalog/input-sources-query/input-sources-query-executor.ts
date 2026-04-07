@@ -38,6 +38,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		);
 
 		results[key] = classifyInput(criterionId, provenance, {
+			fullDfg:    df.graph,
 			networkFns: query.config?.networkFns ?? NETWORK_FUNCTIONS.info.defaultConfig.fns,
 			randomFns:  query.config?.randomFns ?? SEEDED_RANDOMNESS.info.defaultConfig.randomnessConsumers,
 			pureFns:    query.config?.pureFns ?? ['paste', 'paste0', 'parse', '+', '-', '*',
@@ -53,17 +54,24 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				'min', 'max', 'range', 'sum', 'prod', 'mean', 'median', 'var', 'sd',
 				'head', 'tail', 'seq', 'rep',
 				'apply', 'lapply', 'sapply', 'vapply', 'tapply',
-				'matrix', 'array', 'substitute', 'quote', 'bquote', 'enquote', 'enexpr', 'enexprs', 'enquo', 'enquos',
-				'expression', 'call', 'as.call', 'as.expression',
+				'matrix', 'array',
 				'rownames', 'colnames',
 				'list.files', 'tolower', 'toupper', 'printf',
 				'<-', '->', '=', '<<-', '->>', 'assign', 'get',
 				'[', '[[', '$', 'length<-', 'dim<-', 'names<-', 'colnames<-', 'rownames<-',
 				'as.character', 'as.numeric', 'as.logical', 'as.list', 'as.data.frame', 'as.matrix', 'as.array',
 				'identity', 'invisible', 'return', 'force', 'missing',
-				'print', 'cat', 'message', 'warning', 'stop'
+				'print', 'cat', 'message', 'warning', 'stop',
 			],
-			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name)
+			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name),
+			systemFns:   query.config?.systemFns ?? ['system', 'system2', 'pipe', 'shell'],
+			ffiFns:      query.config?.ffiFns ?? ['.C', '.Call', '.Fortran', '.External', 'dyn.load'],
+			langFns:     query.config?.langFns ?? [
+				'substitute', 'quote', 'bquote', 'enquote',
+				'enexpr', 'enexprs', 'enquo', 'enquos',
+				'expression', 'call', 'as.call', 'as.expression',
+			],
+			optionsFns: query.config?.optionsFns ?? ['options', 'getOption']
 		});
 	}
 

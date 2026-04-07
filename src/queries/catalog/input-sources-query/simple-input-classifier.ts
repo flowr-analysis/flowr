@@ -272,7 +272,7 @@ class InputClassifier {
  *```
  *              [ Unknown ]
  *                   |
-	*[Param] [File] [Net] [Rand] [System] [FFI] [Lang] [Options] [Scope]
+ * [Param] [File] [Net], ...
  *                   |
  *            [ DerivedConstant ]
  *                   |

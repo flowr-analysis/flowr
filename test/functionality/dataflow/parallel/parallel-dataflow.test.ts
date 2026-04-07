@@ -2,7 +2,18 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
-import { advancedSideEffectTests, builtinRedefinitionDataflowTests, closureAndSideEffectTests, complexDataflowTests, redefinitionAndClosureInteractionTests, simpleDataflowTests, sourceBasedDataflowTests, type NamedTestCase, type TestSuite } from './test-data/test-suites';
+import {
+	builtinRedefinitionOnlyTests,
+	cascadingSideEffectsWithRedefinitionTests,
+	complexDataflowTests,
+	fileReferenceLinkingTests,
+	sideEffectOnlyTests,
+	simpleDataflowTests,
+	sourceBasedDataflowTests,
+	standardFunctionAndClosureTests,
+	type NamedTestCase,
+	type TestSuite
+} from './test-data/test-suites';
 import { someTest } from './test-data/standard-cases';
 
 
@@ -78,24 +89,28 @@ describe.sequential('Parallel Dataflow test', () => {
 		registerClusterTests(complexDataflowTests);
 	});
 
+	describe('Standard Function and Closure Analysis', () => {
+		registerClusterTests(standardFunctionAndClosureTests);
+	});
+
 	describe('Source Based File Analysis', () => {
 		registerClusterTests(sourceBasedDataflowTests);
 	});
 
-	describe('Builtin Redefinition Re-analysis', () => {
-		registerClusterTests(builtinRedefinitionDataflowTests);
+	describe('File Reference Linking', () => {
+		registerClusterTests(fileReferenceLinkingTests);
 	});
 
-	describe('Closure and Side-Effect Re-analysis', () => {
-		registerClusterTests(closureAndSideEffectTests);
+	describe('Side Effects Only', () => {
+		registerClusterTests(sideEffectOnlyTests);
 	});
 
-	describe('Closure and Side-Effect Re-analysis', () => {
-		registerClusterTests(redefinitionAndClosureInteractionTests);
+	describe('Builtin Redefinitions Only', () => {
+		registerClusterTests(builtinRedefinitionOnlyTests);
 	});
 
-	describe('Closure and Side-Effect Re-analysis', () => {
-		registerClusterTests(advancedSideEffectTests);
+	describe('Cascading Side Effects With Redefinitions', () => {
+		registerClusterTests(cascadingSideEffectsWithRedefinitionTests);
 	});
 
 });

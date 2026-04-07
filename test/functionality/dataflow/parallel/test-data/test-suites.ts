@@ -23,7 +23,6 @@ import {
 	BuiltinUsedWithoutRedefinitionAcrossFiles
 } from './builtin-redefinitions';
 import {
-	ClosureWithCapture,
 	ClosureWithSuperAssignment,
 	NestedClosuresWithSideEffects,
 	CascadingSideEffects,
@@ -33,15 +32,32 @@ import {
 	ConditionalSideEffectAcrossFiles,
 	LoopWithSideEffect,
 	FunctionModifyingExternalState,
-	RedefinedBuiltinWithClosureCapture,
-	ClosureCapturingRedefinedBuiltin,
 	RecursiveClosureWithSideEffect,
 	CycleDetectionWithSideEffects,
 	SourceFileWithSideEffect,
-	EnvironmentCaptureBoundary,
 	ClosureWithMultipleSuperAssignments,
 	SourceWithMultipleSideEffects
 } from './side-effects';
+import {
+	ClosureWithCapture,
+	FunctionCallingFunction,
+	ClosureFactoryWithMultipleInstances,
+	NestedFunctionShadowing,
+	ClosureCapturingUpdatedBinding,
+	HigherOrderFunctionComposition
+} from './function-and-closures';
+import {
+	DirectSourceLinking,
+	ChainedSourceLinking,
+	FunctionReferenceThroughSource,
+	SourceOrderOverridesReference,
+	SourceInsideHelperFunction
+} from './file-reference-linking';
+import {
+	CascadingSetterWithRedefinedMultiply,
+	CascadingLoggerWithRedefinedPrint,
+	ClosureCascadeWithRedefinedPlus
+} from './cascading-side-effects-with-redefinitions';
 
 /**
  * Collections of Analysis Test Cases
@@ -65,11 +81,20 @@ export const simpleDataflowTests: TestSuite = [
 export const complexDataflowTests: TestSuite = [
 	{ name: 'ComplexVariableChains', setup: ComplexVariableChains },
 	{ name: 'MultipleUsages', setup: MultipleUsages },
-	{ name: 'FunctionDefinition', setup: FunctionDefinition },
 	{ name: 'ConditionalDefinitions', setup: ConditionalDefinitions },
 	{ name: 'LoopsWithCrossFile', setup: LoopsWithCrossFile },
-	{ name: 'VariableShadowing', setup: VariableShadowing },
-	{ name: 'NestedFunctions', setup: NestedFunctions }
+	{ name: 'VariableShadowing', setup: VariableShadowing }
+];
+
+export const standardFunctionAndClosureTests: TestSuite = [
+	{ name: 'FunctionDefinition', setup: FunctionDefinition },
+	{ name: 'NestedFunctions', setup: NestedFunctions },
+	{ name: 'ClosureWithCapture', setup: ClosureWithCapture },
+	{ name: 'FunctionCallingFunction', setup: FunctionCallingFunction },
+	{ name: 'ClosureFactoryWithMultipleInstances', setup: ClosureFactoryWithMultipleInstances },
+	{ name: 'NestedFunctionShadowing', setup: NestedFunctionShadowing },
+	{ name: 'ClosureCapturingUpdatedBinding', setup: ClosureCapturingUpdatedBinding },
+	{ name: 'HigherOrderFunctionComposition', setup: HigherOrderFunctionComposition }
 ];
 
 export const sourceBasedDataflowTests: TestSuite = [
@@ -80,7 +105,15 @@ export const sourceBasedDataflowTests: TestSuite = [
 	{ name: 'SourceWithConditional', setup: SourceWithConditional }
 ];
 
-export const builtinRedefinitionDataflowTests: TestSuite = [
+export const fileReferenceLinkingTests: TestSuite = [
+	{ name: 'DirectSourceLinking', setup: DirectSourceLinking },
+	{ name: 'ChainedSourceLinking', setup: ChainedSourceLinking },
+	{ name: 'FunctionReferenceThroughSource', setup: FunctionReferenceThroughSource },
+	{ name: 'SourceOrderOverridesReference', setup: SourceOrderOverridesReference },
+	{ name: 'SourceInsideHelperFunction', setup: SourceInsideHelperFunction }
+];
+
+export const builtinRedefinitionOnlyTests: TestSuite = [
 	{
 		name:  'RedefinedPrintUsedAcrossFiles',
 		setup: RedefinedPrintUsedAcrossFiles,
@@ -99,8 +132,7 @@ export const builtinRedefinitionDataflowTests: TestSuite = [
 	}
 ];
 
-export const closureAndSideEffectTests: TestSuite = [
-	{ name: 'ClosureWithCapture', setup: ClosureWithCapture },
+export const sideEffectOnlyTests: TestSuite = [
 	{ name: 'ClosureWithSuperAssignment', setup: ClosureWithSuperAssignment },
 	{ name: 'NestedClosuresWithSideEffects', setup: NestedClosuresWithSideEffects },
 	{ name: 'CascadingSideEffects', setup: CascadingSideEffects },
@@ -109,32 +141,16 @@ export const closureAndSideEffectTests: TestSuite = [
 	{ name: 'MultipleClosuresCapturingSameVar', setup: MultipleClosuresCapturingSameVar },
 	{ name: 'ConditionalSideEffectAcrossFiles', setup: ConditionalSideEffectAcrossFiles },
 	{ name: 'LoopWithSideEffect', setup: LoopWithSideEffect },
-	{ name: 'FunctionModifyingExternalState', setup: FunctionModifyingExternalState }
-];
-
-/**
- * Test suite for interaction between redefinitions and closures
- *
- * Ensures that parallel analysis handles cases where:
- * - Built-ins are redefined and captured by closures
- * - Closures capture variables that are later modified by side effects
- */
-export const redefinitionAndClosureInteractionTests: TestSuite = [
-	{ name: 'RedefinedBuiltinWithClosureCapture', setup: RedefinedBuiltinWithClosureCapture },
-	{ name: 'ClosureCapturingRedefinedBuiltin', setup: ClosureCapturingRedefinedBuiltin }
-];
-
-/**
- * Test suite for advanced side-effect scenarios
- *
- * Covers complex cases like recursion, cycles, sourcing with side effects,
- * and environment boundary issues.
- */
-export const advancedSideEffectTests: TestSuite = [
+	{ name: 'FunctionModifyingExternalState', setup: FunctionModifyingExternalState },
 	{ name: 'RecursiveClosureWithSideEffect', setup: RecursiveClosureWithSideEffect },
 	{ name: 'CycleDetectionWithSideEffects', setup: CycleDetectionWithSideEffects },
 	{ name: 'SourceFileWithSideEffect', setup: SourceFileWithSideEffect },
-	{ name: 'EnvironmentCaptureBoundary', setup: EnvironmentCaptureBoundary },
 	{ name: 'ClosureWithMultipleSuperAssignments', setup: ClosureWithMultipleSuperAssignments },
 	{ name: 'SourceWithMultipleSideEffects', setup: SourceWithMultipleSideEffects }
+];
+
+export const cascadingSideEffectsWithRedefinitionTests: TestSuite = [
+	{ name: 'CascadingSetterWithRedefinedMultiply', setup: CascadingSetterWithRedefinedMultiply },
+	{ name: 'CascadingLoggerWithRedefinedPrint', setup: CascadingLoggerWithRedefinedPrint },
+	{ name: 'ClosureCascadeWithRedefinedPlus', setup: ClosureCascadeWithRedefinedPlus }
 ];

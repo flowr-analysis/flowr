@@ -2,20 +2,11 @@ import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-fi
 import type { AnalyzerSetupFunction } from './types';
 
 /**
- * Closure and Side-Effect focused test data
+ * Side-effect focused test data
  *
- * These tests focus on capturing closures, super-assignment side effects,
- * and cascading effects across file boundaries.
+ * These tests focus on super-assignment side effects,
+ * cascading writes, and side effects across file boundaries.
  */
-
-export const ClosureWithCapture: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'x <- 10' });
-	analyzer.addRequest({ request: 'text', content: 'makeAdder <- function(n) { function(y) { y + n } }' });
-	analyzer.addRequest({ request: 'text', content: 'add5 <- makeAdder(5)' });
-	analyzer.addRequest({ request: 'text', content: 'result <- add5(x)' });
-	return analyzer;
-};
-
 export const ClosureWithSuperAssignment: AnalyzerSetupFunction = (analyzer) => {
 	analyzer.addRequest({ request: 'text', content: 'counter <- 0' });
 	analyzer.addRequest({ request: 'text', content: 'increment <- function() { counter <<- counter + 1; counter }' });
@@ -97,23 +88,6 @@ export const FunctionModifyingExternalState: AnalyzerSetupFunction = (analyzer) 
 	return analyzer;
 };
 
-export const RedefinedBuiltinWithClosureCapture: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'x <- 5' });
-	analyzer.addRequest({ request: 'text', content: '`+` <- function(a, b) { a * b }' });
-	analyzer.addRequest({ request: 'text', content: 'makeFunc <- function() { function(y) { y + x } }' });
-	analyzer.addRequest({ request: 'text', content: 'fn <- makeFunc()' });
-	analyzer.addRequest({ request: 'text', content: 'result <- fn(3)' });
-	return analyzer;
-};
-
-export const ClosureCapturingRedefinedBuiltin: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'print <- function(...) { paste("custom:", ...) }' });
-	analyzer.addRequest({ request: 'text', content: 'makePrinter <- function() { function(x) { print(x) } }' });
-	analyzer.addRequest({ request: 'text', content: 'myPrinter <- makePrinter()' });
-	analyzer.addRequest({ request: 'text', content: 'output <- myPrinter("hello")' });
-	return analyzer;
-};
-
 export const RecursiveClosureWithSideEffect: AnalyzerSetupFunction = (analyzer) => {
 	analyzer.addRequest({ request: 'text', content: 'callStack <- c()' });
 	analyzer.addRequest({
@@ -136,14 +110,6 @@ export const CycleDetectionWithSideEffects: AnalyzerSetupFunction = (analyzer) =
 export const SourceFileWithSideEffect: AnalyzerSetupFunction = (analyzer) => {
 	analyzer.addFile(new FlowrInlineTextFile('sideEffect.R', 'loadedCount <<- if (exists("loadedCount")) loadedCount + 1 else 1'));
 	analyzer.addRequest({ request: 'text', content: 'loadedCount <- 0\nsource("sideEffect.R")\nsource("sideEffect.R")\nprint(loadedCount)' });
-	return analyzer;
-};
-
-export const EnvironmentCaptureBoundary: AnalyzerSetupFunction = (analyzer) => {
-	analyzer.addRequest({ request: 'text', content: 'outer <- 1' });
-	analyzer.addRequest({ request: 'text', content: 'f <- function() { outer }' });
-	analyzer.addRequest({ request: 'text', content: 'outer <- 2' });
-	analyzer.addRequest({ request: 'text', content: 'result <- f()' });
 	return analyzer;
 };
 

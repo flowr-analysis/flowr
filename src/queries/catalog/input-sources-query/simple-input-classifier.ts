@@ -149,6 +149,7 @@ class InputClassifier {
 					// id (e.g., a parameter linked to a caller argument), mark it as a Scope origin
 					if(this.isDefinedByOnCall(v.id)) {
 						types.push(InputType.Scope);
+						allPure = false;
 					}
 					// if this is a variable definition that is a parameter, classify as Parameter
 					if(v.tag === VertexType.VariableDefinition && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {

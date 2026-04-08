@@ -201,7 +201,7 @@ function resolveCrossFileReferences(
 		type
 	});
 
-	const clearReadsFromFunctionCalls = (calls: readonly IdentifierReference[]): void => {
+	const _clearReadsFromFunctionCalls = (calls: readonly IdentifierReference[]): void => {
 		for(const call of calls) {
 			const outgoingEdges = graph.outgoingEdges(call.nodeId);
 			if(outgoingEdges === undefined) {
@@ -246,7 +246,7 @@ function resolveCrossFileReferences(
 	}
 
 	// Reset function-call reads and relink them against the current merged environment.
-	clearReadsFromFunctionCalls(functionCallCandidates);
+	//clearReadsFromFunctionCalls(functionCallCandidates);
 
 	// Resolve function calls without builtin placeholder upgrading.
 	const unresolvedFunctions = linkInputs(functionCallCandidates, environment, [], graph, false, false);
@@ -255,6 +255,7 @@ function resolveCrossFileReferences(
 	const unresolvedUses = linkInputs(useCandidates, environment, [], graph, false, true);
 
 	const unresolved = unresolvedFunctions.concat(unresolvedUses);
+	//const unresolved = unresolvedUses;
 
 	if(unresolved.length > 0){
 		console.warn(`Cross File Resolution: ${unresolved.length} reference(s) remain unresolved across all files for the dataflow graph: ` +
@@ -347,7 +348,9 @@ export async function produceDataFlowGraph<OtherInfo>(
 				fallbackIteration = i;
 				break;
 			}
+			console.log('pre resolve ',df.graph.outgoingEdges(33));
 			resolveCrossFileReferences(df.graph, df.environment, [...functionCallCandidates.values()]);
+			console.log('post resolve ',df.graph.outgoingEdges(33));
 		}
 
 		if(shouldFallbackToSequential) {

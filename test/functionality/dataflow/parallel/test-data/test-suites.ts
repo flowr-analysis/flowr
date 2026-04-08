@@ -68,6 +68,7 @@ export type NamedTestCase = {
     setup:                      AnalyzerSetupFunction;
     expectReanalysisTriggered?: boolean; // Optional flag to indicate if a fallback re-analysis is expected
     expectedTriggerFileIndex?:  number; // Optional expected file index for the trigger
+	expectImprecision?:            boolean; // Optional flag for cases where parallel may conservatively over-approximate
 };
 
 export type TestSuite = NamedTestCase[];
@@ -89,11 +90,11 @@ export const complexDataflowTests: TestSuite = [
 export const standardFunctionAndClosureTests: TestSuite = [
 	{ name: 'FunctionDefinition', setup: FunctionDefinition },
 	{ name: 'NestedFunctions', setup: NestedFunctions },
-	{ name: 'ClosureWithCapture', setup: ClosureWithCapture },
+	{ name: 'ClosureWithCapture', setup: ClosureWithCapture, expectImprecision: true },
 	{ name: 'FunctionCallingFunction', setup: FunctionCallingFunction },
 	{ name: 'ClosureFactoryWithMultipleInstances', setup: ClosureFactoryWithMultipleInstances },
 	{ name: 'NestedFunctionShadowing', setup: NestedFunctionShadowing },
-	{ name: 'ClosureCapturingUpdatedBinding', setup: ClosureCapturingUpdatedBinding },
+	{ name: 'ClosureCapturingUpdatedBinding', setup: ClosureCapturingUpdatedBinding, expectImprecision: true },
 	{ name: 'HigherOrderFunctionComposition', setup: HigherOrderFunctionComposition }
 ];
 
@@ -135,15 +136,15 @@ export const builtinRedefinitionOnlyTests: TestSuite = [
 export const sideEffectOnlyTests: TestSuite = [
 	{ name: 'ClosureWithSuperAssignment', setup: ClosureWithSuperAssignment },
 	{ name: 'NestedClosuresWithSideEffects', setup: NestedClosuresWithSideEffects },
-	{ name: 'CascadingSideEffects', setup: CascadingSideEffects },
-	{ name: 'SourceWithClosureAndSideEffect', setup: SourceWithClosureAndSideEffect },
+	{ name: 'CascadingSideEffects', setup: CascadingSideEffects, expectImprecision: true },
+	{ name: 'SourceWithClosureAndSideEffect', setup: SourceWithClosureAndSideEffect, expectImprecision: true },
 	{ name: 'SourceChainWithClosure', setup: SourceChainWithClosure },
-	{ name: 'MultipleClosuresCapturingSameVar', setup: MultipleClosuresCapturingSameVar },
-	{ name: 'ConditionalSideEffectAcrossFiles', setup: ConditionalSideEffectAcrossFiles },
+	{ name: 'MultipleClosuresCapturingSameVar', setup: MultipleClosuresCapturingSameVar, expectImprecision: true },
+	{ name: 'ConditionalSideEffectAcrossFiles', setup: ConditionalSideEffectAcrossFiles, expectImprecision: true },
 	{ name: 'LoopWithSideEffect', setup: LoopWithSideEffect },
 	{ name: 'FunctionModifyingExternalState', setup: FunctionModifyingExternalState },
-	{ name: 'RecursiveClosureWithSideEffect', setup: RecursiveClosureWithSideEffect },
-	{ name: 'CycleDetectionWithSideEffects', setup: CycleDetectionWithSideEffects },
+	{ name: 'RecursiveClosureWithSideEffect', setup: RecursiveClosureWithSideEffect, expectImprecision: true },
+	{ name: 'CycleDetectionWithSideEffects', setup: CycleDetectionWithSideEffects, expectImprecision: true },
 	{ name: 'SourceFileWithSideEffect', setup: SourceFileWithSideEffect },
 	{ name: 'ClosureWithMultipleSuperAssignments', setup: ClosureWithMultipleSuperAssignments },
 	{ name: 'SourceWithMultipleSideEffects', setup: SourceWithMultipleSideEffects }

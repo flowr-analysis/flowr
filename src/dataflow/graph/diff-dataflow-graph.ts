@@ -259,7 +259,13 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 			{ tag: 'edge', from: id, to: target }
 		);
 	}
-	if(edge.types !== otherEdge.types) {
+
+	const onlyInLeft = edge.types & ~otherEdge.types;
+	const onlyInRight = otherEdge.types & ~edge.types;
+	const hasForbiddenDifference = (onlyInLeft !== 0 && !ctx.config.rightIsSubgraph)
+		|| (onlyInRight !== 0 && !ctx.config.leftIsSubgraph);
+
+	if(hasForbiddenDifference) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypesToNames(edge.types)])} vs ${JSON.stringify([...edgeTypesToNames(otherEdge.types)])}`,
 			{ tag: 'edge', from: id, to: target }

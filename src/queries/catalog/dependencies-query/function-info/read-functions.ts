@@ -107,4 +107,10 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'pl_scan_ipc', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'pl_scan_ndjson', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'pl_scan_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rio', name: 'import', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'rio', name: 'import_list', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'openxlsx', name: 'read.xlsx', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'openxlsx', name: 'loadWorkbook', argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'readODS', name: 'read_ods', argIdx: 0, argName: 'path', resolveValue: true },
+	{ package: 'vroom', name: 'vroom', argIdx: 0, argName: 'file', resolveValue: true },
 ] as const;

@@ -54,11 +54,11 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, type } of sources) {
+			for(const { id, trace, types } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(type)}, trace: ${trace}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}`
 				);
 			}
 		}
@@ -69,11 +69,14 @@ export const InputSourcesDefinition = {
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion to use.'),
 		config:    Joi.object({
-			networkFunctions:      Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network.'),
-			randomnessConsumers:   Joi.array().items(Joi.string()).optional().description('Functions that consume randomness.'),
-			randomnessProducers:   Joi.array().items(Joi.object({ type: Joi.string().valid('function', 'assignment'), name: Joi.string().required() })).optional().description('Functions or assignments that produce randomness seeds.'),
-			configurableFunctions: Joi.array().items(Joi.string()).optional().description('Functions that read configuration (options/env).'),
-			pureFunctions:         Joi.array().items(Joi.string()).optional().description('Deterministic functions that keep constant inputs constant.'),
+			pureFns:     Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
+			networkFns:  Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
+			randomFns:   Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
+			readFileFns: Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
+			systemFns:   Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),
+			ffiFns:      Joi.array().items(Joi.string()).optional().description('Functions that call native code via the R FFI (.C, .Call, .Fortran, .External, dyn.load).'),
+			langFns:     Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
+			optionsFns:  Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
 		}).optional()
 	}).description('Input Sources query definition'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

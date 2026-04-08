@@ -54,11 +54,11 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, type } of sources) {
+			for(const { id, trace, types } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(type)}, trace: ${trace}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}`
 				);
 			}
 		}

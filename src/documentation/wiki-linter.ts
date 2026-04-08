@@ -167,7 +167,7 @@ df[6, "value"]
 		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
 
 	rule(knownParser,
-		'problematic-eval', 'ProblematicEvalConfig', 'PROBLEMATIC_EVAL', 'lint-problematic-eval',
+		'problematic-inputs', 'ProblematicInputsConfig', 'PROBLEMATIC_INPUTS', 'lint-problematic-inputs',
 		`
 function(x) {
 	eval(x)

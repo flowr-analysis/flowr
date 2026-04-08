@@ -11,7 +11,7 @@ import { USELESS_LOOP } from './rules/useless-loop';
 import { NETWORK_FUNCTIONS } from './rules/network-functions';
 import { STOP_WITH_CALL_ARG } from './rules/stop-with-call-arg';
 import { ROXYGEN_ARGS } from './rules/roxygen-arguments';
-import { PROBLEMATIC_EVAL } from './rules/problematic-eval';
+import { PROBLEMATIC_INPUTS } from './rules/problematic-inputs';
 
 /**
  * The registry of currently supported linting rules.
@@ -28,7 +28,7 @@ export const LintingRules = {
 	'dataframe-access-validation': DATA_FRAME_ACCESS_VALIDATION,
 	'dead-code':                   DEAD_CODE,
 	'useless-loop':                USELESS_LOOP,
-	'problematic-eval':            PROBLEMATIC_EVAL,
+	'problematic-inputs':          PROBLEMATIC_INPUTS,
 	'stop-call':                   STOP_WITH_CALL_ARG,
 	'roxygen-arguments':           ROXYGEN_ARGS
 } as const;

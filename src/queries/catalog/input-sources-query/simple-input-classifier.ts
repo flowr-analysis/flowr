@@ -41,11 +41,11 @@ class InputClassifier {
 		}
 
 		// insert temporary unknown to break cycles
-		this.cache.set(vertex.id, { id: vertex.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+		this.cache.set(vertex.id, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 
 		switch(vertex.tag) {
 			case VertexType.Value:
-				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: [InputType.Constant], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, types: [InputType.Constant], trace: InputTraceType.Unknown });
 			case VertexType.FunctionCall:
 				return this.classifyFunctionCall(vertex);
 			case VertexType.VariableDefinition:
@@ -53,7 +53,7 @@ class InputClassifier {
 			case VertexType.Use:
 				return this.classifyVariable(vertex);
 			default:
-				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 	}
 
@@ -77,22 +77,22 @@ class InputClassifier {
 		}
 		if(!matchesList(call, this.config.pureFns)) {
 			if(matchesList(call, this.config.readFileFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.File], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.File], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.networkFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Network], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Network], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.randomFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Random], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Random], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.systemFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.System], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.System], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.ffiFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Ffi], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Ffi], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.langFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Lang], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Lang], trace: InputTraceType.Unknown });
 			} else if(matchesList(call, this.config.optionsFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Options], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Options], trace: InputTraceType.Unknown });
 			} else {
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 			}
 		}
 
@@ -116,7 +116,7 @@ class InputClassifier {
 			}
 			const classified = this.classifyEntry(argVtx);
 			// collect all observed types from this argument
-			argTypes.push(...classified.type);
+			argTypes.push(...classified.types);
 			if(classified.cds) {
 				cdTypes.push(...classified.cds);
 			}
@@ -126,18 +126,18 @@ class InputClassifier {
 		// all arguments only contain constant-like types -> derived constant
 		const allConstLike = argTypes.length > 0 && argTypes.every(t => t === InputType.Constant || t === InputType.DerivedConstant);
 		if(allConstLike) {
-			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
+			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
 		}
 
 		argTypes.push(InputType.DerivedConstant);
-		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
+		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
 	}
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
 		const origins = Dataflow.origin(this.dfg, vtx.id);
 
 		if(origins === undefined) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: this.isDefinedByOnCall(vtx.id) ? [InputType.Scope] : [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: this.isDefinedByOnCall(vtx.id) ? [InputType.Scope] : [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
@@ -165,7 +165,7 @@ class InputClassifier {
 						continue;
 					}
 					const c = this.classifyEntry(v);
-					types.push(...c.type);
+					types.push(...c.types);
 					if(c.cds) {
 						cds.push(...c.cds);
 					}
@@ -182,7 +182,7 @@ class InputClassifier {
 				const v = this.dfg.getVertex(o.id);
 				if(v) {
 					const c = this.classifyEntry(v);
-					types.push(...c.type);
+					types.push(...c.types);
 					if(c.cds) {
 						cds.push(...c.cds);
 					}
@@ -201,20 +201,20 @@ class InputClassifier {
 
 		const t = types.length === 0 ? [InputType.Unknown] : uniqueArray(types);
 		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
 	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
 		// parameter definitions are classified as Parameter
 		if(this.dfg.idMap?.get(vtx.id)?.info.role === RoleInParent.ParameterName) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Parameter], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Parameter], trace: InputTraceType.Unknown });
 		}
 
 		const sources = vtx.source;
 
 		if(sources === undefined || sources.length === 0) {
 			// fallback to unknown if we cannot find the value
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
@@ -225,7 +225,7 @@ class InputClassifier {
 			const tv = this.dfg.getVertex(tid);
 			if(tv) {
 				const c = this.classifyEntry(tv);
-				types.push(...c.type);
+				types.push(...c.types);
 				if(c.cds) {
 					cds.push(...c.cds);
 				}
@@ -239,7 +239,7 @@ class InputClassifier {
 
 		const t = types.length === 0 ? [InputType.Unknown] : uniqueArray(types);
 		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
 	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
@@ -250,7 +250,7 @@ class InputClassifier {
 					return undefined;
 				}
 				const e = this.classifyEntry(cv);
-				return e.cds ? [...e.type, ...e.cds] : [...e.type];
+				return e.cds ? [...e.types, ...e.cds] : [...e.types];
 			}).filter(isNotUndefined).concat(src.cds ?? []));
 			if(cds.length > 0) {
 				src.cds = cds;
@@ -318,7 +318,7 @@ export enum InputTraceType {
  */
 export interface InputSource extends MergeableRecord {
 	id:    NodeId,
-	type:  InputType[],
+	types: InputType[],
 	trace: InputTraceType,
 	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
 	cds?:  InputType[]

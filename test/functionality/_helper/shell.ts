@@ -553,6 +553,8 @@ interface TestCaseParams {
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
 	flowrConfig:          FlowrConfigOptions,
+	/** Force eager function analysis for this slicing test only */
+	forceEagerFunctions:  boolean,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
 }
@@ -638,7 +640,13 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			const config = cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions);
+			if(testConfig?.forceEagerFunctions) {
+				// Some legacy slicer fixtures intentionally assert eager behavior.
+				// Allow opting out of deferred function evaluation per test case.
+				config.optimizations.deferredFunctionEvaluation.enabled = false;
+			}
+			const context =  contextFromInput(input, config);
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}

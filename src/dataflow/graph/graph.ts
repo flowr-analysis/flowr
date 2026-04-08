@@ -22,7 +22,7 @@ import type { LinkTo } from '../../queries/catalog/call-context-query/call-conte
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
-import { isLazyFunctionDefinitionVertex } from '../internal/process/functions/call/built-in/built-in-function-definition';
+import { isLazyFunctionDefinitionVertex, updateNestedFunctionCalls } from '../internal/process/functions/call/built-in/built-in-function-definition';
 
 /**
  * Describes the information we store per function body.
@@ -182,6 +182,7 @@ export class DataflowGraph<
 	 * to point to the parent, ensuring they always return the current used graph in the dataflow analysis.
 	 */
 	private readonly _graphReferences: GraphReference[] = [];
+	private _graphMaterialzed = false;
 
 	constructor(idMap: AstIdMap | undefined) {
 		this._idMap = idMap;
@@ -196,13 +197,29 @@ export class DataflowGraph<
 
 	private readonly types: Map<Vertex['tag'], NodeId[]> = new Map<Vertex['tag'], NodeId[]>();
 
-	public materializeAll(){
+	public materializeAll(outEnvironment?: REnvironmentInformation): void {
 		for(const [, vertex] of this.verticesOfType(VertexType.FunctionDefinition)) {
 			const funcDefVertex = vertex as DataflowGraphVertexFunctionDefinition;
 			if(isLazyFunctionDefinitionVertex(funcDefVertex)) {
 				funcDefVertex.materialize();
 			}
 		}
+		if(outEnvironment !== undefined) {
+			updateNestedFunctionCalls(this, outEnvironment);
+		}
+	}
+
+	public freeze(): void {
+		if(this._graphMaterialzed) {
+			return;
+		}
+		for(const [, vertex] of this.verticesOfType(VertexType.FunctionDefinition)) {
+			const funcDefVertex = vertex as DataflowGraphVertexFunctionDefinition;
+			if(isLazyFunctionDefinitionVertex(funcDefVertex)) {
+				funcDefVertex.freeze();
+			}
+		}
+		this._graphMaterialzed = true;
 	}
 
 	/**
@@ -390,16 +407,9 @@ export class DataflowGraph<
 						continue;
 					}
 
-					if(vertex.tag === VertexType.FunctionDefinition) {
-						const fn = vertex as DataflowGraphVertexFunctionDefinition;
-						if(isLazyFunctionDefinitionVertex(fn) && !fn.materialized) {
-							fn.materialize();
-						}
-					}
-
 					seen.add(id);
 					foundNew = true;
-					yield [id, this.vertexInformation.get(id) ?? vertex];
+					yield [id, vertex];
 				}
 			} else {
 				for(const id of this.rootVertices) {

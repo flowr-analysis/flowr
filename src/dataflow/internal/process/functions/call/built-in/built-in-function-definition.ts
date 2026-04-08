@@ -56,6 +56,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	private _link?:                 DataflowGraphVertexAstLink;
 
 	private _materialized = false;
+	private _frozen = false;
 	/**
 	 * Store pending closure update information to be applied when the function materializes.
 	 * Maps from parent function ID to its closure update. This ensures each parent function's
@@ -160,8 +161,16 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		}
 	}
 
+	public freeze(): void {
+		this._frozen = true;
+	}
+
 	public get materialized(): boolean {
 		return this._materialized;
+	}
+
+	public get frozen(): boolean {
+		return this._frozen;
 	}
 
 	/**
@@ -182,7 +191,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	 * @returns true if this call materialized the function definition, false otherwise.
 	 */
 	public materializeIfContainsAnyNode(nodeIds: Iterable<NodeId>, idMap: AstIdMap | undefined): boolean {
-		if(this._materialized || idMap === undefined) {
+		if(this._materialized || this._frozen || idMap === undefined) {
 			return false;
 		}
 
@@ -201,7 +210,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	}
 
 	get subflow(): DataflowFunctionFlowInformation {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		guard(this._subflow !== undefined, `Lazy function definition ${this.id} failed to materialize subflow`);
@@ -209,7 +218,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	}
 
 	get exitPoints(): readonly ExitPoint[] {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		guard(this._exitPoints !== undefined, `Lazy function definition ${this.id} failed to materialize exitPoints`);
@@ -217,7 +226,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	}
 
 	get params(): Record<NodeId, boolean> {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		guard(this._params !== undefined, `Lazy function definition ${this.id} failed to materialize params`);
@@ -225,28 +234,28 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 	}
 
 	get environment(): REnvironmentInformation | undefined {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		return this._environment;
 	}
 
 	get cds(): ControlDependency[] | undefined {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		return this._cds;
 	}
 
 	get indicesCollection(): ContainerIndicesCollection | undefined {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		return this._indicesCollection;
 	}
 
 	get link(): DataflowGraphVertexAstLink | undefined {
-		if(!this._materialized) {
+		if(!this._materialized && !this._frozen) {
 			this.materialize();
 		}
 		return this._link;

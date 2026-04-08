@@ -22,6 +22,14 @@ export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config
 		return new GraphDifferenceReport();
 	}
 	const ctx = initDiffContext(left, right, config);
+	// Graph diff expects a complete vertex set for strict equality checks.
+	// For subgraph comparisons, keep lazy parts unmaterialized to avoid expanding beyond the intended slice.
+	if(!ctx.config.leftIsSubgraph) {
+		left.graph.materializeAll();
+	}
+	if(!ctx.config.rightIsSubgraph) {
+		right.graph.materializeAll();
+	}
 	diffDataflowGraph(ctx);
 	return ctx.report;
 }

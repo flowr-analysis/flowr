@@ -95,7 +95,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {
@@ -148,8 +148,10 @@ export const CallContextQueryDefinition = {
 	executor:        executeCallContextQueries,
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
-		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(asciiCallContext(formatter, out, (await analyzer.normalize()).idMap));
+		result.push(
+			`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`,
+			asciiCallContext(formatter, out, (await analyzer.normalize()).idMap)
+		);
 		return true;
 	},
 	schema: Joi.object({

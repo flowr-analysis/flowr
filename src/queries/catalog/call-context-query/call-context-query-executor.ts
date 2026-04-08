@@ -102,14 +102,14 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
 				},
-				linkTo: Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
+				linkTo: q.linkTo ? Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
 					...l,
 					callName: promoteCallName(l.callName)
 				})) : {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
 					callName: promoteCallName(q.linkTo.callName)
-				}
+				} : undefined
 			} satisfies PromotedQuery;
 		} else {
 			return {

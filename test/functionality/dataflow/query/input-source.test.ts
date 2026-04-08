@@ -148,7 +148,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 
 	describe('Catch Scope Escapes', () => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
-			'2@eval': [{ id: '2@x', type: [InputType.Scope], trace: InputTraceType.Unknown }]
+			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]
 		});
 	});
 }));

@@ -76,14 +76,16 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				'is.factor', 'is.logical', 'is.vector', 'is.matrix', 'is.data.frame',
 			],
 			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name),
-			systemFns:   query.config?.systemFns ?? ['system', 'system2', 'pipe', 'shell'],
-			ffiFns:      query.config?.ffiFns ?? ['.C', '.Call', '.Fortran', '.External', 'dyn.load'],
+			systemFns:   query.config?.systemFns ?? ['system', 'system2', 'pipe', 'shell', 'shell.exec'],
+			ffiFns:      query.config?.ffiFns ?? ['.C', '.Call', '.Fortran', '.External', 'dyn.load', 'sourceCpp', 'getNativeSymbolInfo'],
 			langFns:     query.config?.langFns ?? [
 				'substitute', 'quote', 'bquote', 'enquote',
 				'enexpr', 'enexprs', 'enquo', 'enquos',
 				'expression', 'call', 'as.call', 'as.expression',
+				'as.name', 'as.symbol', 'alist', 'as.language', 'evalq',
+				'expr', 'quo', 'enexpr', 'ensym', 'ensyms'
 			],
-			optionsFns: query.config?.optionsFns ?? ['options', 'getOption']
+			optionsFns: query.config?.optionsFns ?? ['options', 'getOption', 'Sys.getenv']
 		});
 	}
 

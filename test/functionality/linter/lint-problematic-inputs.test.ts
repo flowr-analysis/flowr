@@ -14,5 +14,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			loc:       SourceRange.from(1, 1, 1, 19),
 			sources:   [{ id: 5, trace: InputTraceType.Known, types: [InputType.Unknown, InputType.DerivedConstant] }]
 		}]);
+		assertLinter('unknown eval', parser, 'system(x)', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Uncertain,
+			name:      'system',
+			loc:       SourceRange.from(1, 1, 1, 9),
+			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }]
+		}]);
 	});
 }));

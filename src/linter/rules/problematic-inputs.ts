@@ -10,7 +10,7 @@ import type { InputSourcesQuery } from '../../queries/catalog/input-sources-quer
 import { SlicingCriterion } from '../../slicing/criterion/parse';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
-const defaultConsider = ['^eval$', '^parse$', '^system$', '^system2$', '^shell$', '^do.call$', '^source$'] as const;
+const defaultConsider = ['^eval$', '^system$', '^system2$', '^shell$'] as const;
 
 function normalizeConsider(cfg?: ProblematicInputsConfig): RegExp[] {
 	if(cfg?.consider === undefined) {

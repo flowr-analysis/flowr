@@ -5,10 +5,8 @@ import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
-import { executeQueries } from '../../queries/query';
 import type { InputSourcesQuery } from '../../queries/catalog/input-sources-query/input-sources-query-format';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
-import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 const defaultConsider = ['^eval$', '^system$', '^system2$', '^shell$'] as const;
 
@@ -84,26 +82,16 @@ export const PROBLEMATIC_INPUTS = {
 	processSearchResult: async(elements, _config, data): Promise<{ results: ProblematicInputsResult[], '.meta': ProblematicInputsMetadata }> => {
 		const results: ProblematicInputsResult[] = [];
 
-		const cfg = _config as ProblematicInputsConfig | undefined;
 		const defaultAccept: InputType[] = [InputType.Constant, InputType.DerivedConstant];
-		const considerArr = normalizeConsider(cfg);
 		for(const element of elements.getElements()) {
 			const nid = element.node.info.id;
 			const criterion = SlicingCriterion.fromId(nid);
 			const q: InputSourcesQuery = { type: 'input-sources', criterion };
-			const all = await executeQueries({ analyzer: data.analyzer }, [q]);
+			const all = await data.analyzer.query([q]);
 			const inputSourcesResult = all['input-sources'];
 			const sources = inputSourcesResult?.results?.[criterion] ?? [];
 
-			const unproblematicInputTypes = defaultAccept;
-			const nodeName = RNode.lexeme(element.node) ?? '';
-			for(const re of considerArr) {
-				if(re.test(nodeName)) {
-					break;
-				}
-			}
-			const problematic = isProblematicForAllowed(sources, unproblematicInputTypes);
-			if(problematic) {
+			if(isProblematicForAllowed(sources, defaultAccept)) {
 				const certainty = hasUnknownSource(sources) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain;
 				results.push({
 					involvedId: nid,

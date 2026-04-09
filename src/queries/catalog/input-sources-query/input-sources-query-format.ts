@@ -11,6 +11,9 @@ import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
+import { Q } from '../../../search/flowr-search-builder';
+import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
+import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -26,6 +29,17 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly criterion: SlicingCriterion,
 	readonly config?:   InputSourcesQueryConfig
 }
+
+export const DefaultInputClassifierConfig: Required<InputClassifierConfig> = {
+	networkFns:  Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	randomFns:   Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
+	readFileFns: ReadFunctions.map(readFunction => readFunction.name),
+	pureFns:     PureFunctions,
+	systemFns:   SystemFunctions,
+	ffiFns:      FfiFunctions,
+	langFns:     LangFunctions,
+	optionsFns:  OptionsFunctions
+};
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
 	/** For each query key, a list of classified input sources (each with id and all traces) */

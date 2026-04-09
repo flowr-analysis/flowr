@@ -20,17 +20,19 @@ import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-na
 import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 
 class InputClassifier {
-	private readonly dfg:    DataflowGraph;
-	private readonly config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>;
+	private readonly dfg:     DataflowGraph;
+	private readonly config:  InputClassifierConfig<InputClassifierFunctionIdentifiers>;
 	private readonly cache = new Map<NodeId, InputSource>();
+	private readonly fullDfg: DataflowGraph | undefined;
 
-	constructor(dfg: DataflowGraph, config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>) {
+	constructor(dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph) {
 		this.dfg = dfg;
 		this.config = config;
+		this.fullDfg = fullDfg;
 	}
 
 	private isDefinedByOnCall(id: NodeId): boolean {
-		const out = (this.config.fullDfg ?? this.dfg).outgoingEdges(id) ?? new Map<NodeId, DfEdge>();
+		const out = (this.fullDfg ?? this.dfg).outgoingEdges(id) ?? new Map<NodeId, DfEdge>();
 		return out.values().some(e => DfEdge.includesType(e, EdgeType.DefinedByOnCall));
 	}
 
@@ -297,7 +299,7 @@ export enum InputType {
 	Random = 'rand',
 	/** Calls to system/system2 and similar */
 	System = 'system',
-	/** Calls to .C / Fortran interfaces */
+	/** Calls to .C / Fortran interfaces (foreign function interfaces) */
 	Ffi = 'ffi',
 	/** Language objects (quote/substitute/etc.) */
 	Lang = 'lang',
@@ -344,9 +346,9 @@ export type InputSources = InputSource[];
  * This is either an {@link NodeId|id} of a known functions all of that category (e.g., you can issue a dependencies query before and then pass all
  * identified ids to this query here).
  */
-export type InputClassifierFunctionIdentifier = Identifier | NodeId;
+export type InputClassifierFunctionIdentifiers = readonly (Identifier | NodeId)[];
 
-function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputClassifierFunctionIdentifier[] | undefined): boolean {
+function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierFunctionIdentifiers | undefined): boolean {
 	if(list === undefined || list.length === 0) {
 		return false;
 	}
@@ -363,59 +365,56 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputCl
 /**
  * For the specifications of `pureFns` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
  */
-export interface InputClassifierConfig<Functions extends readonly InputClassifierFunctionIdentifier[] | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends MergeableRecord {
+export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Record<string, Functions | undefined> {
 	/**
 	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
 	 */
-	pureFns:     Functions
+	pureFns?:     Functions
 	/**
 	 * Functions that read from the network
 	 */
-	networkFns:  Functions
+	networkFns?:  Functions
 	/**
 	 * Functions that produce a random value
 	 * Note: may need to check with respect to seeded randomness
 	 */
-	randomFns:   Functions
+	randomFns?:   Functions
 	/**
 	 * Functions that read from the file system
 	 */
-	readFileFns: Functions
+	readFileFns?: Functions
 	/**
 	 * Functions that call system utilities (system/system2)
 	 */
-	systemFns?:  Functions;
+	systemFns?:   Functions;
 	/**
 	 * Functions that call native code via .C/.Fortran interfaces
 	 */
-	ffiFns?:     Functions;
+	ffiFns?:      Functions;
 	/**
 	 * Functions that produce language objects such as quote/substitute
 	 */
-	langFns?:    Functions;
+	langFns?:     Functions;
 	/**
 	 * Functions that access or set global options
 	 */
-	optionsFns?: Functions;
-	/**
-	 * For the scope escape analysis, pass on the full, non-reduced DFG here
-	 */
-	fullDfg?:    DataflowGraph;
+	optionsFns?:  Functions;
 }
 
 /**
  * Takes the given id which is expected to either be:
  * - a function call - in this case all arguments are considered to be inputs (additionally to all read edges from the function call in the dataflow graph)
- * - anything else - in that case the node itself is considered as an "input" - please note that in these scenarios the *return* value will only contain one mapping - that for the id you pased in.
+ * - anything else - in that case the node itself is considered as an "input" - please note that in these scenarios the *return* value will only contain one mapping - that for the id you passed in.
  *
- * This method traces the dependencies in the dataflow graph using the specification of functions passed in
+ * This method traces the dependencies in the dataflow graph using the specification of functions passed in.
+ * For the scope escape analysis, pass on the full, non-reduced DFG as `fullDfg`.
  */
-export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>): InputSources {
+export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph): InputSources {
 	const vtx = dfg.getVertex(id);
 	if(!vtx) {
 		return [];
 	}
-	const c = new InputClassifier(dfg, config);
+	const c = new InputClassifier(dfg, config, fullDfg);
 
 	if(vtx.tag === VertexType.FunctionCall) {
 		const ret: InputSources = [];

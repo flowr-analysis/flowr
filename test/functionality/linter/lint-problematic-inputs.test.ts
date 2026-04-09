@@ -8,6 +8,24 @@ import { InputTraceType, InputType } from '../../../src/queries/catalog/input-so
 describe('flowR linter', withTreeSitter(parser => {
 	describe('Problematic Eval', () => {
 		assertLinter('const-eval', parser, 'eval(parse(text="x"))', 'problematic-inputs', []);
+		assertLinter('network eval', parser, 'x <- read.csv("https://example.com/data.csv"); eval(parse(text=x))', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Certain,
+			name:      'eval',
+			loc:       SourceRange.from(1, 48, 1, 66),
+			sources:   [{ id: 11, trace: InputTraceType.Known, types: [InputType.File, InputType.Network, InputType.DerivedConstant] }]
+		}]);
+		assertLinter('read eval', parser, 'x <- read.csv("data.csv"); eval(parse(text=x))', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Certain,
+			name:      'eval',
+			loc:       SourceRange.from(1, 28, 1, 46),
+			sources:   [{ id: 11, trace: InputTraceType.Known, types: [InputType.File, InputType.DerivedConstant] }]
+		}]);
+		assertLinter('unseeded randomness eval', parser, 'eval(parse(text=runif(1)))', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Certain,
+			name:      'eval',
+			loc:       SourceRange.from(1, 1, 1, 26),
+			sources:   [{ id: 8, trace: InputTraceType.Known, types: [InputType.Random, InputType.DerivedConstant] }]
+		}]);
 		assertLinter('unknown eval', parser, 'eval(parse(text=x))', 'problematic-inputs', [{
 			certainty: LintingResultCertainty.Uncertain,
 			name:      'eval',

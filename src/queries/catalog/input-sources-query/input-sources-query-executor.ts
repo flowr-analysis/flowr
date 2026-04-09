@@ -5,13 +5,13 @@ import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
-import type { InputSources } from './simple-input-classifier';
+import type { InputClassifierFunctionIdentifier, InputSources } from './simple-input-classifier';
 import { classifyInput } from './simple-input-classifier';
-import { NETWORK_FUNCTIONS } from '../../../linter/rules/network-functions';
-import { SEEDED_RANDOMNESS } from '../../../linter/rules/seeded-randomness';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-
-
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { runSearch } from '../../../search/flowr-search-executor';
+import { Q, type FlowrSearchLike } from '../../../search/flowr-search-builder';
+import type { Identifier } from '../../../dataflow/environments/identifier';
 
 /**
  * Execute an input sources query
@@ -39,9 +39,10 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 
 		results[key] = classifyInput(criterionId, provenance, {
 			fullDfg:    df.graph,
-			networkFns: query.config?.networkFns ?? NETWORK_FUNCTIONS.info.defaultConfig.fns,
-			randomFns:  query.config?.randomFns ?? SEEDED_RANDOMNESS.info.defaultConfig.randomnessConsumers,
-			pureFns:    query.config?.pureFns ?? ['paste', 'paste0', 'parse', '+', '-', '*',
+			networkFns: await getInputSourcesFunctions(analyzer, query.config?.networkFns ?? Q.fromQuery({ type: 'linter', rules: ['network-functions'] })),
+			randomFns:  await getInputSourcesFunctions(analyzer, query.config?.randomFns ?? Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] })),
+			pureFns:    await getInputSourcesFunctions(analyzer, query.config?.pureFns ?? [
+				'paste', 'paste0', 'parse', '+', '-', '*',
 				'/', '^', '%%', '%/%', '&', '|', '!', '&&', '||',
 				'<', '>', '<=', '>=', '==', '!=', ':',
 				'abs', 'sign', 'sqrt', 'exp', 'log', 'log10', 'log2',
@@ -74,18 +75,18 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 				'colSums', 'rowSums', 'colMeans', 'rowMeans',
 				'solve', 'det', 'eigen',
 				'is.factor', 'is.logical', 'is.vector', 'is.matrix', 'is.data.frame',
-			],
-			readFileFns: query.config?.readFileFns ?? ReadFunctions.map(f => f.name),
-			systemFns:   query.config?.systemFns ?? ['system', 'system2', 'pipe', 'shell', 'shell.exec'],
-			ffiFns:      query.config?.ffiFns ?? ['.C', '.Call', '.Fortran', '.External', 'dyn.load', 'sourceCpp', 'getNativeSymbolInfo'],
-			langFns:     query.config?.langFns ?? [
+			]),
+			readFileFns: await getInputSourcesFunctions(analyzer, query.config?.readFileFns ?? ReadFunctions.map(f => f.name)),
+			systemFns:   await getInputSourcesFunctions(analyzer, query.config?.systemFns ?? ['system', 'system2', 'pipe', 'shell', 'shell.exec']),
+			ffiFns:      await getInputSourcesFunctions(analyzer, query.config?.ffiFns ?? ['.C', '.Call', '.Fortran', '.External', 'dyn.load', 'sourceCpp', 'getNativeSymbolInfo']),
+			langFns:     await getInputSourcesFunctions(analyzer, query.config?.langFns ?? [
 				'substitute', 'quote', 'bquote', 'enquote',
 				'enexpr', 'enexprs', 'enquo', 'enquos',
 				'expression', 'call', 'as.call', 'as.expression',
 				'as.name', 'as.symbol', 'alist', 'as.language', 'evalq',
 				'expr', 'quo', 'enexpr', 'ensym', 'ensyms'
-			],
-			optionsFns: query.config?.optionsFns ?? ['options', 'getOption', 'Sys.getenv']
+			]),
+			optionsFns: await getInputSourcesFunctions(analyzer, query.config?.optionsFns ?? ['options', 'getOption', 'Sys.getenv'])
 		});
 	}
 
@@ -95,4 +96,13 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		},
 		results
 	} as unknown) as InputSourcesQueryResult;
+}
+
+async function getInputSourcesFunctions(analyzer: ReadonlyFlowrAnalysisProvider, entry: readonly Identifier[] | FlowrSearchLike): Promise<readonly InputClassifierFunctionIdentifier[]> {
+	if(Array.isArray(entry)) {
+		return entry as InputClassifierFunctionIdentifier[];
+	}
+	const result = await runSearch(entry as FlowrSearchLike, analyzer);
+
+	return result.getElements().map(entry => entry.node.info.id);
 }

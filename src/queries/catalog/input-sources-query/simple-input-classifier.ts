@@ -12,19 +12,19 @@ import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
-import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { isNotUndefined } from '../../../util/assert';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 
 class InputClassifier {
 	private readonly dfg:    DataflowGraph;
-	private readonly config: InputClassifierConfig;
+	private readonly config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>;
 	private readonly cache = new Map<NodeId, InputSource>();
 
-	constructor(dfg: DataflowGraph, config: InputClassifierConfig) {
+	constructor(dfg: DataflowGraph, config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>) {
 		this.dfg = dfg;
 		this.config = config;
 	}
@@ -76,24 +76,34 @@ class InputClassifier {
 			}
 		}
 		if(!matchesList(call, this.config.pureFns)) {
+			const types: InputType[] = [];
+
 			if(matchesList(call, this.config.readFileFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.File], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.networkFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Network], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.randomFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Random], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.systemFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.System], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.ffiFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Ffi], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.langFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Lang], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.optionsFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Options], trace: InputTraceType.Unknown });
-			} else {
-				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
-				return this.classifyCdsAndReturn(call, { id: call.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
+				types.push(InputType.File);
 			}
+			if(matchesList(call, this.config.networkFns)) {
+				types.push(InputType.Network);
+			}
+			if(matchesList(call, this.config.randomFns)) {
+				types.push(InputType.Random);
+			}
+			if(matchesList(call, this.config.systemFns)) {
+				types.push(InputType.System);
+			}
+			if(matchesList(call, this.config.ffiFns)) {
+				types.push(InputType.Ffi);
+			}
+			if(matchesList(call, this.config.langFns)) {
+				types.push(InputType.Lang);
+			}
+			if(matchesList(call, this.config.optionsFns)) {
+				types.push(InputType.Options);
+			}
+			if(types.length === 0) {
+				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
+				types.push(InputType.Unknown);
+			}
+			return this.classifyCdsAndReturn(call, { id: call.id, types, trace: InputTraceType.Unknown });
 		}
 
 
@@ -337,11 +347,13 @@ export type InputSources = InputSource[];
 export type InputClassifierFunctionIdentifier = Identifier | NodeId;
 
 function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputClassifierFunctionIdentifier[] | undefined): boolean {
-	if(!list || list.length === 0) {
+	if(list === undefined || list.length === 0) {
 		return false;
 	}
 	for(const id of list) {
-		if(fn.id === id || Identifier.matches(id as BrandedIdentifier, fn.name)) {
+		if(fn.id === id) {
+			return true;
+		} else if(Identifier.is(id) && Identifier.matches(id, fn.name)) {
 			return true;
 		}
 	}
@@ -351,40 +363,40 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputCl
 /**
  * For the specifications of `pureFns` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
  */
-export interface InputClassifierConfig extends MergeableRecord {
+export interface InputClassifierConfig<Functions extends readonly InputClassifierFunctionIdentifier[] | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends MergeableRecord {
 	/**
 	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
 	 */
-	pureFns:     readonly InputClassifierFunctionIdentifier[]
+	pureFns:     Functions
 	/**
 	 * Functions that read from the network
 	 */
-	networkFns:  readonly InputClassifierFunctionIdentifier[]
+	networkFns:  Functions
 	/**
 	 * Functions that produce a random value
 	 * Note: may need to check with respect to seeded randomness
 	 */
-	randomFns:   readonly InputClassifierFunctionIdentifier[]
+	randomFns:   Functions
 	/**
 	 * Functions that read from the file system
 	 */
-	readFileFns: readonly InputClassifierFunctionIdentifier[]
+	readFileFns: Functions
 	/**
 	 * Functions that call system utilities (system/system2)
 	 */
-	systemFns?:  readonly InputClassifierFunctionIdentifier[];
+	systemFns?:  Functions;
 	/**
 	 * Functions that call native code via .C/.Fortran interfaces
 	 */
-	ffiFns?:     readonly InputClassifierFunctionIdentifier[];
+	ffiFns?:     Functions;
 	/**
 	 * Functions that produce language objects such as quote/substitute
 	 */
-	langFns?:    readonly InputClassifierFunctionIdentifier[];
+	langFns?:    Functions;
 	/**
 	 * Functions that access or set global options
 	 */
-	optionsFns?: readonly InputClassifierFunctionIdentifier[];
+	optionsFns?: Functions;
 	/**
 	 * For the scope escape analysis, pass on the full, non-reduced DFG here
 	 */
@@ -398,7 +410,7 @@ export interface InputClassifierConfig extends MergeableRecord {
  *
  * This method traces the dependencies in the dataflow graph using the specification of functions passed in
  */
-export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig): InputSources {
+export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<readonly InputClassifierFunctionIdentifier[]>): InputSources {
 	const vtx = dfg.getVertex(id);
 	if(!vtx) {
 		return [];

@@ -63,6 +63,13 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			}]
 		});
 	});
+
+	describe('Network access', () => {
+		testQuery('curl', 'x <- curl("https://example.com/data.csv")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Network], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Reading files', () => {
 		testQuery('Read a file', 'x <- read.csv("foo.bar")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{

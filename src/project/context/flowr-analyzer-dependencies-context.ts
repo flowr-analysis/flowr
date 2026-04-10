@@ -39,7 +39,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 
 export interface SerializedFlowrAnalyzerDependenciesContext{
     dependencies:  SerializedPackage[];
-	functions?:    FunctionInfo[];
+	functions?:       FunctionInfo[];
     staticsLoaded: boolean;
 }
 

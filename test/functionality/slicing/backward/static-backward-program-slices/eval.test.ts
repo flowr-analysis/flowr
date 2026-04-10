@@ -31,3 +31,21 @@ print(y)`);
 print(y)`, ['2@print'], `for(v in c("x", "y")) eval(parse(text=paste(k, "<- 2")))
 print(y)`);
 }));
+describe.sequential('evalText', withShell(shell => {
+	assertSliced(label('simple evalText use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		shell, 'x <- 2\ny <- evalText("print(x)")', ['2@y'], 'x <- 2\ny <- evalText("print(x)")');
+	assertSliced(label('simple evalText no-use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		shell, 'x <- 2\ny <- evalText("print(y)")', ['2@y'], 'y <- evalText("print(y)")');
+	assertSliced(label('simple evalText remote string', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		shell, 'x <- 2\nt <- "print(x)"\ny <- evalText(t)', ['3@y'], 'x <- 2\nt <- "print(x)"\ny <- evalText(t)');
+	assertSliced(label('simple evalText conditional string', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		shell, `k <- 42
+x <- 2
+if(u) t <- "print(x)" else 
+t <- "print(k)"
+y <- evalText(t)`, ['5@y'], `k <- 42
+x <- 2
+if(u) t <- "print(x)" else
+t <- "print(k)"
+y <- evalText(t)`);
+}));

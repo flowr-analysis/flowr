@@ -731,8 +731,6 @@ export class DataflowGraph<
 			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
 			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
-			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
-			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
 		}
 	}
 

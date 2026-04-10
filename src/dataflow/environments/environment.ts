@@ -76,7 +76,7 @@ export class Environment implements IEnvironment {
 				.map(([k, v]) => [k,
 					v.map(s => ({
 						...s,
-						controlDependencies: s.controlDependencies?.slice()
+						cds: s.cds?.slice()
 					} satisfies IdentifierDefinition))
 				])
 		);
@@ -92,7 +92,7 @@ export class Environment implements IEnvironment {
 		const { name } = definition;
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
-		if(definition.controlDependencies === undefined && !pointerTracking) {
+		if(definition.cds === undefined && !pointerTracking) {
 			newEnvironment.memory.set(name, [definition]);
 		} else {
 			const existing = newEnvironment.memory.get(name);
@@ -100,7 +100,7 @@ export class Environment implements IEnvironment {
 			if(
 				pointerTracking &&
                 existing !== undefined &&
-                inGraphDefinition.controlDependencies === undefined
+                inGraphDefinition.cds === undefined
 			) {
 				if(inGraphDefinition.indicesCollection !== undefined) {
 					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
@@ -109,7 +109,7 @@ export class Environment implements IEnvironment {
 					// When indices couldn't be resolved, but indices where defined before, just add the definition
 					existing.push(definition);
 				}
-			} else if(existing === undefined || definition.controlDependencies === undefined) {
+			} else if(existing === undefined || definition.cds === undefined) {
 				newEnvironment.memory.set(name, [definition]);
 			} else {
 				existing.push(definition);
@@ -151,14 +151,15 @@ export class Environment implements IEnvironment {
 		}
 		const map = new Map(this.memory);
 		for(const [key, values] of other.memory) {
-			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.controlDependencies !== undefined) : true;
+			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
 				const old = map.get(key);
 				// we need to make a copy to avoid side effects for old reference in other environments
 				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
-					const index = updatedOld.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
-					if(index >= 0) {
+					const { nodeId, definedAt } = v;
+					const index = updatedOld.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
+					if(index) {
 						continue;
 					}
 					if(applyCds === undefined) {
@@ -166,7 +167,7 @@ export class Environment implements IEnvironment {
 					} else {
 						updatedOld.push({
 							...v,
-							controlDependencies: v.controlDependencies ? applyCds.concat(v.controlDependencies) : applyCds.slice()
+							cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice()
 						});
 					}
 				}
@@ -213,7 +214,7 @@ export class Environment implements IEnvironment {
 		if(definition !== undefined) {
 			this.memory.delete(name);
 			this.cache?.delete(name);
-			cont = !definition.every(d => happensInEveryBranch(d.controlDependencies));
+			cont = !definition.every(d => happensInEveryBranch(d.cds));
 		}
 		if(cont) {
 			this.parent.remove(name);

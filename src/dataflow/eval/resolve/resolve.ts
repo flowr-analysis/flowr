@@ -14,7 +14,7 @@ import { stringFrom } from '../values/string/string-constants';
 import { flattenVectorElements, vectorFrom } from '../values/vectors/vector-constants';
 import { resolveIdToValue } from './alias-tracking';
 import type { VariableResolve } from '../../../config';
-import { liftScalar } from '../values/scalar/scalar-consatnts';
+import { liftScalar } from '../values/scalar/scalar-constants';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 
 /**

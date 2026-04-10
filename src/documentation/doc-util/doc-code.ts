@@ -14,7 +14,7 @@ import { builtInEnvJsonReplacer } from '../../dataflow/environments/environment'
  * ```
  */
 export function codeBlock(language: string, code: string): string {
-	return `\n\`\`\`${language}\n${code?.trim() ?? ''}\n\`\`\`\n`;
+	return `\n\`\`\`${language}\n${code?.trimEnd() ?? ''}\n\`\`\`\n`;
 }
 
 /**

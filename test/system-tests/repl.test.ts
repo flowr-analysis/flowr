@@ -47,7 +47,7 @@ describe('repl', () => {
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n', () => {
-					const expect = normalized ? normalizedAstToMermaid(normalized.ast) : '';
+					const expect = normalized ? normalizedAstToMermaid(normalized.ast, {}) : '';
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n*', () => {
@@ -60,7 +60,12 @@ describe('repl', () => {
 
 	test(':slicer', async() => {
 		const output = await flowrRepl([':slicer -c "3@a" -r "a <- 3\\nb <- 4\\nprint(a)"', ':quit']);
-		assert.include(output, 'a <- 3\na');
+		try {
+			assert.include(output, 'a <- 3\na');
+		} catch(e) {
+			console.error('Output was:', output);
+			throw e;
+		}
 	});
 
 	describe(':query api', () => {

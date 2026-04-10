@@ -572,11 +572,11 @@ fib <- function() {
   if(n <= 1) {
     n
   } else {
-    fib(n - 1) + fib(n - 2)
+	    fib(n - 1) + fib(n - 2)
   }
 }
 fib(42)`, ['10@fib'], 'fib <- function() if(n <= 1) { n } else\n' +
-				'    { fib(n - 1) + fib(n - 2) }\nfib(42)');
+				'    { fib(n - 1) + fib(n - 2) }\nfib(42)', { forceEagerFunctions: true });
 		});
 		describe('Inverted Caller', () => {
 			assertSliced(label('Call from Higher', ['function-calls', 'lexicographic-scope']),
@@ -602,7 +602,7 @@ c <- (function() {
         f <- function() a()
         h()
     })()
-`.trim());
+`.trim(), { forceEagerFunctions: true });
 		});
 		/* adapted from a complex pipe in practice */
 		describe('Nested Pipes', () => {
@@ -751,6 +751,18 @@ x`);
 				]), shell,
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)', ['2@res'],
 				'foo <- bar()\nres <- lapply(1:3, function(x) foo * 2)'
+				);
+			});
+			describe('With FUN.VALUE', () => {
+				assertSliced(label('Force-Including Call Reference', [
+					'name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'normal-definition', 'newlines', 'unnamed-arguments', 'call-normal', 'implicit-return', 'closures'
+				]), shell,
+				`themed <- vapply(defaults, FUN.VALUE = logical(1), function(x) {
+    is_quosure(x) && quo_is_call(x, name = "from_theme")
+  })`, ['1@themed'],
+				`themed <- vapply(defaults, FUN.VALUE = logical(1), function(x) {
+    is_quosure(x) && quo_is_call(x, name = "from_theme")
+  })`
 				);
 			});
 			describe('nested ddply', () => {

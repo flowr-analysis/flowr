@@ -9,7 +9,7 @@ describe('Model specific tests', () => {
 		});
 		const assertMerged = (ranges: SourceRange[], expected: SourceRange, message = ''): void => {
 			test(JSON.stringify(ranges), () => {
-				assert.deepStrictEqual(mergeRanges(...ranges), expected, `${message}`);
+				assert.deepStrictEqual(mergeRanges(ranges), expected, `${message}`);
 			});
 		};
 		describe('one ranges always returns the same', () => {

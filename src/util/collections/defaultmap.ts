@@ -44,16 +44,16 @@ export class DefaultMap<K, V = K> {
 	/**
 	 * Iterates over all entries that have been set (explicitly or by the generator)
 	 */
-	public entries(): IterableIterator<[K, V]> {
+	public entries(): MapIterator<[K, V]> {
 		return this.internal.entries();
 	}
 
 	/** returns only the keys really stored in the map */
-	public keys(): IterableIterator<K> {
+	public keys(): MapIterator<K> {
 		return this.internal.keys();
 	}
 
-	public values(): IterableIterator<V> {
+	public values(): MapIterator<V> {
 		return this.internal.values();
 	}
 

@@ -3,7 +3,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
+import { builtInId, BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 
@@ -25,9 +25,9 @@ describe.sequential('Lists with variable references', withShell(shell => {
 	describe('def-def same variable', () => {
 		assertDataflow(label('directly together', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 2', emptyGraph()
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
-				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -37,11 +37,11 @@ describe.sequential('Lists with variable references', withShell(shell => {
 
 		assertDataflow(label('multiple occurrences of same variable', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines']), shell,
 			'x <- 1\nx <- 3\n3\nx <- 9', emptyGraph()
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
-				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
-				.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '3', '5') })
+				.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [builtInId('<-'), 8], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '3', '5') })
 				.calls('9', builtInId('<-'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -57,7 +57,7 @@ describe.sequential('Lists with variable references', withShell(shell => {
 			'x <- 1\nx',  emptyGraph()
 				.use('3', 'x')
 				.reads('3', '0')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -67,9 +67,9 @@ describe.sequential('Lists with variable references', withShell(shell => {
 			emptyGraph()
 				.use('6', 'x')
 				.reads('6', '3')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
-				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -83,9 +83,9 @@ describe.sequential('Lists with variable references', withShell(shell => {
 				.reads('4', '0')
 				.use('6', 'x')
 				.reads('6', '3')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
-				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
 				.constant('1')
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
@@ -97,9 +97,9 @@ describe.sequential('Lists with variable references', withShell(shell => {
 				.use('1', 'x')
 				.use('4', 'x')
 				.reads('4', '0')
-				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('2', '<-', [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [builtInId('<-'), 1], onlyBuiltIn: true })
 				.calls('2', builtInId('<-'))
-				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-')], environment: defaultEnv().defineVariable('x', '0', '2') })
+				.call('5', '<-', [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [builtInId('<-'), 4], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2') })
 				.calls('5', builtInId('<-'))
 				.defineVariable('0', 'x', { definedBy: ['1', '2'] })
 				.defineVariable('3', 'x', { definedBy: ['4', '5'] })
@@ -119,13 +119,13 @@ print(x)`, emptyGraph()
 				.reads('16', '12')
 				.use('21', 'x')
 				.reads('21', '12')
-				.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [builtInId('<-')] })
+				.call('6', '<-', [argumentInCall('0'), argumentInCall('5')], { returns: ['0'], reads: [builtInId('<-'), 5], onlyBuiltIn: true })
 				.calls('6', builtInId('<-'))
 				.argument('6', ['5', '0'])
-				.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [builtInId('<-')], environment: defaultEnv().defineFunction('{', '0', '6') })
+				.call('9', '<-', [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [builtInId('<-'), 8], onlyBuiltIn: true, environment: defaultEnv().defineFunction('{', '0', '6') })
 				.calls('9', builtInId('<-'))
 				.argument('9', ['8', '7'])
-				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-')], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
+				.call('14', '<-', [argumentInCall('12'), argumentInCall('13')], { returns: ['12'], reads: [builtInId('<-'), 13], onlyBuiltIn: true, environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
 				.calls('14', builtInId('<-'))
 				.argument('14', ['13', '12'])
 				.definesOnCall('14', '1')
@@ -138,7 +138,7 @@ print(x)`, emptyGraph()
 				.definedByOnCall('1', '18')
 				.argument('19', '14')
 				.argument('19', '18')
-				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { origin: ['function'], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
+				.call('19', '{', [argumentInCall('14'), argumentInCall('18')], { origin: [BuiltInProcName.Function], returns: ['3'], reads: ['0'], environment: defaultEnv().defineFunction('{', '0', '6').defineVariable('x', '7', '9') })
 				.calls('19', '5')
 				.argument('23', '21')
 				.reads('23', '21')
@@ -148,12 +148,12 @@ print(x)`, emptyGraph()
 				.constant('3', undefined, false)
 				.defineFunction('5', ['3'], {
 					out:               [],
-					in:                [{ nodeId: '3', name: undefined, controlDependencies: [], type: ReferenceType.Argument }],
+					in:                [{ nodeId: '3', name: undefined, cds: [], type: ReferenceType.Argument }],
 					unknownReferences: [],
 					entryPoint:        '3',
 					graph:             new Set(['1', '3']),
 					environment:       defaultEnv().pushEnv().defineParameter('...', '1', '2')
-				})
+				}, { readParams: [[1, false]] })
 				.defineVariable('0', '`{`', { definedBy: ['5', '6'] })
 				.constant('8')
 				.defineVariable('7', 'x', { definedBy: ['8', '9'] })
@@ -194,6 +194,15 @@ print(x)`, emptyGraph()
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true
 			}
+		);
+	});
+	describe('Locally Evaluated Expressions', () => {
+		assertDataflow(label('reads within local expression', ['name-normal', 'newlines', 'dynamic-scope-changes']), shell,
+			'x <- 2\nlocal({ x <- 3\n x })\n x', emptyGraph()
+				.reads('3@x', '2@x')
+				.reads('4@x', '1@x')
+			,
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@x', '2@x']] }
 		);
 	});
 }));

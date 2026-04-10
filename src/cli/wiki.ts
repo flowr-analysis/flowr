@@ -27,8 +27,11 @@ import { IssueLintingRule } from '../documentation/issue-linting-rule';
 import { DocReadme } from '../documentation/doc-readme';
 import { WikiLinter } from '../documentation/wiki-linter';
 import os from 'os';
+import { WikiSetup } from '../documentation/wiki-setup';
+import { WikiOverview } from '../documentation/wiki-overview';
+import { WikiAbsint } from '../documentation/wiki-absint';
 
-const Documents: DocMakerLike[] = [
+export const AllWikiDocuments = [
 	new WikiFaq(),
 	new WikiSearch(),
 	new WikiCfg(),
@@ -38,14 +41,20 @@ const Documents: DocMakerLike[] = [
 	new WikiEngine(),
 	new WikiNormalizedAst(),
 	new WikiCore(),
+	new WikiSetup(),
+	new WikiOverview(),
 	new WikiInterface(),
 	new WikiDataflowGraph(),
 	new WikiLintingAndTesting(),
 	new WikiLinter(),
+	new WikiAbsint(),
 	new IssueLintingRule(),
 	new DocReadme(),
 	new DocCapabilities()
-];
+] as const satisfies DocMakerLike[];
+
+export type ValidWikiDocumentTargets = ReturnType<typeof AllWikiDocuments[number]['getTarget']>;
+export type ValidWikiDocumentTargetsNoSuffix = ValidWikiDocumentTargets extends `${infer Name}.${string}` ? Name : never;
 
 function sortByLeastRecentChanged(wikis: DocMakerLike[]): DocMakerLike[] {
 	return wikis.slice().sort((a, b) => {
@@ -90,7 +99,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	console.log(`Setup for wiki generation took ${(new Date().getTime() - setupStart.getTime())}ms`);
 	const changedWikis = new Set<string>();
 	try {
-		const sortedDocs = sortByLeastRecentChanged(Documents);
+		const sortedDocs = sortByLeastRecentChanged(AllWikiDocuments);
 		console.log(`Generating ${sortedDocs.length} wikis/docs, sorted by most recently updated...`);
 		for(const doc of sortedDocs) {
 			const type = doc.getTarget().toLowerCase().includes('wiki') ? 'Wiki' : 'Doc';
@@ -130,7 +139,7 @@ if(require.main === module) {
 		{ name: 'force', alias: 'F', type: Boolean, description: 'Overwrite existing wiki files, even if nothing changes' },
 		{ name: 'filter', alias: 'f', type: String, multiple: true, description: 'Only generate wikis whose target path contains the given string' },
 		{ name: 'help', alias: 'h', type: Boolean, description: 'Print this usage guide for the wiki generator' },
-		{ name: 'keep-alive', type: Boolean, description: 'Keep-alive wiki generator (only sensible with a reloading script like ts-node-dev)' },
+		{ name: 'keep-alive', type: Boolean, description: 'Keep-alive wiki generator (only sensible with a reloading script like node --watch)' },
 	];
 
 	interface WikiCliOptions {

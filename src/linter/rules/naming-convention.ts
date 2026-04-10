@@ -212,7 +212,8 @@ export const NAMING_CONVENTION = {
 				const fix = fixCasing(m.name, casing);
 				return {
 					...m,
-					quickFix: fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
+					involvedId: id,
+					quickFix:   fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
 				};
 			});
 		return {

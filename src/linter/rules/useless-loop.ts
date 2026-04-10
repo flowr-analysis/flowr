@@ -1,5 +1,5 @@
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
-import type { BuiltInMappingName } from '../../dataflow/environments/built-in';
+import type { BuiltInProcName } from '../../dataflow/environments/built-in';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import { formatRange } from '../../util/mermaid/dfg';
@@ -15,7 +15,7 @@ export interface UselessLoopResult extends LintingResult {
 
 export interface UselessLoopConfig extends MergeableRecord {
     /** Function origins that are considered loops */
-    loopyFunctions: Set<BuiltInMappingName>
+    loopyFunctions: Set<BuiltInProcName>
 }
 
 export interface UselessLoopMetadata extends MergeableRecord {
@@ -30,13 +30,14 @@ export const USELESS_LOOP = {
 			return vertex
 				&& isFunctionCallVertex(vertex)
 				&& vertex.origin !== 'unnamed'
-				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0] as BuiltInMappingName);
+				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>
 			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, analyzer.inspectContext())
 		).map(res => ({
-			certainty: LintingResultCertainty.Certain,
-			name:      res.node.lexeme as string,
-			range:     res.node.info.fullRange as SourceRange
+			certainty:  LintingResultCertainty.Certain,
+			name:       res.node.lexeme as string,
+			range:      res.node.info.fullRange as SourceRange,
+			involvedId: res.node.info.id
 		} satisfies UselessLoopResult));
 
 		return {

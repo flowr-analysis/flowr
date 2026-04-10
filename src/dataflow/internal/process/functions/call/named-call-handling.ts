@@ -25,6 +25,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		environment:       appendEnvironment(info.environment, newInfo.environment),
 		entryPoint:        newInfo.entryPoint,
 		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
+		hooks:             info.hooks.concat(newInfo.hooks)
 	};
 }
 
@@ -66,10 +67,9 @@ export function processNamedCall<OtherInfo>(
 
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
-
 	for(const resolvedFunction of resolved) {
 		if(resolvedFunction.type === ReferenceType.BuiltInFunction && typeof resolvedFunction.processor === 'function') {
-			builtIn = true;
+			builtIn ||= resolvedFunction.config?.libFn !== true;
 			information = mergeInformation(information, resolvedFunction.processor(name, args, rootId, data));
 		} else {
 			defaultProcessor = true;

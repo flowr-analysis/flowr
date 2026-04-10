@@ -17,9 +17,10 @@ export function linkReadsForArgument<OtherInfo>(root: RNode<OtherInfo & ParentIn
 	const allIdsBeforeArguments = new Set(collectAllIds(root, n => n.type === RType.Argument && n.info.id !== root.info.id));
 	const ingoingBeforeArgs = ingoingRefs.filter(r => allIdsBeforeArguments.has(r.nodeId));
 
+	const rid = root.info.id;
 	for(const ref of ingoingBeforeArgs) {
 		// link against the root reference currently I do not know how to deal with nested function calls otherwise
-		graph.addEdge(root.info.id, ref, EdgeType.Reads);
+		graph.addEdge(rid, ref.nodeId, EdgeType.Reads);
 	}
 }
 
@@ -41,28 +42,29 @@ export function processFunctionArgument<OtherInfo>(
 		graph.addVertex({
 			tag: VertexType.Use,
 			id:  argument.info.id,
-			cds: data.controlDependencies
+			cds: data.cds
 		}, data.ctx.env.makeCleanEnv());
 		entryPoint = argument.info.id;
 	}
 
-	const ingoingRefs = [...value?.unknownReferences ?? [], ...value?.in ?? [], ...(name === undefined ? [] : [...name.in])];
+	const ingoingRefs = value ? value.unknownReferences.concat(value.in, name?.in ?? []) : name?.in;
 
 	if(entryPoint && argument.value?.type === RType.FunctionDefinition) {
 		graph.addEdge(entryPoint, argument.value.info.id, EdgeType.Reads);
-	} else if(argumentName) {
+	} else if(argumentName && ingoingRefs) {
 		// we only need to link against those which are not already bound to another function call argument
-		linkReadsForArgument(argument, [...ingoingRefs, ...value?.out ?? [] /* value may perform definitions */], graph);
+		linkReadsForArgument(argument, value ? ingoingRefs.concat(value.out/* value may perform definitions */) : ingoingRefs, graph);
 	}
 
 	return {
 		unknownReferences: [],
 		// active nodes of the name will be lost as they are only used to reference the corresponding parameter
-		in:                ingoingRefs.filter(r => r.name !== undefined),
+		in:                ingoingRefs?.filter(r => r.name !== undefined) ?? [],
 		out:               [...value?.out ?? [], ...(name?.out ?? [])],
 		graph:             graph,
 		environment:       value?.environment ?? data.environment,
 		entryPoint:        entryPoint ?? argument.info.id,
-		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+		exitPoints:        value?.exitPoints ?? name?.exitPoints ?? [{ nodeId: argument.info.id, type: ExitPointType.Default, cds: data.cds }],
+		hooks:             []
 	};
 }

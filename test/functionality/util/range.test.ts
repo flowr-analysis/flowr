@@ -95,7 +95,7 @@ describe('Range', () => {
 	describe('mergeRanges', () => {
 		function assertMerged(expected: SourceRange, ...a: SourceRange[]) {
 			assert.deepStrictEqual(
-				mergeRanges(...a),
+				mergeRanges(a),
 				expected,
 				`mergeRanges(${JSON.stringify(a)})`
 			);

@@ -17,10 +17,12 @@ import {
 } from '../plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerFilePlugin } from '../plugins/file-plugins/flowr-analyzer-file-plugin';
 import { type SerializedFlowrFile , type FilePath, FlowrFile, type FlowrFileProvider, FlowrTextFile, FileRole } from './flowr-file';
-import type { FlowrDescriptionFile } from '../plugins/file-plugins/flowr-description-file';
+import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-description-file';
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
+import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
+import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrAnalyzerLoadingOrderPlugin } from '../plugins/loading-order-plugins/flowr-analyzer-loading-order-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
@@ -40,17 +42,21 @@ export interface RProjectAnalysisRequest {
 export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
 
 export type RoleBasedFiles = {
-    [FileRole.Description]: FlowrDescriptionFile[];
+	[FileRole.Description]: FlowrDescriptionFile[];
+	[FileRole.News]:        FlowrNewsFile[];
+	[FileRole.Namespace]:   FlowrNamespaceFile[];
     /* currently no special support */
-    [FileRole.Namespace]:   FlowrFileProvider[];
-    [FileRole.Source]:      FlowrFileProvider[];
-    [FileRole.Data]:        FlowrFileProvider[];
-    [FileRole.Other]:       FlowrFileProvider[];
+	[FileRole.Vignette]:    FlowrFileProvider[];
+	[FileRole.Test]:        FlowrFileProvider[];
+	[FileRole.License]:     FlowrFileProvider[];
+	[FileRole.Source]:      FlowrFileProvider[];
+	[FileRole.Data]:        FlowrFileProvider[];
+	[FileRole.Other]:       FlowrFileProvider[];
 }
 
-function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole): FlowrFileProvider {
+function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
 	if(typeof file === 'string') {
-		return new FlowrTextFile(file, role);
+		return new FlowrTextFile(file, roles);
 	} else if('request' in file) {
 		return FlowrFile.fromRequest(file);
 	} else {
@@ -80,6 +86,12 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * ```
 	 */
 	getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role];
+
+	/**
+	 * Get all files known to this context.
+	 * @returns An array of all files.
+	 */
+	getAllFiles(): FlowrFileProvider[];
 	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
@@ -133,13 +145,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private readonly consideredFiles: string[] = [];
 
 	/* files that are part of the analysis, e.g. source files */
-	private byRole:        RoleBasedFiles = {
-		[FileRole.Description]: [],
-		[FileRole.Namespace]:   [],
-		[FileRole.Source]:      [],
-		[FileRole.Data]:        [],
-		[FileRole.Other]:       []
-	} satisfies Record<FileRole, FlowrFileProvider[]>;
+	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 
 	constructor(
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
@@ -154,6 +160,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public reset(): void {
 		this.loadingOrder.reset();
 		this.files = new Map<FilePath, FlowrFileProvider>();
+		this.consideredFiles.length = 0;
+		this.inlineFiles.length = 0;
+		this.byRole = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
 	}
 
 	/**
@@ -193,7 +202,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(isParseRequest(req)) {
 				this.addRequest(req);
 			} else {
-				this.addFile(req, req.role);
+				this.addFile(req, req.roles);
 			}
 		}
 	}
@@ -211,8 +220,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 * Add a file to the context. If the file has a special role, it will be added to the corresponding list of special files.
 	 * This method also applies any registered {@link FlowrAnalyzerFilePlugin}s to the file before adding it to the context.
 	 */
-	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, role?: FileRole) {
-		const f = this.fileLoadPlugins(wrapFile(file, role));
+	public addFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]) {
+		const f = this.fileLoadPlugins(wrapFile(file, roles));
 
 		if(f.path() === FlowrFile.INLINE_PATH) {
 			this.inlineFiles.push(f);
@@ -222,8 +231,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			this.files.set(f.path(), f);
 		}
 
-		if(f.role) {
-			this.byRole[f.role].push(f as typeof this.byRole[FileRole.Description][number]);
+		if(f.roles) {
+			for(const r of f.roles) {
+				this.byRole[r].push(f as never);
+			}
 		}
 
 		return f;
@@ -268,8 +279,16 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		for(const loader of this.fileLoaders) {
 			if(loader.applies(f.path())) {
 				fileLog.debug(`Applying file loader ${loader.name} to file ${f.path()}`);
-				fFinal = loader.processor(this.ctx, f);
-				break;
+				const res = loader.processor(this.ctx, fFinal);
+				if(Array.isArray(res)) {
+					fFinal = res[0];
+					if(!res[1]) {
+						break;
+					}
+				} else {
+					fFinal = res;
+					break;
+				}
 			}
 		}
 		return fFinal;
@@ -318,6 +337,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getFilesByRole<Role extends FileRole>(role: Role): RoleBasedFiles[Role] {
 		return this.byRole[role];
+	}
+
+	public getAllFiles(): FlowrFileProvider[] {
+		return [...this.files.values(), ...this.inlineFiles];
 	}
 
 	public toSerializable(): SerializedFlowrAnalyzerFilesContext {

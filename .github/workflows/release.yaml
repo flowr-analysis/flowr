@@ -47,12 +47,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r-version: [ '4.4.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
+        r-version: [ '4.5.0', '4.3.2', '4.2.3', '4.0.0', '3.6.0' ]
         os: [ ubuntu-latest ]
         include:
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: macos-latest
-           - r-version: '4.4.0'
+           - r-version: '4.5.0'
              os: windows-latest
     runs-on: ${{ matrix.os }}
     concurrency:
@@ -190,8 +190,12 @@ jobs:
     needs: ['release']
     name: "🚀 Deploy Docker (only on main)"
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        dockerfile: [ 'scripts/Dockerfile', 'scripts/Dockerfile-NoR' ]
     concurrency:
-      group: docker-${{ github.workflow }}-${{ github.ref }}
+      group: docker-${{ github.workflow }}-${{ github.ref }}-${{ matrix.dockerfile }}
       cancel-in-progress: true
     steps:
       - name: "🛒 Checkout Repository"
@@ -204,7 +208,7 @@ jobs:
         run: git pull
 
       - name: "🛠️ Build the image"
-        run: docker build -t flowr -f scripts/Dockerfile .
+        run: docker build -t flowr -f "${{ matrix.dockerfile }}" .
 
       - name: "🧪 Test that the image works"
         timeout-minutes: 5
@@ -213,7 +217,8 @@ jobs:
 
       - name: "🚀 Deploy the Image"
         run: |
-          TAG="eagleoutice/flowr"
+          # add -slim suffix if no R  
+          TAG="eagleoutice/${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'flowr-slim' || 'flowr' }}"
           VERSION="$(date '+%Y%m%d')"
           FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
           docker tag flowr "${TAG}":"date-$VERSION"
@@ -226,14 +231,15 @@ jobs:
 
       - name: "🗃️ Compress the image"
         run: |
-          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION.tar.gz"
+          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          path: flowr-${{ env.THE_FLOWR_VERSION }}.tar.gz
+          name: flowr-image-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'slim' || 'full' }}
+          path: flowr-${{ env.THE_FLOWR_VERSION }}-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz
 
   performance-test:
     name: "⏱️ Performance Test"

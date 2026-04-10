@@ -20,7 +20,7 @@ function fuzzyFindFile(node: RNodeWithParent | undefined, idMap: AstIdMap): stri
 			return fuzzyFindFile(parent, idMap);
 		}
 	}
-	return '<inline>';
+	return '@inline';
 }
 
 /**

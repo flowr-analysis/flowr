@@ -179,7 +179,7 @@ Please prefer using a statement like "flowR has only partial support for feature
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Capabilities
  */
-export class DocCapabilities extends DocMaker {
+export class DocCapabilities extends DocMaker<'wiki/Capabilities.md'> {
 	constructor() {
 		super('wiki/Capabilities.md', module.filename, 'flowR capabilities overview');
 	}

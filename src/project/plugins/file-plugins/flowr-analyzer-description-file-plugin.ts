@@ -3,13 +3,13 @@ import { SemVer } from 'semver';
 import type { PathLike } from 'fs';
 import { log } from '../../../util/log';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import { FlowrDescriptionFile } from './flowr-description-file';
+import { FlowrDescriptionFile } from './files/flowr-description-file';
 import { type FlowrFileProvider , FileRole } from '../../context/flowr-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 export const descriptionFileLog = log.getSubLogger({ name: 'flowr-analyzer-loading-order-description-file-plugin' });
 
-const DescriptionFilePattern = /^(DESCRIPTION|DESCRIPTION\.txt)$/i;
+const DescriptionFilePattern = /^DESCRIPTION(\.(txt|in))?$/i;
 
 /**
  * This plugin provides support for R `DESCRIPTION` files.

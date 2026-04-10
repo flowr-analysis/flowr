@@ -8,7 +8,7 @@
 import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
-import { wrap, wrapControlDependencies, wrapReference } from './printer';
+import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './printer';
 import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';
 import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -158,7 +158,7 @@ class DataflowBuilderPrinter {
 	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
-		return this.graph.getVertex(id, true)?.cds;
+		return this.graph.getVertex(id)?.cds;
 	}
 
 	private processVertex(id: NodeId, vertex: DataflowGraphVertexInfo): void {
@@ -220,7 +220,7 @@ class DataflowBuilderPrinter {
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
 		this.recordFnCall(id,'defineFunction', [
 			wrap(id),
-			`[${vertex.exitPoints.map(wrap).join(', ')}]`,
+			`[${vertex.exitPoints.map(wrapExitPoint).join(', ')}]`,
 			`{
 				out:               [${vertex.subflow.out.map(wrapReference).join(', ')}],
 				in:                [${vertex.subflow.in.map(wrapReference).join(', ')}],
@@ -249,7 +249,7 @@ class DataflowBuilderPrinter {
 
 	private getControlDependencySuffix(arg: ControlDependency[] | undefined, prefix: string = '{ ', suffix: string = ' }'): string | undefined {
 		if(arg !== undefined) {
-			return `${prefix}controlDependencies: ${wrapControlDependencies(arg)}${suffix}`;
+			return `${prefix}cds: ${wrapControlDependencies(arg)}${suffix}`;
 		}
 		return undefined;
 	}

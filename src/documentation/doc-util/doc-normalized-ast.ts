@@ -24,7 +24,7 @@ import type { RProject } from '../../r-bridge/lang-4.x/ast/model/nodes/r-project
 export function printNormalizedAst(ast: RProject<ParentInformation> | RNodeWithParent, prefix = 'flowchart TD\n') {
 	return `
 \`\`\`mermaid
-${normalizedAstToMermaid(ast, prefix)}
+${normalizedAstToMermaid(ast, { prefix })}
 \`\`\`
 	`;
 }
@@ -63,7 +63,7 @@ ${code}
 <summary style="color:gray">Mermaid Code</summary>
 
 \`\`\`
-${normalizedAstToMermaid(result.normalize.ast, prefix)}
+${normalizedAstToMermaid(result.normalize.ast, { prefix })}
 \`\`\`
 
 </details>

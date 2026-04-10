@@ -27,33 +27,33 @@ export interface SerializedDataflowProcessorInformation<OtherInfo>{
 }
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:              Parser<KnownParserType>
+	readonly parser:         Parser<KnownParserType>
     /**
      * Initial and frozen ast-information
      */
-	readonly completeAst:         NormalizedAst<OtherInfo>
+	readonly completeAst:    NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
 	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
-	readonly environment:         REnvironmentInformation
+	readonly environment:    REnvironmentInformation
 	/**
 	 * Other processors to be called by the given functions
 	 */
-	readonly processors:          DataflowProcessors<OtherInfo>
+	readonly processors:     DataflowProcessors<OtherInfo>
 	/**
 	 * The chain of file paths that lead to this inclusion.
 	 * The most recent (last) entry is expected to always be the current one.
 	 */
-	readonly referenceChain:      (string | undefined)[]
+	readonly referenceChain: (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds:            ControlDependency[] | undefined
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly ctx:                 FlowrAnalyzerContext
+	readonly ctx:            FlowrAnalyzerContext
 }
 
 /**
@@ -65,7 +65,7 @@ export function SerializeDataflowProcessorInformation<OtherInfo>(
 	return {
 		serializedAST:       SerializeNormalizedAst<OtherInfo>(dfInfo.completeAst),
 		environment:         toSerializedREnvironmentInformation(dfInfo.environment),
-		controlDependencies: dfInfo.controlDependencies,
+		controlDependencies: dfInfo.cds,
 		referenceChain:      dfInfo.referenceChain,
 		ctx:                 dfInfo.ctx.toSerializable(),
 	};
@@ -83,11 +83,11 @@ export function DeserializeDataflowProcessorInformation<OtherInfo>(
 
 	return {
 		parser,
-		completeAst:         DeserializeNormalizedAst(serializedDfInfo.serializedAST),
-		environment:         fromSerializedREnvironmentInformation(serializedDfInfo.environment, ctx),
+		completeAst:    DeserializeNormalizedAst(serializedDfInfo.serializedAST),
+		environment:    fromSerializedREnvironmentInformation(serializedDfInfo.environment, ctx),
 		processors,
-		referenceChain:      serializedDfInfo.referenceChain,
-		controlDependencies: serializedDfInfo.controlDependencies,
+		referenceChain: serializedDfInfo.referenceChain,
+		cds:            serializedDfInfo.controlDependencies,
 		ctx
 	};
 }

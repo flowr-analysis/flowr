@@ -7,6 +7,9 @@ import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
 import type { DeepWritable } from 'ts-essentials';
+import type { DataflowProcessors } from './dataflow/processor';
+import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import type { WorkerPoolSettings } from './dataflow/parallel/threadpool';
 import { WorkerpoolDefaultSettings } from './dataflow/parallel/threadpool';
 
@@ -109,6 +112,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
+    /** Configuration options for the REPL */
+    readonly repl: {
+        /** Whether to show quick stats in the REPL after each evaluation */
+        quickStats:   boolean
+	    /** This instruments the dataflow processors to count how often each processor is called */
+	    dfProcessorHeat: boolean;
+    }
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
@@ -143,6 +153,15 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			 */
 			readonly maxIndexCount: number
 		},
+		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
+		readonly instrument: {
+			/**
+			 * Modify the dataflow processors used during dataflow analysis.
+			 * Make sure that all processors required for correct analysis are still present!
+			 * This may have arbitrary consequences on the analysis precision and performance, consider focusing on decorating existing processors instead of replacing them.
+			 */
+			dataflowExtractors?: (extractor: DataflowProcessors<ParentInformation>, ctx: FlowrAnalyzerContext) => DataflowProcessors<ParentInformation>
+		},
 		/**
 		 * If lax source calls are active, flowR searches for sourced files much more freely,
 		 * based on the configurations you give it.
@@ -164,17 +183,17 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 */
 	readonly abstractInterpretation: {
 		/**
+		 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
+		 */
+		readonly wideningThreshold: number;
+		/**
 		 * The configuration of the shape inference for data frames
 		 */
 		readonly dataFrame: {
 			/**
 			 * The maximum number of columns names to infer for data frames before over-approximating the column names to top
 			 */
-			readonly maxColNames:       number;
-			/**
-			 * The threshold for the number of visitations of a node at which widening should be performed to ensure the termination of the fixpoint iteration
-			 */
-			readonly wideningThreshold: number;
+			readonly maxColNames:    number;
 			/**
 			 * Configuration options for reading data frame shapes from loaded external data files, such as CSV files
 			 */
@@ -190,15 +209,23 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
-
     readonly optimizations: {
         readonly fileParallelization: boolean;
 
         readonly dataflowOperationParallelization: boolean;
 
-        readonly deferredFunctionEvaluation: boolean;
+        readonly deferredFunctionEvaluation: {
+            /**
+             * Whether to defer the analysis of the function until the values are needed.
+             */
+            enabled:      boolean;
+            /**
+             * Whether to only defer the analysis of the function at the top level, meaning that if the function is called within another function,
+             * it will still be analyzed immediately.
+             */
+            onlyTopLevel: boolean;
+        }
     }
-
     readonly workerPool: {
 
         readonly poolSettings: WorkerPoolSettings;
@@ -247,6 +274,10 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			}
 		}
 	},
+	repl: {
+		quickStats:      false,
+		dfProcessorHeat: false
+	},
 	project: {
 		resolveUnknownPathsOnDisk: true
 	},
@@ -263,15 +294,18 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 			searchPath:            [],
 			repeatedSourceLimit:   2
 		},
+		instrument: {
+			dataflowExtractors: undefined
+		},
 		slicer: {
 			threshold: 50
 		}
 	},
 	abstractInterpretation: {
-		dataFrame: {
-			maxColNames:       50,
-			wideningThreshold: 4,
-			readLoadedData:    {
+		wideningThreshold: 4,
+		dataFrame:         {
+			maxColNames:    50,
+			readLoadedData: {
 				readExternalFiles: true,
 				maxReadLines:      1e6
 			}
@@ -280,9 +314,12 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 	optimizations: {
 		fileParallelization:              false,
 		dataflowOperationParallelization: false,
-		deferredFunctionEvaluation:       false,
+		deferredFunctionEvaluation:       {
+			enabled:      true,
+			onlyTopLevel: false
+		}
 	},
-	workerPool: {
+    workerPool: {
 		poolSettings: WorkerpoolDefaultSettings
 	}
 };
@@ -297,6 +334,10 @@ export const flowrConfigFileSchema = Joi.object({
 			}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 		}).optional().description('Semantics regarding how to handle the R environment.')
 	}).description('Configure language semantics and how flowR handles them.'),
+	repl: Joi.object({
+		quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
+		dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
+	}).description('Configuration options for the REPL.'),
 	project: Joi.object({
 		resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
 	}).description('Project specific configuration options.'),
@@ -322,6 +363,9 @@ export const flowrConfigFileSchema = Joi.object({
 				maxIndexCount: Joi.number().required().description('The maximum number of indices tracked per object with the pointer analysis.')
 			})
 		).description('Whether to track pointers in the dataflow graph, if not, the graph will be over-approximated wrt. containers and accesses.'),
+		instrument: Joi.object({
+			dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
+		}),
 		resolveSource: Joi.object({
 			dropPaths:             Joi.string().valid(...Object.values(DropPathsOption)).description('Allow to drop the first or all parts of the sourced path, if it is relative.'),
 			ignoreCapitalization:  Joi.boolean().description('Search for filenames matching in the lowercase.'),

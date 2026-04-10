@@ -20,7 +20,7 @@ export function diffIdentifierReferences<Report extends WriteableDifferenceRepor
 	if(a.nodeId !== b.nodeId) {
 		info.report.addComment(`${info.position}Different nodeIds: ${info.leftname}: ${a.nodeId} vs. ${info.rightname}: ${b.nodeId}`);
 	}
-	diffControlDependencies(a.controlDependencies, b.controlDependencies, info);
+	diffControlDependencies(a.cds, b.cds, info);
 }
 
 function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b: IEnvironment, info: GenericDifferenceInformation<Report>) {
@@ -44,7 +44,7 @@ function diffMemory<Report extends WriteableDifferenceReport>(a: IEnvironment, b
 			if(aVal.nodeId !== bVal.nodeId) {
 				info.report.addComment(`${info.position}Different ids for ${key}. ${info.leftname}: ${aVal.nodeId} vs. ${info.rightname}: ${bVal.nodeId}`);
 			}
-			diffControlDependencies(aVal.controlDependencies, bVal.controlDependencies, { ...info, position: `${info.position} For ${key}. ` });
+			diffControlDependencies(aVal.cds, bVal.cds, { ...info, position: `${info.position} For ${key}. ` });
 			if(aVal.definedAt !== bVal.definedAt) {
 				info.report.addComment(`${info.position}Different definition ids (definedAt) for ${key} (${aVal.nodeId}). ${info.leftname}: ${aVal.definedAt} vs. ${info.rightname}: ${bVal.definedAt}`);
 			}

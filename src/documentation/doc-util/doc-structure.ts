@@ -18,7 +18,7 @@ ${prefixInit}<details${open ? ' open' : ''}><summary${color ? ' style="color:' +
 
 ${content}
 
-</details>
+${prefixInit}</details>
     `;
 }
 

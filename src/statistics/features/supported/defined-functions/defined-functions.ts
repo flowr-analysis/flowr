@@ -84,7 +84,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			const [fnDefinition] = dfNode;
 			guard(fnDefinition.tag === VertexType.FunctionDefinition, () => `Dataflow node is not a function definition (${JSON.stringify(fnDefinition)}))})`);
 
-			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep, true)).filter(isNotUndefined)
+			const returnTypes = fnDefinition.exitPoints.map(ep => graph.get(ep.nodeId, true)).filter(isNotUndefined)
 				.map(([vertex]) => {
 					const l = graph.idMap?.get(vertex.id)?.location;
 					return {

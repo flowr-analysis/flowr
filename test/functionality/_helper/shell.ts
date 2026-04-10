@@ -30,7 +30,7 @@ import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mer
 import {
 	type SingleSlicingCriterion,
 	type SlicingCriteria,
-	slicingCriterionToId
+	slicingCriterionToId, tryResolveSliceCriterionToId
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -56,6 +56,7 @@ import { contextFromInput } from '../../../src/project/context/flowr-analyzer-co
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
+import { dropTransitiveEdges } from '../../../src/dataflow/graph/call-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -315,8 +316,11 @@ export function assertDecoratedAst<Decorated>(name: string, shell: RShell, input
 	});
 }
 
-function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
-	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? p.id : `${p.from}->${p.to}`));
+/**
+ * Maps problematic nodes in a diff report to their ids for easier marking in mermaid graphs
+ */
+export function mapProblematicNodesToIds(problematic: readonly ProblematicDiffInfo[] | undefined): Set<NodeId> | undefined {
+	return problematic === undefined ? undefined : new Set(problematic.map(p => p.tag === 'vertex' ? String(p.id) : `${p.from}->${p.to}`));
 }
 
 
@@ -367,6 +371,12 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	 * Which files to add to the project context
 	 */
 	addFiles:              FlowrFileProvider[]
+	/** The collection of vertex ids that should not exist */
+	mustNotHaveVertices:   Set<NodeId>
+	/** The collection of edges that should not exist */
+	mustNotHaveEdges:      [NodeId, NodeId][]
+	/** Whether to test the call graph instead of the dataflow graph */
+	context:               'dataflow' | 'call-graph'
 }
 
 function cropIfTooLong(str: string): string {
@@ -379,6 +389,8 @@ function cropIfTooLong(str: string): string {
  * You may want to have a look at the {@link DataflowTestConfiguration} to see what you can configure.
  * Especially the `resolveIdsAsCriterion` and the `expectIsSubgraph` are interesting as they allow you for rather
  * flexible matching of the expected graph.
+ *
+ * Pleas note, that if you pass `context: 'call-graph'` in the userConfig, the call graph will be tested as a view of the dataflow graph.
  */
 export function assertDataflow(
 	name: string | TestLabel,
@@ -389,7 +401,7 @@ export function assertDataflow(
 	startIndexForDeterministicIds = 0,
 	config = cloneConfig(defaultConfigOptions)
 ): void {
-	const effectiveName = decorateLabelContext(name, ['dataflow']);
+	const effectiveName = decorateLabelContext(name, [userConfig?.context ?? 'dataflow']);
 	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`${effectiveName} (input: ${cropIfTooLong(JSON.stringify(input))})`, async function() {
 		const analyzer = await new FlowrAnalyzerBuilder()
 			.setInput({
@@ -408,7 +420,7 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const dataflow = await analyzer.dataflow();
+		const graph = userConfig?.context === 'call-graph' ? dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);
@@ -419,7 +431,7 @@ export function assertDataflow(
 
 		const report: GraphDifferenceReport = diffOfDataflowGraphs(
 			{ name: 'expected', graph: expected },
-			{ name: 'got',      graph: dataflow.graph },
+			{ name: 'got',      graph: graph },
 			{
 				leftIsSubgraph: userConfig?.expectIsSubgraph
 			}
@@ -427,16 +439,39 @@ export function assertDataflow(
 		// with the try catch the diff graph is not calculated if everything is fine
 		try {
 			guard(report.isEqual(), () => `report:\n * ${report.comments()?.join('\n * ') ?? ''}`);
+			if(userConfig?.mustNotHaveVertices) {
+				if(userConfig?.resolveIdsAsCriterion) {
+					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
+						return tryResolveSliceCriterionToId(id as SingleSlicingCriterion, normalize.idMap) ?? id;
+					}));
+				}
+				for(const id of userConfig.mustNotHaveVertices) {
+					guard(!graph.hasVertex(id), () => `Graph must not have vertex ${id}, but it exists.`);
+				}
+			}
+			if(userConfig?.mustNotHaveEdges) {
+				if(userConfig?.resolveIdsAsCriterion) {
+					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
+						const resolvedFrom = tryResolveSliceCriterionToId(from as SingleSlicingCriterion, normalize.idMap) ?? from;
+						const resolvedTo = tryResolveSliceCriterionToId(to as SingleSlicingCriterion, normalize.idMap) ?? to;
+						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
+					});
+				}
+				for(const [from, to] of userConfig.mustNotHaveEdges) {
+					const out = graph.outgoingEdges(from);
+					guard(!out?.has(to), () => `Graph must not have edge ${from} -> ${to}, but it exists.`);
+				}
+			}
 		} /* v8 ignore start */ catch(e) {
 			const diff = diffGraphsToMermaidUrl(
 				{ label: 'expected', graph: expected, mark: mapProblematicNodesToIds(report.problematic()) },
-				{ label: 'got', graph: dataflow.graph, mark: mapProblematicNodesToIds(report.problematic()) },
+				{ label: 'got', graph: graph, mark: mapProblematicNodesToIds(report.problematic()) },
 				`%% ${JSON.stringify(input).replace(/\n/g, '\n%% ')}\n` + report.comments()?.map(n => `%% ${n}\n`).join('') + '\n'
 			);
 
 			console.error('ast', normalizedAstToMermaidUrl(normalize.ast));
 
-			console.error('best-effort reconstruction:\n', printAsBuilder(dataflow.graph));
+			console.error('best-effort reconstruction:\n', printAsBuilder(graph));
 
 			console.error('diff:\n', diff);
 			throw e;
@@ -519,6 +554,8 @@ interface TestCaseParams {
 	getId:                () => IdGenerator<NoInfo>,
 	/** The flowr configuration to be used for the test */
 	flowrConfig:          FlowrConfigOptions,
+	/** Force eager function analysis for this slicing test only */
+	forceEagerFunctions:  boolean,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
 }
@@ -604,7 +641,13 @@ export function assertSliced(
 		handleAssertOutput(name, shell, input, testConfig);
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
-			const context =  contextFromInput(input, cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions));
+			const config = cloneConfig(testConfig?.flowrConfig ?? defaultConfigOptions);
+			if(testConfig?.forceEagerFunctions) {
+				// Some legacy slicer fixtures intentionally assert eager behavior.
+				// Allow opting out of deferred function evaluation per test case.
+				config.optimizations.deferredFunctionEvaluation.enabled = false;
+			}
+			const context =  contextFromInput(input, config);
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}
@@ -623,7 +666,7 @@ export function assertSliced(
 					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(n => normalizeIdToNumberIfPossible(n));
-					const inSlice = [...result.slice.result]
+					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(n => normalizeIdToNumberIfPossible(n));
 					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
@@ -633,6 +676,7 @@ export function assertSliced(
 						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
+				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');
 			} /* v8 ignore start */ catch(e) {
 				if(printError) {
 					console.error(`got:\n${result.reconstruct.code as string}\nvs. expected:\n${JSON.stringify(expected)}`);

@@ -8,11 +8,11 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Process a call to `quote` or similar nse/substitution functions.
  */
 export function processQuote<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -22,7 +22,7 @@ export function processQuote<OtherInfo>(
 	config: { quoteArgumentsWithIndex?: number } & ForceArguments
 ): DataflowInformation {
 	const startEnv = data.environment;
-	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'builtin:quote' });
+	const { information, processedArguments, fnRef } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.Quote });
 
 	let inRefs: IdentifierReference[] = [fnRef];
 	let outRefs: IdentifierReference[] = [];

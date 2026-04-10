@@ -1,10 +1,6 @@
-import { fileProtocol } from '../../../r-bridge/retriever';
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { splitAtEscapeSensitive } from '../../../util/text/args';
-import { ansiFormatter, italic } from '../../../util/text/ansi';
-import { describeSchema } from '../../../util/schema';
+import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
 import {
-	AnyQuerySchema,
 	executeQueries,
 	QueriesSchema,
 	type Query,
@@ -13,21 +9,22 @@ import {
 	type SupportedQuery,
 	type SupportedQueryTypes
 } from '../../../queries/query';
-import { jsonReplacer } from '../../../util/json';
-import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
-import type { BaseQueryResult } from '../../../queries/base-query-format';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { fileProtocol } from '../../../r-bridge/retriever';
+import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
+import { jsonReplacer } from '../../../util/json';
+import type { BaseQueryResult } from '../../../queries/base-query-format';
+import { splitAtEscapeSensitive } from '../../../util/text/args';
 
 
 function printHelp(output: ReplOutput) {
-	output.stderr(`Format: ${italic(':query "<query>" <code>', output.formatter)}`);
-	output.stdout('The query is an array of query objects to represent multiple queries. Each query object may have the following properties:');
-	output.stdout(describeSchema(AnyQuerySchema(), output.formatter));
-	output.stdout(`\n\nThe example ${italic(':query "[{\\"type\\": \\"call-context\\", \\"callName\\": \\"mean\\" }]" mean(1:10)', output.formatter)} would return the call context of the mean function.`);
-	output.stdout('As a convenience, we interpret any (non-help, non-@) string not starting with \'[\' as a regex for the simple call-context query.');
-	output.stdout(`Hence, ${italic(':query "mean" mean(1:10)', output.formatter)} is equivalent to the above example.`);
-	output.stdout('Similarly, \'@<type>\' is interpreted as a query of the given type.');
-	output.stdout(`With this, ${italic(':query @config', output.formatter)} prints the result of the config query.`);
+	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
+	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
+	output.stdout(`With this, ${bold(':query @config', output.formatter)} prints the result of the config query.`);
+	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)}.`);
+	output.stdout(ansiInfo('Otherwise, you can also directly pass the query json. Then, the query is an array of query objects to represent multiple queries.'));
+	output.stdout(ansiInfo('The example') + italic(String.raw`:query "[{\"type\": \"call-context\", \"callName\": \"mean\" }]" mean(1:10)`, output.formatter, { color: Colors.White, effect: ColorEffect.Foreground }) + ansiInfo('would return the call context of the mean function.'));
+	output.stdout('Please have a look at the wiki for more info: https://github.com/flowr-analysis/flowr/wiki/Query-API');
 }
 
 async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: ReadonlyFlowrAnalysisProvider }> {
@@ -58,8 +55,20 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		}
 		const validationResult = QueriesSchema().validate(parsedQuery);
 		if(validationResult.error) {
-			output.stderr(`Invalid query: ${validationResult.error.message}`);
-			printHelp(output);
+			output.stderr(`Invalid query: "${output.formatter.format(JSON.stringify(parsedQuery), { style: FontStyles.Italic, color: Colors.Yellow, effect: ColorEffect.Foreground })}"`);
+			for(const line of validationResult.error.details) {
+				const value = line.context?.value ? JSON.stringify(line.context.value) : undefined;
+				output.stderr(` - ${line.message} ${value ? '(' + italic(value, output.formatter) + ')' : ''}`);
+				const ctx = line.context as { details?: Array<{ message: string }> } | undefined;
+				for(const detail of ctx?.details?.slice(0, ctx.details.length - 1) ?? []) {
+					if('context' in detail && 'message' in (detail.context as object)) {
+						const lines = (detail.context as { message: string }).message.split('. ');
+						for(const l of lines) {
+							output.stderr(`   - ${l.trim()}`);
+						}
+					}
+				}
+			}
 			return;
 		}
 	} else if(query.startsWith('[')) {

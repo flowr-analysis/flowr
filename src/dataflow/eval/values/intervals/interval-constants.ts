@@ -1,6 +1,6 @@
 import type { RNumberValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { type Lift, type ValueInterval, type ValueNumber , isBottom, isTop } from '../r-value';
-import { getScalarFromInteger, liftScalar } from '../scalar/scalar-consatnts';
+import { getScalarFromInteger, liftScalar } from '../scalar/scalar-constants';
 
 
 /**

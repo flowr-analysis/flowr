@@ -12,15 +12,15 @@ import { log } from '../util/log';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
+import { visitCfgInOrder } from './simple-visitor';
 
 type CachedValues<Val> = Map<NodeId, Val>;
 
 class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
-
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
-
+	private readonly inTry:            Set<NodeId> = new Set<NodeId>();
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);
@@ -32,6 +32,9 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	}
 
 	private isUnconditionalJump(id: NodeId): boolean {
+		if(this.inTry.has(id)) {
+			return false;
+		}
 		const has = this.cachedStatements.get(id);
 		if(has) {
 			return has;
@@ -59,9 +62,14 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 					} else if(og === Ternary.Never && edge.when === 'TRUE') {
 						this.config.controlFlow.graph.removeEdge(from, target);
 					}
-				} else if(edge.label === CfgEdgeType.Fd) {
-					if(this.isUnconditionalJump(target)) {
-						this.config.controlFlow.graph.removeEdge(from, target);
+				} else if(edge.label === CfgEdgeType.Fd && this.isUnconditionalJump(target)) {
+					// for each unconditional jump, we find the corresponding end/exit nodes and remove any flow edges
+					for(const end of this.getCfgVertex(target)?.end as NodeId[] ?? []) {
+						for(const [target, edge] of this.config.controlFlow.graph.ingoingEdges(end) ?? []) {
+							if(edge.label === CfgEdgeType.Fd) {
+								this.config.controlFlow.graph.removeEdge(target, end);
+							}
+						}
 					}
 				}
 			}
@@ -111,22 +119,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		return Boolean(values.elements[0].value);
 	}
 
-	private handleFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		switch(data.call.origin[0]) {
-			case 'builtin:return':
-			case 'builtin:stop':
-				this.cachedStatements.set(data.call.id, true);
-				break;
-			case 'builtin:stopifnot': {
-				const arg = this.getBoolArgValue(data);
-				if(arg !== undefined) {
-					this.cachedStatements.set(data.call.id, !arg);
-				}
-				break;
-			}
-		}
-	}
-
 	protected onIfThenElseCall(data: { call: DataflowGraphVertexFunctionCall, condition?: NodeId }) {
 		this.handleWithCondition(data);
 	}
@@ -135,8 +127,36 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 		this.handleWithCondition(data);
 	}
 
-	protected onDefaultFunctionCall(data: { call: DataflowGraphVertexFunctionCall; }): void {
-		this.handleFunctionCall(data);
+	protected onReturnCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.cachedStatements.set(data.call.id, true);
+	}
+
+	protected onStopCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		this.cachedStatements.set(data.call.id, true);
+	}
+
+	protected onStopIfNotCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		const arg = this.getBoolArgValue(data);
+		if(arg !== undefined) {
+			this.cachedStatements.set(data.call.id, !arg);
+		}
+	}
+
+	protected onTryCall(data: { call: DataflowGraphVertexFunctionCall }): void {
+		if(data.call.args.length < 1 || data.call.args[0] === EmptyArgument) {
+			return;
+		}
+		const body = this.getCfgVertex(data.call.args[0].nodeId);
+		if(!body) {
+			return;
+		}
+		visitCfgInOrder(this.config.controlFlow.graph, [body.id], n => {
+			if((body.end as NodeId[])?.includes(n)) {
+				return true;
+			}
+			this.inTry.add(n);
+			return false;
+		});
 	}
 }
 
@@ -147,6 +167,8 @@ export function cfgAnalyzeDeadCode(cfg: ControlFlowInformation, info: CfgPassInf
 		log.warn('cfgAnalyzeDeadCode called without ast or dfg, skipping dead code analysis');
 		return cfg;
 	}
+	// Ensure lazy function bodies are available so unconditional jumps in function scopecan be recognized during dead-code analysis.
+	info.dfg.materializeAll();
 	const visitor = new CfgConditionalDeadCodeRemoval({
 		controlFlow:          cfg,
 		normalizedAst:        info.ast,

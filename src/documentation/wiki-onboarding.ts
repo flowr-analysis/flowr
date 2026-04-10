@@ -5,7 +5,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Onboarding
  */
-export class WikiOnboarding extends DocMaker {
+export class WikiOnboarding extends DocMaker<'wiki/Onboarding.md'> {
 	constructor() {
 		super('wiki/Onboarding.md', module.filename, 'developer onboarding process');
 	}

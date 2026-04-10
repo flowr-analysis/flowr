@@ -3,7 +3,7 @@ import { SemVer } from 'semver';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import { type FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrAnalyzerFilePlugin } from '../flowr-analyzer-file-plugin';
-import { FlowrRMarkdownFile } from './flowr-rmarkdown-file';
+import { FlowrRMarkdownFile } from '../files/flowr-rmarkdown-file';
 import { platformBasename } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 

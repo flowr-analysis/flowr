@@ -18,10 +18,8 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
 	guard(level > 0, 'cannot remove the global/root environment');
-	const parent = current.parent;
-	guard(parent !== undefined, 'level is wrong, parent is undefined even though level suggested depth > 0 (starts with 0)');
 	return {
-		current: parent,
+		current: current.parent,
 		level:   level - 1
 	};
 }

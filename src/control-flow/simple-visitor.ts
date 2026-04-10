@@ -1,5 +1,6 @@
 import { type ControlFlowGraph , CfgVertexType } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { invertCfg } from './invert-cfg';
 
 // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 export type SimpleCfgVisitor = (graph: ControlFlowGraph, nodes: readonly NodeId[], visitor: (node: NodeId) => boolean | void) => void;
@@ -38,7 +39,9 @@ export function visitCfgInReverseOrder(
 		}
 		const incoming = graph.outgoingEdges(current);
 		if(incoming) {
-			queue = queue.concat(incoming.keys().toArray());
+			for(const c of incoming.keys()) {
+				queue.push(c);
+			}
 		}
 	}
 }
@@ -57,10 +60,11 @@ export function visitCfgInOrder(
 	startNodes: readonly NodeId[],
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type -- void is used to indicate that the return value is ignored/we never stop
 	visitor: (node: NodeId) => boolean | void
-): void {
+): Set<NodeId> {
 	const visited = new Set<NodeId>();
 	let queue = startNodes.slice();
 	const hasBb = graph.mayHaveBasicBlocks();
+	const g = invertCfg(graph);
 	while(queue.length > 0) {
 		const current = queue.shift() as NodeId;
 		if(visited.has(current)) {
@@ -70,16 +74,17 @@ export function visitCfgInOrder(
 		if(visitor(current)) {
 			continue;
 		} else if(hasBb) {
-			const get = graph.getVertex(current);
+			const get = g.getVertex(current);
 			if(get?.type === CfgVertexType.Block) {
 				queue = queue.concat(get.elems.map(e => e.id));
 			}
 		}
-		const outgoing = graph.ingoingEdges(current) ?? [];
+		const outgoing = g.outgoingEdges(current) ?? [];
 		for(const [to] of outgoing) {
 			queue.push(to);
 		}
 	}
+	return visited;
 }
 
 /**

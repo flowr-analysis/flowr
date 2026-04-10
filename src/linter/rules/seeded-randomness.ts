@@ -22,10 +22,13 @@ import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 import { VariableResolve } from '../../config';
 import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import { VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
+import { BuiltInProcName } from '../../dataflow/environments/built-in';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
@@ -54,7 +57,7 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 }
 
 export const SEEDED_RANDOMNESS = {
-	createSearch: (config) => Q.all()
+	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
 		.with(Enrichment.CallTargets, { onlyBuiltin: true })
 		.filter({
 			name: FlowrFilter.MatchesEnrichment,
@@ -83,6 +86,7 @@ export const SEEDED_RANDOMNESS = {
 				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
 					metadata.consumerCalls++;
 					return {
+						involvedId:    element.node.info.id,
 						range:         element.node.info.fullRange as SourceRange,
 						target:        target as Identifier,
 						searchElement: element
@@ -96,17 +100,19 @@ export const SEEDED_RANDOMNESS = {
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(f.name) ? 'assignment' : 'func');
 					let nonConstant = false;
-					let otherBranch = false;
+					const cdsOfProduces: Set<ControlDependency> = new Set();
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
 						if(isConstantArgument(dataflow.graph, f, 0, analyzer.inspectContext())) {
 							const fCds = new Set(f.cds).difference(cds);
+							metadata.callsWithFunctionProducers++;
 							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
-								metadata.callsWithFunctionProducers++;
 								return [];
 							} else {
-								otherBranch = true;
+								for(const f of fCds) {
+									cdsOfProduces.add(f);
+								}
 							}
 						} else {
 							nonConstant = true;
@@ -117,32 +123,37 @@ export const SEEDED_RANDOMNESS = {
 					for(const a of assignment ?? []) {
 						const argIdx = assignmentArgIndexes.get(a.name) as number;
 						const dest = getReferenceOfArgument(a.args[argIdx]);
-						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)){
+						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
-							if(isConstantArgument(dataflow.graph, a, 1-argIdx, analyzer.inspectContext())) {
+							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, analyzer.inspectContext())) {
 								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
 									metadata.callsWithAssignmentProducers++;
 									return [];
 								} else {
-									otherBranch = true;
+									for(const f of aCds) {
+										cdsOfProduces.add(f);
+									}
 								}
-							} else {
-								nonConstant = true;
 							}
 						}
+					}
+					if(happensInEveryBranchSet(cdsOfProduces)) {
+						// all producers happen in every branch, so we are good
+						return [];
 					}
 
 					if(nonConstant) {
 						metadata.callsWithNonConstantProducers++;
 					}
-					if(otherBranch) {
+					if(cdsOfProduces.size > 0) {
 						metadata.callsWithOtherBranchProducers++;
 					}
 					return [{
-						certainty: otherBranch ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
-						function:  element.target,
-						range:     element.range
+						involvedId: element.involvedId,
+						certainty:  cdsOfProduces.size > 0 ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+						function:   element.target,
+						range:      element.range
 					}];
 				}),
 			'.meta': metadata
@@ -165,8 +176,8 @@ export const SEEDED_RANDOMNESS = {
 	}
 } as const satisfies LintingRule<SeededRandomnessResult, SeededRandomnessMeta, SeededRandomnessConfig>;
 
-function getDefaultAssignments(): BuiltInFunctionDefinition<'builtin:assignment'>[] {
-	return DefaultBuiltinConfig.filter(b => b.type === 'function' && b.processor == 'builtin:assignment') as BuiltInFunctionDefinition<'builtin:assignment'>[];
+function getDefaultAssignments(): BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[] {
+	return DefaultBuiltinConfig.filter(b => b.type === 'function' && (b.processor === BuiltInProcName.Assignment || b.processor === BuiltInProcName.AssignmentLike)) as BuiltInFunctionDefinition<BuiltInProcName.Assignment | BuiltInProcName.AssignmentLike>[];
 }
 
 function isConstantArgument(graph: DataflowGraph, call: DataflowGraphVertexFunctionCall, argIndex: number, ctx: ReadOnlyFlowrAnalyzerContext): boolean {

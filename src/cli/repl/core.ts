@@ -9,7 +9,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { FontStyles } from '../../util/text/ansi';
+import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -20,6 +20,8 @@ import type { FlowrConfigOptions } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
+import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -127,6 +129,11 @@ export function handleString(code: string) {
 }
 
 async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+	const time = Date.now();
+	const heatMap = new Map<RType, number>();
+	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
+		analyzer.context().config.solver.instrument.dataflowExtractors = instrumentDataflowCount(heatMap, map => map.clear());
+	}
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
 		const processor = getCommand(command);
@@ -158,6 +165,44 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
 	}
+
+	if(analyzer.inspectContext().config.repl.quickStats) {
+		try {
+			const duration = Date.now() - time;
+			console.log(output.formatter.format(`[REPL Stats] Processed in ${duration}ms`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+			const memoryUsage = process.memoryUsage();
+			const memoryUsageStr = Object.entries(memoryUsage).map(([key, value]) => `${key}: ${(value / 1024 / 1024).toFixed(2)} MB`).join(', ');
+			console.log(output.formatter.format(`[REPL Stats] Memory Usage: ${memoryUsageStr}`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+		} catch{
+			// do nothing, this is just a nice-to-have
+		}
+	}
+	if(heatMap.size > 0 && analyzer.inspectContext().config.repl.dfProcessorHeat) {
+		const sorted = Array.from(heatMap.entries()).sort((a, b) => b[1] - a[1]);
+		console.log(output.formatter.format('[REPL Stats] Dataflow Processor Heatmap:', {
+			style:  FontStyles.Italic,
+			effect: ColorEffect.Foreground,
+			color:  Colors.White
+		}));
+		const longestKey = Math.max(...Array.from(heatMap.keys(), k => k.length));
+		const longestValue = Math.max(...Array.from(heatMap.values(), v => v.toString().length));
+		for(const [rType, count] of sorted) {
+			console.log(output.formatter.format(` - ${(rType + ':').padEnd(longestKey + 1, ' ')} ${count.toString().padStart(longestValue, ' ')}`, {
+				style:  FontStyles.Italic,
+				effect: ColorEffect.Foreground,
+				color:  Colors.White
+			}));
+		}
+	}
+
 }
 
 /**

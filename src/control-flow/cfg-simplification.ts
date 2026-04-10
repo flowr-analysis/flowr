@@ -82,9 +82,7 @@ function toBasicBlocks(cfg: ControlFlowInformation, _info?: CfgPassInfo): Contro
  * @param cfg - The control flow graph whose reachable nodes to find.
  */
 export function cfgFindAllReachable(cfg: ControlFlowInformation): Set<NodeId> {
-	const reachable = new Set<NodeId>();
-	visitCfgInOrder(cfg.graph, cfg.entryPoints, node => {
-		reachable.add(node);
+	return visitCfgInOrder(cfg.graph, cfg.entryPoints, () => {
+		/* do nothing */
 	});
-	return reachable;
 }

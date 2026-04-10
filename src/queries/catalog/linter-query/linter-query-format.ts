@@ -24,7 +24,7 @@ import type { FlowrConfigOptions } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
-import { getGuardIssueUrl } from '../../../util/assert';
+import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:   'linter';
@@ -64,7 +64,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		const rulesPart = line[0].slice(rulesPrefix.length).split(',');
 		const parseResult = rulesFromInput(output, rulesPart);
 		if(parseResult.invalid.length > 0) {
-			output.stdout(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
+			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
 				+`\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		rules = parseResult.valid;
@@ -141,7 +141,15 @@ export const LinterQueryDefinition = {
 			})
 		).description('The rules to lint for. If unset, all rules will be included.')
 	}).description('The linter query lints for the given set of rules and returns the result.'),
-	flattenInvolvedNodes: () => []
+	flattenInvolvedNodes: (queryResults) => {
+		const out = queryResults as LinterQueryResult;
+		return Object.values(out.results).flatMap(v => {
+			if(isLintingResultsError(v)) {
+				return [];
+			}
+			return v.results.flatMap(v => Array.isArray(v.involvedId) ? v.involvedId : [v.involvedId]);
+		}).filter(isNotUndefined);
+	}
 } as const satisfies SupportedQuery<'linter'>;
 
 function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {
@@ -164,5 +172,9 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 			}
 		}
 	}
-	result.push(`       ╰ _Metadata_: ${codeInline(JSON.stringify(results['.meta']))}`);
+	result.push(`       ╰ _Metadata_: ${codeInline(renderMetaData(results['.meta']))}`);
+}
+
+function renderMetaData(metadata: object): string {
+	return Object.entries(metadata).map(r => `${r[0]}: ${JSON.stringify(r[1])}`).join(', ');
 }

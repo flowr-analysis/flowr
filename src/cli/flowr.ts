@@ -6,15 +6,31 @@
  */
 import type { DeepReadonly } from 'ts-essentials';
 import { FlowRServer } from './repl/server/server';
-import { type Server , NetServer, WebSocketServerWrapper } from './repl/server/net';
+import { NetServer, type Server, WebSocketServerWrapper } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
-import { FontStyles, formatter, italic, setFormatter, voidFormatter } from '../util/text/ansi';
+import {
+	ansiFormatter,
+	ColorEffect,
+	Colors,
+	FontStyles,
+	formatter,
+	italic,
+	setFormatter,
+	voidFormatter
+} from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
-import { type EngineConfig, type FlowrConfigOptions, type KnownEngines , amendConfig, getConfig, parseConfig } from '../config';
+import {
+	amendConfig,
+	type EngineConfig,
+	type FlowrConfigOptions,
+	getConfig,
+	type KnownEngines,
+	parseConfig
+} from '../config';
 import { guard } from '../util/assert';
-import { type ScriptInformation , scripts } from './common/scripts-info';
+import { type ScriptInformation, scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
@@ -185,6 +201,8 @@ async function mainRepl() {
 		await replProcessAnswer(analyzer, standardReplOutput, options.execute, allowRSessionAccess);
 	} else {
 		await printVersionRepl(defaultEngine);
+		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
 		await repl({ analyzer: analyzer, allowRSessionAccess });
 	}
 	process.exit(0);

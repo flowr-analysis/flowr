@@ -9,13 +9,11 @@ import type {
 	ParentInformation,
 	RNodeWithParent
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { Base, Location, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import type { Location, RAstNodeBase, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type {
-	EmptyArgument,
-	RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
@@ -37,12 +35,12 @@ import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
-import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 
-function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & Base<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
+function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
 		type:      RType.Symbol,
 		info:      target.info,
@@ -73,6 +71,11 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly mayHaveMoreArgs?:     boolean
 }
 
+export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
+	readonly source: { idx?: number, name: string};
+	readonly target: { idx?: number, name: string};
+}
+
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
 	let current = node;
 	while(current.type === RType.Access) {
@@ -100,8 +103,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 		return processAsNamedCall(functionName, data, name, args);
 	}
 
-
-	const info = BuiltInProcessorMapper['builtin:replacement'](
+	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{
 			type:      RType.Symbol,
 			info:      functionName.info,
@@ -114,7 +116,7 @@ function tryReplacementPassingIndices<OtherInfo>(
 		functionName.info.id,
 		data,
 		{
-			...(resolved[0].config ?? {}),
+			...resolved[0].config,
 			activeIndices: indices,
 			assignRootId:  rootId
 		}
@@ -122,6 +124,42 @@ function tryReplacementPassingIndices<OtherInfo>(
 
 	markAsOnlyBuiltIn(info.graph, functionName.info.id);
 	return info;
+}
+
+/**
+ * In contrast to `processAssignment`, this function allows more flexible handling of assignment-like functions.
+ */
+export function processAssignmentLike<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: ExtendedAssignmentConfiguration
+): DataflowInformation {
+	const argsWithNames = new Map<string, RFunctionArgument<OtherInfo & ParentInformation>>();
+	const argsWithoutNames: RFunctionArgument<OtherInfo & ParentInformation>[] = [];
+	for(const arg of args) {
+		const name = arg === EmptyArgument ? undefined : arg.name?.content;
+		if(name === undefined) {
+			argsWithoutNames.push(arg);
+		} else {
+			argsWithNames.set(name, arg);
+		}
+	}
+	const source = argsWithNames.get(config.source.name) ?? (config.source.idx === undefined ? undefined : argsWithoutNames[config.source.idx]);
+	const target = argsWithNames.get(config.target.name) ?? (config.target.idx === undefined ? undefined : argsWithoutNames[config.target.idx]);
+	if(source && target) {
+		args = [target, source];
+	}
+
+	return processAssignment<OtherInfo>(
+		name,
+		args,
+		rootId,
+		data,
+		{ ...config, mayHaveMoreArgs: true }
+	);
 }
 
 /**
@@ -160,7 +198,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       'builtin:assignment'
+				origin:       BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -185,7 +223,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       'builtin:assignment'
+						origin:       BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -220,7 +258,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       'builtin:assignment'
+				origin:       BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -242,7 +280,7 @@ export function processAssignment<OtherInfo>(
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    'builtin:assignment'
+		origin:    BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -258,13 +296,20 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
 function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
-	return target.in.concat(target.unknownReferences).map(ref => ({
-		...ref,
-		type:                referenceType,
-		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value
-	}) as InGraphIdentifierDefinition & { name: string });
+	const written: (InGraphIdentifierDefinition & { name: string })[] = [];
+	for(const refs of [target.in, target.unknownReferences]) {
+		for(const ref of refs) {
+			written.push({
+				nodeId:    ref.nodeId,
+				name:      ref.name as string,
+				type:      referenceType,
+				definedAt: rootId,
+				cds:       data.cds ?? (makeMaybe ? [] : undefined),
+				value
+			});
+		}
+	}
+	return written;
 }
 
 function processAssignmentToString<OtherInfo>(
@@ -297,7 +342,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       'builtin:assignment'
+		origin:       BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -313,7 +358,7 @@ function processAssignmentToString<OtherInfo>(
 }
 
 function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation): InGraphReferenceType {
-	const vert = sourceInfo.graph.getVertex(source.info.id, true);
+	const vert = sourceInfo.graph.getVertex(source.info.id);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
 			return ReferenceType.Function;
@@ -389,12 +434,13 @@ export function markAsAssignment<OtherInfo>(
 
 	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
 	information.graph.setDefinitionOfVertex(nodeToDefine);
+	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
-			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
+			information.graph.addEdge(nid, sourceId, EdgeType.DefinedBy);
 		}
 	}
-	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
+	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
 	for(const [id, edge] of (out ?? [])) {
@@ -414,23 +460,23 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	const aliases = getAliases([source.info.id], information.graph, information.environment);
 	const writeNodes = targetName ? [{
-		nodeId:              targetId,
-		name:                targetName,
-		type:                referenceType,
-		definedAt:           rootId,
-		controlDependencies: data.controlDependencies ?? (makeMaybe ? [] : undefined),
-		value:               aliases
+		nodeId:    targetId,
+		name:      targetName,
+		type:      referenceType,
+		definedAt: rootId,
+		cds:       data.cds ?? (makeMaybe ? [] : undefined),
+		value:     aliases
 	} satisfies InGraphIdentifierDefinition & { name: string }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
-	if(writeNodes.length !== 1 && log.settings.minLevel <= LogLevel.Warn) {
+	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
 	}
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: readonly IdentifierReference[] = [
-		{ nodeId: rootId, name: nameOfAssignmentFunction, controlDependencies: data.controlDependencies, type: ReferenceType.Function } as IdentifierReference
+		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
 	].concat(
 		sourceArg.unknownReferences,
 		sourceArg.in,
@@ -449,10 +495,16 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	if(quoteSource) {
 		information.graph.addEdge(rootId, source.info.id, EdgeType.NonStandardEvaluation);
+	} else {
+		// we read the source
+		information.graph.addEdge(rootId, source.info.id, EdgeType.Reads);
 	}
 
 	return {
-		...information,
+		environment:       information.environment,
+		graph:             information.graph,
+		exitPoints:        information.exitPoints,
+		hooks:             information.hooks,
 		unknownReferences: [],
 		entryPoint:        rootId,
 		in:                readTargets,

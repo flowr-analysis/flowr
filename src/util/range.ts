@@ -65,11 +65,18 @@ export function rangeFrom(sl: number | string, sc: number | string, el: number |
 }
 
 /**
+ * @returns an invalid source range
+ */
+export function invalidRange(): SourceRange {
+	return [-1, -1, -1, -1];
+}
+
+/**
  * Merges multiple source ranges into a single source range that spans from the earliest start to the latest end.
  * If you are interested in combining overlapping ranges into a minimal set of ranges, see {@link combineRanges}.
  * @throws if no ranges are provided
  */
-export function mergeRanges(...rs: (SourceRange | undefined)[]): SourceRange {
+export function mergeRanges(rs: (SourceRange | undefined)[] = []): SourceRange {
 	const rsSafe: SourceRange[] = rs.filter(isNotUndefined);
 	guard(rsSafe.length > 0, 'Cannot merge no ranges');
 	return rsSafe.reduce(([sl, sc, el, ec], [nsl, nsc, nel, nec]) => [
@@ -125,3 +132,6 @@ export function rangeIsSubsetOf([r1sl,r1sc,r1el,r1ec]: SourceRange, [r2sl,r2sc,r
 export function combineRanges(...ranges: SourceRange[]): SourceRange[] {
 	return ranges.filter(range => !ranges.some(other => range !== other && rangeIsSubsetOf(range, other)));
 }
+
+/** A source location consisting of a source range and an optional file name. */
+export type SourceLocation = [...r: SourceRange, f?: string];

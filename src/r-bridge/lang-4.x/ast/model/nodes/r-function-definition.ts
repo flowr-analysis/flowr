@@ -1,4 +1,4 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
 import type { RType } from '../type';
 import type { RParameter } from './r-parameter';
 
@@ -11,7 +11,7 @@ import type { RParameter } from './r-parameter';
  * \(<parameters>) <body>
  * ```
  */
-export interface RFunctionDefinition<Info = NoInfo> extends Base<Info>, Location {
+export interface RFunctionDefinition<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.FunctionDefinition;
 	/** the R formals, to our knowledge, they must be unique */
 	parameters:    RParameter<Info>[];

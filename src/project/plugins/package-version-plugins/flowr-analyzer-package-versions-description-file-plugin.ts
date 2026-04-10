@@ -3,12 +3,10 @@ import {
 	descriptionFileLog
 } from '../file-plugins/flowr-analyzer-description-file-plugin';
 import { SemVer } from 'semver';
-import { type PackageType , Package } from './package';
+import type { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import { FileRole } from '../../context/flowr-file';
-import type { DCF } from '../file-plugins/flowr-description-file';
 
-const VersionRegex = /^([a-zA-Z0-9.]+)(?:\s*\(([><=~!]+)\s*([\d.]+)\))?$/;
 
 /**
  * This plugin extracts package versions from R `DESCRIPTION` files.
@@ -21,28 +19,23 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
-		if(descFiles.length !== 1) {
-			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
+		if(descFiles.length === 0) {
+			descriptionFileLog.warn('No description file found, cannot extract package versions.');
 			return;
+		} else if(descFiles.length > 1) {
+			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
 
 		/** this will do the caching etc. for me */
-		const deps = descFiles[0].content();
+		const deps = descFiles[0];
 
-		this.retrieveVersionsFromField(ctx, deps, 'Depends', 'r');
-		this.retrieveVersionsFromField(ctx, deps, 'Imports', 'package');
+		this.retrieveVersionsFromField(ctx, deps.depends() ?? []);
+		this.retrieveVersionsFromField(ctx, deps.imports() ?? []);
 	}
 
-	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, file: DCF, field: string, type?: PackageType): void {
-		for(const entry of file.get(field) ?? []) {
-			const match = VersionRegex.exec(entry);
-
-			if(match) {
-				const [, name, operator, version] = match;
-
-				const range = Package.parsePackageVersionRange(operator, version);
-				ctx.deps.addDependency(new Package(name, type, undefined, range));
-			}
+	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, pkgs: readonly Package[]): void {
+		for(const pkg of pkgs) {
+			ctx.deps.addDependency(pkg);
 		}
 	}
 }

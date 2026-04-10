@@ -1,16 +1,21 @@
 import type {
 	FnElementInfo,
+	MermaidClassDiagramArguments,
 	PrintHierarchyArguments,
 	TypeElementKind
 } from '../doc-util/doc-types';
-import { mermaidHide
-	,
-	visualizeMermaidClassDiagram
-	, printCodeOfElement , printHierarchy , shortLinkFile , shortLink , getDocumentationForType , getTypesFromFolder } from '../doc-util/doc-types';
+import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
 import type { RShell } from '../../r-bridge/shell';
+import type { ValidWikiDocumentTargetsNoSuffix } from '../../cli/wiki';
+import type { PathLike } from 'fs';
+import { FlowrGithubRef } from '../doc-util/doc-files';
+import type { scripts } from '../../cli/common/scripts-info';
+import type { ScriptOptions } from '../doc-util/doc-cli-option';
+import { getReplCommand , getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
  * Context available when generating documentation for a wiki in markdown format
@@ -54,6 +59,7 @@ function getNameFromElementIdOrRef(element: ElementIdOrRef): string {
 
 type NamedPrototype = { prototype: { constructor: { name: string } } };
 type ProtoKeys<T> = T extends { prototype: infer P } ? keyof P : never;
+type StaticKeys<T> = T extends { prototype: infer P } ? Exclude<keyof T, keyof P> : never;
 
 /**
  * Provides methods to generate links, code snippets, and documentation for code elements.
@@ -96,7 +102,7 @@ export interface GeneralDocContext {
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
 	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
 	 */
-	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
+	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
@@ -187,9 +193,62 @@ export interface GeneralDocContext {
 	/**
 	 * Generates a mermaid diagram for the given code element, returned as markdown string.
 	 * @param element - The element to create a mermaid diagram for, the name can be qualified with `::` to specify the class.
-	 * @param inlineTypes - Optional list of type names to inline in the mermaid diagram (instead of linking them out).
+	 * @param options - Formatting options for the mermaid class diagram (see {@link MermaidClassDiagramArguments})
 	 */
-	mermaid(element: ElementIdOrRef, inlineTypes?: string[]): string;
+	mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string;
+
+	/**
+	 * Generates a wiki link to another wiki or general docs page.
+	 * @example
+	 * ```ts
+	 * linkWikiPage('wiki/Setup')
+	 * ```
+	 * Creates a link to the `wiki/Setup` wiki page with the link text `Setup`.
+	 * @param pageName - The name of the wiki page to link to.
+	 * @param linkText - Optional text to display for the link. If not provided, the page name will be used.
+	 * @param segment  - An optional segment within the page to link to (e.g., a header anchor).
+	 */
+	linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string;
+
+	/**
+	 * Generates a link to a code file in the code base.
+	 * @param path       - The path to the code file.
+	 * @param lineNumber - An optional line number to link to within the file.
+	 */
+	linkCode(path: PathLike, lineNumber?: number): string;
+
+	/**
+	 * Generates the CLI long option for a given script and option name.
+	 * @example
+	 * ```ts
+	 * cliOption('flowr', 'help')
+	 * ```
+	 * Returns `--help` with the accompanying docs.
+	 * @param scriptName - The name of the script (e.g., 'flowr', 'analyze', etc.)
+	 * @param optionName - The name of the option for which to generate the long option string.
+	 * @param withAlias  - Whether to include the alias in the output. Default is `false`.
+	 * @param quote      - Whether to wrap the option in backticks. Default is `true`.
+	 * @see {@link ScriptOptions} - for the valid option names per script.
+	 * @see {@link getCliLongOptionOf} - for the underlying impl.
+	 */
+	cliOption<
+		ScriptName extends keyof typeof scripts | 'flowr',
+		OptionName extends ScriptOptions<ScriptName>
+	>(scriptName: ScriptName, optionName: OptionName, withAlias?: boolean, quote?: boolean): string
+
+	/**
+	 * Generates the REPL command string for a given command name.
+	 * @example
+	 * ```ts
+	 * replCmd('help')
+	 * ```
+	 * Returns `:help` with the accompanying docs.
+	 * @param commandName - The name of the REPL command.
+	 * @param quote - Whether to wrap the command in backticks. Default is `true`.
+	 * @param showStar - Whether to show a `[*]` suffix for starred commands. Default is `false`.
+	 * @see {@link getReplCommand} - for the underlying impl.
+	 */
+	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
 }
 
 /**
@@ -221,7 +280,7 @@ export function makeDocContextForTypes(
 			guard(filter === undefined, 'ElementFilter is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper);
 		},
-		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
+		linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string {
 			const className = cls.prototype.constructor.name;
 			const sep = (fmt?.hideClass) ? ':::' : '::';
 			const fullName = `${className}${sep}${String(element)}`;
@@ -249,11 +308,29 @@ export function makeDocContextForTypes(
 			const rVersion = (await shell?.usedRVersion())?.format();
 			return autoGenHeader({ filename, purpose, rVersion });
 		},
-		mermaid(element: ElementIdOrRef, inlineTypes: string[] = mermaidHide): string {
+		mermaid(element: ElementIdOrRef, options?: MermaidClassDiagramArguments): string {
 			return visualizeMermaidClassDiagram(info, {
 				typeNameForMermaid: getNameFromElementIdOrRef(element),
-				inlineTypes
+				...options
 			}) as string;
+		},
+		linkPage(pageName: ValidWikiDocumentTargetsNoSuffix, linkText?: string, segment?: string): string {
+			const text = linkText ?? pageName.split('/').pop() ?? pageName;
+			const link = pageName.toLowerCase().replace(/ /g, '-');
+			return `[${text}](${FlowrGithubRef}/${link}${segment ? `#${segment}` : ''})`;
+		},
+		linkCode(path: PathLike, lineNumber?: number): string {
+			const lnk = lineNumber ? `${path.toString()}#L${lineNumber}` : path.toString();
+			return `[${path.toString()}](${encodeURIComponent(lnk)})`;
+		},
+		cliOption<
+			ScriptName extends keyof typeof scripts | 'flowr',
+			OptionName extends ScriptOptions<ScriptName>
+		>(scriptName: ScriptName, optionName: OptionName, withAlias = false, quote = true): string {
+			return getCliLongOptionOf(scriptName, optionName, withAlias, quote);
+		},
+		replCmd(commandName: ReplCommandNames | string, quote = true, showStar = false): string {
+			return getReplCommand(commandName, quote, showStar);
 		}
 	};
 }

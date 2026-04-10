@@ -10,10 +10,10 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
- *
+ * Process an `rm` call.
  */
 export function processRm<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -25,7 +25,7 @@ export function processRm<OtherInfo>(
 		dataflowLogger.warn('empty rm, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const res = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:rm' }).information;
+	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Rm }).information;
 
 	const names: string[] = [];
 

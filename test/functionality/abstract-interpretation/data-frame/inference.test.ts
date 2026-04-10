@@ -1,10 +1,10 @@
 import { beforeAll, describe } from 'vitest';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { withShell } from '../../_helper/shell';
 import { assertDataFrameDomain, assertDataFrameOperation, DataFrameShapeOverapproximation, testDataFrameDomain, testDataFrameDomainAgainstReal, testDataFrameDomainWithSource } from './data-frame';
-import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
@@ -17,17 +17,18 @@ describe.sequential('Data Frame Shape Inference', withShell(shell => {
 
 	const sources = {
 		'a.csv': 'id,name,"score"\n1,"A",95\n2,"B",80\n4,"A",85',
-		'b.csv': 'id,name,\'score\'\n1,\'A\',95\n2,\'B\',80\n4,\'A\',85',
+		'b.csv': 'id,name,\'score\'\r\n1,\'A\',95\r\n2,\'B\',80\r\n4,\'A\',85',
 		'c.csv': '# this is a comment :D\n\n,"id,number","""unique"" name" #this is a comment\n\n"1",1,6\n\n"2",2,7\n\n"3",3,8\n\n"4",4,9\n\n"5",5,10\n',
-		'd.csv': '1;3,5;banana\n2;7,8;apple\n3;4,2;peach\n4;1,9;grape\n',
+		'd.csv': '1;3,5;banana\r\n2;7,8;apple\r\n3;4,2;peach\r\n4;1,9;grape\r\n',
 		'e.csv': 'first last     state phone\nJohn  Smith    WA    418-Y11-4111\nMary  Hartford CA    319-Z19-4341\nEvan  Nolan    IL    219-532-c301\n',
-		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301'
+		'f.csv': 'name\tname\tstate\tphone\nJohn\tSmith\tWA\t418-Y11-4111\nMary\tHartford\tCA\t319-Z19-4341\nEvan\tNolan\tIL\t219-532-c301',
+		'g.csv': 'id,name,"score"\r1,"A",95\r2,"B",80\r4,"A",85'
 	} as const satisfies Readonly<{ [path: string]: string }>;
 
 	const addFiles = Object.entries(sources).map(([path, content]) => new FlowrInlineTextFile(path, content));
 
 	function getFileContent(source: keyof typeof sources) {
-		return sources[source].replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
+		return sources[source].replaceAll('\r', '\\r').replaceAll('\n', '\\n').replaceAll('\t', ' \\t').replaceAll('"', '\\"');
 	}
 
 	beforeAll(async() => {
@@ -187,6 +188,48 @@ print(df)
 			`
 df <- data.frame(id = 1:5)
 while (nrow(df) < 10) {
+	df <- rbind(df, 10)
+}
+print(df)
+			`.trim(),
+			[['5@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		assertDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+repeat {
+	df <- rbind(df, 10)
+	if (unknown) {
+		break
+	}
+}
+print(df)
+			`.trim(),
+			[['8@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		assertDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+repeat {
+	if (unknown) {
+		break
+	}
+	df <- rbind(df, 10)
+}
+print(df)
+			`.trim(),
+			[['8@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+while (nrow(df) < 10) {
 	if (ncol(df) == 1) {
 		df <- cbind(df, name = "A")
 		next
@@ -195,7 +238,23 @@ while (nrow(df) < 10) {
 }
 print(df)
 			`.trim(),
-			[['9@df', { colnames: [['id'], ['name']], cols: [1, Infinity], rows: [5, Infinity] }]]
+			[['9@df', { colnames: [['id'], ['name']], cols: [1, 2], rows: [5, Infinity] }]]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df <- data.frame(id = 1:5)
+while (nrow(df) < 10) {
+	if (ncol(df) == 1) {
+		df <- cbind(df, runif(1))
+		next
+	}
+	df <- rbind(df, c(6, "A"))
+}
+print(df)
+			`.trim(),
+			[['9@df', { colnames: [['id'], Top], cols: [1, Infinity], rows: [5, Infinity] }]]
 		);
 
 		testDataFrameDomain(
@@ -542,6 +601,14 @@ df2 <- as.data.frame(df1)
 			'"f.csv"', `text = "${getFileContent('f.csv')}"`,
 			source => `df <- read.delim(${source})`,
 			[['1@df', { colnames: [['state', 'phone'], Top], cols: [4, 4], rows: [3, 3] }]],
+			{ addFiles }
+		);
+
+		testDataFrameDomainWithSource(
+			shell,
+			'"g.csv"', `text = "${getFileContent('a.csv')}"`,
+			source => `df <- read.csv(${source})`,
+			[['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }]],
 			{ addFiles }
 		);
 
@@ -1092,7 +1159,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -1105,7 +1172,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1118,7 +1185,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1131,7 +1198,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -1144,7 +1211,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1157,7 +1224,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1170,7 +1237,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -1183,7 +1250,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1196,7 +1263,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], Top], cols: [1, 1], rows: [3, 3] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -1222,7 +1289,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1248,7 +1315,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [4, 4] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [4, 4] }]
 			]
 		);
 
@@ -1261,7 +1328,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [4, 4] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [4, 4] }]
 			]
 		);
 
@@ -1274,7 +1341,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], Top], cols: [1, 1], rows: [4, 4] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [4, 4] }]
 			]
 		);
 
@@ -1287,7 +1354,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], Top], cols: [1, 1], rows: [4, 4] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [4, 4] }]
 			]
 		);
 
@@ -1300,7 +1367,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [2, 4], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1313,7 +1380,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'level'], []], cols: [2, 4], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'level'], []], cols: [4, 4], rows: [3, 3] }]
 			]
 		);
 
@@ -1326,7 +1393,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], Top], cols: [2, 2], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [4, 4] }]
 			]
 		);
 
@@ -1391,7 +1458,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], Top], cols: [2, 2], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [4, 4] }]
 			]
 		);
 
@@ -1404,7 +1471,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [2, 3], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1417,7 +1484,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], Top], cols: [2, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1430,7 +1497,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], Top], cols: [2, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1489,13 +1556,13 @@ print(df)
 		testDataFrameDomain(
 			shell,
 			`
-df <- data.frame(id = 1:3, name = 4:6)
-df["name"] <- NULL
+df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
+df[c("name", "score")] <- NULL
 print(df)
 			`.trim(),
 			[
-				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], []], cols: [1, 2], rows: [3, 3] }]
+				['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [3, 3] }],
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -1573,7 +1640,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [3, 3] }]
+				['3@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] }]
 			]
 		);
 
@@ -1586,7 +1653,7 @@ print(df)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }],
-				['3@df', { colnames: [['id'], Top], cols: [1, 1], rows: [3, 3] }]
+				['3@df', { colnames: [['id'], []], cols: [1, 1], rows: [3, 3] }]
 			]
 		);
 
@@ -3205,7 +3272,7 @@ df <- transform(df, id = letters[1:5])
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }],
-				['2@df', { colnames: [['id'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }]
 			]
 		);
 
@@ -3217,7 +3284,7 @@ df <- transform(df, "name" = letters[1:5])
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }]
 			]
 		);
 
@@ -3229,7 +3296,7 @@ df <- transform(df, name = letters[id], level = score^2)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'score', 'name', 'level'], []], cols: [2, 4], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'score', 'name', 'level'], []], cols: [4, 4], rows: [5, 5] }]
 			]
 		);
 
@@ -3277,7 +3344,7 @@ df <- transform(df, name = NULL)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }]
 			]
 		);
 
@@ -3339,7 +3406,7 @@ df <- dplyr::mutate(df, id = letters[1:5])
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }],
-				['2@df', { colnames: [['id'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3352,7 +3419,7 @@ df <- dplyr::mutate(df, "name" = letters[1:5])
 			`.trim(),
 			[
 				['1@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3378,7 +3445,7 @@ df <- dplyr::mutate(df, name = letters[id], level = score^2)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'score', 'name', 'level'], []], cols: [2, 4], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'score', 'name', 'level'], []], cols: [4, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3404,7 +3471,7 @@ df <- dplyr::mutate(df, \`:D\` = 11:15)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name', ':D'], []], cols: [2, 3], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name', ':D'], []], cols: [3, 3], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3417,7 +3484,7 @@ df <- dplyr::mutate(df, score = 31:35, \`score\` = 36:40)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name', 'score'], []], cols: [2, 4], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3430,7 +3497,7 @@ df <- dplyr::mutate(df, name = NULL)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3443,7 +3510,7 @@ df <- dplyr::mutate(df, new = NULL)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name'], []], cols: [1, 2], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3456,7 +3523,7 @@ df <- dplyr::mutate(df, new = -id, new = NULL)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name'], []], cols: [1, 3], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3469,7 +3536,7 @@ df <- dplyr::mutate(df, label = "A", .before = NULL)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name', 'label'], []], cols: [2, 3], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name', 'label'], []], cols: [3, 3], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3567,7 +3634,7 @@ df <- dplyr::group_by(df, group = id + name)
 			`.trim(),
 			[
 				['1@df', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [5, 5] }],
-				['2@df', { colnames: [['id', 'name', 'score', 'group'], []], cols: [3, 4], rows: [5, 5] }]
+				['2@df', { colnames: [['id', 'name', 'score', 'group'], []], cols: [4, 4], rows: [5, 5] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3688,7 +3755,7 @@ df <- filter(df, FALSE) |> group_by(category) |> summarize(score = mean(score))
 			`.trim(),
 			[
 				['2@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['score'], ['id', 'category']], cols: [1, 4], rows: [0, 1] }]
+				['3@df', { colnames: [['score'], ['id', 'category']], cols: [1, 3], rows: [0, 1] }]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3702,7 +3769,7 @@ df <- filter(df, FALSE) |> summarize(score = mean(score))
 			`.trim(),
 			[
 				['2@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['score'], ['id', 'category']], cols: [1, 4], rows: [0, 1] }]
+				['3@df', { colnames: [['score'], ['id', 'category']], cols: [1, 3], rows: [0, 1] }]
 			],
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
@@ -3722,7 +3789,7 @@ df <- dplyr::group_by(df, id, name)
 			shell,
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
-df <- dplyr::summarize(df, name = literals[id], level = score / max(score))
+df <- dplyr::summarize(df, name = letters[id], level = score / max(score))
 			`.trim(),
 			[['2@summarize', [{ operation: 'accessCols', columns: ['id', 'score'] }]]]
 		);
@@ -3748,7 +3815,7 @@ df <- dplyr::inner_join(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3763,7 +3830,7 @@ df <- dplyr::inner_join(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3778,7 +3845,7 @@ df <- dplyr::inner_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [2, 4], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3793,7 +3860,22 @@ df <- dplyr::inner_join(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }]
+			],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
+df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
+df <- dplyr::inner_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] }],
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3808,7 +3890,7 @@ df <- dplyr::inner_join(df1, df2, by = c("id", "name"))
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3823,7 +3905,7 @@ df <- dplyr::inner_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [3, 6], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3838,7 +3920,7 @@ df <- dplyr::inner_join(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3913,7 +3995,7 @@ df <- dplyr::inner_join(df1, df2, "id", suffix = c(".df1", ".df2"))
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3958,7 +4040,7 @@ df <- dplyr::left_join(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -3988,7 +4070,7 @@ df <- dplyr::left_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [2, 4], rows: [6, 6] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4003,7 +4085,22 @@ df <- dplyr::left_join(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [4, 6] }]
+			],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
+df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
+df <- dplyr::left_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] }],
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4018,7 +4115,7 @@ df <- dplyr::left_join(df1, df2, by = c("id", "name"))
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4033,7 +4130,7 @@ df <- dplyr::left_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [3, 6], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4048,7 +4145,7 @@ df <- dplyr::left_join(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4123,7 +4220,7 @@ df <- dplyr::left_join(df1, df2, "id", suffix = c(".df1", ".df2"))
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4183,7 +4280,7 @@ df <- dplyr::right_join(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4198,7 +4295,7 @@ df <- dplyr::right_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [2, 4], rows: [4, 4] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [4, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4214,6 +4311,21 @@ df <- dplyr::right_join(df1, df2, "id")
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 6] }]
+			],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
+df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
+df <- dplyr::right_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] }],
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4243,7 +4355,7 @@ df <- dplyr::right_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [3, 6], rows: [6, 6] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4408,7 +4520,7 @@ df <- dplyr::full_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [2, 4], rows: [6, 10] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [6, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4424,6 +4536,21 @@ df <- dplyr::full_join(df1, df2, "id")
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [6, 10] }]
+			],
+			{ skipRun: skipLibraries }
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
+df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
+df <- dplyr::full_join(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] }],
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [10, 14] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4453,7 +4580,7 @@ df <- dplyr::full_join(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [3, 6], rows: [6, 10] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [6, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -4630,7 +4757,7 @@ df <- merge(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }]
 			]
 		);
 
@@ -4644,7 +4771,7 @@ df <- merge(df1, df2, by = "id")
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 6] }]
 			]
 		);
 
@@ -4658,7 +4785,7 @@ df <- merge(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
 				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [2, 4], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }]
 			]
 		);
 
@@ -4672,7 +4799,7 @@ df <- merge(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], []], cols: [3, 3], rows: [0, 6] }]
 			]
 		);
 
@@ -4686,7 +4813,7 @@ df <- merge(df1, df2, 1)
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [[], Top], cols: [3, 3], rows: [0, 4] }]
+				['3@df', { colnames: [[], Top], cols: [3, 3], rows: [0, 6] }]
 			]
 		);
 
@@ -4700,7 +4827,7 @@ df <- merge(df1, df2, by = c("id", "name"))
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }]
 			]
 		);
 
@@ -4714,7 +4841,7 @@ df <- merge(df1, df2, by = 1:2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [[], Top], cols: [4, 4], rows: [0, 4] }]
+				['3@df', { colnames: [[], Top], cols: [4, 4], rows: [0, 6] }]
 			]
 		);
 
@@ -4728,7 +4855,7 @@ df <- merge(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [3, 6], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'name', 'score', 'category'], []], cols: [4, 4], rows: [0, 6] }]
 			]
 		);
 
@@ -4742,7 +4869,7 @@ df <- merge(df1, df2)
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
 				['2@df2', { colnames: [['name', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'name', 'category'], []], cols: [2, 4], rows: [0, 24] }]
+				['3@df', { colnames: [['id', 'score', 'name', 'category'], []], cols: [4, 4], rows: [0, 24] }]
 			]
 		);
 
@@ -4769,8 +4896,23 @@ df <- merge(df1, lst, by = "id")
 			`.trim(),
 			[
 				['1@df1', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [4, 4] }],
-				['3@df', { colnames: [['id'], Top], cols: [1, Infinity], rows: [0, 4] }]
+				['3@df', { colnames: [['id'], Top], cols: [1, Infinity], rows: [0, Infinity] }]
 			]
+		);
+
+		testDataFrameDomain(
+			shell,
+			`
+df1 <- data.frame(id = 1:4, category = c("A", "B", "C", "A"))
+df2 <- data.frame(id = c(1, 1, 2, 2, 3, 3, 4, 4, 5, 5), score = 80)
+df <- merge(df1, df2, "id")
+			`.trim(),
+			[
+				['1@df1', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [4, 4] }],
+				['2@df2', { colnames: [['id', 'score'], []], cols: [2, 2], rows: [10, 10] }],
+				['3@df', { colnames: [['id', 'category', 'score'], []], cols: [3, 3], rows: [0, 10] }]
+			],
+			{ skipRun: skipLibraries }
 		);
 
 		testDataFrameDomain(
@@ -4796,7 +4938,7 @@ df <- merge(df1, df2, "id")
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }]
 			]
 		);
 
@@ -4964,7 +5106,7 @@ df <- merge(df1, df2, "id", no.dups = FALSE)
 			[
 				['1@df1', { colnames: [['id', 'name', 'score'], []], cols: [3, 3], rows: [4, 4] }],
 				['2@df2', { colnames: [['id', 'name', 'category'], []], cols: [3, 3], rows: [6, 6] }],
-				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 4] }]
+				['3@df', { colnames: [['id', 'score', 'category'], Top], cols: [5, 5], rows: [0, 6] }]
 			]
 		);
 
@@ -5112,7 +5254,7 @@ print(df3$level)
 			[
 				['3@df1', { colnames: [['id', 'age', 'score'], []], cols: [3, 3], rows: [5, 5] }],
 				['4@df2', { colnames: [['id', 'category'], []], cols: [2, 2], rows: [6, 6] }],
-				['11@df3', { colnames: [['id', 'score', 'level', 'category'], []], cols: [3, 4], rows: [0, 5] }]
+				['11@df3', { colnames: [['id', 'score', 'level', 'category'], []], cols: [4, 4], rows: [0, 6] }]
 			],
 			{ skipRun: skipLibraries }
 		);
@@ -5142,8 +5284,8 @@ result <- result %>% arrange(desc(avg_score))
 				['11@result', { colnames: [['id', 'age', 'score'], []], cols: [3, 3], rows: [0, 10] }],
 				['12@result', { colnames: [['id', 'age', 'score'], []], cols: [3, 3], rows: [0, 10] }],
 				['13@result', { colnames: [['avg_score'], ['id', 'age', 'score']], cols: [1, 4], rows: [0, 10] }],
-				['14@result', { colnames: [['avg_score', 'grade'], ['id', 'age', 'score']], cols: [1, 5], rows: [0, 10] }],
-				['15@result', { colnames: [['avg_score', 'grade'], ['id', 'age', 'score']], cols: [1, 5], rows: [0, 10] }]
+				['14@result', { colnames: [['avg_score', 'grade'], ['id', 'age', 'score']], cols: [2, 5], rows: [0, 10] }],
+				['15@result', { colnames: [['avg_score', 'grade'], ['id', 'age', 'score']], cols: [2, 5], rows: [0, 10] }]
 			],
 			{ skipRun: skipLibraries }
 		);

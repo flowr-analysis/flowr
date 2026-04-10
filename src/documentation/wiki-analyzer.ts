@@ -37,6 +37,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
+import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -67,7 +68,7 @@ async function analyzerQuickExampleToRegisterPlugins() {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
-export class WikiAnalyzer extends DocMaker {
+export class WikiAnalyzer extends DocMaker<'wiki/Analyzer.md'> {
 	constructor() {
 		super('wiki/Analyzer.md', module.filename, 'analyzer');
 	}
@@ -131,7 +132,7 @@ The builder provides two methods for building the analyzer:
 
 	For more information on how to configure the builder, please refer to the [Builder Configuration](#builder-configuration) section below.
 
-	${section('Overview of the Analyzer', 3)}
+${section('Overview of the Analyzer', 3)}
 
 Once you have created an analyzer instance, you can add R files, folders, or even entire projects for analysis using the
 ${ctx.linkM(FlowrAnalyzer, 'addRequest')} method.
@@ -167,6 +168,8 @@ Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekNormalize', { codeFont: true, realName
 Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
 * ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
+* ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
+Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
 * ${ctx.linkM(FlowrAnalyzer, 'query')} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
 * ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
 
@@ -435,6 +438,17 @@ ${ctx.hierarchy(FlowrAnalyzerDependenciesContext, { showImplSnippet: false })}
 Probably the most important method is
 ${ctx.linkM(FlowrAnalyzerDependenciesContext, 'getDependency', { codeFont: true, realNameWrapper: 'i' })}
 that allows you to query for a specific dependency by name.
+
+${section('Functions Context', 3)}
+
+The ${ctx.link(FlowrAnalyzerDependenciesContext)} also provides access to the associated
+${ctx.link(FlowrAnalyzerFunctionsContext)} via its \`functionsContext\` attribute.
+
+${ctx.hierarchy(FlowrAnalyzerFunctionsContext, { showImplSnippet: false })}
+
+Probably the most important method is
+${ctx.linkM(FlowrAnalyzerFunctionsContext, 'getFunctionInfo', { codeFont: true, realNameWrapper: 'i' })}
+that allows you to query for a specific function by name.
 
 ${section('Environment Context', 3)}
 

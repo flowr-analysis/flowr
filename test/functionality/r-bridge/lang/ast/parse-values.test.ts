@@ -137,7 +137,6 @@ describe.sequential('Constant Parsing', withShell(shell => {
 								type:     RType.Comment,
 								location: rangeFrom(1, 1, 1, 13),
 								lexeme:   '# Hello World',
-								content:  ' Hello World',
 								info:     {}
 							}
 						]

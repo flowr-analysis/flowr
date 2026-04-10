@@ -11,7 +11,7 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
 
 /**
  * A product abstract domain as named Cartesian product of sub abstract domains.
- * The sub abstract domains are represented a record mapping property names to abstract domains.
+ * The sub abstract domains are represented by a record mapping property names to abstract domains.
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */

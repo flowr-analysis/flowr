@@ -9,23 +9,26 @@ import { processAsNamedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
-import { rangeFrom } from '../util/range';
+import { invalidRange } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { mergeDataflowInformation, standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { edgeIncludesType, EdgeType } from './graph/edge';
-import {
-	identifyLinkToLastCallRelation
+import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
-import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
+import {
+	materializeLazyFunctionDefinitionsContainingNodes,
+	updateNestedFunctionCalls
+} from './internal/process/functions/call/built-in/built-in-function-definition';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import { recoverName, type NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType, type DataflowGraphVertexFunctionCall } from './graph/vertex';
+import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { dataflowLogger } from './logger';
 import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
 import type { REnvironmentInformation } from './environments/environment';
@@ -106,9 +109,9 @@ function collectFunctionCallCandidates(targetGraph: DataflowGraph): IdentifierRe
 		seenNodeIds.add(nodeId);
 		candidates.push({
 			nodeId,
-			name:                recoverName(nodeId, targetGraph.idMap) ?? vertex.name,
-			controlDependencies: vertex.cds,
-			type:                ReferenceType.Function
+			name: recoverName(nodeId, targetGraph.idMap) ?? vertex.name,
+			cds:  vertex.cds,
+			type: ReferenceType.Function
 		});
 	}
 
@@ -147,7 +150,7 @@ export const processors: DataflowProcessors<ParentInformation> = {
 			info:      info,
 			content:   groupStart?.content ?? '{',
 			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? rangeFrom(-1, -1, -1, -1),
+			location:  location ?? invalidRange(),
 			namespace: groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
@@ -157,6 +160,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 	let cf: ControlFlowInformation | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
+	let allCallNames: string[] = [];
+	const killedRegexes = new Set<string>();
 	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
 		if(typeof s !== 'object') {
@@ -166,13 +171,23 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			cf = extractCfgQuick(ast);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
+				allCallNames = Array.from(new Set(knownCalls.values().map(c => c.name)));
 			}
 		} else if(handled.has(s.id)) {
 			continue;
 		}
 		handled.add(s.id);
+		const regexKey = s.linkTo.callName.source + '//' + s.linkTo.callName.flags;
+		if(killedRegexes.has(regexKey)) {
+			// we already know we will not find it!
+			continue;
+		} else if(allCallNames.length > 0 && !allCallNames.some(name => s.linkTo.callName.test(name))) {
+			// we know no call matches the regex
+			killedRegexes.add(regexKey);
+			continue;
+		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cf.graph, graph, s.linkTo, knownCalls);
+		const potentials = identifyLinkToLastCallRelationSync(s.id, cf.graph, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -191,13 +206,13 @@ function resolveCrossFileReferences(
 ): void {
 	const asIdentifierReference = (
 		nodeId: NodeId,
-		controlDependencies: IdentifierReference['controlDependencies'],
+		controlDependencies: IdentifierReference['cds'],
 		type: ReferenceType.Variable | ReferenceType.Function,
 		fallbackName?: string
 	): IdentifierReference => ({
 		nodeId,
 		name: recoverName(nodeId, graph.idMap) ?? fallbackName,
-		controlDependencies,
+		cds:  controlDependencies,
 		type
 	});
 
@@ -287,10 +302,10 @@ export async function produceDataFlowGraph<OtherInfo>(
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:         ctx.env.makeCleanEnv(),
-		processors,
-		controlDependencies: undefined,
-		referenceChain:      [files[0].filePath],
+		environment:    ctx.env.makeCleanEnv(),
+		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
+		cds:            undefined,
+		referenceChain: [files[0].filePath],
 		ctx
 	};
 
@@ -384,12 +399,24 @@ export async function produceDataFlowGraph<OtherInfo>(
 		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
+	// In lazy mode, materialize only functions that contain `UseMethod(...)` so S3 call edges
+	// are available without forcing unrelated lazy functions.
+	if(ctx.config.optimizations.deferredFunctionEvaluation.enabled) {
+		const useMethodSymbolIds = new Set<NodeId>();
+		for(const node of completeAst.idMap.values()) {
+			if(node.type === RType.Symbol && node.lexeme === 'UseMethod') {
+				useMethodSymbolIds.add(node.info.id);
+			}
+		}
+		if(useMethodSymbolIds.size > 0) {
+			materializeLazyFunctionDefinitionsContainingNodes(df.graph, useMethodSymbolIds, completeAst.idMap);
+		}
+	}
+
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
 
-	const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
-
+	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
-	return { ...df, cfgQuick };
-
+	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
 }

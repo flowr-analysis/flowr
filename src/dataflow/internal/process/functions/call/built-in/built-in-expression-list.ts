@@ -4,23 +4,20 @@
  */
 import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../../../processor';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
-import type {
-	Environment ,
-	REnvironmentInformation
-} from '../../../../../environments/environment';
+import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference , ReferenceType } from '../../../../../environments/identifier';
+import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
-import { type DataflowGraphVertexInfo , VertexType } from '../../../../../graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { builtInId, isBuiltIn } from '../../../../../environments/built-in';
+import { builtInId, BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -39,10 +36,10 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
-	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.controlDependencies))) {
+	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
 		const has = remainingRead.get(readName);
 		if(has) {
-			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.controlDependencies === read.controlDependencies)) {
+			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
@@ -56,26 +53,14 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		return;
 	}
 
+	const rid = read.nodeId;
 	for(const target of probableTarget) {
-		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, EdgeType.Reads);
-		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
-			nextGraph.addEdge(read, target, EdgeType.Calls);
+		const tid = target.nodeId;
+		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && isBuiltIn(target.definedAt)) {
+			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
+		} else {
+			nextGraph.addEdge(rid, tid, EdgeType.Reads);
 		}
-	}
-}
-
-
-function processNextExpression(
-	currentElement: DataflowInformation,
-	environment: REnvironmentInformation,
-	listEnvironments: Set<NodeId>,
-	remainingRead: Map<string, IdentifierReference[]>,
-	nextGraph: DataflowGraph
-) {
-	// all inputs that have not been written until now are read!
-	for(const read of currentElement.in.concat(currentElement.unknownReferences)) {
-		linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 	}
 }
 
@@ -117,7 +102,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					};
 				}
 				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
+					callDependencies = nextGraph.getVertex(functionCall)?.cds;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
@@ -128,7 +113,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 
 /**
- *
+ * Processes a list of expressions joining their dataflow graphs accordingly.
  */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -149,13 +134,13 @@ export function processExpressionList<OtherInfo>(
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
 	let out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
+	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
+	const invertExitCds: ControlDependency[] = [];
 
-	let expressionCounter = 0;
 	const processedExpressions: (DataflowInformation | undefined)[] = [];
 	let defaultReturnExpr: undefined | DataflowInformation = undefined;
 
 	for(const expression of expressions) {
-		expensiveTrace(dataflowLogger, () => `processing expression ${++expressionCounter} of ${expressions.length}`);
 		if(expression === undefined) {
 			processedExpressions.push(undefined);
 			continue;
@@ -166,26 +151,34 @@ export function processExpressionList<OtherInfo>(
 		processedExpressions.push(processed);
 		nextGraph.mergeWith(processed.graph);
 		defaultReturnExpr = processed;
-
 		// if the expression contained next or break anywhere before the next loop, the "overwrite" should be an "append", because we do not know if the rest is executed
 		// update the environments for the next iteration with the previous writes
 		if(exitPoints.length > 0) {
-			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true);
-			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false);
+			processed.out = makeAllMaybe(processed.out, nextGraph, processed.environment, true, invertExitCds);
+			processed.in = makeAllMaybe(processed.in, nextGraph, processed.environment, false, invertExitCds);
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		addNonDefaultExitPoints(exitPoints, processed.exitPoints);
-
 		out = out.concat(processed.out);
 
-		expensiveTrace(dataflowLogger, () => `expression ${expressionCounter} of ${expressions.length} has ${processed.unknownReferences.length} unknown nodes`);
-
-		processNextExpression(processed, environment, listEnvironments, remainingRead, nextGraph);
-
-		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
+		// all inputs that have not been written until now are read!
+		for(const ls of [processed.in, processed.unknownReferences]) {
+			for(const read of ls) {
+				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+			}
+		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
+		for(const c of calledEnvs) {
+			if(c.propagateExitPoints.length > 0) {
+				for(const exit of c.propagateExitPoints) {
+					(processed.exitPoints as Writable<ExitPoint[]>).push(exit);
+				}
+			}
+		}
+
+		addNonDefaultExitPoints(exitPoints, invertExitCds, activeCdsAtStart, processed.exitPoints);
+		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
 
@@ -202,10 +195,13 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push({
-			type:                ExitPointType.Default,
-			nodeId:              defaultReturnExpr.entryPoint,
-			controlDependencies: data.controlDependencies
+		exitPoints.push(data.cds ? {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint,
+			cds:    data.cds
+		} : {
+			type:   ExitPointType.Default,
+			nodeId: defaultReturnExpr.entryPoint
 		});
 	}
 
@@ -215,14 +211,14 @@ export function processExpressionList<OtherInfo>(
 	const withGroup = rootNode?.grouping;
 
 	if(withGroup) {
-		ingoing.push({ nodeId: rootId, name: name.content, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
+		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
 		patchFunctionCall({
 			nextGraph,
 			rootId,
 			name,
 			data,
 			argumentProcessResult: processedExpressions,
-			origin:                'builtin:expression-list'
+			origin:                BuiltInProcName.ExpressionList
 		});
 
 		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);
@@ -245,6 +241,7 @@ export function processExpressionList<OtherInfo>(
 		graph:             nextGraph,
 		/* if we have no group, we take the last evaluated expr */
 		entryPoint:        meId,
-		exitPoints:        exitPoints
+		exitPoints:        exitPoints,
+		hooks:             processedExpressions.flatMap(p => p?.hooks ?? []),
 	};
 }

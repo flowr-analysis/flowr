@@ -45,7 +45,7 @@ export function toClonableDataflowProcessorInfo<OtherInfo>(
 		normalizedAST:       toClonableNormalizedAST(dfInfo.completeAst),
 		environement:        toClonableREnvironmentInfo(dfInfo.environment),
 		referenceChain:      dfInfo.referenceChain,
-		controlDependencies: dfInfo.controlDependencies,
+		controlDependencies: dfInfo.cds,
 		//ctx: undefined as unknown as FlowrAnalyzerContext,
 	};
 }

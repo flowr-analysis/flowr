@@ -148,7 +148,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							id:          'library-loading',
 							supported:   'not',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
-						}
+						},
+						{
+							name:        'Dynamic Scope Changes',
+							id:          'dynamic-scope-changes',
+							supported:   'partially',
+							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
+						},
 					]
 				}
 			]
@@ -216,6 +222,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									description: '_Handle side-effects of function calls (e.g., `setXTo(3)`, ...) for example achieved with the super assignment._ We need more tests and handlings. Furthermore, we do not detect side effects with external files, network, logging, etc.'
 								}
 							]
+						},
+						{
+							name:        'Recursion',
+							id:          'recursion',
+							supported:   'fully',
+							description: '_Recognize and resolve recursive calls like `f(3)` inside the definition of `f`, ..._'
 						},
 						{
 							name:        'Anonymous Calls',
@@ -446,9 +458,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									description: '_Handle `return(3)`, ... in function definitions_'
 								},
 								{
-									name:        'exceptions',
-									id:          'exceptions',
-									supported:   'not',
+									name:        'Exceptions and Errors',
+									id:          'exceptions-and-errors',
+									supported:   'partially',
 									description: '_Handle `try`, `stop`, ..._'
 								}
 							]
@@ -652,7 +664,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 				{
 					name:        'Hooks',
 					id:          'hooks',
-					supported:   'not',
+					supported:   'partially',
 					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
 				},
 				{
@@ -719,7 +731,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('S3'), href: 'https://adv-r.hadley.nz/s3.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{
@@ -728,7 +740,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							url:  [
 								{ name: AdvancedR('S4'), href: 'https://adv-r.hadley.nz/s4.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
 						},
 						{

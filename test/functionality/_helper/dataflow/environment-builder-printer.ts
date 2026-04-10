@@ -78,13 +78,16 @@ export class EnvironmentBuilderPrinter {
 					this.getControlDependencyArgument(def)
 				]);
 				break;
+			case ReferenceType.S3MethodPrefix:
+				// unsupported
+				break;
 			default:
 				assertUnreachable(type);
 		}
 	}
 
 	private getControlDependencyArgument(def: IdentifierDefinition) {
-		return def.controlDependencies ? wrapControlDependencies(def.controlDependencies) : undefined;
+		return def.cds ? wrapControlDependencies(def.cds) : undefined;
 	}
 
 	private push() {

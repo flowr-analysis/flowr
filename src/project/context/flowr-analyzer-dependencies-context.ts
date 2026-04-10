@@ -4,6 +4,7 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { SerializedPackage } from '../plugins/package-version-plugins/package';
 import { Package } from '../plugins/package-version-plugins/package';
+import { FlowrAnalyzerFunctionsContext, type FunctionInfo, type ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
 
 /**
@@ -15,7 +16,11 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
 	 * The name of this context.
 	 */
-	readonly name: string;
+	readonly name:             string;
+	/**
+	 * The functions context associated with this dependencies-context.
+	 */
+	readonly functionsContext: ReadOnlyFlowrAnalyzerFunctionsContext;
 	/**
 	 * Get the dependency with the given name, if it exists.
 	 *
@@ -24,11 +29,17 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
 	getDependency(name: string): Package | undefined;
+
+    /**
+     * Get all dependencies known to this context.
+     */
+	getDependencies(): readonly Readonly<Package>[];
 }
 
 
 export interface SerializedFlowrAnalyzerDependenciesContext{
     dependencies:  SerializedPackage[];
+	functions?:    FunctionInfo[];
     staticsLoaded: boolean;
 }
 
@@ -40,6 +51,8 @@ export interface SerializedFlowrAnalyzerDependenciesContext{
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
+	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
+
 	private dependencies: Map<string, Package> = new Map();
 	private staticsLoaded = false;
 
@@ -50,6 +63,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	public constructor(ctx: FlowrAnalyzerContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(ctx, FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
+		this.functionsContext = new FlowrAnalyzerFunctionsContext(ctx, plugins);
 	}
 
 	public resolveStaticDependencies(): void {
@@ -73,9 +87,17 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.dependencies.get(name);
 	}
 
+	public getDependencies(): Package[] {
+		if(!this.staticsLoaded) {
+			this.resolveStaticDependencies();
+		}
+		return Array.from(this.dependencies.values());
+	}
+
 	public toSerializable(): SerializedFlowrAnalyzerDependenciesContext {
 		return {
 			dependencies:  [...this.dependencies.values()].map(p => p.toSerializable()),
+			functions:     [...this.functionsContext.getAllFunctionInfo()],
 			staticsLoaded: this.staticsLoaded,
 		};
 	}
@@ -89,6 +111,10 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 		for(const pkg of data.dependencies){
 			dependencyCtx.addDependency(Package.fromSerializable(pkg));
+		}
+
+		for(const fn of data.functions ?? []) {
+			dependencyCtx.functionsContext.addFunctionInfo(fn);
 		}
 
 		dependencyCtx.staticsLoaded = data.staticsLoaded;

@@ -129,7 +129,7 @@ export function unescapeQuotes(argument: string | undefined) {
 }
 
 /**
- * Unescapes escape sequences like `\n`, `\t`, `\'`, `\"`, `\\` back into actual newlines, tabs, quotes, and backslashes
+ * Unescapes escape sequences like `\r`, `\n`, `\t`, `\'`, `\"`, `\\` back into actual newlines, tabs, quotes, and backslashes
  */
 export function unescapeSpecialChars(argument: undefined): undefined;
 export function unescapeSpecialChars(argument: string): string;
@@ -138,5 +138,5 @@ export function unescapeSpecialChars(argument: string | undefined) {
 	if(argument === undefined) {
 		return undefined;
 	}
-	return unescapeQuotes(argument).replaceAll('\\n', '\n').replaceAll('\\t', '\t').replaceAll('\\\\', '\\');
+	return unescapeQuotes(argument).replaceAll('\\r', '\r').replaceAll('\\n', '\n').replaceAll('\\t', '\t').replaceAll('\\\\', '\\');
 }

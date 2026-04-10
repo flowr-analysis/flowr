@@ -1,8 +1,8 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../../info';
+import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { expensiveTrace } from '../../../../../../util/log';
-import { type ForceArguments , patchFunctionCall, processAllArguments } from '../common';
+import { type ForceArguments, patchFunctionCall, processAllArguments } from '../common';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
@@ -11,28 +11,30 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import {
+import { type DataflowGraphVertexInfo ,
 	type ContainerIndices,
 	type ContainerIndicesCollection,
 	type ContainerLeafIndex,
-	type IndexIdentifier
-	, VertexType } from '../../../../../graph/vertex';
+	type IndexIdentifier,
+	VertexType
+} from '../../../../../graph/vertex';
 import { getReferenceOfArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { constructNestedAccess, getAccessOperands } from '../../../../../../util/containers';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { unpackNonameArg } from '../argument/unpack-argument';
+import { unpackArg, unpackNonameArg } from '../argument/unpack-argument';
 import { symbolArgumentsToStrings } from './built-in-access';
-import { type BuiltInMappingName , BuiltInProcessorMapper } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { handleReplacementOperator } from '../../../../../graph/unknown-replacement';
-
+import type { DeepWritable } from 'ts-essentials';
 
 
 /**
- *
+ * Process a replacement function call like `<-`, `[[<-`, `$<-`, etc.
+ * These are automatically created when doing assignments like `x[y] <- value` or in general `fun(x) <- value` will call `fun<- (x, value)`.
  */
 export function processReplacementFunction<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -56,14 +58,14 @@ export function processReplacementFunction<OtherInfo>(
 	}
 
 	/* we assign the first argument by the last for now and maybe mark as maybe!, we can keep the symbol as we now know we have an assignment */
-	let res = BuiltInProcessorMapper['builtin:assignment'](
+	let res = BuiltInProcessorMapper[BuiltInProcName.Assignment](
 		name,
-		[args[0], args[args.length - 1]],
+		[args[0], args.at(-1) as RFunctionArgument<OtherInfo & ParentInformation>],
 		rootId,
 		data,
 		{
 			superAssignment:   config.assignmentOperator === '<<-',
-			makeMaybe:         indices !== undefined ? false : config.makeMaybe,
+			makeMaybe:         indices === undefined ? config.makeMaybe : false,
 			indicesCollection: indices,
 			canBeReplacement:  true
 		}
@@ -71,7 +73,11 @@ export function processReplacementFunction<OtherInfo>(
 
 	const createdVert = res.graph.getVertex(rootId);
 	if(createdVert?.tag === VertexType.FunctionCall) {
-		createdVert.origin = ['builtin:replacement'];
+		createdVert.origin = [BuiltInProcName.Replacement];
+	}
+	const targetVert = res.graph.getVertex(unpackArg(args[0])?.info.id as NodeId);
+	if(targetVert?.tag === VertexType.VariableDefinition) {
+		(targetVert as DeepWritable<DataflowGraphVertexInfo>).par = true;
 	}
 
 	const convertedArgs = config.readIndices ? args.slice(1, -1) : symbolArgumentsToStrings(args.slice(1, -1), 0);
@@ -93,7 +99,7 @@ export function processReplacementFunction<OtherInfo>(
 		name,
 		argumentProcessResult:
 			args.map(a => a === EmptyArgument ? undefined : { entryPoint: unpackNonameArg(a)?.info.id as NodeId }),
-		origin: 'builtin:replacement' satisfies BuiltInMappingName,
+		origin: BuiltInProcName.Replacement,
 		link:   config.assignRootId ? { origin: [config.assignRootId] } : undefined
 	});
 
@@ -127,7 +133,7 @@ export function processReplacementFunction<OtherInfo>(
 	if(!data.ctx.config.solver.pointerTracking && fa) {
 		res = {
 			...res,
-			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, controlDependencies: data.controlDependencies }]
+			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, cds: data.cds }]
 		};
 	}
 

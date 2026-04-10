@@ -44,6 +44,11 @@ import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
+import { executeFileQuery } from '../queries/catalog/files-query/files-query-executor';
+import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-graph-query-executor';
+import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
+import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
+import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -64,8 +69,7 @@ Besides this, we provide the following ways to automatically categorize and link
 
 1. **Kind**         (\`kind\`): This is a general category that can be used to group calls together. For example, you may want to link all calls to \`plot\` to \`visualize\`.
 2. **Subkind**      (\`subkind\`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to \`ggplot\` to \`plot\`.
-3. **Linked Calls** (\`linkTo\`): This links the current call to the last call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
-   For now, we _only_ offer support for linking to the last call, as the current flow dependency over-approximation is not stable.
+3. **Linked Calls** (\`linkTo\`): This links the current call to the last/nested/.. call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
 4. **Aliases**      (\`includeAliases\`): Consider a case like \`f <- function_of_interest\`, do you want calls to \`f\` to be included in the results? There is probably no need to combine this with a global call target!
 
 It's also possible to filter the results based on the following properties:
@@ -143,6 +147,72 @@ ${
 	}
 });
 
+registerQueryDocumentation('call-graph', {
+	name:             'Call-Graph Query',
+	type:             'active',
+	shortDescription: 'Returns the call graph of the given code.',
+	functionName:     executeCallGraphQuery.name,
+	functionFile:     '../queries/catalog/call-graph-query/call-graph-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'x + 1';
+		return `
+This query calculates and returns the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the given code.
+
+Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'call-graph'
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('does-call', {
+	name:             'Does-Call Query',
+	type:             'active',
+	shortDescription: 'Checks whether a function calls another function matching given constraints.',
+	functionName:     executeDoesCallQuery.name,
+	functionFile:     '../queries/catalog/does-call-query/does-call-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
+		return `
+This query checks whether a function calls another function matching given constraints.
+
+Using the example code:
+${codeBlock('r', exampleCode)}
+the following query checks whether the call to \`f\` calls \`eval\`:
+${
+	await showQuery(shell, exampleCode, [{
+		type:    'does-call',
+		queryId: 'calls-eval',
+		call:    '2@f',
+		calls:   { type: 'name', name: 'eval', nameExact: true }
+	}], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")' })
+}
+		`;
+	}
+});
+
+
+registerQueryDocumentation('files', {
+	name:             'Files Query',
+	type:             'active',
+	shortDescription: 'Returns the files matching the given criteria.',
+	functionName:     executeFileQuery.name,
+	functionFile:     '../queries/catalog/files-query/files-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		return `
+This query returns the files that match the given criteria.
+${
+	await showQuery(shell, '', [{
+		type: 'files'
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
 registerQueryDocumentation('project', {
 	name:             'Project Query',
 	type:             'active',
@@ -153,7 +223,7 @@ registerQueryDocumentation('project', {
 		const exampleCode = 'x + 1';
 		return `
 This query returns the information about the analyzed project.
-Currently, this is only the list of file paths included.
+If present, it will incorporate plugins to, e.g., extract author and license information from R package DESCRIPTION files.
 
 ${
 	await showQuery(shell, exampleCode, [{
@@ -258,11 +328,83 @@ Using the example code \`${exampleCode}\` the following query returns the inform
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'inspect-higher-order',
-	}], { showCode: true })
+	}], { showCode: true, collapseQuery: true })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-higher-order',
+		filter: ['1@function']
+	}], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
 }
 		`;
 	}
 });
+
+
+registerQueryDocumentation('inspect-recursion', {
+	name:             'Inspect Recursive Functions Query',
+	type:             'active',
+	shortDescription: 'Determine whether functions are recursive',
+	functionName:     executeRecursionQuery.name,
+	functionFile:     '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
+		return `
+With this query you can identify which functions in the code are recursive.
+Please note, that functions that *may* be recursive due to indirect calls are also considered recursive.
+
+Using the example code \`${exampleCode}\` the following query returns the information for all identified function definitions whether they are recursive:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-recursion',
+	}], { showCode: true, collapseQuery: true })
+}
+
+This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
+${
+	await showQuery(shell, exampleCode, [{
+		type:   'inspect-recursion',
+		filter: ['1@function']
+	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('inspect-exception', {
+	name:             'Inspect Exceptions of Functions Query',
+	type:             'active',
+	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
+	functionName:     executeExceptionQuery.name,
+	functionFile:     '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = `mayFail <- function(x) {
+  if(x < 0) stop("Negative value!")
+  else sqrt(x)
+}
+safeFail <- function(x) {
+  tryCatch(
+    mayFail(x),
+    error = function(e) { NA }
+  )
+}`;
+		return `
+With this query you can identify which functions in the code throw exceptions (known to flowR).
+
+Using the following example code:
+${codeBlock('r', exampleCode)}
+the following query returns the information for all identified function definitions whether they throw exceptions:
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'inspect-exception',
+	}], { showCode: true, collapseQuery: true })
+}
+		`;
+	}
+});
+
 
 registerQueryDocumentation('origin', {
 	name:             'Origin Query',
@@ -388,6 +530,9 @@ ${
 		}
 	])
 }
+
+One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
+enables quick statistics after each REPL command. Likewise, setting \`repl.dfProcessorHeat=true\` enables the dataflow processor heatmap after each REPL command.
 `;
 	}
 });
@@ -740,7 +885,7 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API
  */
-export class WikiQuery extends DocMaker {
+export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	constructor() {
 		super('wiki/Query API.md', module.filename, 'query API');
 	}
@@ -748,7 +893,7 @@ export class WikiQuery extends DocMaker {
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
-Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
 
 ${
 	block({
@@ -785,7 +930,7 @@ ${tocForQueryType('virtual')}
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations below, if you want to have a look at the schema, here is its description:
+Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
 
 ${describeSchema(QueriesSchema(), markdownFormatter)}
 

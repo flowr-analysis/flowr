@@ -1,5 +1,6 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
-import { type DataflowInformation, ExitPointType } from '../../../../info';
+import type { ExitPoint, DataflowInformation } from '../../../../info';
+import { ExitPointType } from '../../../../info';
 import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -7,12 +8,14 @@ import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/mod
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
+import type { FunctionArgument } from '../../../../graph/graph';
 import { DataflowGraph } from '../../../../graph/graph';
 import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { type ContainerIndicesCollection, type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { expensiveTrace } from '../../../../../util/log';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
+import { BuiltInProcName } from '../../../../environments/built-in';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
@@ -27,13 +30,24 @@ export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments
 	readonly patchData?:            (data: DataflowProcessorInformation<OtherInfo & ParentInformation>, arg: number) => DataflowProcessorInformation<OtherInfo & ParentInformation>
 	/** Does the call have a side effect that we do not know a lot about which may have further consequences? */
 	readonly hasUnknownSideEffect?: boolean
+	/** The origin to use for the function being called. */
 	readonly origin:                FunctionOriginInformation | 'default'
 }
 
+/** The result of processing a known function call. */
 export interface ProcessKnownFunctionCallResult {
+	/** This is the overall information about the function call itself. */
 	readonly information:        DataflowInformation
+	/** The processed arguments in order, they are included in the information but sometimes useful separately. */
 	readonly processedArguments: readonly (DataflowInformation | undefined)[]
+	/** A reference to the function being called. */
 	readonly fnRef:              IdentifierReference
+	/**
+	 * The arguments as recorded on the function call vertex.
+	 * They are also part of the information via the function call vertex adde, but sometimes useful separately.
+	 * For example, together with {@link pMatch} to do custom parameter matching.
+	 */
+	readonly callArgs:           readonly FunctionArgument[]
 }
 
 /**
@@ -89,10 +103,10 @@ export function processKnownFunctionCall<OtherInfo>(
 		name:              functionCallName,
 		/* will be overwritten accordingly */
 		onlyBuiltin:       false,
-		cds:               data.controlDependencies,
-		args:              reverseOrder ? callArgs.reverse() : callArgs,
+		cds:               data.cds,
+		args:              reverseOrder ? callArgs.toReversed() : callArgs,
 		indicesCollection: indicesCollection,
-		origin:            origin === 'default' ? ['function'] : [origin]
+		origin:            origin === 'default' ? [BuiltInProcName.Function] : [origin]
 	}, data.ctx.env.makeCleanEnv());
 
 	if(hasUnknownSideEffect) {
@@ -100,8 +114,30 @@ export function processKnownFunctionCall<OtherInfo>(
 	}
 
 	const inIds = remainingReadInArgs;
-	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function };
+	const fnRef: IdentifierReference = { nodeId: rootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function };
 	inIds.push(fnRef);
+
+	// if force args is not none, we need to collect all non-default exit points from our arguments!
+	let exitPoints: ExitPoint[] | undefined = undefined;
+	if(forceArgs === 'all') {
+		const nonDefaults = processedArguments.flatMap(p => p ? p.exitPoints.filter(ep => ep.type !== ExitPointType.Default) : []);
+		if(nonDefaults.length > 0) {
+			exitPoints = nonDefaults;
+		}
+	} else if(forceArgs) {
+		for(let i = 0; i < forceArgs.length; i++) {
+			if(forceArgs[i]) {
+				const p = processedArguments[i];
+				if(p) {
+					const nonDefaults = p.exitPoints.filter(ep => ep.type !== ExitPointType.Default);
+					if(nonDefaults.length > 0) {
+						exitPoints ??= [];
+						exitPoints.push(...nonDefaults);
+					}
+				}
+			}
+		}
+	}
 
 	return {
 		information: {
@@ -112,9 +148,11 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        [{ nodeId: rootId, type: ExitPointType.Default, controlDependencies: data.controlDependencies }]
+			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
+			hooks:             functionName.hooks
 		},
-		processedArguments: reverseOrder ? processedArguments.reverse() : processedArguments,
+		callArgs,
+		processedArguments: reverseOrder ? processedArguments.toReversed() : processedArguments,
 		fnRef
 	};
 }

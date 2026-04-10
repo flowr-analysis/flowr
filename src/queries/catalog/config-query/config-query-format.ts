@@ -6,7 +6,7 @@ import Joi from 'joi';
 import type { FlowrConfigOptions } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
-import type { ParsedQueryLine, SupportedQuery } from '../../query';
+import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
@@ -83,12 +83,49 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	};
 }
 
+function collectKeysFromUpdate(update: DeepPartial<FlowrConfigOptions>, prefix: string = ''): string[] {
+	// only collect leaf keys
+	const keys: string[] = [];
+	for(const [key, value] of Object.entries(update)) {
+		const fullKey = prefix ? `${prefix}.${key}` : key;
+		if(value && typeof value === 'object' && !Array.isArray(value)) {
+			keys.push(...collectKeysFromUpdate(value as DeepPartial<FlowrConfigOptions>, fullKey));
+		} else {
+			keys.push(fullKey);
+		}
+	}
+	return keys;
+}
+
+function getValueAtPath(obj: object, path: string[]): unknown {
+	let current: unknown = obj;
+	for(const key of path) {
+		if(current && typeof current === 'object' && (current as Record<string, unknown>)[key] !== undefined) {
+			current = (current as Record<string, unknown>)[key];
+		} else {
+			return undefined;
+		}
+	}
+	return current;
+}
+
 export const ConfigQueryDefinition = {
 	executor:        executeConfigQuery,
-	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
+	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
 		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);
+		const configQueries = queries.filter(q => q.type === 'config');
+		if(configQueries.some(q => q.update)) {
+			const updatedKeys = configQueries.flatMap(q => q.update ? collectKeysFromUpdate(q.update) : []);
+			result.push('   ╰ Updated configuration:');
+			for(const key of updatedKeys) {
+				const path = key.split('.');
+				const newValue = getValueAtPath(out.config, path);
+				result.push(`       - ${key}: ${JSON.stringify(newValue, jsonReplacer)}`);
+			}
+		} else {
+			result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);
+		}
 		return true;
 	},
 	completer: configReplCompleter,

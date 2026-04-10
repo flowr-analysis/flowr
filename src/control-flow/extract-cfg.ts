@@ -1,6 +1,6 @@
-import { type QuadSerializationConfiguration , graph2quads } from '../util/quads';
+import { graph2quads, type QuadSerializationConfiguration } from '../util/quads';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type FoldFunctions , foldAst } from '../r-bridge/lang-4.x/ast/model/processing/fold';
+import { foldAst, type FoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/fold';
 import type {
 	NormalizedAst,
 	ParentInformation,
@@ -12,30 +12,28 @@ import type { RRepeatLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-repeat-
 import type { RWhileLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-while-loop';
 import type { RForLoop } from '../r-bridge/lang-4.x/ast/model/nodes/r-for-loop';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
-import { type RFunctionCall , EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type RFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import type { RPipe } from '../r-bridge/lang-4.x/ast/model/nodes/r-pipe';
 import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
-import type {
-	DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import {
-	isFunctionCallVertex,
-	isFunctionDefinitionVertex
-} from '../dataflow/graph/vertex';
+import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
+import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import {
-	type ControlFlowInformation,
 	CfgEdgeType,
 	CfgVertexType,
 	ControlFlowGraph,
+	type ControlFlowInformation,
 	emptyControlFlowInformation
 } from './control-flow-graph';
-import { type CfgSimplificationPassName , simplifyControlFlowInformation } from './cfg-simplification';
+import { type CfgSimplificationPassName, simplifyControlFlowInformation } from './cfg-simplification';
 import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
+import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 
 
 const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
@@ -69,13 +67,14 @@ const cfgFolds: FoldFunctions<ParentInformation, ControlFlowInformation> = {
 };
 
 function dataflowCfgFolds(dataflowGraph: DataflowGraph): FoldFunctions<ParentInformation, ControlFlowInformation> {
-	return {
+	const newFolds = {
 		...cfgFolds,
-		functions: {
-			...cfgFolds.functions,
-			foldFunctionCall: cfgFunctionCallWithDataflow(dataflowGraph)
-		}
 	};
+	newFolds.functions = {
+		...cfgFolds.functions,
+		foldFunctionCall: cfgFunctionCallWithDataflow(dataflowGraph, newFolds)
+	};
+	return newFolds;
 }
 
 /**
@@ -110,7 +109,7 @@ export function extractCfgQuick<Info = ParentInformation>(ast: NormalizedAst<Inf
 export function getCallsInCfg(cfg: ControlFlowInformation, graph: DataflowGraph): Map<NodeId, Required<DataflowGraphVertexFunctionCall>> {
 	const calls = new Map<NodeId, Required<DataflowGraphVertexFunctionCall>>();
 	for(const vertexId of cfg.graph.vertices().keys()) {
-		const vertex = graph.getVertex(vertexId, true);
+		const vertex = graph.getVertex(vertexId);
 		if(isFunctionCallVertex(vertex)) {
 			calls.set(vertexId, vertex);
 		}
@@ -138,14 +137,14 @@ function cfgFoldProject(proj: RProject<ParentInformation>, folds: FoldFunctions<
 		breaks:      perProject.flatMap(e => e.breaks),
 		nexts:       perProject.flatMap(e => e.nexts),
 		returns:     perProject.flatMap(e => e.returns),
-		exitPoints:  perProject[perProject.length - 1].exitPoints,
+		exitPoints:  (perProject.at(-1) as ControlFlowInformation).exitPoints,
 		entryPoints: perProject[0].entryPoints,
 		graph:       finalGraph
 	};
 }
 
 function cfgLeaf(type: CfgVertexType.Expression | CfgVertexType.Statement): (leaf: RNodeWithParent) => ControlFlowInformation {
-	return ({ info: { id } }: RNodeWithParent) => {
+	return ({ info: { id } }: { info: { id: NodeId } }) => {
 		return { graph: new ControlFlowGraph().addVertex({ id, type }), breaks: [], nexts: [], returns: [], exitPoints: [id], entryPoints: [id] };
 	};
 }
@@ -190,8 +189,10 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 		graph.addEdge(entryPoint, ifId, { label: CfgEdgeType.Fd });
 	}
 
-	for(const exit of [...then.exitPoints, ...otherwise?.exitPoints ?? []]) {
-		graph.addEdge(ifId + '-exit', exit, { label: CfgEdgeType.Fd });
+	for(const exits of [then.exitPoints, otherwise?.exitPoints ?? []]) {
+		for(const exit of exits) {
+			graph.addEdge(ifId + '-exit', exit, { label: CfgEdgeType.Fd });
+		}
 	}
 	if(!otherwise) {
 		for(const e of condition.exitPoints) {
@@ -201,9 +202,9 @@ function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformatio
 
 	return {
 		graph,
-		breaks:      [...then.breaks, ...otherwise?.breaks ?? []],
-		nexts:       [...then.nexts, ...otherwise?.nexts ?? []],
-		returns:     [...then.returns, ...otherwise?.returns ?? []],
+		breaks:      then.breaks.concat(otherwise?.breaks ?? []),
+		nexts:       then.nexts.concat(otherwise?.nexts ?? []),
+		returns:     then.returns.concat(otherwise?.returns ?? []),
 		exitPoints:  [ifId + '-exit'],
 		entryPoints: [ifId]
 	};
@@ -219,8 +220,10 @@ function cfgRepeat(repeat: RRepeatLoop<ParentInformation>, body: ControlFlowInfo
 	}
 
 	// loops automatically
-	for(const next of [...body.nexts, ...body.exitPoints]) {
-		graph.addEdge(repeat.info.id, next, { label: CfgEdgeType.Fd });
+	for(const nexts of [body.nexts, body.exitPoints]) {
+		for(const next of nexts) {
+			graph.addEdge(repeat.info.id, next, { label: CfgEdgeType.Fd });
+		}
 	}
 
 	for(const breakPoint of body.breaks) {
@@ -248,8 +251,10 @@ function cfgWhile(whileLoop: RWhileLoop<ParentInformation>, condition: ControlFl
 		}
 	}
 
-	for(const next of [...body.nexts, ...body.exitPoints]) {
-		graph.addEdge(whileId, next, { label: CfgEdgeType.Fd });
+	for(const nexts of [body.nexts, body.exitPoints]) {
+		for(const next of nexts) {
+			graph.addEdge(whileId, next, { label: CfgEdgeType.Fd });
+		}
 	}
 
 	for(const breakPoint of body.breaks) {
@@ -292,8 +297,10 @@ function cfgFor(forLoop: RForLoop<ParentInformation>, variable: ControlFlowInfor
 		}
 	}
 
-	for(const next of [...body.nexts, ...body.exitPoints]) {
-		graph.addEdge(forLoopId, next, { label: CfgEdgeType.Fd });
+	for(const points of [body.nexts, body.exitPoints]) {
+		for(const next of points) {
+			graph.addEdge(forLoopId, next, { label: CfgEdgeType.Fd });
+		}
 	}
 
 	for(const breakPoint of body.breaks) {
@@ -324,11 +331,15 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 	graph.addVertex({ id: fnId, children, type: identifyMayStatementType(fn), mid: paramExits, end: [fnId + '-exit'] });
 
 	graph.mergeWith(body.graph, true);
-	children.push(...body.graph.rootIds());
+	for(const r of body.graph.rootIds()) {
+		children.push(r);
+	}
 
 	for(const param of params) {
 		graph.mergeWith(param.graph, true);
-		children.push(...param.graph.rootIds());
+		for(const r of param.graph.rootIds()) {
+			children.push(r);
+		}
 		for(const entry of param.entryPoints) {
 			graph.addEdge(entry, fnId, { label: CfgEdgeType.Fd });
 		}
@@ -352,9 +363,25 @@ function cfgFunctionDefinition(fn: RFunctionDefinition<ParentInformation>, param
 }
 
 function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], exit = 'exit'): ControlFlowInformation {
+	if(call.named && call.functionName.content === 'ifelse') {
+		// special built-in handling for ifelse as it is an expression that does not short-circuit
+		return cfgIfThenElse(
+			call as RNodeWithParent,
+			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
+			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
+			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2]
+		);
+	}
 	const callId = call.info.id;
 	const graph = name.graph;
-	const info = { graph, breaks: [...name.breaks], nexts: [...name.nexts], returns: [...name.returns], exitPoints: [callId + '-' + exit], entryPoints: [callId] };
+	const info = {
+		graph,
+		breaks:      Array.from(name.breaks),
+		nexts:       Array.from(name.nexts),
+		returns:     Array.from(name.returns),
+		exitPoints:  [callId + '-' + exit],
+		entryPoints: [callId]
+	};
 
 	graph.addVertex({ id: callId, type: identifyMayStatementType(call), mid: name.exitPoints, end: [callId + '-' + exit] });
 
@@ -394,8 +421,27 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 export const ResolvedCallSuffix = '-resolved-call-exit';
 
-function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
+const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: FoldFunctions<ParentInformation, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
+	[BuiltInProcName.IfThenElse]: (folds, call, args) => {
+		// arguments are in order!
+		return folds.foldIfThenElse(
+			call as RNodeWithParent as RIfThenElse<ParentInformation>, // we will have to this more sophisticated if we rewrite the dfg based generation
+			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
+			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
+			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2],
+			undefined
+		);
+	}
+};
+function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: FoldFunctions<ParentInformation, ControlFlowInformation>): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[]): ControlFlowInformation => {
+		const vtx = graph.getVertex(call.info.id);
+		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
+			const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
+			if(mayMap) {
+				return mayMap(folds, call, args, vtx);
+			}
+		}
 		const baseCfg = cfgFunctionCall(call, name, args);
 
 		/* try to resolve the call and link the target definitions */
@@ -420,8 +466,10 @@ function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCa
 				root: call.info.id
 			});
 
-			for(const exit of [...baseCfg.exitPoints, ...exits]) {
-				baseCfg.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
+			for(const col of [baseCfg.exitPoints, exits]) {
+				for(const exit of col) {
+					baseCfg.graph.addEdge(call.info.id + ResolvedCallSuffix, exit, { label: CfgEdgeType.Fd });
+				}
 			}
 
 			return {
@@ -452,7 +500,6 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 		}
 	}
 
-
 	if(value) {
 		graph.mergeWith(value.graph);
 		info.breaks = info.breaks.concat(value.breaks);
@@ -473,12 +520,11 @@ function cfgArgumentOrParameter(node: RNodeWithParent, name: ControlFlowInformat
 	}
 
 	return info;
-
 }
 
 function cfgBinaryOp(binOp: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: ControlFlowInformation, rhs: ControlFlowInformation): ControlFlowInformation {
 	const graph = new ControlFlowGraph().mergeWith(lhs.graph).mergeWith(rhs.graph);
-	const result: ControlFlowInformation = { graph, breaks: [...lhs.breaks, ...rhs.breaks], nexts: [...lhs.nexts, ...rhs.nexts], returns: [...lhs.returns, ...rhs.returns], entryPoints: [binOp.info.id], exitPoints: [binOp.info.id + '-exit'] };
+	const result: ControlFlowInformation = { graph, breaks: lhs.breaks.concat(rhs.breaks), nexts: lhs.nexts.concat(rhs.nexts), returns: lhs.returns.concat(rhs.returns), entryPoints: [binOp.info.id], exitPoints: [binOp.info.id + '-exit'] };
 
 	graph.addVertex({ id: binOp.info.id, type: binOp.flavor === 'assignment' ? CfgVertexType.Statement : CfgVertexType.Expression, end: [binOp.info.id + '-exit'] });
 	graph.addVertex({ id: binOp.info.id + '-exit', type: CfgVertexType.EndMarker, root: binOp.info.id });

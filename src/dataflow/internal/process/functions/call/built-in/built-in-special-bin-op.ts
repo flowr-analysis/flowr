@@ -8,6 +8,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
  * Process a special built-in binary operator, possibly lazily.
@@ -22,7 +23,7 @@ export function processSpecialBinOp<OtherInfo>(
 	config: { lazy: boolean, evalRhsWhen: boolean } & ForceArguments
 ): DataflowInformation {
 	if(!config.lazy) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:special-bin-op' }).information;
+		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.SpecialBinOp }).information;
 	} else if(args.length != 2) {
 		dataflowLogger.warn(`Logical bin-op ${name.content} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
@@ -31,11 +32,11 @@ export function processSpecialBinOp<OtherInfo>(
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs,
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: config.evalRhsWhen }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: config.evalRhsWhen }] };
 			}
 			return d;
 		},
-		origin: 'builtin:special-bin-op'
+		origin: BuiltInProcName.SpecialBinOp
 	});
 
 	for(const arg of processedArguments) {

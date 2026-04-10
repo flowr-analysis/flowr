@@ -43,7 +43,7 @@ export function deepMergeObject(base?: Mergeable, addon?: Mergeable): Mergeable 
 	if(!baseIsArray && !addonIsArray) {
 		deepMergeObjectWithResult(addon, base, result);
 	} else if(baseIsArray && addonIsArray) {
-		return [...base, ...addon];
+		return base.concat(addon);
 	} else {
 		throw new Error('cannot merge object with array!');
 	}

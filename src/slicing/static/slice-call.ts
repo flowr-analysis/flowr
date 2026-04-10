@@ -53,7 +53,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 	return [functionCallTargets, activeEnvironment];
 }
 
-function includeArgumentFunctionCallClosure(arg: FunctionArgument, baseEnvironment: REnvironmentInformation, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
+function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
 	const valueRoot = getReferenceOfArgument(arg);
 	if(!valueRoot) {
 		return;
@@ -77,7 +77,7 @@ function linkCallTargets(
 ): void {
 	for(const functionCallTarget of functionCallTargets) {
 		for(const exitPoint of (functionCallTarget as DataflowGraphVertexFunctionDefinition).exitPoints) {
-			queue.add(exitPoint, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
+			queue.add(exitPoint.nodeId, activeEnvironment, activeEnvironmentFingerprint, onlyForSideEffects);
 		}
 		// handle open reads
 		for(const openIn of (functionCallTarget as DataflowGraphVertexFunctionDefinition).subflow.in) {
@@ -93,10 +93,8 @@ function linkCallTargets(
 }
 
 /** returns the new threshold hit count */
-export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, dataflowInformation: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const baseEnvironment = current.baseEnvironment;
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(dataflowInformation.graph, callerInfo, current.baseEnvironment, queue, ctx);
-	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
+export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(graph, callerInfo, current.baseEnvironment, queue, ctx);
 
 	if(functionCallTargets.size === 0) {
 		/*
@@ -104,16 +102,18 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		 * hence, we add a new flag and add all argument values to the queue causing directly
 		 */
 		for(const arg of callerInfo.args) {
-			includeArgumentFunctionCallClosure(arg, baseEnvironment, activeEnvironment, queue, dataflowInformation.graph);
+			includeArgumentFunctionCallClosure(arg, activeEnvironment, queue, graph);
 		}
 		return;
 	}
+	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 	linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
 }
 
+const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;
 /** Returns true if we found at least one return edge */
 export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	const e = [...currentEdges.entries()];
+	const e = Array.from(currentEdges.entries());
 	const found = e.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Returns));
 	if(found.length === 0) {
 		return false;
@@ -124,7 +124,7 @@ export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: 
 	for(const [target, edge] of e) {
 		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-		} else if(edgeIncludesType(edge.types, EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument)) {
+		} else if(edgeIncludesType(edge.types, PotentialFollowOnReturn)) {
 			updatePotentialAddition(queue, from, target, baseEnvironment, baseEnvFingerprint);
 		}
 	}

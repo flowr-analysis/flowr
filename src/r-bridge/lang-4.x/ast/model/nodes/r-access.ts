@@ -1,4 +1,4 @@
-import type { Base, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
 import type { RType } from '../type';
 import type { RArgument, RUnnamedArgument } from './r-argument';
 import type { EmptyArgument } from './r-function-call';
@@ -6,7 +6,7 @@ import type { EmptyArgument } from './r-function-call';
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.
  */
-interface RAccessBase<Info = NoInfo> extends Base<Info>, Location {
+interface RAccessBase<Info = NoInfo> extends RAstNodeBase<Info>, Location {
 	readonly type: RType.Access;
 	/** the accessed container/variable/expression */
 	accessed:      RNode<Info>;

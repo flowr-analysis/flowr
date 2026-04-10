@@ -1,5 +1,5 @@
 import { DefaultMap } from '../../util/collections/defaultmap';
-import { guard, isNotUndefined } from '../../util/assert';
+import { isNotUndefined } from '../../util/assert';
 import { expensiveTrace, log } from '../../util/log';
 import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../environments/identifier';
@@ -17,10 +17,11 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { type BuiltIn, isBuiltIn } from '../environments/built-in';
+import { type BuiltIn, BuiltInProcName, isBuiltIn } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
+import { doesExitPointPropagateCalls } from '../info';
 
 export type NameIdMap = DefaultMap<string, IdentifierReference[]>
 
@@ -36,41 +37,23 @@ export function findNonLocalReads(graph: DataflowGraph, ignore: readonly Identif
 	);
 	/* find all variable use ids which do not link to a given id */
 	const nonLocalReads: IdentifierReference[] = [];
-	for(const id of ids) {
-		if(ignores.has(id)) {
+	for(const nodeId of ids) {
+		if(ignores.has(nodeId)) {
 			continue;
 		}
-		const outgoing = graph.outgoingEdges(id);
-		const name = recoverName(id, graph.idMap);
-		const origin = graph.getVertex(id, true);
+		const outgoing = graph.outgoingEdges(nodeId);
+		const name = recoverName(nodeId, graph.idMap);
+		const origin = graph.getVertex(nodeId);
 
-		if(id === 13){
-			console.log('outgoing:', outgoing);
-		}
+		const type = origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable;
 
 		if(outgoing === undefined) {
-			nonLocalReads.push({
-				name:                recoverName(id, graph.idMap),
-				nodeId:              id,
-				controlDependencies: undefined,
-				type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
-			});
+			nonLocalReads.push({ name, nodeId, type });
 			continue;
 		}
 		for(const [target, { types }] of outgoing) {
 			if(edgeIncludesType(types, EdgeType.Reads) && !ids.has(target)) {
-				if(!name) {
-					dataflowLogger.warn('found non-local read without name for id ' + id);
-				}
-				if(id === 13){
-					console.log(target, ' ', ids, ' ', !ids.has(target));
-				}
-				nonLocalReads.push({
-					name:                recoverName(id, graph.idMap),
-					nodeId:              id,
-					controlDependencies: undefined,
-					type:                origin?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Variable
-				});
+				nonLocalReads.push({ name,  nodeId,  type });
 				break;
 			}
 		}
@@ -93,30 +76,38 @@ export function produceNameSharedIdMap(references: IdentifierReference[]): NameI
 
 /**
  * Links the given arguments to the given parameters within the given graph.
+ * This follows the `pmatch` semantics of R
+ * @see https://cran.r-project.org/doc/manuals/R-lang.html#Argument-matching
+ * This returns the resolved map from argument ids to parameter ids.
+ * If you just want to match by name, use {@link pMatch}.
  */
-export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter<ParentInformation>[], graph: DataflowGraph): void {
+export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: readonly RParameter<ParentInformation>[], graph: DataflowGraph): Map<NodeId, NodeId> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
-	const nameParamMap = new Map<string, RParameter<ParentInformation>>(params.filter(p => p?.name?.content !== undefined).map(p => [p.name.content, p]));
+	const nameParamMap = new Map<string, RParameter<ParentInformation>>(
+		params.filter(p => p?.name?.content !== undefined)
+			.map(p => [p.name.content, p]));
+	const maps = new Map<NodeId, NodeId>();
 
 	const specialDotParameter = params.find(p => p.special);
+	const sid = specialDotParameter?.name.info.id;
 
 	// all parameters matched by name
 	const matchedParameters = new Set<string>();
-
-
+	const paramNames = nameParamMap.keys().toArray();
 	// first map names
-	for(const [name, arg] of nameArgMap) {
-		const pmatchName = findByPrefixIfUnique(name, nameParamMap.keys()) ?? name;
+	for(const [name, { nodeId: argId }] of nameArgMap) {
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
 		const param = nameParamMap.get(pmatchName);
 		if(param?.name) {
-			dataflowLogger.trace(`mapping named argument "${name}" to parameter "${param.name.content}"`);
-			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
-			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+			const pid = param.name.info.id;
+			graph.addEdge(argId, pid, EdgeType.DefinesOnCall);
+			graph.addEdge(pid, argId, EdgeType.DefinedByOnCall);
+			maps.set(argId, pid);
 			matchedParameters.add(name);
-		} else if(specialDotParameter?.name) {
-			dataflowLogger.trace(`mapping named argument "${name}" to dot-dot-dot parameter`);
-			graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
-			graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+		} else if(sid) {
+			graph.addEdge(argId, sid, EdgeType.DefinesOnCall);
+			graph.addEdge(sid, argId, EdgeType.DefinedByOnCall);
+			maps.set(argId, sid);
 		}
 	}
 
@@ -126,34 +117,116 @@ export function linkArgumentsOnCall(args: FunctionArgument[], params: RParameter
 	for(let i = 0; i < remainingArguments.length; i++) {
 		const arg = remainingArguments[i];
 		if(arg === EmptyArgument) {
-			dataflowLogger.trace(`skipping value argument for ${i}`);
 			continue;
 		}
+		const aid = arg.nodeId;
 		if(remainingParameter.length <= i) {
-			if(specialDotParameter !== undefined) {
-				dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to dot-dot-dot parameter`);
-				graph.addEdge(arg.nodeId, specialDotParameter.name.info.id, EdgeType.DefinesOnCall);
-				graph.addEdge(specialDotParameter.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+			if(sid) {
+				graph.addEdge(aid, sid, EdgeType.DefinesOnCall);
+				graph.addEdge(sid, aid, EdgeType.DefinedByOnCall);
+				maps.set(aid, sid);
 			} else {
 				dataflowLogger.warn(`skipping argument ${i} as there is no corresponding parameter - R should block that`);
 			}
 			continue;
 		}
 		const param = remainingParameter[i];
-		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${arg.nodeId}) to parameter "${param.name?.content ?? '??'}"`);
+		dataflowLogger.trace(`mapping unnamed argument ${i} (id: ${aid}) to parameter "${param.name?.content ?? '??'}"`);
 		if(param.name) {
-			graph.addEdge(arg.nodeId, param.name.info.id, EdgeType.DefinesOnCall);
-			graph.addEdge(param.name.info.id, arg.nodeId, EdgeType.DefinedByOnCall);
+			const pid = param.name.info.id;
+			graph.addEdge(aid, pid, EdgeType.DefinesOnCall);
+			graph.addEdge(pid, aid, EdgeType.DefinedByOnCall);
+			maps.set(aid, pid);
 		}
 	}
+	return maps;
+}
+
+/**
+ * Returns all argument ids that map to the given target parameter id.
+ */
+export function getAllIdsWithTarget<Targets extends NodeId>(maps: Map<NodeId, Targets>, target: Targets): NodeId[] {
+	return maps.entries().filter(([, v]) => v === target).map(([k]) => k).toArray();
+}
+
+/**
+ * Inverts the argument to parameter map to a parameter to argument map.
+ */
+export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targets>): Map<Targets, NodeId[]> {
+	const inverted = new Map<Targets, NodeId[]>();
+	for(const [arg, param] of maps.entries()) {
+		const existing = inverted.get(param);
+		if(existing) {
+			existing.push(arg);
+		} else {
+			inverted.set(param, [arg]);
+		}
+	}
+	return inverted;
+}
+
+/**
+ * Links the given arguments to the given parameters within the given graph by name only.
+ * @note
+ * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
+ * or convert them with {@link convertFnArguments}.
+ * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
+ */
+export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
+	const nameArgMap = new Map<string, IdentifierReference>(args.filter(isNamedArgument).map(a => [a.name, a] as const));
+
+	const maps = new Map<NodeId, Targets>();
+
+	const sid = params['...'];
+	const paramNames = Object.keys(params);
+
+	// all parameters matched by name
+	const matchedParameters = new Set<string>();
+
+	// first map names
+	for(const [name, { nodeId: argId }] of nameArgMap) {
+		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
+		const param = params[pmatchName];
+		if(param) {
+			maps.set(argId, param);
+			matchedParameters.add(name);
+		} else if(sid) {
+			maps.set(argId, sid);
+		}
+	}
+
+	const remainingParameter = paramNames.filter(p => !matchedParameters.has(p));
+	const remainingArguments = args.filter(a => !isNamedArgument(a));
+
+	for(let i = 0; i < remainingArguments.length; i++) {
+		const arg = remainingArguments[i];
+		if(arg === EmptyArgument) {
+			continue;
+		}
+		const aid = arg.nodeId;
+		if(remainingParameter.length <= i) {
+			if(sid) {
+				maps.set(aid, sid);
+			}
+			continue;
+		}
+		const param = params[remainingParameter[i]];
+		if(param) {
+			maps.set(aid, param);
+		}
+	}
+	return maps;
 }
 
 
-function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): void {
+/**
+ * Links the function call arguments to the target function definition and returns a map from argument ids to parameter ids.
+ */
+function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCallName: string | undefined, functionRootId: NodeId, callArgs: FunctionArgument[], finalGraph: DataflowGraph): Map<NodeId, NodeId> | undefined {
 	// we get them by just choosing the rhs of the definition
 	const linkedFunction = idMap.get(targetId);
 	if(linkedFunction === undefined) {
-		dataflowLogger.trace(`no function definition found for ${functionCallName} (${functionRootId})`);
+		dataflowLogger.trace(`no fdef found for ${functionCallName} (${functionRootId})`);
 		return;
 	}
 
@@ -161,8 +234,7 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
 		dataflowLogger.trace(`function call definition base ${functionCallName} does not lead to a function definition (${functionRootId}) but got ${linkedFunction.type}`);
 		return;
 	}
-	expensiveTrace(dataflowLogger, () => `linking arguments for ${functionCallName} (${functionRootId}) to ${JSON.stringify(linkedFunction.location)}`);
-	linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
+	return linkArgumentsOnCall(callArgs, linkedFunction.parameters, finalGraph);
 }
 
 /**
@@ -170,38 +242,56 @@ function linkFunctionCallArguments(targetId: NodeId, idMap: AstIdMap, functionCa
  */
 export function linkFunctionCallWithSingleTarget(
 	graph: DataflowGraph,
-	def: DataflowGraphVertexFunctionDefinition,
+	{ subflow: fnSubflow, exitPoints, id: fnId, params }: DataflowGraphVertexFunctionDefinition,
 	info: DataflowGraphVertexFunctionCall,
 	idMap: AstIdMap
-) {
+): ExitPoint[] {
 	const id = info.id;
 	if(info.environment !== undefined) {
 		// for each open ingoing reference, try to resolve it here, and if so, add a read edge from the call to signal that it reads it
-		for(const ingoing of def.subflow.in) {
+		for(const ingoing of fnSubflow.in) {
 			const defs = ingoing.name ? resolveByName(ingoing.name, info.environment, ingoing.type) : undefined;
 			if(defs === undefined) {
 				continue;
 			}
-			for(const def of defs) {
-				if(!isBuiltIn(def.nodeId)) {
-					graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-					graph.addEdge(id, def, EdgeType.DefinesOnCall);
+			for(const { nodeId } of defs) {
+				if(!isBuiltIn(nodeId)) {
+					graph.addEdge(ingoing.nodeId, nodeId, EdgeType.DefinedByOnCall);
+					graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 				}
 			}
 		}
 	}
 
-	const exitPoints = def.exitPoints;
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const exitPoint of exitPoints) {
-		graph.addEdge(id, exitPoint, EdgeType.Returns);
+		graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+		if(doesExitPointPropagateCalls(exitPoint.type)) {
+			// add the exit point to the call!
+			propagateExitPoints.push(exitPoint);
+		}
 	}
 
-	const defName = recoverName(def.id, idMap);
-	expensiveTrace(dataflowLogger, () => `recording expression-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
-	graph.addEdge(id, def.id, EdgeType.Calls);
-	linkFunctionCallArguments(def.id, idMap, defName, id, info.args, graph);
+	const defName = recoverName(fnId, idMap);
+	expensiveTrace(dataflowLogger, () => `recording expr-list-level call from ${recoverName(info.id, idMap)} to ${defName}`);
+	graph.addEdge(id, fnId, EdgeType.Calls);
+	applyForForcedArgs(graph, info.id, params, linkFunctionCallArguments(fnId, idMap, defName, id, info.args, graph));
+	return propagateExitPoints;
 }
 
+/** for each parameter that we link that gets forced, add a reads edge from the call to argument to show that it reads it */
+function applyForForcedArgs(graph: DataflowGraph, callId: NodeId, readParams: Record<NodeId, boolean>, maps: Map<NodeId, NodeId> | undefined): void {
+	if(maps === undefined) {
+		return;
+	}
+	for(const [arg, param] of maps.entries()) {
+		if(readParams[String(param)]) {
+			graph.addEdge(callId, arg, EdgeType.Reads);
+		}
+	}
+}
+
+const FCallLinkReadBits = EdgeType.Reads | EdgeType.Calls | EdgeType.DefinedByOnCall;
 /* there is _a lot_ potential for optimization here */
 function linkFunctionCall(
 	graph: DataflowGraph,
@@ -210,8 +300,9 @@ function linkFunctionCall(
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph,
 	calledFunctionDefinitions: {
-		functionCall: NodeId;
-		called:       readonly DataflowGraphVertexInfo[]
+		functionCall:        NodeId;
+		called:              readonly DataflowGraphVertexInfo[],
+		propagateExitPoints: readonly ExitPoint[]
 	}[]
 ) {
 	const edges = graph.outgoingEdges(id);
@@ -220,19 +311,28 @@ function linkFunctionCall(
 		return;
 	}
 
-	const readBits = EdgeType.Reads | EdgeType.Calls;
-	const functionDefinitionReadIds = [...edges].filter(([_, e]) =>
-		edgeDoesNotIncludeType(e.types, EdgeType.Argument)
-		&& edgeIncludesType(e.types, readBits)
-	).map(([target, _]) => target);
+	const functionDefinitionReadIds = new Set<NodeId>();
+	for(const [t, { types }] of edges.entries()) {
+		if(!isBuiltIn(t) && edgeDoesNotIncludeType(types, EdgeType.Argument) && edgeIncludesType(types, FCallLinkReadBits)) {
+			functionDefinitionReadIds.add(t);
+		}
+	}
 
-	const functionDefs = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph)[0];
+	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+
+	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
-		guard(def.tag === VertexType.FunctionDefinition, () => `expected function definition, but got ${def.tag}`);
-		linkFunctionCallWithSingleTarget(graph, def, info, idMap);
+		// we can skip this if we already linked it
+		const oEdge = graph.outgoingEdges(id)?.get(def.id);
+		if(oEdge && edgeIncludesType(oEdge.types, EdgeType.Calls)) {
+			continue;
+		}
+		for(const ep of linkFunctionCallWithSingleTarget(graph, def, info, idMap)) {
+			propagateExitPoints.push(ep);
+		}
 	}
 	if(thisGraph.isRoot(id) && functionDefs.size > 0) {
-		calledFunctionDefinitions.push({ functionCall: id, called: [...functionDefs.values()] });
+		calledFunctionDefinitions.push({ functionCall: id, called: functionDefs.values().toArray(), propagateExitPoints });
 	}
 }
 
@@ -247,10 +347,12 @@ export function linkFunctionCalls(
 	graph: DataflowGraph,
 	idMap: AstIdMap,
 	thisGraph: DataflowGraph
-): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[] }[] {
-	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[] }[] = [];
+): { functionCall: NodeId, called: readonly DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] {
+	const calledFunctionDefinitions: { functionCall: NodeId, called: DataflowGraphVertexInfo[], propagateExitPoints: readonly ExitPoint[] }[] = [];
 	for(const [id, info] of thisGraph.verticesOfType(VertexType.FunctionCall)) {
-		linkFunctionCall(graph, id, info as DataflowGraphVertexFunctionCall, idMap, thisGraph, calledFunctionDefinitions);
+		if(!info.onlyBuiltin) {
+			linkFunctionCall(graph, id, info, idMap, thisGraph, calledFunctionDefinitions);
+		}
 	}
 	return calledFunctionDefinitions;
 }
@@ -273,7 +375,7 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 
 	if(info.name !== undefined && (environment !== undefined || info.environment !== undefined)) {
 		const functionCallDefs = resolveByName(
-			info.name, environment ?? info.environment as REnvironmentInformation, ReferenceType.Function
+			info.name, environment ?? info.environment as REnvironmentInformation, info.origin.includes(BuiltInProcName.S3Dispatch) ? ReferenceType.S3MethodPrefix : ReferenceType.Function
 		)?.map(d => d.nodeId) ?? [];
 		for(const [target, outgoingEdge] of outgoingEdges.entries()) {
 			if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
@@ -284,63 +386,86 @@ export function getAllFunctionCallTargets(call: NodeId, graph: DataflowGraph, en
 		for(const target of functionCallTargets) {
 			found.push(target.id);
 		}
-		found = found.concat(...builtInTargets, functionCallDefs);
+		found = found.concat(Array.from(builtInTargets), functionCallDefs);
 	}
 
 	return found;
 }
 
+const LinkedFnFollowBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
+
 /**
  * Finds all linked function definitions starting from the given set of read ids.
+ * This is a complicated function, please only call it if you know what you are doing.
+ * For example, if you are interested in the called functions of a function call, use {@link getAllFunctionCallTargets} instead.
+ * This function here expects you to handle the accessed objects yourself (e.g,. already resolve the first layer of reads/returns/calls/... or resolve the identifier by name)
+ * and then pass in the relevant read ids.
+ * @example
+ * Consider a scenario like this:
+ * ```R
+ * x <- function() 3
+ * x()
+ * ```
+ * To resolve the call `x` in the second line, use {@link getAllFunctionCallTargets}!
+ * To know what fdefs the definition of `x` in the first line links to, you can use {@link getAllLinkedFunctionDefinitions|this function}.
  */
 export function getAllLinkedFunctionDefinitions(
 	functionDefinitionReadIds: ReadonlySet<NodeId>,
 	dataflowGraph: DataflowGraph
-): [Set<DataflowGraphVertexInfo>, Set<BuiltIn>] {
-	let potential: NodeId[] = functionDefinitionReadIds.values().toArray();
-	const visited = new Set<NodeId>();
-	const result = new Set<DataflowGraphVertexInfo>();
+): [Set<Required<DataflowGraphVertexFunctionDefinition>>, Set<BuiltIn>] {
+	const result = new Set<Required<DataflowGraphVertexFunctionDefinition>>();
 	const builtIns = new Set<BuiltIn>();
 
-	while(potential.length > 0) {
-		const currentId = potential.pop() as NodeId;
+	if(functionDefinitionReadIds.size === 0) {
+		return [result, builtIns];
+	}
 
-		// do not traverse builtins further
-		if(isBuiltIn(currentId)) {
-			builtIns.add(currentId);
+	const potential: NodeId[] = Array.from(functionDefinitionReadIds);
+	const visited = new Set<NodeId>();
+
+	while(potential.length !== 0) {
+		const cid = potential.pop() as NodeId;
+		visited.add(cid);
+
+		if(isBuiltIn(cid)) {
+			builtIns.add(cid);
 			continue;
 		}
 
-		const currentInfo = dataflowGraph.get(currentId, true);
+		const currentInfo = dataflowGraph.get(cid, true);
 		if(currentInfo === undefined) {
 			continue;
 		}
-		visited.add(currentId);
 
-		const outgoingEdges = currentInfo[1].entries().toArray();
+		const [vertex, edges] = currentInfo;
 
-		const returnEdges = outgoingEdges
-			.filter(([_, e]) => edgeIncludesType(e.types, EdgeType.Returns));
-		if(returnEdges.length > 0) {
-			// only traverse return edges and do not follow `calls` etc. as this indicates that we have a function call which returns a result, and not the function calls itself
-			potential = potential.concat(returnEdges.map(([target]) => target).filter(id => !visited.has(id)));
+		// Found a function definition
+		if(vertex.subflow !== undefined) {
+			result.add(vertex as Required<DataflowGraphVertexFunctionDefinition>);
 			continue;
 		}
 
-		const followBits = EdgeType.Reads | EdgeType.DefinedBy | EdgeType.DefinedByOnCall;
-		const followEdges = outgoingEdges.filter(([_, e]) => edgeIncludesType(e.types, followBits));
-
-		if(currentInfo[0].subflow !== undefined) {
-			result.add(currentInfo[0]);
+		let hasReturnEdge = false;
+		for(const [target, { types }] of edges) {
+			if(edgeIncludesType(types, EdgeType.Returns)) {
+				hasReturnEdge = true;
+				if(!visited.has(target)) {
+					potential.push(target);
+				}
+			}
 		}
 
-		// trace all joined reads
-		potential = potential.concat(
-			followEdges
-				.map(([target]) => target)
-				.filter(id => !visited.has(id))
-		);
+		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge || (vertex.tag === VertexType.VariableDefinition && vertex.par)) {
+			continue;
+		}
+
+		for(const [target, { types }] of edges) {
+			if(edgeIncludesType(types, LinkedFnFollowBits) && !visited.has(target)) {
+				potential.push(target);
+			}
+		}
 	}
+
 	return [result, builtIns];
 }
 
@@ -375,14 +500,14 @@ export function linkInputs(
 		if(probableTarget === undefined) {
 			log.trace(`found no target for ${bodyInput.name}`);
 			if(maybeForRemaining) {
-				bodyInput.controlDependencies ??= [];
+				bodyInput.cds ??= [];
 			}
 			givenInputs.push(bodyInput);
 		} else {
 			let allBuiltIn = true;
 			for(const target of probableTarget) {
 				// we can stick with maybe even if readId.attribute is always
-				graph.addEdge(bodyInput, target, EdgeType.Reads);
+				graph.addEdge(bodyInput.nodeId, target.nodeId, EdgeType.Reads);
 				if(!isReferenceType(target.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}
@@ -432,10 +557,10 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
 	}
 
 	for(const [name, targets] of openIns.entries()) {
-		for(const out of lastOutgoing.values()) {
-			if(out.name === name) {
+		for(const { name: outName, nodeId } of lastOutgoing.values()) {
+			if(outName === name) {
 				for(const target of targets) {
-					graph.addEdge(target.nodeId, out.nodeId, EdgeType.Reads);
+					graph.addEdge(target.nodeId, nodeId, EdgeType.Reads);
 				}
 			}
 		}
@@ -447,16 +572,17 @@ export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openI
  */
 export function reapplyLoopExitPoints(exits: readonly ExitPoint[], references: readonly IdentifierReference[]): void {
 	// just apply the cds of all exit points not already present
-	const exitCds = new Set(exits.flatMap(e => e.controlDependencies).filter(isNotUndefined));
+	const exitCds = new Set(exits.flatMap(e => e.cds).filter(isNotUndefined));
 
 	for(const ref of references) {
 		for(const cd of exitCds) {
-			if(ref.controlDependencies) {
-				if(!ref.controlDependencies?.find(c => c.id === cd.id && c.when === cd.when)) {
-					ref.controlDependencies.push({ ...cd, byIteration: true });
+			const { id: cId, when: cWhen } = cd;
+			if(ref.cds) {
+				if(!ref.cds?.find(c => c.id === cId && c.when === cWhen)) {
+					ref.cds.push({ ...cd, byIteration: true });
 				}
 			} else {
-				ref.controlDependencies = [{ ...cd, byIteration: true }];
+				ref.cds = [{ ...cd, byIteration: true }];
 			}
 		}
 	}

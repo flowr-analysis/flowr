@@ -1,10 +1,8 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractDomainValue } from '../domains/abstract-domain';
+import { Top } from '../domains/lattice';
 import { PosIntervalDomain } from '../domains/positive-interval-domain';
 import { ProductDomain } from '../domains/product-domain';
-import type { SetRangeLimit } from '../domains/set-range-domain';
 import { SetRangeDomain } from '../domains/set-range-domain';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
 
 /** The type of the abstract product representing the shape of data frames */
 export type AbstractDataFrameShape = {
@@ -20,17 +18,17 @@ export type DataFrameShapeProperty<Property extends keyof AbstractDataFrameShape
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
-	constructor(value: AbstractDataFrameShape, maxColNames?: SetRangeLimit | number) {
-		super({
-			colnames: new SetRangeDomain(value.colnames.value, maxColNames ?? value.colnames.limit),
-			cols:     new PosIntervalDomain(value.cols.value),
-			rows:     new PosIntervalDomain(value.rows.value)
-		});
+	constructor(value: AbstractDataFrameShape) {
+		super(DataFrameDomain.refine({
+			colnames: value.colnames.create(value.colnames.value),
+			cols:     value.cols.create(value.cols.value),
+			rows:     value.rows.create(value.rows.value)
+		}));
 	}
 
 	public create(value: AbstractDataFrameShape): this;
 	public create(value: AbstractDataFrameShape): DataFrameDomain {
-		return new DataFrameDomain(value, this.colnames.limit);
+		return new DataFrameDomain(value);
 	}
 
 	/**
@@ -69,18 +67,21 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 			rows:     PosIntervalDomain.top()
 		});
 	}
-}
 
-/**
- * The data frame state abstract domain as state domain mapping AST node IDs to inferred abstract data frame shapes.
- */
-export class DataFrameStateDomain extends StateAbstractDomain<DataFrameDomain> {
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): this;
-	public create(value: ReadonlyMap<NodeId, DataFrameDomain>): DataFrameStateDomain {
-		return new DataFrameStateDomain(value);
-	}
+	private static refine(value: AbstractDataFrameShape): AbstractDataFrameShape {
+		if(value.colnames.isValue() && value.cols.isValue()) {
+			if(value.colnames.value.range === Top && value.colnames.value.min.size >= value.cols.value[1]) {
+				value.colnames = value.colnames.meet({ min: new Set(), range: value.colnames.value.min });
+			}
+			if(value.colnames.isValue()) {
+				const minColNames = value.colnames.value.min.size;
+				const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
 
-	public static bottom(): DataFrameStateDomain {
-		return new DataFrameStateDomain(new Map<NodeId, DataFrameDomain>());
+				if(minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) {
+					value.cols = value.cols.meet([minColNames, maxColNames]);
+				}
+			}
+		}
+		return value;
 	}
 }

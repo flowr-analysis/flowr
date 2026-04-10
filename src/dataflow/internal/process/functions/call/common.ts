@@ -58,7 +58,7 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 	if(valueVertex.tag !== VertexType.Value) {
 		if(valueVertex.tag === VertexType.FunctionDefinition) {
 			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit, EdgeType.Reads);
+				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 			}
 		} else {
 			for(const exit of value.exitPoints) {
@@ -78,6 +78,35 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
 			}
 		}
+	}
+}
+
+/**
+ * Converts function arguments into function argument references for a function call vertex.
+ * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
+ * This function also works after the arguments were unpacked, e.g., by {@link tryUnpackNoNameArg}.
+ * @see convertFnArgument
+ */
+export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgument | RNode<OtherInfo & ParentInformation>)[]): FunctionArgument[] {
+	return args.map(arg => convertFnArgument(arg));
+}
+
+/**
+ * Transforms a function argument into a function argument reference for a function call vertex.
+ * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
+ */
+export function convertFnArgument<OtherInfo>(arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
+	if(arg === EmptyArgument) {
+		return EmptyArgument;
+	} else if(!arg.name || arg.type !== RType.Argument) {
+		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
+	} else {
+		return {
+			nodeId: arg.info.id,
+			name:   arg.name.content,
+			cds:    undefined,
+			type:   ReferenceType.Argument
+		};
 	}
 }
 
@@ -124,7 +153,7 @@ export function processAllArguments<OtherInfo>(
 				/* maybe all targets are not definitely of the current scope and should be still kept */
 				let assumeItMayHaveAHigherTarget = true;
 				for(const resolved of tryToResolve) {
-					if(happensInEveryBranch(resolved.controlDependencies) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+					if(happensInEveryBranch(resolved.cds) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
 						assumeItMayHaveAHigherTarget = false;
 					}
 					// When only a single index is referenced, we don't need to reference the whole object
@@ -143,9 +172,9 @@ export function processAllArguments<OtherInfo>(
 
 
 		if(arg.type !== RType.Argument || !arg.name) {
-			callArgs.push({ nodeId: processed.entryPoint, controlDependencies: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, controlDependencies: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
@@ -177,8 +206,8 @@ export function patchFunctionCall<OtherInfo>(
 		environment: data.environment,
 		/* will be overwritten accordingly */
 		onlyBuiltin: false,
-		cds:         data.controlDependencies,
-		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, controlDependencies: undefined, call: undefined, type: ReferenceType.Argument }),
+		cds:         data.cds,
+		args:        argumentProcessResult.map(arg => arg === undefined ? EmptyArgument : { nodeId: arg.entryPoint, cds: undefined, call: undefined, type: ReferenceType.Argument }),
 		origin:      [origin],
 		link
 	}, data.ctx.env.makeCleanEnv(), !nextGraph.hasVertex(rootId) || nextGraph.isRoot(rootId), true);

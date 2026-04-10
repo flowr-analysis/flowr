@@ -10,8 +10,9 @@ import {
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
+import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -21,7 +22,11 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, ...rest }) => ({ nodeId: typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap), ...rest }));
+		out[key] = value.map(({ nodeId, ...rest }) => ({
+			nodeId:    typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap),
+			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : slicingCriterionToId(String(lid) as SingleSlicingCriterion, idMap)),
+			...rest
+		}));
 	}
 	return out;
 }
@@ -60,7 +65,6 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				library: [{ nodeId: '1@' + loadFn, functionName: loadFn, value: 'a' }]
 			});
 		}
-
 
 		testQuery('Multiple Libraries', 'library(a)\nlibrary(b)\nrequire(c)', { library: [
 			{ nodeId: '1@library', functionName: 'library', value: 'a' },
@@ -200,12 +204,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
 			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: ['source', 'read', 'write'] });
+			testQuery('Disabled', 'a::dep', {}, { enabledCategories: [] });
 			testQuery('Enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
 			}, { enabledCategories: ['library'] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
-			}, { enabledCategories: [] });
+			}, { enabledCategories: undefined });
 		});
 	});
 
@@ -258,6 +263,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		}
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
+		testQuery('read_csv', "read_csv('test.csv')", { read: [{ nodeId: '1@read_csv', functionName: 'read_csv', value: 'test.csv' }] });
 		testQuery('gzfile', 'gzfile("this is my gzip file :)", "test.gz")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 		testQuery('With Argument', 'gzfile(open="test.gz",description="this is my gzip file :)")', { read: [{ nodeId: '1@gzfile', functionName: 'gzfile', value: 'test.gz' }] });
 
@@ -318,6 +324,15 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		testQuery('File save', 'save(foo,file="a.Rda")', { write: [{ nodeId: '1@save', functionName: 'save', value: 'a.Rda' }] });
 
 		testQuery('single write (variable)', 'u <- "test.csv"; write.csv(data, file=u)', { write: [{ nodeId: '1@write.csv', functionName: 'write.csv', value: 'test.csv' }] });
+
+		describe('try with outfile', () => {
+			testQuery('unconfigured', 'try(u)', { write: [{ nodeId: '1@try', functionName: 'try', value: 'stderr' }] });
+			testQuery('with outfile', 'try(u, outFile="myfile.txt")', { write: [{ nodeId: '1@try', functionName: 'try', value: 'myfile.txt' }] });
+			testQuery('unconfigured, with silent', 'try(u, silent=TRUE)', { write: [] });
+			testQuery('unconfigured, with implicit silent', 'try(u, TRUE)', { write: [] });
+			testQuery('with outfile and silent', 'try(u, outFile="myfile.txt", silent=TRUE)', { write: [] });
+			testQuery('with outfile and silent b', 'try(u, silent=TRUE, outFile="myfile.txt")', { write: [] });
+		});
 
 		describe('Custom', () => {
 			const writeCustomFile: Partial<DependenciesQuery> = {
@@ -398,6 +413,30 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 		});
+		testQuery('simple additional', 'cat("a")', {
+			test: [{ value: 'cat', functionName: 'cat', nodeId: '1@cat' }]
+		}, {
+			ignoreDefaultFunctions: true,
+			additionalCategories:   {
+				'test': {
+					queryDisplayName:   'Testing',
+					functions:          [],
+					additionalAnalysis: async(data, _id, _f, _qr, results) => {
+						const ns = (await data.analyzer.normalize()).idMap;
+						for(const n of ns.values()) {
+							if(n.type === RType.FunctionCall && n.lexeme === 'cat' && n.arguments.length > 0) {
+								results.push({
+									nodeId:       n.info.id,
+									functionName: 'cat',
+									value:        n.lexeme
+								});
+								break;
+							}
+						}
+					}
+				}
+			}
+		});
 		testQuery('addon', 'cat("a")\nx <- 2', {
 			write:      [{ value: 'stdout', functionName: 'cat', nodeId: '1@cat' }],
 			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Unknown }]
@@ -407,6 +446,20 @@ describe('Dependencies Query', withTreeSitter(parser => {
 					functions: [{ name: '<-', argIdx: 1 }]
 				}
 			}
+		});
+	});
+	describe('Test Functions', () => {
+		testQuery('Nesting example', `test_that("trigonometric functions match identities", {
+  expect_equal(sin(pi / 4), 1 / sqrt(2))
+  expect_equal(cos(pi / 4), 1 / sqrt(2))
+  expect_equal(tan(pi / 4), 1)
+})`, {
+			test: [
+				/* { nodeId: '2@expect_equal', functionName: 'expect_equal' },
+				{ nodeId: '3@expect_equal', functionName: 'expect_equal' },
+				{ nodeId: '4@expect_equal', functionName: 'expect_equal' }, */
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47,36,20] }
+			]
 		});
 	});
 }));

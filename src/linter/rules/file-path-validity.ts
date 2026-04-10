@@ -70,9 +70,10 @@ export const FILE_PATH_VALIDITY = {
 					metadata.totalUnknown++;
 					if(config.includeUnknown) {
 						return [{
+							involvedId: matchingRead.nodeId,
 							range,
-							filePath:  Unknown,
-							certainty: LintingResultCertainty.Uncertain
+							filePath:   Unknown,
+							certainty:  LintingResultCertainty.Uncertain
 						}];
 					} else {
 						return [];
@@ -98,9 +99,10 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				return [{
+					involvedId: matchingRead.nodeId,
 					range,
-					filePath:  matchingRead.value as string,
-					certainty: writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
+					filePath:   matchingRead.value as string,
+					certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
 				}];
 			}),
 			'.meta': metadata

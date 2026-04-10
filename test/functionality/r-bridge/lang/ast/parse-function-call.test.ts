@@ -487,7 +487,6 @@ describe.sequential('Parse function calls', withShell(shell => {
 						type:     RType.Comment,
 						location: rangeFrom(1, 19, 1, 37),
 						lexeme:   '# this is a comment',
-						content:  ' this is a comment',
 						info:     {}
 					}]
 				},

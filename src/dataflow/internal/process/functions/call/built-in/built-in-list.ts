@@ -1,4 +1,7 @@
-import { type RFunctionArgument , EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument,
+	type RFunctionArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -9,6 +12,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { isOverPointerAnalysisThreshold } from '../../../../../../config';
 import { resolveIndicesByName } from '../../../../../../util/containers';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 /**
  * Process a list call.
@@ -24,7 +28,7 @@ export function processList<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: 'builtin:list' });
+	const fnCall = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.List });
 
 	if(!data.ctx.config.solver.pointerTracking) {
 		return fnCall.information;

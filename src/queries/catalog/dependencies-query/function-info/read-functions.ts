@@ -99,4 +99,12 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'DBI', name: 'dbReadTable',      argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'DBI', name: 'dbReadTableArrow', argIdx: 1, argName: 'name', resolveValue: true },
 	{ package: 'jsonlite', name: 'read_json', argIdx: 0, argName: 'path', resolveValue: true },
+	{ package: 'rpolars', name: 'pl_read_ipc', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_read_csv', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_read_ndjson', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_read_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_scan_csv', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_scan_ipc', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_scan_ndjson', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'rpolars', name: 'pl_scan_parquet', argIdx: 0, argName: 'source', resolveValue: true, ignoreIf: 'arg-missing' },
 ] as const;

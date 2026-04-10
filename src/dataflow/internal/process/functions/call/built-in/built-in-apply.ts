@@ -21,6 +21,7 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -30,14 +31,14 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** Should we unquote the function if it is given as a string? */
 	readonly unquoteFunction?:        boolean
 	/** Should the function be resolved in the global environment? */
-	readonly resolveInEnvironment:    'global' | 'local'
+	readonly resolveInEnvironment?:   'global' | 'local'
 	/** Should the value of the function be resolved? */
 	readonly resolveValue?:           boolean
 }
 
 
 /**
- *
+ * Process an apply call like `vapply` or `mapply`.
  */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -51,7 +52,7 @@ export function processApply<OtherInfo>(
 	const forceArgsMask = new Array(indexOfFunction).fill(false);
 	forceArgsMask.push(true);
 	const resFn = processKnownFunctionCall({
-		name, args, rootId, data, forceArgs: forceArgsMask, origin: 'builtin:apply'
+		name, args, rootId, data, forceArgs: forceArgsMask, origin: BuiltInProcName.Apply
 	});
 	let information = resFn.information;
 	const processedArguments = resFn.processedArguments;
@@ -59,12 +60,24 @@ export function processApply<OtherInfo>(
 	let index = indexOfFunction;
 	/* search, if one of the arguments actually contains the argument name if given in the config */
 	if(nameOfFunctionArgument !== undefined) {
-		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name && arg.name.content === nameOfFunctionArgument);
+		const mayFn = args.findIndex(arg => arg !== EmptyArgument && arg.name?.content === nameOfFunctionArgument);
 		if(mayFn >= 0) {
 			index = mayFn;
 		}
 	}
-
+	// shift the index to point to the index'd unnamed argument
+	let posArgsFound = 0;
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if(arg !== EmptyArgument && arg.name) {
+			// do nothing
+		} else if(posArgsFound === index) {
+			index = i;
+			break;
+		} else {
+			posArgsFound++;
+		}
+	}
 
 	/* validate, that we indeed have so many arguments to fill this one :D */
 	if(index >= args.length) {
@@ -89,14 +102,15 @@ export function processApply<OtherInfo>(
 		functionName = val.content.str;
 		information = {
 			...information,
-			in: [...information.in, { type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }]
+			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
 		};
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
 			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
-				functionName = isValue(resolved.elements[0].value) ? resolved.elements[0].value.str : undefined;
+				const r = resolved.elements[0];
+				functionName = isValue(r.value) ? r.value.str : undefined;
 			}
 		} else {
 			functionName = val.content;
@@ -116,10 +130,10 @@ export function processApply<OtherInfo>(
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:                counterpart.name?.content,
-				controlDependencies: data.controlDependencies,
-				type:                ReferenceType.Argument,
-				nodeId:              arg.entryPoint
+				name:   counterpart.name?.content,
+				cds:    data.cds,
+				type:   ReferenceType.Argument,
+				nodeId: arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;
@@ -136,9 +150,9 @@ export function processApply<OtherInfo>(
 			name:        functionName,
 			/* can never be a direct built-in-call */
 			onlyBuiltin: false,
-			cds:         data.controlDependencies,
+			cds:         data.cds,
 			args:        allOtherArguments, // same reference
-			origin:      ['function']
+			origin:      [BuiltInProcName.Function]
 		}, data.ctx.env.makeCleanEnv());
 		information.graph.addEdge(rootId, rootFnId, EdgeType.Calls | EdgeType.Reads);
 		information.graph.addEdge(rootId, functionId, EdgeType.Calls | EdgeType.Argument);
@@ -146,7 +160,7 @@ export function processApply<OtherInfo>(
 			...information,
 			in: [
 				...information.in,
-				{ type: ReferenceType.Function, name: functionName, controlDependencies: data.controlDependencies, nodeId: functionId }
+				{ type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }
 			]
 		};
 		const dfVert = information.graph.getVertex(rootId);
@@ -162,10 +176,11 @@ export function processApply<OtherInfo>(
 				}
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
 				let allBuiltIn = true;
-				for(const ref of resolved) {
-					information.graph.addEdge(ingoing, ref, EdgeType.Reads);
-					information.graph.addEdge(rootId, ref, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+				const inId = ingoing.nodeId;
+				for(const { nodeId, type } of resolved) {
+					information.graph.addEdge(inId, nodeId, EdgeType.Reads);
+					information.graph.addEdge(rootId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
+					if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 						allBuiltIn = false;
 					}
 				}
@@ -184,8 +199,8 @@ export function processApply<OtherInfo>(
 			args:        allOtherArguments,
 			environment: resolveInEnvironment === 'global' ? undefined : data.environment,
 			onlyBuiltin: resolveInEnvironment === 'global',
-			cds:         data.controlDependencies,
-			origin:      ['function']
+			cds:         data.cds,
+			origin:      [BuiltInProcName.Function]
 		});
 	}
 

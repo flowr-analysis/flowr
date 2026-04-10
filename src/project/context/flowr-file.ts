@@ -1,6 +1,5 @@
 import type { PathLike } from 'fs';
 import fs from 'fs';
-import { guard } from '../../util/assert';
 import type { RParseRequest } from '../../r-bridge/retriever';
 
 /**
@@ -19,8 +18,16 @@ export enum FileRole {
 	Description = 'description',
 	/** The `NAMESPACE` file in R packages, currently not specially supported. */
 	Namespace   = 'namespace',
+	/** The `NEWS` file in R packages */
+	News        = 'news',
+	/** Vignette files, e.g., R Markdown files in the `vignettes/` folder */
+	Vignette    = 'vignette',
+	/** Test source files, e.g., files in the `tests/` folder */
+	Test        = 'test',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
+	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
+	License     = 'license',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files
@@ -47,11 +54,11 @@ export type StringableContent = { toString(): string };
  */
 export interface FlowrFileProvider<Content extends { toString(): string } = { toString(): string }> {
 	/**
-	 * The role of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
+	 * The role(s) of this file, if any, in general your file should _not_ decide for itself what role it has in the project context,
 	 * this is for the loaders plugins to decide (cf. {@link PluginType}) as they can, e.g., respect ignore files, updated mappings, etc.
 	 * However, they will 1) set this role as soon as they decide on it (using {@link assignRole}) and 2) try to respect an already assigned role (however, user configurations may override this).
 	 */
-    role?: FileRole;
+    roles?: readonly FileRole[];
 
 	/**
 	 * The path to the file, this is used for identification and logging purposes.
@@ -79,7 +86,7 @@ export interface SerializedFlowrFile {
     className: string;
     path:      string;
     content:   unknown;
-    role?:     FileRole;
+	roles?:       readonly FileRole[];
 }
 
 
@@ -89,14 +96,18 @@ export interface SerializedFlowrFile {
  * See {@link FlowrTextFile} for a text-file specific implementation and {@link FlowrInlineTextFile} for inline text files.
  */
 export abstract class FlowrFile<Content extends StringableContent = StringableContent> implements FlowrFileProvider<Content> {
-	private contentCache:  Content | undefined;
-	protected filePath:    PathLike;
-	public readonly role?: FileRole;
+	private contentCache: Content | undefined;
+	protected filePath:   PathLike;
+	private _roles?:      FileRole[];
 	public static readonly INLINE_PATH = '@inline';
 
-	public constructor(filePath: PathLike, role?: FileRole) {
+	public constructor(filePath: PathLike, roles?: readonly FileRole[]) {
 		this.filePath = filePath;
-		this.role     = role;
+		this._roles     = roles ? Array.from(roles) : undefined;
+	}
+
+	public get roles(): readonly FileRole[] | undefined {
+		return this._roles;
 	}
 
 	public path(): string {
@@ -113,8 +124,14 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 	protected abstract loadContent(): Content;
 
 	public assignRole(role: FileRole): void {
-		guard(this.role === undefined || this.role === role, `File ${this.filePath.toString()} already has a role assigned: ${this.role}`);
-		(this as { role?: FileRole }).role = role;
+		if(this._roles === undefined) {
+			this._roles = [role];
+		} else if(this._roles.includes(role)) {
+			// already assigned
+			return;
+		} else {
+			this._roles.push(role);
+		}
 	}
 
 	/**
@@ -135,7 +152,7 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 			className: this.constructor.name,
 			path:      this.path(),
 			content:   this.content() as unknown,
-			role:      this.role,
+			roles:     this.roles,
 		};
 	}
 
@@ -143,11 +160,11 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 		const fileClass = data.className;
 		switch(fileClass){
 			case 'FlowrTextFile':
-				return new FlowrTextFile(data.path, data.role);
+				return new FlowrTextFile(data.path, data.roles);
 			case 'FlowrInlineTextFile':
 				return new FlowrInlineTextFile(data.path, data.content as string);
 			default:
-				return new FlowrTextFile(data.path, data.role);
+				return new FlowrTextFile(data.path, data.roles);
 		}
 	}
 }

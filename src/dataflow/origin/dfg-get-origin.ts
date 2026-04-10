@@ -2,7 +2,6 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { DataflowGraph } from '../graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
-	type DataflowGraphVertexUse,
 	type DataflowGraphVertexVariableDefinition
 	, VertexType } from '../graph/vertex';
 import { type EdgeTypeBits , edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from '../graph/edge';
@@ -114,7 +113,7 @@ export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undef
 
 const WantedVariableTypes: EdgeTypeBits = EdgeType.Reads | EdgeType.DefinedByOnCall;
 const UnwantedVariableTypes: EdgeTypeBits = EdgeType.NonStandardEvaluation;
-function getVariableUseOrigin(dfg: DataflowGraph, use: DataflowGraphVertexUse): Origin[] | undefined {
+function getVariableUseOrigin(dfg: DataflowGraph, use: { id: NodeId }): Origin[] | undefined {
 	// to identify the origins we have to track read edges and definitions on function calls
 	const origins: Origin[] = [];
 	for(const [target, { types }] of dfg.outgoingEdges(use.id) ?? []) {
@@ -171,7 +170,8 @@ function getCallTarget(dfg: DataflowGraph, call: DataflowGraphVertexFunctionCall
 
 	const targets = new Set(getAllFunctionCallTargets(call.id, dfg));
 	if(targets.size === 0) {
-		return origins;
+		// resolve via variable use origin
+		return origins?.length === 0 ? getVariableUseOrigin(dfg, call) : origins;
 	}
 	origins = (origins ?? []).concat([...targets].map(target => {
 		if(isBuiltIn(target)) {

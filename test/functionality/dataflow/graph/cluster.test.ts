@@ -10,6 +10,7 @@ import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-p
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { cloneConfig, defaultConfigOptions } from '../../../../src/config';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -32,15 +33,25 @@ describe('Graph Clustering', () => {
 	});
 
 	describe.sequential('Code Snippets', withShell(shell => {
-		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[]): void {
+		function check(name: string, code: string, clusters: readonly (SlicingCriteria | { members: SlicingCriteria, hasUnknownSideEffects: boolean })[], materializeLazy = false, forceEagerFunctions = false): void {
 			test(`${name} [${code.split('\n').join('\\n')}]`, async() => {
+				const config = cloneConfig(defaultConfigOptions);
+				if(forceEagerFunctions) {
+					// Keep this fixture stable against lazy-materialization order effects.
+					config.optimizations.deferredFunctionEvaluation.enabled = false;
+				}
+
 				const info = await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
 					parser:  shell,
-					context: contextFromInput(code),
+					context: contextFromInput(code, config),
 					getId:   deterministicCountingIdGenerator(0)
 				}).allRemainingSteps();
 
 				const graph = info.dataflow.graph;
+
+				if(materializeLazy) {
+					graph.materializeAll();
+				}
 
 				// resolve all criteria
 				const resolved = clusters.map<DataflowGraphCluster>(c => {
@@ -111,7 +122,7 @@ describe('Graph Clustering', () => {
 			check('uncalled functions', 'f <- function() 1\nx <- 3', [
 				['1:1', '1:3', '1:6', '1:17'],
 				['2:1', '2:3', '2:6']
-			]);
+			], true);
 			check('side effects', 'f <- function() x <<- 1\nf()\nprint(x)', [
 				['1:1', '1:3', '1:6', '1:17', '1:19', '1:23', '2:1', '3:1', '3:7'],
 			]);
@@ -121,12 +132,12 @@ describe('Graph Clustering', () => {
 			check('uncalled closure with context ref', 'f <- function() { x <- 3\nfunction() x }\nx', [
 				['1@f', '1:3', '1:6', '$9', '1:19', '1:21', '1:24', '2:1', '2@x'],
 				['3@x']
-			]);
+			], true, true);
 			check('sub-function cluster', 'f <- function() { x <- 3\n4 }\nx', [
 				['1@f', '1:3', '1:6', '2:1', '$7' ],
 				['1@x', '1:21', '1:24'],
 				['3@x']
-			]);
+			], true);
 		});
 		describe('split points', () => {
 			describe('control dependencies should be respected', () => {

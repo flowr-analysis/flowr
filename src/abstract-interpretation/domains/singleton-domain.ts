@@ -63,8 +63,8 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
 	}
 
-	public join(other: this): this;
 	public join(other: SingletonLift<T>): this;
+	public join(other: this): this;
 	public join(other: this | SingletonLift<T>): this {
 		const otherValue = other instanceof SingletonDomain ? other.value : other;
 
@@ -79,8 +79,8 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: SingletonLift<T>): this;
+	public meet(other: this): this;
 	public meet(other: this | SingletonLift<T>): this {
 		const otherValue = other instanceof SingletonDomain ? other.value : other;
 

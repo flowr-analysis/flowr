@@ -15,14 +15,26 @@ import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visito
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import type { Range } from 'semver';
-import type { AsyncOrSync } from 'ts-essentials';
+import type { AsyncOrSync, MarkOptional } from 'ts-essentials';
+import type { NamespaceInfo } from '../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { TestFunctions } from './function-info/test-functions';
 
 export const Unknown = 'unknown';
 
 export interface DependencyCategorySettings {
     queryDisplayName?:   string
     functions:           FunctionInfo[]
+	/** this describes the global default value for this category, e.g., 'stdout' for write operations, please be aware, that this can be overwritten by a by-function default value */
     defaultValue?:       string
+	/**
+	 * An optional additional analysis step that is executed after the main function-based analysis has been performed.
+	 * To add or modify dependency info entries, simply modify the `result` array.
+	 * @param data  - The basic query data.
+	 * @param ignoreDefault - Whether the default functions were ignored.
+	 * @param functions - The functions used for this category.
+	 * @param queryResults - The results of the call context query.
+	 * @param result - The current result array to which additional dependency info can be added.
+	 */
     additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
 }
 
@@ -43,7 +55,8 @@ export const DefaultDependencyCategories = {
 							functionName:       (n.info.fullLexeme ?? n.lexeme).includes(':::') ? ':::' : '::',
 							value:              n.namespace,
 							versionConstraints: dep?.versionConstraints,
-							derivedVersion:     dep?.derivedVersion
+							derivedVersion:     dep?.derivedVersion,
+							namespaceInfo:      dep?.namespaceInfo
 						});
 					}
 				});
@@ -68,6 +81,10 @@ export const DefaultDependencyCategories = {
 	'visualize': {
 		queryDisplayName: 'Visualizations',
 		functions:        VisualizeFunctions
+	},
+	'test': {
+		queryDisplayName: 'Tests',
+		functions:        TestFunctions
 	}
 } as const satisfies Record<string, DependencyCategorySettings>;
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
@@ -77,7 +94,7 @@ export interface DependenciesQuery extends BaseQueryFormat, Partial<Record<`${De
     readonly type:                    'dependencies'
     readonly enabledCategories?:      DependencyCategoryName[]
     readonly ignoreDefaultFunctions?: boolean
-    readonly additionalCategories?:   Record<string, Omit<DependencyCategorySettings, 'additionalAnalysis'>>
+    readonly additionalCategories?:   Record<string, MarkOptional<DependencyCategorySettings, 'additionalAnalysis'>>
 }
 
 export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependencyCategoryName]: DependencyInfo[] } & { [S in string]?: DependencyInfo[] }
@@ -92,7 +109,8 @@ export interface DependencyInfo extends Record<string, unknown>{
     /** The library name, file, source, destination etc. being sourced, read from, or written to. */
     value?:           string
 	versionConstraints?: Range[],
-	derivedVersion?:     Range
+	derivedVersion?:     Range,
+	namespaceInfo?:      NamespaceInfo,
 }
 
 function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {
@@ -111,7 +129,9 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}, new Map<string, DependencyInfo[]>());
 	for(const [functionName, infos] of grouped) {
 		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i => `           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}`).join('\n'));
+		result.push(infos.map(i =>
+			`           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}${i.linkedIds ? `, linked: [${i.linkedIds.join(', ')}]` : ''}`
+		).join('\n'));
 	}
 }
 
@@ -149,10 +169,8 @@ export const DependenciesQueryDefinition = {
 		type:                   Joi.string().valid('dependencies').required().description('The type of the query.'),
 		ignoreDefaultFunctions: Joi.boolean().optional().description('Should the set of functions that are detected by default be ignored/skipped? Defaults to false.'),
 		...Object.fromEntries(Object.keys(DefaultDependencyCategories).map(c => [`${c}Functions`, functionInfoSchema.description(`The set of ${c} functions to search for.`)])),
-		enabledCategories:      Joi.array().optional().items(
-			Joi.string().valid(...Object.keys(DefaultDependencyCategories))
-		).description('A set of flags that determines what types of dependencies are searched for. If unset or empty, all dependency types are searched for.'),
-		additionalCategories: Joi.object().allow(Joi.object({
+		enabledCategories:      Joi.array().optional().items(Joi.string()).description('A set of flags that determines what types of dependencies are searched for. If unset, all dependency types are searched for.'),
+		additionalCategories:   Joi.object().allow(Joi.object({
 			queryDisplayName: Joi.string().description('The display name in the query result.'),
 			functions:        functionInfoSchema.description('The functions that this additional category should search for.'),
 			defaultValue:     Joi.string().description('The default value to return when there is no value to gather from the function information.').optional()

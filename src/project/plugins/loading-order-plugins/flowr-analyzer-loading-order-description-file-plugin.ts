@@ -18,15 +18,16 @@ export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyze
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const descFiles = ctx.files.getFilesByRole(FileRole.Description);
-		if(descFiles.length !== 1) {
-			descriptionFileLog.warn(`Supporting only exactly one DESCRIPTION file, found ${descFiles.length}`);
+		if(descFiles.length === 0) {
+			descriptionFileLog.warn('No description file found, cannot determine loading order from Collate field.');
 			return;
+		} else if(descFiles.length > 1) {
+			descriptionFileLog.warn(`Found ${descFiles.length} description files, expected exactly one.`);
 		}
 
 		/** this will do the caching etc. for me */
-		const deps = descFiles[0].content();
-		if(deps.has('Collate')) {
-			const collate = deps.get('Collate') ?? [];
+		const collate = descFiles[0].collate();
+		if(collate) {
 			/* we probably have to do some more guesswork here */
 			const unordered = ctx.files.loadingOrder.getUnorderedRequests();
 			// sort them by their path index in the Collate field

@@ -4,16 +4,16 @@ import { guard } from '../../util/assert';
 import { textWithTooltip } from '../../util/html-hover-over';
 import type { OptionDefinition } from 'command-line-usage';
 import { flowrMainOptionDefinitions } from '../../cli/flowr-main-options';
+import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 import { getReplCommands } from '../../cli/repl/commands/repl-commands';
 import { escapeHTML } from './doc-escape';
 
-type ScriptOptions<Type extends keyof typeof scripts | 'flowr'> =
+export type ScriptOptions<Type extends keyof typeof scripts | 'flowr'> =
 	Type extends keyof typeof scripts ? typeof scripts[Type]['options'][number]['name'] :
 		Type extends 'flowr' ? typeof flowrMainOptionDefinitions[number]['name'] : never;
 
-
 /**
- *
+ * Produce the documentation string for a CLI long option
  */
 export function getCliLongOptionOf<
 	ScriptName extends keyof typeof scripts | 'flowr',
@@ -33,7 +33,7 @@ export function getCliLongOptionOf<
 
 
 /**
- *
+ * Produce the documentation string for multiple CLI long options
  */
 export function multipleCliOptions<
 	ScriptName extends keyof typeof scripts | 'flowr',
@@ -44,16 +44,16 @@ export function multipleCliOptions<
 
 
 /**
- *
+ * Produce the documentation string for a REPL command
  */
-export function getReplCommand(commandName: string, quote = true, showStar = false): string {
+export function getReplCommand(commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 	const availableNames = getReplCommands();
 	const commands = availableNames[commandName];
 	guard(commands !== undefined, () => `Unknown command ${commandName}, pick one of ${JSON.stringify(Object.keys(availableNames))}.`);
 	const char = quote ? '`' : '';
 	const aliases = commands.aliases.length > 0 ? ' (aliases: ' + commands.aliases.map(a => `:${a}`).join(', ') + ')' : '';
 	const starredComment = commandName.endsWith('*') ? ', starred version' : '';
-	const baseDescription = commandName.endsWith('*') ? '; Base Command: ' + availableNames[commandName.slice(0, -1)].description : '';
+	const baseDescription = commandName.endsWith('*') ? '; Base Command: ' + availableNames[commandName.slice(0, -1) as ReplCommandNames].description : '';
 	return textWithTooltip(`${char}:${commandName}${showStar ? '[*]' : ''}${char}`,
 		`Description (Repl Command${starredComment}): ` + commands.description + baseDescription + aliases);
 }

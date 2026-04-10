@@ -158,6 +158,10 @@ export function resolveIdToValue(id: NodeId | RNodeWithParent | undefined, { env
 
 	switch(node.type) {
 		case RType.Argument:
+			if(node.value) {
+				return resolveIdToValue(node.value.info.id, { environment, graph, idMap, full, resolve: variableResolve, ctx });
+			}
+		// eslint-disable-next-line no-fallthrough
 		case RType.Symbol:
 			if(environment) {
 				return full ? trackAliasInEnvironments(variableResolve, node.lexeme, environment, ctx, graph, idMap) : Top;

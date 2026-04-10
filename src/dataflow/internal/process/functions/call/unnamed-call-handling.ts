@@ -10,13 +10,12 @@ import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../environments/built-in';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
-export const UnnamedFunctionCallOrigin = 'unnamed';
-
 
 /**
- *
+ * Processes an unnamed function call.
  */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);
@@ -26,8 +25,8 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 	const calledRootId = functionCall.calledFunction.info.id;
 	const functionCallName = `${UnnamedFunctionCallPrefix}${functionRootId}`;
 	dataflowLogger.debug(`Using ${functionRootId} as root for the unnamed function call`);
-	// we know that it calls the toplevel:
-	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Calls | EdgeType.Reads);
+	// we know that it reads the toplevel:
+	finalGraph.addEdge(functionRootId, calledRootId, EdgeType.Reads);
 	// keep the defined function
 	finalGraph.mergeWith(calledFunction.graph);
 
@@ -51,19 +50,20 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		name:        functionCallName,
 		/* can never be a direct built-in-call */
 		onlyBuiltin: false,
-		cds:         data.controlDependencies,
+		cds:         data.cds,
 		args:        callArgs, // same reference
-		origin:      [UnnamedFunctionCallOrigin]
+		origin:      [BuiltInProcName.Unnamed]
 	}, data.ctx.env.makeCleanEnv());
 
 	let inIds = remainingReadInArgs;
-	inIds.push({ nodeId: functionRootId, name: functionCallName, controlDependencies: data.controlDependencies, type: ReferenceType.Function });
+	inIds.push({ nodeId: functionRootId, name: functionCallName, cds: data.cds, type: ReferenceType.Function });
 
+	// if we just call a nested fdef
 	if(functionCall.calledFunction.type === RType.FunctionDefinition) {
 		linkArgumentsOnCall(callArgs, functionCall.calledFunction.parameters, finalGraph);
 	}
-	// push the called function to the ids:
 
+	// push the called function to the ids:
 	inIds = inIds.concat(calledFunction.in, calledFunction.unknownReferences);
 
 	return {
@@ -74,6 +74,7 @@ export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunc
 		graph:             finalGraph,
 		environment:       finalEnv,
 		entryPoint:        functionCall.info.id,
-		exitPoints:        calledFunction.exitPoints
+		exitPoints:        calledFunction.exitPoints,
+		hooks:             calledFunction.hooks,
 	};
 }

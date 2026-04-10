@@ -24,10 +24,11 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in';
 
 
 /**
- *
+ * Process a while loop like `while(cond) { ... }`.
  */
 export function processWhileLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -65,10 +66,10 @@ export function processWhileLoop<OtherInfo>(
 		markAsNSE: [1],
 		patchData: (d, i) => {
 			if(i === 1) {
-				return { ...d, controlDependencies: [...d.controlDependencies ?? [], { id: name.info.id, when: true }] };
+				return { ...d, cds: [...d.cds ?? [], { id: name.info.id, when: true }] };
 			}
 			return d;
-		}, origin: 'builtin:while-loop' });
+		}, origin: BuiltInProcName.WhileLoop });
 	const [condition, body] = processedArguments;
 
 	// If the condition is always false, we don't include the body
@@ -76,17 +77,18 @@ export function processWhileLoop<OtherInfo>(
 		information.graph.addEdge(name.info.id, condition.entryPoint, EdgeType.Reads);
 		return {
 			unknownReferences: [],
-			in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: data.controlDependencies, type: ReferenceType.Function }],
+			in:                [{ nodeId: name.info.id, name: name.lexeme, cds: data.cds, type: ReferenceType.Function }],
 			out:               condition.out,
 			entryPoint:        name.info.id,
 			exitPoints:        [],
 			graph:             information.graph,
-			environment:       information.environment
+			environment:       information.environment,
+			hooks:             condition.hooks
 		};
 	}
 
 	guard(condition !== undefined && body !== undefined, () => `While-Loop ${name.content} has no condition or body, impossible!`);
-	const originalDependency = data.controlDependencies;
+	const originalDependency = data.cds;
 
 	if(alwaysExits(condition)) {
 		dataflowLogger.warn(`While-Loop ${rootId} forces exit in condition, skipping rest`);
@@ -94,7 +96,7 @@ export function processWhileLoop<OtherInfo>(
 		return condition;
 	}
 
-	const cdTrue = { id: name.info.id, when: true };
+	const cdTrue = [{ id: name.info.id, when: true }];
 	const remainingInputs = linkInputs(
 		makeAllMaybe(body.unknownReferences, information.graph, information.environment, false, cdTrue).concat(
 			makeAllMaybe(body.in, information.graph, information.environment, false, cdTrue)),
@@ -107,11 +109,12 @@ export function processWhileLoop<OtherInfo>(
 
 	return {
 		unknownReferences: [],
-		in:                [{ nodeId: name.info.id, name: name.lexeme, controlDependencies: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
+		in:                [{ nodeId: name.info.id, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
 		out:               condition.out.concat(makeAllMaybe(body.out, information.graph, information.environment, true, cdTrue)),
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
-		environment:       information.environment
+		environment:       information.environment,
+		hooks:             condition.hooks.concat(body.hooks)
 	};
 }

@@ -1,6 +1,7 @@
 .vscode
 .zed
 
+*.0x/
 *.heapsnapshot
 # docs can be generated from the sources and should not be commited
 doc/
@@ -699,3 +700,5 @@ test-results.xml
 /test_perf/*/*
 /test_perf/*.json
 .vscode/settings.json
+
+test/benchmark/benchmark-results

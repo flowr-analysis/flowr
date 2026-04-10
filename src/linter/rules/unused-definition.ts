@@ -60,11 +60,11 @@ function buildQuickFix(variable: RNode<ParentInformation>, dfg: DataflowGraph, a
 	}
 
 	const totalRangeToRemove = mergeRanges(
-		...definedBys.map(d => {
+		[...definedBys.map(d => {
 			const vertex = ast.idMap.get(d);
 			return vertex?.info.fullRange ?? vertex?.location;
 		}),
-		variable.info.fullRange ?? variable.location
+		variable.info.fullRange ?? variable.location]
 	);
 
 	return [{
@@ -85,7 +85,7 @@ function onlyKeepSupersetOfUnused(
 		return elements; // nothing to filter, only one element
 	}
 	return elements.filter(e => {
-		const otherRange = mergeRanges(...(e.quickFix?.map(q => q.range) ?? [e.range]));
+		const otherRange = mergeRanges((e.quickFix?.map(q => q.range) ?? [e.range]));
 		return !ranges.some(r => rangeCompare(r, otherRange) !== 0 && rangeIsSubsetOf(otherRange, r)); // there is no smaller remove
 	});
 }
@@ -122,10 +122,11 @@ export const UNUSED_DEFINITION = {
 				// found an unused definition
 				const variableName = element.node.lexeme;
 				return [{
-					certainty: LintingResultCertainty.Uncertain,
+					certainty:  LintingResultCertainty.Uncertain,
 					variableName,
-					range:     element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
-					quickFix:  buildQuickFix(element.node, data.dataflow.graph, data.normalize)
+					involvedId: element.node.info.id,
+					range:      element.node.info.fullRange ?? element.node.location ?? rangeFrom(-1, -1, -1, -1),
+					quickFix:   buildQuickFix(element.node, data.dataflow.graph, data.normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
 			'.meta': metadata

@@ -33,7 +33,9 @@ export enum ReferenceType {
 	/** The identifier is defined by a built-in value/constant */
 	BuiltInConstant = 64,
 	/** The identifier is defined by a built-in function */
-	BuiltInFunction = 128
+	BuiltInFunction = 128,
+	/** Prefix to identify S3 methods, use this, to for example dispatch a call to `f` which will then link to `f.*` */
+	S3MethodPrefix = 256,
 }
 
 /** Reverse mapping of the reference types so you can get the name from the bitmask (useful for debugging) */
@@ -71,16 +73,16 @@ export interface IdentifierReference {
 	/**
 	 * The id of the node which represents the reference in the {@link NormalizedAst|normalized AST} and the {@link DataflowGraph|dataflow graph}.
 	 */
-	readonly nodeId:     NodeId
+	readonly nodeId: NodeId
 	/** Name the reference is identified by (e.g., the name of the variable), undefined if the reference is "artificial" (e.g., anonymous) */
-	readonly name:       Identifier | undefined
+	readonly name:   Identifier | undefined
 	/** Type of the reference to be resolved */
-	readonly type:       ReferenceType;
+	readonly type:   ReferenceType;
 	/**
 	 * If the reference is only effective, if, for example, an if-then-else condition is true, this references the root of the `if`.
 	 * As a hacky intermediate solution (until we have pointer-analysis), an empty array may indicate a `maybe` which is due to pointer access (e.g., in `a[x] <- 3`).
 	 */
-	controlDependencies: ControlDependency[] | undefined
+	cds?:            ControlDependency[] | undefined
 }
 
 /**
@@ -101,7 +103,10 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
 	readonly definedAt: NodeId
-
+	/**
+	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
+	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
+	 */
 	readonly value?:    NodeId[]
 	/**
 	 * this attribute links a definition to indices (pointer links) it may be affected by or related to

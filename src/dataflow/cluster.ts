@@ -26,11 +26,15 @@ export interface DataflowGraphCluster {
  * Find all clusters in the given dataflow graph.
  */
 export function findAllClusters(graph: DataflowGraph): DataflowGraphClusters {
+	// Cluster analysis relies on full function-body connectivity.
+	// Since graph iterators no longer materialize lazily, do it explicitly here.
+	graph.materializeAll();
 	const clusters: DataflowGraphClusters = [];
 	// we reverse the vertices since dependencies usually point "backwards" from later nodes
 	const notReached = new Set<NodeId>(graph.vertices(true).map(([id]) => id).toArray().reverse());
 	while(notReached.size > 0){
 		const [startNode] = notReached;
+		guard(startNode !== undefined, 'No start node available while notReached still contains elements');
 		notReached.delete(startNode);
 		clusters.push({
 			startNode:             startNode,
@@ -48,9 +52,9 @@ function makeCluster(graph: DataflowGraph, from: NodeId, notReached: Set<NodeId>
 
 	// cluster function def exit points
 	if(info.tag === VertexType.FunctionDefinition) {
-		for(const sub of info.exitPoints){
-			if(notReached.delete(sub)) {
-				makeCluster(graph, sub, notReached).forEach(n => nodes.add(n));
+		for(const { nodeId } of info.exitPoints){
+			if(notReached.delete(nodeId)) {
+				makeCluster(graph, nodeId, notReached).forEach(n => nodes.add(n));
 			}
 		}
 	}

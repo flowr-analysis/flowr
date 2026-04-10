@@ -10,13 +10,13 @@ describe('Pointer Analysis', () => {
 		const nextId = deterministicCountingIdGenerator(0);
 		function inGraphDef(name: string, nodeId: NodeId, ...indices: ContainerIndices[]): InGraphIdentifierDefinition {
 			return {
-				type:                ReferenceType.Unknown,
+				type:              ReferenceType.Unknown,
 				nodeId,
 				name,
-				indicesCollection:   indices,
-				value:               undefined,
-				definedAt:           0,
-				controlDependencies: []
+				indicesCollection: indices,
+				value:             undefined,
+				definedAt:         0,
+				cds:               []
 			};
 		}
 

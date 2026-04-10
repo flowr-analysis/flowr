@@ -44,6 +44,8 @@ export function staticSlice(
 		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
 	);
 
+	info.graph.materializeAll(info.environment);
+
 	let { graph } = info;
 
 	if(direction === SliceDirection.Forward){

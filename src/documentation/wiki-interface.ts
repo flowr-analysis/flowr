@@ -22,6 +22,7 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
+import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { WorkerpoolDefaultSettings } from '../dataflow/parallel/threadpool';
 
 async function explainServer(parser: KnownParser): Promise<string> {
@@ -102,11 +103,11 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 }
 
 
-async function explainRepl(parser: KnownParser): Promise<string> {
+async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
 	return `
 > [!NOTE]
-> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${getCliLongOptionOf('flowr', 'r-session-access')}.
-> Please be aware that this introduces a security risk and note that this relies on the [\`r-shell\` engine](${FlowrWikiBaseRef}/Engines).
+> To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${ctx.cliOption('flowr', 'r-session-access')}.
+> Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
 Although primarily meant for users to explore, 
 there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error 
@@ -116,8 +117,8 @@ with the [REPL Request](#message-request-repl-execution) message).
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
 You can submit an expression (using <kbd>Enter</kbd>),
 which is interpreted as an R&nbsp;expression by default but interpreted as a *command* if it starts with a colon (\`:\`).
-The best command to get started with the REPL is ${getReplCommand('help')}.
-Besides, you can leave the REPL either with the command ${getReplCommand('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
+The best command to get started with the REPL is ${ctx.replCmd('help')}.
+Besides, you can leave the REPL either with the command ${ctx.replCmd('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
 When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
 Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
 If a command is given without R code, the REPL will re-use R code given in a previous command. 
@@ -149,23 +150,34 @@ the REPL will re-use previously obtained information and not re-parse the code a
 	})
 }
 
+Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
+Of special note, the ${ctx.linkPage('wiki/Query API', 'Config Query', 'Config-Query')}
+can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
+
 ### Example: Retrieving the Dataflow Graph
 
 To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
-use ${getReplCommand('dataflow*')} (or ${getReplCommand('dataflow')} to get the mermaid code in the cli):
+use ${ctx.replCmd('dataflow*')} (or ${ctx.replCmd('dataflow')} to get the mermaid code in the cli):
 
 ${await documentReplSession(parser, [{
 	command:     ':dataflow* y <- 1 + x',
 	description: `Retrieve the dataflow graph of the expression \`y <- 1 + x\`. It looks like this:\n${await printDfGraphForCode(parser, 'y <- 1 + x')}`
 }])}
 
-For the slicing with ${getReplCommand('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
+For small graphs like this, ${ctx.replCmd('dataflowascii')} also provides an ASCII representation directly in the REPL:
+
+${await documentReplSession(parser, [{
+	command:     ':df! y <- 1 + x',
+	description: 'Retrieve the dataflow graph of the expression `y <- 1 + x` as ASCII art.'
+}], { openOutput: true })}
+
+For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
 
 ### Example: Interfacing with the File System
 
-Many commands that allow for an R-expression (like ${getReplCommand('dataflow*')}) allow for a file as well 
+Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) allow for a file as well 
 if the argument starts with \`${fileProtocol}\`. 
-If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${getReplCommand('parse')} command:
+If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${ctx.replCmd('parse')} command:
 
 ${await documentReplSession(parser, [{
 	command:     `:parse ${fileProtocol}test/testfiles/example.R`,
@@ -182,6 +194,22 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 As _flowR_ directly transforms this AST the output focuses on being human-readable instead of being machine-readable. 
 		`
 }])}
+
+### Example: Run a Query
+
+You can run any query supported by _flowR_ using the ${ctx.replCmd('query')} command.
+For example, to obtain the shapes of all data frames in a given piece of code, you can run:
+${await documentReplSession(parser, [{
+	command:     ':query @df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
+	description: 'Retrieve the shapes of all data frames in the given code.'
+}], { openOutput: true })}
+To run the linter on a file, you can use (in this example, we just issue the \`dead-code\` linter on a small piece of code):
+${await documentReplSession(parser, [{
+	command:     ':query @linter rules:dead-code "if(FALSE) x <- 2"',
+	description: 'Run the linter on the given code, with only the `dead-code` rule enabled.'
+}], { openOutput: true })}
+
+For more information on the available queries, please check out the ${ctx.linkPage('wiki/Query API', 'Query API')}.
 `;
 }
 
@@ -220,10 +248,14 @@ ${codeBlock('json', JSON.stringify(
 				environment: {
 					overwriteBuiltIns: {
 						definitions: [
-							{ type: 'function', names: ['foo'], processor: 'builtin:assignment', config: {} }
+							{ type: 'function', names: ['foo'], processor: BuiltInProcName.Assignment, config: {} }
 						]
 					}
 				}
+			},
+			repl: {
+				quickStats:      false,
+				dfProcessorHeat: false
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -239,15 +271,16 @@ ${codeBlock('json', JSON.stringify(
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            []
 				},
-				slicer: {
+				instrument: {},
+				slicer:     {
 					threshold: 50
 				}
 			},
 			abstractInterpretation: {
-				dataFrame: {
-					maxColNames:       20,
-					wideningThreshold: 4,
-					readLoadedData:    {
+				wideningThreshold: 4,
+				dataFrame:         {
+					maxColNames:    20,
+					readLoadedData: {
 						readExternalFiles: true,
 						maxReadLines:      1_000_000
 					}
@@ -256,9 +289,12 @@ ${codeBlock('json', JSON.stringify(
 			optimizations: {
 				fileParallelization:              false,
 				dataflowOperationParallelization: false,
-				deferredFunctionEvaluation:       false,
+				deferredFunctionEvaluation:       {
+					enabled:      false,
+					onlyTopLevel: false
+				}
 			},
-			workerPool: {
+            workerPool: {
 				poolSettings: WorkerpoolDefaultSettings,
 			}
 		} satisfies FlowrConfigOptions,
@@ -280,7 +316,7 @@ ${codeBlock('json', JSON.stringify(
   | Type            | Description                                                                                                                                                                                                                                                                                              | Example                                                                                                    |
   | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
   | \`constant\`    | Additionally allows for a \`value\` this should resolve to.                                                                                                                                                                                                                                                | \`{ type: 'constant', names: ['NULL', 'NA'],  value: null }\`                                                |
-  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: 'builtin:default', config: { cfg: ExitPointType.Next } }\` |
+  | \`function\`    | Is a rather flexible way to define and bind built-in functions. For the time, we do not have extensive documentation to cover all the cases, so please either consult the sources with the \`default-builtin-config.ts\` or open a [new issue](${NewIssueUrl}). | \`{ type: 'function', names: ['next'], processor: '${BuiltInProcName.Default}', config: { cfg: ExitPointType.Next } }\` |
   | \`replacement\` | A comfortable way to specify replacement functions like \`$<-\` or \`names<-\`. \`suffixes\` describes the... suffixes to attach automatically. | \`{ type: 'replacement', suffixes: ['<-', '<<-'], names: ['[', '[['] }\` |
 
 
@@ -462,32 +498,32 @@ We use \`example.name\` to avoid duplication with the name that we’ve assigned
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Interface
  */
-export class WikiInterface extends DocMaker {
+export class WikiInterface extends DocMaker<'wiki/Interface.md'> {
 	constructor() {
 		super('wiki/Interface.md', module.filename, 'interface');
 	}
 
 	protected async text({ shell, ctx, treeSitter }: DocMakerArgs): Promise<string> {
 		return `
-Although far from being as detailed as the in-depth explanation of
-[_flowR_](${FlowrWikiBaseRef}/Core),
+Although far from being as detailed as the in-depth explanation of ${ctx.linkPage('wiki/Core', '_flowR_')},
 this wiki page explains how to interface with _flowR_ in more detail.
 In general, command line arguments and other options provide short descriptions on hover over.
 
-* [💬 Communicating with the Server](#communicating-with-the-server)
 * [💻 Using the REPL](#using-the-repl)
+* [💬 Communicating with the Server](#communicating-with-the-server)
 * [⚙️ Configuring FlowR](#configuring-flowr)
 * [⚒️ Writing Code](#writing-code)
+
+<a id='using-the-repl'></a>
+## 💻 Using the REPL
+
+${await explainRepl(treeSitter, ctx)}
 
 <a id='communicating-with-the-server'></a>
 ## 💬 Communicating with the Server
 
 ${await explainServer(shell)}
 
-<a id='using-the-repl'></a>
-## 💻 Using the REPL
-
-${await explainRepl(treeSitter)}
 
 <a id='configuring-flowr'></a>
 ## ⚙️ Configuring FlowR

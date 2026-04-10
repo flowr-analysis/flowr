@@ -4,6 +4,8 @@ import type { IdentifierReference } from './environments/identifier';
 import { fromSerializedREnvironmentInformation, toSerializedREnvironmentInformation, type REnvironmentInformation, type SerializedREnvironmentInformation } from './environments/environment';
 import { DataflowGraph } from './graph/graph';
 import type { GenericDifferenceInformation, WriteableDifferenceReport } from '../util/diff';
+import { isNotUndefined } from '../util/assert';
+import type { HookInformation } from './hooks';
 import { dataflowLogger } from './logger';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
@@ -13,6 +15,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
  * may have an influence on its execution.
  * Within `if(p) a else b`, `a` and `b` have a control dependency on the `if` (which in turn decides based on `p`).
  * @see {@link happensInEveryBranch} - to check whether a list of control dependencies is exhaustive
+ * @see {@link negateControlDependency} - to easily negate a control dependency
  */
 export interface ControlDependency {
 	/** The id of the node that causes the control dependency to be active (e.g., the condition of an if) */
@@ -21,6 +24,17 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+}
+
+/**
+ * Negates the given control dependency (i.e., flips the `when` flag).
+ * This keeps undefined `when` values intact as undefined.
+ */
+export function negateControlDependency(cd: ControlDependency): ControlDependency {
+	return {
+		...cd,
+		when: cd.when === undefined ? undefined : !cd.when,
+	};
 }
 
 
@@ -36,7 +50,16 @@ export const enum ExitPointType {
 	/** The exit point is an explicit `break` call (or an alias of it) */
 	Break = 2,
 	/** The exit point is an explicit `next` call (or an alias of it) */
-	Next = 3
+	Next = 3,
+	/** The exit point is caused by an error being thrown, e.g., by `stop` or `stopifnot` */
+	Error = 4
+}
+
+/**
+ * Checks whether the given exit point type propagates calls (i.e., whether it aborts the current function execution).
+ */
+export function doesExitPointPropagateCalls(type: ExitPointType): boolean {
+	return type === ExitPointType.Error;
 }
 
 /**
@@ -49,30 +72,59 @@ export const enum ExitPointType {
  */
 export interface ExitPoint {
 	/** What kind of exit point is this one? May be used to filter for exit points of specific causes. */
-	readonly type:                ExitPointType,
+	readonly type:   ExitPointType,
 	/** The id of the node which causes the exit point! */
-	readonly nodeId:              NodeId,
+	readonly nodeId: NodeId,
 	/**
 	 * Control dependencies which influence if the exit point triggers
 	 * (e.g., if the `return` is contained within an `if` statement).
 	 * @see {@link happensInEveryBranch} - to check whether control dependencies are exhaustive
 	 */
-	readonly controlDependencies: ControlDependency[] | undefined
+	readonly cds?:   ControlDependency[]
 }
 
 /**
- * Adds all non-default exit points to the existing list.
+ * Adds all non-default exit points to the existing list and updates the `invertExitCds` accordingly.
  */
-export function addNonDefaultExitPoints(existing: ExitPoint[], add: readonly ExitPoint[]): void {
-	existing.push(...add.filter(({ type }) => type !== ExitPointType.Default));
+export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: ControlDependency[], activeCds: ControlDependency[] | undefined, add: readonly ExitPoint[]): void {
+	const toAdd = add.filter(({ type }) => type !== ExitPointType.Default);
+	if(toAdd.length === 0) {
+		return;
+	}
+	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
+		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
+	).map(negateControlDependency)).filter(isNotUndefined);
+	existing.push(...toAdd);
+	for(const icd of invertedCds) {
+		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
+			invertExitCds.push(icd);
+		}
+	}
+}
+
+/**
+ * Overwrites the existing exit points with the given ones, taking care of cds.
+ */
+export function overwriteExitPoints(existing: readonly ExitPoint[], replace: ExitPoint[]): ExitPoint[] {
+	const replaceCds = replace.flatMap(e => e.cds);
+	if(replaceCds.length === 0 || replaceCds.includes(undefined) || happensInEveryBranch(replaceCds.filter(e => e !== undefined))) {
+		return replace;
+	}
+	return existing.concat(replace);
 }
 
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
 	entryPoint: NodeId,
-	/** All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure. */
+	/**
+	 * All already identified exit points (active 'return'/'break'/'next'-likes) of the respective structure.
+	 * This also tracks (local knowledge of) exceptions thrown within the structure.
+	 * See the {@link ExitPointType#Error|Error} type for more information.
+	 */
 	exitPoints: readonly ExitPoint[]
+    /** Registered hooks within the current subtree */
+	hooks:      HookInformation[];
 }
 
 export interface SerializableDataflowInformation{
@@ -81,8 +133,12 @@ export interface SerializableDataflowInformation{
     unknownReferences: readonly IdentifierReference[];
     in:                readonly IdentifierReference[];
     out:               readonly IdentifierReference[];
+	hooks:                HookInformation[];
     env:               SerializedREnvironmentInformation;
     graph:             Uint8Array;
+	reanalysisTriggered?: boolean;
+	reanalysisIteration?: number;
+	reanalysisFileIndex?: number;
 }
 
 /**
@@ -135,13 +191,17 @@ export interface DataflowInformation extends DataflowCfgInformation {
 export function SerializeDataflowInformation(data: DataflowInformation): SerializableDataflowInformation {
 	try {
 		return {
-			entryPoint:        data.entryPoint,
-			exitPoints:        [...data.exitPoints],
-			unknownReferences: [...data.unknownReferences],
-			in:                [...data.in],
-			out:               [...data.out],
-			env:               toSerializedREnvironmentInformation(data.environment),
-			graph:             data.graph.toSerializable(),
+			entryPoint:          data.entryPoint,
+			exitPoints:          [...data.exitPoints],
+			unknownReferences:   [...data.unknownReferences],
+			in:                  [...data.in],
+			out:                 [...data.out],
+			hooks:               [...data.hooks],
+			env:                 toSerializedREnvironmentInformation(data.environment),
+			graph:               data.graph.toSerializable(),
+			reanalysisTriggered: data.reanalysisTriggered,
+			reanalysisIteration: data.reanalysisIteration,
+			reanalysisFileIndex: data.reanalysisFileIndex,
 		};
 	} catch(err: unknown) {
 		dataflowLogger.warn('Serialization of DataflowInformation failed with: ', err);
@@ -151,6 +211,7 @@ export function SerializeDataflowInformation(data: DataflowInformation): Seriali
 			unknownReferences: [],
 			in:                [],
 			out:               [],
+			hooks:             [],
 			env:               {
 				level:   data.environment.level,
 				current: new Uint8Array(),
@@ -169,13 +230,17 @@ export function DeserializeDataflowInformation(
 ): DataflowInformation {
 	try {
 		return {
-			entryPoint:        data.entryPoint,
-			exitPoints:        data.exitPoints,
-			unknownReferences: data.unknownReferences,
-			in:                data.in,
-			out:               data.out,
-			environment:       fromSerializedREnvironmentInformation(data.env, ctx),
-			graph:             DataflowGraph.fromSerializable(data.graph, ctx),
+			entryPoint:          data.entryPoint,
+			exitPoints:          data.exitPoints,
+			unknownReferences:   data.unknownReferences,
+			in:                  data.in,
+			out:                 data.out,
+			environment:         fromSerializedREnvironmentInformation(data.env, ctx),
+			graph:               DataflowGraph.fromSerializable(data.graph, ctx),
+			hooks:               data.hooks ?? [],
+			reanalysisTriggered: data.reanalysisTriggered,
+			reanalysisIteration: data.reanalysisIteration,
+			reanalysisFileIndex: data.reanalysisFileIndex,
 		};
 	} catch(err: unknown) {
 		dataflowLogger.warn('Deserialize of DataflowInformation failed with: ', err);
@@ -187,6 +252,7 @@ export function DeserializeDataflowInformation(
 			out:               [],
 			environment:       fromSerializedREnvironmentInformation({ level: data.env.level, current: new Uint8Array() }, ctx),
 			graph:             DataflowGraph.fromSerializable(new Uint8Array()),
+			hooks:             []
 		};
 	}
 }
@@ -204,7 +270,8 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
 		environment:       data.environment,
 		graph:             new DataflowGraph(data.completeAst.idMap),
 		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default, controlDependencies: undefined }]
+		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
+		hooks:             []
 	};
 }
 
@@ -213,31 +280,24 @@ export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: 
  * the list contains a dependency on the `true` and on the `false` case).
  * @see {@link happensInEveryBranchSet} - for the set-based version
  */
-export function happensInEveryBranch(controlDependencies: readonly ControlDependency[] | undefined): boolean {
-	if(controlDependencies === undefined) {
-		/* the cds are unconstrained */
-		return true;
-	} else if(controlDependencies.length === 0) {
-		/* this happens only when we have no idea and require more analysis */
-		return false;
-	}
-
-	return coversSet(controlDependencies);
+export function happensInEveryBranch(cds: readonly ControlDependency[] | undefined): boolean {
+	/* this happens only when we have no idea and require more analysis */
+	return cds === undefined || (cds.length !== 0 && coversSet(cds));
 }
 
-function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
-	const trues = [];
-	const falseSet = new Set();
+function coversSet(cds: ReadonlySet<ControlDependency> | readonly ControlDependency[]) {
+	const trues = new Set();
+	const falses = new Set();
 
-	for(const { id, when } of controlDependencies) {
+	for(const { id, when } of cds) {
 		if(when) {
-			trues.push(id);
-		} else {
-			falseSet.add(id);
+			trues.add(id);
+		} else if(when === false){
+			falses.add(id);
 		}
 	}
 
-	return trues.every(id => falseSet.has(id));
+	return trues.symmetricDifference(falses).size === 0;
 }
 
 /**
@@ -245,16 +305,8 @@ function coversSet(controlDependencies: ReadonlySet<ControlDependency> | readonl
  * the list contains a dependency on the `true` and on the `false` case).
  * @see {@link happensInEveryBranch} - for the array-based version
  */
-export function happensInEveryBranchSet(controlDependencies: ReadonlySet<ControlDependency> | undefined): boolean {
-	if(controlDependencies === undefined) {
-		/* the cds are unconstrained */
-		return true;
-	} else if(controlDependencies.size === 0) {
-		/* this happens only when we have no idea and require more analysis */
-		return false;
-	}
-
-	return coversSet(controlDependencies);
+export function happensInEveryBranchSet(cds: ReadonlySet<ControlDependency> | undefined): boolean {
+	return cds === undefined || (cds.size !== 0 && coversSet(cds));
 }
 
 /**
@@ -262,16 +314,23 @@ export function happensInEveryBranchSet(controlDependencies: ReadonlySet<Control
  * @see {@link ExitPoint} - for the different types of exit points
  */
 export function alwaysExits(data: DataflowInformation): boolean {
-	return data.exitPoints?.some(
-		e => e.type !== ExitPointType.Default && happensInEveryBranch(e.controlDependencies)
-	) ?? false;
+	let cds: ControlDependency[] = [];
+	for(const e of data.exitPoints) {
+		if(e.type !== ExitPointType.Default) {
+			if(e.cds === undefined) {
+				return true;
+			}
+			cds = cds.concat(e.cds);
+		}
+	}
+	return happensInEveryBranch(cds);
 }
 
 /**
  * Filters out exit points which end their cascade within a loop.
  */
 export function filterOutLoopExitPoints(exitPoints: readonly ExitPoint[]): readonly ExitPoint[] {
-	return exitPoints.filter(({ type }) => type === ExitPointType.Return || type === ExitPointType.Default);
+	return exitPoints.filter(({ type }) => type !== ExitPointType.Break && type !== ExitPointType.Next);
 }
 
 /**
@@ -285,7 +344,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 		return;
 	}
 	if(a.id !== b.id) {
-		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${a.id} vs. ${info.rightname}: ${b.id}`);
+		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${JSON.stringify(a.id)} vs. ${info.rightname}: ${JSON.stringify(b.id)}`);
 	}
 	if(a.when !== b.when) {
 		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);

@@ -12,10 +12,13 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
  *
  * It is up to the construction to ensure that no two file plugins {@link applies} to the same file, otherwise, the loading order
  * of these plugins will determine which plugin gets to process the file.
+ * On transforming a file, your plugin can indicate whether other plugins should still get to process the file,
+ * by returning a tuple of `[transformedFile, <boolean>]` where a boolean `true` indicates that other plugins should still get to process the file.
+ * One example of a plugin doing this is the {@link FlowrAnalyzerMetaVignetteFilesPlugin}.
  *
  * See {@link DefaultFlowrAnalyzerFilePlugin} for the no-op default implementation.
  */
-export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider, FlowrFileProvider> {
+export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrFileProvider, FlowrFileProvider | [file: FlowrFileProvider, cont: boolean]> {
 	public readonly type = PluginType.FileLoad;
 
 	/**

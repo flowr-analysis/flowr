@@ -185,7 +185,7 @@ export class FlowrAnalyzerBuilder {
 	 * Enable deferred function evaluation.
 	 */
 	public enableDeferredFunctionEvaluation(): this {
-		this.flowrConfig.optimizations.deferredFunctionEvaluation = true;
+		this.flowrConfig.optimizations.deferredFunctionEvaluation.enabled = true;
 		return this;
 	}
 
@@ -193,7 +193,7 @@ export class FlowrAnalyzerBuilder {
 	 * Disable deferred function evaluation.
 	 */
 	public disableDeferredFunctionEvaluation(): this {
-		this.flowrConfig.optimizations.deferredFunctionEvaluation = false;
+		this.flowrConfig.optimizations.deferredFunctionEvaluation.enabled = false;
 		return this;
 	}
 

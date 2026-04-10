@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { FlowrRMarkdownFile } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-rmarkdown-file';
+import { FlowrRMarkdownFile } from '../../../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { testFileLoadPlugin } from './plugin-test-helper';
 import { FlowrAnalyzerRmdFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from '../../../../src/project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';

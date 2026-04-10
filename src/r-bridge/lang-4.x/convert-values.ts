@@ -72,6 +72,11 @@ export const RImaginaryMarker = 'i';
 export const RIntegerMarker = 'L';
 export const RInf = 'Inf';
 
+/**
+ * Represents a numeric value in R.
+ * If you need to create one from a ts numeric,
+ * please use {@link getScalarFromInteger}.
+ */
 export interface RNumberValue {
 	num:           number
 	/** see {@link RIntegerMarker}, still, R treats 1.1L as numeric and not especially integer */

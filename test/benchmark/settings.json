@@ -1,0 +1,23 @@
+{
+    "runName": "baseline",
+    "sourcesRoot": "/home/jonas/Git/ba-thesis/ssoc-data/sources",
+    "workerJs": "../../dist/test/benchmark/run-analysis.js",
+    "resultsRoot": "./benchmark-results",
+    "repetitions": 15,
+    "warmup": true,
+    "collectStats": true,
+    "skipCorrectness": true,
+    "maxProjectsPerSuite": 10,
+    "optimizations": {
+        "lazyFunctions": false,
+        "parallelFiles": false,
+        "parallelOperations": false
+    },
+    "threadsForCorrectness": [
+        2
+    ],
+    "threadsForPerformance": [
+        2
+    ],
+    "excludeSuites": []
+}

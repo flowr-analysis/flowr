@@ -61,6 +61,22 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../cli/repl/core';
+import type { FilesQuery } from './catalog/files-query/files-query-format';
+import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
+import type { CallGraphQuery } from './catalog/call-graph-query/call-graph-query-format';
+import { CallGraphQueryDefinition } from './catalog/call-graph-query/call-graph-query-format';
+import type {
+	InspectRecursionQuery } from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import {
+	InspectRecursionQueryDefinition
+} from './catalog/inspect-recursion-query/inspect-recursion-query-format';
+import type { DoesCallQuery } from './catalog/does-call-query/does-call-query-format';
+import { DoesCallQueryDefinition } from './catalog/does-call-query/does-call-query-format';
+import type {
+	InspectExceptionQuery } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
+import {
+	InspectExceptionQueryDefinition
+} from './catalog/inspect-exceptions-query/inspect-exception-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -69,8 +85,11 @@ export type Query = CallContextQuery
 	| ConfigQuery
 	| SearchQuery
 	| DataflowQuery
+	| DoesCallQuery
+	| CallGraphQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
+	| FilesQuery
 	| DfShapeQuery
 	| NormalizedAstQuery
 	| IdMapQuery
@@ -79,7 +98,9 @@ export type Query = CallContextQuery
 	| DependenciesQuery
 	| LocationMapQuery
 	| HappensBeforeQuery
+	| InspectExceptionQuery
     | InspectHigherOrderQuery
+	| InspectRecursionQuery
 	| ResolveValueQuery
 	| ProjectQuery
 	| OriginQuery
@@ -129,9 +150,12 @@ export const SupportedQueries = {
 	'call-context':         CallContextQueryDefinition,
 	'config':               ConfigQueryDefinition,
 	'control-flow':         ControlFlowQueryDefinition,
+	'call-graph':           CallGraphQueryDefinition,
 	'dataflow':             DataflowQueryDefinition,
+	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'df-shape':             DfShapeQueryDefinition,
+	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
@@ -140,7 +164,9 @@ export const SupportedQueries = {
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,
 	'happens-before':       HappensBeforeQueryDefinition,
+	'inspect-exception':    InspectExceptionQueryDefinition,
 	'inspect-higher-order': InspectHigherOrderQueryDefinition,
+	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'origin':               OriginQueryDefinition,
@@ -227,7 +253,7 @@ export async function executeQueries<
 
 	for(const [type, group] of entries) {
 		try {
-			const result = await Promise.resolve(executeQueriesOfSameType(data, group));
+			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
 			log.warn(e);
@@ -274,7 +300,7 @@ export function AnyQuerySchema() {
 	return Joi.alternatives(
 		SupportedQueriesSchema(),
 		VirtualQuerySchema()
-	).description('Any query');
+	).description('A virtual or an active query!');
 }
 
 /**
@@ -302,6 +328,7 @@ export async function genericWrapReplFailIfNoRequest<T>(
 		        + '\nIf you consider this an error, please report a bug: '
 				+ getGuardIssueUrl('analyzer found no requests to analyze')
 			);
+			output.stderr('Full error message: ' + ((e instanceof Error) ? e.message : String(e)));
 		} else {
 			throw e;
 		}

@@ -55,6 +55,10 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	 * The configuration options used by the analyzer.
 	 */
 	readonly config: FlowrConfigOptions;
+	/**
+	 * Resolve all pre-analysis information (loading order, static dependencies).
+	 */
+	resolvePreAnalysis(): void;
 }
 
 export interface FlowrAnalyzerContextPluginNames {

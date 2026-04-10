@@ -13,7 +13,7 @@ export function getScriptsText() {
 	return _scriptsText;
 }
 
-export const flowrMainOptionDefinitions: OptionDefinition[] = [
+export const flowrMainOptionDefinitions = [
 	{ name: 'config-file', type: String, description: 'The name of the configuration file to use', multiple: false },
 	{
 		name:        'config-json',
@@ -126,6 +126,6 @@ export const flowrMainOptionDefinitions: OptionDefinition[] = [
 		description: 'The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.',
 		multiple:    false
 	}
-];
+] as const satisfies OptionDefinition[];
 
 export const defaultConfigFile = 'flowr.json';

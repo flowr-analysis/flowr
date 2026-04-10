@@ -78,8 +78,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
 	}
 
-	public join(other: this): this;
 	public join(other: IntervalLift): this;
+	public join(other: this): this;
 	public join(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
@@ -92,8 +92,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	public meet(other: this): this;
 	public meet(other: IntervalLift): this;
+	public meet(other: this): this;
 	public meet(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 

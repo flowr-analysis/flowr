@@ -88,7 +88,7 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Core
  */
-export class WikiCore extends DocMaker {
+export class WikiCore extends DocMaker<'wiki/Core.md'> {
 	constructor() {
 		super('wiki/Core.md', module.filename, 'core');
 	}

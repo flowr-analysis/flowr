@@ -72,7 +72,7 @@ describe('Call Context Query', withTreeSitter(parser => {
 		testQuery('Built-In in Argument', 'print(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 4, calls: ['built-in'], name: 'mean' }]));
 		testQuery('Multiple Built-In in Argument', 'mean(y)\nprint(mean(x))', [q(/mean/, { callTargets: CallTargets.OnlyGlobal })], r([{ id: 3, calls: ['built-in'], name: 'mean' }, { id: 8, calls: ['built-in'], name: 'mean' }]));
 		testQuery('Print calls (no default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: true })], r([{ id: 3, name: 'print' }]));
-		testQuery('Print calls (with default values)', 'print(1)\nfunction(foo={print(2)}) {}', [q(/print/, { ignoreParameterValues: false })], r([{ id: 3, name: 'print' }, { id: 10, name: 'print' }]));
+		testQuery('Print calls (with default values)', 'print(1)\n(function(foo={print(2)}) { foo })()', [q(/print/, { ignoreParameterValues: false })], r([{ id: 3, name: 'print' }, { id: 12, name: 'print' }]));
 	});
 	describe('Mixed Targets', () => {
 		const code = 'if(x) { print <- function() {} }\nprint()';

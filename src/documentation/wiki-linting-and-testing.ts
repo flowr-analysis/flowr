@@ -17,7 +17,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing
  */
-export class WikiLintingAndTesting extends DocMaker {
+export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
 		super('wiki/Linting and Testing.md', module.filename,'linting and testing definitions');
 	}

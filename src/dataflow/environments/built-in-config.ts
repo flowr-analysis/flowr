@@ -1,4 +1,5 @@
-import { type BuiltInMappingName, type ConfigOfBuiltInMappingName , BuiltIns } from './built-in';
+import type { BuiltInProcessorMapper , ConfigOfBuiltInMappingName } from './built-in';
+import { BuiltIns } from './built-in';
 import type { Identifier } from './identifier';
 import { DefaultBuiltinConfig } from './default-builtin-config';
 
@@ -25,29 +26,28 @@ export interface BuiltInConstantDefinition<Value> extends BaseBuiltInDefinition 
  * Define a built-in function (like `print` or `c`) and the processor to use.
  * @template BuiltInProcessor - The processor to use for this function
  */
-export interface BuiltInFunctionDefinition<BuiltInProcessor extends BuiltInMappingName> extends BaseBuiltInDefinition {
+export interface BuiltInFunctionDefinition<BuiltInProcessor extends keyof typeof BuiltInProcessorMapper> extends BaseBuiltInDefinition {
     readonly type:      'function';
     readonly processor: BuiltInProcessor;
-    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor>;
+    readonly config?:   ConfigOfBuiltInMappingName<BuiltInProcessor> & { libFn?: boolean };
 	readonly evalHandler?: string
 }
 
 /**
  * Define a built-in replacement (like `[` or `$`) and the processor to use.
- * This is a convenience for manually combined function calls with `builtin:replacement`.
+ * This is a convenience for manually combined replacement function calls.
  */
 export interface BuiltInReplacementDefinition extends BaseBuiltInDefinition {
     readonly type:     'replacement';
     readonly suffixes: ('<<-' | '<-')[];
-	readonly config:      { readIndices: boolean }
+    readonly config:   { readIndices: boolean }
 }
 
-/* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-export type BuiltInDefinition = BuiltInConstantDefinition<any> | BuiltInFunctionDefinition<any> | BuiltInReplacementDefinition;
+export type BuiltInDefinition<T extends keyof typeof BuiltInProcessorMapper = keyof typeof BuiltInProcessorMapper> = BuiltInConstantDefinition<unknown> | BuiltInFunctionDefinition<T> | BuiltInReplacementDefinition;
 /**
  * @see DefaultBuiltinConfig
  */
-export type BuiltInDefinitions = BuiltInDefinition[];
+export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper)[] = (keyof typeof BuiltInProcessorMapper)[]> = [...{ [ K in keyof Keys]: BuiltInDefinition<Keys[K]> }]
 
 
 /**
@@ -56,7 +56,7 @@ export type BuiltInDefinitions = BuiltInDefinition[];
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
-		builtIns.registerBuiltInDefinition(definition);
+		builtIns.registerBuiltInDefinition(definition as BuiltInDefinition);
 	}
 	return builtIns;
 }
@@ -66,7 +66,7 @@ export function getDefaultBuiltInDefinitions(): BuiltIns {
  * @param definitions - the list of built-in definitions
  * @param loadDefaults - whether to first add the {@link DefaultBuiltinConfig} before the given {@link definitions}
  */
-export function getBuiltInDefinitions(definitions: BuiltInDefinitions, loadDefaults: boolean | undefined): BuiltIns {
+export function getBuiltInDefinitions<Keys extends(keyof typeof BuiltInProcessorMapper)[]>(definitions: BuiltInDefinitions<Keys>, loadDefaults: boolean | undefined): BuiltIns {
 	let builtIns = new BuiltIns();
 
 	if(loadDefaults) {

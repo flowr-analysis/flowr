@@ -41,11 +41,12 @@ export const SystemFunctions: Identifier[] = ['system', 'system2', 'pipe', 'shel
 export const FfiFunctions: Identifier[] = ['.C', '.Call', '.Fortran', '.External', 'dyn.load', 'sourceCpp', 'getNativeSymbolInfo'];
 
 export const LangFunctions: Identifier[] = [
-	'substitute', 'quote', 'bquote', 'enquote',
-	'enexpr', 'enexprs', 'enquo', 'enquos',
-	'expression', 'call', 'as.call', 'as.expression',
+	'substitute', 'quote', 'enquote', 'bquote',
+	'call', 'as.call', 'expression', 'as.expression', // 'str2lang', 'str2expression',
 	'as.name', 'as.symbol', 'alist', 'as.language', 'evalq',
-	'expr', 'quo', 'enexpr', 'ensym', 'ensyms'
+	'expr', 'exprs', 'enexpr', 'enexprs', 'inject',
+	'quo', 'quos', 'enquo', 'enquos', 'enquo0', 'enquos0',
+	'sym', 'syms', 'ensym', 'ensyms'
 ];
 
 export const OptionsFunctions: Identifier[] = ['options', 'getOption', 'Sys.getenv'];

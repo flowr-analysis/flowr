@@ -18,6 +18,7 @@ import { isNotUndefined } from '../../../util/assert';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
+import { Record } from '../../../util/record';
 
 class InputClassifier {
 	private readonly dfg:     DataflowGraph;
@@ -77,29 +78,13 @@ class InputClassifier {
 				}
 			}
 		}
-		if(!matchesList(call, this.config.pureFns)) {
+		if(!matchesList(call, this.config.pure)) {
 			const types: InputType[] = [];
 
-			if(matchesList(call, this.config.readFileFns)) {
-				types.push(InputType.File);
-			}
-			if(matchesList(call, this.config.networkFns)) {
-				types.push(InputType.Network);
-			}
-			if(matchesList(call, this.config.randomFns)) {
-				types.push(InputType.Random);
-			}
-			if(matchesList(call, this.config.systemFns)) {
-				types.push(InputType.System);
-			}
-			if(matchesList(call, this.config.ffiFns)) {
-				types.push(InputType.Ffi);
-			}
-			if(matchesList(call, this.config.langFns)) {
-				types.push(InputType.Lang);
-			}
-			if(matchesList(call, this.config.optionsFns)) {
-				types.push(InputType.Options);
+			for(const [type, entry] of Record.entries(this.config)) {
+				if(Record.values<string>(InputType).includes(type) && matchesList(call, entry)) {
+					types.push(type as InputType);
+				}
 			}
 			if(types.length === 0) {
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
@@ -363,42 +348,13 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierF
 }
 
 /**
- * For the specifications of `pureFns` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
+ * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
  */
-export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Record<string, Functions | undefined> {
+export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Partial<Record<InputType, Functions>> {
 	/**
 	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
 	 */
-	pureFns?:     Functions
-	/**
-	 * Functions that read from the network
-	 */
-	networkFns?:  Functions
-	/**
-	 * Functions that produce a random value
-	 * Note: may need to check with respect to seeded randomness
-	 */
-	randomFns?:   Functions
-	/**
-	 * Functions that read from the file system
-	 */
-	readFileFns?: Functions
-	/**
-	 * Functions that call system utilities (system/system2)
-	 */
-	systemFns?:   Functions;
-	/**
-	 * Functions that call native code via .C/.Fortran interfaces
-	 */
-	ffiFns?:      Functions;
-	/**
-	 * Functions that produce language objects such as quote/substitute
-	 */
-	langFns?:     Functions;
-	/**
-	 * Functions that access or set global options
-	 */
-	optionsFns?:  Functions;
+	[InputTraceType.Pure]?: Functions
 }
 
 /**

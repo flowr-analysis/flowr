@@ -5,7 +5,7 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { InputClassifierConfig, InputSources } from './simple-input-classifier';
+import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
@@ -30,15 +30,15 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly config?:   InputSourcesQueryConfig
 }
 
-export const DefaultInputClassifierConfig: Required<InputClassifierConfig> = {
-	networkFns:  Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
-	randomFns:   Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
-	readFileFns: ReadFunctions.map(readFunction => readFunction.name),
-	pureFns:     PureFunctions,
-	systemFns:   SystemFunctions,
-	ffiFns:      FfiFunctions,
-	langFns:     LangFunctions,
-	optionsFns:  OptionsFunctions
+export const DefaultInputClassifierConfig: InputClassifierConfig = {
+	[InputTraceType.Pure]: PureFunctions,
+	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
+	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
+	[InputType.System]:    SystemFunctions,
+	[InputType.Ffi]:       FfiFunctions,
+	[InputType.Lang]:      LangFunctions,
+	[InputType.Options]:   OptionsFunctions
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {

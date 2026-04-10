@@ -10,7 +10,7 @@ import { classifyInput } from './simple-input-classifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { runSearch } from '../../../search/flowr-search-executor';
 import { type FlowrSearchLike } from '../../../search/flowr-search-builder';
-import type { Record } from '../../../util/record';
+import { Record } from '../../../util/record';
 
 /**
  * Execute an input sources query
@@ -52,7 +52,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 async function resolveSearches(analyzer: ReadonlyFlowrAnalysisProvider, config: InputClassifierConfig): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {
 	const result: InputClassifierConfig<InputClassifierFunctionIdentifiers> = {};
 
-	for(const [key, value] of Object.entries(config)) {
+	for(const [key, value] of Record.entries(config)) {
 		if(value === undefined || Array.isArray(value)) {
 			result[key] = value;
 		} else {

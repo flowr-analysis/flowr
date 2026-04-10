@@ -294,7 +294,7 @@ ${codeBlock('json', JSON.stringify(
 					onlyTopLevel: false
 				}
 			},
-            workerPool: {
+			workerPool: {
 				poolSettings: WorkerpoolDefaultSettings,
 			}
 		} satisfies FlowrConfigOptions,

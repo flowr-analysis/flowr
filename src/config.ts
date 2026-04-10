@@ -315,11 +315,11 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 		fileParallelization:              false,
 		dataflowOperationParallelization: false,
 		deferredFunctionEvaluation:       {
-			enabled:      true,
+			enabled:      false,
 			onlyTopLevel: false
 		}
 	},
-    workerPool: {
+	workerPool: {
 		poolSettings: WorkerpoolDefaultSettings
 	}
 };

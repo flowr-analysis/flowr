@@ -49,4 +49,4 @@ export const Record = {
 	mapProperties<K extends string, V1, V2>(this: void, object: Record<K, V1>, callbackfn: (value: V1, index: number, entries: [K, V1][]) => V2): Record<K, V2> {
 		return Record.map(object, ([keys, value], index, entries) => [keys, callbackfn(value, index, entries)]);
 	}
-};
+} as const;

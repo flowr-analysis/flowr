@@ -8,6 +8,10 @@ import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-bui
 import type { AnalyzerSetupFunction } from './test-data/types';
 import type { TestSuite } from './test-data/test-suites';
 import { simpleDataflowTests, complexDataflowTests, sourceBasedDataflowTests } from './test-data/test-suites';
+import {
+	lazySerializationPreservationTests,
+	lazySerializationSourceTests
+} from './test-data/lazy-serialization-cases';
 
 type EnvironmentLike = {
 	builtInEnv?: true;
@@ -98,6 +102,96 @@ async function checkEnvironmentSerializationStrict(testCaseName: string, setup: 
 	}
 }
 
+async function checkLazySerializationDoesNotMaterialize(testCaseName: string, setup: AnalyzerSetupFunction): Promise<void> {
+	console.log(`\n► Running lazy serialization preservation test case: ${testCaseName}`);
+
+	const analyzer = setup(await new FlowrAnalyzerBuilder()
+		.enableDeferredFunctionEvaluation()
+		.build());
+	try {
+		const df = await analyzer.dataflow();
+		const lazyCountBefore = df.graph.countLazyFunctionDefinitions();
+
+		assert.isAbove(
+			lazyCountBefore,
+			0,
+			`Fixture should contain at least one lazy function definition before serialization (${testCaseName})`
+		);
+
+		void df.graph.toSerializable();
+
+		const lazyCountAfter = df.graph.countLazyFunctionDefinitions();
+		assert.strictEqual(
+			lazyCountAfter,
+			lazyCountBefore,
+			`Serialization should not force materialization of untouched lazy function definitions (${testCaseName})`
+		);
+	} finally {
+		await analyzer.close(true);
+	}
+}
+
+async function checkLazySerializationRoundtripMaterialization(testCaseName: string, setup: AnalyzerSetupFunction): Promise<void> {
+	console.log(`\n► Running lazy serialization roundtrip test case: ${testCaseName}`);
+
+	const analyzer = setup(await new FlowrAnalyzerBuilder()
+		.amendConfig(config => {
+			config.optimizations.deferredFunctionEvaluation.enabled = true;
+			config.optimizations.fileParallelization = false;
+		})
+		.build());
+	const eagerAnalyzer = setup(await new FlowrAnalyzerBuilder()
+		.amendConfig(config => {
+			config.optimizations.deferredFunctionEvaluation.enabled = false;
+			config.optimizations.fileParallelization = false;
+		})
+		.build());
+	try {
+		const df = await analyzer.dataflow();
+		const eagerDf = await eagerAnalyzer.dataflow();
+		const lazyCountOriginal = df.graph.countLazyFunctionDefinitions();
+
+		assert.isAbove(
+			lazyCountOriginal,
+			0,
+			`Fixture should contain lazy function definitions before roundtrip (${testCaseName})`
+		);
+
+		const bytes = df.graph.toSerializable();
+		const parsed = DataflowGraph.fromSerializable(bytes, analyzer.context());
+
+		const subgraphDiff = diffOfDataflowGraphs(
+			{ name: 'Roundtripped lazy graph', graph: parsed },
+			{ name: 'Sequential eager graph', graph: eagerDf.graph },
+			{ leftIsSubgraph: true }
+		);
+		const subgraphComments = subgraphDiff.comments() ?? [];
+		assert.isTrue(
+			subgraphDiff.isEqual(),
+			`Roundtripped lazy graph should be a subgraph of sequential eager graph (${testCaseName}). ${subgraphComments.join(' | ')}`
+		);
+
+		parsed.materializeAll();
+		assert.strictEqual(
+			parsed.countLazyFunctionDefinitions(),
+			0,
+			`Deserialized lazy vertices should still support materializeAll() (${testCaseName})`
+		);
+
+		const graphDiff = diffOfDataflowGraphs(
+			{ name: 'Roundtripped/materialized lazy graph', graph: parsed },
+			{ name: 'Sequential eager graph', graph: eagerDf.graph }
+		);
+		const comments = graphDiff.comments() ?? [];
+		assert.isTrue(
+			graphDiff.isEqual(),
+			`Roundtripped/materialized lazy graph should equal sequential eager graph (${testCaseName}). ${comments.join(' | ')}`
+		);
+	} finally {
+		await analyzer.close(true);
+		await eagerAnalyzer.close(true);
+	}
+}
 function environmentLevels(env: EnvironmentLike): EnvironmentLike[] {
 	const levels: EnvironmentLike[] = [];
 	let current: EnvironmentLike | undefined = env;
@@ -165,11 +259,39 @@ function registerEnvironmentClusterTests(clusterName: string, testCluster: TestS
 	}
 }
 
+function registerLazySerializationPreservationClusterTests(clusterName: string, testCluster: TestSuite): void {
+	for(const testCase of testCluster) {
+		test(`${clusterName} :: ${testCase.name}`, async() => {
+			await checkLazySerializationDoesNotMaterialize(testCase.name, testCase.setup);
+		});
+	}
+}
+
+function registerLazySerializationRoundtripClusterTests(clusterName: string, testCluster: TestSuite): void {
+	for(const testCase of testCluster) {
+		test(`${clusterName} :: ${testCase.name}`, async() => {
+			await checkLazySerializationRoundtripMaterialization(testCase.name, testCase.setup);
+		});
+	}
+}
+
 describe.sequential('Serialization tests', () => {
 	describe('Dataflow Graph Serialization', () => {
 		registerGraphClusterTests('Simple File Analysis', simpleDataflowTests);
 		registerGraphClusterTests('Complex File Analysis', complexDataflowTests);
 		registerGraphClusterTests('Source Based File Analysis', sourceBasedDataflowTests);
+	});
+
+	describe('Lazy Vertex Serialization', () => {
+		describe('Preservation', () => {
+			registerLazySerializationPreservationClusterTests('Single and Multi File', lazySerializationPreservationTests);
+			registerLazySerializationPreservationClusterTests('Source-Based', lazySerializationSourceTests);
+		});
+
+		describe('Roundtrip Materialization', () => {
+			registerLazySerializationRoundtripClusterTests('Single and Multi File', lazySerializationPreservationTests);
+			registerLazySerializationRoundtripClusterTests('Source-Based', lazySerializationSourceTests);
+		});
 	});
 
 	describe('Environment Serialization', () => {

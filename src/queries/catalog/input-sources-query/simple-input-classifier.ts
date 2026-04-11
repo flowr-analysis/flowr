@@ -338,9 +338,7 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierF
 		return false;
 	}
 	for(const id of list) {
-		if(fn.id === id) {
-			return true;
-		} else if(Identifier.is(id) && Identifier.matches(id, fn.name)) {
+		if(fn.id === id || (Identifier.is(id) && Identifier.matches(id, fn.name))) {
 			return true;
 		}
 	}
@@ -348,7 +346,7 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierF
 }
 
 /**
- * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
+ * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}.
  */
 export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Partial<Record<InputType, Functions>> {
 	/**

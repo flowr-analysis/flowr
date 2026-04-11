@@ -37,7 +37,7 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 			fdef ? RNode.collectAllIds(fdef) : undefined
 		);
 
-		const config = { ...(await resolveSearches(analyzer, query?.config ?? {})), ...defaultConfig };
+		const config = { ...defaultConfig, ...(await resolveSearches(analyzer, query?.config ?? {})) };
 		results[key] = classifyInput(criterionId, provenance, config, df.graph);
 	}
 

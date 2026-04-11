@@ -3,7 +3,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import type { InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
+import type { InputClassifierConfig, InputSource, InputSources } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import { InputType } from '../../queries/catalog/input-sources-query/simple-input-classifier';
 import type { InputSourcesQuery } from '../../queries/catalog/input-sources-query/input-sources-query-format';
 import { SlicingCriterion } from '../../slicing/criterion/parse';
@@ -62,15 +62,15 @@ export interface ProblematicInputsResult extends LintingResult {
 	sources: InputSources
 }
 export interface ProblematicInputsConfig extends MergeableRecord {
-	consider?: string | string[]
+	consider?: string | string[],
+	inputFns?: InputClassifierConfig
 }
 
 export type ProblematicInputsMetadata = MergeableRecord;
 
 export const PROBLEMATIC_INPUTS = {
 	createSearch: config => {
-		const cfg = config as ProblematicInputsConfig | undefined;
-		const considerArr = normalizeConsider(cfg);
+		const considerArr = normalizeConsider(config);
 		const queries = considerArr.map((name, i) => ({
 			type:          'call-context',
 			callName:      name,
@@ -79,14 +79,14 @@ export const PROBLEMATIC_INPUTS = {
 		} as const));
 		return Q.fromQuery(...queries);
 	},
-	processSearchResult: async(elements, _config, data): Promise<{ results: ProblematicInputsResult[], '.meta': ProblematicInputsMetadata }> => {
+	processSearchResult: async(elements, config, data) => {
 		const results: ProblematicInputsResult[] = [];
 
 		const defaultAccept: InputType[] = [InputType.Constant, InputType.DerivedConstant];
 		for(const element of elements.getElements()) {
 			const nid = element.node.info.id;
 			const criterion = SlicingCriterion.fromId(nid);
-			const q: InputSourcesQuery = { type: 'input-sources', criterion };
+			const q: InputSourcesQuery = { type: 'input-sources', criterion, config: config.inputFns };
 			const all = await data.analyzer.query([q]);
 			const inputSourcesResult = all['input-sources'];
 			const sources = inputSourcesResult?.results?.[criterion] ?? [];

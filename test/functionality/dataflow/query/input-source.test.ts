@@ -63,6 +63,13 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			}]
 		});
 	});
+
+	describe('Network access', () => {
+		testQuery('curl', 'x <- curl("https://example.com/data.csv")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Network], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Reading files', () => {
 		testQuery('Read a file', 'x <- read.csv("foo.bar")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{
@@ -71,13 +78,17 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			}]
 		});
 
+		testQuery('Read a file from network', 'x <- read.csv("https://example.com/data.csv")\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias }]
+		});
+
 		// read with filename from variable (unknown/known)
 		testQuery('Read a file with filename constant variable', "fname <- 'foo.bar'\nx <- read.csv(fname)\nfoo(x)", [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [{ id: '3@x', types: [InputType.File], trace: InputTraceType.Alias }]
 		});
 
 		testQuery('Read a file with unknown filename variable', 'x <- read.csv(y)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias }]
 		});
 	});
 
@@ -89,7 +100,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 	describe('Combined Options', () => {
 		testQuery('Read and Random', 'x <- read.csv(y)\ny <- runif(1)\nfoo(x, y)', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [
-				{ id: '3@x', types: [InputType.File], trace: InputTraceType.Alias },
+				{ id: '3@x', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias },
 				{ id: '3@y', types: [InputType.Random], trace: InputTraceType.Alias }
 			]
 		});

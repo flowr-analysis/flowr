@@ -1,0 +1,24 @@
+{
+  "runName": "dataset-lazy",
+  "suitePaths": [
+    "/home/jonas/Git/ba-thesis/ssoc-data/sources/0-Journal_of_Statistical_Software_Output.csv-output",
+    "/home/jonas/Git/ba-thesis/ssoc-data/sources/1-Zenodo_Output.csv-output",
+    "/home/jonas/Git/ba-thesis/ssoc-data/sources/2-Figshare_Output.csv-output",
+    "/home/jonas/Git/ba-thesis/ssoc-data/sources/dataverse/doi-10-7910/DVN"
+  ],
+  "workerJs": "../../dist/test/benchmark/run-analysis.js",
+  "resultsRoot": "./benchmark-results",
+  "repetitions": 1,
+  "skipCorrectness": true,
+  "optimizations": {
+    "lazyFunctions": true,
+    "parallelFiles": false,
+    "parallelOperations": false
+  },
+  "threadsForCorrectness": [
+    1
+  ],
+  "threadsForPerformance": [
+    1
+  ]
+}

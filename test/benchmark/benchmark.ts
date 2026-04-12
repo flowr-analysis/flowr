@@ -2,9 +2,10 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import type { WorkerResult } from './results-types';
+import { CorrectnessClassification, correctnessClassificationToName } from './results-types';
 
 type Settings = {
-    sourcesRoot:          string;
+    suitePaths:           string[];
     workerJs:             string;
     resultsRoot:          string;
     runName:              string;
@@ -12,6 +13,7 @@ type Settings = {
 
     repetitions:      number;
     skipCorrectness?: boolean;
+    dryRun?:          boolean;
 
     optimizations?: {
         parallelFiles?:      boolean;
@@ -19,65 +21,82 @@ type Settings = {
         lazyFunctions?:      boolean;
     };
 
-    excludeSuites?: string[];
-
     // Arrays of threads for worker execution
     threadsForCorrectness?: number[];
     threadsForPerformance?: number[];
 };
 
+type BenchmarkRuntime = {
+	settingsPath: string;
+	settings:     Settings;
+	suitePaths:   string[];
+	workerJs:     string;
+	resultRoot:   string;
+	outputRoot:   string;
+	dryRun:       boolean;
+};
+
 // --------------------------------------------------
 // Load settings
 // --------------------------------------------------
-const ThisDir = __dirname;
+function loadBenchmarkRuntime(args: readonly string[]): BenchmarkRuntime {
+	const thisDir = __dirname;
+	let settingsPath = path.join(thisDir, 'settings.json');
 
-// Default settings file
-let settingsPath = path.join(ThisDir, 'settings.json');
+	const profileIndex = args.indexOf('--profile');
+	if(profileIndex >= 0 && args.length > profileIndex + 1) {
+		settingsPath = path.resolve(thisDir, args[profileIndex + 1]);
+	}
 
-// If the CLI provides --profile <path>, use that
-const profileIndex = process.argv.indexOf('--profile');
-if(profileIndex >= 0 && process.argv.length > profileIndex + 1) {
-	settingsPath = path.resolve(ThisDir, process.argv[profileIndex + 1]);
+	if(!fs.existsSync(settingsPath)) {
+		throw new Error(`Missing settings file at ${settingsPath}`);
+	}
+
+	const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Settings;
+	const settingsDir = path.dirname(settingsPath);
+	const suitePaths = settings.suitePaths.map(p => path.resolve(settingsDir, p));
+	const workerJs = path.resolve(settingsDir, settings.workerJs);
+	const resultRoot = path.resolve(settingsDir, settings.resultsRoot);
+	const outputRoot = path.join(resultRoot, settings.runName);
+	const dryRun = settings.dryRun === true || args.includes('--dryRun');
+
+	return {
+		settingsPath,
+		settings,
+		suitePaths,
+		workerJs,
+		resultRoot,
+		outputRoot,
+		dryRun,
+	};
 }
-
-if(!fs.existsSync(settingsPath)) {
-	throw new Error(`Missing settings file at ${settingsPath}`);
-}
-
-const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as Settings;
-
-// Resolve paths relative to the settings file
-const SettingsDir = path.dirname(settingsPath);
-const SourcesRoot = path.resolve(SettingsDir, settings.sourcesRoot);
-const WorlerJs = path.resolve(SettingsDir, settings.workerJs);
-const ResultRoot = path.resolve(SettingsDir, settings.resultsRoot);
-const OutputRoot = path.join(ResultRoot, settings.runName);
-
-// Make output folder
-fs.mkdirSync(OutputRoot, { recursive: true });
-
-console.log('=== Benchmark settings loaded ===');
-console.log(`Settings file: ${settingsPath}`);
-console.log(`Run name: ${settings.runName}`);
-console.log(`Sources root: ${SourcesRoot}`);
-console.log(`Worker JS: ${WorlerJs}`);
-console.log(`Results root: ${ResultRoot}`);
 
 
 // ---------------- Discovery ----------------
 
-function listSuites(root: string): string[] {
-	if(!fs.existsSync(root)) {
-		throw new Error(`Sources root does not exist: ${root}`);
+function listSuites(suitePaths: readonly string[]): { name: string; path: string }[] {
+	if(suitePaths.length === 0) {
+		throw new Error('No suite paths configured. Please provide at least one entry in "suitePaths".');
 	}
-	let suites = fs.readdirSync(root, { withFileTypes: true })
-		.filter(e => e.isDirectory())
-		.map(e => e.name);
 
-	if(settings.excludeSuites?.length) {
-		suites = suites.filter(s => settings.excludeSuites ? !settings.excludeSuites.includes(s) : true);
-	}
-	return suites;
+	const seenNames = new Set<string>();
+	return suitePaths.map((suitePath, index) => {
+		if(!fs.existsSync(suitePath)) {
+			throw new Error(`Suite path does not exist: ${suitePath}`);
+		}
+		if(!fs.statSync(suitePath).isDirectory()) {
+			throw new Error(`Suite path is not a directory: ${suitePath}`);
+		}
+
+		const baseName = path.basename(suitePath);
+		let suiteName = baseName;
+		if(seenNames.has(suiteName)) {
+			suiteName = `${baseName}-${index + 1}`;
+		}
+		seenNames.add(suiteName);
+
+		return { name: suiteName, path: suitePath };
+	});
 }
 
 function listProjectsInSuite(suitePath: string, maxProjectsPerSuite?: number): string[] {
@@ -94,36 +113,46 @@ function listProjectsInSuite(suitePath: string, maxProjectsPerSuite?: number): s
 
 // ---------------- Runner ----------------
 
-async function runOne(suite: string, projectDir: string, threads?: number, skipCorrectness?: boolean): Promise<void> {
+async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: string, threads?: number, skipCorrectness?: boolean): Promise<void> {
 	const projectName = path.basename(projectDir);
-	let profileDir = path.join(OutputRoot, suite, projectName);
+	let profileDir = path.join(runtime.outputRoot, suite, projectName);
 	if(threads) {
 		profileDir += `-threads-${threads}`;
 	}
-	fs.mkdirSync(profileDir, { recursive: true });
+	if(!runtime.dryRun) {
+		fs.mkdirSync(profileDir, { recursive: true });
+	}
 
-	console.log(`\n=== Running: [${suite}] ${projectName}${threads ? ` | threads=${threads}` : ''} ===`);
+	if(runtime.dryRun) {
+		console.log(`\n=== Dry Run: [${suite}] ${projectName}${threads ? ` | threads=${threads}` : ''} ===`);
+		console.log(`[dry-run] would execute project: ${projectDir}`);
+	} else {
+		console.log(`\n=== Running: [${suite}] ${projectName}${threads ? ` | threads=${threads}` : ''} ===`);
+	}
 
 	const args: string[] = [
-		WorlerJs,
+		runtime.workerJs,
 		projectDir,
 		profileDir,
-		String(settings.repetitions),
+		String(runtime.settings.repetitions),
 	];
 
 	// Skip correctness if requested
-	if(skipCorrectness || (settings.skipCorrectness ?? false)) {
+	if(skipCorrectness || (runtime.settings.skipCorrectness ?? false)) {
 		args.push('--skipCorrectness');
 	}
 
-	if(settings.optimizations?.parallelFiles) {
+	if(runtime.settings.optimizations?.parallelFiles) {
 		args.push('--parallelFiles');
 	}
-	if(settings.optimizations?.parallelOperations) {
+	if(runtime.settings.optimizations?.parallelOperations) {
 		args.push('--parallelOperations');
 	}
-	if(settings.optimizations?.lazyFunctions) {
+	if(runtime.settings.optimizations?.lazyFunctions) {
 		args.push('--lazyFunctions');
+	}
+	if(runtime.dryRun) {
+		args.push('--dryRun');
 	}
 
 	const child = spawn(
@@ -138,25 +167,36 @@ async function runOne(suite: string, projectDir: string, threads?: number, skipC
 	}
 }
 
-async function runProjectForThreads(suite: string, projectPath: string): Promise<void> {
-	const correctnessThreads = settings.threadsForCorrectness ?? [];
-	const performanceThreads = settings.threadsForPerformance ?? [];
+async function runProjectForThreads(runtime: BenchmarkRuntime, suite: string, projectPath: string): Promise<void> {
+	if(!runtime.settings.optimizations?.parallelFiles) {
+		// Thread-specific settings only matter for file-parallel runs.
+		await runOne(runtime, suite, projectPath);
+		return;
+	}
+
+	const correctnessThreads = runtime.settings.threadsForCorrectness ?? [];
+	const performanceThreads = runtime.settings.threadsForPerformance ?? [];
+	if(performanceThreads.length === 0) {
+		console.warn('File parallelization is enabled, but no performance thread counts are configured. Running a single default analysis.');
+		await runOne(runtime, suite, projectPath);
+		return;
+	}
 
 
 	for(const threads of performanceThreads) {
 		const skipCorrectness = !correctnessThreads.includes(threads);
-		await runOne(suite, projectPath, threads, skipCorrectness);
+		await runOne(runtime, suite, projectPath, threads, skipCorrectness);
 	}
 }
 
 
-async function runTestSuite(suiteName: string, suitePath: string): Promise<void> {
+async function runTestSuite(runtime: BenchmarkRuntime, suiteName: string, suitePath: string): Promise<void> {
 	console.log(`\n=== Suite: ${suiteName} ===`);
-	const projects = listProjectsInSuite(suitePath, settings.maxProjectsPerSuite);
+	const projects = listProjectsInSuite(suitePath, runtime.settings.maxProjectsPerSuite);
 	console.log(`Found ${projects.length} projects in suite ${suiteName}`);
 
 	for(const projectPath of projects) {
-		await runProjectForThreads(suiteName, projectPath);
+		await runProjectForThreads(runtime, suiteName, projectPath);
 	}
 }
 
@@ -174,9 +214,10 @@ type SuiteSummary = {
 		lazyFunctionsRemaining:    number;
 	};
     correctnessStats?: {
-		successful:      number;
-		withDifferences: number;
-		skipped:         number;
+		correct:   number;
+		imprecise: number;
+		incorrect: number;
+		skipped:   number;
 	};
     aggregateGraphMetrics?: {
 		totalNodes:           number;
@@ -190,13 +231,20 @@ type SuiteSummary = {
 	};
 };
 
-function collectResults(): SuiteSummary[] {
-	if(!fs.existsSync(OutputRoot)) {
-		throw new Error(`Output directory does not exist: ${OutputRoot}`);
+function mean(xs: readonly number[]): number {
+	if(xs.length === 0) {
+		return 0;
 	}
-	const suiteDirs = fs.readdirSync(OutputRoot, { withFileTypes: true })
+	return xs.reduce((a, b) => a + b, 0) / xs.length;
+}
+
+function collectResults(outputRoot: string): SuiteSummary[] {
+	if(!fs.existsSync(outputRoot)) {
+		throw new Error(`Output directory does not exist: ${outputRoot}`);
+	}
+	const suiteDirs = fs.readdirSync(outputRoot, { withFileTypes: true })
 		.filter(e => e.isDirectory())
-		.map(e => path.join(OutputRoot, e.name));
+		.map(e => path.join(outputRoot, e.name));
 
 	const suites: SuiteSummary[] = [];
 
@@ -232,9 +280,9 @@ function collectResults(): SuiteSummary[] {
 			totalFiles += data.fileCount;
 			projects.push(data);
 
-			// Approximate runtime using wallMs stats mean
-			if(data.wallMs.mean) {
-				totalRuntimes.push(data.wallMs.mean);
+			// Use measured runtime datapoints and aggregate by per-project mean runtime.
+			if(data.wallMs.length > 0) {
+				totalRuntimes.push(mean(data.wallMs));
 			}
 
 			// Aggregate lazy function stats
@@ -274,7 +322,7 @@ function collectResults(): SuiteSummary[] {
 		const meanProjectRuntimeMs = projects.length ? totalRuntimeMs / projects.length : 0;
 
 		// Aggregate correctness stats
-		let correctnessStats: { successful: number; withDifferences: number; skipped: number } | undefined;
+		let correctnessStats: { correct: number; imprecise: number; incorrect: number; skipped: number } | undefined;
 		let hasCorrectness = false;
 		for(const project of projects) {
 			if(project.correctness !== 'skipped') {
@@ -283,14 +331,22 @@ function collectResults(): SuiteSummary[] {
 			}
 		}
 		if(hasCorrectness) {
-			correctnessStats = { successful: 0, withDifferences: 0, skipped: 0 };
+			correctnessStats = { correct: 0, imprecise: 0, incorrect: 0, skipped: 0 };
 			for(const project of projects) {
 				if(project.correctness === 'skipped') {
 					correctnessStats.skipped++;
-				} else if(project.correctness.ok) {
-					correctnessStats.successful++;
 				} else {
-					correctnessStats.withDifferences++;
+					switch(project.correctness.classification) {
+						case CorrectnessClassification.Correct:
+							correctnessStats.correct++;
+							break;
+						case CorrectnessClassification.Imprecise:
+							correctnessStats.imprecise++;
+							break;
+						case CorrectnessClassification.Incorrect:
+							correctnessStats.incorrect++;
+							break;
+					}
 				}
 			}
 		}
@@ -301,7 +357,12 @@ function collectResults(): SuiteSummary[] {
 		console.log(`- Mean per project: ${(meanProjectRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Total files analyzed: ${totalFiles}`);
 		if(correctnessStats) {
-			console.log(`- Correctness: ${correctnessStats.successful} successful, ${correctnessStats.withDifferences} with differences, ${correctnessStats.skipped} skipped`);
+			console.log(
+				`- Correctness: ${correctnessStats.correct} ${correctnessClassificationToName(CorrectnessClassification.Correct)}, ` +
+				`${correctnessStats.imprecise} ${correctnessClassificationToName(CorrectnessClassification.Imprecise)}, ` +
+				`${correctnessStats.incorrect} ${correctnessClassificationToName(CorrectnessClassification.Incorrect)}, ` +
+				`${correctnessStats.skipped} skipped`
+			);
 		}
 		if(totalLazyFunctionStats) {
 			console.log(`- Total function definitions: ${totalLazyFunctionStats.totalFunctionDefinitions}`);
@@ -321,9 +382,9 @@ function collectResults(): SuiteSummary[] {
 	return suites;
 }
 
-function writeSummary(suites: SuiteSummary[]) {
-	fs.mkdirSync(OutputRoot, { recursive: true });
-	const summaryPath = path.join(OutputRoot, 'summary.json');
+function writeSummary(suites: SuiteSummary[], outputRoot: string) {
+	fs.mkdirSync(outputRoot, { recursive: true });
+	const summaryPath = path.join(outputRoot, 'summary.json');
 	fs.writeFileSync(summaryPath, JSON.stringify(suites, null, 2), 'utf-8');
 
 	const totalProjects = suites.reduce((sum, s) => sum + s.projects.length, 0);
@@ -344,14 +405,15 @@ function writeSummary(suites: SuiteSummary[]) {
 	}
 
 	// Aggregate correctness stats across all suites
-	let totalCorrectnessStats: { successful: number; withDifferences: number; skipped: number } | undefined;
+	let totalCorrectnessStats: { correct: number; imprecise: number; incorrect: number; skipped: number } | undefined;
 	for(const suite of suites) {
 		if(suite.correctnessStats) {
 			if(!totalCorrectnessStats) {
-				totalCorrectnessStats = { successful: 0, withDifferences: 0, skipped: 0 };
+				totalCorrectnessStats = { correct: 0, imprecise: 0, incorrect: 0, skipped: 0 };
 			}
-			totalCorrectnessStats.successful += suite.correctnessStats.successful;
-			totalCorrectnessStats.withDifferences += suite.correctnessStats.withDifferences;
+			totalCorrectnessStats.correct += suite.correctnessStats.correct;
+			totalCorrectnessStats.imprecise += suite.correctnessStats.imprecise;
+			totalCorrectnessStats.incorrect += suite.correctnessStats.incorrect;
 			totalCorrectnessStats.skipped += suite.correctnessStats.skipped;
 		}
 	}
@@ -392,8 +454,9 @@ function writeSummary(suites: SuiteSummary[]) {
 	console.log(`Total files analyzed: ${totalFiles}`);
 	if(totalCorrectnessStats) {
 		console.log('\n=== Correctness Statistics ===');
-		console.log(`Projects with matching graphs: ${totalCorrectnessStats.successful}`);
-		console.log(`Projects with differences: ${totalCorrectnessStats.withDifferences}`);
+		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Correct)} graphs: ${totalCorrectnessStats.correct}`);
+		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Imprecise)} graphs: ${totalCorrectnessStats.imprecise}`);
+		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Incorrect)} graphs: ${totalCorrectnessStats.incorrect}`);
 		console.log(`Projects with skipped correctness: ${totalCorrectnessStats.skipped}`);
 	}
 	if(totalLazyStats) {
@@ -427,29 +490,52 @@ function writeSummary(suites: SuiteSummary[]) {
 // ---------------- Main ----------------
 
 async function main() {
+	const runtime = loadBenchmarkRuntime(process.argv);
+
+	console.log('=== Benchmark settings loaded ===');
+	console.log(`Settings file: ${runtime.settingsPath}`);
+	console.log(`Run name: ${runtime.settings.runName}`);
+	console.log(`Suite paths (${runtime.suitePaths.length}):`);
+	for(const suitePath of runtime.suitePaths) {
+		console.log(`- ${suitePath}`);
+	}
+	console.log(`Worker JS: ${runtime.workerJs}`);
+	console.log(`Results root: ${runtime.resultRoot}`);
+
 	console.log('=== Benchmark settings ===');
-	console.log(`Sources root: ${SourcesRoot}`);
-	console.log(`Worker JS:    ${WorlerJs}`);
-	console.log(`Output dir:   ${OutputRoot}`);
-	console.log(`Max projects per suite: ${settings.maxProjectsPerSuite ?? 'all'}`);
-	console.log(`Repetitions: ${settings.repetitions}`);
-	console.log(`Skip correctness: ${settings.skipCorrectness ?? false}`);
-	console.log(`Optimizations: ${JSON.stringify(settings.optimizations ?? {}, null, 2)}`);
-	console.log('Threads (correctness): ', settings.threadsForCorrectness);
-	console.log('Threads (performance): ', settings.threadsForPerformance);
+	console.log(`Suite paths configured: ${runtime.suitePaths.length}`);
+	console.log(`Worker JS:    ${runtime.workerJs}`);
+	console.log(`Output dir:   ${runtime.outputRoot}`);
+	console.log(`Max projects per suite: ${runtime.settings.maxProjectsPerSuite ?? 'all'}`);
+	console.log(`Repetitions: ${runtime.settings.repetitions}`);
+	console.log(`Skip correctness: ${runtime.settings.skipCorrectness ?? false}`);
+	console.log(`Dry run: ${runtime.dryRun}`);
+	console.log(`Optimizations: ${JSON.stringify(runtime.settings.optimizations ?? {}, null, 2)}`);
+	console.log('Threads (correctness): ', runtime.settings.threadsForCorrectness);
+	console.log('Threads (performance): ', runtime.settings.threadsForPerformance);
 
-	fs.mkdirSync(OutputRoot, { recursive: true });
-
-	const suites = listSuites(SourcesRoot);
-	console.log(`\nFound ${suites.length} suites.`);
-
-	for(const suiteName of suites) {
-		const suitePath = path.join(SourcesRoot, suiteName);
-		await runTestSuite(suiteName, suitePath);
+	if(!runtime.dryRun) {
+		if(fs.existsSync(runtime.outputRoot)) {
+			console.log(`Cleaning existing benchmark output: ${runtime.outputRoot}`);
+			fs.rmSync(runtime.outputRoot, { recursive: true, force: true });
+		}
+		fs.mkdirSync(runtime.outputRoot, { recursive: true });
 	}
 
-	const results = collectResults();
-	writeSummary(results);
+	const suites = listSuites(runtime.suitePaths);
+	console.log(`\nConfigured ${suites.length} suites.`);
+
+	for(const suite of suites) {
+		await runTestSuite(runtime, suite.name, suite.path);
+	}
+
+	if(runtime.dryRun) {
+		console.log('\nDry run complete. No analyses were executed and no result files were written.');
+		return;
+	}
+
+	const results = collectResults(runtime.outputRoot);
+	writeSummary(results, runtime.outputRoot);
 }
 
 main().catch(err => {

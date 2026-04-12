@@ -4,15 +4,45 @@ export interface OptimizationFlags {
     lazyFunctions:      boolean;
 }
 
-export interface PerformanceStats {
-    mean:       number;
-    median:     number;
-    min:        number;
-    max:        number;
-    stddev:     number;
-    p90:        number;
-    p95:        number;
-    dataPoints: number[];
+export interface GraphCheck {
+    ok:        boolean;
+    diffCount: number;
+    diff?:     readonly string[];
+}
+
+export enum CorrectnessClassification {
+    Correct = 1,
+    Imprecise = 2,
+    Incorrect = 4,
+}
+
+export const enum CorrectnessClassificationName {
+    Correct = 'correct',
+    Imprecise = 'imprecise',
+    Incorrect = 'incorrect',
+}
+
+const classificationToNameMap: ReadonlyMap<CorrectnessClassification, CorrectnessClassificationName> = new Map([
+	[CorrectnessClassification.Correct, CorrectnessClassificationName.Correct],
+	[CorrectnessClassification.Imprecise, CorrectnessClassificationName.Imprecise],
+	[CorrectnessClassification.Incorrect, CorrectnessClassificationName.Incorrect],
+]);
+
+/** Convert the enum value to a stable, human-readable correctness classification name. */
+export function correctnessClassificationToName(classification: CorrectnessClassification): CorrectnessClassificationName {
+	return classificationToNameMap.get(classification) as CorrectnessClassificationName;
+}
+
+export interface CorrectnessResult {
+    classification: CorrectnessClassification;
+    diffCount:      number;
+    diff?:          readonly string[];
+}
+
+export interface SequentialReanalysisInfo {
+    triggered:  boolean;
+    iteration?: number;
+    fileIndex?: number;
 }
 
 export interface LazyFunctionStats {
@@ -36,11 +66,12 @@ export interface SourceCharacteristics {
 export interface WorkerResult {
     project:                string;
     threads?:               number;
-    correctness:            'skipped' | { ok: boolean; diffCount: number; diff?: readonly string[] };
+    correctness:            'skipped' | CorrectnessResult;
     fileCount:              number;
     timestamp:              string;
-    wallMs:                 PerformanceStats;
+    wallMs:                 number[];
     lazyFunctionStats?:     LazyFunctionStats;
+    sequentialReanalysis?:  SequentialReanalysisInfo;
     graphMetrics?:          GraphMetrics;
     sourceCharacteristics?: SourceCharacteristics;
 }

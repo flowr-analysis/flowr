@@ -1,13 +1,17 @@
 {
     "runName": "lazy-functions",
-    "sourcesRoot": "/home/jonas/Git/ba-thesis/ssoc-data/sources",
+    "suitePaths": [
+        "/home/jonas/Git/ba-thesis/ssoc-data/sources/0-Journal_of_Statistical_Software_Output.csv-output",
+        "/home/jonas/Git/ba-thesis/ssoc-data/sources/1-Zenodo_Output.csv-output",
+        "/home/jonas/Git/ba-thesis/ssoc-data/sources/2-Figshare_Output.csv-output",
+        "/home/jonas/Git/ba-thesis/ssoc-data/sources/dataverse/doi-10-7910/DVN"
+    ],
     "workerJs": "../../dist/test/benchmark/run-analysis.js",
     "resultsRoot": "./benchmark-results",
     "repetitions": 10,
-    "warmup": true,
     "collectStats": true,
     "skipCorrectness": false,
-    "maxProjectsPerSuite": 75,
+    "maxProjectsPerSuite": 25,
     "optimizations": {
         "lazyFunctions": true,
         "parallelFiles": false,
@@ -18,6 +22,5 @@
     ],
     "threadsForPerformance": [
         1
-    ],
-    "excludeSuites": ["dataverse"]
+    ]
 }

@@ -1,6 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge } from './edge';
-import { EdgeType, edgeIncludesType } from './edge';
+import type { DataflowGraphEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -305,27 +304,9 @@ export class DataflowGraph<
 				continue;
 			}
 
-			// A lazy function definition is still lazy if it has not been called
-			// Check if there are any incoming Calls edges to this vertex
-			let hasBeenCalled = false;
-			for(const [, outgoingEdges] of this.edgeInformation) {
-				const edgeToThis = outgoingEdges.get(id);
-				if(edgeToThis !== undefined && edgeIncludesType(edgeToThis.types, EdgeType.Calls)) {
-					hasBeenCalled = true;
-					break;
-				}
-			}
-
 			const funcDefVertex = vertex as DataflowGraphVertexFunctionDefinition;
 			const isLazyAndUnmaterialized = isLazyFunctionDefinitionVertex(funcDefVertex) && funcDefVertex.materialized === false;
-
-			// Sanity check: vertices that have been called should always be materialized
-			if(hasBeenCalled && isLazyAndUnmaterialized) {
-				guard(`Function definition ${id} has been called but is not materialized`);
-			}
-
-			// Count lazy definitions that have not been called and are not yet materialized
-			if(!hasBeenCalled && isLazyAndUnmaterialized) {
+			if(isLazyAndUnmaterialized) {
 				count++;
 			}
 		}

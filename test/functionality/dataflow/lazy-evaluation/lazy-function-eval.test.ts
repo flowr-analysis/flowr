@@ -5,6 +5,10 @@ import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-datafl
 
 export type AnalyzerSetupFunction = (analyzer: FlowrAnalyzer) => FlowrAnalyzer;
 
+function remainingLazyFunctions(stats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number }): number {
+	return stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+}
+
 /**
  * Compares lazy vs eager evaluation and verifies graphs are equal while tracking stats.
  */
@@ -26,7 +30,6 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	console.log(`Lazy Functions in vertices: ${lazyDf.graph.countLazyFunctionDefinitions()}`);
 
 	const lazyStats = lazyDf.graph.getLazyFunctionStatistics();
-	const eagerStats = eagerDf.graph.getLazyFunctionStatistics();
 
 	//lazyDf.graph.materializeAll(); // Force materialization of all lazy functions for accurate comparison
 
@@ -76,8 +79,7 @@ async function compareWithLazyStats(testCaseName: string, func: AnalyzerSetupFun
 	assert.isTrue(isEqual, `Dataflow graphs should be equal for testCase ${testCaseName}`);
 
 	return {
-		lazyStats,
-		eagerStats
+		lazyStats
 	};
 }
 
@@ -306,9 +308,8 @@ describe('Basic lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('UnusedFunction', UnusedFunction);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// In lazy mode, at least one function should remain lazy (the unused one)
 		console.log(`Unused functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.isTrue(
 			lazyFunctionsRemaining > 0,
@@ -320,9 +321,8 @@ describe('Basic lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('MultipleUnusedFunctions', MultipleUnusedFunctions);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// Should have remaining lazy functions (the unused ones)
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.isTrue(
 			lazyFunctionsRemaining >= 3,
@@ -337,9 +337,8 @@ describe('Advanced lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('NestedUnusedFunctions', NestedUnusedFunctions);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// The inner_unused function should remain lazy
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.isTrue(
 			lazyFunctionsRemaining > 0,
@@ -350,9 +349,8 @@ describe('Advanced lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('DeepCallChain', DeepCallChain);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// All three functions should be analyzed since they're in the call chain
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.equal(
 			lazyFunctionsRemaining,
@@ -365,9 +363,8 @@ describe('Advanced lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('ConditionalFunctionCall', ConditionalFunctionCall);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// Both func_a and func_b should be analyzed since dataflow doesn't track conditionals
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 	});
 
@@ -378,9 +375,8 @@ describe('Complex Usage for lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('FunctionReturnedButNotCalled', FunctionReturnedButNotCalled);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// The multiplier function returned but not called should remain lazy
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.isTrue(
 			lazyFunctionsRemaining > 0,
@@ -392,9 +388,8 @@ describe('Complex Usage for lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctions', MutuallyRecursiveFunctions);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// Both mutually recursive functions should be analyzed since is_even is called
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.equal(
 			lazyFunctionsRemaining,
@@ -407,15 +402,60 @@ describe('Complex Usage for lazy evaluation tests', () => {
 		const result = await compareWithLazyStats('MutuallyRecursiveFunctionsUnknownData', MutuallyRecursiveFunctionsUnknownData);
 
 		const stats = result.lazyStats;
-		const lazyFunctionsRemaining = stats.totalFunctionDefinitions - stats.lazyFunctionsMaterialized;
+		const lazyFunctionsRemaining = remainingLazyFunctions(stats);
 
-		// Both mutually recursive functions should be analyzed since is_even is called
 		console.log(`Functions remaining lazy: ${lazyFunctionsRemaining}`);
 		assert.equal(
 			lazyFunctionsRemaining,
 			0,
 			'Mutually recursive functions should have been materialized when one is called'
 		);
+	});
+});
+
+describe('Lazy evaluation disabled regression tests', () => {
+	async function assertNoLazyVertices(testCaseName: string, setup: AnalyzerSetupFunction, enableParallelFiles: boolean): Promise<void> {
+		const analyzer = setup(await new FlowrAnalyzerBuilder()
+			.amendConfig((cfg) => {
+				cfg.optimizations.deferredFunctionEvaluation.enabled = false;
+				cfg.optimizations.fileParallelization = enableParallelFiles;
+			})
+			.build());
+		try {
+			const df = await analyzer.dataflow();
+			const lazyFunctionCount = df.graph.countLazyFunctionDefinitions();
+			assert.strictEqual(
+				lazyFunctionCount,
+				0,
+				`No lazy vertices should be reported when deferred function evaluation is disabled (${testCaseName}, parallelFiles=${enableParallelFiles})`
+			);
+		} finally {
+			await analyzer.close(true);
+		}
+	}
+
+	const regressionCases: Array<[string, AnalyzerSetupFunction]> = [
+		['SimpleFunction', _SimpleFunction],
+		['UnusedFunction', UnusedFunction],
+		['MultipleUnusedFunctions', MultipleUnusedFunctions],
+		['NestedUnusedFunctions', NestedUnusedFunctions],
+		['FunctionReturnedButNotCalled', FunctionReturnedButNotCalled],
+		['DeepCallChain', DeepCallChain],
+		['ConditionalFunctionCall', ConditionalFunctionCall],
+		['MutuallyRecursiveFunctions', MutuallyRecursiveFunctions],
+		['MutuallyRecursiveFunctionsUnknownData', MutuallyRecursiveFunctionsUnknownData],
+	];
+
+	test('Sequential analysis reports no lazy vertices', async() => {
+		for(const [testCaseName, setup] of regressionCases) {
+			await assertNoLazyVertices(testCaseName, setup, false);
+		}
+	});
+
+	test('Parallel files only analysis reports no lazy vertices', async() => {
+		for(const [testCaseName, setup] of regressionCases) {
+			await assertNoLazyVertices(testCaseName, setup, true);
+		}
 	});
 });
 

@@ -36,6 +36,8 @@ type BenchmarkRuntime = {
 	dryRun:       boolean;
 };
 
+const tempResultRelativePath = './.tmp-analysis-result.json';
+
 // --------------------------------------------------
 // Load settings
 // --------------------------------------------------
@@ -130,40 +132,113 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 		console.log(`\n=== Running: [${suite}] ${projectName}${threads ? ` | threads=${threads}` : ''} ===`);
 	}
 
-	const args: string[] = [
-		runtime.workerJs,
-		projectDir,
-		profileDir,
-		String(runtime.settings.repetitions),
-	];
-
-	// Skip correctness if requested
-	if(skipCorrectness || (runtime.settings.skipCorrectness ?? false)) {
-		args.push('--skipCorrectness');
-	}
-
-	if(runtime.settings.optimizations?.parallelFiles) {
-		args.push('--parallelFiles');
-	}
-	if(runtime.settings.optimizations?.parallelOperations) {
-		args.push('--parallelOperations');
-	}
-	if(runtime.settings.optimizations?.lazyFunctions) {
-		args.push('--lazyFunctions');
-	}
 	if(runtime.dryRun) {
-		args.push('--dryRun');
+		const tempResultPath = path.resolve(profileDir, tempResultRelativePath);
+		const dryRunArgs: string[] = [
+			runtime.workerJs,
+			projectDir,
+			profileDir,
+			'--tempResultPath',
+			tempResultPath,
+		];
+
+		if(skipCorrectness || (runtime.settings.skipCorrectness ?? false)) {
+			dryRunArgs.push('--skipCorrectness');
+		}
+		if(runtime.settings.optimizations?.parallelFiles) {
+			dryRunArgs.push('--parallelFiles');
+		}
+		if(runtime.settings.optimizations?.parallelOperations) {
+			dryRunArgs.push('--parallelOperations');
+		}
+		if(runtime.settings.optimizations?.lazyFunctions) {
+			dryRunArgs.push('--lazyFunctions');
+		}
+		dryRunArgs.push('--dryRun');
+
+		const child = spawn(
+			'node',
+			dryRunArgs,
+			{ stdio: 'inherit' }
+		);
+
+		const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
+		if(exitCode !== 0) {
+			throw new Error(`Run failed for [${suite}] ${projectName} (exit=${exitCode})`);
+		}
+		return;
 	}
 
-	const child = spawn(
-		'node',
-		args,
-		{ stdio: 'inherit' }
-	);
+	const tempResultPath = path.resolve(profileDir, tempResultRelativePath);
+	if(fs.existsSync(tempResultPath)) {
+		fs.rmSync(tempResultPath, { force: true });
+	}
 
-	const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
-	if(exitCode !== 0) {
-		throw new Error(`Run failed for [${suite}] ${projectName} (exit=${exitCode})`);
+	let aggregatedResult: WorkerResult | undefined;
+
+	for(let iteration = 0; iteration < runtime.settings.repetitions; iteration++) {
+		const runtimeOnly = iteration > 0;
+		const shouldSkipCorrectness = runtimeOnly || skipCorrectness || (runtime.settings.skipCorrectness ?? false);
+		const args: string[] = [
+			runtime.workerJs,
+			projectDir,
+			profileDir,
+			'--tempResultPath',
+			tempResultPath,
+		];
+
+		if(shouldSkipCorrectness) {
+			args.push('--skipCorrectness');
+		}
+		if(runtimeOnly) {
+			args.push('--runtimeOnly');
+		}
+		if(runtime.settings.optimizations?.parallelFiles) {
+			args.push('--parallelFiles');
+		}
+		if(runtime.settings.optimizations?.parallelOperations) {
+			args.push('--parallelOperations');
+		}
+		if(runtime.settings.optimizations?.lazyFunctions) {
+			args.push('--lazyFunctions');
+		}
+
+		const child = spawn(
+			'node',
+			args,
+			{ stdio: 'inherit' }
+		);
+
+		const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
+		if(exitCode !== 0) {
+			throw new Error(`Run failed for [${suite}] ${projectName} (iteration ${iteration + 1}, exit=${exitCode})`);
+		}
+
+		if(!fs.existsSync(tempResultPath)) {
+			throw new Error(`Missing temporary analysis result at ${tempResultPath}`);
+		}
+
+		const iterationResult: WorkerResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as WorkerResult;
+		if(!aggregatedResult) {
+			aggregatedResult = {
+				...iterationResult,
+				threads,
+				wallMs: [...iterationResult.wallMs],
+			};
+		} else {
+			aggregatedResult.wallMs.push(...iterationResult.wallMs);
+		}
+	}
+
+	if(!aggregatedResult) {
+		throw new Error(`No iteration result collected for [${suite}] ${projectName}`);
+	}
+
+	aggregatedResult.timestamp = new Date().toISOString();
+	const finalResultPath = path.join(profileDir, 'result.json');
+	fs.writeFileSync(finalResultPath, JSON.stringify(aggregatedResult, null, 2), 'utf-8');
+	if(fs.existsSync(tempResultPath)) {
+		fs.rmSync(tempResultPath, { force: true });
 	}
 }
 

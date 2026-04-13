@@ -13,10 +13,19 @@ import type {
 	GraphMetrics,
 	SourceCharacteristics,
 	GraphCheck,
-	SequentialReanalysisInfo,
 } from './results-types';
 import { CorrectnessClassification } from './results-types';
 import { VertexType } from '../../src/dataflow/graph/vertex';
+
+const tempResultRelativePath = './.tmp-analysis-result.json';
+
+function readArgValue(name: string): string | undefined {
+	const idx = process.argv.indexOf(name);
+	if(idx < 0 || idx + 1 >= process.argv.length) {
+		return undefined;
+	}
+	return process.argv[idx + 1];
+}
 
 // -------------------- analyzer builders --------------------
 async function buildOptimizedAnalyzer(flags: OptimizationFlags): Promise<FlowrAnalyzer> {
@@ -186,31 +195,34 @@ async function runOnce(
 	captureGraph: boolean = false,
 ) {
 	const analyzer = await buildAnalyzer();
-	analyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
+	try {
+		analyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
 
-	/** compute parsing and normailization  */
-	await analyzer.normalize();
+		/** compute parsing and normailization  */
+		await analyzer.normalize();
 
 
-	const result = await analyzer.dataflow();
+		const result = await analyzer.dataflow();
 
-	return {
-		wallMs:              result['.meta'].timing,
-		graph:               captureGraph ? result.graph : undefined,
-		reanalysisTriggered: result.reanalysisTriggered,
-		reanalysisIteration: result.reanalysisIteration,
-		reanalysisFileIndex: result.reanalysisFileIndex,
-	};
+		return {
+			wallMs:              result['.meta'].timing,
+			graph:               captureGraph ? result.graph : undefined,
+			reanalysisTriggered: result.reanalysisTriggered,
+			reanalysisIteration: result.reanalysisIteration,
+			reanalysisFileIndex: result.reanalysisFileIndex,
+		};
+	} finally {
+		await analyzer.close(true);
+	}
 }
 
 // -------------------- main --------------------
 async function main(): Promise<void> {
 	const projectPath = process.argv[2];
 	const outputDir = process.argv[3];
-	const repetitions = Number(process.argv[4] ?? '10');
 
 	if(!projectPath || !outputDir) {
-		console.error('Usage: ts-node run-analysis.ts <projectPath> <outputDir> [repetitions] ...flags');
+		console.error('Usage: ts-node run-analysis.ts <projectPath> <outputDir> ...flags');
 		process.exit(1);
 	}
 
@@ -221,13 +233,15 @@ async function main(): Promise<void> {
 	};
 
 	const skipCorrectness = process.argv.includes('--skipCorrectness');
+	const runtimeOnly = process.argv.includes('--runtimeOnly');
 	const dryRun = process.argv.includes('--dryRun');
+	const tempResultPathArg = readArgValue('--tempResultPath');
 
 	if(dryRun) {
 		const analyzer = await buildOptimizedAnalyzer(flags);
 		console.log('[dry-run] project would be executed:', path.resolve(projectPath));
 		console.log('[dry-run] output directory:', path.resolve(outputDir));
-		console.log('[dry-run] repetitions:', repetitions);
+		console.log('[dry-run] temp result path:', tempResultPathArg ? path.resolve(tempResultPathArg) : path.resolve(outputDir, tempResultRelativePath));
 		console.log('[dry-run] skip correctness:', skipCorrectness);
 		console.log('[dry-run] benchmark flags:', JSON.stringify(flags));
 		const fileParallelization = analyzer.flowrConfig.optimizations.fileParallelization;
@@ -242,63 +256,63 @@ async function main(): Promise<void> {
 	}
 
 	fs.mkdirSync(outputDir, { recursive: true });
-	const fileCount = countFiles(projectPath);
+	const tempResultPath = tempResultPathArg ? path.resolve(tempResultPathArg) : path.resolve(outputDir, tempResultRelativePath);
+	const fileCount = runtimeOnly ? 0 : countFiles(projectPath);
 
 	// -------------------- metadata collection (before measurements) --------------------
-	console.log('Collecting source characteristics...');
-	const sourceCharacteristics = analyzeSourceCharacteristics(projectPath);
-
-	// -------------------- correctness --------------------
-	let correctness: WorkerResult['correctness'] = 'skipped';
-
-	if(!skipCorrectness) {
-		console.log('Running correctness check...');
-
-		const baseAnalyzer = (await new FlowrAnalyzerBuilder().build());
-		baseAnalyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
-		const baseDf = await baseAnalyzer.dataflow();
-
-		const optAnalyzer = (await buildOptimizedAnalyzer(flags));
-		optAnalyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
-		const optDf = await optAnalyzer.dataflow();
-
-		correctness = compareGraphs(baseDf.graph, optDf.graph, flags.lazyFunctions);
-
-		if(correctness.classification === CorrectnessClassification.Incorrect && correctness.diff) {
-			console.warn('Correctness check failed! Graphs differ:');
-			correctness.diff.forEach((l) => console.error(l));
-		}
-	}
+	const sourceCharacteristics = runtimeOnly ? undefined : (() => {
+		console.log('Collecting source characteristics...');
+		return analyzeSourceCharacteristics(projectPath);
+	})();
 
 	// -------------------- measurement --------------------
 	console.log('Measuring optimized performance...');
 	const wallMsArr: number[] = [];
 	let lazyStats: LazyFunctionStats | undefined;
 	let graphMetrics: GraphMetrics | undefined;
-	let sequentialReanalysis: SequentialReanalysisInfo | undefined;
+	let sequentialReanalysis: boolean | undefined;
+	const captureGraph = !runtimeOnly;
+	const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), captureGraph);
+	wallMsArr.push(run.wallMs);
 
-	for(let i = 0; i < repetitions; i++) {
-		const captureGraph = i === 0; // Capture graph from first run to extract stats
-		const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), captureGraph);
-		wallMsArr.push(run.wallMs);
+	if(captureGraph && run.graph) {
+		sequentialReanalysis = run.reanalysisTriggered ?? false;
 
-		// Collect metadata from first run (analysis is deterministic)
-		if(i === 0 && run.graph) {
-			sequentialReanalysis = {
-				triggered: run.reanalysisTriggered ?? false,
-				iteration: run.reanalysisIteration,
-				fileIndex: run.reanalysisFileIndex,
-			};
+		const graphStats = run.graph.getLazyFunctionStatistics();
+		lazyStats = {
+			totalFunctionDefinitions:  graphStats.totalFunctionDefinitions,
+			lazyFunctionsMaterialized: graphStats.lazyFunctionsMaterialized,
+			lazyFunctionsRemaining:    graphStats.totalFunctionDefinitions - graphStats.lazyFunctionsMaterialized,
+		};
 
-			const graphStats = run.graph.getLazyFunctionStatistics();
-			lazyStats = {
-				totalFunctionDefinitions:  graphStats.totalFunctionDefinitions,
-				lazyFunctionsMaterialized: graphStats.lazyFunctionsMaterialized,
-				lazyFunctionsRemaining:    graphStats.totalFunctionDefinitions - graphStats.lazyFunctionsMaterialized,
-			};
+		// Extract graph metrics (outside perf measurement)
+		graphMetrics = extractGraphMetrics(run.graph);
+	}
 
-			// Extract graph metrics (outside perf measurement)
-			graphMetrics = extractGraphMetrics(run.graph);
+	// -------------------- correctness --------------------
+	let correctness: WorkerResult['correctness'] = 'skipped';
+
+	if(!runtimeOnly && !skipCorrectness) {
+		console.log('Running correctness check...');
+
+		const baseAnalyzer = (await new FlowrAnalyzerBuilder().build());
+		let baseDf;
+		try {
+			baseAnalyzer.addRequest({ request: 'project', content: path.resolve(projectPath) });
+			baseDf = await baseAnalyzer.dataflow();
+		} finally {
+			await baseAnalyzer.close(true);
+		}
+
+		if(!run.graph) {
+			throw new Error('Expected captured optimized graph for correctness check, but none was available.');
+		}
+
+		correctness = compareGraphs(baseDf.graph, run.graph, flags.lazyFunctions);
+
+		if(correctness.classification === CorrectnessClassification.Incorrect && correctness.diff) {
+			console.warn('Correctness check failed! Graphs differ:');
+			correctness.diff.forEach((l) => console.error(l));
 		}
 	}
 
@@ -315,7 +329,7 @@ async function main(): Promise<void> {
 		sourceCharacteristics,
 	};
 
-	fs.writeFileSync(path.join(outputDir, 'result.json'), JSON.stringify(result, null, 2), 'utf-8');
+	fs.writeFileSync(tempResultPath, JSON.stringify(result, null, 2), 'utf-8');
 }
 
 main().catch((err: unknown) => {

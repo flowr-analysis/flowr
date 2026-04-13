@@ -39,12 +39,6 @@ export interface CorrectnessResult {
     diff?:          readonly string[];
 }
 
-export interface SequentialReanalysisInfo {
-    triggered:  boolean;
-    iteration?: number;
-    fileIndex?: number;
-}
-
 export interface LazyFunctionStats {
     totalFunctionDefinitions:  number;
     lazyFunctionsMaterialized: number;
@@ -71,7 +65,7 @@ export interface WorkerResult {
     timestamp:              string;
     wallMs:                 number[];
     lazyFunctionStats?:     LazyFunctionStats;
-    sequentialReanalysis?:  SequentialReanalysisInfo;
+    sequentialReanalysis?:  boolean;
     graphMetrics?:          GraphMetrics;
     sourceCharacteristics?: SourceCharacteristics;
 }

@@ -30,7 +30,10 @@ body:
         - File Path Validity
         - Naming Convention
         - Network Functions
+        - Problematic inputs
+        - Roxygen Arguments
         - Seeded Randomness
+        - Stop without call.=False argument
         - Unused Definitions
         - Useless Loops
       default: 0

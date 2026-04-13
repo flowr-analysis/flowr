@@ -2,8 +2,6 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import {
 	dataflowGraphToJson,
-	dataflowGraphToMermaid,
-	dataflowGraphToMermaidUrl,
 	dataflowGraphToQuads
 } from '../../../print/dataflow-printer';
 import type { DeepReadonly } from 'ts-essentials';
@@ -11,6 +9,7 @@ import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/proc
 import { produceDataFlowGraph } from '../../../../dataflow/extractor';
 import type { KnownParserType, Parser } from '../../../../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../../../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../dataflow/graph/df-helper';
 
 const staticDataflowCommon = {
 	name:        'dataflow',
@@ -20,8 +19,8 @@ const staticDataflowCommon = {
 		[StepOutputFormat.Internal]:   internalPrinter,
 		[StepOutputFormat.Json]:       dataflowGraphToJson,
 		[StepOutputFormat.RdfQuads]:   dataflowGraphToQuads,
-		[StepOutputFormat.Mermaid]:    dataflowGraphToMermaid,
-		[StepOutputFormat.MermaidUrl]: dataflowGraphToMermaidUrl
+		[StepOutputFormat.Mermaid]:    Dataflow.visualize.mermaid.raw,
+		[StepOutputFormat.MermaidUrl]: Dataflow.visualize.mermaid.url
 	},
 	dependencies: [ 'normalize' ],
 } as const;

@@ -1,6 +1,5 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { flowrRepl } from './utility/utility';
-import { graphToMermaid, graphToMermaidUrl } from '../../src/util/mermaid/dfg';
 import type { PipelineOutput } from '../../src/core/steps/pipeline/pipeline';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../src/core/steps/pipeline/default-pipelines';
 import { PipelineExecutor } from '../../src/core/pipeline-executor';
@@ -11,6 +10,7 @@ import { emptyGraph } from '../../src/dataflow/graph/dataflowgraph-builder';
 import type { NormalizedAst } from '../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../src/util/mermaid/ast';
 import { contextFromInput } from '../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../src/dataflow/graph/df-helper';
 
 describe('repl', () => {
 	async function analyze(shell: RShell, code: string): Promise<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>> {
@@ -39,11 +39,11 @@ describe('repl', () => {
 					output = await flowrRepl([`:df ${replCode}`, `:n ${replCode}`, `:df* ${replCode}`, `:n* ${replCode}`, ':quit']);
 				});
 				test(':df', () => {
-					const expect = graphToMermaid({ graph: dfOut }).string;
+					const expect = Dataflow.visualize.mermaid.convert({ graph: dfOut }).string;
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':df*', () => {
-					const expect = graphToMermaidUrl(dfOut);
+					const expect = Dataflow.visualize.mermaid.url(dfOut);
 					assert.include(output, expect, `output ${output} does not contain ${expect}`);
 				});
 				test(':n', () => {

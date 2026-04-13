@@ -74,6 +74,7 @@ type DfEdgeLike = { types: number };
  * Helper Functions to work with {@link DfEdge} and {@link EdgeType}.
  */
 export const DfEdge = {
+	name: 'DfEdge',
 	/**
 	 * Takes joint edge types and returns their human-readable names.
 	 */

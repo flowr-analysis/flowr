@@ -171,7 +171,11 @@ export interface FlowrConfig extends MergeableRecord {
 			/**
 			 * The maximum number of iterations to perform on a single function call during slicing
 			 */
-			readonly threshold?: number
+			readonly threshold?:  number
+			/**
+			 * If set, the slicer will gain an additional post-pass
+			 */
+			readonly autoExtend?: boolean
 		}
 	}
 	/**
@@ -259,7 +263,7 @@ export const FlowrConfig = {
 	 * The default configuration for flowR, used when no config file is found or when a config file is missing some options.
 	 * You can use this as a base for your own config and only specify the options you want to change.
 	 */
-	default(): FlowrConfig {
+	default(this: void): FlowrConfig {
 		return {
 			ignoreSourceCalls: false,
 			semantics:         {
@@ -293,7 +297,8 @@ export const FlowrConfig = {
 					dataflowExtractors: undefined
 				},
 				slicer: {
-					threshold: 50
+					threshold:  50,
+					autoExtend: false
 				}
 			},
 			abstractInterpretation: {
@@ -359,7 +364,8 @@ export const FlowrConfig = {
 				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
-				threshold: Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.')
+				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),
+				autoExtend: Joi.boolean().optional().description('If set, the slicer will gain an additional post-pass.')
 			}).optional().description('The configuration for the slicer.')
 		}).description('How to resolve constants, constraints, cells, ...'),
 		abstractInterpretation: Joi.object({
@@ -376,7 +382,7 @@ export const FlowrConfig = {
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.
 	 */
-	parse(jsonString: string): FlowrConfig | undefined {
+	parse(this: void, jsonString: string): FlowrConfig | undefined {
 		try {
 			const parsed   = JSON.parse(jsonString) as FlowrConfig;
 			const validate = FlowrConfig.Schema.validate(parsed);
@@ -395,14 +401,14 @@ export const FlowrConfig = {
 	 * Creates a new flowr config that has the updated values.
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
-	amend(config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
+	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
 		return amendmentFunc(newConfig as DeepWritable<FlowrConfig>) ?? newConfig;
 	},
 	/**
 	 * Clones the given flowr config object.
 	 */
-	clone(config: FlowrConfig): FlowrConfig {
+	clone(this: void, config: FlowrConfig): FlowrConfig {
 		return deepClonePreserveUnclonable(config);
 	},
 	/**
@@ -411,7 +417,7 @@ export const FlowrConfig = {
 	 * infer the config from flowR's default locations.
 	 * This is mostly useful for user-facing features.
 	 */
-	fromFile(configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
 		try {
 			return loadConfigFromFile(configFile, configWorkingDirectory);
 		} catch(e) {
@@ -422,7 +428,7 @@ export const FlowrConfig = {
 	/**
 	 * Gets the configuration for the given engine type from the config.
 	 */
-	getForEngine<T extends EngineConfig['type']>(config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
+	getForEngine<T extends EngineConfig['type']>(this: void, config: FlowrConfig, engine: T): EngineConfig & { type: T } | undefined {
 		const engines = config.engines;
 		if(engines.length > 0) {
 			return engines.find(e => e.type === engine) as EngineConfig & { type: T } | undefined;
@@ -441,7 +447,7 @@ export const FlowrConfig = {
 	 * console.log(newConfig.solver.variables); // Output: "builtin"
 	 * ```
 	 */
-	setInConfig<Path extends ValidFlowrConfigPaths>(config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
+	setInConfig<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): FlowrConfig {
 		const clone = FlowrConfig.clone(config);
 		objectPath.set(clone, key, value);
 		return clone;
@@ -450,9 +456,9 @@ export const FlowrConfig = {
 	 * Modifies the given config object in place by setting the given value at the given key, where the key is a dot-separated path to the value in the config object.
 	 * @see {@link setInConfig} for a version that returns a new config object instead of modifying the given one in place.
 	 */
-	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
+	setInConfigInPlace<Path extends ValidFlowrConfigPaths>(this: void, config: FlowrConfig, key: Path, value: PathValue<FlowrConfig, Path>): void {
 		objectPath.set(config, key, value);
-	}
+	},
 } as const;
 
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {

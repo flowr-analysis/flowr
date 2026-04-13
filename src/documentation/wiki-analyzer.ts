@@ -391,8 +391,6 @@ ${ctx.link(contextFromSources)} to create a context from source files (e.g., if 
 
 If for whatever reason you need to reset the context during an analysis, you can use
 ${ctx.linkM(FlowrAnalyzerContext, 'reset')}.
-To pre-compute all possible information in the context before starting the main analysis, you can use
-${ctx.linkM(FlowrAnalyzerContext, 'resolvePreAnalysis')}.
 
 ${section('Files Context', 3)}
 

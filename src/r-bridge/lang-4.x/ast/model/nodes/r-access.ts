@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RArgument, RUnnamedArgument } from './r-argument';
 import type { EmptyArgument } from './r-function-call';
@@ -34,6 +35,7 @@ export type RAccess<Info = NoInfo> = RNamedAccess<Info> | RIndexAccess<Info>;
  * Helper for working with {@link RAccess} AST nodes.
  */
 export const RAccess = {
+	...RNode,
 	name: 'RAccess',
 	/**
 	 * Type guard for {@link RAccess} nodes.

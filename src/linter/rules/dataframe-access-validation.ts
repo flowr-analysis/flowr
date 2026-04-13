@@ -1,20 +1,19 @@
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
 import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
+import { FlowrConfig } from '../../config';
+import { Identifier } from '../../dataflow/environments/identifier';
 import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { Ternary } from '../../util/logic';
 import { type MergeableRecord } from '../../util/objects';
 import { SourceRange } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrConfig } from '../../config';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
@@ -57,7 +56,7 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 }
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
-	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	createSearch:        () => Q.all(),
 	processSearchResult: async(elements, config, data) => {
 		let ctx = data.analyzer.inspectContext();
 		ctx = {

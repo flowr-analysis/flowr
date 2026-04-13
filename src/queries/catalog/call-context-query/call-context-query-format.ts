@@ -29,7 +29,7 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	readonly type:                   'call-context';
 	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
 	readonly callName:               RegexType;
-	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match? */
+	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match, we now also allow '.' etc. to have their conventional meaning if you pass in the regex as a string? */
 	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:                  string;
@@ -95,7 +95,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {
@@ -148,8 +148,10 @@ export const CallContextQueryDefinition = {
 	executor:        executeCallContextQueries,
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
-		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(asciiCallContext(formatter, out, (await analyzer.normalize()).idMap));
+		result.push(
+			`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`,
+			asciiCallContext(formatter, out, (await analyzer.normalize()).idMap)
+		);
 		return true;
 	},
 	schema: Joi.object({

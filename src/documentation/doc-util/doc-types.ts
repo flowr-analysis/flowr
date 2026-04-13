@@ -3,11 +3,11 @@ import { guard } from '../../util/assert';
 import { RemoteFlowrFilePathBaseRef } from './doc-files';
 import fs from 'fs';
 import path from 'path';
-import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
 import { details } from './doc-structure';
 import { textWithTooltip } from '../../util/html-hover-over';
 import { prefixLines } from './doc-general';
+import { Mermaid } from '../../util/mermaid/mermaid';
 
 /**
  * Kinds of TypeScript type elements we can encounter.
@@ -164,7 +164,7 @@ function formatNode(node: NamedDeclaration, sourceFile: SourceFile, typeChecker:
 	const type = getType(node, typeChecker);
 	const typeAnnotation = type.includes('=>') ? type.replaceAll(/\s+=>\s+/g, ' ') : ': ' + type;
 
-	return `${prefix}${escapeMarkdown(name + typeAnnotation)}${suffix}`;
+	return `${prefix}${Mermaid.escape(name + typeAnnotation)}${suffix}`;
 }
 
 function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
@@ -394,7 +394,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;

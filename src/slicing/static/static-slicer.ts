@@ -1,19 +1,20 @@
 import { assertUnreachable, guard } from '../../util/assert';
-import { expensiveTrace, log } from '../../util/log';
+import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { handleReturns, sliceForCall } from './slice-call';
-import type { NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { convertAllSlicingCriteriaToIds, type SlicingCriteria } from '../criterion/parse';
+import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
-import { SliceDirection } from '../../core/steps/all/static-slicing/00-slice';
-import { invertDfg } from '../../dataflow/graph/invert-dfg';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { SliceDirection } from '../../util/slice-direction';
+import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
@@ -24,7 +25,7 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
  * @param ctx  - The analyzer context used for slicing.
  * @param info      - The dataflow information used for slicing.
  * @param idMap     - The mapping from node ids to their information in the AST.
- * @param criteria  - The criteria to slice on.
+ * @param ids       - The seed ids to slice with. Must be at least one.
  * @param direction - The direction to slice in.
  * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
  * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
@@ -33,21 +34,15 @@ export function staticSlice(
 	ctx: ReadOnlyFlowrAnalyzerContext,
 	info: DataflowInformation,
 	{ idMap }: NormalizedAst,
-	criteria: SlicingCriteria,
+	ids: readonly NodeId[],
 	direction: SliceDirection,
 	threshold = 75,
 	cache?: Map<Fingerprint, Set<NodeId>>
 ): Readonly<SliceResult> {
-	guard(criteria.length > 0, 'must have at least one seed id to calculate slice');
-	const decodedCriteria = convertAllSlicingCriteriaToIds(criteria, idMap);
-	expensiveTrace(slicerLogger,
-		() => `calculating ${direction} slice for ${decodedCriteria.length} seed criteria: ${decodedCriteria.map(s => JSON.stringify(s)).join(', ')}`
-	);
-
+	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
 	let { graph } = info;
-
-	if(direction === SliceDirection.Forward){
-		graph = invertDfg(graph, ctx.env.makeCleanEnv());
+	if(direction === SliceDirection.Forward) {
+		graph = Dataflow.invertGraph(graph, ctx.env.makeCleanEnv());
 	}
 
 	const queue = new VisitingQueue(threshold, cache);
@@ -58,7 +53,7 @@ export function staticSlice(
 	{
 		const emptyEnv = ctx.env.makeCleanEnv();
 		const basePrint = ctx.env.getCleanEnvFingerprint();
-		for(const { id: startId } of decodedCriteria) {
+		for(const startId of ids) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
 			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nesting ?? minNesting);
@@ -130,7 +125,33 @@ export function staticSlice(
 		}
 	}
 
-	return { ...queue.status(), decodedCriteria };
+	if(ctx.config.solver.slicer?.autoExtend) {
+		return { ...queue.status(), slicedFor: ids, result: extendSlices(queue.status().result, idMap) };
+	} else {
+		return { ...queue.status(), slicedFor: ids };
+	}
+}
+
+function extendSlices(
+	results: ReadonlySet<NodeId>,
+	ast: AstIdMap,
+): Set<NodeId> {
+	const res = new Set<NodeId>();
+	for(const id of results) {
+		res.add(id);
+		let parent = ast.get(id);
+
+		while(parent && parent.info.role !== RoleInParent.Root && parent.info.role !== RoleInParent.ExpressionListChild) {
+			parent = parent.info.parent ? ast.get(parent.info.parent) : undefined;
+		}
+		if(!parent) {
+			continue; // no parent, no need to extend
+		}
+		for(const id of RNode.collectAllIds(parent)) {
+			res.add(id);
+		}
+	}
+	return res;
 }
 
 /**

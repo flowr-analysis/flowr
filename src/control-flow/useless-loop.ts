@@ -1,4 +1,3 @@
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import { resolveIdToValue } from '../dataflow/eval/resolve/alias-tracking';
 import { valueSetGuard } from '../dataflow/eval/values/general';
 import { isValue } from '../dataflow/eval/values/r-value';
@@ -13,6 +12,7 @@ import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgVertex } from './control-flow-graph';
 import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from './semantic-cfg-guided-visitor';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 
 export const loopyFunctions = new Set<BuiltInProcName>([BuiltInProcName.ForLoop, BuiltInProcName.WhileLoop, BuiltInProcName.RepeatLoop]);

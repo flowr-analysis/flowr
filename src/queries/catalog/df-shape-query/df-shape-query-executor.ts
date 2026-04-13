@@ -1,7 +1,7 @@
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor } from '../../../abstract-interpretation/data-frame/shape-inference';
 import { CfgKind } from '../../../project/cfg-kind';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
@@ -32,7 +32,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 			domains: domains
 		};
 	}
-	const result = new Map<SingleSlicingCriterion, DataFrameDomain | undefined>();
+	const result = new Map<SlicingCriterion, DataFrameDomain | undefined>();
 
 	for(const query of queries) {
 		if(query.criterion === undefined) {
@@ -43,13 +43,12 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 			continue;
 		}
 		try {
-			const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
+			const nodeId = SlicingCriterion.parse(query.criterion, ast.idMap);
 			const node = ast.idMap.get(nodeId);
 			const value = inference.getAbstractValue(node?.info.id);
 			result.set(query.criterion, value);
 		} catch(e) {
 			console.error(e instanceof Error ? e.message : e);
-			continue;
 		}
 	}
 

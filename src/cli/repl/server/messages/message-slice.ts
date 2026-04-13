@@ -6,7 +6,7 @@ import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	DEFAULT_SLICING_PIPELINE
 } from '../../../../core/steps/pipeline/default-pipelines';
-import { SliceDirection } from '../../../../core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../../../util/slice-direction';
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.

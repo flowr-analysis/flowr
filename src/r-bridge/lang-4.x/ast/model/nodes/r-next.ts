@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 
 /**
@@ -12,6 +13,7 @@ export interface RNext<Info = NoInfo> extends Location, Leaf<Info> {
  * Helper for working with {@link RNext} AST nodes.
  */
 export const RNext = {
+	...RNode,
 	name: 'RNext',
 	/**
 	 * Type guard for {@link RNext} nodes.

@@ -43,7 +43,19 @@ export const SourcePosition = {
 	 */
 	invalid(this: void): SourcePosition {
 		return [-1, -1];
-	}
+	},
+	/**
+	 * Returns the line of a source position
+	 */
+	getLine(this: void, pos: SourcePosition): number {
+		return pos[0];
+	},
+	/**
+	 * Returns the column of a source position
+	 */
+	getColumn(this: void, pos: SourcePosition): number {
+		return pos[1];
+	},
 } as const;
 
 /**

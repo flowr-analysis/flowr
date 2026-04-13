@@ -60,7 +60,7 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super(config);
+		super(config, DataFrameDomain.top());
 
 		if(trackOperations) {
 			this.operations = new Map();

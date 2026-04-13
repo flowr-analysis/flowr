@@ -6,10 +6,10 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
-import { BuiltInProcName } from './built-in';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 import { KnownHooks } from '../hooks';
 import { Identifier } from './identifier';
+import { BuiltInProcName } from './built-in-proc-name';
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -138,6 +138,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['Lapply', 'Sapply', 'Vapply'],                  processor: BuiltInProcName.Apply,               config: { indexOfFunction: 1, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false }, /* functool wrappers */
 	{ type: 'function', names: ['apply', 'tapply', 'Tapply'],                   processor: BuiltInProcName.Apply,               config: { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' },                        assumePrimitive: false },
 	{ type: 'function', names: ['print', 'message', 'warning', 'warn', 'info'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                  assumePrimitive: false },
+	{ type: 'function', names: ['invisible'], processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0, forceArgs: 'all' },                                  assumePrimitive: true },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -258,7 +259,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['ifelse', 'fifelse', 'IfElse'],                processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'test', yes: 'yes', no: 'no' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['if_else'],                                    processor: BuiltInProcName.IfThenElse,          config: { args: { cond: 'condition', yes: 'true', no: 'false' } }, assumePrimitive: true  },
 	{ type: 'function', names: ['get'],                                        processor: BuiltInProcName.Get,                 config: {},                                                                            assumePrimitive: false },
-	{ type: 'function', names: [Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: [Identifier.make('from', 'import'),  Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='],                                    processor: BuiltInProcName.Assignment,          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
 	{ type: 'function', names: [':='],                                         processor: BuiltInProcName.Assignment,          config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
@@ -269,9 +270,160 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['->>'],                                        processor: BuiltInProcName.Assignment,          config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true },  assumePrimitive: true  },
 	{ type: 'function', names: ['&&', '&'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
 	{ type: 'function', names: ['||', '|'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
-	{ type: 'function', names: ['|>', '%>%'],                                  processor: BuiltInProcName.Pipe,                config: {},                                                                            assumePrimitive: true  },
+	{ type: 'function', names: ['|>'],                                         processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '_' }, assumePrimitive: true  },
+	{ type: 'function', names: ['%>%', '%!>%'],                                processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type: 'function', names: ['%<>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type: 'function', names: ['%T>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', returnLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
+	{ type:      'function', names:     [Identifier.make('map', 'purrr'), Identifier.make('map_lgl', 'purrr'), Identifier.make('map_int', 'purrr'), Identifier.make('map_dbl', 'purrr'), Identifier.make('map_chr', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     [Identifier.make('pmap', 'purrr'), Identifier.make('pmap_lgl', 'purrr'), Identifier.make('pmap_int', 'purrr'), Identifier.make('pmap_dbl', 'purrr'), Identifier.make('pmap_chr', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     [Identifier.make('map2', 'purrr'), Identifier.make('map2_lgl', 'purrr'), Identifier.make('map2_int', 'purrr'), Identifier.make('map2_dbl', 'purrr'), Identifier.make('map2_chr', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     [Identifier.make('modify', 'purrr'), Identifier.make('imodify', 'purrr'), Identifier.make('imap', 'purrr'), Identifier.make('imap_lgl', 'purrr'), Identifier.make('imap_int', 'purrr'), Identifier.make('imap_dbl', 'purrr'), Identifier.make('imap_chr', 'purrr'), Identifier.make('imap_vec', 'purrr'), Identifier.make('lmap', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     [Identifier.make('modify2', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     [Identifier.make('map_at', 'purrr'), Identifier.make('modify_at', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':  { index: 0, name: '.x' },
+			'.at': { index: 1, name: '.at' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress']
+	} },
+	{ type:      'function', names:     [Identifier.make('lmap_at', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':  { index: 0, name: '.x' },
+			'.at': { index: 1, name: '.at' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: []
+	} },
+	{ type:      'function', names:     [Identifier.make('map_if', 'purrr'), Identifier.make('modify_if', 'purrr'), Identifier.make('lmap_if', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.p': { index: 1, name: '.p' },
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.else']
+	} },
+	{ type:      'function', names:     [Identifier.make('walk', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     [Identifier.make('iwalk', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    [],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     [Identifier.make('pwalk', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':      { index: 1, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.l'
+	} },
+	{ type:      'function', names:     [Identifier.make('walk2', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':      { index: 2, name: '.f' },
+		ignore:    ['.progress'],
+		returnArg: '.x'
+	} },
+	{ type:      'function', names:     [Identifier.make('map_vec', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
+	{ type:      'function', names:     [Identifier.make('pmap_vec', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.l': { index: 0, name: '.l' }
+		},
+		'.f':   { index: 1, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
+	{ type:      'function', names:     [Identifier.make('map_depth', 'purrr'), Identifier.make('modify_depth', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x':     { index: 0, name: '.x' },
+			'.depth': { index: 2, name: '.depth' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.ragged', '.is_node']
+	} },
+	{ type:      'function', names:     [Identifier.make('map2_vec', 'purrr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.x' },
+			'.y': { index: 1, name: '.y' }
+		},
+		'.f':   { index: 2, name: '.f' },
+		ignore: ['.progress', '.ptype']
+	} },
+	{ type:      'function', names:     [Identifier.make('across', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.cols' },
+		},
+		'.f':   { index: 1, name: '.fns' },
+		ignore: ['.names', '.unpack']
+	} },
+	{ type:      'function', names:     [Identifier.make('filter', 'dplyr'), Identifier.make('filter_out', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.data' },
+		},
+		'.f':   { index: 1, name: '...' },
+		ignore: ['.by', '.preserve']
+	} },
+	{ type:      'function', names:     [Identifier.make('rename_with', 'dplyr')], processor: BuiltInProcName.PurrrFormula, config:    {
+		args: {
+			'.x': { index: 0, name: '.data' },
+		},
+		'.f':   { index: 1, name: '.fn' },
+		ignore: ['.cols']
+	} },
 	{ type: 'function', names: ['function', '\\'],                             processor: BuiltInProcName.FunctionDefinition, config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['quote', 'substitute', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
+	{ type: 'function', names: ['quote', 'bquote'],              processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0 },                                                assumePrimitive: true  },
+	{ type: 'function', names: ['substitute'],                   processor: BuiltInProcName.Quote,               config: { quoteArgumentsWithIndex: 0, envArgIndex: 1 },                                                assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.make('enquo', 'rlang'), Identifier.make('enquos', 'rlang'), Identifier.make('quo', 'rlang'), Identifier.make('quos', 'rlang'), Identifier.make('sym', 'rlang'), Identifier.make('syms', 'rlang'), Identifier.make('ensym', 'rlang'), Identifier.make('ensyms', 'rlang'), Identifier.make('expr', 'rlang'), Identifier.make('exprs', 'rlang'), Identifier.make('quo_name', 'rlang'), Identifier.make('as_name', 'rlang'), Identifier.make('as_label', 'rlang'), Identifier.make('as_string', 'rlang')], processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true }, assumePrimitive: true  },
+	{ type: 'function', names: [Identifier.make('call2', 'rlang'), Identifier.make('exec', 'rlang'), Identifier.make('invoke', 'purrr'), Identifier.make('invoke_map', 'purrr')],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
 	{ type: 'function', names: ['for'],                                        processor: BuiltInProcName.ForLoop,            config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['repeat'],                                     processor: BuiltInProcName.RepeatLoop,         config: {},                                                                            assumePrimitive: true  },
@@ -286,7 +438,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['interference'],                               processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, nameOfFunctionArgument: 'propensity_integrand', libFn: true },     assumePrimitive: false },
 	{ type: 'function', names: ['ddply'],                                      processor: BuiltInProcName.Apply,               config: { unquoteFunction: true, indexOfFunction: 2, nameOfFunctionArgument: '.fun', libFn: true }, assumePrimitive: false },
 	{ type: 'function', names: ['list'],                                       processor: BuiltInProcName.List,                config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                              assumePrimitive: false },
+	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                               assumePrimitive: false },
+	{ type: 'function', names: ['sys.function'],                               processor: BuiltInProcName.Recall,              config: { libFn: true, unknownOnNonZeroArg: true },                                    assumePrimitive: false },
 	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
 	{
 		type:      'function',
@@ -305,6 +458,7 @@ export const DefaultBuiltinConfig = [
 			'sys.on.exit', 'par', 'tpar', 'sink',
 			/* library and require is handled above */
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
+			Identifier.make('use', 'base'),
 			/* weird env attachments */
 			'attach', 'unname', 'data',
 			/* file creation/removal */
@@ -318,6 +472,7 @@ export const DefaultBuiltinConfig = [
 		type:  'function',
 		names: [
 			'tinytheme', 'theme_set',
+			Identifier.make('context', 'testthat'),
 			/* downloader and installer functions (R, devtools, BiocManager) */
 			'library.dynam', 'install.packages', 'install', 'install_github', 'install_gitlab', 'install_bitbucket', 'install_url', 'install_git', 'install_svn', 'install_local', 'install_version', 'update_packages',
 		],

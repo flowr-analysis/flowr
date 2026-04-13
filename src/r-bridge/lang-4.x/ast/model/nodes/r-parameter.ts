@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { BrandedIdentifier } from '../../../../../dataflow/environments/identifier';
@@ -19,6 +20,7 @@ export interface RParameter<Info = NoInfo> extends RAstNodeBase<Info>, Location 
  * Helper for working with {@link RParameter} AST nodes.
  */
 export const RParameter = {
+	...RNode,
 	name: 'RParameter',
 	/**
 	 * Type guard for {@link RParameter} nodes.

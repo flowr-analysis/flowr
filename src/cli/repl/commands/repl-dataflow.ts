@@ -1,11 +1,11 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
 import { fileProtocol } from '../../../r-bridge/retriever';
-import { graphToMermaid, graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
@@ -21,7 +21,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -41,7 +41,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = graphToMermaidUrl(result.graph, false);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false);
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -103,7 +103,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = graphToMermaid({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');
@@ -122,7 +122,7 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = graphToMermaidUrl(result.graph, false, undefined, true);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true);
 		output.stdout(mermaid);
 		try {
 			const clipboard = await import('clipboardy');

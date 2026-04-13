@@ -202,7 +202,7 @@ async function mainRepl() {
 		await printVersionRepl(defaultEngine);
 		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
-		await repl({ analyzer: analyzer, allowRSessionAccess });
+		await repl({ analyzer, allowRSessionAccess });
 	}
 	process.exit(0);
 }

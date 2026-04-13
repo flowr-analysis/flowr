@@ -11,7 +11,6 @@ import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environmen
 import { AssignmentOperators, BinaryNonAssignmentOperators, UnaryOperatorPool } from '../../../_helper/provider';
 import { startAndEndsWith } from '../../../../../src/util/text/strings';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
-import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import type { FunctionArgument } from '../../../../../src/dataflow/graph/graph';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -21,6 +20,7 @@ import {
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe.sequential('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
@@ -525,35 +525,38 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 
 	describe('Pipes', () => {
 		describe('Passing one argument', () => {
-			assertDataflow(label('No parameter function', ['built-in-pipe-and-pipe-bind', 'name-normal', 'call-normal']),
+			assertDataflow(label('No parameter function', ['pipe-and-pipe-bind', 'name-normal', 'call-normal']),
 				shell, 'x |> f()',  emptyGraph()
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
 					.call(3, 'f', [argumentInCall(0)], { returns: [], reads: [] })
 					.argument(4, 0)
 					.argument(4, 3)
+					.returns(4, 3)
 					.call(4, '|>', [argumentInCall(0), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(4, NodeId.toBuiltIn('|>')),
 				{ minRVersion: MIN_VERSION_PIPE }
 			);
-			assertDataflow(label('Nested calling', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal']),
+			assertDataflow(label('Nested calling', ['pipe-and-pipe-bind', 'call-normal', 'pipe-and-pipe-bind', 'name-normal']),
 				shell, 'x |> f() |> g()', emptyGraph()
 					.use(0, 'x')
 					.argument(3, 0).reads(3, 0)
 					.call(3, 'f', [argumentInCall(0)], { returns: [], reads: [] })
 					.argument(4, 0)
 					.argument(4, 3)
+					.returns(4, 3)
 					.call(4, '|>', [argumentInCall(0), argumentInCall(3)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(4, NodeId.toBuiltIn('|>'))
 					.argument(7, 4).reads(7, 4)
 					.call(7, 'g', [argumentInCall(4)], { returns: [], reads: [] })
 					.argument(8, 4)
 					.argument(8, 7)
+					.returns(8, 7)
 					.call(8, '|>', [argumentInCall(4), argumentInCall(7)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(8, NodeId.toBuiltIn('|>')),
 				{ minRVersion: MIN_VERSION_PIPE }
 			);
-			assertDataflow(label('Multi-Parameter function', ['built-in-pipe-and-pipe-bind', 'call-normal', 'built-in-pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
+			assertDataflow(label('Multi-Parameter function', ['pipe-and-pipe-bind', 'call-normal', 'pipe-and-pipe-bind', 'name-normal', 'unnamed-arguments']),
 				shell, 'x |> f(y,z)',  emptyGraph()
 					.use(0, 'x')
 					.use(3, 'y')
@@ -566,6 +569,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.call(7, 'f', [argumentInCall(0), argumentInCall(3), argumentInCall(5)], { returns: [], reads: [] })
 					.argument(8, 0)
 					.argument(8, 7)
+					.returns(8, 7)
 					.call(8, '|>', [argumentInCall(0), argumentInCall(7)], { returns: [], reads: [NodeId.toBuiltIn('|>')] })
 					.calls(8, NodeId.toBuiltIn('|>')),
 				{ minRVersion: MIN_VERSION_PIPE }

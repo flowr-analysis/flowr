@@ -395,4 +395,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	public isValue(): this is IntervalDomain<IntervalValue> {
 		return this.value !== Bottom;
 	}
+
+	public isFinite(): this is IntervalDomain<IntervalValue> {
+		return this.isValue() && Number.isFinite(this.value[0]) && Number.isFinite(this.value[1]);
+	}
 }

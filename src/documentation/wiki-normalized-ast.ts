@@ -3,7 +3,6 @@ import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-no
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details } from './doc-util/doc-structure';
-import { requestFromInput } from '../r-bridge/retriever';
 import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -15,6 +14,14 @@ import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+
+async function simpleNormalizedAst(code: string) {
+	const analyzer = await new FlowrAnalyzerBuilder().build();
+	analyzer.addRequest(code);
+	const result = await analyzer.normalize();
+	return result.ast;
+}
 
 async function quickNormalizedAstMultipleFiles() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -45,7 +52,7 @@ class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
 	}
 
 	override foldRNumber(node: RNumber<Info>) {
-	/* return the value of the number */
+		/* return the value of the number */
 		return node.content.num;
 	}
 
@@ -55,7 +62,7 @@ class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
 		} else if(node.operator === '*') {
 			return this.fold(node.lhs) * this.fold(node.rhs);
 		} else {
-		/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
+			/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
 			return super.foldRBinaryOp(node);
 		}
 	}
@@ -105,8 +112,8 @@ ${await printNormalizedAstForCode(treeSitter, 'x <- 2 * 3 + 1', { showCode: fals
 > you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
 > command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
 
-Indicative of the normalization is the root ${ctx.link('RProject')} node, which is present in every normalized AST
-and provides the ${ctx.link('RExpressionList')} nodes for each file in the project.
+Indicative of the normalization is the root ${ctx.link(RProject)} node, which is present in every normalized AST
+and provides the ${ctx.link(RExpressionList)} nodes for each file in the project.
 In general, we provide node types for:
 
 1. literals (e.g., numbers and strings)
@@ -122,7 +129,7 @@ In general, we provide node types for:
 Every node is a link, which directly refers to the implementation in the source code.
 Grayed-out parts are used for structuring the AST, grouping together related nodes.
 
-${codeBlock('mermaid', ctx.mermaid('RNode'))}
+${codeBlock('mermaid', ctx.mermaid(RNode))}
 
 </details>
 
@@ -134,7 +141,7 @@ Most notably, the \`info\` field holds the \`id\` of the node, which is used to 
 In summary, we have the following types:
 
 ${details('Normalized AST Node Types',
-	ctx.hierarchy('RNode', { collapseFromNesting: Number.MAX_VALUE, ignoredTypes: ['Info', 'LogLevel'] })
+	ctx.hierarchy(RNode, { collapseFromNesting: Number.MAX_VALUE, ignoredTypes: ['Info', 'LogLevel'] })
 )}
 
 The following segments intend to give you an overview of how to work with the normalized AST:
@@ -152,12 +159,7 @@ The following segments intend to give you an overview of how to work with the no
 As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#creating-flowr-analyses) wiki page, you can use an instance of
 ${ctx.link(FlowrAnalyzer)} to get the ${ctx.link('NormalizedAst')}:
 
-${codeBlock('ts', `
-async function getAst(code: string): Promise<RNode> {
-    const analyzer = await new FlowrAnalyzerBuilder(${requestFromInput.name}(code.trim())).build();
-    const result = analyzer.normalizedAst();
-    return result.ast;
-}`)}
+${ctx.code(simpleNormalizedAst, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
 
 From the REPL, you can use the ${getReplCommand('normalize')} command.
 

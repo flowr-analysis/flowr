@@ -1,4 +1,5 @@
 import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 
 /**
@@ -12,6 +13,7 @@ export interface RBreak<Info = NoInfo> extends Location, Leaf<Info> {
  * Helper for working with {@link RBreak} AST nodes.
  */
 export const RBreak = {
+	...RNode,
 	name: 'RBreak',
 	/**
 	 * Type guard for {@link RBreak} nodes.

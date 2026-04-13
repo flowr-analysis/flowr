@@ -234,7 +234,7 @@ ${section('Structure of the Control Flow Graph', 2, 'cfg-structure')}
 
 You can produce your very own control flow graph with ${ctx.link(extractCfg)}.
 The ${ctx.link(ControlFlowGraph)} class describes everything required to model the control flow graph, with its edge types described by
- ${ctx.link('CfgEdge')} and its vertices by ${ctx.link('CfgSimpleVertex')}.
+ ${ctx.link('CfgEdge')} and its vertices by ${ctx.link('CfgVertex')}.
 However, you should be aware of the ${ctx.link('ControlFlowInformation')} interface which adds some additional information the CFG
 (and is used during the construction of the CFG as well):
 
@@ -254,7 +254,7 @@ ${Object.entries(CfgVertexType).map(([key, value]) => `- \`${key}\` (${value})`)
 We use the ${ctx.link('CfgBasicBlockVertex')} to represent [basic blocks](#cfg-basic-blocks) and separate
 expressions (${ctx.link('CfgExpressionVertex')}) and statements (${ctx.link('CfgStatementVertex')}) 
 as control flow units with and without side effects (if you want to, you can see view statements as effectful expressions).
-The markers (${ctx.link('CfgEndMarkerVertex')}) indicate the end of larger expressions/statements. 
+The markers (${ctx.link('CfgMarkerVertex')}) indicate the end of larger expressions/statements. 
 
 To signal these links, the expressions and statements contain information about the attached markers:
 
@@ -272,7 +272,7 @@ ${block({
 	content: `
 	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
-	Have a look at the ${ctx.link('CfgBaseVertex')} interface for more information.
+	Have a look at the ${ctx.link('CfgBaseVertexWithMarker')} interface for more information.
 		`.trim()
 })}
 

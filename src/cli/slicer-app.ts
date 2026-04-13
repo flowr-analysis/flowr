@@ -7,7 +7,7 @@ import { sliceDiffAnsi } from '../core/print/slice-diff-ansi';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
 import { BenchmarkSlicer } from '../benchmark/slicer';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { stats2string } from '../benchmark/stats/print';
@@ -55,7 +55,7 @@ async function getSlice() {
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
 	);
 
-	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = [];
+	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];
 	let reconstruct: ReconstructionResult | undefined = undefined;
 
 	const doSlicing = options.criterion.trim() !== '';

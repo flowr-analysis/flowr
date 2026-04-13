@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode, WithChildren } from '../model';
+import type { RAstNodeBase, Location, NoInfo, WithChildren } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 
@@ -16,6 +17,7 @@ export interface RExpressionList<Info = NoInfo> extends WithChildren<Info, RNode
  * Helper for working with {@link RExpressionList} AST nodes.
  */
 export const RExpressionList = {
+	...RNode,
 	name: 'RExpressionList',
 	/**
 	 * Type guard for {@link RExpressionList} nodes.

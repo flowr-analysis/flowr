@@ -31,6 +31,7 @@ import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
 import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
 import { assertUnreachable } from '../../../../util/assert';
+import { getDocumentationOf } from '../../../roxygen2/documentation-provider';
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -269,6 +270,9 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
 
 /**
  * Helper object to provide helper functions for {@link RNode|RNodes}.
+ * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
+ * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
+ * so you can check for that as well if needed.
  * @see {@link DefaultNormalizedAstFold} - for a more powerful way to traverse the normalized AST
  */
 export const RNode = {
@@ -404,7 +408,12 @@ export const RNode = {
 	 */
 	lexeme<R extends RNode<ParentInformation>>(this: void, node: R | undefined): R extends { lexeme: string } ? string : string | undefined {
 		return node?.info.fullLexeme ?? node?.lexeme as string;
-	}
+	},
+	/**
+	 * Return the (roxygen) documentation associated with the given node, if available.
+	 * @see {@link getDocumentationOf}
+	 */
+	documentation: getDocumentationOf
 } as const;
 
 export type OtherInfoNode = RNode | RDelimiter;

@@ -233,4 +233,16 @@ product`
 			'sum <- 0'
 		);
 	});
+
+	describe('With extend', () => {
+		assertSliced(label('No extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nx'
+		);
+		assertSliced(label('Enable extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nprint(x + 3)',
+			{ extendSlice: true }
+		);
+	});
 }));

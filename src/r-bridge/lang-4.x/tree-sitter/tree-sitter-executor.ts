@@ -7,7 +7,7 @@ import { log } from '../../../util/log';
 import fs from 'fs';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
-export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
+export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });

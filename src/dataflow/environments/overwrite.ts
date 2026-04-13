@@ -12,10 +12,8 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
  * @see {@link Environment.overwrite} - for details on how definitions are handled.
  */
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation | undefined {
-	if(base === undefined) {
-		return next;
-	} else if(next === undefined) {
-		return base;
+	if(base === undefined || next === undefined) {
+		return next ?? base;
 	}
 
 	if(base.level !== next.level) {

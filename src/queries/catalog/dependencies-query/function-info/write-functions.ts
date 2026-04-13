@@ -7,7 +7,7 @@ const OutputRedirects = [
 
 export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'save',        argName: 'file',               resolveValue: true },
-	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
@@ -115,5 +115,12 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'write_csv', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_ndjson', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_parquet', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'data.table', name: 'fwrite', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'writexl', name: 'write_xlsx', argIdx: 1, argName: 'path', resolveValue: true },
+	{ package: 'openxlsx', name: 'write.xlsx', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'vroom', name: 'vroom_write', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'vroom', name: 'vroom_write_lines', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'rio', name: 'export', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'rio', name: 'export_list', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'magick',  name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
 ] as const;

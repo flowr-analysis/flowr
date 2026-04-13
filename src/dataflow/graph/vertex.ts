@@ -3,8 +3,8 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { BuiltInProcName } from '../environments/built-in';
 import type { Identifier } from '../environments/identifier';
+import type { BuiltInProcName } from '../environments/built-in-proc-name';
 
 
 export enum VertexType {
@@ -131,6 +131,8 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 	readonly environment?: undefined
 	/** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
 	readonly par?:         true;
+	/** Points to the source ids of the "value" if there is one, this is more of a best-effort flag and not guaranteed to be there */
+	readonly source?:      readonly NodeId[];
 }
 
 /**

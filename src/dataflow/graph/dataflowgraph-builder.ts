@@ -16,7 +16,6 @@ import { type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from './vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { BuiltInProcName } from '../environments/built-in';
 import { EdgeType } from './edge';
 import type { ControlDependency, ExitPoint } from '../info';
 import { ExitPointType } from '../info';
@@ -28,12 +27,13 @@ import { guard } from '../../util/assert';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { HookInformation } from '../hooks';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 /**
  * Creates an empty dataflow graph.
  * Should only be used in tests and documentation.
  */
-export function emptyGraph(cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
+export function emptyGraph(this: void, cleanEnv?: REnvironmentInformation, idMap?: AstIdMap) {
 	return new DataflowGraphBuilder(cleanEnv, idMap);
 }
 

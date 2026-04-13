@@ -158,6 +158,22 @@ df[6, "value"]
 		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
 		'for(i in c(1)) { print(i) }', tagTypes);
 
+	rule(knownParser,
+		'stop-call', 'StopWithCallConfig', 'STOP_WITH_CALL_ARG', 'lint-stop-call',
+		'stop(42)', tagTypes);
+
+	rule(knownParser,
+		'roxygen-arguments', 'RoxygenArgsConfig', 'ROXYGEN_ARGS', 'lint-roxygen-arguments',
+		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
+
+	rule(knownParser,
+		'problematic-inputs', 'ProblematicInputsConfig', 'PROBLEMATIC_INPUTS', 'lint-problematic-inputs',
+		`
+function(x) {
+	eval(x)
+}
+`, tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

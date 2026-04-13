@@ -23,18 +23,15 @@ import {
 	type TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE
 } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { RExpressionList } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
-import { diffOfDataflowGraphs } from '../../../src/dataflow/graph/diff-dataflow-graph';
 import { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
-import { diffGraphsToMermaidUrl, graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
+import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
-	type SingleSlicingCriterion,
+	SlicingCriterion,
 	type SlicingCriteria,
-	slicingCriterionToId, tryResolveSliceCriterionToId
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
-import { resolveDataflowGraph } from '../../../src/dataflow/graph/resolve-graph';
 import { afterAll, assert, beforeAll, describe, test } from 'vitest';
 import semver from 'semver/preload';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -47,12 +44,13 @@ import { FlowrConfig } from '../../../src/config';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../../src/project/flowr-analyzer';
 import type { KnownParser } from '../../../src/r-bridge/parser';
-import { SliceDirection } from '../../../src/core/steps/all/static-slicing/00-slice';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import type { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
-import { dropTransitiveEdges } from '../../../src/dataflow/graph/call-graph';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { SliceDirection } from '../../../src/util/slice-direction';
+import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
 export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
 	return test(msg, async function(this: unknown): Promise<void> {
@@ -116,7 +114,7 @@ function removeInformation<T extends RProject<unknown> | Record<string, unknown>
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
-		} else if(ignoreColumns && (key == 'location' || key == 'fullRange') && Array.isArray(value) && value.length === 4) {
+		} else if(ignoreColumns && (key === 'location' || key === 'fullRange') && Array.isArray(value) && value.length === 4) {
 			value = [value[0], 0, value[2], 0];
 		} else if(key === 'tsId') {
 			// we ignore tree-sitter-specific metadata
@@ -425,16 +423,16 @@ export function assertDataflow(
 		}
 
 		const normalize = await analyzer.normalize();
-		const graph = userConfig?.context === 'call-graph' ? dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
+		const graph = userConfig?.context === 'call-graph' ? CallGraph.dropTransitiveEdges(await analyzer.callGraph()) : (await analyzer.dataflow()).graph;
 
 		// assign the same id map to the expected graph, so that resolves work as expected
 		expected.setIdMap(normalize.idMap);
 
 		if(userConfig?.resolveIdsAsCriterion) {
-			expected = resolveDataflowGraph(expected, analyzer.inspectContext());
+			expected = Dataflow.resolveGraphCriteria(expected, analyzer.inspectContext());
 		}
 
-		const report: GraphDifferenceReport = diffOfDataflowGraphs(
+		const report: GraphDifferenceReport = Dataflow.diffGraphs(
 			{ name: 'expected', graph: expected },
 			{ name: 'got',      graph: graph },
 			{
@@ -447,7 +445,7 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveVertices) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveVertices = new Set(Array.from(userConfig.mustNotHaveVertices).map(id => {
-						return tryResolveSliceCriterionToId(id as SingleSlicingCriterion, normalize.idMap) ?? id;
+						return SlicingCriterion.tryParse(id as SlicingCriterion, normalize.idMap) ?? id;
 					}));
 				}
 				for(const id of userConfig.mustNotHaveVertices) {
@@ -457,8 +455,8 @@ export function assertDataflow(
 			if(userConfig?.mustNotHaveEdges) {
 				if(userConfig?.resolveIdsAsCriterion) {
 					userConfig.mustNotHaveEdges = userConfig.mustNotHaveEdges.map(([from, to]) => {
-						const resolvedFrom = tryResolveSliceCriterionToId(from as SingleSlicingCriterion, normalize.idMap) ?? from;
-						const resolvedTo = tryResolveSliceCriterionToId(to as SingleSlicingCriterion, normalize.idMap) ?? to;
+						const resolvedFrom = SlicingCriterion.tryParse(from as SlicingCriterion, normalize.idMap) ?? from;
+						const resolvedTo = SlicingCriterion.tryParse(to as SlicingCriterion, normalize.idMap) ?? to;
 						return [resolvedFrom, resolvedTo] as [NodeId, NodeId];
 					});
 				}
@@ -487,7 +485,7 @@ export function assertDataflow(
 
 
 /** call within describeSession */
-function printIdMapping(ids: NodeId[], map: AstIdMap): string {
+function printIdMapping(ids: readonly NodeId[], map: AstIdMap): string {
 	return ids.map(id => `${id}: ${JSON.stringify(map.get(id)?.lexeme)}`).join(', ');
 }
 
@@ -505,7 +503,7 @@ export function assertReconstructed(name: string | TestLabel, shell: RShell, inp
 		const reconstructed = NAIVE_RECONSTRUCT.processor({
 			normalize: result.normalize,
 			slice:     {
-				decodedCriteria:   [],
+				slicedFor:         [],
 				timesHitThreshold: 0,
 				result:            new Set(selectedIds)
 			}
@@ -537,7 +535,7 @@ export function assertSlicedF(
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string | SingleSlicingCriterion[],
+	expected: string | SlicingCriterion[],
 	testConfig?: Partial<TestConfigurationWithOutput & TestCaseParams>
 ) {
 	return assertSliced(name, shell, input, criteria, expected, { ...testConfig, sliceDirection: SliceDirection.Forward });
@@ -565,15 +563,15 @@ interface TestCaseParams {
 /**
  * Ensure that slicing for a given criteria returns the code you expect. Please be aware that for ease of use
  * this actually checks against the reconstructed code (which may contain additional tokens to support executability).
- * If you want to check against the actual ids, please provide an array of {@link SingleSlicingCriterion}s as the expected value.
+ * If you want to check against the actual ids, please provide an array of {@link SlicingCriterion}s as the expected value.
  */
 export function assertSliced(
 	name: TestLabel,
 	shell: RShell,
 	input: string,
 	criteria: SlicingCriteria,
-	expected: string | SingleSlicingCriterion[],
-	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[] },
+	expected: string | SlicingCriterion[],
+	testConfig?: Partial<TestConfigurationWithOutput> & Partial<TestCaseParams> & { addFiles?: FlowrFileProvider[], extendSlice?: boolean },
 ) {
 	const fullname = `${JSON.stringify(criteria)} ${decorateLabelContext(name, ['slice'])}`;
 	const skip = skipTestBecauseConfigNotMet(testConfig);
@@ -644,6 +642,9 @@ export function assertSliced(
 
 		async function executePipeline(parser: KnownParser): Promise<PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>> {
 			const context =  contextFromInput(input, FlowrConfig.clone(testConfig?.flowrConfig ?? FlowrConfig.default()));
+			if(testConfig?.extendSlice) {
+				FlowrConfig.setInConfigInPlace(context.config, 'solver.slicer.autoExtend', true);
+			}
 			if(testConfig?.addFiles) {
 				context.addFiles(testConfig.addFiles);
 			}
@@ -659,17 +660,17 @@ export function assertSliced(
 			try {
 				if(Array.isArray(expected)) {
 					// check whether all ids are present in the slice result
-					const decodedExpected = expected.map(e => slicingCriterionToId(e, result.normalize.idMap))
+					const decodedExpected = expected.map(e => SlicingCriterion.parse(e, result.normalize.idMap))
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
 					const inSlice = Array.from(result.slice.result)
 						.sort((a, b) => String(a).localeCompare(String(b)))
 						.map(NodeId.normalize);
-					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`);
+					assert.deepStrictEqual(inSlice, decodedExpected, `expected ids ${JSON.stringify(decodedExpected)} are not in the slice result ${JSON.stringify(inSlice)}, for input ${input} (slice for ${printIdMapping(result.slice.slicedFor, result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`);
 				} else {
 					assert.strictEqual(
 						result.reconstruct.code, expected,
-						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.decodedCriteria.map(({ id }) => id), result.normalize.idMap)}), url: ${graphToMermaidUrl(result.dataflow.graph, true, result.slice.result)}`
+						`got: ${result.reconstruct.code as string}, vs. expected: ${JSON.stringify(expected)}, for input ${input} (slice for ${JSON.stringify(criteria)}: ${printIdMapping(result.slice.slicedFor, result.normalize.idMap)}), url: ${Dataflow.visualize.mermaid.url(result.dataflow.graph, true, result.slice.result)}`
 					);
 				}
 				assert.strictEqual(result.slice.timesHitThreshold, 0, 'the slice shall not hit the threshold');

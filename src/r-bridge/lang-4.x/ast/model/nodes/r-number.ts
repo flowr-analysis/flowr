@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RNumberValue } from '../../../convert-values';
 
@@ -16,6 +17,7 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
  * Helper for working with {@link RNumber} AST nodes.
  */
 export const RNumber = {
+	...RNode,
 	name: 'RNumber',
 	/**
 	 * Type guard for {@link RNumber} nodes.

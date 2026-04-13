@@ -4,7 +4,7 @@
  * @module
  */
 import type { MergeableRecord } from '../../util/objects';
-import type { SingleSlicingCriterion, SlicingCriteria } from './parse';
+import type { SlicingCriterion, SlicingCriteria } from './parse';
 import { guard } from '../../util/assert';
 import { getUniqueCombinationsOfSize } from '../../util/collections/arrays';
 import type { ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -52,7 +52,7 @@ export function* collectAllSlicingCriteria<OtherInfo>(ast: RProject<OtherInfo & 
 	for(const combination of getUniqueCombinationsOfSize(potentialSlicingNodes, filter.minimumSize, filter.maximumSize)) {
 		const c = combination.filter(n => n !== undefined && n !== EmptyArgument);
 		if(c.length > 0) {
-			yield c.map(n => `$${n}` as SingleSlicingCriterion);
+			yield c.map(n => `$${n}` as SlicingCriterion);
 		}
 	}
 }

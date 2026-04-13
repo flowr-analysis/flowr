@@ -8,12 +8,12 @@ import type { ControlFlowInformation } from '../../../src/control-flow/control-f
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { FlowrConfig } from '../../../src/config';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 	const config = FlowrConfig.default();
@@ -36,7 +36,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 			try {
 				assert(v);
 			} catch(error) {
-				console.error('dfg: ', graphToMermaidUrl(data.dataflow.graph));
+				console.error('dfg: ', Dataflow.visualize.mermaid.url(data.dataflow.graph));
 				console.error('cfg: ', cfgToMermaidUrl(cfg, data.normalize));
 				throw error;
 			}

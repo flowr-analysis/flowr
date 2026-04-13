@@ -1,25 +1,26 @@
 import Joi from 'joi';
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
+import { AbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
+import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import type { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 import type { FlowrConfig } from '../../../config';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDfShapeQuery } from './df-shape-query-executor';
-import { AbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 
 /** Infer the shape of data frames using abstract interpretation. */
 export interface DfShapeQuery extends BaseQueryFormat {
 	readonly type:       'df-shape';
-	readonly criterion?: SingleSlicingCriterion;
+	readonly criterion?: SlicingCriterion;
 }
 
 export interface DfShapeQueryResult extends BaseQueryResult {
-	domains: StateAbstractDomain<DataFrameDomain> | Map<SingleSlicingCriterion, DataFrameDomain | undefined>
+	domains: StateAbstractDomain<DataFrameDomain> | Map<SlicingCriterion, DataFrameDomain | undefined>
 }
 
 function dfShapeQueryLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'df-shape'> {
@@ -40,9 +41,15 @@ export const DfShapeQueryDefinition = {
 		const out = queryResults as QueryResults<'df-shape'>['df-shape'];
 		const domains = out.domains instanceof AbstractDomain ? out.domains.value : out.domains;
 		result.push(`Query: ${bold('df-shape', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+
+		if(domains === Bottom) {
+			result.push(`   ╰ state: ${BottomSymbol}`);
+			return true;
+		}
 		result.push(...domains.entries().take(20).map(([key, domain]) => {
 			return `   ╰ ${key}: ${domain?.toString()}`;
 		}));
+
 		if(domains.size > 20) {
 			result.push('   ╰ ... (see JSON)');
 		}
@@ -51,7 +58,7 @@ export const DfShapeQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { domains, ...out } = queryResults as QueryResults<'df-shape'>['df-shape'];
 		const state = domains instanceof AbstractDomain ? domains.value : domains;
-		const json = Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
+		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
 		const result = { domains: json, ...out } as object;
 
 		return result;

@@ -4,7 +4,7 @@ import Joi from 'joi';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { executeDoesCallQuery } from './does-call-query-executor';
 import { type NodeId  } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
@@ -40,7 +40,7 @@ export interface DoesCallQuery extends BaseQueryFormat {
 	readonly type:     'does-call';
 	// this should be a unique id if you give multiple queries of this type, to identify them in the output
 	readonly queryId?: string;
-	readonly call:     SingleSlicingCriterion;
+	readonly call:     SlicingCriterion;
 	readonly calls:    CallsConstraint;
 }
 
@@ -58,7 +58,7 @@ const FormatError = 'Invalid constraint format, expected format "(left:$id/"rege
  * Parses a constraint from a string argument.
  * Returns the constraint or an error message.
  */
-function constraintParser(argument: string | undefined): { call: SingleSlicingCriterion, constraint: CallsWithNameConstraint | CallsIdConstraint } | string {
+function constraintParser(argument: string | undefined): { call: SlicingCriterion, constraint: CallsWithNameConstraint | CallsIdConstraint } | string {
 	if(!argument?.startsWith('(') || !argument.includes(')')) {
 		return FormatError + ` (got: "${argument}")`;
 	}
@@ -72,17 +72,17 @@ function constraintParser(argument: string | undefined): { call: SingleSlicingCr
 	const rhsStr = rhs.join(' ');
 	if(rhsStr.startsWith('$')) {
 		return {
-			call:       criteria as SingleSlicingCriterion,
+			call:       criteria as SlicingCriterion,
 			constraint: {
 				type: 'calls-id',
-				id:   rhsStr.slice(1) as SingleSlicingCriterion,
+				id:   rhsStr.slice(1) as SlicingCriterion,
 			}
 		};
 	} else {
 		const isExact = startAndEndsWith(rhsStr, '"');
 		const name = isExact ? rhsStr.slice(1, -1) : rhsStr;
 		return {
-			call:       criteria as SingleSlicingCriterion,
+			call:       criteria as SlicingCriterion,
 			constraint: {
 				type:      'name',
 				name:      name,

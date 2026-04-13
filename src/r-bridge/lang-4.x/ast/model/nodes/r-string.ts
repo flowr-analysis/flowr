@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import type { RStringValue } from '../../../convert-values';
 import { RType } from '../type';
 import { SemVer } from 'semver';
@@ -17,6 +18,7 @@ export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
  * Helper for working with {@link RString} AST nodes.
  */
 export const RString = {
+	...RNode,
 	name: 'RString',
 	/**
 	 * Type guard for RString nodes.

@@ -24,7 +24,7 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
+import { SlicingCriteria } from '../slicing/criterion/parse';
 import {
 	createSlicePipeline,
 	type DEFAULT_SLICING_PIPELINE,
@@ -49,18 +49,15 @@ import { equidistantSampling } from '../util/collections/arrays';
 import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
-import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
-import { Top } from '../abstract-interpretation/domains/lattice';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
-import type { CallGraph } from '../dataflow/graph/call-graph';
-import { computeCallGraph } from '../dataflow/graph/call-graph';
+import { CallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -120,7 +117,7 @@ export class BenchmarkSlicer {
 	private readonly parserName: KnownParserName;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType[] | undefined;
+	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
@@ -294,7 +291,8 @@ export class BenchmarkSlicer {
 
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
-		stats.slicingCriteria = [...slicedOutput.decodedCriteria];
+		const decodedCriteria = SlicingCriteria.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
+		stats.slicingCriteria = Array.from(decodedCriteria);
 
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code');
 
@@ -304,9 +302,9 @@ export class BenchmarkSlicer {
 		const results = this.executor.getResults(false);
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
-			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
-				const node = results.normalize.idMap.get(c.id);
-				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
+			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.slicedFor.map(id => {
+				const node = results.normalize.idMap.get(id);
+				return `\n-   id: ${id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
 			}).join('')}`);
 		}
 
@@ -342,7 +340,7 @@ export class BenchmarkSlicer {
 		const g = this.dataflow?.graph;
 		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
 
-		this.callGraph = this.measureSimpleStep('extract call graph', () => computeCallGraph(g));
+		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**
@@ -379,13 +377,14 @@ export class BenchmarkSlicer {
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
-		stats.numberOfResultConstraints = result.value.size;
-		stats.sizeOfInfo = safeSizeOf([inference.getAbstractTrace()]);
 
-		for(const value of result.value.values()) {
+		stats.numberOfResultConstraints = result.isValue() ? result.value.size : 0;
+		stats.sizeOfInfo = safeSizeOf(inference.getAbstractTrace().entries().toArray());
+
+		for(const value of result.isValue() ? result.value.values() : []) {
 			if(value.isTop()) {
 				stats.numberOfResultingTop++;
-			} else if((value as DataFrameDomain).isBottom()) {
+			} else if(value.isBottom()) {
 				stats.numberOfResultingBottom++;
 			} else {
 				stats.numberOfResultingValues++;
@@ -401,9 +400,10 @@ export class BenchmarkSlicer {
 				stats.numberOfEmptyNodes++;
 				return;
 			}
+			const state = inference.getAbstractState(node.info.id);
 
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: inference.getAbstractState(node.info.id)?.value.size ?? 0
+				numberOfEntries: state?.isValue() ? state.value.size : 0
 			};
 
 			if(operations !== undefined) {
@@ -437,7 +437,7 @@ export class BenchmarkSlicer {
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.value.range === Top ? Infinity : value.value.range.size;
+				return value.isFinite() ? value.value.range.size : Infinity;
 			} else {
 				return value.value[1] - value.value[0];
 			}
@@ -449,15 +449,11 @@ export class BenchmarkSlicer {
 		if(value.isTop()) {
 			return 'top';
 		} else if(value.isValue()) {
-			if(value instanceof SetRangeDomain) {
-				if(value.value.range === Top) {
-					return 'infinite';
-				}
+			if(!value.isFinite()) {
+				return 'infinite';
+			} else if(value instanceof SetRangeDomain) {
 				return Math.floor(value.value.min.size + (value.value.range.size / 2));
 			} else {
-				if(!isFinite(value.value[1])) {
-					return 'infinite';
-				}
 				return Math.floor((value.value[0] + value.value[1]) / 2);
 			}
 		}

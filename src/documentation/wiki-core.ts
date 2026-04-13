@@ -14,7 +14,7 @@ import { processAccess } from '../dataflow/internal/process/functions/call/built
 import { processForLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-for-loop';
 import { processRepeatLoop } from '../dataflow/internal/process/functions/call/built-in/built-in-repeat-loop';
 import { linkCircularRedefinitionsWithinALoop } from '../dataflow/internal/linker';
-import { filterOutLoopExitPoints, initializeCleanDataflowInformation } from '../dataflow/info';
+import { DataflowInformation, filterOutLoopExitPoints } from '../dataflow/info';
 import { processDataflowFor } from '../dataflow/processor';
 import {
 	createDataflowPipeline,
@@ -46,6 +46,7 @@ import { block, details } from './doc-util/doc-structure';
 import { RShell } from '../r-bridge/shell';
 import { setMinLevelOfAllLogs } from '../../test/functionality/_helper/log';
 import { expensiveTrace, FlowrLogger } from '../util/log';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 
 async function makeAnalyzerExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -318,7 +319,7 @@ If you are interested in the raw token types that we may encounter, have a look 
 The normalization function ${ctx.link(normalize)} takes the output from the previous steps and uses the ${ctx.link(prepareParsedData)} and 
 ${ctx.link(convertPreparedParsedData)} functions to first transform the serialized parsing output to an object. 
 Next, ${ctx.link(normalizeRootObjToAst)} transforms this object to a normalized AST and ${ctx.link(decorateAst)} adds additional information to the AST (like roles, ids, depth, etc.).
-While looking at the mermaid visualization of such an AST is nice and usually sufficient, looking at the objects themselves shows you the full range of information the AST provides (all encompassed within the ${ctx.link('RNode')} type).
+While looking at the mermaid visualization of such an AST is nice and usually sufficient, looking at the objects themselves shows you the full range of information the AST provides (all encompassed within the ${ctx.link(RNode)} type).
 
 Let's have a look at the normalized AST for the sample code \`${sampleCode}\` (please refer to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) wiki page for more information):
 
@@ -372,7 +373,7 @@ We use the ${ctx.link(produceDataFlowGraph)} function as an entry point to the d
 The function is mainly backed by its ${ctx.link('processors')} object which maps each type in the normalized AST to an appropriate handler ("fold-function").
 
 To understand these handlers, let's start with the simplest one, ${ctx.link(processUninterestingLeaf)} signals that 
-we do not care about this node and just produce an empty dataflow information (using ${ctx.link(initializeCleanDataflowInformation)}). 
+we do not care about this node and just produce an empty dataflow information (using ${ctx.linkO(DataflowInformation, 'initialize')}). 
 Looking at the function showcases the general structure of a processor:
 
 ${ctx.hierarchy(processUninterestingLeaf, { maxDepth: 2, openTop: true })}
@@ -398,7 +399,7 @@ ${ctx.hierarchy(processValue, { maxDepth: 2, openTop: true })}
 
 Please note, that we add the [value vertex](${FlowrWikiBaseRef}/Dataflow-Graph#value-vertex) to the newly created dataflow graph,
 which holds a reference to the constant. If you are confused with the use of the ${ctx.link('ParentInformation')} type, 
-this stems from the [AST decoration](#normalization) and signals that we have a decorated ${ctx.link('RNode')} (which may have additional information in \`OtherInfo\`).
+this stems from the [AST decoration](#normalization) and signals that we have a decorated ${ctx.link(RNode)} (which may have additional information in \`OtherInfo\`).
 
 Yet again, this is not very interesting. When looking at the ${ctx.link('processors')} object you may be confused by
 many lines just mapping the node to the ${ctx.link(processAsNamedCall)} function.
@@ -438,7 +439,7 @@ to produce a new dataflow information.
 
 Given the [dataflow graph](${FlowrWikiBaseRef}/Dataflow-Graph), you can do a lot more!
 You can issue [queries](${FlowrWikiBaseRef}/Query-API) to explore the graph, [search](${FlowrWikiBaseRef}/Search-API) for specific elements, or, for example, request a [static backward slice](#static-backward-slicing).
-Of course, all of these endeavors work not just with the ${ctx.link(RShell.name)} but also with the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines). 
+Of course, all of these endeavors work not just with the ${ctx.link(RShell)} but also with the [\`tree-sitter\` engine](${FlowrWikiBaseRef}/Engines). 
 
 ### Static Backward Slicing
 

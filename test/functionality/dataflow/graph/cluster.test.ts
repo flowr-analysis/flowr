@@ -1,15 +1,15 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { type DataflowGraphCluster, type DataflowGraphClusters, findAllClusters } from '../../../../src/dataflow/cluster';
-import { type SlicingCriteria, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { withShell } from '../../_helper/shell';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -50,7 +50,7 @@ describe('Graph Clustering', () => {
 					} : c;
 					return {
 						startNode: '',
-						members:   members.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap)),
+						members:   members.map(s => SlicingCriterion.parse(s, graph.idMap ?? info.normalize.idMap)),
 						hasUnknownSideEffects
 					};
 				});
@@ -58,7 +58,7 @@ describe('Graph Clustering', () => {
 				try {
 					compareClusters(actual, resolved);
 				} catch(e) {
-					console.log(dataflowGraphToMermaidUrl(info.dataflow));
+					console.log(Dataflow.visualize.mermaid.url(info.dataflow));
 					throw e;
 				}
 			});

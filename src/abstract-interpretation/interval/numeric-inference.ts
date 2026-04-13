@@ -1,3 +1,4 @@
+import type { AbsintVisitorConfiguration } from '../absint-visitor';
 import { AbstractInterpretationVisitor } from '../absint-visitor';
 import { IntervalDomain } from '../domains/interval-domain';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../dataflow/graph/vertex';
@@ -16,6 +17,10 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
 export class NumericInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
+	constructor(config: AbsintVisitorConfiguration) {
+		super(config, IntervalDomain.top());
+	}
+
 	protected getBottomValue(): IntervalDomain {
 		return IntervalDomain.bottom();
 	}

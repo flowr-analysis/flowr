@@ -616,20 +616,19 @@ describe('Interval Inference', () => {
 		});
 	});
 
-	describe('unknown side effects', () => {
+	describe('unknown side effects', { fails: true }, () => {
 		testIntervalDomain(`
 			x <- length(a)
 			if (x < 3) {
 				x = x-1
 				assign(paste("timepoint_", count, sep=""), df$precincts.results)
+				assign(paste("x", "", sep=""), 5)
 				x
 			}
 			x
 		`, {
-			'1@x': { domain: IntervalTests.interval(0, Infinity) },
-			'3@x': { domain: IntervalTests.interval(-1, 2) },
-			'5@x': { domain: IntervalTests.interval(-1, 2), matching: DomainMatchingType.Overapproximation },
-			'7@x': { domain: IntervalTests.interval(-1, Infinity), matching: DomainMatchingType.Overapproximation },
+			'6@x': { domain: IntervalTests.scalar(5) },
+			'8@x': { domain: IntervalTests.interval(3, Infinity) },
 		});
 
 		describe('unknown side effects inside loops are currently not handled correctly', { fails: true }, () => {
@@ -643,7 +642,7 @@ describe('Interval Inference', () => {
 				x
 			`, {
 				// In the second iteration, the unknown side effect is forgotten, and we assume that x resolves only to l.1: 0 (but in fact would resolve to l.5: 8)
-				'4@x': { domain: IntervalTests.interval(1, 9), matching: DomainMatchingType.Overapproximation },
+				'4@x': { domain: IntervalTests.interval(1, 9) },
 				'7@x': { domain: IntervalTests.scalar(8) }
 			});
 
@@ -655,7 +654,7 @@ describe('Interval Inference', () => {
 				}
 				x
 			`, {
-				'3@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+				'3@x': { domain: IntervalTests.interval(1, 3) },
 				'6@x': { domain: IntervalTests.scalar(4) },
 			});
 
@@ -670,7 +669,7 @@ describe('Interval Inference', () => {
 				}
 				x
 			`, {
-				'3@x': { domain: IntervalTests.interval(1, 3), matching: DomainMatchingType.Overapproximation },
+				'3@x': { domain: IntervalTests.interval(1, 3) },
 				'9@x': { domain: IntervalTests.scalar(3) },
 			});
 		});

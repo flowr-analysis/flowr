@@ -5,7 +5,12 @@ import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-vi
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
-import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexVariableDefinition,
+	isFunctionCallVertex,
+	VertexType
+} from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
@@ -91,10 +96,9 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
-		// TODO: (@HS) Check if we need that
-		// if(state?.isBottom()) {
-		// 	return this.getBottomValue();
-		// }
+		if(state?.isBottom()) {
+			return this.getBottomValue();
+		}
 
 		if(node === undefined) {
 			return;
@@ -106,9 +110,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			// TODO: (@HS) Check if we need that
-			// const values = this.getVariableOrigins(node.info.id).map(origin => this.trace.get(origin)?.isBottom() ? this.getBottomValue() : state?.get(origin));
-			const values = this.getVariableOrigins(node.info.id).map(origin => state?.get(origin));
+			const values = this.getVariableOrigins(node.info.id).map(origin => this.trace.get(origin)?.isBottom() ? this.getBottomValue() : state?.get(origin));
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);

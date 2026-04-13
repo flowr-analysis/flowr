@@ -2,8 +2,7 @@ import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { NumericInferenceVisitor } from '../../../../src/abstract-interpretation/interval/numeric-inference';
 import { beforeAll, expect, test } from 'vitest';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -63,7 +62,7 @@ export enum DomainMatchingType {
 
 export type SlicingCriterionExpected = { domain: IntervalDomain | undefined, matching?: DomainMatchingType };
 
-export type IntervalTestExpected = { [key: SingleSlicingCriterion]: SlicingCriterionExpected };
+export type IntervalTestExpected = { [key: SlicingCriterion]: SlicingCriterionExpected };
 
 /**
  * Executes the {@link NumericInferenceVisitor} on the given code and tests the inferred interval values for each slicing criterion against the expected result.
@@ -96,11 +95,11 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 
 	test.each(
 		// Append the test name manually because we need to access a property of criterionExpected, which cannot be done using vitest's test.each syntax.
-		(Object.entries(expected) as [criterion: SingleSlicingCriterion, criterionExpected: SlicingCriterionExpected][])
+		(Object.entries(expected) as [criterion: SlicingCriterion, criterionExpected: SlicingCriterionExpected][])
 			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.matching ?? DomainMatchingType.Exact}: ${criterionExpected.domain?.toString()} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
 	)('$0',
-		(_: string, criterion: SingleSlicingCriterion, criterionExpected: SlicingCriterionExpected) => {
-			const targetId: NodeId = slicingCriterionToId(criterion, ast.idMap);
+		(_: string, criterion: SlicingCriterion, criterionExpected: SlicingCriterionExpected) => {
+			const targetId: NodeId = SlicingCriterion.parse(criterion, ast.idMap);
 
 			const inferredIntervalDomain = visitor.getAbstractValue(targetId);
 

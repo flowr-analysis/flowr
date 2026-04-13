@@ -3,7 +3,7 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericInferenceVisitor } from './numeric-inference';
 import { numericInferenceLogger } from './numeric-inference';
-import type { IntervalDomain } from '../domains/interval-domain';
+import { IntervalDomain } from '../domains/interval-domain';
 import { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
 import { isNotUndefined, isUndefined } from '../../util/assert';
@@ -90,7 +90,7 @@ export function applyIntervalConditionSemantics(argNodeId: NodeId | undefined, s
 	// evaluating an expression and evaluating a condition, we can just apply the semantics for evaluating an expression
 	// in this case.
 	if(argState?.isValue() && argState.value[0] == 0 && argState.value[1] == 0) {
-		return state?.bottom() ?? MutableStateAbstractDomain.bottom();
+		return state?.bottom() ?? MutableStateAbstractDomain.bottom(IntervalDomain.top());
 	}
 
 	return state;
@@ -128,7 +128,7 @@ export function applyNegatedIntervalConditionSemantics(argNodeId: NodeId | undef
 	// evaluating a negated expression and evaluating a negated condition, we can just apply the semantics for
 	// evaluating a negated expression in this case.
 	if(argState?.isValue() && (0 < argState.value[0] || argState.value[1] < 0)) {
-		return state?.bottom() ?? MutableStateAbstractDomain.bottom();
+		return state?.bottom() ?? MutableStateAbstractDomain.bottom(IntervalDomain.top());
 	}
 
 	return state;
@@ -184,7 +184,7 @@ function intervalEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mutabl
 	}
 
 	if(isUndefined(state)) {
-		state = MutableStateAbstractDomain.top();
+		state = MutableStateAbstractDomain.top(IntervalDomain.top());
 	}
 
 	if(meet?.isBottom()) {
@@ -218,7 +218,7 @@ function intervalNotEqualsOp(leftNodeId: NodeId, rightNodeId: NodeId, state: Mut
 		const [c, d] = rightValue.value;
 
 		if(a == b && c == d && leftValue?.equals(rightValue)) {
-			return state?.bottom() ?? MutableStateAbstractDomain.bottom();
+			return state?.bottom() ?? MutableStateAbstractDomain.bottom(IntervalDomain.top());
 		}
 	}
 

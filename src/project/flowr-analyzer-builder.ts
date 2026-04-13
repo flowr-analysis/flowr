@@ -222,7 +222,7 @@ export class FlowrAnalyzerBuilder {
 		let workerPool = undefined;
 		if(this.flowrConfig.optimizations.fileParallelization
             || this.flowrConfig.optimizations.dataflowOperationParallelization){
-			workerPool = new Workerpool(WorkerpoolDefaultSettings, this.flowrConfig);
+			workerPool = new Workerpool(this.flowrConfig.workerPool.poolSettings ?? WorkerpoolDefaultSettings, this.flowrConfig);
 		}
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins, workerPool);

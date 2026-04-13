@@ -57,15 +57,51 @@ export interface SourceCharacteristics {
     fileCount:  number;
 }
 
-export interface WorkerResult {
+export type CorrectnessOutcome = 'skipped' | CorrectnessResult;
+
+export interface AnalysisRunResult {
     project:                string;
-    threads?:               number;
-    correctness:            'skipped' | CorrectnessResult;
     fileCount:              number;
     timestamp:              string;
-    wallMs:                 number[];
+    wallMs:                 number;
+    correctness:            CorrectnessOutcome;
     lazyFunctionStats?:     LazyFunctionStats;
     sequentialReanalysis?:  boolean;
     graphMetrics?:          GraphMetrics;
     sourceCharacteristics?: SourceCharacteristics;
 }
+
+export interface ProjectResult {
+    project:                string;
+    fileCount:              number;
+    timestamp:              string;
+    wallMsByThreads:        Record<string, number[]>;
+    correctnessByThreads:   Record<string, CorrectnessOutcome>;
+    lazyFunctionStats?:     LazyFunctionStats;
+    sequentialReanalysis?:  boolean;
+    graphMetrics?:          GraphMetrics;
+    sourceCharacteristics?: SourceCharacteristics;
+}
+
+export interface CorrectnessStats {
+    correct:   number;
+    imprecise: number;
+    incorrect: number;
+    skipped:   number;
+}
+
+export type CorrectnessStatsByThreads = Record<string, CorrectnessStats>;
+
+export interface BenchmarkSuiteResult {
+    suiteName:                  string;
+    projects:                   ProjectResult[];
+    totalRuntimeMs:             number;
+    meanProjectRuntimeMs:       number;
+    totalFiles:                 number;
+    totalLazyFunctionStats?:    LazyFunctionStats;
+    correctnessStatsByThreads?: CorrectnessStatsByThreads;
+    aggregateGraphMetrics?:     GraphMetrics;
+    aggregateSourceStats?:      SourceCharacteristics;
+}
+
+export type BenchmarkResult = BenchmarkSuiteResult[];

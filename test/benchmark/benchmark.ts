@@ -1,7 +1,15 @@
 import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { WorkerResult } from './results-types';
+import type {
+	AnalysisRunResult,
+	BenchmarkResult,
+	CorrectnessOutcome,
+	CorrectnessStats,
+	CorrectnessStatsByThreads,
+	LazyFunctionStats,
+	ProjectResult,
+} from './results-types';
 import { CorrectnessClassification, correctnessClassificationToName } from './results-types';
 
 type Settings = {
@@ -36,7 +44,142 @@ type BenchmarkRuntime = {
 	dryRun:       boolean;
 };
 
+type ThreadRunResult = {
+	threadKey:              string;
+	project:                string;
+	fileCount:              number;
+	wallMs:                 number[];
+	correctness:            CorrectnessOutcome;
+	lazyFunctionStats?:     LazyFunctionStats;
+	sequentialReanalysis?:  boolean;
+	graphMetrics?:          ProjectResult['graphMetrics'];
+	sourceCharacteristics?: ProjectResult['sourceCharacteristics'];
+	timestamp:              string;
+};
+
 const tempResultRelativePath = './.tmp-analysis-result.json';
+
+function appendOptimizationArgs(args: string[], runtime: BenchmarkRuntime): void {
+	if(runtime.settings.optimizations?.parallelFiles) {
+		args.push('--parallelFiles');
+	}
+	if(runtime.settings.optimizations?.parallelOperations) {
+		args.push('--parallelOperations');
+	}
+	if(runtime.settings.optimizations?.lazyFunctions) {
+		args.push('--lazyFunctions');
+	}
+}
+
+function buildAnalysisArgs(
+	runtime: BenchmarkRuntime,
+	projectDir: string,
+	profileDir: string,
+	tempResultPath: string,
+	threads: number | undefined,
+	flags: { skipCorrectness: boolean; runtimeOnly: boolean; dryRun: boolean },
+): string[] {
+	const args = [
+		runtime.workerJs,
+		projectDir,
+		profileDir,
+		'--tempResultPath',
+		tempResultPath,
+	];
+
+	if(threads !== undefined) {
+		args.push('--threads', String(threads));
+	}
+
+	if(flags.skipCorrectness) {
+		args.push('--skipCorrectness');
+	}
+	if(flags.runtimeOnly) {
+		args.push('--runtimeOnly');
+	}
+	if(flags.dryRun) {
+		args.push('--dryRun');
+	}
+
+	appendOptimizationArgs(args, runtime);
+	return args;
+}
+
+async function runAnalysisProcess(args: string[], errorMessage: string): Promise<void> {
+	const child = spawn('node', args, { stdio: 'inherit' });
+	const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
+	if(exitCode !== 0) {
+		throw new Error(`${errorMessage} (exit=${exitCode})`);
+	}
+}
+
+function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult {
+	const [first] = results;
+	const projectResult: ProjectResult = {
+		project:              first.project,
+		fileCount:            first.fileCount,
+		timestamp:            new Date().toISOString(),
+		wallMsByThreads:      {},
+		correctnessByThreads: {},
+	};
+
+	for(const result of results) {
+		if(result.fileCount !== first.fileCount) {
+			throw new Error(`Inconsistent file count for ${first.project}: expected ${first.fileCount}, got ${result.fileCount}`);
+		}
+		projectResult.wallMsByThreads[result.threadKey] = result.wallMs;
+		projectResult.correctnessByThreads[result.threadKey] = result.correctness;
+		projectResult.lazyFunctionStats ??= result.lazyFunctionStats;
+		projectResult.sequentialReanalysis ??= result.sequentialReanalysis;
+		projectResult.graphMetrics ??= result.graphMetrics;
+		projectResult.sourceCharacteristics ??= result.sourceCharacteristics;
+	}
+
+	return projectResult;
+}
+
+function addLazyStats(acc: LazyFunctionStats | undefined, stats: LazyFunctionStats | undefined): LazyFunctionStats | undefined {
+	if(!stats) {
+		return acc;
+	}
+	if(!acc) {
+		return { ...stats };
+	}
+	acc.totalFunctionDefinitions += stats.totalFunctionDefinitions;
+	acc.lazyFunctionsMaterialized += stats.lazyFunctionsMaterialized;
+	acc.lazyFunctionsRemaining += stats.lazyFunctionsRemaining;
+	return acc;
+}
+
+function addGraphMetrics(acc: ProjectResult['graphMetrics'] | undefined, stats: ProjectResult['graphMetrics'] | undefined): ProjectResult['graphMetrics'] | undefined {
+	if(!stats) {
+		return acc;
+	}
+	if(!acc) {
+		const seeded = { ...stats, nodeTypeDistribution: { ...stats.nodeTypeDistribution } };
+		return seeded;
+	}
+	acc.nodeCount += stats.nodeCount;
+	acc.sideEffectCount += stats.sideEffectCount;
+	for(const [type, count] of Object.entries(stats.nodeTypeDistribution)) {
+		acc.nodeTypeDistribution[type] = (acc.nodeTypeDistribution[type] ?? 0) + count;
+	}
+	return acc;
+}
+
+function addSourceStats(acc: ProjectResult['sourceCharacteristics'] | undefined, stats: ProjectResult['sourceCharacteristics'] | undefined): ProjectResult['sourceCharacteristics'] | undefined {
+	if(!stats) {
+		return acc;
+	}
+	if(!acc) {
+		const seeded = { ...stats };
+		return seeded;
+	}
+	acc.lineCount += stats.lineCount;
+	acc.totalBytes += stats.totalBytes;
+	acc.fileCount += stats.fileCount;
+	return acc;
+}
 
 // --------------------------------------------------
 // Load settings
@@ -115,12 +258,9 @@ function listProjectsInSuite(suitePath: string, maxProjectsPerSuite?: number): s
 
 // ---------------- Runner ----------------
 
-async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: string, threads?: number, skipCorrectness?: boolean): Promise<void> {
+async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: string, threads?: number, skipCorrectness?: boolean): Promise<ThreadRunResult | undefined> {
 	const projectName = path.basename(projectDir);
-	let profileDir = path.join(runtime.outputRoot, suite, projectName);
-	if(threads) {
-		profileDir += `-threads-${threads}`;
-	}
+	const profileDir = path.join(runtime.outputRoot, suite, projectName);
 	if(!runtime.dryRun) {
 		fs.mkdirSync(profileDir, { recursive: true });
 	}
@@ -134,133 +274,102 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 
 	if(runtime.dryRun) {
 		const tempResultPath = path.resolve(profileDir, tempResultRelativePath);
-		const dryRunArgs: string[] = [
-			runtime.workerJs,
-			projectDir,
-			profileDir,
-			'--tempResultPath',
-			tempResultPath,
-		];
-
-		if(skipCorrectness || (runtime.settings.skipCorrectness ?? false)) {
-			dryRunArgs.push('--skipCorrectness');
-		}
-		if(runtime.settings.optimizations?.parallelFiles) {
-			dryRunArgs.push('--parallelFiles');
-		}
-		if(runtime.settings.optimizations?.parallelOperations) {
-			dryRunArgs.push('--parallelOperations');
-		}
-		if(runtime.settings.optimizations?.lazyFunctions) {
-			dryRunArgs.push('--lazyFunctions');
-		}
-		dryRunArgs.push('--dryRun');
-
-		const child = spawn(
-			'node',
-			dryRunArgs,
-			{ stdio: 'inherit' }
-		);
-
-		const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
-		if(exitCode !== 0) {
-			throw new Error(`Run failed for [${suite}] ${projectName} (exit=${exitCode})`);
-		}
-		return;
+		const dryRunArgs = buildAnalysisArgs(runtime, projectDir, profileDir, tempResultPath, threads, {
+			skipCorrectness: skipCorrectness || (runtime.settings.skipCorrectness ?? false),
+			runtimeOnly:     false,
+			dryRun:          true,
+		});
+		await runAnalysisProcess(dryRunArgs, `Run failed for [${suite}] ${projectName}`);
+		return undefined;
 	}
 
 	const tempResultPath = path.resolve(profileDir, tempResultRelativePath);
+	const threadKey = String(threads ?? 1);
 	if(fs.existsSync(tempResultPath)) {
 		fs.rmSync(tempResultPath, { force: true });
 	}
 
-	let aggregatedResult: WorkerResult | undefined;
+	const wallMs: number[] = [];
+	let lazyFunctionStats: LazyFunctionStats | undefined;
+	let sequentialReanalysis: boolean | undefined;
+	let graphMetrics: ProjectResult['graphMetrics'] | undefined;
+	let sourceCharacteristics: ProjectResult['sourceCharacteristics'] | undefined;
+	let fileCount: number | undefined;
+	let correctness: CorrectnessOutcome = 'skipped';
 
 	for(let iteration = 0; iteration < runtime.settings.repetitions; iteration++) {
 		const runtimeOnly = iteration > 0;
 		const shouldSkipCorrectness = runtimeOnly || skipCorrectness || (runtime.settings.skipCorrectness ?? false);
-		const args: string[] = [
-			runtime.workerJs,
-			projectDir,
-			profileDir,
-			'--tempResultPath',
-			tempResultPath,
-		];
-
-		if(shouldSkipCorrectness) {
-			args.push('--skipCorrectness');
-		}
-		if(runtimeOnly) {
-			args.push('--runtimeOnly');
-		}
-		if(runtime.settings.optimizations?.parallelFiles) {
-			args.push('--parallelFiles');
-		}
-		if(runtime.settings.optimizations?.parallelOperations) {
-			args.push('--parallelOperations');
-		}
-		if(runtime.settings.optimizations?.lazyFunctions) {
-			args.push('--lazyFunctions');
-		}
-
-		const child = spawn(
-			'node',
-			args,
-			{ stdio: 'inherit' }
-		);
-
-		const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
-		if(exitCode !== 0) {
-			throw new Error(`Run failed for [${suite}] ${projectName} (iteration ${iteration + 1}, exit=${exitCode})`);
-		}
+		const args = buildAnalysisArgs(runtime, projectDir, profileDir, tempResultPath, threads, {
+			skipCorrectness: shouldSkipCorrectness,
+			runtimeOnly,
+			dryRun:          false,
+		});
+		await runAnalysisProcess(args, `Run failed for [${suite}] ${projectName} (iteration ${iteration + 1})`);
 
 		if(!fs.existsSync(tempResultPath)) {
 			throw new Error(`Missing temporary analysis result at ${tempResultPath}`);
 		}
 
-		const iterationResult: WorkerResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as WorkerResult;
-		if(!aggregatedResult) {
-			aggregatedResult = {
-				...iterationResult,
-				threads,
-				wallMs: [...iterationResult.wallMs],
-			};
-		} else {
-			aggregatedResult.wallMs.push(...iterationResult.wallMs);
+		const iterationResult: AnalysisRunResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as AnalysisRunResult;
+		wallMs.push(iterationResult.wallMs);
+		if(fileCount === undefined) {
+			fileCount = iterationResult.fileCount;
+		} else if(fileCount !== iterationResult.fileCount) {
+			throw new Error(`Inconsistent file count for ${projectDir}: expected ${fileCount}, got ${iterationResult.fileCount}`);
 		}
+		correctness = iterationResult.correctness;
+		lazyFunctionStats ??= iterationResult.lazyFunctionStats;
+		sequentialReanalysis ??= iterationResult.sequentialReanalysis;
+		graphMetrics ??= iterationResult.graphMetrics;
+		sourceCharacteristics ??= iterationResult.sourceCharacteristics;
 	}
 
-	if(!aggregatedResult) {
+	if(wallMs.length === 0) {
 		throw new Error(`No iteration result collected for [${suite}] ${projectName}`);
 	}
+	if(fileCount === undefined) {
+		throw new Error(`Missing file count for [${suite}] ${projectName}`);
+	}
 
-	aggregatedResult.timestamp = new Date().toISOString();
-	const finalResultPath = path.join(profileDir, 'result.json');
-	fs.writeFileSync(finalResultPath, JSON.stringify(aggregatedResult, null, 2), 'utf-8');
 	if(fs.existsSync(tempResultPath)) {
 		fs.rmSync(tempResultPath, { force: true });
 	}
+
+	return {
+		threadKey,
+		project:   projectDir,
+		fileCount,
+		wallMs,
+		correctness,
+		lazyFunctionStats,
+		sequentialReanalysis,
+		graphMetrics,
+		sourceCharacteristics,
+		timestamp: new Date().toISOString(),
+	};
 }
 
 async function runProjectForThreads(runtime: BenchmarkRuntime, suite: string, projectPath: string): Promise<void> {
-	if(!runtime.settings.optimizations?.parallelFiles) {
-		// Thread-specific settings only matter for file-parallel runs.
-		await runOne(runtime, suite, projectPath);
-		return;
-	}
-
+	const projectName = path.basename(projectPath);
+	const profileDir = path.join(runtime.outputRoot, suite, projectName);
+	const finalResultPath = path.join(profileDir, 'result.json');
 	const correctnessThreads = runtime.settings.threadsForCorrectness ?? [];
 	const performanceThreads = runtime.settings.threadsForPerformance ?? [];
-	if(performanceThreads.length === 0) {
-		console.warn('File parallelization is enabled, but no performance thread counts are configured. Running a single default analysis.');
-		await runOne(runtime, suite, projectPath);
-		return;
+	const threadCounts = runtime.settings.optimizations?.parallelFiles && performanceThreads.length > 0 ? performanceThreads : [1];
+	const threadResults: ThreadRunResult[] = [];
+
+	for(const threads of threadCounts) {
+		const skipCorrectness = runtime.settings.optimizations?.parallelFiles ? !correctnessThreads.includes(threads) : (runtime.settings.skipCorrectness ?? false);
+		const result = await runOne(runtime, suite, projectPath, threads, skipCorrectness);
+		if(result) {
+			threadResults.push(result);
+		}
 	}
 
-
-	for(const threads of performanceThreads) {
-		const skipCorrectness = !correctnessThreads.includes(threads);
-		await runOne(runtime, suite, projectPath, threads, skipCorrectness);
+	if(threadResults.length > 0) {
+		fs.mkdirSync(profileDir, { recursive: true });
+		fs.writeFileSync(finalResultPath, JSON.stringify(buildProjectResult(threadResults), null, 2), 'utf-8');
 	}
 }
 
@@ -277,35 +386,6 @@ async function runTestSuite(runtime: BenchmarkRuntime, suiteName: string, suiteP
 
 // ---------------- Results ----------------
 
-type SuiteSummary = {
-    suiteName:               string;
-    projects:                WorkerResult[];
-    totalRuntimeMs:          number;
-    meanProjectRuntimeMs:    number;
-    totalFiles:              number;
-    totalLazyFunctionStats?:  {
-		totalFunctionDefinitions:  number;
-		lazyFunctionsMaterialized: number;
-		lazyFunctionsRemaining:    number;
-	};
-    correctnessStats?: {
-		correct:   number;
-		imprecise: number;
-		incorrect: number;
-		skipped:   number;
-	};
-    aggregateGraphMetrics?: {
-		totalNodes:           number;
-		totalSideEffects:     number;
-		nodeTypeDistribution: Record<string, number>;
-	};
-    aggregateSourceStats?: {
-		totalLineCount: number;
-		totalBytes:     number;
-		totalFileCount: number;
-	};
-};
-
 function mean(xs: readonly number[]): number {
 	if(xs.length === 0) {
 		return 0;
@@ -313,7 +393,29 @@ function mean(xs: readonly number[]): number {
 	return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-function collectResults(outputRoot: string): SuiteSummary[] {
+function emptyCorrectnessStats(): CorrectnessStats {
+	return { correct: 0, imprecise: 0, incorrect: 0, skipped: 0 };
+}
+
+function addCorrectness(stats: CorrectnessStats, correctness: CorrectnessOutcome): void {
+	if(correctness === 'skipped') {
+		stats.skipped++;
+		return;
+	}
+	switch(correctness.classification) {
+		case CorrectnessClassification.Correct:
+			stats.correct++;
+			return;
+		case CorrectnessClassification.Imprecise:
+			stats.imprecise++;
+			return;
+		case CorrectnessClassification.Incorrect:
+			stats.incorrect++;
+			return;
+	}
+}
+
+function collectResults(outputRoot: string): BenchmarkResult {
 	if(!fs.existsSync(outputRoot)) {
 		throw new Error(`Output directory does not exist: ${outputRoot}`);
 	}
@@ -321,7 +423,7 @@ function collectResults(outputRoot: string): SuiteSummary[] {
 		.filter(e => e.isDirectory())
 		.map(e => path.join(outputRoot, e.name));
 
-	const suites: SuiteSummary[] = [];
+	const suites: BenchmarkResult = [];
 
 
 	for(const suiteDir of suiteDirs) {
@@ -331,17 +433,18 @@ function collectResults(outputRoot: string): SuiteSummary[] {
 			.filter(e => e.isDirectory())
 			.map(e => path.join(suiteDir, e.name));
 
-		const projects: WorkerResult[] = [];
+		const projects: ProjectResult[] = [];
 		const totalRuntimes: number[] = [];
 
 		// Aggregate lazy function stats
-		let totalLazyFunctionStats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number; lazyFunctionsRemaining: number } | undefined;
+		let totalLazyFunctionStats: LazyFunctionStats | undefined;
 
 		// Aggregate graph metrics
-		let aggregateGraphMetrics: { totalNodes: number; totalSideEffects: number; nodeTypeDistribution: Record<string, number> } | undefined;
+		let aggregateGraphMetrics: ProjectResult['graphMetrics'] | undefined;
 
 		// Aggregate source stats
-		let aggregateSourceStats: { totalLineCount: number; totalBytes: number; totalFileCount: number } | undefined;
+		let aggregateSourceStats: ProjectResult['sourceCharacteristics'] | undefined;
+		const correctnessStatsByThreads: CorrectnessStatsByThreads = {};
 
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
@@ -351,93 +454,49 @@ function collectResults(outputRoot: string): SuiteSummary[] {
 				continue;
 			}
 
-			const data: WorkerResult = JSON.parse(fs.readFileSync(resultPath, 'utf-8')) as WorkerResult;
+			const data: ProjectResult = JSON.parse(fs.readFileSync(resultPath, 'utf-8')) as ProjectResult;
 			totalFiles += data.fileCount;
 			projects.push(data);
 
-			// Use measured runtime datapoints and aggregate by per-project mean runtime.
-			if(data.wallMs.length > 0) {
-				totalRuntimes.push(mean(data.wallMs));
+			// Use measured runtime datapoints and aggregate by per-project/thread mean runtime.
+			for(const runtimes of Object.values(data.wallMsByThreads)) {
+				if(runtimes.length > 0) {
+					totalRuntimes.push(mean(runtimes));
+				}
+			}
+
+			for(const [threadKey, correctness] of Object.entries(data.correctnessByThreads)) {
+				correctnessStatsByThreads[threadKey] ??= emptyCorrectnessStats();
+				addCorrectness(correctnessStatsByThreads[threadKey], correctness);
 			}
 
 			// Aggregate lazy function stats
-			if(data.lazyFunctionStats) {
-				if(!totalLazyFunctionStats) {
-					totalLazyFunctionStats = { totalFunctionDefinitions: 0, lazyFunctionsMaterialized: 0, lazyFunctionsRemaining: 0 };
-				}
-				totalLazyFunctionStats.totalFunctionDefinitions += data.lazyFunctionStats.totalFunctionDefinitions;
-				totalLazyFunctionStats.lazyFunctionsMaterialized += data.lazyFunctionStats.lazyFunctionsMaterialized;
-				totalLazyFunctionStats.lazyFunctionsRemaining += data.lazyFunctionStats.lazyFunctionsRemaining;
-			}
+			totalLazyFunctionStats = addLazyStats(totalLazyFunctionStats, data.lazyFunctionStats);
 
 			// Aggregate graph metrics
-			if(data.graphMetrics) {
-				if(!aggregateGraphMetrics) {
-					aggregateGraphMetrics = { totalNodes: 0, totalSideEffects: 0, nodeTypeDistribution: {} };
-				}
-				aggregateGraphMetrics.totalNodes += data.graphMetrics.nodeCount;
-				aggregateGraphMetrics.totalSideEffects += data.graphMetrics.sideEffectCount;
-				for(const [type, count] of Object.entries(data.graphMetrics.nodeTypeDistribution)) {
-					aggregateGraphMetrics.nodeTypeDistribution[type] = (aggregateGraphMetrics.nodeTypeDistribution[type] ?? 0) + count;
-				}
-			}
+			aggregateGraphMetrics = addGraphMetrics(aggregateGraphMetrics, data.graphMetrics);
 
 			// Aggregate source stats
-			if(data.sourceCharacteristics) {
-				if(!aggregateSourceStats) {
-					aggregateSourceStats = { totalLineCount: 0, totalBytes: 0, totalFileCount: 0 };
-				}
-				aggregateSourceStats.totalLineCount += data.sourceCharacteristics.lineCount;
-				aggregateSourceStats.totalBytes += data.sourceCharacteristics.totalBytes;
-				aggregateSourceStats.totalFileCount += data.sourceCharacteristics.fileCount;
-			}
+			aggregateSourceStats = addSourceStats(aggregateSourceStats, data.sourceCharacteristics);
 		}
 
 		const totalRuntimeMs = totalRuntimes.reduce((a, b) => a + b, 0);
-		const meanProjectRuntimeMs = projects.length ? totalRuntimeMs / projects.length : 0;
-
-		// Aggregate correctness stats
-		let correctnessStats: { correct: number; imprecise: number; incorrect: number; skipped: number } | undefined;
-		let hasCorrectness = false;
-		for(const project of projects) {
-			if(project.correctness !== 'skipped') {
-				hasCorrectness = true;
-				break;
-			}
-		}
-		if(hasCorrectness) {
-			correctnessStats = { correct: 0, imprecise: 0, incorrect: 0, skipped: 0 };
-			for(const project of projects) {
-				if(project.correctness === 'skipped') {
-					correctnessStats.skipped++;
-				} else {
-					switch(project.correctness.classification) {
-						case CorrectnessClassification.Correct:
-							correctnessStats.correct++;
-							break;
-						case CorrectnessClassification.Imprecise:
-							correctnessStats.imprecise++;
-							break;
-						case CorrectnessClassification.Incorrect:
-							correctnessStats.incorrect++;
-							break;
-					}
-				}
-			}
-		}
+		const meanProjectRuntimeMs = totalRuntimes.length ? totalRuntimeMs / totalRuntimes.length : 0;
 
 		console.log(`\nSuite ${suiteName}:`);
 		console.log(`- Projects: ${projects.length}`);
 		console.log(`- Total runtime: ${(totalRuntimeMs).toFixed(6)} ms`);
-		console.log(`- Mean per project: ${(meanProjectRuntimeMs).toFixed(6)} ms`);
+		console.log(`- Mean per project-thread: ${(meanProjectRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Total files analyzed: ${totalFiles}`);
-		if(correctnessStats) {
-			console.log(
-				`- Correctness: ${correctnessStats.correct} ${correctnessClassificationToName(CorrectnessClassification.Correct)}, ` +
-				`${correctnessStats.imprecise} ${correctnessClassificationToName(CorrectnessClassification.Imprecise)}, ` +
-				`${correctnessStats.incorrect} ${correctnessClassificationToName(CorrectnessClassification.Incorrect)}, ` +
-				`${correctnessStats.skipped} skipped`
-			);
+		if(Object.keys(correctnessStatsByThreads).length > 0) {
+			for(const [threadKey, stats] of Object.entries(correctnessStatsByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+				console.log(
+					`  threads=${threadKey}: ${stats.correct} ${correctnessClassificationToName(CorrectnessClassification.Correct)}, ` +
+					`${stats.imprecise} ${correctnessClassificationToName(CorrectnessClassification.Imprecise)}, ` +
+					`${stats.incorrect} ${correctnessClassificationToName(CorrectnessClassification.Incorrect)}, ` +
+					`${stats.skipped} skipped`
+				);
+			}
 		}
 		if(totalLazyFunctionStats) {
 			console.log(`- Total function definitions: ${totalLazyFunctionStats.totalFunctionDefinitions}`);
@@ -445,19 +504,28 @@ function collectResults(outputRoot: string): SuiteSummary[] {
 			console.log(`- Functions remaining lazy: ${totalLazyFunctionStats.lazyFunctionsRemaining}`);
 		}
 		if(aggregateGraphMetrics) {
-			console.log(`- Graph nodes: ${aggregateGraphMetrics.totalNodes}, side effects: ${aggregateGraphMetrics.totalSideEffects}`);
+			console.log(`- Graph nodes: ${aggregateGraphMetrics.nodeCount}, side effects: ${aggregateGraphMetrics.sideEffectCount}`);
 		}
 		if(aggregateSourceStats) {
-			console.log(`- Source: ${aggregateSourceStats.totalLineCount} lines, ${(aggregateSourceStats.totalBytes / 1024 / 1024).toFixed(2)} MB, ${aggregateSourceStats.totalFileCount} files`);
+			console.log(`- Source: ${aggregateSourceStats.lineCount} lines, ${(aggregateSourceStats.totalBytes / 1024 / 1024).toFixed(2)} MB, ${aggregateSourceStats.fileCount} files`);
 		}
 
-		suites.push({ suiteName, projects, totalRuntimeMs, meanProjectRuntimeMs, totalFiles, totalLazyFunctionStats, correctnessStats, aggregateGraphMetrics, aggregateSourceStats });
+		suites.push({
+			suiteName,
+			projects,
+			totalRuntimeMs,
+			meanProjectRuntimeMs,
+			totalFiles,
+			totalLazyFunctionStats,
+			correctnessStatsByThreads: Object.keys(correctnessStatsByThreads).length > 0 ? correctnessStatsByThreads : undefined,
+			aggregateGraphMetrics,
+			aggregateSourceStats,
+		});
 	}
-
 	return suites;
 }
 
-function writeSummary(suites: SuiteSummary[], outputRoot: string) {
+function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 	fs.mkdirSync(outputRoot, { recursive: true });
 	const summaryPath = path.join(outputRoot, 'summary.json');
 	fs.writeFileSync(summaryPath, JSON.stringify(suites, null, 2), 'utf-8');
@@ -467,58 +535,35 @@ function writeSummary(suites: SuiteSummary[], outputRoot: string) {
 	const totalFiles = suites.reduce((sum, s) => sum + s.totalFiles, 0);
 
 	// Aggregate lazy function stats across all suites
-	let totalLazyStats: { totalFunctionDefinitions: number; lazyFunctionsMaterialized: number; lazyFunctionsRemaining: number } | undefined;
+	let totalLazyStats: LazyFunctionStats | undefined;
 	for(const suite of suites) {
-		if(suite.totalLazyFunctionStats) {
-			if(!totalLazyStats) {
-				totalLazyStats = { totalFunctionDefinitions: 0, lazyFunctionsMaterialized: 0, lazyFunctionsRemaining: 0 };
-			}
-			totalLazyStats.totalFunctionDefinitions += suite.totalLazyFunctionStats.totalFunctionDefinitions;
-			totalLazyStats.lazyFunctionsMaterialized += suite.totalLazyFunctionStats.lazyFunctionsMaterialized;
-			totalLazyStats.lazyFunctionsRemaining += suite.totalLazyFunctionStats.lazyFunctionsRemaining;
-		}
+		totalLazyStats = addLazyStats(totalLazyStats, suite.totalLazyFunctionStats);
 	}
 
-	// Aggregate correctness stats across all suites
-	let totalCorrectnessStats: { correct: number; imprecise: number; incorrect: number; skipped: number } | undefined;
+	// Aggregate correctness stats across all suites (per-thread only)
+	const totalCorrectnessStatsByThreads: CorrectnessStatsByThreads = {};
 	for(const suite of suites) {
-		if(suite.correctnessStats) {
-			if(!totalCorrectnessStats) {
-				totalCorrectnessStats = { correct: 0, imprecise: 0, incorrect: 0, skipped: 0 };
+		if(suite.correctnessStatsByThreads) {
+			for(const [threadKey, stats] of Object.entries(suite.correctnessStatsByThreads)) {
+				totalCorrectnessStatsByThreads[threadKey] ??= emptyCorrectnessStats();
+				totalCorrectnessStatsByThreads[threadKey].correct += stats.correct;
+				totalCorrectnessStatsByThreads[threadKey].imprecise += stats.imprecise;
+				totalCorrectnessStatsByThreads[threadKey].incorrect += stats.incorrect;
+				totalCorrectnessStatsByThreads[threadKey].skipped += stats.skipped;
 			}
-			totalCorrectnessStats.correct += suite.correctnessStats.correct;
-			totalCorrectnessStats.imprecise += suite.correctnessStats.imprecise;
-			totalCorrectnessStats.incorrect += suite.correctnessStats.incorrect;
-			totalCorrectnessStats.skipped += suite.correctnessStats.skipped;
 		}
 	}
 
 	// Aggregate graph metrics across all suites
-	let totalGraphMetrics: { totalNodes: number; totalSideEffects: number; nodeTypeDistribution: Record<string, number> } | undefined;
+	let totalGraphMetrics: ProjectResult['graphMetrics'] | undefined;
 	for(const suite of suites) {
-		if(suite.aggregateGraphMetrics) {
-			if(!totalGraphMetrics) {
-				totalGraphMetrics = { totalNodes: 0, totalSideEffects: 0, nodeTypeDistribution: {} };
-			}
-			totalGraphMetrics.totalNodes += suite.aggregateGraphMetrics.totalNodes;
-			totalGraphMetrics.totalSideEffects += suite.aggregateGraphMetrics.totalSideEffects;
-			for(const [type, count] of Object.entries(suite.aggregateGraphMetrics.nodeTypeDistribution)) {
-				totalGraphMetrics.nodeTypeDistribution[type] = (totalGraphMetrics.nodeTypeDistribution[type] ?? 0) + count;
-			}
-		}
+		totalGraphMetrics = addGraphMetrics(totalGraphMetrics, suite.aggregateGraphMetrics);
 	}
 
 	// Aggregate source stats across all suites
-	let totalSourceStats: { totalLineCount: number; totalBytes: number; totalFileCount: number } | undefined;
+	let totalSourceStats: ProjectResult['sourceCharacteristics'] | undefined;
 	for(const suite of suites) {
-		if(suite.aggregateSourceStats) {
-			if(!totalSourceStats) {
-				totalSourceStats = { totalLineCount: 0, totalBytes: 0, totalFileCount: 0 };
-			}
-			totalSourceStats.totalLineCount += suite.aggregateSourceStats.totalLineCount;
-			totalSourceStats.totalBytes += suite.aggregateSourceStats.totalBytes;
-			totalSourceStats.totalFileCount += suite.aggregateSourceStats.totalFileCount;
-		}
+		totalSourceStats = addSourceStats(totalSourceStats, suite.aggregateSourceStats);
 	}
 
 	console.log('\n=== Summary written ===');
@@ -527,12 +572,16 @@ function writeSummary(suites: SuiteSummary[], outputRoot: string) {
 	console.log(`Total projects: ${totalProjects}`);
 	console.log(`Total runtime across all suites: ${(totalRuntime / 1000).toFixed(2)} s`);
 	console.log(`Total files analyzed: ${totalFiles}`);
-	if(totalCorrectnessStats) {
+	if(Object.keys(totalCorrectnessStatsByThreads).length > 0) {
 		console.log('\n=== Correctness Statistics ===');
-		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Correct)} graphs: ${totalCorrectnessStats.correct}`);
-		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Imprecise)} graphs: ${totalCorrectnessStats.imprecise}`);
-		console.log(`Projects with ${correctnessClassificationToName(CorrectnessClassification.Incorrect)} graphs: ${totalCorrectnessStats.incorrect}`);
-		console.log(`Projects with skipped correctness: ${totalCorrectnessStats.skipped}`);
+		for(const [threadKey, stats] of Object.entries(totalCorrectnessStatsByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+			console.log(
+				`threads=${threadKey}: ${stats.correct} ${correctnessClassificationToName(CorrectnessClassification.Correct)}, ` +
+				`${stats.imprecise} ${correctnessClassificationToName(CorrectnessClassification.Imprecise)}, ` +
+				`${stats.incorrect} ${correctnessClassificationToName(CorrectnessClassification.Incorrect)}, ` +
+				`${stats.skipped} skipped`
+			);
+		}
 	}
 	if(totalLazyStats) {
 		console.log('\n=== Lazy Function Statistics ===');
@@ -546,8 +595,8 @@ function writeSummary(suites: SuiteSummary[], outputRoot: string) {
 	}
 	if(totalGraphMetrics) {
 		console.log('\n=== Graph Metrics ===');
-		console.log(`Total nodes: ${totalGraphMetrics.totalNodes}`);
-		console.log(`Total side effects: ${totalGraphMetrics.totalSideEffects}`);
+		console.log(`Total nodes: ${totalGraphMetrics.nodeCount}`);
+		console.log(`Total side effects: ${totalGraphMetrics.sideEffectCount}`);
 		console.log('Node type distribution:');
 		for(const [type, count] of Object.entries(totalGraphMetrics.nodeTypeDistribution).sort((a, b) => b[1] - a[1])) {
 			console.log(`  ${type}: ${count}`);
@@ -555,9 +604,9 @@ function writeSummary(suites: SuiteSummary[], outputRoot: string) {
 	}
 	if(totalSourceStats) {
 		console.log('\n=== Source Code Statistics ===');
-		console.log(`Total lines of code: ${totalSourceStats.totalLineCount}`);
+		console.log(`Total lines of code: ${totalSourceStats.lineCount}`);
 		console.log(`Total source size: ${(totalSourceStats.totalBytes / 1024 / 1024).toFixed(2)} MB`);
-		console.log(`Total files: ${totalSourceStats.totalFileCount}`);
+		console.log(`Total files: ${totalSourceStats.fileCount}`);
 	}
 
 }

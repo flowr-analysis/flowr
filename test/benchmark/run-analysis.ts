@@ -8,7 +8,7 @@ import type { DataflowGraph } from '../../src/dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../../src/dataflow/graph/edge';
 import type {
 	OptimizationFlags,
-	WorkerResult,
+	AnalysisRunResult,
 	LazyFunctionStats,
 	GraphMetrics,
 	SourceCharacteristics,
@@ -28,12 +28,16 @@ function readArgValue(name: string): string | undefined {
 }
 
 // -------------------- analyzer builders --------------------
-async function buildOptimizedAnalyzer(flags: OptimizationFlags): Promise<FlowrAnalyzer> {
+async function buildOptimizedAnalyzer(flags: OptimizationFlags, threads?: number): Promise<FlowrAnalyzer> {
 	const builder = new FlowrAnalyzerBuilder();
 	builder.amendConfig((config) => {
 		config.optimizations.fileParallelization = flags.parallelFiles;
 		config.optimizations.dataflowOperationParallelization = flags.parallelOperations;
 		config.optimizations.deferredFunctionEvaluation.enabled = flags.lazyFunctions;
+		if(threads !== undefined && threads > 0) {
+			config.workerPool.poolSettings.nofMaxWorkers = threads;
+			config.workerPool.poolSettings.nofMinWorkers = Math.min(config.workerPool.poolSettings.nofMinWorkers, threads);
+		}
 	});
 	return builder.build();
 }
@@ -55,7 +59,7 @@ function runGraphCheck(
 	return { ok: diff.isEqual(), diffCount: comments?.length ?? 0, diff: comments };
 }
 
-function compareGraphs(base: DataflowGraph, opt: DataflowGraph, lazyEvaluationEnabled: boolean): Exclude<WorkerResult['correctness'], 'skipped'> {
+function compareGraphs(base: DataflowGraph, opt: DataflowGraph, lazyEvaluationEnabled: boolean): Exclude<AnalysisRunResult['correctness'], 'skipped'> {
 	// Step 1 (lazy only): optimized graph may be partial but must remain a subgraph of sequential baseline.
 	let lazyEquality: GraphCheck | undefined;
 	if(lazyEvaluationEnabled) {
@@ -236,28 +240,39 @@ async function main(): Promise<void> {
 	const runtimeOnly = process.argv.includes('--runtimeOnly');
 	const dryRun = process.argv.includes('--dryRun');
 	const tempResultPathArg = readArgValue('--tempResultPath');
+	const threadArg = readArgValue('--threads');
+	const threads = threadArg !== undefined ? Number.parseInt(threadArg, 10) : undefined;
+	if(threads !== undefined && (!Number.isFinite(threads) || threads <= 0)) {
+		throw new Error(`Invalid --threads value: ${threadArg}`);
+	}
 
 	if(dryRun) {
-		const analyzer = await buildOptimizedAnalyzer(flags);
+		const analyzer = await buildOptimizedAnalyzer(flags, threads);
 		console.log('[dry-run] project would be executed:', path.resolve(projectPath));
 		console.log('[dry-run] output directory:', path.resolve(outputDir));
 		console.log('[dry-run] temp result path:', tempResultPathArg ? path.resolve(tempResultPathArg) : path.resolve(outputDir, tempResultRelativePath));
 		console.log('[dry-run] skip correctness:', skipCorrectness);
+		console.log('[dry-run] requested threads:', threads ?? 'default');
 		console.log('[dry-run] benchmark flags:', JSON.stringify(flags));
 		const fileParallelization = analyzer.flowrConfig.optimizations.fileParallelization;
 		const dataflowOperationParallelization = analyzer.flowrConfig.optimizations.dataflowOperationParallelization;
 		const deferredFunctionEvaluation = analyzer.flowrConfig.optimizations.deferredFunctionEvaluation;
+		const poolSettings = analyzer.flowrConfig.workerPool.poolSettings;
 		console.log('[dry-run] analyzer internal optimizations:', JSON.stringify({
 			fileParallelization,
 			dataflowOperationParallelization,
 			deferredFunctionEvaluation,
+			workerPool: {
+				nofMinWorkers: poolSettings.nofMinWorkers,
+				nofMaxWorkers: poolSettings.nofMaxWorkers,
+			}
 		}, null, 2));
 		return;
 	}
 
 	fs.mkdirSync(outputDir, { recursive: true });
 	const tempResultPath = tempResultPathArg ? path.resolve(tempResultPathArg) : path.resolve(outputDir, tempResultRelativePath);
-	const fileCount = runtimeOnly ? 0 : countFiles(projectPath);
+	const fileCount = countFiles(projectPath);
 
 	// -------------------- metadata collection (before measurements) --------------------
 	const sourceCharacteristics = runtimeOnly ? undefined : (() => {
@@ -267,13 +282,13 @@ async function main(): Promise<void> {
 
 	// -------------------- measurement --------------------
 	console.log('Measuring optimized performance...');
-	const wallMsArr: number[] = [];
+	let wallMs = 0;
 	let lazyStats: LazyFunctionStats | undefined;
 	let graphMetrics: GraphMetrics | undefined;
 	let sequentialReanalysis: boolean | undefined;
 	const captureGraph = !runtimeOnly;
-	const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags), captureGraph);
-	wallMsArr.push(run.wallMs);
+	const run = await runOnce(projectPath, () => buildOptimizedAnalyzer(flags, threads), captureGraph);
+	wallMs = run.wallMs;
 
 	if(captureGraph && run.graph) {
 		sequentialReanalysis = run.reanalysisTriggered ?? false;
@@ -290,7 +305,7 @@ async function main(): Promise<void> {
 	}
 
 	// -------------------- correctness --------------------
-	let correctness: WorkerResult['correctness'] = 'skipped';
+	let correctness: AnalysisRunResult['correctness'] = 'skipped';
 
 	if(!runtimeOnly && !skipCorrectness) {
 		console.log('Running correctness check...');
@@ -316,13 +331,12 @@ async function main(): Promise<void> {
 		}
 	}
 
-	const result: WorkerResult = {
+	const result: AnalysisRunResult = {
 		project:              path.resolve(projectPath),
-		threads:              undefined,
-		correctness,
 		fileCount,
 		timestamp:            new Date().toISOString(),
-		wallMs:               wallMsArr,
+		wallMs,
+		correctness,
 		lazyFunctionStats:    lazyStats,
 		sequentialReanalysis: sequentialReanalysis,
 		graphMetrics,

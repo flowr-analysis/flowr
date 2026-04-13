@@ -318,7 +318,9 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 		} else if(fileCount !== iterationResult.fileCount) {
 			throw new Error(`Inconsistent file count for ${projectDir}: expected ${fileCount}, got ${iterationResult.fileCount}`);
 		}
-		correctness = iterationResult.correctness;
+		if(!shouldSkipCorrectness){
+			correctness = iterationResult.correctness;
+		}
 		lazyFunctionStats ??= iterationResult.lazyFunctionStats;
 		sequentialReanalysis ??= iterationResult.sequentialReanalysis;
 		graphMetrics ??= iterationResult.graphMetrics;

@@ -110,40 +110,6 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-/*function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, supportFunctionCall: boolean | undefined): string[] | undefined {
-	const val = evalArgument;
-	let arg;
-	if(val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse' && !supportFunctionCall) {
-		arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
-		const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
-		if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
-			return undefined;
-		}
-		arg = arg.value;
-	}
-	if(supportFunctionCall){
-		arg = evalArgument;
-	}
- 	else if(val.type === RType.Symbol) {
-		// const resolved = resolveValueOfVariable(val.content, env);
-		// see https://github.com/flowr-analysis/flowr/pull/1467
-		return undefined;
-	} else {
-		return undefined;
-	}
-	if(arg?.type === RType.String) {
-			return [arg.content.str];
-	} else if(arg?.type === RType.Symbol) {
-		const resolved = valueSetGuard(resolveIdToValue(arg.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
-		if(resolved) {
-			return collectStrings(resolved.elements);
-		}
-	} else if(arg?.type === RType.FunctionCall && arg.named && ['paste', 'paste0'].includes(Identifier.getName(arg.functionName.content))) {
-		return handlePaste(ctx.config, arg.arguments, env, idMap, arg.functionName.content === 'paste' ? [' '] : [''], ctx);
-	}
-	return undefined;
-}*/
-
 function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, supportFunctionCall: boolean | undefined): string[] | undefined {
 	const val = evalArgument;
 	let arg;

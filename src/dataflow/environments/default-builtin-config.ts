@@ -3,12 +3,16 @@ import { ExitPointType } from '../info';
 import { getValueOfArgument } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { DataflowGraph } from '../graph/graph';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import type { DataflowGraphVertexFunctionCall } from '../graph/vertex';
+import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexInfo } from '../graph/vertex';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
 import { BuiltInProcName } from './built-in-proc-name';
 import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/unnamed-call-handling';
 import { KnownHooks } from '../hooks';
+import {
+	attachLinkToCallbackRefs,
+	UnknownSideEffectCallbackRef
+} from './unknown-side-effect-callback-registry';
 
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
@@ -142,17 +146,17 @@ export const DefaultBuiltinConfig = [
 		processor: BuiltInProcName.Default,
 		config:    {
 			forceArgs:             'all',
-			hasUnknownSideEffects: {
+			hasUnknownSideEffects: attachLinkToCallbackRefs({
 				type:     'link-to-last-call',
-				ignoreIf: (source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
+				ignoreIf: ((source: DataflowGraphVertexFunctionCall, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
 					return (PlotFunctionsWithAddParam.has(source.name) && getValueOfArgument(graph, source, {
 						index: -1,
 						name:  'add'
 					}, [RType.Logical])?.content === true);
-				},
+				}) as unknown as (id: NodeId, graph: DataflowGraph) => boolean,
 				callName: toRegex(GraphicDeviceOpen)
-			}
+			}, { ignoreIfRef: UnknownSideEffectCallbackRef.PlotCreateIgnoreIf, cascadeIfRef: undefined })
 		}, assumePrimitive: true },
 	// graphics addons
 	{ type:      'function', names:     PlotAddons,
@@ -161,7 +165,7 @@ export const DefaultBuiltinConfig = [
 			treatAsFnCall: {
 				'facet_grid': ['labeller']
 			},
-			hasUnknownSideEffects: {
+			hasUnknownSideEffects: attachLinkToCallbackRefs({
 				type:     'link-to-last-call',
 				callName: toRegex(PlotCreate.concat(PlotAddons)),
 				ignoreIf: (source: NodeId, graph: DataflowGraph) => {
@@ -173,14 +177,17 @@ export const DefaultBuiltinConfig = [
 						name:  'add'
 					}, [RType.Logical])?.content !== true);
 				},
-				cascadeIf: (target: DataflowGraphVertexFunctionCall, _: NodeId, graph: DataflowGraph) => {
+				cascadeIf: ((target: DataflowGraphVertexFunctionCall, _: NodeId, graph: DataflowGraph) => {
 					/* map with add = true appends to an existing plot */
 					return target.name === 'map' ? (getValueOfArgument(graph, target, {
 						index: 11,
 						name:  'add'
 					}, [RType.Logical])?.content === true ? CascadeAction.Continue : CascadeAction.Stop) : CascadeAction.Stop;
-				}
-			}
+				}) as unknown as (target: DataflowGraphVertexInfo, from: NodeId, graph: DataflowGraph) => CascadeAction
+			}, {
+				ignoreIfRef:  UnknownSideEffectCallbackRef.PlotAddonIgnoreIf,
+				cascadeIfRef: UnknownSideEffectCallbackRef.PlotAddonCascadeIf
+			})
 		}, assumePrimitive: true },
 	// plot tags
 	{

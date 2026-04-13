@@ -1,12 +1,12 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import {
 	builtinRedefinitionOnlyTests,
 	cascadingSideEffectsWithRedefinitionTests,
 	complexDataflowTests,
 	fileReferenceLinkingTests,
+	realScriptTests,
 	sideEffectOnlyTests,
 	simpleDataflowTests,
 	sourceBasedDataflowTests,
@@ -45,8 +45,8 @@ async function checkGraphEquality(testCase: NamedTestCase) {
 		console.log(graphdiff.comments());
 		console.log(graphdiff.problematic());
 
-		console.log('sequential graph: ', graphToMermaidUrl(syncDf.graph, false));
-		console.log('parallel graph: ', graphToMermaidUrl(df.graph, false));
+		//console.log('sequential graph: ', graphToMermaidUrl(syncDf.graph, false));
+		//console.log('parallel graph: ', graphToMermaidUrl(df.graph, false));
 
 		assert.isTrue(graphdiff.isEqual(), `Dataflow graphs should be equal for testCase ${testCase.name}`);
 
@@ -127,6 +127,10 @@ describe.sequential('Parallel Dataflow test', () => {
 
 	describe('Cascading Side Effects With Redefinitions', () => {
 		registerClusterTests(cascadingSideEffectsWithRedefinitionTests);
+	});
+
+	describe('Real world cases', () => {
+		registerClusterTests(realScriptTests);
 	});
 
 });

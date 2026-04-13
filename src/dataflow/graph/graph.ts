@@ -25,6 +25,7 @@ import { isLazyFunctionDefinitionVertex, updateNestedFunctionCalls } from '../in
 import * as v8 from 'v8';
 import { BiMap } from '../../util/collections/bimap';
 import type { FlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import { hydrateLinkToCallbacks, stripNonSerializableLinkToCallbacks } from '../environments/unknown-side-effect-callback-registry';
 
 /**
  * Describes the information we store per function body.
@@ -766,9 +767,13 @@ export class DataflowGraph<
 	/** Marks the given node as having unknown side effects */
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
+			const normalizedTarget = typeof target.callName === 'string'
+				? { ...target, callName: new RegExp(target.callName) }
+				: target;
+
 			this._unknownSideEffects.add({
 				id:     normalizeIdToNumberIfPossible(id),
-				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
+				linkTo: hydrateLinkToCallbacks(normalizedTarget as LinkTo<RegExp>)
 			});
 			return this;
 		}
@@ -796,6 +801,35 @@ export class DataflowGraph<
 			graph._unknownSideEffects.add(unknown);
 		}
 		return graph;
+	}
+
+	private static reattachSerializedUnknownSideEffects(
+		graph: DataflowGraph,
+		unknownSideEffects: UnknownSideEffect[]
+	): void {
+		graph._unknownSideEffects.clear();
+		for(const unknown of unknownSideEffects) {
+			if(typeof unknown === 'object') {
+				graph.markIdForUnknownSideEffects(unknown.id, unknown.linkTo);
+			} else {
+				graph._unknownSideEffects.add(unknown);
+			}
+		}
+	}
+
+	private static serializeUnknownSideEffectsForPersistence(
+		unknownSideEffects: UnknownSideEffect[]
+	): UnknownSideEffect[] {
+		return unknownSideEffects.map(unknown => {
+			if(typeof unknown !== 'object') {
+				return unknown;
+			}
+
+			return {
+				...unknown,
+				linkTo: stripNonSerializableLinkToCallbacks(unknown.linkTo)
+			};
+		});
 	}
 
 	private static serializeVerticesForPersistence(
@@ -877,7 +911,8 @@ export class DataflowGraph<
 			const payload: SerializableDataflowGraph = {
 				json: {
 					...json,
-					vertexInformation: persistedVertices as unknown as [NodeId, DataflowGraphVertexInfo][]
+					vertexInformation:   persistedVertices as unknown as [NodeId, DataflowGraphVertexInfo][],
+					_unknownSideEffects: DataflowGraph.serializeUnknownSideEffectsForPersistence(json._unknownSideEffects)
 				},
 				idMap: this._idMap?.toSerializable()
 			};
@@ -915,6 +950,9 @@ export class DataflowGraph<
 
 			// legacy reconstruction only
 			const graph = DataflowGraph.fromJson(json);
+
+			// reattach callback-based unknown side effect metadata for runtime behavior
+			DataflowGraph.reattachSerializedUnknownSideEffects(graph, serializedJson._unknownSideEffects);
 
 			// restore AstIdMap
 			if(payload.idMap) {

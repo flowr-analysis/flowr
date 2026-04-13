@@ -58,6 +58,7 @@ import {
 	CascadingLoggerWithRedefinedPrint,
 	ClosureCascadeWithRedefinedPlus
 } from './cascading-side-effects-with-redefinitions';
+import { RealScriptWithError } from './real-scripts';
 
 /**
  * Collections of Analysis Test Cases
@@ -154,4 +155,8 @@ export const cascadingSideEffectsWithRedefinitionTests: TestSuite = [
 	{ name: 'CascadingSetterWithRedefinedMultiply', setup: CascadingSetterWithRedefinedMultiply },
 	{ name: 'CascadingLoggerWithRedefinedPrint', setup: CascadingLoggerWithRedefinedPrint },
 	{ name: 'ClosureCascadeWithRedefinedPlus', setup: ClosureCascadeWithRedefinedPlus }
+];
+
+export const realScriptTests: TestSuite = [
+	{ name: 'RealScriptWithError', setup: RealScriptWithError }
 ];

@@ -1,3 +1,5 @@
+import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
+
 export interface OptimizationFlags {
     parallelFiles:      boolean;
     parallelOperations: boolean;
@@ -7,7 +9,6 @@ export interface OptimizationFlags {
 export interface GraphCheck {
     ok:        boolean;
     diffCount: number;
-    diff?:     readonly string[];
 }
 
 export enum CorrectnessClassification {
@@ -36,7 +37,6 @@ export function correctnessClassificationToName(classification: CorrectnessClass
 export interface CorrectnessResult {
     classification: CorrectnessClassification;
     diffCount:      number;
-    diff?:          readonly string[];
 }
 
 export interface LazyFunctionStats {
@@ -64,6 +64,7 @@ export interface AnalysisRunResult {
     fileCount:              number;
     timestamp:              string;
     wallMs:                 number;
+    timingBreakdown?:       DataflowTimingBreakdown;
     correctness:            CorrectnessOutcome;
     lazyFunctionStats?:     LazyFunctionStats;
     sequentialReanalysis?:  boolean;
@@ -76,6 +77,7 @@ export interface ProjectResult {
     fileCount:              number;
     timestamp:              string;
     wallMsByThreads:        Record<string, number[]>;
+    timingByThreads?:       Record<string, DataflowTimingBreakdown[]>;
     correctnessByThreads:   Record<string, CorrectnessOutcome>;
     lazyFunctionStats?:     LazyFunctionStats;
     sequentialReanalysis?:  boolean;
@@ -98,6 +100,8 @@ export interface BenchmarkSuiteResult {
     totalRuntimeMs:             number;
     meanProjectRuntimeMs:       number;
     totalFiles:                 number;
+    meanRuntimeMsByThreads?:    Record<string, number>;
+    timingStatsByThreads?:      Record<string, DataflowTimingBreakdown>;
     totalLazyFunctionStats?:    LazyFunctionStats;
     correctnessStatsByThreads?: CorrectnessStatsByThreads;
     aggregateGraphMetrics?:     GraphMetrics;

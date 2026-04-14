@@ -229,12 +229,12 @@ export function sourceRequest<OtherInfo>(
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
 	let filePath: string | undefined;
 
-	console.log(rootId);
+	// console.log(rootId);
 
 	if('root' in request) {
 		fst = request;
 		filePath = request.filePath;
-		console.log(request.filePath);
+		// console.log(request.filePath);
 	} else {
 		const textRequest: { r: RParseRequestFromText, path?: string } | undefined = data.ctx.files.resolveRequest(request);
 
@@ -281,29 +281,6 @@ export function sourceRequest<OtherInfo>(
 
 	return mergeDataflowInformation(rootId, data, filePath, information, dataflow);
 
-	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
-	if(!String(rootId).startsWith('file-')) {
-		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {
-			dataflow.graph.addControlDependency(dataflow.entryPoint, rootId, true);
-		}
-		for(const out of dataflow.out) {
-			dataflow.graph.addControlDependency(out.nodeId, rootId, true);
-		}
-	}
-
-	data.ctx.files.addConsideredFile(filePath ?? '<inline>');
-
-	// update our graph with the sourced file's information
-
-	return {
-		...information,
-		environment:       overwriteEnvironment(information.environment, dataflow.environment),
-		graph:             information.graph.mergeWith(dataflow.graph),
-		in:                information.in.concat(dataflow.in),
-		out:               information.out.concat(dataflow.out),
-		unknownReferences: information.unknownReferences.concat(dataflow.unknownReferences),
-		exitPoints:        dataflow.exitPoints
-	};
 }
 
 /**
@@ -312,9 +289,6 @@ export function sourceRequest<OtherInfo>(
 export function mergeDataflowInformation<OtherInfo>(rootId: NodeId, processorInfo: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 																																																				filePath: string | undefined, information: DataflowInformation, dataflow: DataflowInformation
 ): DataflowInformation{
-
-	console.log(rootId);
-	console.log(filePath);
 	// take the entry point as well as all the written references, and give them a control dependency to the source call to show that they are conditional
 	if(!String(rootId).startsWith('file-')) {
 		if(dataflow.graph.hasVertex(dataflow.entryPoint)) {

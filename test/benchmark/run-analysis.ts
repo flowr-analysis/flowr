@@ -56,7 +56,7 @@ function runGraphCheck(
 		config,
 	);
 	const comments = diff.comments();
-	return { ok: diff.isEqual(), diffCount: comments?.length ?? 0, diff: comments };
+	return { ok: diff.isEqual(), diffCount: comments?.length ?? 0 };
 }
 
 function compareGraphs(base: DataflowGraph, opt: DataflowGraph, lazyEvaluationEnabled: boolean): Exclude<AnalysisRunResult['correctness'], 'skipped'> {
@@ -102,7 +102,6 @@ function compareGraphs(base: DataflowGraph, opt: DataflowGraph, lazyEvaluationEn
 	return {
 		classification,
 		diffCount: primaryDiff.diffCount,
-		diff:      primaryDiff.diff,
 	};
 }
 
@@ -207,9 +206,11 @@ async function runOnce(
 
 
 		const result = await analyzer.dataflow();
+		const timingBreakdown = result.timings;
 
 		return {
 			wallMs:              result['.meta'].timing,
+			timingBreakdown,
 			graph:               captureGraph ? result.graph : undefined,
 			reanalysisTriggered: result.reanalysisTriggered,
 			reanalysisIteration: result.reanalysisIteration,
@@ -325,9 +326,8 @@ async function main(): Promise<void> {
 
 		correctness = compareGraphs(baseDf.graph, run.graph, flags.lazyFunctions);
 
-		if(correctness.classification === CorrectnessClassification.Incorrect && correctness.diff) {
-			console.warn('Correctness check failed! Graphs differ:');
-			correctness.diff.forEach((l) => console.error(l));
+		if(correctness.classification === CorrectnessClassification.Incorrect) {
+			console.warn(`Correctness check failed! Number of diff comments: ${correctness.diffCount}`);
 		}
 	}
 
@@ -336,6 +336,7 @@ async function main(): Promise<void> {
 		fileCount,
 		timestamp:            new Date().toISOString(),
 		wallMs,
+		timingBreakdown:      run.timingBreakdown,
 		correctness,
 		lazyFunctionStats:    lazyStats,
 		sequentialReanalysis: sequentialReanalysis,

@@ -11,6 +11,7 @@ import type {
 	ProjectResult,
 } from './results-types';
 import { CorrectnessClassification, correctnessClassificationToName } from './results-types';
+import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
 
 type Settings = {
     suitePaths:           string[];
@@ -49,6 +50,7 @@ type ThreadRunResult = {
 	project:                string;
 	fileCount:              number;
 	wallMs:                 number[];
+	timingBreakdowns:       DataflowTimingBreakdown[];
 	correctness:            CorrectnessOutcome;
 	lazyFunctionStats?:     LazyFunctionStats;
 	sequentialReanalysis?:  boolean;
@@ -128,6 +130,10 @@ function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult 
 			throw new Error(`Inconsistent file count for ${first.project}: expected ${first.fileCount}, got ${result.fileCount}`);
 		}
 		projectResult.wallMsByThreads[result.threadKey] = result.wallMs;
+		if(result.timingBreakdowns.length > 0) {
+			projectResult.timingByThreads ??= {};
+			projectResult.timingByThreads[result.threadKey] = result.timingBreakdowns;
+		}
 		projectResult.correctnessByThreads[result.threadKey] = result.correctness;
 		projectResult.lazyFunctionStats ??= result.lazyFunctionStats;
 		projectResult.sequentialReanalysis ??= result.sequentialReanalysis;
@@ -136,6 +142,51 @@ function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult 
 	}
 
 	return projectResult;
+}
+
+function addTimingBreakdown(acc: DataflowTimingBreakdown | undefined, timing: DataflowTimingBreakdown | undefined): DataflowTimingBreakdown | undefined {
+	if(!timing) {
+		return acc;
+	}
+	if(!acc) {
+		return {
+			mainThread: { ...timing.mainThread },
+			worker:     { ...timing.worker },
+		};
+	}
+	acc.mainThread.serializationMs += timing.mainThread.serializationMs;
+	acc.mainThread.deserializationMs += timing.mainThread.deserializationMs;
+	acc.mainThread.analysisMs += timing.mainThread.analysisMs;
+	acc.mainThread.mergeMs += timing.mainThread.mergeMs;
+	acc.mainThread.linkingMs += timing.mainThread.linkingMs;
+	acc.mainThread.redefinedBuiltInsSearchMs += timing.mainThread.redefinedBuiltInsSearchMs;
+	acc.worker.deserializationMs += timing.worker.deserializationMs;
+	acc.worker.analysisMs += timing.worker.analysisMs;
+	acc.worker.serializationMs += timing.worker.serializationMs;
+	return acc;
+}
+
+function divideTimingBreakdown(timing: DataflowTimingBreakdown, divisor: number): DataflowTimingBreakdown {
+	if(divisor <= 0) {
+		return timing;
+	}
+	const mainThread = { ...timing.mainThread };
+	mainThread.serializationMs /= divisor;
+	mainThread.deserializationMs /= divisor;
+	mainThread.analysisMs /= divisor;
+	mainThread.mergeMs /= divisor;
+	mainThread.linkingMs /= divisor;
+	mainThread.redefinedBuiltInsSearchMs /= divisor;
+
+	const worker = { ...timing.worker };
+	worker.deserializationMs /= divisor;
+	worker.analysisMs /= divisor;
+	worker.serializationMs /= divisor;
+
+	return {
+		mainThread,
+		worker
+	};
 }
 
 function addLazyStats(acc: LazyFunctionStats | undefined, stats: LazyFunctionStats | undefined): LazyFunctionStats | undefined {
@@ -290,6 +341,7 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 	}
 
 	const wallMs: number[] = [];
+	const timingBreakdowns: DataflowTimingBreakdown[] = [];
 	let lazyFunctionStats: LazyFunctionStats | undefined;
 	let sequentialReanalysis: boolean | undefined;
 	let graphMetrics: ProjectResult['graphMetrics'] | undefined;
@@ -313,6 +365,9 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 
 		const iterationResult: AnalysisRunResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as AnalysisRunResult;
 		wallMs.push(iterationResult.wallMs);
+		if(iterationResult.timingBreakdown) {
+			timingBreakdowns.push(iterationResult.timingBreakdown);
+		}
 		if(fileCount === undefined) {
 			fileCount = iterationResult.fileCount;
 		} else if(fileCount !== iterationResult.fileCount) {
@@ -343,6 +398,7 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 		project:   projectDir,
 		fileCount,
 		wallMs,
+		timingBreakdowns,
 		correctness,
 		lazyFunctionStats,
 		sequentialReanalysis,
@@ -447,6 +503,9 @@ function collectResults(outputRoot: string): BenchmarkResult {
 		// Aggregate source stats
 		let aggregateSourceStats: ProjectResult['sourceCharacteristics'] | undefined;
 		const correctnessStatsByThreads: CorrectnessStatsByThreads = {};
+		const runtimesByThreads: Record<string, number[]> = {};
+		const timingByThreads: Record<string, DataflowTimingBreakdown> = {};
+		const timingCountsByThreads: Record<string, number> = {};
 
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
@@ -461,15 +520,25 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			projects.push(data);
 
 			// Use measured runtime datapoints and aggregate by per-project/thread mean runtime.
-			for(const runtimes of Object.values(data.wallMsByThreads)) {
+			for(const [threadKey, runtimes] of Object.entries(data.wallMsByThreads)) {
 				if(runtimes.length > 0) {
-					totalRuntimes.push(mean(runtimes));
+					const threadMean = mean(runtimes);
+					totalRuntimes.push(threadMean);
+					runtimesByThreads[threadKey] ??= [];
+					runtimesByThreads[threadKey].push(threadMean);
 				}
 			}
 
 			for(const [threadKey, correctness] of Object.entries(data.correctnessByThreads)) {
 				correctnessStatsByThreads[threadKey] ??= emptyCorrectnessStats();
 				addCorrectness(correctnessStatsByThreads[threadKey], correctness);
+			}
+
+			for(const [threadKey, timings] of Object.entries(data.timingByThreads ?? {})) {
+				for(const timing of timings) {
+					timingByThreads[threadKey] = addTimingBreakdown(timingByThreads[threadKey], timing) as DataflowTimingBreakdown;
+					timingCountsByThreads[threadKey] = (timingCountsByThreads[threadKey] ?? 0) + 1;
+				}
 			}
 
 			// Aggregate lazy function stats
@@ -482,7 +551,10 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			aggregateSourceStats = addSourceStats(aggregateSourceStats, data.sourceCharacteristics);
 		}
 
-		const totalRuntimeMs = totalRuntimes.reduce((a, b) => a + b, 0);
+		const totalRuntimeMs = totalRuntimes.reduce((sum, runtime) => sum + runtime, 0);
+		const meanRuntimeMsByThreads = Object.fromEntries(
+			Object.entries(runtimesByThreads).map(([threadKey, runtimes]) => [threadKey, mean(runtimes)])
+		);
 		const meanProjectRuntimeMs = totalRuntimes.length ? totalRuntimeMs / totalRuntimes.length : 0;
 
 		console.log(`\nSuite ${suiteName}:`);
@@ -500,6 +572,30 @@ function collectResults(outputRoot: string): BenchmarkResult {
 				);
 			}
 		}
+		if(Object.keys(timingByThreads).length > 0) {
+			for(const [threadKey, summed] of Object.entries(timingByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+				const count = timingCountsByThreads[threadKey] ?? 1;
+				const averaged = divideTimingBreakdown(summed, count);
+				console.log(
+					`  timing threads=${threadKey} (mean over ${count} runs): ` +
+					`main serialize=${averaged.mainThread.serializationMs.toFixed(3)}ms, ` +
+					`main deserialize=${averaged.mainThread.deserializationMs.toFixed(3)}ms, ` +
+					`analysis=${averaged.mainThread.analysisMs.toFixed(3)}ms, ` +
+					`merge=${averaged.mainThread.mergeMs.toFixed(3)}ms, ` +
+					`linking=${averaged.mainThread.linkingMs.toFixed(3)}ms, ` +
+					`redefined builtins search=${averaged.mainThread.redefinedBuiltInsSearchMs.toFixed(3)}ms, ` +
+					`worker deserialize=${averaged.worker.deserializationMs.toFixed(3)}ms, ` +
+					`worker analysis=${averaged.worker.analysisMs.toFixed(3)}ms, ` +
+					`worker serialize=${averaged.worker.serializationMs.toFixed(3)}ms`
+				);
+			}
+		}
+
+		const timingStatsByThreads = Object.keys(timingByThreads).length > 0 ?
+			Object.fromEntries(
+				Object.entries(timingByThreads)
+					.map(([threadKey, summed]) => [threadKey, divideTimingBreakdown(summed, timingCountsByThreads[threadKey] ?? 1)])
+			) : undefined;
 		if(totalLazyFunctionStats) {
 			console.log(`- Total function definitions: ${totalLazyFunctionStats.totalFunctionDefinitions}`);
 			console.log(`- Functions materialized: ${totalLazyFunctionStats.lazyFunctionsMaterialized}`);
@@ -518,6 +614,8 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			totalRuntimeMs,
 			meanProjectRuntimeMs,
 			totalFiles,
+			meanRuntimeMsByThreads,
+			timingStatsByThreads,
 			totalLazyFunctionStats,
 			correctnessStatsByThreads: Object.keys(correctnessStatsByThreads).length > 0 ? correctnessStatsByThreads : undefined,
 			aggregateGraphMetrics,
@@ -527,14 +625,22 @@ function collectResults(outputRoot: string): BenchmarkResult {
 	return suites;
 }
 
+function msToTime(ms: number) {
+	const secs = ms / 1000;
+	const hours = Math.floor(secs / 3600);
+	const minutes = Math.floor((secs % 3600) / 60);
+	const seconds = (secs % 60).toFixed(3);
+	return `${hours}h ${minutes}m ${seconds}s`;
+}
+
 function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 	fs.mkdirSync(outputRoot, { recursive: true });
 	const summaryPath = path.join(outputRoot, 'summary.json');
 	fs.writeFileSync(summaryPath, JSON.stringify(suites, null, 2), 'utf-8');
 
 	const totalProjects = suites.reduce((sum, s) => sum + s.projects.length, 0);
-	const totalRuntime = suites.reduce((sum, s) => sum + s.totalRuntimeMs, 0);
 	const totalFiles = suites.reduce((sum, s) => sum + s.totalFiles, 0);
+	const meanRuntimeMsByThreads: Record<string, number[]> = {};
 
 	// Aggregate lazy function stats across all suites
 	let totalLazyStats: LazyFunctionStats | undefined;
@@ -544,7 +650,13 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 
 	// Aggregate correctness stats across all suites (per-thread only)
 	const totalCorrectnessStatsByThreads: CorrectnessStatsByThreads = {};
+	const totalTimingByThreads: Record<string, DataflowTimingBreakdown> = {};
+	const totalTimingCountsByThreads: Record<string, number> = {};
 	for(const suite of suites) {
+		for(const [threadKey, runtime] of Object.entries(suite.meanRuntimeMsByThreads ?? {})) {
+			meanRuntimeMsByThreads[threadKey] ??= [];
+			meanRuntimeMsByThreads[threadKey].push(runtime);
+		}
 		if(suite.correctnessStatsByThreads) {
 			for(const [threadKey, stats] of Object.entries(suite.correctnessStatsByThreads)) {
 				totalCorrectnessStatsByThreads[threadKey] ??= emptyCorrectnessStats();
@@ -552,6 +664,14 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 				totalCorrectnessStatsByThreads[threadKey].imprecise += stats.imprecise;
 				totalCorrectnessStatsByThreads[threadKey].incorrect += stats.incorrect;
 				totalCorrectnessStatsByThreads[threadKey].skipped += stats.skipped;
+			}
+		}
+		for(const project of suite.projects) {
+			for(const [threadKey, timings] of Object.entries(project.timingByThreads ?? {})) {
+				for(const timing of timings) {
+					totalTimingByThreads[threadKey] = addTimingBreakdown(totalTimingByThreads[threadKey], timing) as DataflowTimingBreakdown;
+					totalTimingCountsByThreads[threadKey] = (totalTimingCountsByThreads[threadKey] ?? 0) + 1;
+				}
 			}
 		}
 	}
@@ -572,7 +692,6 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 	console.log(`- ${summaryPath}`);
 	console.log(`Total suites: ${suites.length}`);
 	console.log(`Total projects: ${totalProjects}`);
-	console.log(`Total runtime across all suites: ${(totalRuntime / 1000).toFixed(2)} s`);
 	console.log(`Total files analyzed: ${totalFiles}`);
 	if(Object.keys(totalCorrectnessStatsByThreads).length > 0) {
 		console.log('\n=== Correctness Statistics ===');
@@ -582,6 +701,25 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 				`${stats.imprecise} ${correctnessClassificationToName(CorrectnessClassification.Imprecise)}, ` +
 				`${stats.incorrect} ${correctnessClassificationToName(CorrectnessClassification.Incorrect)}, ` +
 				`${stats.skipped} skipped`
+			);
+		}
+	}
+	if(Object.keys(totalTimingByThreads).length > 0) {
+		console.log('\n=== Timing Breakdown Statistics ===');
+		for(const [threadKey, summed] of Object.entries(totalTimingByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+			const count = totalTimingCountsByThreads[threadKey] ?? 1;
+			const averaged = divideTimingBreakdown(summed, count);
+			console.log(
+				`threads=${threadKey} mean over ${count} runs: ` +
+				`main serialize=${averaged.mainThread.serializationMs.toFixed(3)}ms, ` +
+				`main deserialize=${averaged.mainThread.deserializationMs.toFixed(3)}ms, ` +
+				`analysis=${averaged.mainThread.analysisMs.toFixed(3)}ms, ` +
+				`merge=${averaged.mainThread.mergeMs.toFixed(3)}ms, ` +
+				`linking=${averaged.mainThread.linkingMs.toFixed(3)}ms, ` +
+				`redefined builtins search=${averaged.mainThread.redefinedBuiltInsSearchMs.toFixed(3)}ms, ` +
+				`worker deserialize=${averaged.worker.deserializationMs.toFixed(3)}ms, ` +
+				`worker analysis=${averaged.worker.analysisMs.toFixed(3)}ms, ` +
+				`worker serialize=${averaged.worker.serializationMs.toFixed(3)}ms`
 			);
 		}
 	}
@@ -647,13 +785,16 @@ async function main() {
 		}
 		fs.mkdirSync(runtime.outputRoot, { recursive: true });
 	}
-
+	const discoverStart = Date.now();
 	const suites = listSuites(runtime.suitePaths);
+	const discoverMs = Date.now() - discoverStart;
 	console.log(`\nConfigured ${suites.length} suites.`);
 
+	const runStart = Date.now();
 	for(const suite of suites) {
 		await runTestSuite(runtime, suite.name, suite.path);
 	}
+	const runMs = Date.now() - runStart;
 
 	if(runtime.dryRun) {
 		console.log('\nDry run complete. No analyses were executed and no result files were written.');
@@ -662,6 +803,8 @@ async function main() {
 
 	const results = collectResults(runtime.outputRoot);
 	writeSummary(results, runtime.outputRoot);
+	console.log(`\nTotal discovery time: ${(discoverMs / 1000).toFixed(2)} s`);
+	console.log(`Total execution time (excluding discovery): ${msToTime(runMs)}`);
 }
 
 main().catch(err => {

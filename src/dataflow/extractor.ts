@@ -28,6 +28,7 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import { recoverName, type NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType, type DataflowGraphVertexFunctionCall } from './graph/vertex';
+import type { DataflowTimingBreakdown } from './timing';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { dataflowLogger } from './logger';
 import type { DataflowPayload, DataflowReturnPayload } from './parallel/task-registry';
@@ -36,6 +37,7 @@ import { linkInputs } from './internal/linker';
 import type { IdentifierReference } from './environments/identifier';
 import { ReferenceType } from './environments/identifier';
 import { isBuiltIn } from './environments/built-in';
+import { makeEmptyDataflowTimingBreakdown } from './timing';
 
 function snapshotBuiltInDefinitions(environment: REnvironmentInformation): Set<string> {
 	let current = environment.current;
@@ -289,7 +291,8 @@ export async function produceDataFlowGraph<OtherInfo>(
 	parser:      Parser<KnownParserType>,
 	completeAst: NormalizedAst<OtherInfo & ParentInformation>,
 	ctx:         FlowrAnalyzerContext,
-): Promise<DataflowInformation & { cfgQuick: ControlFlowInformation | undefined }> {
+): Promise<DataflowInformation & { cfgQuick: ControlFlowInformation | undefined, timings: DataflowTimingBreakdown }> {
+	const timings = makeEmptyDataflowTimingBreakdown();
 
 	// we freeze the files here to avoid endless modifications during processing
 	const files = completeAst.ast.files.slice();
@@ -310,10 +313,14 @@ export async function produceDataFlowGraph<OtherInfo>(
 	};
 
 	if(fileParallelization && workerPool){
+		const asTimingNumber = (value: unknown): number => typeof value === 'number' && Number.isFinite(value) ? value : 0;
 		const builtInDefinitions = snapshotBuiltInDefinitions(dfData.environment);
+		const parallelStart = Date.now();
 
 		// parse data
+		const mainSerializeStart = Date.now();
 		const parsed = SerializeDataflowProcessorInformation(dfData);
+		timings.mainThread.serializationMs += Date.now() - mainSerializeStart;
 		const result = await workerPool.submitTasks<DataflowPayload<OtherInfo>, DataflowReturnPayload<OtherInfo>>(
 			'parallelFiles',
 			files.map((file, i) => ({
@@ -323,24 +330,38 @@ export async function produceDataFlowGraph<OtherInfo>(
 			}))
 		);
 
+		const mainDeserializeStart = Date.now();
 		const parsedResult = result.map(data => {
 			const dfInfo = DeserializeDataflowProcessorInformation(data.processorInfo, dfData.processors, dfData.parser);
 			const dataflow = DeserializeDataflowInformation(data.dataflowData, dfInfo.ctx);
 			return {
 				processorInfo: dfInfo,
 				dataflow:      dataflow,
+				workerTiming:  data.workerTiming,
 			};
 		});
+		timings.mainThread.deserializationMs += Date.now() - mainDeserializeStart;
+		timings.mainThread.analysisMs = Date.now() - parallelStart;
+
+		for(const workerResult of parsedResult) {
+			const workerTiming = workerResult.workerTiming;
+			if(workerTiming === undefined) {
+				continue;
+			}
+			timings.worker.deserializationMs += asTimingNumber(workerTiming.deserializationMs);
+			timings.worker.analysisMs += asTimingNumber(workerTiming.analysisMs);
+			timings.worker.serializationMs += asTimingNumber(workerTiming.serializationMs);
+		}
 
 		let df = parsedResult[0].dataflow;
-		console.log('result length: ', parsedResult.length);
+		// console.log('result length: ', parsedResult.length);
 		let shouldFallbackToSequential = false;
 		let trackedRedefinedBuiltIns;
 		let fallbackIteration: number | undefined;
 
 		// merge dataflowinformation via folding
 		for(let i = 1; i < result.length; i++){
-			console.log('merging dataflow for file-', i);
+			// console.log('merging dataflow for file-', i);
 			const functionCallCandidates = new Map<NodeId, IdentifierReference>();
 			for(const candidate of collectFunctionCallCandidates(df.graph)) {
 				functionCallCandidates.set(candidate.nodeId, candidate);
@@ -349,11 +370,15 @@ export async function produceDataFlowGraph<OtherInfo>(
 				functionCallCandidates.set(candidate.nodeId, candidate);
 			}
 
+			const mergeStart = Date.now();
 			df = mergeDataflowInformation('file-'+i, parsedResult[i].processorInfo, files[i].filePath, df, parsedResult[i].dataflow);
+			timings.mainThread.mergeMs += Date.now() - mergeStart;
 
+			const redefinedSearchStart = Date.now();
 			trackedRedefinedBuiltIns = scanRedefinedBuiltIns(df.environment, builtInDefinitions, trackedRedefinedBuiltIns);
 
 			const usedRedefinedBuiltIns = findUsedRedefinedBuiltIns(df.graph, trackedRedefinedBuiltIns);
+			timings.mainThread.redefinedBuiltInsSearchMs += Date.now() - redefinedSearchStart;
 			if(usedRedefinedBuiltIns.size > 0) {
 				console.warn(
 					`Dataflow:: Detected usage of redefined built-ins in merged graph (${[...usedRedefinedBuiltIns].join(', ')}). ` +
@@ -363,9 +388,9 @@ export async function produceDataFlowGraph<OtherInfo>(
 				fallbackIteration = i;
 				break;
 			}
-			console.log('pre resolve ',df.graph.outgoingEdges(33));
+			const linkingStart = Date.now();
 			resolveCrossFileReferences(df.graph, df.environment, [...functionCallCandidates.values()]);
-			console.log('post resolve ',df.graph.outgoingEdges(33));
+			timings.mainThread.linkingMs += Date.now() - linkingStart;
 		}
 
 		if(shouldFallbackToSequential) {
@@ -379,25 +404,31 @@ export async function produceDataFlowGraph<OtherInfo>(
 		} else {
 
 			// finally, resolve linkages
+			const linkingStart = Date.now();
 			updateNestedFunctionCalls(df.graph, df.environment);
 
 			const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+			timings.mainThread.linkingMs += Date.now() - linkingStart;
 
 			// performance optimization: return cfgQuick as part of the result to avoid recomputation
-			return { ...df, cfgQuick };
+			return { ...df, cfgQuick, timings };
 		}
 	}
 
 	if(!workerPool && fileParallelization){
 		dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
 	}
+	const sequentialStart = Date.now();
 	// use the sequential analysis
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
+		const mergeStart = Date.now();
 		df = standaloneSourceFile(i, files[i], dfData, df);
+		timings.mainThread.mergeMs += Date.now() - mergeStart;
 	}
+	timings.mainThread.analysisMs = Date.now() - sequentialStart;
 
 	// In lazy mode, materialize only functions that contain `UseMethod(...)` so S3 call edges
 	// are available without forcing unrelated lazy functions.
@@ -414,9 +445,12 @@ export async function produceDataFlowGraph<OtherInfo>(
 	}
 
 	// finally, resolve linkages
+	const linkingStart = Date.now();
 	updateNestedFunctionCalls(df.graph, df.environment);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+	timings.mainThread.linkingMs += Date.now() - linkingStart;
+	(df as { timings?: DataflowTimingBreakdown }).timings = timings;
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
-	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
+	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined, timings: DataflowTimingBreakdown };
 }

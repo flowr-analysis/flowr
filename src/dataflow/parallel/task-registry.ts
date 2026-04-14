@@ -6,7 +6,7 @@ import type { SerializableDataflowInformation } from '../info';
 import { SerializeDataflowInformation } from '../info';
 import { DeserializeDataflowProcessorInformation, processDataflowFor, SerializeDataflowProcessorInformation, type SerializedDataflowProcessorInformation } from '../processor';
 import { processors } from '../extractor';
-import { dataflowLogger } from '../logger';
+import type { DataflowWorkerTiming } from '../timing';
 
 
 export interface DataflowPayload<OtherInfo> {
@@ -18,6 +18,7 @@ export interface DataflowPayload<OtherInfo> {
 export interface DataflowReturnPayload<OtherInfo> {
     processorInfo: SerializedDataflowProcessorInformation<OtherInfo & ParentInformation>;
     dataflowData:  SerializableDataflowInformation;
+	workerTiming:     DataflowWorkerTiming;
 }
 
 export type TaskType = 'task' | 'subtask' | 'init';
@@ -44,19 +45,33 @@ export const workerTasks = {
 		_runSubtask: RunSubtask
 	): DataflowReturnPayload<OtherInfo> => {
 		// rebuild data
-		dataflowLogger.info('Parser Engine: ', _parserEngine);
+		// dataflowLogger.info('Parser Engine: ', _parserEngine);
+		const deserializeStart = Date.now();
 		const dataflowProcessorInfo = DeserializeDataflowProcessorInformation(payload.data, processors, _parserEngine);
+		const deserializationMs = Date.now() - deserializeStart;
 
 		// create new DataflowInfo
 		//const dataflow = initializeCleanDataflowInformation(payload.file.root.info.id, dataflowProcessorInfo);
 
+		const analysisStart = Date.now();
 		const result = processDataflowFor<OtherInfo>(
 			payload.file.root, dataflowProcessorInfo
 		);
+		const analysisMs = Date.now() - analysisStart;
+
+		const serializeStart = Date.now();
+		const processorInfo = SerializeDataflowProcessorInformation(dataflowProcessorInfo);
+		const dataflowData = SerializeDataflowInformation(result);
+		const serializationMs = Date.now() - serializeStart;
 
 		return {
-			processorInfo: SerializeDataflowProcessorInformation(dataflowProcessorInfo),
-			dataflowData:  SerializeDataflowInformation(result),
+			processorInfo,
+			dataflowData,
+			workerTiming: {
+				deserializationMs,
+				analysisMs,
+				serializationMs,
+			}
 		};
 	},
 

@@ -191,12 +191,13 @@ export interface DataflowInformation extends DataflowCfgInformation {
 export function SerializeDataflowInformation(data: DataflowInformation): SerializableDataflowInformation {
 	try {
 		return {
-			entryPoint:          data.entryPoint,
-			exitPoints:          [...data.exitPoints],
-			unknownReferences:   [...data.unknownReferences],
-			in:                  [...data.in],
-			out:                 [...data.out],
-			hooks:               [...data.hooks],
+			entryPoint:        data.entryPoint,
+			exitPoints:        [...data.exitPoints],
+			unknownReferences: [...data.unknownReferences],
+			in:                [...data.in],
+			out:               [...data.out],
+			hooks:             [...data.hooks],
+
 			env:                 toSerializedREnvironmentInformation(data.environment),
 			graph:               data.graph.toSerializable(),
 			reanalysisTriggered: data.reanalysisTriggered,
@@ -230,14 +231,15 @@ export function DeserializeDataflowInformation(
 ): DataflowInformation {
 	try {
 		return {
-			entryPoint:          data.entryPoint,
-			exitPoints:          data.exitPoints,
-			unknownReferences:   data.unknownReferences,
-			in:                  data.in,
-			out:                 data.out,
-			environment:         fromSerializedREnvironmentInformation(data.env, ctx),
-			graph:               DataflowGraph.fromSerializable(data.graph, ctx),
-			hooks:               data.hooks ?? [],
+			entryPoint:        data.entryPoint,
+			exitPoints:        data.exitPoints,
+			unknownReferences: data.unknownReferences,
+			in:                data.in,
+			out:               data.out,
+			environment:       fromSerializedREnvironmentInformation(data.env, ctx),
+			graph:             DataflowGraph.fromSerializable(data.graph, ctx),
+			hooks:             data.hooks ?? [],
+
 			reanalysisTriggered: data.reanalysisTriggered,
 			reanalysisIteration: data.reanalysisIteration,
 			reanalysisFileIndex: data.reanalysisFileIndex,

@@ -102,7 +102,7 @@ export class Workerpool {
 	private readonly portCleanup = new Map<number, () => void>();
 
 	constructor(settings: WorkerPoolSettings = WorkerpoolDefaultSettings, flowrConfig = cloneConfig(defaultConfigOptions)) {
-		console.log('workerPool: ', __dirname, process.env.NODE_ENV, settings.workerPath);
+		// console.log('workerPool: ', __dirname, process.env.NODE_ENV, settings.workerPath);
 		let workers = settings.nofMaxWorkers;
 		if(workers <= 0) {
 			// use available core
@@ -112,7 +112,7 @@ export class Workerpool {
 			resolve('dist', 'src', 'dataflow', 'parallel', 'worker.js') :
 			resolve(__dirname, settings.workerPath);
 
-		console.log(finalPath);
+		// console.log(finalPath);
 		// create tiny pool instance
 		this.pool = new Piscina({
 			minThreads:               Math.max(settings.nofMinWorkers, 0),
@@ -175,7 +175,7 @@ export class Workerpool {
 				});
 
 				this.workerPorts.set(workerId, port);
-				console.log(`Port registered for ${workerId}`);
+				// console.log(`Port registered for ${workerId}`);
 
 				// Confirm Registration
 				port.postMessage({ type: 'port-registered' });
@@ -184,7 +184,7 @@ export class Workerpool {
 		});
 
 		this.pool.on('workerCreate', (worker: { id: number }) => {
-			console.log(`Worker ${worker.id} created`);
+			//console.log(`Worker ${worker.id} created`);
 			this.workerStats.workersCreated++;
 			this.ensureWorkerLifeCycle(worker.id); // create lifecycle if necessary
 		});
@@ -255,7 +255,7 @@ export class Workerpool {
 
 		const { id, taskName, taskPayload } = msg;
 		const port = this.workerPorts.get(workerId);
-		console.log(`got subtask ${id} from ${workerId}`);
+		// console.log(`got subtask ${id} from ${workerId}`);
 		if(!port) {
 			dataflowLogger.error(`subtask submitted from worker ${workerId} has no corresponding message port. Aborting subtask`);
 			return;
@@ -264,7 +264,7 @@ export class Workerpool {
 
 		try {
 			const result = await this.submitTask(taskName, taskPayload);
-			console.log(`resolving subtask ${taskName} @ ${id} for ${workerId}`);
+			// console.log(`resolving subtask ${taskName} @ ${id} for ${workerId}`);
 			port.postMessage({ type: 'subtask-response', id, result });
 		} catch(err: unknown) {
 			port.postMessage({

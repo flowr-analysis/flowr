@@ -98,10 +98,10 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"\w+Ms":\s*\d+(?:\.\d+)?|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
 				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(response.results, jsonReplacer)
-				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"\w+Ms":\s*\d+(?:\.\d+)?|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
 				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');
@@ -137,10 +137,10 @@ describe('flowr', () => {
 
 			// this is hideous and only to unify the ids
 			const expected = JSON.stringify(results, jsonReplacer)
-				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"\w+Ms":\s*\d+(?:\.\d+)?|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
 				.replaceAll(FlowrFile.INLINE_PATH, '');
 			const got = JSON.stringify(unpacked, jsonReplacer)
-				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
+				.replace(/,?[\s\n]*("id":\d+|"timing":\s*\d+|"\w+Ms":\s*\d+(?:\.\d+)?|"file(Path)?":\s*"[^"]*"|\/tmp\/tmp-[a-zA-Z0-9-]*\.[rR]|<inline>)/g, '')
 				.replaceAll(FlowrFile.INLINE_PATH, '');
 
 			assert.strictEqual(got, expected, 'Expected the second message to have the same results as the slicer');

@@ -60,6 +60,7 @@ type ThreadRunResult = {
 };
 
 const tempResultRelativePath = './.tmp-analysis-result.json';
+const WorkerTimeoutMs = 10 * 60 * 1000;
 
 function appendOptimizationArgs(args: string[], runtime: BenchmarkRuntime): void {
 	if(runtime.settings.optimizations?.parallelFiles) {
@@ -107,12 +108,23 @@ function buildAnalysisArgs(
 	return args;
 }
 
-async function runAnalysisProcess(args: string[], errorMessage: string): Promise<void> {
+async function runAnalysisProcess(args: string[], errorMessage: string): Promise<boolean> {
 	const child = spawn('node', args, { stdio: 'inherit' });
+	let timedOut = false;
+	const timeoutHandle = setTimeout(() => {
+		timedOut = true;
+		child.kill('SIGKILL');
+	}, WorkerTimeoutMs);
+
 	const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
-	if(exitCode !== 0) {
-		throw new Error(`${errorMessage} (exit=${exitCode})`);
+
+	clearTimeout(timeoutHandle);
+
+	if(timedOut || exitCode !== 0) {
+		console.warn(`${errorMessage} (exit=${exitCode}${timedOut ? ', timeout' : ''})`);
+		return false;
 	}
+	return true;
 }
 
 function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult {
@@ -357,10 +369,13 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 			runtimeOnly,
 			dryRun:          false,
 		});
-		await runAnalysisProcess(args, `Run failed for [${suite}] ${projectName} (iteration ${iteration + 1})`);
+		const success = await runAnalysisProcess(args, `Run failed for [${suite}] ${projectName} (iteration ${iteration + 1})`);
+		if(!success) {
+			return undefined;
+		}
 
 		if(!fs.existsSync(tempResultPath)) {
-			throw new Error(`Missing temporary analysis result at ${tempResultPath}`);
+			return undefined;
 		}
 
 		const iterationResult: AnalysisRunResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as AnalysisRunResult;

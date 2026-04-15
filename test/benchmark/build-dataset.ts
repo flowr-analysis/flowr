@@ -67,6 +67,7 @@ type DatasetOutput = {
 	settingsPath:            string;
 	resultsRoot:             string;
 	groupedProjectsRoot:     string;
+	flatProjectCount:        number;
 	loadedRuns:              string[];
 	totalProjectsConsidered: number;
 	groups:                  GroupSelection[];
@@ -167,37 +168,37 @@ const GroupTargets: readonly GroupTarget[] = [
 	{
 		name:                'parallel',
 		description:         'Projects with many files (good candidates for file-level parallelism).',
-		targetCombinedFiles: 240,
+		targetCombinedFiles: 150,
 		score:               project => project.fileCount,
 	},
 	{
 		name:                'lazy',
 		description:         'Projects with high ratio of unmaterialized functions.',
-		targetCombinedFiles: 120,
+		targetCombinedFiles: 150,
 		score:               project => project.unmaterializedRatio,
 	},
 	{
 		name:                'small-files',
 		description:         'Projects dominated by small files (low bytes per file).',
-		targetCombinedFiles: 90,
+		targetCombinedFiles: 50,
 		score:               project => -project.bytesPerFile,
 	},
 	{
 		name:                'large-files',
 		description:         'Projects dominated by large files (high bytes per file).',
-		targetCombinedFiles: 120,
+		targetCombinedFiles: 50,
 		score:               project => project.bytesPerFile,
 	},
 	{
 		name:                'few-files',
 		description:         'Projects with very few files.',
-		targetCombinedFiles: 40,
+		targetCombinedFiles: 50,
 		score:               project => -project.fileCount,
 	},
 	{
 		name:                'non-lazy',
 		description:         'Projects with low ratio of unmaterialized functions.',
-		targetCombinedFiles: 120,
+		targetCombinedFiles: 50,
 		score:               project => (1 - project.unmaterializedRatio),
 	},
 ];
@@ -244,18 +245,64 @@ function selectForGroup(target: GroupTarget, pool: readonly DatasetProject[]): G
 	};
 }
 
-function copyGroupedProjects(groups: readonly GroupSelection[]): void {
+function selectGroupsWithoutDuplicates(targets: readonly GroupTarget[], pool: readonly DatasetProject[]): GroupSelection[] {
+	let remaining = [...pool];
+	const groups: GroupSelection[] = [];
+
+	for(const target of targets) {
+		const selected = selectForGroup(target, remaining);
+		groups.push(selected);
+		const selectedProjects = new Set(selected.projects.map(project => project.project));
+		remaining = remaining.filter(project => !selectedProjects.has(project.project));
+	}
+
+	return groups;
+}
+
+function collectFlatUniqueProjects(groups: readonly GroupSelection[]): DatasetProject[] {
+	const unique = new Map<string, DatasetProject>();
+	for(const group of groups) {
+		for(const project of group.projects) {
+			if(!unique.has(project.project)) {
+				unique.set(project.project, project);
+			}
+		}
+	}
+	return [...unique.values()];
+}
+
+function uniqueTargetDirName(sourcePath: string, usedNames: Set<string>): string {
+	const baseName = path.basename(sourcePath);
+	if(!usedNames.has(baseName)) {
+		usedNames.add(baseName);
+		return baseName;
+	}
+
+	const parentName = path.basename(path.dirname(sourcePath));
+	let candidate = `${baseName}__${parentName}`;
+	if(!usedNames.has(candidate)) {
+		usedNames.add(candidate);
+		return candidate;
+	}
+
+	let suffix = 2;
+	while(usedNames.has(`${candidate}__${suffix}`)) {
+		suffix++;
+	}
+	candidate = `${candidate}__${suffix}`;
+	usedNames.add(candidate);
+	return candidate;
+}
+
+function copyGroupedProjects(projects: readonly DatasetProject[]): void {
 	fs.rmSync(GroupedProjectsRoot, { recursive: true, force: true });
 	fs.mkdirSync(GroupedProjectsRoot, { recursive: true });
+	const usedTargetNames = new Set<string>();
 
-	for(const group of groups) {
-		const groupDir = path.join(GroupedProjectsRoot, group.name);
-		fs.mkdirSync(groupDir, { recursive: true });
-
-		for(const project of group.projects) {
-			const targetDir = path.join(groupDir, path.basename(project.project));
-			fs.cpSync(project.project, targetDir, { recursive: true });
-		}
+	for(const project of projects) {
+		const targetDirName = uniqueTargetDirName(project.project, usedTargetNames);
+		const targetDir = path.join(GroupedProjectsRoot, targetDirName);
+		fs.cpSync(project.project, targetDir, { recursive: true });
 	}
 }
 
@@ -271,13 +318,15 @@ function main(): void {
 		throw new Error('No projects loaded from summaries.');
 	}
 
-	const groups = GroupTargets.map(target => selectForGroup(target, allProjects));
-	copyGroupedProjects(groups);
+	const groups = selectGroupsWithoutDuplicates(GroupTargets, allProjects);
+	const flatUniqueProjects = collectFlatUniqueProjects(groups);
+	copyGroupedProjects(flatUniqueProjects);
 	const dataset: DatasetOutput = {
 		generatedAt:             new Date().toISOString(),
 		settingsPath,
 		resultsRoot,
 		groupedProjectsRoot:     GroupedProjectsRoot,
+		flatProjectCount:        flatUniqueProjects.length,
 		loadedRuns:              [path.basename(runDir)],
 		totalProjectsConsidered: allProjects.length,
 		groups,
@@ -289,6 +338,7 @@ function main(): void {
 
 	console.log(`Dataset selection written to ${resolvedOutputPath}`);
 	console.log(`Grouped projects copied to ${GroupedProjectsRoot}`);
+	console.log(`Total unique copied projects: ${flatUniqueProjects.length}`);
 	for(const group of groups) {
 		console.log(
 			`- ${group.name}: ${group.achieved.projectCount} projects, ` +

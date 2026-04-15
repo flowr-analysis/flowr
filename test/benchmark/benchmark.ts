@@ -59,7 +59,16 @@ type ThreadRunResult = {
 	timestamp:              string;
 };
 
+type RunFailure = {
+	project:    string;
+	reason:     'timeout' | 'exception';
+	detail:     string;
+	threadKey?: string;
+	iteration?: number;
+};
+
 const tempResultRelativePath = './.tmp-analysis-result.json';
+const failureResultFileName = 'failure.json';
 const WorkerTimeoutMs = 10 * 60 * 1000;
 
 function appendOptimizationArgs(args: string[], runtime: BenchmarkRuntime): void {
@@ -108,7 +117,11 @@ function buildAnalysisArgs(
 	return args;
 }
 
-async function runAnalysisProcess(args: string[], errorMessage: string): Promise<boolean> {
+async function runAnalysisProcess(
+	args: string[],
+	errorMessage: string,
+	context: { projectDir: string; threadKey: string; iteration: number },
+): Promise<RunFailure | undefined> {
 	const child = spawn('node', args, { stdio: 'inherit' });
 	let timedOut = false;
 	const timeoutHandle = setTimeout(() => {
@@ -122,9 +135,15 @@ async function runAnalysisProcess(args: string[], errorMessage: string): Promise
 
 	if(timedOut || exitCode !== 0) {
 		console.warn(`${errorMessage} (exit=${exitCode}${timedOut ? ', timeout' : ''})`);
-		return false;
+		return {
+			project:   context.projectDir,
+			reason:    timedOut ? 'timeout' : 'exception',
+			detail:    timedOut ? `Worker timed out after ${WorkerTimeoutMs} ms` : `Worker exited with code ${exitCode}`,
+			threadKey: context.threadKey,
+			iteration: context.iteration,
+		};
 	}
-	return true;
+	return undefined;
 }
 
 function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult {
@@ -321,7 +340,13 @@ function listProjectsInSuite(suitePath: string, maxProjectsPerSuite?: number): s
 
 // ---------------- Runner ----------------
 
-async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: string, threads?: number, skipCorrectness?: boolean): Promise<ThreadRunResult | undefined> {
+async function runOne(
+	runtime: BenchmarkRuntime,
+	suite: string,
+	projectDir: string,
+	threads?: number,
+	skipCorrectness?: boolean,
+): Promise<{ result?: ThreadRunResult; failure?: RunFailure }> {
 	const projectName = path.basename(projectDir);
 	const profileDir = path.join(runtime.outputRoot, suite, projectName);
 	if(!runtime.dryRun) {
@@ -342,8 +367,12 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 			runtimeOnly:     false,
 			dryRun:          true,
 		});
-		await runAnalysisProcess(dryRunArgs, `Run failed for [${suite}] ${projectName}`);
-		return undefined;
+		await runAnalysisProcess(
+			dryRunArgs,
+			`Run failed for [${suite}] ${projectName}`,
+			{ projectDir, threadKey: String(threads ?? 1), iteration: 1 },
+		);
+		return {};
 	}
 
 	const tempResultPath = path.resolve(profileDir, tempResultRelativePath);
@@ -369,13 +398,25 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 			runtimeOnly,
 			dryRun:          false,
 		});
-		const success = await runAnalysisProcess(args, `Run failed for [${suite}] ${projectName} (iteration ${iteration + 1})`);
-		if(!success) {
-			return undefined;
+		const failure = await runAnalysisProcess(
+			args,
+			`Run failed for [${suite}] ${projectName} (iteration ${iteration + 1})`,
+			{ projectDir, threadKey, iteration: iteration + 1 },
+		);
+		if(failure) {
+			return { failure };
 		}
 
 		if(!fs.existsSync(tempResultPath)) {
-			return undefined;
+			return {
+				failure: {
+					project:   projectDir,
+					reason:    'exception',
+					detail:    `Missing temporary analysis result at ${tempResultPath}`,
+					threadKey,
+					iteration: iteration + 1,
+				}
+			};
 		}
 
 		const iterationResult: AnalysisRunResult = JSON.parse(fs.readFileSync(tempResultPath, 'utf-8')) as AnalysisRunResult;
@@ -409,35 +450,61 @@ async function runOne(runtime: BenchmarkRuntime, suite: string, projectDir: stri
 	}
 
 	return {
-		threadKey,
-		project:   projectDir,
-		fileCount,
-		wallMs,
-		timingBreakdowns,
-		correctness,
-		lazyFunctionStats,
-		sequentialReanalysis,
-		graphMetrics,
-		sourceCharacteristics,
-		timestamp: new Date().toISOString(),
+		result: {
+			threadKey,
+			project:   projectDir,
+			fileCount,
+			wallMs,
+			timingBreakdowns,
+			correctness,
+			lazyFunctionStats,
+			sequentialReanalysis,
+			graphMetrics,
+			sourceCharacteristics,
+			timestamp: new Date().toISOString(),
+		}
 	};
+}
+
+function writeFailureResult(profileDir: string, failure: RunFailure): void {
+	fs.mkdirSync(profileDir, { recursive: true });
+	const failurePath = path.join(profileDir, failureResultFileName);
+	fs.writeFileSync(failurePath, JSON.stringify(failure, null, 2), 'utf-8');
 }
 
 async function runProjectForThreads(runtime: BenchmarkRuntime, suite: string, projectPath: string): Promise<void> {
 	const projectName = path.basename(projectPath);
 	const profileDir = path.join(runtime.outputRoot, suite, projectName);
 	const finalResultPath = path.join(profileDir, 'result.json');
+	const failureResultPath = path.join(profileDir, failureResultFileName);
 	const correctnessThreads = runtime.settings.threadsForCorrectness ?? [];
 	const performanceThreads = runtime.settings.threadsForPerformance ?? [];
 	const threadCounts = runtime.settings.optimizations?.parallelFiles && performanceThreads.length > 0 ? performanceThreads : [1];
 	const threadResults: ThreadRunResult[] = [];
+	let failure: RunFailure | undefined;
 
 	for(const threads of threadCounts) {
 		const skipCorrectness = runtime.settings.optimizations?.parallelFiles ? !correctnessThreads.includes(threads) : (runtime.settings.skipCorrectness ?? false);
-		const result = await runOne(runtime, suite, projectPath, threads, skipCorrectness);
-		if(result) {
-			threadResults.push(result);
+		const outcome = await runOne(runtime, suite, projectPath, threads, skipCorrectness);
+		if(outcome.failure) {
+			failure = outcome.failure;
+			break;
 		}
+		if(outcome.result) {
+			threadResults.push(outcome.result);
+		}
+	}
+
+	if(failure) {
+		if(fs.existsSync(finalResultPath)) {
+			fs.rmSync(finalResultPath, { force: true });
+		}
+		writeFailureResult(profileDir, failure);
+		return;
+	}
+
+	if(fs.existsSync(failureResultPath)) {
+		fs.rmSync(failureResultPath, { force: true });
 	}
 
 	if(threadResults.length > 0) {
@@ -507,6 +574,7 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			.map(e => path.join(suiteDir, e.name));
 
 		const projects: ProjectResult[] = [];
+		const failedProjects: { project: string; reason: 'timeout' | 'exception'; detail: string }[] = [];
 		const totalRuntimes: number[] = [];
 
 		// Aggregate lazy function stats
@@ -525,7 +593,17 @@ function collectResults(outputRoot: string): BenchmarkResult {
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
 			const resultPath = path.join(projectDir, 'result.json');
+			const failurePath = path.join(projectDir, failureResultFileName);
 			if(!fs.existsSync(resultPath)) {
+				if(fs.existsSync(failurePath)) {
+					const failureData: RunFailure = JSON.parse(fs.readFileSync(failurePath, 'utf-8')) as RunFailure;
+					failedProjects.push({
+						project: failureData.project,
+						reason:  failureData.reason,
+						detail:  failureData.detail,
+					});
+					continue;
+				}
 				console.warn(`Missing result.json in ${projectDir}, skipping`);
 				continue;
 			}
@@ -574,6 +652,14 @@ function collectResults(outputRoot: string): BenchmarkResult {
 
 		console.log(`\nSuite ${suiteName}:`);
 		console.log(`- Projects: ${projects.length}`);
+		if(failedProjects.length > 0) {
+			const timeoutCount = failedProjects.filter(project => project.reason === 'timeout').length;
+			const exceptionCount = failedProjects.length - timeoutCount;
+			console.log(`- Failed projects: ${failedProjects.length} (${timeoutCount} timeout, ${exceptionCount} exception)`);
+			for(const failedProject of failedProjects) {
+				console.log(`  - ${failedProject.project}: ${failedProject.reason} (${failedProject.detail})`);
+			}
+		}
 		console.log(`- Total runtime: ${(totalRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Mean per project-thread: ${(meanProjectRuntimeMs).toFixed(6)} ms`);
 		console.log(`- Total files analyzed: ${totalFiles}`);
@@ -655,6 +741,25 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 
 	const totalProjects = suites.reduce((sum, s) => sum + s.projects.length, 0);
 	const totalFiles = suites.reduce((sum, s) => sum + s.totalFiles, 0);
+	const allFailedProjects: { project: string; reason: 'timeout' | 'exception'; detail: string }[] = [];
+	for(const suite of suites) {
+		const suiteDir = path.join(outputRoot, suite.suiteName);
+		if(!fs.existsSync(suiteDir)) {
+			continue;
+		}
+		const projectDirs = fs.readdirSync(suiteDir, { withFileTypes: true })
+			.filter(e => e.isDirectory())
+			.map(e => path.join(suiteDir, e.name));
+		for(const projectDir of projectDirs) {
+			const failurePath = path.join(projectDir, failureResultFileName);
+			if(fs.existsSync(failurePath)) {
+				const failureData: RunFailure = JSON.parse(fs.readFileSync(failurePath, 'utf-8')) as RunFailure;
+				allFailedProjects.push({ project: failureData.project, reason: failureData.reason, detail: failureData.detail });
+			}
+		}
+	}
+	const totalTimeoutFailures = allFailedProjects.filter(project => project.reason === 'timeout').length;
+	const totalExceptionFailures = allFailedProjects.length - totalTimeoutFailures;
 	const meanRuntimeMsByThreads: Record<string, number[]> = {};
 
 	// Aggregate lazy function stats across all suites
@@ -708,6 +813,12 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 	console.log(`Total suites: ${suites.length}`);
 	console.log(`Total projects: ${totalProjects}`);
 	console.log(`Total files analyzed: ${totalFiles}`);
+	if(allFailedProjects.length > 0) {
+		console.log(`Failed projects: ${allFailedProjects.length} (${totalTimeoutFailures} timeout, ${totalExceptionFailures} exception)`);
+		for(const failedProject of allFailedProjects) {
+			console.log(`  - ${failedProject.project}: ${failedProject.reason} (${failedProject.detail})`);
+		}
+	}
 	if(Object.keys(totalCorrectnessStatsByThreads).length > 0) {
 		console.log('\n=== Correctness Statistics ===');
 		for(const [threadKey, stats] of Object.entries(totalCorrectnessStatsByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {

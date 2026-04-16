@@ -311,9 +311,9 @@ export async function produceDataFlowGraph<OtherInfo>(
 		referenceChain: [files[0].filePath],
 		ctx
 	};
+	const asTimingNumber = (value: unknown): number => typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
 	if(fileParallelization && workerPool){
-		const asTimingNumber = (value: unknown): number => typeof value === 'number' && Number.isFinite(value) ? value : 0;
 		const builtInDefinitions = snapshotBuiltInDefinitions(dfData.environment);
 		const parallelStart = Date.now();
 
@@ -406,9 +406,9 @@ export async function produceDataFlowGraph<OtherInfo>(
 			// finally, resolve linkages
 			const linkingStart = Date.now();
 			updateNestedFunctionCalls(df.graph, df.environment);
+			timings.mainThread.linkingMs += Date.now() - linkingStart;
 
 			const cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
-			timings.mainThread.linkingMs += Date.now() - linkingStart;
 
 			// performance optimization: return cfgQuick as part of the result to avoid recomputation
 			return { ...df, cfgQuick, timings };
@@ -418,17 +418,18 @@ export async function produceDataFlowGraph<OtherInfo>(
 	if(!workerPool && fileParallelization){
 		dataflowLogger.error('Dataflow:: Parallelization is enabled, but no Threadpool is provided. Falling back to sequential computation.');
 	}
-	const sequentialStart = Date.now();
+	const primaryAnalysisStart = Date.now();
 	// use the sequential analysis
 	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	timings.mainThread.analysisMs += Date.now() - primaryAnalysisStart;
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
-		const mergeStart = Date.now();
-		df = standaloneSourceFile(i, files[i], dfData, df);
-		timings.mainThread.mergeMs += Date.now() - mergeStart;
+		const sourced = standaloneSourceFile(i, files[i], dfData, df) as DataflowInformation & { analysisMs?: number, mergeMs?: number };
+		df = sourced;
+		timings.mainThread.analysisMs += asTimingNumber(sourced.analysisMs);
+		timings.mainThread.mergeMs += asTimingNumber(sourced.mergeMs);
 	}
-	timings.mainThread.analysisMs = Date.now() - sequentialStart;
 
 	// In lazy mode, materialize only functions that contain `UseMethod(...)` so S3 call edges
 	// are available without forcing unrelated lazy functions.
@@ -447,9 +448,9 @@ export async function produceDataFlowGraph<OtherInfo>(
 	// finally, resolve linkages
 	const linkingStart = Date.now();
 	updateNestedFunctionCalls(df.graph, df.environment);
+	timings.mainThread.linkingMs += Date.now() - linkingStart;
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
-	timings.mainThread.linkingMs += Date.now() - linkingStart;
 	(df as { timings?: DataflowTimingBreakdown }).timings = timings;
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined, timings: DataflowTimingBreakdown };

@@ -223,7 +223,13 @@ export function sourceRequest<OtherInfo>(
 	information: DataflowInformation,
 	getId?: IdGenerator<NoInfo>,
 	allowDeferredMerge = false
-): DataflowInformation {
+): DataflowInformation & {analysisMs: number, mergeMs: number} {
+	const withRuntime = (info: DataflowInformation, analysisMs: number, mergeMs: number): DataflowInformation & { analysisMs: number, mergeMs: number } => ({
+		...info,
+		analysisMs,
+		mergeMs
+	});
+
 	// parse, normalize and dataflow the sourced file
 	let dataflow: DataflowInformation;
 	let fst: RProjectFile<OtherInfo & ParentInformation>;
@@ -242,7 +248,7 @@ export function sourceRequest<OtherInfo>(
 			// if translation failed there is nothing we can do!!
 			dataflowLogger.warn(`Failed to analyze sourced file ${JSON.stringify(request)}: file does not exist`);
 			handleUnknownSideEffect(information.graph, information.environment, rootId);
-			return information;
+			return withRuntime(information, 0, 0);
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
 		}
@@ -261,7 +267,8 @@ export function sourceRequest<OtherInfo>(
 		}
 		filePath = textRequest.path;
 	}
-
+	const analysisStart = Date.now();
+	let analysisMs = 0;
 	try {
 		dataflow = processDataflowFor(fst.root, {
 			...data,
@@ -269,17 +276,23 @@ export function sourceRequest<OtherInfo>(
 			referenceChain: [...data.referenceChain, fst.filePath]
 		});
 	} catch(e) {
+		analysisMs = Date.now() - analysisStart;
 		dataflowLogger.error(`Failed to analyze sourced file ${JSON.stringify(request)}, skipping: ${(e as Error).message}`);
 		dataflowLogger.error((e as Error).stack);
 		handleUnknownSideEffect(information.graph, information.environment, rootId);
-		return information;
+		return withRuntime(information, analysisMs, 0);
 	}
+	analysisMs = Date.now() - analysisStart;
 
 	if(allowDeferredMerge) {
-		return dataflow;
+		return withRuntime(dataflow, analysisMs, 0);
 	}
 
-	return mergeDataflowInformation(rootId, data, filePath, information, dataflow);
+	const mergeStart = Date.now();
+	const merged = mergeDataflowInformation(rootId, data, filePath, information, dataflow);
+	const mergeMs = Date.now() - mergeStart;
+
+	return withRuntime(merged, analysisMs, mergeMs);
 
 }
 
@@ -323,12 +336,16 @@ export function standaloneSourceFile<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	information: DataflowInformation,
 	allowDeferredMerge = false
-): DataflowInformation {
+): DataflowInformation & { analysisMs: number, mergeMs: number } {
 	// check if the sourced file has already been dataflow analyzed, and if so, skip it
 	if(data.referenceChain.some(e => e !== undefined && e === file.filePath)) {
 		dataflowLogger.info(`Found loop in dataflow analysis for ${JSON.stringify(file.filePath)}: ${JSON.stringify(data.referenceChain)}, skipping further dataflow analysis`);
 		handleUnknownSideEffect(information.graph, information.environment, file.root.info.id);
-		return information;
+		return {
+			...information,
+			analysisMs: 0,
+			mergeMs:    0
+		};
 	}
 
 	return sourceRequest('file-' + idx, file, {

@@ -92,11 +92,21 @@ export interface CorrectnessStats {
     skipped:   number;
 }
 
+type FailedProjectBase =
+    Record<'project' | 'detail', string> &
+    Record<'reason', 'timeout' | 'exception'>;
+
+export type FailedProjectResult = FailedProjectBase & {
+    threadKey?: string;
+    iteration?: number;
+};
+
 export type CorrectnessStatsByThreads = Record<string, CorrectnessStats>;
 
 export interface BenchmarkSuiteResult {
     suiteName:                  string;
     projects:                   ProjectResult[];
+    failedProjects:             FailedProjectResult[];
     totalRuntimeMs:             number;
     meanProjectRuntimeMs:       number;
     totalFiles:                 number;

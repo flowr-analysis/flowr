@@ -7,6 +7,7 @@ import type {
 	CorrectnessOutcome,
 	CorrectnessStats,
 	CorrectnessStatsByThreads,
+	FailedProjectResult,
 	LazyFunctionStats,
 	ProjectResult,
 } from './results-types';
@@ -59,17 +60,37 @@ type ThreadRunResult = {
 	timestamp:              string;
 };
 
-type RunFailure = {
-	project:    string;
-	reason:     'timeout' | 'exception';
-	detail:     string;
-	threadKey?: string;
-	iteration?: number;
-};
+type RunFailure = FailedProjectResult;
 
 const tempResultRelativePath = './.tmp-analysis-result.json';
 const failureResultFileName = 'failure.json';
 const WorkerTimeoutMs = 10 * 60 * 1000;
+
+function parseFailureResult(failurePath: string): RunFailure {
+	const parsed = JSON.parse(fs.readFileSync(failurePath, 'utf-8')) as unknown;
+	if(parsed === null || typeof parsed !== 'object') {
+		return {
+			project: path.dirname(failurePath),
+			reason:  'exception',
+			detail:  'Invalid failure record format',
+		};
+	}
+
+	const record = parsed as Record<string, unknown>;
+	const project = typeof record.project === 'string' ? record.project : path.dirname(failurePath);
+	const reason = record.reason === 'timeout' ? 'timeout' : 'exception';
+	const detail = typeof record.detail === 'string' ? record.detail : 'Unknown worker failure';
+	const threadKey = typeof record.threadKey === 'string' ? record.threadKey : undefined;
+	const iteration = typeof record.iteration === 'number' ? record.iteration : undefined;
+
+	return {
+		project,
+		reason,
+		detail,
+		threadKey,
+		iteration,
+	};
+}
 
 function appendOptimizationArgs(args: string[], runtime: BenchmarkRuntime): void {
 	if(runtime.settings.optimizations?.parallelFiles) {
@@ -124,23 +145,40 @@ async function runAnalysisProcess(
 ): Promise<RunFailure | undefined> {
 	const child = spawn('node', args, { stdio: 'inherit' });
 	let timedOut = false;
+	let emittedError: Error | undefined;
+
+	child.on('error', err => {
+		emittedError = err;
+	});
+
 	const timeoutHandle = setTimeout(() => {
 		timedOut = true;
 		child.kill('SIGKILL');
 	}, WorkerTimeoutMs);
 
-	const exitCode: number | null = await new Promise(resolve => child.on('close', code => resolve(code)));
+	const { exitCode, signal } = await new Promise<{ exitCode: number | null; signal: string | null }>(resolve => {
+		child.on('close', (code, closeSignal) => resolve({ exitCode: code, signal: closeSignal ? String(closeSignal) : null }));
+	});
 
 	clearTimeout(timeoutHandle);
 
-	if(timedOut || exitCode !== 0) {
-		console.warn(`${errorMessage} (exit=${exitCode}${timedOut ? ', timeout' : ''})`);
+	if(timedOut || emittedError || exitCode !== 0 || signal !== null) {
+		const project = context.projectDir;
+		const reason = timedOut ? 'timeout' : 'exception';
+		const threadKey = context.threadKey;
+		const iteration = context.iteration;
+		const detail = timedOut ?
+			`Worker timed out after ${WorkerTimeoutMs} ms` :
+			emittedError ?
+				`Worker emitted error: ${emittedError.message}` :
+				`Worker exited with code ${exitCode}${signal ? ` (signal ${signal})` : ''}`;
+		console.warn(`${errorMessage} (${detail})`);
 		return {
-			project:   context.projectDir,
-			reason:    timedOut ? 'timeout' : 'exception',
-			detail:    timedOut ? `Worker timed out after ${WorkerTimeoutMs} ms` : `Worker exited with code ${exitCode}`,
-			threadKey: context.threadKey,
-			iteration: context.iteration,
+			project,
+			reason,
+			detail,
+			threadKey,
+			iteration,
 		};
 	}
 	return undefined;
@@ -574,7 +612,7 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			.map(e => path.join(suiteDir, e.name));
 
 		const projects: ProjectResult[] = [];
-		const failedProjects: { project: string; reason: 'timeout' | 'exception'; detail: string }[] = [];
+		const failedProjects: RunFailure[] = [];
 		const totalRuntimes: number[] = [];
 
 		// Aggregate lazy function stats
@@ -596,12 +634,8 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			const failurePath = path.join(projectDir, failureResultFileName);
 			if(!fs.existsSync(resultPath)) {
 				if(fs.existsSync(failurePath)) {
-					const failureData: RunFailure = JSON.parse(fs.readFileSync(failurePath, 'utf-8')) as RunFailure;
-					failedProjects.push({
-						project: failureData.project,
-						reason:  failureData.reason,
-						detail:  failureData.detail,
-					});
+					const failureData = parseFailureResult(failurePath);
+					failedProjects.push(failureData);
 					continue;
 				}
 				console.warn(`Missing result.json in ${projectDir}, skipping`);
@@ -712,6 +746,7 @@ function collectResults(outputRoot: string): BenchmarkResult {
 		suites.push({
 			suiteName,
 			projects,
+			failedProjects,
 			totalRuntimeMs,
 			meanProjectRuntimeMs,
 			totalFiles,
@@ -741,23 +776,7 @@ function writeSummary(suites: BenchmarkResult, outputRoot: string) {
 
 	const totalProjects = suites.reduce((sum, s) => sum + s.projects.length, 0);
 	const totalFiles = suites.reduce((sum, s) => sum + s.totalFiles, 0);
-	const allFailedProjects: { project: string; reason: 'timeout' | 'exception'; detail: string }[] = [];
-	for(const suite of suites) {
-		const suiteDir = path.join(outputRoot, suite.suiteName);
-		if(!fs.existsSync(suiteDir)) {
-			continue;
-		}
-		const projectDirs = fs.readdirSync(suiteDir, { withFileTypes: true })
-			.filter(e => e.isDirectory())
-			.map(e => path.join(suiteDir, e.name));
-		for(const projectDir of projectDirs) {
-			const failurePath = path.join(projectDir, failureResultFileName);
-			if(fs.existsSync(failurePath)) {
-				const failureData: RunFailure = JSON.parse(fs.readFileSync(failurePath, 'utf-8')) as RunFailure;
-				allFailedProjects.push({ project: failureData.project, reason: failureData.reason, detail: failureData.detail });
-			}
-		}
-	}
+	const allFailedProjects: RunFailure[] = suites.flatMap(suite => suite.failedProjects ?? []);
 	const totalTimeoutFailures = allFailedProjects.filter(project => project.reason === 'timeout').length;
 	const totalExceptionFailures = allFailedProjects.length - totalTimeoutFailures;
 	const meanRuntimeMsByThreads: Record<string, number[]> = {};

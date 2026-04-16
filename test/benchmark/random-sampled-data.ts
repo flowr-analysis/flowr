@@ -22,6 +22,33 @@ const SuitePaths = [
 
 const DefaultTargetFileCount = 1_000;
 const DefaultOutputDir = '/home/jonas/Git/ba-thesis/datasets/random-sampled';
+const ExcludedProjectKeys = new Set<string>([
+	'1-Zenodo_Output.csv-output/201',
+	'1-Zenodo_Output.csv-output/491',
+	'1-Zenodo_Output.csv-output/497',
+	'DVN/ERNXOP',
+	'DVN/DBNBEU',
+	'DVN/CV9AYE',
+	'DVN/HDOEPP',
+	'DVN/L1YR71',
+	'DVN/HPDN3I',
+	'DVN/FJIQQR',
+	'DVN/OD5MBX',
+	'DVN/HFXXEF',
+	'DVN/QXBZOZ',
+	'DVN/KE92DO',
+	'DVN/5KDUTD',
+	'DVN/I0VEMG',
+	'DVN/56L9JP',
+	'DVN/10MM4N',
+	'DVN/IK3DGT',
+	'DVN/U6EWUW',
+	'DVN/ZURHQA',
+	'DVN/SEHMGR',
+	'DVN/9RBEPV',
+	'DVN/8EHQWP',
+	'DVN/KL36TP',
+]);
 
 function parseArgs(args: readonly string[]): CliConfig {
 	const targetFileCountArg = readArgValue(args, '--targetFiles');
@@ -89,6 +116,25 @@ function collectProjects(suitePaths: readonly string[]): ProjectEntry[] {
 	}
 
 	return projects;
+}
+
+function projectKey(project: ProjectEntry): string {
+	return `${path.basename(project.suitePath)}/${path.basename(project.projectPath)}`;
+}
+
+function filterExcludedProjects(projects: readonly ProjectEntry[]): { included: ProjectEntry[]; filteredCount: number } {
+	const included: ProjectEntry[] = [];
+	let filteredCount = 0;
+
+	for(const project of projects) {
+		if(ExcludedProjectKeys.has(projectKey(project))) {
+			filteredCount++;
+			continue;
+		}
+		included.push(project);
+	}
+
+	return { included, filteredCount };
 }
 
 function shuffle<T>(input: readonly T[], random: () => number): T[] {
@@ -164,16 +210,22 @@ function copyProjectsToOutput(projects: readonly ProjectEntry[], outputDir: stri
 
 function main(): void {
 	const config = parseArgs(process.argv.slice(2));
-	const projects = collectProjects(SuitePaths);
-	if(projects.length === 0) {
+	const discoveredProjects = collectProjects(SuitePaths);
+	if(discoveredProjects.length === 0) {
 		throw new Error('No projects found in configured suites.');
+	}
+	const { included: projects, filteredCount } = filterExcludedProjects(discoveredProjects);
+	if(projects.length === 0) {
+		throw new Error('No projects remain after applying exclusion filter.');
 	}
 
 	const selected = sampleProjects(projects, config.targetFileCount);
 	const { copied, copiedFiles } = copyProjectsToOutput(selected, config.outputDir);
 
 	console.log(`Configured suites: ${SuitePaths.length}`);
-	console.log(`Collected projects: ${projects.length}`);
+	console.log(`Collected projects: ${discoveredProjects.length}`);
+	console.log(`Filtered projects: ${filteredCount}`);
+	console.log(`Remaining projects: ${projects.length}`);
 	console.log(`Target files: ${config.targetFileCount}`);
 	console.log(`Sampled projects: ${selected.length}`);
 	console.log(`Copied projects: ${copied}`);

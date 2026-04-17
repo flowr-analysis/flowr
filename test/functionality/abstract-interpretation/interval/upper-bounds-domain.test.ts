@@ -9,8 +9,8 @@ describe('Weakly Relational Upper Bounds Domain', () => {
 		return new UpperBoundsDomain(value);
 	};
 
-	const upperBounds = (entries: [number, number[]][]) => {
-		return new Map(entries.map(([key, values]) => [key as NodeId, new Set(values as NodeId[])]));
+	const upperBounds = (entries: [NodeId, NodeId[]][]) => {
+		return new Map(entries.map(([key, values]) => [key, new Set(values)]));
 	};
 
 	const UpperBoundsTop = new Map<NodeId, never>();
@@ -32,31 +32,31 @@ describe('Weakly Relational Upper Bounds Domain', () => {
 	});
 
 	// Demonstrate that V <= {V, W} is treated the same as V <= {W}
-	assertAbstractDomain(createDomain, new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]]), new Map([[1 as NodeId, new Set([2 as NodeId])]]), {
-		equal: true, leq: true, join: new Map([[1 as NodeId, new Set([2 as NodeId])]]), meet: new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]]), concrete: Top, abstract: UpperBoundsTop, widen: new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]])
+	assertAbstractDomain(createDomain, upperBounds([['V', ['V', 'W']]]), upperBounds([['V', ['W']]]), {
+		equal: true, leq: true, join: upperBounds([['V', ['W']]]), meet: upperBounds([['V', ['V', 'W']]]), concrete: Top, abstract: UpperBoundsTop, widen: upperBounds([['V', ['V', 'W']]])
 	});
 
-	assertAbstractDomain(createDomain, new Map([[1 as NodeId, new Set([2 as NodeId])]]), new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]]), {
-		equal: true, leq: true, join: new Map([[1 as NodeId, new Set([2 as NodeId])]]), meet: new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]]), concrete: Top, abstract: UpperBoundsTop, widen: new Map([[1 as NodeId, new Set([1 as NodeId, 2 as NodeId])]])
+	assertAbstractDomain(createDomain, upperBounds([['V', ['W']]]), upperBounds([['V', ['V', 'W']]]), {
+		equal: true, leq: true, join: upperBounds([['V', ['W']]]), meet: upperBounds([['V', ['V', 'W']]]), concrete: Top, abstract: UpperBoundsTop, widen: upperBounds([['V', ['V', 'W']]])
 	});
 
 	// Compare V <= {W} and {V <= {W}, W <= {V}}
-	assertAbstractDomain(createDomain, new Map([[1 as NodeId, new Set<NodeId>([2 as NodeId])]]), new Map([[1 as NodeId, new Set<NodeId>([2 as NodeId])], [2 as NodeId, new Set<NodeId>([1 as NodeId])]]), {
-		equal: false, leq: false, join: new Map([[1 as NodeId, new Set([2 as NodeId])]]), meet: new Map([[1 as NodeId, new Set([2 as NodeId])], [2 as NodeId, new Set([1 as NodeId])]]), concrete: Top, abstract: UpperBoundsTop, widen: new Map([[1 as NodeId, new Set([2 as NodeId])]])
+	assertAbstractDomain(createDomain, upperBounds([['V', ['W']]]), upperBounds([['V', ['W']], ['W', ['V']]]), {
+		equal: false, leq: false, join: upperBounds([['V', ['W']]]), meet: upperBounds([['V', ['W']], ['W', ['V']]]), concrete: Top, abstract: UpperBoundsTop, widen: upperBounds([['V', ['W']]])
 	});
 
 	// Compare {V <= {W}, W <= {V}} and V <= {W}
-	assertAbstractDomain(createDomain, upperBounds([[1, [2]], [2, [1]]]), upperBounds([[1, [2]]]), {
-		equal: false, leq: true, join: upperBounds([[1, [2]]]), meet: upperBounds([[1, [2]], [2, [1]]]), concrete: Top, abstract: UpperBoundsTop, widen: upperBounds([[1, [2]]])
+	assertAbstractDomain(createDomain, upperBounds([['V', ['W']], ['W', ['V']]]), upperBounds([['V', ['W']]]), {
+		equal: false, leq: true, join: upperBounds([['V', ['W']]]), meet: upperBounds([['V', ['W']], ['W', ['V']]]), concrete: Top, abstract: UpperBoundsTop, widen: upperBounds([['V', ['W']]])
 	});
 
 	// Compare V <= {W} and W <= {X}
-	assertAbstractDomain(createDomain, upperBounds([[1, [2]]]), upperBounds([[2, [3]]]), {
-		equal: false, leq: false, join: UpperBoundsTop, meet: upperBounds([[1, [2]], [2, [3]]]), concrete: Top, abstract: UpperBoundsTop, widen: UpperBoundsTop
+	assertAbstractDomain(createDomain, upperBounds([['V', ['W']]]), upperBounds([['W', [3]]]), {
+		equal: false, leq: false, join: UpperBoundsTop, meet: upperBounds([['V', ['W']], ['W', [3]]]), concrete: Top, abstract: UpperBoundsTop, widen: UpperBoundsTop
 	});
 
 	// Compare V <= {W} and {V <= {X}, W <= {X}}
-	assertAbstractDomain(createDomain, upperBounds([[1, [2]]]), upperBounds([[1, [3]], [2, [3]]]), {
-		equal: false, leq: false, join: UpperBoundsTop, meet: upperBounds([[1, [2, 3]], [2, [3]]]), concrete: Top, abstract: UpperBoundsTop, widen: UpperBoundsTop
+	assertAbstractDomain(createDomain, upperBounds([['V', ['W']]]), upperBounds([['V', [3]], ['W', [3]]]), {
+		equal: false, leq: false, join: UpperBoundsTop, meet: upperBounds([['V', ['W', 3]], ['W', [3]]]), concrete: Top, abstract: UpperBoundsTop, widen: UpperBoundsTop
 	});
 });

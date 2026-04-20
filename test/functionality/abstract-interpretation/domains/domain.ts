@@ -1,7 +1,10 @@
 import { assert, test } from 'vitest';
-import { DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
-import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/lattice';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
+/**
+ * The type of an object containing the expected results for the operations on abstract values of an abstract domain.
+ */
 export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
 	readonly equal:     boolean,
 	readonly leq:       boolean,
@@ -13,9 +16,14 @@ export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
 	readonly abstract?: AbstractValue
 }
 
-
 /**
- *
+ * Asserts that an abstract domain implementation satisfies the expected properties for the given abstract values.
+ * @param create  - A function to create an instance of the abstract domain from an abstract value
+ * @param value1  - The first abstract value to test
+ * @param value2  - The second abstract value to test
+ * @param expected - An object containing the expected results for the operations on the abstract values
+ * @template AbstractValue - The type of the abstract values provided
+ * @template Domain        - The type of the abstract domain being tested
  */
 export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDomain>(
 	create: (value: AbstractValue) => Domain,
@@ -66,21 +74,10 @@ export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDo
 	});
 	if(expected.concrete) {
 		test(`γ(${domain1.toString()})`, () => {
-			assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
+			assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `expected ${AbstractDomain.toString(concrete)} but was ${AbstractDomain.toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
 		});
 	}
 	test(`α(γ(${domain1.toString()}))`, () => {
 		assert.isTrue(domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).toString()}`);
 	});
-}
-
-function toString(value: ReadonlySet<unknown> | typeof Top | unknown): string {
-	if(value instanceof Map) {
-		return `{${value.entries().map(([key, value]) => `${toString(key)} -> ${toString(value)}`).toArray().join(', ')}}`;
-	} else if(value instanceof Set) {
-		return `{${value.values().map(value => toString(value)).toArray().join(', ')}}`;
-	} else if(value === Top) {
-		return TopSymbol;
-	}
-	return JSON.stringify(value);
 }

@@ -1,9 +1,16 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
 
 /** The type of the concrete state of the concrete domain of a state abstract domain that maps keys to a concrete value in the concrete domain */
 export type ConcreteState<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, ConcreteDomain<Domain>>;
+
+/**
+ * The type of the value abstract domain of a state abstract domain (i.e. the abstract domain a state abstract domain maps to).
+ * @template StateDomain - The state abstract domain to get the value abstract domain type for
+ */
+export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
+	StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
 type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
@@ -259,7 +266,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return '(' + this.value.entries().toArray().map(([key, value]) => `${domainElementToString(key)} -> ${value.toString()}`).join(', ') + ')';
+		return '(' + this.value.entries().toArray().map(([key, value]) => `${AbstractDomain.toString(key)} -> ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): this is this & StateAbstractDomain<Domain, StateDomainTop> {
@@ -302,10 +309,3 @@ export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain, Value 
 		super.remove(key);
 	}
 }
-
-/**
- * The type of the value abstract domain of a state abstract domain (i.e. the abstract domain a state abstract domain maps to).
- * @template StateDomain - The state abstract domain to get the value abstract domain type for
- */
-export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
-	StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;

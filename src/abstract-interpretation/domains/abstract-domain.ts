@@ -113,6 +113,35 @@ implements Lattice<Abstract, Top, Bot, Value> {
 		guard(values.length > 0 || defaultValue !== undefined, 'Abstract values to meet cannot be empty');
 		return values[0]?.meetAll(values.slice(1)) ?? defaultValue;
 	}
+
+	/**
+	 * Checks whether a value is an abstract domain.
+	 */
+	public static is(value: unknown): value is AnyAbstractDomain {
+		if(typeof value !== 'object' || value === null) {
+			return false;
+		}
+		return ['value', 'top', 'bottom', 'leq', 'join', 'meet', 'widen', 'narrow', 'concretize', 'abstract'].every(property => property in value);
+	}
+
+	/**
+	 * Converts an element of an abstract domain into a string.
+	 */
+	public static toString(this: void, value: AnyAbstractDomain | unknown): string {
+		if(value instanceof Map) {
+			return `{${value.entries().map(([key, value]) => `${AbstractDomain.toString(key)} -> ${AbstractDomain.toString(value)}`).toArray().join(', ')}}`;
+		} else if(value instanceof Set) {
+			return `{${value.values().map(AbstractDomain.toString).toArray().join(', ')}}`;
+		} else if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			return value.toString();
+		} else if(value === Top) {
+			return TopSymbol;
+		} else if(value === Bottom) {
+			return BottomSymbol;
+		}
+		return JSON.stringify(value);
+	}
 }
 
 /**
@@ -154,28 +183,3 @@ export type AbstractDomainTop<Domain extends AnyAbstractDomain> =
  */
 export type AbstractDomainBottom<Domain extends AnyAbstractDomain> =
 	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Bot> : never;
-
-/**
- * Converts an element of an abstract domain into a string.
- */
-export function domainElementToString(value: AnyAbstractDomain | unknown): string {
-	if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
-		// eslint-disable-next-line @typescript-eslint/no-base-to-string
-		return value.toString();
-	} else if(value === Top) {
-		return TopSymbol;
-	} else if(value === Bottom) {
-		return BottomSymbol;
-	}
-	return JSON.stringify(value);
-}
-
-/**
- * Checks whether a value is an abstract domain.
- */
-export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
-	if(typeof value !== 'object' || value === null) {
-		return false;
-	}
-	return ['value', 'top', 'bottom', 'leq', 'join', 'meet', 'widen', 'narrow', 'concretize', 'abstract'].every(property => property in value);
-}

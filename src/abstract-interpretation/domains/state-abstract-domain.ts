@@ -1,4 +1,3 @@
-import type { Writable } from 'ts-essentials';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractDomain, domainElementToString, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
@@ -57,10 +56,9 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	}
 
 	protected set(key: NodeId, value: Domain): void {
-		if(this.value === Bottom) {
-			(this._value as Writable<StateDomainLift<Domain>>) = new Map();
+		if(this.value !== Bottom) {
+			(this._value as Map<NodeId, Domain>).set(key, value);
 		}
-		(this._value as Map<NodeId, Domain>).set(key, value);
 	}
 
 	protected remove(key: NodeId): void {

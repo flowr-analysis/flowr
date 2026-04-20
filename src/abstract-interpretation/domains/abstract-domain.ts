@@ -121,6 +121,13 @@ implements Lattice<Abstract, Top, Bot, Value> {
 export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown, unknown>;
 
 /**
+ * The type of the abstract values of an abstract domain (including the Top and Bottom element).
+ * @template Domain - The abstract domain to get the abstract value type for
+ */
+export type AbstractValue<Domain extends AnyAbstractDomain> =
+	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
+
+/**
  * The type of the concrete domain of an abstract domain.
  * @template Domain - The abstract domain to get the concrete domain type for
  */
@@ -128,25 +135,25 @@ export type ConcreteDomain<Domain extends AnyAbstractDomain> =
 	Domain extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 
 /**
- * The type of the abstract values of an abstract domain (including the Top and Bottom element).
- * @template Domain - The abstract domain to get the abstract value type for
+ * The type of an abstract domain holding an abstract value of the domain.
+ * @template Domain - The abstract domain abstract domain value type for
  */
 export type AbstractDomainValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Value> : never;
 
 /**
- * The type of the Top element (greatest element) of an abstract domain.
- * @template Domain - The abstract domain to get the Top element type for
+ * The type an abstract domain holding the Top element (greatest element) of the domain.
+ * @template Domain - The abstract domain to get the abstract domain top for
  */
 export type AbstractDomainTop<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, unknown, infer Top, unknown> ? Top : never;
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Top> : never;
 
 /**
- * The type of the Bottom element (least element) of an abstract domain.
- * @template Domain - The abstract domain to get the Bottom element type for
+ * The type an abstract domain holding the Bottom element (least element) of the domain.
+ * @template Domain - The abstract domain to get the abstract domain bottom for
  */
 export type AbstractDomainBottom<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, unknown, unknown, infer Bot> ? Bot : never;
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Bot> : never;
 
 /**
  * Converts an element of an abstract domain into a string.

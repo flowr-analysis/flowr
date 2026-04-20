@@ -1,15 +1,6 @@
-import type { Writable } from 'ts-essentials';
-import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
-import { Top } from './lattice';
 import { Record } from '../../util/record';
-
-/** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
-export type AbstractProduct = Record<string, AnyAbstractDomain>;
-
-/** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
-export type ConcreteProduct<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
-};
+import type { AbstractProduct } from './partial-product-domain';
+import { PartialProductDomain } from './partial-product-domain';
 
 /**
  * A product abstract domain as named Cartesian product of sub abstract domains.
@@ -17,172 +8,27 @@ export type ConcreteProduct<Product extends AbstractProduct> = {
  * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
  * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
  */
-export abstract class ProductDomain<Product extends AbstractProduct>
-	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
+export abstract class ProductDomain<Product extends Required<AbstractProduct>>
+	extends PartialProductDomain<Product> {
 
 	constructor(value: Product) {
-		super(Record.mapProperties(value, entry => entry.create(entry.value)) as Product);
-		(this._value as Writable<Product>) = this.reduce(this.value);
+		super(value, value as Required<Product>);
 	}
 
 	public abstract create(value: Product): this;
 
-	public bottom(): this {
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			result._value[key] = result.value[key].bottom() as Product[Extract<keyof Product, string>];
-		}
-		return result;
-	}
-
 	public top(): this {
-		const result = this.create(this.value);
+		const result = this.create(this.domain);
 
 		for(const key in result.value) {
-			result._value[key] =  result.value[key].top() as Product[Extract<keyof Product, string>];
+			result._value[key] =  result.value[key]?.top() as Product[Extract<keyof Product, string>];
 		}
 		return result;
-	}
-
-	public equals(other: this): boolean {
-		if(this.value === other.value) {
-			return true;
-		}
-		for(const key in this.value) {
-			if(!this.value[key].equals(other.value[key])) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	public leq(other: this): boolean {
-		if(this.value === other.value) {
-			return true;
-		}
-		for(const key in this.value) {
-			if(!this.value[key].leq(other.value[key])) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	public join(other: this): this {
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			result._value[key] = result.value[key].join(other.value[key]);
-		}
-		return result.refine();
-	}
-
-	public meet(other: this): this {
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			result._value[key] = result.value[key].meet(other.value[key]);
-		}
-		return result.refine();
-	}
-
-	public widen(other: this): this {
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			result._value[key] = result.value[key].widen(other.value[key]);
-		}
-		return result.refine();
-	}
-
-	public narrow(other: this): this {
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			result._value[key] = result.value[key].narrow(other.value[key]);
-		}
-		return result.refine();
-	}
-
-	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
-		let result = new Set<ConcreteProduct<Product>>([{} as ConcreteProduct<Product>]);
-
-		for(const key in this.value) {
-			const concrete = this.value[key].concretize(limit);
-
-			if(concrete === Top) {
-				return Top;
-			}
-			const newResult = new Set<ConcreteProduct<Product>>();
-
-			for(const value of concrete) {
-				for(const entry of result) {
-					if(newResult.size >= limit) {
-						return Top;
-					}
-					newResult.add({ ...entry, [key]: value });
-				}
-			}
-			result = newResult;
-		}
-		return result;
-	}
-
-	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): this {
-		if(concrete === Top) {
-			return this.top();
-		}
-		const result = this.create(this.value);
-
-		for(const key in result.value) {
-			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result._value[key] = result.value[key].abstract(concreteValues);
-		}
-		return result.refine();
-	}
-
-	public toJson(): unknown {
-		return Record.mapProperties(this.value, entry => entry.toJson());
-	}
-
-	public toString(): string {
-		return '(' + Object.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): boolean;
 	public isTop(): this is this;
 	public isTop(): this is this {
-		return Object.values(this.value).every(value => value.isTop());
-	}
-
-	public isBottom(): boolean;
-	public isBottom(): this is this;
-	public isBottom(): this is this {
-		return Object.values(this.value).every(value => value.isBottom());
-	}
-
-	public isValue(): boolean;
-	public isValue(): this is this;
-	public isValue(): this is this {
-		return true;
-	}
-
-	/**
-	 * Optional reduction function for a reduced product domain.
-	 */
-	protected reduce(value: Product): Product {
-		return value;
-	}
-
-	private refine(): this {
-		if(!this.isTop() || this.isBottom()) {
-			const reduced = this.reduce(this.value);
-
-			if(reduced !== this.value) {
-				return this.create(reduced);
-			}
-		}
-		return this;
+		return Record.values(this.value).every(value => value.isTop());
 	}
 }

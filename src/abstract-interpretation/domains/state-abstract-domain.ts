@@ -1,16 +1,10 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
+import type { StateDomainLike } from './state-domain-like';
 
 /** The type of the concrete state of the concrete domain of a state abstract domain that maps keys to a concrete value in the concrete domain */
 export type ConcreteState<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, ConcreteDomain<Domain>>;
-
-/**
- * The type of the value abstract domain of a state abstract domain (i.e. the abstract domain a state abstract domain maps to).
- * @template StateDomain - The state abstract domain to get the value abstract domain type for
- */
-export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
-	StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
 type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
@@ -28,7 +22,8 @@ type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
-	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value> {
+	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value>
+	implements StateDomainLike<Domain> {
 
 	protected domain: Domain;
 
@@ -62,13 +57,13 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.value !== Bottom && this.value.has(key);
 	}
 
-	protected set(key: NodeId, value: Domain): void {
+	public set(key: NodeId, value: Domain): void {
 		if(this.value !== Bottom) {
 			(this._value as Map<NodeId, Domain>).set(key, value);
 		}
 	}
 
-	protected remove(key: NodeId): void {
+	public remove(key: NodeId): void {
 		if(this.value !== Bottom) {
 			(this._value as Map<NodeId, Domain>).delete(key);
 		}
@@ -279,33 +274,5 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	public isValue(): this is this & StateAbstractDomain<Domain, StateDomainValue<Domain>> {
 		return this.value !== Bottom;
-	}
-}
-
-/**
- * A mutable version of the {@link StateAbstractDomain} with {@link MutableStateAbstractDomain#set|`set`} and {@link MutableStateAbstractDomain#remove|`remove`}.
- */
-export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
-	extends StateAbstractDomain<Domain, Value> {
-
-	public create(value: StateDomainLift<Domain>): this;
-	public create(value: StateDomainLift<Domain>): MutableStateAbstractDomain<Domain> {
-		return new MutableStateAbstractDomain(value, this.domain);
-	}
-
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainTop> {
-		return new MutableStateAbstractDomain(new Map<NodeId, never>(), domain);
-	}
-
-	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainBottom> {
-		return new MutableStateAbstractDomain(Bottom, domain);
-	}
-
-	public set(key: NodeId, value: Domain): void {
-		super.set(key, value);
-	}
-
-	public remove(key: NodeId): void {
-		super.remove(key);
 	}
 }

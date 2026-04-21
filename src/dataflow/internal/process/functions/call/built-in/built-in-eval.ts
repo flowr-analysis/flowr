@@ -78,7 +78,7 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, config, data);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<never>, config, data);
 	//const code: string[] | undefined = resolveEvalToCode(evalArguments.map(v => v.value as RNode<ParentInformation>), config, data);
 
 	if(code) {

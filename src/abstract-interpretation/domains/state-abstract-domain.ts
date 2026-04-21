@@ -25,7 +25,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value>
 	implements StateDomainLike<Domain> {
 
-	protected domain: Domain;
+	public readonly domain: Domain;
 
 	constructor(value: Value, domain: Domain) {
 		if(value === Bottom || value.values().some(entry => entry.isBottom())) {
@@ -269,7 +269,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	}
 
 	public isBottom(): this is this & StateAbstractDomain<Domain, StateDomainBottom> {
-		return this.value == Bottom;
+		return this.value === Bottom;
 	}
 
 	public isValue(): this is this & StateAbstractDomain<Domain, StateDomainValue<Domain>> {

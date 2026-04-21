@@ -44,10 +44,10 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
 
-	constructor(config: Config, domain: StateDomain) {
+	constructor(config: Config, stateDomain: StateDomain) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
-		this.currentState = domain.top();
+		this.currentState = stateDomain.top();
 	}
 
 	/**
@@ -61,7 +61,9 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
-		if(node === undefined) {
+		if(state?.isBottom()) {
+			return this.currentState.domain.bottom() as ValueDomain<StateDomain>;
+		} else if(node === undefined) {
 			return;
 		} else if(state?.has(node.info.id)) {
 			return state.get(node.info.id) as ValueDomain<StateDomain>;
@@ -71,7 +73,8 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			const values = this.getVariableOrigins(node.info.id).map(origin => state?.get(origin) as ValueDomain<StateDomain>);
+			const values = this.getVariableOrigins(node.info.id)
+				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);

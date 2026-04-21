@@ -5,9 +5,29 @@ import { type AnyAbstractDomain } from './abstract-domain';
  * An interface for state-like domains that store abstract values for AST nodes.
  */
 export interface StateDomainLike<Domain extends AnyAbstractDomain> {
+	/**
+	 * The underlying value domain of the state domain.
+	 */
+	get domain(): Domain;
+
+	/**
+	 * Gets the inferred abstract value for an AST node ID.
+	 */
 	get(node: NodeId): Domain | undefined;
+
+	/**
+	 * Checks whether the state domain has an inferred value for an AST node ID.
+	 */
 	has(node: NodeId): boolean;
+
+	/**
+	 * Removes the inferred value for an AST node ID from the state domain.
+	 */
 	remove(node: NodeId): void;
+
+	/**
+	 * Sets the inferred value for an AST node ID from the state domain.
+	 */
 	set(node: NodeId, value: Domain): void;
 }
 

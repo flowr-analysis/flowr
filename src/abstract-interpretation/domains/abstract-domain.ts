@@ -117,7 +117,7 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	/**
 	 * Checks whether a value is an abstract domain.
 	 */
-	public static is(value: unknown): value is AnyAbstractDomain {
+	public static is(this: void, value: unknown): value is AnyAbstractDomain {
 		if(typeof value !== 'object' || value === null) {
 			return false;
 		}

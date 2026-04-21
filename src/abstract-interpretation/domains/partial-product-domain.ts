@@ -28,7 +28,7 @@ export type ProductValue<Product extends AbstractProduct> = {
 export abstract class PartialProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
-	protected domain: Required<Product>;
+	protected readonly domain: Required<Product>;
 
 	constructor(value: Product, domain: Required<Product>) {
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);

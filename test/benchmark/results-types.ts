@@ -1,5 +1,5 @@
 import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
-import type { FunctionDefTiming } from '../../src/dataflow/graph/graph';
+import type { FunctionDefTimingsByNode } from '../../src/dataflow/graph/graph';
 
 export interface OptimizationFlags {
     parallelFiles:      boolean;
@@ -66,7 +66,7 @@ export interface AnalysisRunResult {
     timestamp:              string;
     wallMs:                 number;
     timingBreakdown?:       DataflowTimingBreakdown;
-    functionDefTimings?:    FunctionDefTiming[];
+    functionDefTimings?:    FunctionDefTimingsByNode;
     correctness:            CorrectnessOutcome;
     lazyFunctionStats?:     LazyFunctionStats;
     sequentialReanalysis?:  boolean;
@@ -80,7 +80,7 @@ export interface ProjectResult {
     timestamp:                    string;
     wallMsByThreads:              Record<string, number[]>;
     timingByThreads?:             Record<string, DataflowTimingBreakdown[]>;
-    functionDefTimingsByThreads?: Record<string, FunctionDefTiming[][]>;
+    functionDefTimingsByThreads?: Record<string, FunctionDefTimingsByNode[]>;
     correctnessByThreads:         Record<string, CorrectnessOutcome>;
     lazyFunctionStats?:           LazyFunctionStats;
     sequentialReanalysis?:        boolean;

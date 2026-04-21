@@ -198,8 +198,6 @@ export class GraphReference {
 }
 
 export interface FunctionDefTiming {
-	/** Node id of the function definition vertex this datapoint belongs to. */
-	functionNodeId:       NodeId;
 	/** Size of the analyzed function measured as analyzed AST nodes (parameters + body). */
 	functionSizeAstNodes: number;
 	/** Time spent in the function-definition processor itself. */
@@ -211,6 +209,8 @@ export interface FunctionDefTiming {
 	/** Time spent updating parent parameter tracking after materialization. */
 	parameterMs:          number;
 }
+
+export type FunctionDefTimingsByNode = Record<string, FunctionDefTiming>;
 
 export type DataflowGraphMergeCallback = () => DataflowGraph;
 
@@ -234,7 +234,7 @@ export class DataflowGraph<
     Edge extends DataflowGraphEdge = DataflowGraphEdge
 > {
 	private _idMap:  AstIdMap | undefined;
-	public _timings: FunctionDefTiming[] = [];
+	public _timings: FunctionDefTimingsByNode = {};
 
 	/*
      * Set of vertices which have sideEffects that we do not know anything about.
@@ -288,8 +288,8 @@ export class DataflowGraph<
 		}
 	}
 
-	public recordFunctionDefinitionTiming(datapoint: FunctionDefTiming): void {
-		this._timings.push(datapoint);
+	public recordFunctionDefinitionTiming(nodeId: NodeId, datapoint: FunctionDefTiming): void {
+		this._timings[String(nodeId)] = datapoint;
 	}
 
 	public freeze(): void {
@@ -683,7 +683,7 @@ export class DataflowGraph<
 		}
 
 		// merge timings
-		this._timings.push(...otherGraph._timings);
+		Object.assign(this._timings, otherGraph._timings);
 
 		return this;
 	}

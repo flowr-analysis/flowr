@@ -13,7 +13,7 @@ import type {
 } from './results-types';
 import { CorrectnessClassification, correctnessClassificationToName } from './results-types';
 import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
-import type { FunctionDefTiming } from '../../src/dataflow/graph/graph';
+import type { FunctionDefTimingsByNode } from '../../src/dataflow/graph/graph';
 
 type Settings = {
     suitePaths:           string[];
@@ -53,7 +53,7 @@ type ThreadRunResult = {
 	fileCount:              number;
 	wallMs:                 number[];
 	timingBreakdowns:       DataflowTimingBreakdown[];
-	functionDefTimings:     FunctionDefTiming[][];
+	functionDefTimings:     FunctionDefTimingsByNode[];
 	correctness:            CorrectnessOutcome;
 	lazyFunctionStats?:     LazyFunctionStats;
 	sequentialReanalysis?:  boolean;
@@ -427,7 +427,7 @@ async function runOne(
 
 	const wallMs: number[] = [];
 	const timingBreakdowns: DataflowTimingBreakdown[] = [];
-	const functionDefTimings: FunctionDefTiming[][] = [];
+	const functionDefTimings: FunctionDefTimingsByNode[] = [];
 	let lazyFunctionStats: LazyFunctionStats | undefined;
 	let sequentialReanalysis: boolean | undefined;
 	let graphMetrics: ProjectResult['graphMetrics'] | undefined;
@@ -469,7 +469,7 @@ async function runOne(
 		if(iterationResult.timingBreakdown) {
 			timingBreakdowns.push(iterationResult.timingBreakdown);
 		}
-		if(iterationResult.functionDefTimings && iterationResult.functionDefTimings.length > 0) {
+		if(iterationResult.functionDefTimings && Object.keys(iterationResult.functionDefTimings).length > 0) {
 			functionDefTimings.push(iterationResult.functionDefTimings);
 		}
 		if(fileCount === undefined) {
@@ -681,8 +681,8 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			}
 
 			for(const [threadKey, timingRuns] of Object.entries(data.functionDefTimingsByThreads ?? {})) {
-				for(const datapoints of timingRuns) {
-					functionDefTimingCountByThreads[threadKey] = (functionDefTimingCountByThreads[threadKey] ?? 0) + datapoints.length;
+				for(const datapointsByNode of timingRuns) {
+					functionDefTimingCountByThreads[threadKey] = (functionDefTimingCountByThreads[threadKey] ?? 0) + Object.keys(datapointsByNode).length;
 				}
 			}
 

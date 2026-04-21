@@ -170,8 +170,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 			paramterUpdateMs = Date.now() - parameterStart;
 		}
 
-		currentGraph.recordFunctionDefinitionTiming({
-			functionNodeId:       this.id,
+		currentGraph.recordFunctionDefinitionTiming(this.id, {
 			functionSizeAstNodes: this.functionSizeAstNodes,
 			analysisMs:           lazyAnalysisMs,
 			mergingMs:            lazyMergingMs,
@@ -390,8 +389,7 @@ export function processFunctionDefinition<OtherInfo>(
 		const analysisStart = Date.now();
 		const result = processFunctionDefinitionEagerly(name, args, rootId, data);
 		const analysisMs = Date.now() - analysisStart;
-		result.graph.recordFunctionDefinitionTiming({
-			functionNodeId:       name.info.id,
+		result.graph.recordFunctionDefinitionTiming(name.info.id, {
 			functionSizeAstNodes: countAnalyzedFunctionAstNodes(args),
 			analysisMs,
 			mergingMs:            0,

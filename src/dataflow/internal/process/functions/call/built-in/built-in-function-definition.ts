@@ -23,6 +23,7 @@ import {
 	EmptyArgument,
 	type RFunctionArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
@@ -38,22 +39,24 @@ import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in
 import type { FlowrAnalyzerContext, ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
+import { visitAst } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 
 export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> implements DataflowGraphVertexFunctionDefinition {
 	readonly tag = VertexType.FunctionDefinition;
 	readonly lazy = true;
-	readonly id:                    NodeId;
-	private readonly processorData: DataflowProcessorInformation<OtherInfo & ParentInformation>;
-	private readonly astNode:       RSymbol<OtherInfo & ParentInformation>;
-	private readonly args:          readonly RFunctionArgument<OtherInfo & ParentInformation>[];
-	private readonly rootId:        NodeId;
-	private _subflow?:              DataflowFunctionFlowInformation;
-	private _exitPoints?:           readonly ExitPoint[];
-	private _params?:               Record<NodeId, boolean>;
-	private _environment?:          REnvironmentInformation;
-	private _cds?:                  ControlDependency[];
-	private _indicesCollection?:    ContainerIndicesCollection;
-	private _link?:                 DataflowGraphVertexAstLink;
+	readonly id:                           NodeId;
+	private readonly processorData:        DataflowProcessorInformation<OtherInfo & ParentInformation>;
+	private readonly astNode:              RSymbol<OtherInfo & ParentInformation>;
+	private readonly args:                 readonly RFunctionArgument<OtherInfo & ParentInformation>[];
+	private readonly rootId:               NodeId;
+	private readonly functionSizeAstNodes: number;
+	private _subflow?:                     DataflowFunctionFlowInformation;
+	private _exitPoints?:                  readonly ExitPoint[];
+	private _params?:                      Record<NodeId, boolean>;
+	private _environment?:                 REnvironmentInformation;
+	private _cds?:                         ControlDependency[];
+	private _indicesCollection?:           ContainerIndicesCollection;
+	private _link?:                        DataflowGraphVertexAstLink;
 
 	private _materialized = false;
 	private _frozen = false;
@@ -84,6 +87,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		this.args = args;
 		this.rootId = rootId;
 		this.processorData = data;
+		this.functionSizeAstNodes = countAnalyzedFunctionAstNodes(args);
 		this._graph = graph;
 
 		// Create a getter callback that will return the current graph.
@@ -106,8 +110,9 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		if(settings.onlyTopLevel) {
 			settings.enabled = false;
 		}
-
+		const analysisStart = Date.now();
 		const info = processFunctionDefinitionEagerly(this.astNode, this.args, this.rootId, this.processorData);
+		const lazyAnalysisMs = Date.now() - analysisStart;
 
 		settings.enabled = originalSetting;
 		/** vertex must have same id */
@@ -127,6 +132,7 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		this._link = materialized.link;
 		this._materialized = true;
 
+		const mergingStart = Date.now();
 		// Get the current unified graph by calling the callback.
 		// The callback automatically returns the latest graph (updated by merges).
 		const currentGraph = this._getCurrentGraph();
@@ -134,12 +140,14 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 		// merge the materialized vertex graph into the current unified graph
 		currentGraph.mergeWith(info.graph, false);
 		currentGraph.moveVertexToEnd(this.id);
+		const lazyMergingMs = Date.now() - mergingStart;
 
-		// The materialized function has been processed by processFunctionDefinitionEagerly which calls
-		// updateNestedFunctionClosures at line ~420. That already attempted to resolve closures but deferred
-		// this lazy function. Now that we've materialized, we need to try closure resolution again in the
-		// unified graph context with all parent environments that deferred this function.
+		let closureUpdateMs = 0;
+		let paramterUpdateMs = 0;
+
+		// perform the closure update for all record entries
 		if(this._pendingClosureUpdates.size > 0) {
+			const closureStart = Date.now();
 			// Apply each pending closure update from unique parent functions
 			for(const { outEnvironment, fnId } of this._pendingClosureUpdates.values()) {
 				updateFunctionAndNestedClosures(
@@ -150,7 +158,8 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 					this.processorData.ctx
 				);
 			}
-
+			closureUpdateMs = Date.now() - closureStart;
+			const parameterStart = Date.now();
 			updateParentParameterTracking(currentGraph, this.id);
 
 			// Update parameter tracking for all parent functions
@@ -158,7 +167,17 @@ export class DataflowGraphVertexLazyFunctionDefinition<OtherInfo = unknown> impl
 			for(const fnId of parentFnIds) {
 				updateParentParameterTracking(currentGraph, fnId);
 			}
+			paramterUpdateMs = Date.now() - parameterStart;
 		}
+
+		currentGraph.recordFunctionDefinitionTiming({
+			functionNodeId:       this.id,
+			functionSizeAstNodes: this.functionSizeAstNodes,
+			analysisMs:           lazyAnalysisMs,
+			mergingMs:            lazyMergingMs,
+			closureMs:            closureUpdateMs,
+			parameterMs:          paramterUpdateMs,
+		});
 	}
 
 	public freeze(): void {
@@ -368,8 +387,45 @@ export function processFunctionDefinition<OtherInfo>(
 
 	} else {
 		/** analyze eagerly */
-		return processFunctionDefinitionEagerly(name, args, rootId, data);
+		const analysisStart = Date.now();
+		const result = processFunctionDefinitionEagerly(name, args, rootId, data);
+		const analysisMs = Date.now() - analysisStart;
+		result.graph.recordFunctionDefinitionTiming({
+			functionNodeId:       name.info.id,
+			functionSizeAstNodes: countAnalyzedFunctionAstNodes(args),
+			analysisMs,
+			mergingMs:            0,
+			closureMs:            0,
+			parameterMs:          0,
+		});
+		return result;
 	}
+}
+
+/**
+ * Estimate analyzed function size by counting AST nodes in processed parameters and body.
+ */
+function countAnalyzedFunctionAstNodes<OtherInfo>(
+	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]
+): number {
+	let count = 0;
+	const countNodes = (
+		node: RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined
+	): void => {
+		if(node === undefined || node === EmptyArgument) {
+			return;
+		}
+		visitAst(node, () => {
+			count++;
+		});
+	};
+	// count param nodes
+	for(const param of args.slice(0, -1)) {
+		countNodes(param);
+	}
+	// count body nodes
+	countNodes(unpackNonameArg(args.at(-1)));
+	return count;
 }
 
 
@@ -638,7 +694,6 @@ function processFunctionClosures(
 		vertex['_pendingClosureUpdates'].set(fnId, { outEnvironment, fnId });
 		return false;
 	}
-
 	const { subflow } = vertex;
 	const ingoingRefs = subflow.in;
 	const remainingIn: IdentifierReference[] = [];

@@ -207,10 +207,12 @@ async function runOnce(
 
 		const result = await analyzer.dataflow();
 		const timingBreakdown = result.timings;
+		const functionDefTimings = result.graph._timings;
 
 		return {
 			wallMs:              result['.meta'].timing,
 			timingBreakdown,
+			functionDefTimings,
 			graph:               captureGraph ? result.graph : undefined,
 			reanalysisTriggered: result.reanalysisTriggered,
 			reanalysisIteration: result.reanalysisIteration,
@@ -337,6 +339,7 @@ async function main(): Promise<void> {
 		timestamp:            new Date().toISOString(),
 		wallMs,
 		timingBreakdown:      run.timingBreakdown,
+		functionDefTimings:   run.functionDefTimings,
 		correctness,
 		lazyFunctionStats:    lazyStats,
 		sequentialReanalysis: sequentialReanalysis,

@@ -13,6 +13,7 @@ import type {
 } from './results-types';
 import { CorrectnessClassification, correctnessClassificationToName } from './results-types';
 import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
+import type { FunctionDefTiming } from '../../src/dataflow/graph/graph';
 
 type Settings = {
     suitePaths:           string[];
@@ -52,6 +53,7 @@ type ThreadRunResult = {
 	fileCount:              number;
 	wallMs:                 number[];
 	timingBreakdowns:       DataflowTimingBreakdown[];
+	functionDefTimings:     FunctionDefTiming[][];
 	correctness:            CorrectnessOutcome;
 	lazyFunctionStats?:     LazyFunctionStats;
 	sequentialReanalysis?:  boolean;
@@ -202,6 +204,10 @@ function buildProjectResult(results: readonly ThreadRunResult[]): ProjectResult 
 		if(result.timingBreakdowns.length > 0) {
 			projectResult.timingByThreads ??= {};
 			projectResult.timingByThreads[result.threadKey] = result.timingBreakdowns;
+		}
+		if(result.functionDefTimings.length > 0) {
+			projectResult.functionDefTimingsByThreads ??= {};
+			projectResult.functionDefTimingsByThreads[result.threadKey] = result.functionDefTimings;
 		}
 		projectResult.correctnessByThreads[result.threadKey] = result.correctness;
 		projectResult.lazyFunctionStats ??= result.lazyFunctionStats;
@@ -421,6 +427,7 @@ async function runOne(
 
 	const wallMs: number[] = [];
 	const timingBreakdowns: DataflowTimingBreakdown[] = [];
+	const functionDefTimings: FunctionDefTiming[][] = [];
 	let lazyFunctionStats: LazyFunctionStats | undefined;
 	let sequentialReanalysis: boolean | undefined;
 	let graphMetrics: ProjectResult['graphMetrics'] | undefined;
@@ -462,6 +469,9 @@ async function runOne(
 		if(iterationResult.timingBreakdown) {
 			timingBreakdowns.push(iterationResult.timingBreakdown);
 		}
+		if(iterationResult.functionDefTimings && iterationResult.functionDefTimings.length > 0) {
+			functionDefTimings.push(iterationResult.functionDefTimings);
+		}
 		if(fileCount === undefined) {
 			fileCount = iterationResult.fileCount;
 		} else if(fileCount !== iterationResult.fileCount) {
@@ -494,6 +504,7 @@ async function runOne(
 			fileCount,
 			wallMs,
 			timingBreakdowns,
+			functionDefTimings,
 			correctness,
 			lazyFunctionStats,
 			sequentialReanalysis,
@@ -627,6 +638,7 @@ function collectResults(outputRoot: string): BenchmarkResult {
 		const runtimesByThreads: Record<string, number[]> = {};
 		const timingByThreads: Record<string, DataflowTimingBreakdown> = {};
 		const timingCountsByThreads: Record<string, number> = {};
+		const functionDefTimingCountByThreads: Record<string, number> = {};
 
 		for(const projectDir of projectDirs) {
 			const _projectName = path.basename(projectDir);
@@ -665,6 +677,12 @@ function collectResults(outputRoot: string): BenchmarkResult {
 				for(const timing of timings) {
 					timingByThreads[threadKey] = addTimingBreakdown(timingByThreads[threadKey], timing) as DataflowTimingBreakdown;
 					timingCountsByThreads[threadKey] = (timingCountsByThreads[threadKey] ?? 0) + 1;
+				}
+			}
+
+			for(const [threadKey, timingRuns] of Object.entries(data.functionDefTimingsByThreads ?? {})) {
+				for(const datapoints of timingRuns) {
+					functionDefTimingCountByThreads[threadKey] = (functionDefTimingCountByThreads[threadKey] ?? 0) + datapoints.length;
 				}
 			}
 
@@ -725,6 +743,11 @@ function collectResults(outputRoot: string): BenchmarkResult {
 				);
 			}
 		}
+		if(Object.keys(functionDefTimingCountByThreads).length > 0) {
+			for(const [threadKey, count] of Object.entries(functionDefTimingCountByThreads).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+				console.log(`  function-def timing datapoints threads=${threadKey}: ${count}`);
+			}
+		}
 
 		const timingStatsByThreads = Object.keys(timingByThreads).length > 0 ?
 			Object.fromEntries(
@@ -752,8 +775,9 @@ function collectResults(outputRoot: string): BenchmarkResult {
 			totalFiles,
 			meanRuntimeMsByThreads,
 			timingStatsByThreads,
+			functionDefTimingCountByThreads: Object.keys(functionDefTimingCountByThreads).length > 0 ? functionDefTimingCountByThreads : undefined,
 			totalLazyFunctionStats,
-			correctnessStatsByThreads: Object.keys(correctnessStatsByThreads).length > 0 ? correctnessStatsByThreads : undefined,
+			correctnessStatsByThreads:       Object.keys(correctnessStatsByThreads).length > 0 ? correctnessStatsByThreads : undefined,
 			aggregateGraphMetrics,
 			aggregateSourceStats,
 		});

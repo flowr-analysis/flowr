@@ -1,4 +1,5 @@
 import type { DataflowTimingBreakdown } from '../../src/dataflow/timing';
+import type { FunctionDefTiming } from '../../src/dataflow/graph/graph';
 
 export interface OptimizationFlags {
     parallelFiles:      boolean;
@@ -65,6 +66,7 @@ export interface AnalysisRunResult {
     timestamp:              string;
     wallMs:                 number;
     timingBreakdown?:       DataflowTimingBreakdown;
+    functionDefTimings?:    FunctionDefTiming[];
     correctness:            CorrectnessOutcome;
     lazyFunctionStats?:     LazyFunctionStats;
     sequentialReanalysis?:  boolean;
@@ -73,16 +75,17 @@ export interface AnalysisRunResult {
 }
 
 export interface ProjectResult {
-    project:                string;
-    fileCount:              number;
-    timestamp:              string;
-    wallMsByThreads:        Record<string, number[]>;
-    timingByThreads?:       Record<string, DataflowTimingBreakdown[]>;
-    correctnessByThreads:   Record<string, CorrectnessOutcome>;
-    lazyFunctionStats?:     LazyFunctionStats;
-    sequentialReanalysis?:  boolean;
-    graphMetrics?:          GraphMetrics;
-    sourceCharacteristics?: SourceCharacteristics;
+    project:                      string;
+    fileCount:                    number;
+    timestamp:                    string;
+    wallMsByThreads:              Record<string, number[]>;
+    timingByThreads?:             Record<string, DataflowTimingBreakdown[]>;
+    functionDefTimingsByThreads?: Record<string, FunctionDefTiming[][]>;
+    correctnessByThreads:         Record<string, CorrectnessOutcome>;
+    lazyFunctionStats?:           LazyFunctionStats;
+    sequentialReanalysis?:        boolean;
+    graphMetrics?:                GraphMetrics;
+    sourceCharacteristics?:       SourceCharacteristics;
 }
 
 export interface CorrectnessStats {
@@ -104,18 +107,19 @@ export type FailedProjectResult = FailedProjectBase & {
 export type CorrectnessStatsByThreads = Record<string, CorrectnessStats>;
 
 export interface BenchmarkSuiteResult {
-    suiteName:                  string;
-    projects:                   ProjectResult[];
-    failedProjects:             FailedProjectResult[];
-    totalRuntimeMs:             number;
-    meanProjectRuntimeMs:       number;
-    totalFiles:                 number;
-    meanRuntimeMsByThreads?:    Record<string, number>;
-    timingStatsByThreads?:      Record<string, DataflowTimingBreakdown>;
-    totalLazyFunctionStats?:    LazyFunctionStats;
-    correctnessStatsByThreads?: CorrectnessStatsByThreads;
-    aggregateGraphMetrics?:     GraphMetrics;
-    aggregateSourceStats?:      SourceCharacteristics;
+    suiteName:                        string;
+    projects:                         ProjectResult[];
+    failedProjects:                   FailedProjectResult[];
+    totalRuntimeMs:                   number;
+    meanProjectRuntimeMs:             number;
+    totalFiles:                       number;
+    meanRuntimeMsByThreads?:          Record<string, number>;
+    timingStatsByThreads?:            Record<string, DataflowTimingBreakdown>;
+    functionDefTimingCountByThreads?: Record<string, number>;
+    totalLazyFunctionStats?:          LazyFunctionStats;
+    correctnessStatsByThreads?:       CorrectnessStatsByThreads;
+    aggregateGraphMetrics?:           GraphMetrics;
+    aggregateSourceStats?:            SourceCharacteristics;
 }
 
 export type BenchmarkResult = BenchmarkSuiteResult[];

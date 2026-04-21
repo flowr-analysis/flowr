@@ -235,7 +235,7 @@ export const DefaultBuiltinConfig = [
 				'.Fortran':  ['.NAME']
 			}
 		},                            assumePrimitive: true },
-	{ type: 'function', names: ['eval'],                                       processor: BuiltInProcName.Eval,                config: { includeFunctionCall: true },                                                 assumePrimitive: true },
+	{ type: 'function', names: ['eval'],                                       processor: BuiltInProcName.Eval,                config: { includeFunctionCall: true, supportFunctionCall: false },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['evalText'],                                   processor: BuiltInProcName.Eval,                config: { includeFunctionCall: true, supportFunctionCall: true },                                                 assumePrimitive: true },
 	{ type: 'function', names: ['cat'],                                        processor: BuiltInProcName.Default,             config: { forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } },                                                         assumePrimitive: false },
 	{ type: 'function', names: ['switch'],                                     processor: BuiltInProcName.Default,             config: { forceArgs: [true] },                                                         assumePrimitive: false },

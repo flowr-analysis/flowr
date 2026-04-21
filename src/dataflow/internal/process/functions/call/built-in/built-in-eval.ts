@@ -44,18 +44,24 @@ export function processEvalCall<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: {
 		/** should this produce an explicit source function call in the graph? */
-		includeFunctionCall?: boolean,
+		includeFunctionCall?: boolean
+		/** if selected processes evalText function call, else processes eval*/
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
+	if(/*!config.supportFunctionCall &&*/args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
 		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-
+	/*
+		if(config.supportFunctionCall && args.filter(v => v !== EmptyArgument && (v as RArgument).value).length < 1){
+			dataflowLogger.warn(`Expected at least one argument for evalText currently, skipping`);
+			return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		}*/
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
+	//const evalArguments = config.supportFunctionCall ? args.filter(v => v !== EmptyArgument && (v as RArgument).value).map(v => v as RArgument<ParentInformation>) : [args[0] as RArgument<ParentInformation>];
 	const evalArgument = args[0];
 
 	if(config.includeFunctionCall) {
@@ -72,7 +78,8 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx, config.supportFunctionCall);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, config, data);
+	//const code: string[] | undefined = resolveEvalToCode(evalArguments.map(v => v.value as RNode<ParentInformation>), config, data);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -110,40 +117,55 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext, supportFunctionCall: boolean | undefined): string[] | undefined {
-	const val = evalArgument;
-	let arg;
-	if(
-		supportFunctionCall || val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse') {
-		if(val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse'){
-			arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>/*[]*/, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+	const ctx = data.ctx;
+	const env = data.environment;
+	const idMap = data.completeAst.idMap;
+	const val = evalArgument;//[0];
+
+	if(config.supportFunctionCall){
+		/*if(evalArgument.length > 1){
+			const a = evalArgument.find(v => v.functionName === 'env')
+		}*/
+		if(val.type === RType.String){
+			return [val.content.str];
+		} else if(val.type === RType.Symbol){
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
+			if(resolved) {
+				return collectStrings(resolved.elements);
+			}
+		}
+		return undefined;
+	} else {
+		if(
+			val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse'
+		) {
+			const arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
 			const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
 			if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
 				return undefined;
 			}
-			arg = arg.value;
-		} else {
-			arg = val;
-		}
-		if(arg?.type === RType.String) {
-			return [arg?.content.str];
-		} else if(arg?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg?.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
-			if(resolved) {
-				return collectStrings(resolved.elements);
+			if(arg.value?.type === RType.String) {
+				return [arg.value.content.str];
+			} else if(arg.value?.type === RType.Symbol) {
+				const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
+				if(resolved) {
+					return collectStrings(resolved.elements);
+				}
+			} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
+				return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
 			}
-		} else if(arg?.type === RType.FunctionCall && arg?.named && ['paste', 'paste0'].includes(Identifier.getName(arg?.functionName.content))) {
-			return handlePaste(ctx.config, arg?.arguments, env, idMap, arg?.functionName.content === 'paste' ? [' '] : [''], ctx);
+			return undefined;
+		} else if(val.type === RType.Symbol) {
+			// const resolved = resolveValueOfVariable(val.content, env);
+			// see https://github.com/flowr-analysis/flowr/pull/1467
+			return undefined;
+		} else {
+			return undefined;
 		}
-		return undefined;
-	} else if(val.type === RType.Symbol) {
-		// const resolved = resolveValueOfVariable(val.content, env);
-		// see https://github.com/flowr-analysis/flowr/pull/1467
-		return undefined;
-	} else {
-		return undefined;
 	}
 }
+
 
 function getAsString(config: FlowrConfig, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	if(!val) {

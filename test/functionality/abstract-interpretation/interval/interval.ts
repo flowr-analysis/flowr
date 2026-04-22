@@ -1,6 +1,8 @@
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import { NumericInferenceVisitor } from '../../../../src/abstract-interpretation/interval/numeric-inference';
+import {
+	NumericIntervalInferenceVisitor
+} from '../../../../src/abstract-interpretation/interval/numeric-interval-inference';
 import { beforeAll, expect, test } from 'vitest';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -65,13 +67,13 @@ export type SlicingCriterionExpected = { domain: IntervalDomain | undefined, mat
 export type IntervalTestExpected = { [key: SlicingCriterion]: SlicingCriterionExpected };
 
 /**
- * Executes the {@link NumericInferenceVisitor} on the given code and tests the inferred interval values for each slicing criterion against the expected result.
+ * Executes the {@link NumericIntervalInferenceVisitor} on the given code and tests the inferred interval values for each slicing criterion against the expected result.
  * @param code - The code snippet to analyze.
  * @param expected - An object mapping each slicing criterion to the expected interval domain (or `undefined` for top) that should be inferred by the visitor.
  */
 export function testIntervalDomain(code: string, expected: IntervalTestExpected) {
 	let ast: NormalizedAst<ParentInformation, RProject<ParentInformation>>;
-	let visitor: NumericInferenceVisitor;
+	let visitor: NumericIntervalInferenceVisitor;
 
 	beforeAll(async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
@@ -83,7 +85,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 		const cfg = await analyzer.controlflow();
 		const ctx = analyzer.inspectContext();
 
-		visitor = new NumericInferenceVisitor({
+		visitor = new NumericIntervalInferenceVisitor({
 			normalizedAst: ast,
 			dfg:           dfg,
 			controlFlow:   cfg,

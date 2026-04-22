@@ -16,7 +16,7 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
-export class NumericInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
+export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, IntervalDomain.top());
 	}

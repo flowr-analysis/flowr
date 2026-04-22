@@ -1,7 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom, BottomSymbol, Top } from '../domains/lattice';
 import { AbstractDomain } from '../domains/abstract-domain';
-import { isNotUndefined } from '../../util/assert';
+import { isNotUndefined, isUndefined } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 
 /** The type of the actual values of the upper bounds domain as mapping from NodeId to all NodeIds that are greater or equal */
@@ -32,6 +32,42 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 		return new UpperBoundsDomain(value);
 	}
 
+	/**
+	 * Sets the upper bounds for the provided key if the domain is not Bottom.
+	 * @param key - The node to set the upper bounds for.
+	 * @param value - The upper bounds of the node.
+	 * @private
+	 */
+	private setBounds(key: NodeId, value: ReadonlySet<NodeId>): void {
+		if(this.value !== Bottom) {
+			(this.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, value);
+		}
+	}
+
+	/**
+	 * Removes the upper bounds for the provided key if the domain is not Bottom.
+	 * @param key - The node to remove the upper bounds for.
+	 * @private
+	 */
+	private removeBounds(key: NodeId): void {
+		if(this.value !== Bottom) {
+			(this.value as Map<NodeId, ReadonlySet<NodeId>>).delete(key);
+		}
+	}
+
+	/**
+	 * Retrieves the upper bounds for the provided key or undefined if the domain is Bottom.
+	 * Assures that the key is part of the returned set (as x &leq; x always holds).
+	 * @param key - The node to receive the upper bounds for.
+	 * @private
+	 */
+	private getBounds(key: NodeId): ReadonlySet<NodeId> | undefined {
+		if(this.value === Bottom) {
+			return undefined;
+		}
+		return this.value.get(key)?.union(new Set([key])) ?? new Set([key]);
+	}
+
 	public static top(): UpperBoundsDomain<UpperBoundsTop> {
 		return new UpperBoundsDomain(new Map<NodeId, never>());
 	}
@@ -59,7 +95,9 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 
 		const allKeys = new Set<NodeId>([...this.value.keys(), ...other.value.keys()]);
 		for(const key of allKeys){
-			if(!setEquals(new Set([key]).union(this.value.get(key) ?? new Set()), new Set([key]).union(other.value.get(key) ?? new Set()))) {
+			const thisBounds = this.getBounds(key);
+			const otherBounds = other.getBounds(key);
+			if(isUndefined(thisBounds) || isUndefined(otherBounds) || !setEquals(thisBounds, otherBounds)) {
 				return false;
 			}
 		}
@@ -74,8 +112,9 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 			return false;
 		}
 
-		for(const [key, value] of other.value.entries()) {
-			if(!value.isSubsetOf(new Set<NodeId>([key]).union(this.value.get(key) ?? new Set()))) {
+		for(const [key, otherValue] of other.value.entries()) {
+			const thisValue = this.getBounds(key);
+			if(isNotUndefined(thisValue) && !otherValue.isSubsetOf(thisValue)) {
 				return false;
 			}
 		}
@@ -92,14 +131,14 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 
 		for(const key of result.value.keys()) {
 			if(!other.value.has(key)) {
-				(result.value as Map<NodeId, ReadonlySet<NodeId>>).delete(key);
+				result.removeBounds(key);
 			}
 		}
 		for(const [key, value] of other.value.entries()) {
 			const currValue = result.value.get(key);
 
-			if(currValue !== undefined) {
-				(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, currValue.intersection(value));
+			if(isNotUndefined(currValue)) {
+				result.setBounds(key, currValue.intersection(value));
 			}
 		}
 		return result;
@@ -114,10 +153,10 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 		for(const [key, value] of other.value.entries()) {
 			const currValue = result.value.get(key);
 
-			if(currValue === undefined) {
-				(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, value);
+			if(isUndefined(currValue)) {
+				result.setBounds(key, value);
 			} else {
-				(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, currValue.union(value));
+				result.setBounds(key, currValue.union(value));
 			}
 		}
 		return result;
@@ -133,11 +172,11 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 		const allKeys = new Set<NodeId>([...this.value.keys(), ...other.value.keys()]);
 
 		for(const key of allKeys.values()) {
-			const thisValue = this.value.get(key);
-			const otherValue = other.value.get(key);
+			const thisValue = this.getBounds(key);
+			const otherValue = other.getBounds(key);
 
-			if(thisValue !== undefined && otherValue !== undefined && otherValue.isSubsetOf(thisValue.union(new Set([key])))) {
-				(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, otherValue);
+			if(isNotUndefined(thisValue) && isNotUndefined(otherValue) && otherValue.isSubsetOf(thisValue)) {
+				result.setBounds(key, otherValue);
 			}
 		}
 		return result;
@@ -179,13 +218,13 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 					const valueA = map.get(nodeIdA);
 					const valueB = map.get(nodeIdB);
 
-					return valueA !== undefined && valueB !== undefined && valueA <= valueB;
+					return isNotUndefined(valueA) && isNotUndefined(valueB) && valueA <= valueB;
 				})) {
 					const currentValue = result.value.get(nodeIdA);
 					if(isNotUndefined(currentValue)) {
-						(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(nodeIdA, currentValue.union(new Set([nodeIdB])));
+						result.setBounds(nodeIdA, currentValue.union(new Set([nodeIdB])));
 					} else {
-						(result.value as Map<NodeId, ReadonlySet<NodeId>>).set(nodeIdA, new Set([nodeIdB]));
+						result.setBounds(nodeIdA, new Set([nodeIdB]));
 					}
 				}
 			}

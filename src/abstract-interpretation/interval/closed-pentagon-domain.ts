@@ -61,7 +61,10 @@ export class ClosedPentagonDomain extends ProductDomain<AbstractClosedPentagon> 
 					}
 				}
 
-				(value.upperBounds.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, inferredUpperBounds.union(value.upperBounds.value.get(key) ?? new Set()));
+				const prevUpperBounds = value.upperBounds.value.get(key) ?? new Set();
+				const newUpperBounds = prevUpperBounds.union(inferredUpperBounds);
+
+				(value.upperBounds.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, newUpperBounds);
 			}
 		}
 		return value;

@@ -48,6 +48,19 @@ describe.sequential('eval', withTreeSitter(tr => {
 			resolveIdsAsCriterion: true,
 			context:               'dataflow'
 		});
+	assertDataflow(label('simple eval use for dataflow', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		tr, 'x <- 1\ny <- 1\na <- 2\nz <- eval(parse(text="x+y"))', emptyGraph()
+			.definedBy('4@z', '4@eval')
+			.addEdge(17, 'eval::17-1:27-1:30-2', EdgeType.Reads | EdgeType.Calls)
+			.addEdge('eval::17-1:27-1:30-2', 'eval::17-1:27-1:30-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-1:27-1:30-2', 'eval::17-1:27-1:30-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('eval::17-1:27-1:30-0', '1@x', EdgeType.Reads)
+			.addEdge('eval::17-1:27-1:30-1', '2@y', EdgeType.Reads),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			context:               'dataflow'
+		});
 }));
 
 describe.sequential('evalText', withShell(shell => {
@@ -93,6 +106,19 @@ describe.sequential('evalText', withTreeSitter(tr => {
 			.definedBy('4@z', '4@evalText')
 			.addEdge('4@evalText', '4@x', EdgeType.Argument | EdgeType.Reads | EdgeType.Returns)
 			.addEdge('4@x', '2@x', EdgeType.Reads),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			context:               'dataflow'
+		});
+	assertDataflow(label('simple evalText use for dataflow', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+		tr, 'x <- 1\ny <- 1\na <- 2\nz <- evalText("x+y")', emptyGraph()
+			.definedBy('4@z', '4@evalText')
+			.addEdge(13, 'evalText::13-1:27-1:34-2', EdgeType.Returns)
+			.addEdge('evalText::13-1:27-1:34-2', 'evalText::13-1:27-1:34-0', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-1:27-1:34-2', 'evalText::13-1:27-1:34-1', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('evalText::13-1:27-1:34-0', '1@x', EdgeType.Reads)
+			.addEdge('evalText::13-1:27-1:34-1', '2@y', EdgeType.Reads),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,

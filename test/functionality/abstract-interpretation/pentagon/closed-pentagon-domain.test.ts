@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
-import type { AbstractClosedPentagon } from '../../../../src/abstract-interpretation/interval/closed-pentagon-domain';
-import { ClosedPentagonDomain } from '../../../../src/abstract-interpretation/interval/closed-pentagon-domain';
+import type { AbstractClosedPentagon } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-domain';
+import { ClosedPentagonDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-domain';
 import { assertAbstractDomain } from '../domains/domain';
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
-import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/interval/upper-bounds-domain';
+import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-domain';
 import { StateAbstractDomain } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
 import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';

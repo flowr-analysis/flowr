@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { assertAbstractDomain } from '../domains/domain';
-import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/interval/upper-bounds-domain';
+import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-domain';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 

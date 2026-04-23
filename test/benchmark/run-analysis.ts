@@ -4,7 +4,7 @@ import * as process from 'process';
 import { FlowrAnalyzerBuilder } from '../../src/project/flowr-analyzer-builder';
 import { diffOfDataflowGraphs } from '../../src/dataflow/graph/diff-dataflow-graph';
 import type { FlowrAnalyzer } from '../../src/project/flowr-analyzer';
-import type { DataflowGraph } from '../../src/dataflow/graph/graph';
+import type { DataflowGraph, FunctionDefTimingsByNode } from '../../src/dataflow/graph/graph';
 import { edgeIncludesType, EdgeType } from '../../src/dataflow/graph/edge';
 import type {
 	OptimizationFlags,
@@ -18,6 +18,10 @@ import { CorrectnessClassification } from './results-types';
 import { VertexType } from '../../src/dataflow/graph/vertex';
 
 const tempResultRelativePath = './.tmp-analysis-result.json';
+
+function cloneFunctionDefTimings(timings: FunctionDefTimingsByNode): FunctionDefTimingsByNode {
+	return Object.fromEntries(Object.entries(timings).map(([nodeId, timing]) => [nodeId, { ...timing }]));
+}
 
 function readArgValue(name: string): string | undefined {
 	const idx = process.argv.indexOf(name);
@@ -207,7 +211,8 @@ async function runOnce(
 
 		const result = await analyzer.dataflow();
 		const timingBreakdown = result.timings;
-		const functionDefTimings = result.graph._timings;
+		// Snapshot timings immediately: correctness checks may materialize lazy functions later.
+		const functionDefTimings = cloneFunctionDefTimings(result.graph._timings);
 
 		return {
 			wallMs:              result['.meta'].timing,

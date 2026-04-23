@@ -469,9 +469,7 @@ async function runOne(
 		if(iterationResult.timingBreakdown) {
 			timingBreakdowns.push(iterationResult.timingBreakdown);
 		}
-		if(iterationResult.functionDefTimings && Object.keys(iterationResult.functionDefTimings).length > 0) {
-			functionDefTimings.push(iterationResult.functionDefTimings);
-		}
+		functionDefTimings.push(iterationResult.functionDefTimings ?? {});
 		if(fileCount === undefined) {
 			fileCount = iterationResult.fileCount;
 		} else if(fileCount !== iterationResult.fileCount) {

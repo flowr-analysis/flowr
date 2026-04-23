@@ -7,13 +7,13 @@ import type { StateDomainLike } from './state-domain-like';
 export type ConcreteState<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, ConcreteDomain<Domain>>;
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
-type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
+export type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
 /** The type of the Top element of the state abstract domain as (empty) map of keys to domain values */
-type StateDomainTop = ReadonlyMap<NodeId, never>;
+export type StateDomainTop = ReadonlyMap<NodeId, never>;
 /** The type of the Bottom element of the state abstract domain as {@link Bottom} symbol */
-type StateDomainBottom = typeof Bottom;
+export type StateDomainBottom = typeof Bottom;
 /** The type of the abstract values of the state abstract domain that are Top, Bottom, or actual values */
-type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
+export type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
 
 /**
  * A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
@@ -49,23 +49,23 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(Bottom, domain);
 	}
 
-	public get(key: NodeId): Domain | undefined {
-		return this.value === Bottom ? this.domain.bottom() : this.value.get(key);
+	public get(node: NodeId): Domain | undefined {
+		return this.value === Bottom ? this.domain.bottom() : this.value.get(node);
 	}
 
-	public has(key: NodeId): boolean {
-		return this.value !== Bottom && this.value.has(key);
+	public has(node: NodeId): boolean {
+		return this.value !== Bottom && this.value.has(node);
 	}
 
-	public set(key: NodeId, value: Domain): void {
+	public set(node: NodeId, value: Domain): void {
 		if(this.value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).set(key, value);
+			(this._value as Map<NodeId, Domain>).set(node, value);
 		}
 	}
 
-	public remove(key: NodeId): void {
+	public remove(node: NodeId): void {
 		if(this.value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).delete(key);
+			(this._value as Map<NodeId, Domain>).delete(node);
 		}
 	}
 

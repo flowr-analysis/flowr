@@ -20,15 +20,15 @@ export type ProductValue<Product extends AbstractProduct> = {
 };
 
 /**
- * A product abstract domain as named Cartesian product of sub abstract domains.
- * The sub abstract domains are represented by a record mapping property names to abstract domains.
- * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as mapping every sub abstract domain to Top.
- * @template Product - Type of the abstract product of the product domain mapping property names to abstract domains
+ * A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
+ * The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
+ * The Bottom element is defined as mapping every sub abstract domain to Bottom and the Top element is defined as having no sub abstract domain value.
+ * @template Product - Type of the abstract product of the product domain mapping (optional) property names to abstract domains
  */
 export abstract class PartialProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
 
-	protected readonly domain: Required<Product>;
+	public readonly domain: Required<Product>;
 
 	constructor(value: Product, domain: Required<Product>) {
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);

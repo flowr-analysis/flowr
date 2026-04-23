@@ -55,12 +55,16 @@ x <- 2
 if(u) t <- "print(x)" else
 t <- "print(k)"
 y <- evalText(t)`);
-	assertSliced(label('', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
+	assertSliced(label('evalText should resolve back', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		shell, `x <- 1
 y <- 0
 for(i in 1:4){
 	y <- 4
 }
 if(u >= 4) y <- 2
-t <- evalText("1+y")`, ['4@z'], '');
+t <- evalText("1+y")
+print(y)`, ['8@print'], `y <- 0
+for(i in 1:4) y <- 4
+if(u >= 4) y <- 2
+print(y)`);
 }));

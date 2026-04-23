@@ -58,7 +58,7 @@ import {
 	CascadingLoggerWithRedefinedPrint,
 	ClosureCascadeWithRedefinedPlus
 } from './cascading-side-effects-with-redefinitions';
-import { RealScriptWithError } from './real-scripts';
+import { RealScriptWithError, SingleFileFailures } from './real-scripts';
 
 /**
  * Collections of Analysis Test Cases
@@ -158,5 +158,6 @@ export const cascadingSideEffectsWithRedefinitionTests: TestSuite = [
 ];
 
 export const realScriptTests: TestSuite = [
-	{ name: 'RealScriptWithError', setup: RealScriptWithError }
+	{ name: 'RealScriptWithError', setup: RealScriptWithError },
+	{ name: 'SingleFileFailures', setup: SingleFileFailures }
 ];

@@ -1,6 +1,5 @@
 import { Record } from '../../util/record';
-import type { AbstractProduct } from './partial-product-domain';
-import { PartialProductDomain } from './partial-product-domain';
+import { type AbstractProduct, PartialProductDomain } from './partial-product-domain';
 
 /**
  * A product abstract domain as named Cartesian product of sub abstract domains.

@@ -35,6 +35,7 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 	public hasValue(node: NodeId, property: keyof Product): boolean {
 		return this.value !== Bottom && this.value.get(node)?.value[property] !== undefined;
 	}
+
 	public setValue<Key extends keyof Product>(node: NodeId, property: Key, value: Product[Key]): void {
 		if(this.value !== Bottom) {
 			const oldValue = this.get(node);

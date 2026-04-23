@@ -115,16 +115,6 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	}
 
 	/**
-	 * Checks whether a value is an abstract domain.
-	 */
-	public static is(this: void, value: unknown): value is AnyAbstractDomain {
-		if(typeof value !== 'object' || value === null) {
-			return false;
-		}
-		return ['value', 'top', 'bottom', 'leq', 'join', 'meet', 'widen', 'narrow', 'concretize', 'abstract'].every(property => property in value);
-	}
-
-	/**
 	 * Converts an element of an abstract domain into a string.
 	 */
 	public static toString(this: void, value: AnyAbstractDomain | unknown): string {
@@ -135,6 +125,8 @@ implements Lattice<Abstract, Top, Bot, Value> {
 		} else if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
 			// eslint-disable-next-line @typescript-eslint/no-base-to-string
 			return value.toString();
+		} else if(Array.isArray(value)) {
+			return `[${value.map(AbstractDomain.toString).join(', ')}]`;
 		} else if(value === Top) {
 			return TopSymbol;
 		} else if(value === Bottom) {

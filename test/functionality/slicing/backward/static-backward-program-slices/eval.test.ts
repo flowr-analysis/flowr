@@ -37,8 +37,6 @@ describe.sequential('evalText', withShell(shell => {
 		shell, 'x <- 1\ny <- 1\nz <- evalText("x+y")', ['3@z'], 'x <- 1\ny <- 1\nz <- evalText("x+y")');
 	assertSliced(label('simple evalText use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		shell, 'foo <- function(x) { return (x+2) }\ny <- evalText("foo(4)*1")', ['2@y'], 'foo <- function(x) return (x+2)\ny <- evalText("foo(4)*1")');
-	/*assertSliced(label('simple evalText no-use', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
-		shell, 'x <- 2\ny <- 1\nz <- evalText("y+x+1", env(x=42))', ['3@z'], 'y <- 1\nz <- evalText("y+x+1", env(x=42))');*/
 	assertSliced(label('simple evalText remote string', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),
 		shell, 'x <- 2\nt <- "print(x)"\ny <- evalText(t)', ['3@y'], 'x <- 2\nt <- "print(x)"\ny <- evalText(t)');
 	assertSliced(label('indirect evalText call', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'unnamed-arguments', 'strings', 'built-in-evaluation', 'newlines']),

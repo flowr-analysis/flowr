@@ -49,19 +49,14 @@ export function processEvalCall<OtherInfo>(
 		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
-	if(/*!config.supportFunctionCall &&*/args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
+	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
 		dataflowLogger.warn(`Expected exactly one argument for eval currently, but got ${args.length} instead, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	/*
-		if(config.supportFunctionCall && args.filter(v => v !== EmptyArgument && (v as RArgument).value).length < 1){
-			dataflowLogger.warn(`Expected at least one argument for evalText currently, skipping`);
-			return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
-		}*/
+
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, forceArgs: [true], origin: BuiltInProcName.Eval }).information
 		: DataflowInformation.initialize(rootId, data);
-	//const evalArguments = config.supportFunctionCall ? args.filter(v => v !== EmptyArgument && (v as RArgument).value).map(v => v as RArgument<ParentInformation>) : [args[0] as RArgument<ParentInformation>];
 	const evalArgument = args[0];
 
 	if(config.includeFunctionCall) {
@@ -79,7 +74,6 @@ export function processEvalCall<OtherInfo>(
 	}
 
 	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<never>, config, data);
-	//const code: string[] | undefined = resolveEvalToCode(evalArguments.map(v => v.value as RNode<ParentInformation>), config, data);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -117,16 +111,13 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>/*[]*/, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
 	const ctx = data.ctx;
 	const env = data.environment;
 	const idMap = data.completeAst.idMap;
-	const val = evalArgument;//[0];
+	const val = evalArgument;
 
 	if(config.supportFunctionCall){
-		/*if(evalArgument.length > 1){
-			const a = evalArgument.find(v => v.functionName === 'env')
-		}*/
 		if(val.type === RType.String){
 			return [val.content.str];
 		} else if(val.type === RType.Symbol){

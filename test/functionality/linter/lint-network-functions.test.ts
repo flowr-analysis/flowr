@@ -4,7 +4,7 @@ import { assertLinter } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { NETWORK_FUNCTIONS } from '../../../src/linter/rules/network-functions';
 
-const urlPrefix = ['https://', 'ftp://', 'ftps://', 'file://'];
+const urlPrefix = ['https://', 'ftp://', 'ftps://'];
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('network functions', () => {

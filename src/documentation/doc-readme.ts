@@ -24,8 +24,19 @@ import { DocMaker } from './wiki-mk/doc-maker';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{
+		header:      'Supporting the Comprehension of Data Analysis Scripts (FSE \'25, Tool)',
+		description: 'This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.',
+		doi:         'https://doi.org/10.1145/3803437.3806402',
+		bibtex:      String.raw`@article{10.1145/3803437.3806402,
+	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+	title = {Supporting the Comprehension of Data Analysis Scripts},
+	year = {2026},
+	doi = {10.1145/3803437.3806402}
+}`
+	},
+	{
 		header:      'Statically Analyzing the Dataflow of R Programs (OOPSLA \'25)',
-		description: 'Please cite this paper if you are using flowR in your research.',
+		description: '**Please cite this paper if you are using flowR in your research.**',
 		doi:         'https://doi.org/10.1145/3763087',
 		bibtex:      String.raw`@article{10.1145/3763087,
 	author = {Sihler, Florian and Tichy, Matthias},
@@ -48,7 +59,7 @@ const PublicationsMain: { header: string, description: string, doi: string, bibt
 	},
 	{
 		header:      'flowR: A Static Program Slicer for R (ASE \'24, Tool)',
-		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}">VS Code Extension</a>.`,
+		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}" target="_blank">VS Code Extension</a>.`,
 		doi:         'https://doi.org/10.1145/3691620.3695359',
 		bibtex:      `@inproceedings{DBLP:conf/kbse/SihlerT24,
   author       = {Florian Sihler and

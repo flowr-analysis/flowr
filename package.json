@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.10.2",
+  "version": "2.10.4",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -32,7 +32,7 @@
     "build": "tsc --project .",
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
-    "build:copy-wasm": "mkdir -p dist/node_modules/@eagleoutice/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@eagleoutice/tree-sitter-r/  && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
+    "build:copy-wasm": "mkdir -p dist/node_modules/@davisvaughan/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@davisvaughan/tree-sitter-r/ && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
     "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
@@ -167,10 +167,10 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^1.0.36",
+    "@eagleoutice/eslint-config-flowr": "^1.0.40",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
-    "@j-ulrich/release-it-regex-bumper": "^5.3.0",
+    "@j-ulrich/release-it-regex-bumper": "^5.4.0",
     "@types/command-line-args": "^5.2.3",
     "@types/command-line-usage": "^5.0.4",
     "@types/commonmark": "^0.27.10",
@@ -188,7 +188,7 @@
     "eslint": "^9.39.2",
     "license-checker-rseidelsohn": "^4.4.2",
     "npm-run-all": "^4.1.5",
-    "release-it": "^19.2.3",
+    "release-it": "^20.0.0",
     "ts-node": "^10.9.2",
     "typedoc": "^0.28.17",
     "typedoc-plugin-missing-exports": "^4.1.2",
@@ -198,7 +198,7 @@
     "vitest": "^3.2.4"
   },
   "dependencies": {
-    "@eagleoutice/tree-sitter-r": "^1.1.2",
+    "@davisvaughan/tree-sitter-r": "^1.2.0",
     "@jupyterlab/nbformat": "^4.5.4",
     "@xmldom/xmldom": "^0.9.7",
     "clipboardy": "^4.0.0",

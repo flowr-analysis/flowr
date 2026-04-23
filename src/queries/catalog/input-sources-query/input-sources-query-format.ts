@@ -5,12 +5,15 @@ import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { InputClassifierConfig, InputSources } from './simple-input-classifier';
+import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
+import { Q } from '../../../search/flowr-search-builder';
+import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
+import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -26,6 +29,17 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly criterion: SlicingCriterion,
 	readonly config?:   InputSourcesQueryConfig
 }
+
+export const DefaultInputClassifierConfig: InputClassifierConfig = {
+	[InputTraceType.Pure]: PureFunctions,
+	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
+	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
+	[InputType.System]:    SystemFunctions,
+	[InputType.Ffi]:       FfiFunctions,
+	[InputType.Lang]:      LangFunctions,
+	[InputType.Options]:   OptionsFunctions
+};
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
 	/** For each query key, a list of classified input sources (each with id and all traces) */
@@ -54,11 +68,11 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, type } of sources) {
+			for(const { id, trace, types } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(type)}, trace: ${trace}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}`
 				);
 			}
 		}
@@ -69,11 +83,14 @@ export const InputSourcesDefinition = {
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criterion to use.'),
 		config:    Joi.object({
-			networkFunctions:      Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network.'),
-			randomnessConsumers:   Joi.array().items(Joi.string()).optional().description('Functions that consume randomness.'),
-			randomnessProducers:   Joi.array().items(Joi.object({ type: Joi.string().valid('function', 'assignment'), name: Joi.string().required() })).optional().description('Functions or assignments that produce randomness seeds.'),
-			configurableFunctions: Joi.array().items(Joi.string()).optional().description('Functions that read configuration (options/env).'),
-			pureFunctions:         Joi.array().items(Joi.string()).optional().description('Deterministic functions that keep constant inputs constant.'),
+			[InputTraceType.Pure]: Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
+			[InputType.File]:      Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
+			[InputType.Network]:   Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
+			[InputType.Random]:    Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
+			[InputType.System]:    Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),
+			[InputType.Ffi]:       Joi.array().items(Joi.string()).optional().description('Functions that call native code via the R FFI (.C, .Call, .Fortran, .External, dyn.load).'),
+			[InputType.Lang]:      Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
+			[InputType.Options]:   Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
 		}).optional()
 	}).description('Input Sources query definition'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

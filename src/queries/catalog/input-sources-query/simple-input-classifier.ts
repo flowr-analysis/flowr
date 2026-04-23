@@ -11,21 +11,30 @@ import type {
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { OriginType } from '../../../dataflow/origin/dfg-get-origin';
-import type { BrandedIdentifier } from '../../../dataflow/environments/identifier';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RoleInParent } from '../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { isNotUndefined } from '../../../util/assert';
 import { uniqueArray } from '../../../util/collections/arrays';
 import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
+import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
+import { Record } from '../../../util/record';
 
 class InputClassifier {
-	private readonly dfg:    DataflowGraph;
-	private readonly config: InputClassifierConfig;
+	private readonly dfg:     DataflowGraph;
+	private readonly config:  InputClassifierConfig<InputClassifierFunctionIdentifiers>;
 	private readonly cache = new Map<NodeId, InputSource>();
+	private readonly fullDfg: DataflowGraph | undefined;
 
-	constructor(dfg: DataflowGraph, config: InputClassifierConfig) {
+	constructor(dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph) {
 		this.dfg = dfg;
 		this.config = config;
+		this.fullDfg = fullDfg;
+	}
+
+	private isDefinedByOnCall(id: NodeId): boolean {
+		const out = (this.fullDfg ?? this.dfg).outgoingEdges(id) ?? new Map<NodeId, DfEdge>();
+		return out.values().some(e => DfEdge.includesType(e, EdgeType.DefinedByOnCall));
 	}
 
 	public classifyEntry(vertex: DataflowGraphVertexInfo): InputSource {
@@ -35,11 +44,11 @@ class InputClassifier {
 		}
 
 		// insert temporary unknown to break cycles
-		this.cache.set(vertex.id, { id: vertex.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+		this.cache.set(vertex.id, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 
 		switch(vertex.tag) {
 			case VertexType.Value:
-				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: [InputType.Constant], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, types: [InputType.Constant], trace: InputTraceType.Unknown });
 			case VertexType.FunctionCall:
 				return this.classifyFunctionCall(vertex);
 			case VertexType.VariableDefinition:
@@ -47,7 +56,7 @@ class InputClassifier {
 			case VertexType.Use:
 				return this.classifyVariable(vertex);
 			default:
-				return this.classifyCdsAndReturn(vertex, { id: vertex.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+				return this.classifyCdsAndReturn(vertex, { id: vertex.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 	}
 
@@ -69,17 +78,19 @@ class InputClassifier {
 				}
 			}
 		}
-		if(!matchesList(call, this.config.pureFns)) {
-			if(matchesList(call, this.config.readFileFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.File], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.networkFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Network], trace: InputTraceType.Unknown });
-			} else if(matchesList(call, this.config.randomFns)) {
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Random], trace: InputTraceType.Unknown });
-			} else {
-				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
-				return this.classifyCdsAndReturn(call, { id: call.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+		if(!matchesList(call, this.config.pure)) {
+			const types: InputType[] = [];
+
+			for(const [type, entry] of Record.entries(this.config)) {
+				if(Record.values<string>(InputType).includes(type) && matchesList(call, entry)) {
+					types.push(type as InputType);
+				}
 			}
+			if(types.length === 0) {
+				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
+				types.push(InputType.Unknown);
+			}
+			return this.classifyCdsAndReturn(call, { id: call.id, types, trace: InputTraceType.Unknown });
 		}
 
 
@@ -102,7 +113,7 @@ class InputClassifier {
 			}
 			const classified = this.classifyEntry(argVtx);
 			// collect all observed types from this argument
-			argTypes.push(...classified.type);
+			argTypes.push(...classified.types);
 			if(classified.cds) {
 				cdTypes.push(...classified.cds);
 			}
@@ -112,18 +123,18 @@ class InputClassifier {
 		// all arguments only contain constant-like types -> derived constant
 		const allConstLike = argTypes.length > 0 && argTypes.every(t => t === InputType.Constant || t === InputType.DerivedConstant);
 		if(allConstLike) {
-			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
+			return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: [InputType.DerivedConstant], trace: InputTraceType.Pure, cds }));
 		}
 
-		const types = argTypes.length === 0 ? [InputType.DerivedConstant] : uniqueArray(argTypes);
-		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, type: types, trace: InputTraceType.Known, cds }));
+		argTypes.push(InputType.DerivedConstant);
+		return this.classifyCdsAndReturn(call, compactRecord({ id: call.id, types: uniqueArray(argTypes), trace: InputTraceType.Known, cds }));
 	}
 
 	private classifyVariable(vtx: DataflowGraphVertexInfo): InputSource {
 		const origins = Dataflow.origin(this.dfg, vtx.id);
 
 		if(origins === undefined) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: this.isDefinedByOnCall(vtx.id) ? [InputType.Scope] : [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
@@ -132,20 +143,26 @@ class InputClassifier {
 
 		for(const o of origins) {
 			if(o.type === OriginType.ConstantOrigin) {
-				types.push(InputType.Constant);
+				types.push(InputType.DerivedConstant);
 				continue;
 			}
 
 			if(o.type === OriginType.ReadVariableOrigin || o.type === OriginType.WriteVariableOrigin) {
 				const v = this.dfg.getVertex(o.id);
 				if(v) {
+					// if the referenced definition is linked via defined-by-on-call to another
+					// id (e.g., a parameter linked to a caller argument), mark it as a Scope origin
+					if(this.isDefinedByOnCall(v.id)) {
+						types.push(InputType.Scope);
+						allPure = false;
+					}
 					// if this is a variable definition that is a parameter, classify as Parameter
 					if(v.tag === VertexType.VariableDefinition && this.dfg.idMap?.get(v.id)?.info.role === RoleInParent.ParameterName) {
 						types.push(InputType.Parameter);
 						continue;
 					}
 					const c = this.classifyEntry(v);
-					types.push(...c.type);
+					types.push(...c.types);
 					if(c.cds) {
 						cds.push(...c.cds);
 					}
@@ -162,7 +179,7 @@ class InputClassifier {
 				const v = this.dfg.getVertex(o.id);
 				if(v) {
 					const c = this.classifyEntry(v);
-					types.push(...c.type);
+					types.push(...c.types);
 					if(c.cds) {
 						cds.push(...c.cds);
 					}
@@ -181,20 +198,20 @@ class InputClassifier {
 
 		const t = types.length === 0 ? [InputType.Unknown] : uniqueArray(types);
 		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
 	private classifyVariableDefinition(vtx: DataflowGraphVertexVariableDefinition): InputSource {
 		// parameter definitions are classified as Parameter
 		if(this.dfg.idMap?.get(vtx.id)?.info.role === RoleInParent.ParameterName) {
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Parameter], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Parameter], trace: InputTraceType.Unknown });
 		}
 
 		const sources = vtx.source;
 
 		if(sources === undefined || sources.length === 0) {
 			// fallback to unknown if we cannot find the value
-			return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: [InputType.Unknown], trace: InputTraceType.Unknown });
+			return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: [InputType.Unknown], trace: InputTraceType.Unknown });
 		}
 
 		const types: InputType[] = [];
@@ -205,7 +222,7 @@ class InputClassifier {
 			const tv = this.dfg.getVertex(tid);
 			if(tv) {
 				const c = this.classifyEntry(tv);
-				types.push(...c.type);
+				types.push(...c.types);
 				if(c.cds) {
 					cds.push(...c.cds);
 				}
@@ -216,9 +233,10 @@ class InputClassifier {
 				types.push(InputType.Unknown);
 			}
 		}
+
 		const t = types.length === 0 ? [InputType.Unknown] : uniqueArray(types);
 		const trace = allPure ? InputTraceType.Pure : InputTraceType.Alias;
-		return this.classifyCdsAndReturn(vtx, { id: vtx.id, type: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
+		return this.classifyCdsAndReturn(vtx, { id: vtx.id, types: t, trace, cds: cds.length === 0 ? undefined : uniqueArray(cds) });
 	}
 
 	private classifyCdsAndReturn(vtx: DataflowGraphVertexArgument, src: InputSource): InputSource {
@@ -229,7 +247,7 @@ class InputClassifier {
 					return undefined;
 				}
 				const e = this.classifyEntry(cv);
-				return e.cds ? [...e.type, ...e.cds] : [...e.type];
+				return e.cds ? [...e.types, ...e.cds] : [...e.types];
 			}).filter(isNotUndefined).concat(src.cds ?? []));
 			if(cds.length > 0) {
 				src.cds = cds;
@@ -249,13 +267,13 @@ class InputClassifier {
  * joining differing lattice elements.
  *
  *```
- *            [ Unknown ]
- *     /     /     |     \       \
- *[Param] [File] [Net] [Rand] [Scope]
- *     \     \    |      /      /
- *        [ DerivedConstant ]
- *               |
- *          [ Constant ]
+ *              [ Unknown ]
+ *                   |
+ * [Param] [File] [Net], ...
+ *                   |
+ *            [ DerivedConstant ]
+ *                   |
+ *              [ Constant ]
  *```
  *
  */
@@ -264,6 +282,14 @@ export enum InputType {
 	File = 'file',
 	Network = 'net',
 	Random = 'rand',
+	/** Calls to system/system2 and similar */
+	System = 'system',
+	/** Calls to .C / Fortran interfaces (foreign function interfaces) */
+	Ffi = 'ffi',
+	/** Language objects (quote/substitute/etc.) */
+	Lang = 'lang',
+	/** Global options / option accessors (options, getOption) */
+	Options = 'options',
 	Constant = 'const',
 	/** Read from environment/call scope */
 	Scope = 'scope',
@@ -289,12 +315,10 @@ export enum InputTraceType {
  */
 export interface InputSource extends MergeableRecord {
 	id:    NodeId,
-	type:  InputType[],
+	types: InputType[],
 	trace: InputTraceType,
 	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
 	cds?:  InputType[]
-	/** cycle free witness trace */
-	// witness: NodeId[] (optional)
 }
 
 
@@ -307,14 +331,14 @@ export type InputSources = InputSource[];
  * This is either an {@link NodeId|id} of a known functions all of that category (e.g., you can issue a dependencies query before and then pass all
  * identified ids to this query here).
  */
-export type InputClassifierFunctionIdentifier = Identifier | NodeId;
+export type InputClassifierFunctionIdentifiers = readonly (Identifier | NodeId)[];
 
-function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputClassifierFunctionIdentifier[] | undefined): boolean {
-	if(!list || list.length === 0) {
+function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierFunctionIdentifiers | undefined): boolean {
+	if(list === undefined || list.length === 0) {
 		return false;
 	}
 	for(const id of list) {
-		if(fn.id === id || Identifier.matches(id as BrandedIdentifier, fn.name)) {
+		if(fn.id === id || (Identifier.is(id) && Identifier.matches(id, fn.name))) {
 			return true;
 		}
 	}
@@ -322,41 +346,29 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: readonly InputCl
 }
 
 /**
- * For the specifications of `pureFns` etc. please have a look at {@link InputClassifierFunctionIdentifier}.
+ * For the specifications of `pure` etc. please have a look at {@link InputClassifierFunctionIdentifiers}.
  */
-export interface InputClassifierConfig extends MergeableRecord {
+export interface InputClassifierConfig<Functions extends InputClassifierFunctionIdentifiers | FlowrSearchLike = readonly Identifier[] | FlowrSearchLike> extends Partial<Record<InputType, Functions>> {
 	/**
 	 * Functions which are considered to be pure (i.e., deterministic, trusted, safe, idempotent on the lub of the input types)
 	 */
-	pureFns:     readonly InputClassifierFunctionIdentifier[]
-	/**
-	 * Functions that read from the network
-	 */
-	networkFns:  readonly InputClassifierFunctionIdentifier[]
-	/**
-	 * Functions that produce a random value
-	 * Note: may need to check with respect to seeded randomness
-	 */
-	randomFns:   readonly InputClassifierFunctionIdentifier[]
-	/**
-	 * Functions that read from the file system
-	 */
-	readFileFns: readonly InputClassifierFunctionIdentifier[]
+	[InputTraceType.Pure]?: Functions
 }
 
 /**
  * Takes the given id which is expected to either be:
  * - a function call - in this case all arguments are considered to be inputs (additionally to all read edges from the function call in the dataflow graph)
- * - anything else - in that case the node itself is considered as an "input" - please note that in these scenarios the *return* value will only contain one mapping - that for the id you pased in.
+ * - anything else - in that case the node itself is considered as an "input" - please note that in these scenarios the *return* value will only contain one mapping - that for the id you passed in.
  *
- * This method traces the dependencies in the dataflow graph using the specification of functions passed in
+ * This method traces the dependencies in the dataflow graph using the specification of functions passed in.
+ * For the scope escape analysis, pass on the full, non-reduced DFG as `fullDfg`.
  */
-export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig): InputSources {
+export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClassifierConfig<InputClassifierFunctionIdentifiers>, fullDfg?: DataflowGraph): InputSources {
 	const vtx = dfg.getVertex(id);
 	if(!vtx) {
 		return [];
 	}
-	const c = new InputClassifier(dfg, config);
+	const c = new InputClassifier(dfg, config, fullDfg);
 
 	if(vtx.tag === VertexType.FunctionCall) {
 		const ret: InputSources = [];

@@ -54,8 +54,8 @@ function diffOutgoingEdges(ctx: GraphDiffContext): void {
 		 */
 		if(!ctx.left.hasVertex(id)) {
 			if(!ctx.config.leftIsSubgraph) {
-				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`);
-				continue;
+				//ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.leftname}. This means that the graph contains an edge but not the corresponding vertex.`);
+				//continue;
 			}
 		}
 		diffEdges(ctx, id, edge, rEdges.get(id));
@@ -64,8 +64,8 @@ function diffOutgoingEdges(ctx: GraphDiffContext): void {
 	for(const [id, edge] of rEdges) {
 		if(!ctx.right.hasVertex(id)) {
 			if(!ctx.config.rightIsSubgraph) {
-				ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`);
-				continue;
+				//ctx.report.addComment(`The source ${id} of edges ${JSON.stringify(edge, jsonReplacer)} is not present in ${ctx.rightname}. This means that the graph contains an edge but not the corresponding vertex.`);
+				//continue;
 			}
 		}
 		if(!ctx.config.leftIsSubgraph && !lEdges.has(id)) {

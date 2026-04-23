@@ -45,6 +45,8 @@ export function processEvalCall<OtherInfo>(
 	config: {
 		/** should this produce an explicit source function call in the graph? */
 		includeFunctionCall?: boolean
+		/** if selected processes evalText function call, else processes eval*/
+		supportFunctionCall?: boolean
 	}
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument || !args[0].value) {
@@ -71,7 +73,7 @@ export function processEvalCall<OtherInfo>(
 		return information;
 	}
 
-	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<ParentInformation>, data.environment, data.completeAst.idMap, data.ctx);
+	const code: string[] | undefined = resolveEvalToCode(evalArgument.value as RNode<never>, config, data);
 
 	if(code) {
 		const idGenerator = sourcedDeterministicCountingIdGenerator(name.lexeme + '::' + rootId, name.location);
@@ -109,36 +111,52 @@ export function processEvalCall<OtherInfo>(
 	return information;
 }
 
-function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
+function resolveEvalToCode<OtherInfo>(evalArgument: RNode<OtherInfo & ParentInformation>, config: { includeFunctionCall?: boolean, supportFunctionCall?: boolean }, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): string[] | undefined {
+	const ctx = data.ctx;
+	const env = data.environment;
+	const idMap = data.completeAst.idMap;
 	const val = evalArgument;
 
-	if(
-		val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse'
-	) {
-		const arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
-		const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
-		if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
-			return undefined;
-		}
-		if(arg.value?.type === RType.String) {
-			return [arg.value.content.str];
-		} else if(arg.value?.type === RType.Symbol) {
-			const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
+	if(config.supportFunctionCall){
+		if(val.type === RType.String){
+			return [val.content.str];
+		} else if(val.type === RType.Symbol){
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
 			if(resolved) {
 				return collectStrings(resolved.elements);
 			}
-		} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
-			return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
 		}
 		return undefined;
-	} else if(val.type === RType.Symbol) {
-		// const resolved = resolveValueOfVariable(val.content, env);
-		// see https://github.com/flowr-analysis/flowr/pull/1467
-		return undefined;
 	} else {
-		return undefined;
+		if(
+			val.type === RType.FunctionCall && val.named && val.functionName.content === 'parse'
+		) {
+			const arg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'text');
+			const nArg = val.arguments.find(v => v !== EmptyArgument && v.name?.content === 'n');
+			if(nArg !== undefined || arg === undefined || arg === EmptyArgument) {
+				return undefined;
+			}
+			if(arg.value?.type === RType.String) {
+				return [arg.value.content.str];
+			} else if(arg.value?.type === RType.Symbol) {
+				const resolved = valueSetGuard(resolveIdToValue(arg.value.info.id, { environment: env, idMap: idMap, resolve: ctx.config.solver.variables, ctx }));
+				if(resolved) {
+					return collectStrings(resolved.elements);
+				}
+			} else if(arg.value?.type === RType.FunctionCall && arg.value.named && ['paste', 'paste0'].includes(Identifier.getName(arg.value.functionName.content))) {
+				return handlePaste(ctx.config, arg.value.arguments, env, idMap, arg.value.functionName.content === 'paste' ? [' '] : [''], ctx);
+			}
+			return undefined;
+		} else if(val.type === RType.Symbol) {
+			// const resolved = resolveValueOfVariable(val.content, env);
+			// see https://github.com/flowr-analysis/flowr/pull/1467
+			return undefined;
+		} else {
+			return undefined;
+		}
 	}
 }
+
 
 function getAsString(config: FlowrConfig, val: RNode<ParentInformation> | undefined, env: REnvironmentInformation, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): string[] | undefined {
 	if(!val) {

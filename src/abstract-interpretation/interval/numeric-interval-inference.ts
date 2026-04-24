@@ -8,7 +8,7 @@ import { applyIntervalExpressionSemantics } from './expression-semantics';
 import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { MutableStateAbstractDomain } from '../domains/state-abstract-domain';
+import { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
@@ -16,9 +16,9 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
-export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<IntervalDomain> {
+export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
 	constructor(config: AbsintVisitorConfiguration) {
-		super(config, IntervalDomain.top());
+		super(config, StateAbstractDomain.top(IntervalDomain.top()));
 	}
 
 	protected getBottomValue(): IntervalDomain {
@@ -47,11 +47,15 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 		}
 
 		const interval = IntervalDomain.scalar(node.content.num, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
-		this.updateState(node.info.id, interval);
+		this.currentState.set(node.info.id, interval);
 	}
 
 	protected override onFunctionCall({ call}: { call: DataflowGraphVertexFunctionCall }) {
 		super.onFunctionCall({ call });
+
+		if(this.currentState.isBottom()) {
+			return;
+		}
 
 		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
 
@@ -59,11 +63,11 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 			return;
 		}
 
-		return this.updateState(call.id, result);
+		return this.currentState.set(call.id, result);
 	}
 
-	protected override applyConditionSemantics(state: MutableStateAbstractDomain<IntervalDomain> | undefined, conditionNodeId: NodeId, trueBranch: boolean): MutableStateAbstractDomain<IntervalDomain> | undefined {
-		let result: MutableStateAbstractDomain<IntervalDomain> | undefined;
+	protected override applyConditionSemantics(state: StateAbstractDomain<IntervalDomain> | undefined, conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> | undefined {
+		let result: StateAbstractDomain<IntervalDomain> | undefined;
 
 		if(trueBranch) {
 			result = applyIntervalConditionSemantics(conditionNodeId, state, this, this.config.dfg);

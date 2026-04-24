@@ -1,4 +1,4 @@
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { CfgVertex } from '../control-flow/control-flow-graph';
 import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
@@ -7,8 +7,7 @@ import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import { type NoInfo, RNode, RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -52,6 +51,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * A set of nodes representing variable definitions that have already been visited but whose assignment has not yet been processed.
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
+
+	/**
+	 * A map mapping assignments of replacement calls to their replacement calls for replacement calls that have already been visited but whose assignment has not yet been processed.
+	 */
+	private readonly replacements: Map<NodeId, NodeId[]> = new Map();
 
 	constructor(config: Config, domain: Domain) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
@@ -240,7 +244,35 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
+	protected visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex): void {
+		const nodeId = CfgVertex.getRootId(vertex);
+
+		if(!this.replacements.has(nodeId)) {
+			return;
+		}
+		for(const replacement of this.replacements.get(nodeId) ?? []) {
+			const call = this.getDataflowGraph(replacement);
+
+			if(isFunctionCallVertex(call)) {
+				return this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
+			}
+		}
+		this.replacements.delete(nodeId);
+	}
+
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
+		if(origin === BuiltInProcName.Replacement) {
+			const node = this.getNormalizedAst(call.id);
+			const assignment = RNode.iterateParents(node, this.config.normalizedAst.idMap)
+				.find(parent => this.getDataflowGraph(parent.info.id) === undefined);
+
+			if(node !== undefined && assignment !== undefined) {
+				const replacements = this.replacements.get(assignment.info.id) ?? [];
+				replacements.push(assignment.info.id, node.info.id);
+				this.replacements.set(assignment.info.id, replacements);
+				return;
+			}
+		}
 		super.onDispatchFunctionCallOrigin(call, origin);
 
 		switch(origin) {

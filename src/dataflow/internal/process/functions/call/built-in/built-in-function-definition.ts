@@ -413,8 +413,13 @@ function countAnalyzedFunctionAstNodes<OtherInfo>(
 		if(node === undefined || node === EmptyArgument) {
 			return;
 		}
-		visitAst(node, () => {
+		visitAst(node, current => {
 			count++;
+			if(current.type === RType.FunctionDefinition) {
+				// Nested function definitions are timed separately and should not inflate parent function size.
+				return true;
+			}
+			return false;
 		});
 	};
 	// count param nodes

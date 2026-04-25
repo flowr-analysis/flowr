@@ -21,7 +21,6 @@ const knownWrongParallelCases = new Set([
 	'HigherOrderFunctionComposition',
 	'ConditionalSideEffectAcrossFiles',
 	'LoopWithSideEffect',
-	'SingleFileFailures',
 ]);
 
 

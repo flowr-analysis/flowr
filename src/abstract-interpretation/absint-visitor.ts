@@ -246,18 +246,19 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 
 	protected visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex): void {
 		const nodeId = CfgVertex.getRootId(vertex);
+		const replacements = this.replacements.get(nodeId);
 
-		if(!this.replacements.has(nodeId)) {
-			return;
-		}
-		for(const replacement of this.replacements.get(nodeId) ?? []) {
-			const call = this.getDataflowGraph(replacement);
+		if(replacements !== undefined) {
+			this.replacements.delete(nodeId);
 
-			if(isFunctionCallVertex(call)) {
-				return this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
+			for(const replacement of replacements) {
+				const call = this.getDataflowGraph(replacement);
+
+				if(isFunctionCallVertex(call)) {
+					this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
+				}
 			}
 		}
-		this.replacements.delete(nodeId);
 	}
 
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
@@ -268,7 +269,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 
 			if(node !== undefined && assignment !== undefined) {
 				const replacements = this.replacements.get(assignment.info.id) ?? [];
-				replacements.push(assignment.info.id, node.info.id);
+				replacements.push(node.info.id);
 				this.replacements.set(assignment.info.id, replacements);
 				return;
 			}

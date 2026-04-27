@@ -42,7 +42,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		const result = this.create(this.domain);
 
 		for(const key in result.value) {
-			result._value[key] = this.domain[key]?.bottom() as Product[Extract<keyof Product, string>];
+			result.value[key] = this.domain[key]?.bottom() as Product[Extract<keyof Product, string>];
 		}
 		return result;
 	}
@@ -80,67 +80,59 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	}
 
 	public join(other: this): this {
-		const result = this.create(this.value);
+		const result = {} as Product;
 
-		for(const key in other.value) {
-			if(other.value[key] === undefined) {
-				continue;
-			}
-			if(result.value[key] === undefined) {
-				result._value[key] = other.value[key];
-			} else {
-				result._value[key] = result.value[key].join(other.value[key]) as Product[Extract<keyof Product, string>];
+		for(const key in this.domain) {
+			if(this.value[key] !== undefined && other.value[key] !== undefined) {
+				const join = this.value[key].join(other.value[key]) as Product[string];
+				result[key as keyof Product] = join;
 			}
 		}
-		return result.refine();
+		return this.create(result);
 	}
 
 	public meet(other: this): this {
-		const result = this.create(this.value);
+		const result = {} as Product;
 
-		for(const key in result.value) {
-			if(other.value[key] === undefined) {
-				result._value[key] = undefined as Product[Extract<keyof Product, string>];
+		for(const key in this.domain) {
+			if(this.value[key] === undefined) {
+				result[key] = other.value[key];
+			} else if(other.value[key] === undefined) {
+				result[key] = this.value[key];
+			} else {
+				const meet = this.value[key].meet(other.value[key]) as Product[string];
+				result[key as keyof Product] = meet;
 			}
 		}
-		for(const key in other.value) {
-			if(result.value[key] !== undefined && other.value[key] !== undefined) {
-				result._value[key] = result.value[key].meet(other.value[key]) as Product[Extract<keyof Product, string>];
-			}
-		}
-		return result.refine();
+		return this.create(result);
 	}
 
 	public widen(other: this): this {
-		const result = this.create(this.value);
+		const result = {} as Product;
 
-		for(const key in other.value) {
-			if(other.value[key] === undefined) {
-				continue;
-			}
-			if(result.value[key] === undefined) {
-				result._value[key] = other.value[key];
-			} else {
-				result._value[key] = result.value[key].widen(other.value[key]) as Product[Extract<keyof Product, string>];
+		for(const key in this.domain) {
+			if(this.value[key] !== undefined && other.value[key] !== undefined) {
+				const widening = this.value[key].widen(other.value[key]) as Product[string];
+				result[key as keyof Product] = widening;
 			}
 		}
-		return result;
+		return this.create(result);
 	}
 
 	public narrow(other: this): this {
-		const result = this.create(this.value);
+		const result = {} as Product;
 
-		for(const key in result.value) {
-			if(other.value[key] === undefined) {
-				result._value[key] = undefined as Product[Extract<keyof Product, string>];
+		for(const key in this.domain) {
+			if(this.value[key] === undefined) {
+				result[key] = other.value[key];
+			} else if(other.value[key] === undefined) {
+				result[key] = this.value[key];
+			} else {
+				const narrowing = this.value[key].narrow(other.value[key]) as Product[string];
+				result[key as keyof Product] = narrowing;
 			}
 		}
-		for(const key in other.value) {
-			if(result.value[key] !== undefined && other.value[key] !== undefined) {
-				result._value[key] = result.value[key].narrow(other.value[key]) as Product[Extract<keyof Product, string>];
-			}
-		}
-		return result;
+		return this.create(result);
 	}
 
 	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
@@ -174,13 +166,13 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		if(concrete === Top) {
 			return this.top();
 		}
-		const result = this.create(this.domain);
+		const result = {} as Product;
 
-		for(const key in result.value) {
+		for(const key in this.domain) {
 			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result._value[key] = result.value[key]?.abstract(concreteValues) as Product[Extract<keyof Product, string>];
+			result[key] = this.domain[key]?.abstract(concreteValues) as Product[Extract<keyof Product, string>];
 		}
-		return result.refine();
+		return this.create(result);
 	}
 
 	public toJson(): unknown {
@@ -214,16 +206,5 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	 */
 	protected reduce(value: Product): Product {
 		return value;
-	}
-
-	private refine(): this {
-		if(!this.isTop() || this.isBottom()) {
-			const reduced = this.reduce(this.value);
-
-			if(reduced !== this.value) {
-				return this.create(reduced);
-			}
-		}
-		return this;
 	}
 }

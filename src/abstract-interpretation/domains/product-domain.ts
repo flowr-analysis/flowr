@@ -20,7 +20,7 @@ export abstract class ProductDomain<Product extends Required<AbstractProduct>>
 		const result = this.create(this.domain);
 
 		for(const key in result.value) {
-			result.value[key] =  result.value[key]?.top() as Product[Extract<keyof Product, string>];
+			result.value[key] =  result.value[key]?.top() as typeof result.value[typeof key];
 		}
 		return result;
 	}

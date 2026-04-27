@@ -42,7 +42,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		const result = this.create(this.domain);
 
 		for(const key in result.value) {
-			result.value[key] = this.domain[key]?.bottom() as Product[Extract<keyof Product, string>];
+			result.value[key] = this.domain[key]?.bottom() as typeof result.value[typeof key];
 		}
 		return result;
 	}
@@ -84,8 +84,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 
 		for(const key in this.domain) {
 			if(this.value[key] !== undefined && other.value[key] !== undefined) {
-				const join = this.value[key].join(other.value[key]) as Product[string];
-				result[key as keyof Product] = join;
+				result[key] = this.value[key].join(other.value[key]) as typeof result[typeof key];
 			}
 		}
 		return this.create(result);
@@ -100,8 +99,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 			} else if(other.value[key] === undefined) {
 				result[key] = this.value[key];
 			} else {
-				const meet = this.value[key].meet(other.value[key]) as Product[string];
-				result[key as keyof Product] = meet;
+				result[key] = this.value[key].meet(other.value[key]) as typeof result[typeof key];
 			}
 		}
 		return this.create(result);
@@ -112,8 +110,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 
 		for(const key in this.domain) {
 			if(this.value[key] !== undefined && other.value[key] !== undefined) {
-				const widening = this.value[key].widen(other.value[key]) as Product[string];
-				result[key as keyof Product] = widening;
+				result[key] = this.value[key].widen(other.value[key]) as typeof result[typeof key];
 			}
 		}
 		return this.create(result);
@@ -128,15 +125,14 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 			} else if(other.value[key] === undefined) {
 				result[key] = this.value[key];
 			} else {
-				const narrowing = this.value[key].narrow(other.value[key]) as Product[string];
-				result[key as keyof Product] = narrowing;
+				result[key] = this.value[key].narrow(other.value[key]) as typeof result[typeof key];
 			}
 		}
 		return this.create(result);
 	}
 
 	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
-		let result = new Set<ConcreteProduct<Product>>([{} as ConcreteProduct<Product>]);
+		let result = new Set([{} as ConcreteProduct<Product>]);
 
 		for(const key in this.value) {
 			if(this.value[key] === undefined) {
@@ -170,7 +166,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 
 		for(const key in this.domain) {
 			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result[key] = this.domain[key]?.abstract(concreteValues) as Product[Extract<keyof Product, string>];
+			result[key] = this.domain[key]?.abstract(concreteValues) as typeof result[typeof key];
 		}
 		return this.create(result);
 	}

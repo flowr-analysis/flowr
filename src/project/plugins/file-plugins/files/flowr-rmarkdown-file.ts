@@ -180,7 +180,7 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 
 	const parsedOptions = new Map <string, string>();
 	for(const match of opts.matchAll(OptionsRegex)) {
-		if(match[1] && match[2]) {
+		if(match[1] !== undefined && match[2] !== undefined) {
 			parsedOptions.set(match[1], match[2]);
 		}
 	}

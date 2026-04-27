@@ -178,9 +178,9 @@ export function parseCodeBlockOptions(header: string, content: string): CodeBloc
 		opts += opts.length === 0 ? opt : `, ${opt}`;
 	}
 
-	const parsedOptions = new Map <string, string>();
+	const parsedOptions = new Map<string, string>();
 	for(const match of opts.matchAll(OptionsRegex)) {
-		if(match[1] !== undefined && match[2] !== undefined) {
+		if(match[1] && match[2] !== undefined) { // key must not be empty, but value can be empty string for example
 			parsedOptions.set(match[1], match[2]);
 		}
 	}

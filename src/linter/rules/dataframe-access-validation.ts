@@ -57,6 +57,9 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all(),
+	// TODO ask oli about whether a visitor search query thing would make sense to have, and/or what else we could do to move stuff into createSearch
+	//  Oli sagt: ursprünglich hatte ich Call Targets Enrichment, das hat aber super bad performt, also habe ich stattdessen einfach all benutzt -> wieso hat das bad performt?
+	//  und: der dataframe access benutzt das system nicht wirklich, weil er einfach alle Elemente nimmt und dann eine eigene "Suche" macht -> wie triggert man dass alle relevanten Nodes beteiligt sind, vor allem wrt. caching usw.?
 	processSearchResult: async(elements, config, data) => {
 		let ctx = data.analyzer.inspectContext();
 		ctx = {

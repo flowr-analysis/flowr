@@ -76,6 +76,7 @@ export const ROXYGEN_ARGS = {
 						overDocumented:  [] as string[]
 					}))
 					.filter(({ element: { node }, underDocumented, overDocumented }) => {
+						// TODO documentation enricher! this was always planned :)
 						const comments = getDocumentation(node.info.id, normalize.idMap);
 						if(!comments) {
 							return false;

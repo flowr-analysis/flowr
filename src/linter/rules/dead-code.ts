@@ -43,6 +43,7 @@ export const DEAD_CODE = {
 		return {
 			results: combineResults(
 				elements.getElements()
+					// TODO convert to filters: filter by element role + filter by enrichment content
 					.filter(element => {
 						meta.consideredNodes++;
 						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);

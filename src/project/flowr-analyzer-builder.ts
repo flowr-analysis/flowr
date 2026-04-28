@@ -8,7 +8,6 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
-import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
 import type { AutocompletablePaths } from '../util/objects';
@@ -44,15 +43,15 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
-	 * By default, the standard set of plugins as returned by {@link FlowrAnalyzerPluginDefaults} are registered.
+	 * By default, the standard set of plugins as returned by {@link FlowrConfig#defaultPlugins} are registered.
 	 * @param withDefaultPlugins - Whether to register the default plugins upon creation. Default is `true`.
-	 * @see {@link FlowrAnalyzerPluginDefaults} - for the default plugin set.
+	 * @see {@link FlowrConfig#defaultPlugins} - for the default plugin set.
 	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} - to add more plugins.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
 	 */
 	constructor(withDefaultPlugins: boolean = true) {
 		if(withDefaultPlugins) {
-			this.registerPlugins(...FlowrAnalyzerPluginDefaults());
+			this.registerPlugins(...this.flowrConfig.defaultPlugins);
 		}
 	}
 

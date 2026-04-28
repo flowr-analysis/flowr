@@ -31,7 +31,6 @@ import { FlowrAnalyzerLoadingOrderContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import { FlowrAnalyzerPluginDefaults } from '../project/plugins/flowr-analyzer-plugin-defaults';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
@@ -239,7 +238,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., \`['file:rmd', [/.*.rmd/i]]\` for the ${ctx.link(FlowrAnalyzerRmdFilePlugin)}).\\
    This will also use the ${ctx.link(makePlugin)} function under the hood to create the plugin instance.
 
-Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrAnalyzerPluginDefaults)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrConfig)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${

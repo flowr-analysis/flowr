@@ -190,9 +190,10 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
-	const analyzer = new FlowrAnalyzerBuilder()
+	const analyzer = new FlowrAnalyzerBuilder(false)
 		.setParser(defaultEngine)
 		.setConfig(config)
+		.registerPlugins(...config.repl.plugins)
 		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;

@@ -14,6 +14,7 @@ import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
+import { type BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -118,13 +119,17 @@ export interface FlowrConfig extends MergeableRecord {
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
-	}
+	},
+	/** Plugins to load by default when creating a new FlowrAnalyzer */
+	readonly defaultPlugins: BuiltInFlowrPluginName[];
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
 		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
+		/** Plugins to load in REPL mode */
+		plugins:         BuiltInFlowrPluginName[];
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -265,9 +270,38 @@ export const FlowrConfig = {
 					}
 				}
 			},
+			defaultPlugins: [
+				'file:description',
+				'versions:description',
+				'loading-order:description',
+				'meta:description',
+				'files:vignette',
+				'files:test',
+				'file:rmd',
+				'file:qmd',
+				'file:rnw',
+				'file:ipynb',
+				'file:namespace',
+				'file:news',
+				'file:license'],
 			repl: {
 				quickStats:      false,
-				dfProcessorHeat: false
+				dfProcessorHeat: false,
+				plugins:         [
+					'file:description',
+					'versions:description',
+					'loading-order:description',
+					'meta:description',
+					'files:vignette',
+					'files:test',
+					'file:rmd',
+					'file:qmd',
+					'file:rnw',
+					'file:ipynb',
+					'file:namespace',
+					'file:news',
+					'file:license'
+				],
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -317,9 +351,11 @@ export const FlowrConfig = {
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 			}).optional().description('Semantics regarding how to handle the R environment.')
 		}).description('Configure language semantics and how flowR handles them.'),
-		repl: Joi.object({
+		defaultPlugins: Joi.array().items(Joi.string()).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
+		repl:           Joi.object({
 			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
+			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			plugins:         Joi.array().items(Joi.string()).optional().description('The plugins to load in REPL mode')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')

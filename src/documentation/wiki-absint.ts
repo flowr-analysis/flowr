@@ -1,7 +1,9 @@
 import { type AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { IntervalDomain } from '../abstract-interpretation/domains/interval-domain';
-import { BottomSymbol } from '../abstract-interpretation/domains/lattice';
+import { BoundedSetDomain } from '../abstract-interpretation/domains/bounded-set-domain';
+import { IntervalDomain, IntervalTop } from '../abstract-interpretation/domains/interval-domain';
+import { BottomSymbol, Top } from '../abstract-interpretation/domains/lattice';
+import { MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { Identifier } from '../dataflow/environments/identifier';
@@ -82,6 +84,22 @@ function nodeIdToSlicingCriterion(id: NodeId, idMap: AstIdMap): string {
 	return `${node?.location?.[0]}@${node?.lexeme}`;
 }
 
+function multiValueExample() {
+	const domain = {
+		number: new IntervalDomain(IntervalTop),
+		string: new BoundedSetDomain<string>(Top)
+	};
+	const reduction = ({ number, string }: { number?: IntervalDomain, string?: BoundedSetDomain<string> }) => {
+		if(number?.isBottom() || string?.isBottom()) {
+			return { number: domain.number.bottom(), string: domain.string.bottom() };
+		}
+		return { number, string };
+	};
+	const state = new MultiValueStateDomain(new Map(), domain, [reduction]);
+	state.setValue(0, 'number', new IntervalDomain([42, 42]));
+	state.setValue(1, 'string', new BoundedSetDomain(new Set(['Hello world!'])));
+}
+
 export class WikiAbsint extends DocMaker<'wiki/Abstract Interpretation.md'> {
 	constructor() {
 		super('wiki/Abstract Interpretation.md', module.filename, 'abstract interpretation framework');
@@ -133,6 +151,10 @@ All boxes link to their respective implementation in the source code.
 ${codeBlock('mermaid', ctx.mermaid(AbstractDomain, { simplify: true, reverse: true }))}
 `.trim())}
 
+Multiple abstract domains can be combined using a ${ctx.link(MultiValueDomain)} (for example, to use an interval domain for numbers and bounded set domain for strings at the same time). A multi-value state domain (${ctx.link(MultiValueStateDomain)}) as state domain of a multi-value domain can be used to track the state of multiple value domains in a program. Additionally, is enables to define reductions on the multi-value domain to refine the inferred value for a value domain based on the other value domains in the multi-value domain. For example, the following example shows how a multi-value state domain can be defined to track numbers and strings at the same time with a simple reduction that sets both domains to bottom if one domain is bottom.
+
+${ctx.code(multiValueExample, { dropLinesStart: 1, dropLinesEnd: 1 })}
+
 ${section('Abstract Interpretation', 2, 'abstract-interpretation')}
 
 We perform abstract interpretation by forward-traversing the ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')} of _flowR_ using an ${ctx.link(AbstractInterpretationVisitor)}. For each visited control flow vertex, the visitor retrieves the current abstract state by joining the abstract states of the predecessors, applies the abstract semantics of the visited control flow vertex to the current state, and updates the abstract state of the currently visited vertex to the current state. The visitor already handles assignments and (delayed) widening at widening points. However, the visitor does not yet support interprocedural abstract interpretation.
@@ -146,7 +168,7 @@ To implement a custom abstract interpretation analysis, we can just create a new
 
 For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can implement the following ${ctx.link(IntervalInferenceVisitor)} that extends ${ctx.link(AbstractInterpretationVisitor)} using a ${ctx.link(StateAbstractDomain)} for the ${ctx.link(IntervalDomain)}:
 
-${ctx.code(IntervalInferenceVisitor)}
+${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5 })}
 
 The interval inference visitor first overrides the ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
 

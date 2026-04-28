@@ -41,12 +41,12 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainTop> {
-		return new StateAbstractDomain(new Map<NodeId, never>(), domain);
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(new Map<NodeId, never>(), domain);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainBottom> {
-		return new StateAbstractDomain(Bottom, domain);
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(Bottom, domain);
 	}
 
 	public get(node: NodeId): Domain | undefined {
@@ -69,14 +69,12 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		}
 	}
 
-	public top(): this & StateAbstractDomain<Domain, StateDomainTop>;
-	public top(): StateAbstractDomain<Domain, StateDomainTop> {
-		return StateAbstractDomain.top(this.domain);
+	public top(): this & StateAbstractDomain<Domain, StateDomainTop> {
+		return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
 	}
 
-	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom>;
-	public bottom(): StateAbstractDomain<Domain, StateDomainBottom> {
-		return StateAbstractDomain.bottom(this.domain);
+	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom> {
+		return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
 	}
 
 	public equals(other: this): boolean {

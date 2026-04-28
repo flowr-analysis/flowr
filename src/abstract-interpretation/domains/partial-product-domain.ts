@@ -1,22 +1,16 @@
 import type { Writable } from 'ts-essentials';
-import { type  AbstractValue, type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
+import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
 import { Top } from './lattice';
 import { Record } from '../../util/record';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
-export type AbstractProduct = { [key in string]?: AnyAbstractDomain };
-
-/** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
-export type ConcreteProduct<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
+	[key in string]?: Domain
 };
 
-/**
- * The type of the abstract product values of a product abstract domain.
- * @template Product - The abstract product to get the product value type for
- */
-export type ProductValue<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AnyAbstractDomain ? AbstractValue<Product[Key]> : never;
+/** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
+export type ConcreteProductOf<Product extends AbstractProduct> = {
+	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
 
 /**
@@ -26,7 +20,7 @@ export type ProductValue<Product extends AbstractProduct> = {
  * @template Product - Type of the abstract product of the product domain mapping (optional) property names to abstract domains
  */
 export abstract class PartialProductDomain<Product extends AbstractProduct>
-	extends AbstractDomain<ConcreteProduct<Product>, Product, Product, Product> {
+	extends AbstractDomain<ConcreteProductOf<Product>, Product, Product, Product> {
 
 	public readonly domain: Required<Product>;
 
@@ -131,8 +125,8 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public concretize(limit: number): ReadonlySet<ConcreteProduct<Product>> | typeof Top {
-		let result = new Set([{} as ConcreteProduct<Product>]);
+	public concretize(limit: number): ReadonlySet<ConcreteProductOf<Product>> | typeof Top {
+		let result = new Set([{} as ConcreteProductOf<Product>]);
 
 		for(const key in this.value) {
 			if(this.value[key] === undefined) {
@@ -143,7 +137,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 			if(concrete === Top) {
 				return Top;
 			}
-			const newResult = new Set<ConcreteProduct<Product>>();
+			const newResult = new Set<ConcreteProductOf<Product>>();
 
 			for(const value of concrete) {
 				for(const entry of result) {
@@ -158,7 +152,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return result;
 	}
 
-	public abstract(concrete: ReadonlySet<ConcreteProduct<Product>> | typeof Top): this {
+	public abstract(concrete: ReadonlySet<ConcreteProductOf<Product>> | typeof Top): this {
 		if(concrete === Top) {
 			return this.top();
 		}

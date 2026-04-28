@@ -1,27 +1,31 @@
 import { describe } from 'vitest';
-import type { AbstractClosedPentagon } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-domain';
 import { ClosedPentagonDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-domain';
 import { assertAbstractDomain } from '../domains/domain';
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
-import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-domain';
-import { StateAbstractDomain } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
-import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
+import type {
+	StateDomainBottom,
+	StateDomainLift,
+	StateDomainTop
+} from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
+import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { UpperBoundsValueDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-value-domain';
+import { ClosedPentagonValueDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-value-domain';
 
 describe('Weakly Relational Closed Pentagon Domain', () => {
-	const createDomain = (value: AbstractClosedPentagon) => {
-		return new ClosedPentagonDomain(value);
+	const createDomain = (value: StateDomainLift<ClosedPentagonValueDomain>) => {
+		return new ClosedPentagonDomain(value, ClosedPentagonValueDomain.top());
 	};
 
-	const pentagon = (entries: [NodeId, [interval: [l: number, r: number], upperBounds: NodeId[]]][]): AbstractClosedPentagon => {
-		return {
-			interval:    new StateAbstractDomain(new Map(entries.map(([key, [interval, _]]) => [key, new IntervalDomain(interval)])), IntervalDomain.top()),
-			upperBounds: new UpperBoundsDomain(new Map(entries.map(([key, [_, upperBounds]]) => [key, new Set(upperBounds)])))
-		};
+	const pentagon = (entries: [NodeId, [interval: [l: number, r: number], upperBounds: NodeId[]]][]): StateDomainLift<ClosedPentagonValueDomain> => {
+		return new Map(entries.map(([key, [interval, upperBounds]]): [NodeId, ClosedPentagonValueDomain] => [key, new ClosedPentagonValueDomain({
+			interval:    new IntervalDomain(interval),
+			upperBounds: new UpperBoundsValueDomain(new Set(upperBounds))
+		})]));
 	};
 
-	const ClosedPentagonTop = { interval: StateAbstractDomain.top(IntervalDomain.top()), upperBounds: UpperBoundsDomain.top() } satisfies AbstractClosedPentagon;
-	const ClosedPentagonBottom = { interval: StateAbstractDomain.bottom(IntervalDomain.bottom()), upperBounds: UpperBoundsDomain.bottom() } satisfies  AbstractClosedPentagon;
+	const ClosedPentagonTop: StateDomainTop = new Map<NodeId, never>();
+	const ClosedPentagonBottom: StateDomainBottom = Bottom;
 
 	assertAbstractDomain(createDomain, ClosedPentagonTop, ClosedPentagonTop, {
 		equal: true, leq: true, join: ClosedPentagonTop, meet: ClosedPentagonTop, concrete: Top, abstract: ClosedPentagonTop, widen: ClosedPentagonTop

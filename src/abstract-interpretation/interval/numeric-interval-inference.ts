@@ -21,10 +21,6 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 		super(config, StateAbstractDomain.top(IntervalDomain.top()));
 	}
 
-	protected getBottomValue(): IntervalDomain {
-		return IntervalDomain.bottom();
-	}
-
 	protected override onNumberConstant({ vertex, node}: {
 		vertex: DataflowGraphVertexValue;
 		node:   RNumber<ParentInformation>

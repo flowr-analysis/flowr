@@ -1,203 +1,61 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Bottom, BottomSymbol, Top } from '../domains/lattice';
-import { AbstractDomain } from '../domains/abstract-domain';
-import { isNotUndefined, isUndefined } from '../../util/assert';
-import { setEquals } from '../../util/collections/set';
+import { Bottom, Top } from '../domains/lattice';
+import { isNotUndefined } from '../../util/assert';
+import type { ConcreteState, StateDomainLift, StateDomainTop, StateDomainValue } from '../domains/state-abstract-domain';
+import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
 
-/** The type of the actual values of the upper bounds domain as mapping from NodeId to all NodeIds that are greater or equal */
-type UpperBoundsValue = ReadonlyMap<NodeId, ReadonlySet<NodeId>>;
-/** The type of the Top element of the upper bounds domain as empty mapping from NodeId to NodeIds */
-type UpperBoundsTop = ReadonlyMap<NodeId, never>;
-/** The type of the Bottom element of the upper bounds domain as {@link Bottom} symbol */
-type UpperBoundsBottom = typeof Bottom;
-/** The type of the abstract values of the upper bounds domain that are Top, Bottom, or actual values */
-type UpperBoundsLift = UpperBoundsValue | UpperBoundsBottom;
-
-/**
- * A weakly relational abstract domain that maps NodeIds to a set of all NodeIds that are associated with greater or equal values.
- * The Bottom element is defined as {@link Bottom} symbol and the Top element as empty mapping.
- * @template Value - Type of the abstract elements of the abstract domain (extends the UpperBoundsLift)
- */
-export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> extends AbstractDomain<ReadonlyMap<NodeId, number>, UpperBoundsValue, UpperBoundsTop, UpperBoundsBottom, Value> {
-	constructor(value: Value) {
-		if(value === Bottom) {
-			super(Bottom as Value);
+export class UpperBoundsDomain extends StateAbstractDomain<UpperBoundsValueDomain> {
+	constructor(value: StateDomainLift<UpperBoundsValueDomain>) {
+		// Assure that we do not have a mapping id => {id}
+		if(value !== Bottom) {
+			const newValue = new Map(value);
+			for(const [node, upperBounds] of newValue.entries()) {
+				if(upperBounds.has(node)) {
+					upperBounds.remove(node);
+				}
+			}
+			super(newValue, UpperBoundsValueDomain.top());
 		} else {
-			super(new Map(value.entries().map(([key, value]) => [key, new Set(value)])) as UpperBoundsValue as Value);
+			super(Bottom, UpperBoundsValueDomain.top());
 		}
 	}
 
-	public create(value: Value): this;
-	public create(value: Value): UpperBoundsDomain {
-		return new UpperBoundsDomain(value);
-	}
-
-	/**
-	 * Sets the upper bounds for the provided key if the domain is not Bottom.
-	 * @param key - The node to set the upper bounds for.
-	 * @param value - The upper bounds of the node.
-	 * @private
-	 */
-	private setBounds(key: NodeId, value: ReadonlySet<NodeId>): void {
-		if(this.value !== Bottom) {
-			(this.value as Map<NodeId, ReadonlySet<NodeId>>).set(key, value);
+	public override set(node: NodeId, value: UpperBoundsValueDomain) {
+		if(this._value !== Bottom) {
+			const valueWithoutNodeItself = value.create(value.value);
+			valueWithoutNodeItself.remove(node);
+			(this._value as Map<NodeId, UpperBoundsValueDomain>).set(node, valueWithoutNodeItself);
 		}
 	}
 
-	/**
-	 * Removes the upper bounds for the provided key if the domain is not Bottom.
-	 * @param key - The node to remove the upper bounds for.
-	 * @private
-	 */
-	private removeBounds(key: NodeId): void {
-		if(this.value !== Bottom) {
-			(this.value as Map<NodeId, ReadonlySet<NodeId>>).delete(key);
+	public override get(node: NodeId): UpperBoundsValueDomain | undefined {
+		if(this._value === Bottom) {
+			return this.domain.bottom();
 		}
+		const value = this._value.get(node);
+		if(isNotUndefined(value) && value.has(node)) {
+			value.remove(node);
+		}
+		return value;
 	}
 
-	/**
-	 * Retrieves the upper bounds for the provided key or undefined if the domain is Bottom.
-	 * Assures that the key is part of the returned set (as x &leq; x always holds).
-	 * @param key - The node to receive the upper bounds for.
-	 * @private
-	 */
-	private getBounds(key: NodeId): ReadonlySet<NodeId> | undefined {
-		if(this.value === Bottom) {
-			return undefined;
-		}
-		return this.value.get(key)?.union(new Set([key])) ?? new Set([key]);
-	}
-
-	public static top(): UpperBoundsDomain<UpperBoundsTop> {
-		return new UpperBoundsDomain(new Map<NodeId, never>());
-	}
-
-	public static bottom(): UpperBoundsDomain<UpperBoundsBottom> {
-		return new UpperBoundsDomain(Bottom);
-	}
-
-	public top(): this & UpperBoundsDomain<UpperBoundsTop>;
-	public top(): UpperBoundsDomain<UpperBoundsTop> {
-		return UpperBoundsDomain.top();
-	}
-
-	public bottom(): this & UpperBoundsDomain<UpperBoundsBottom>;
-	public bottom(): UpperBoundsDomain<UpperBoundsBottom> {
-		return UpperBoundsDomain.bottom();
-	}
-
-	public equals(other: this): boolean {
-		if(this.value === other.value){
-			return true;
-		} else if(this.value === Bottom || other.value === Bottom) {
-			return false;
-		}
-
-		const allKeys = new Set<NodeId>([...this.value.keys(), ...other.value.keys()]);
-		for(const key of allKeys){
-			const thisBounds = this.getBounds(key);
-			const otherBounds = other.getBounds(key);
-			if(isUndefined(thisBounds) || isUndefined(otherBounds) || !setEquals(thisBounds, otherBounds)) {
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	public leq(other: this): boolean {
-		if(this.value === Bottom){
-			return true;
-		} else if(other.value === Bottom){
-			return false;
-		}
-
-		for(const [key, otherValue] of other.value.entries()) {
-			const thisValue = this.getBounds(key);
-			if(isNotUndefined(thisValue) && !otherValue.isSubsetOf(thisValue)) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	public join(other: this): this {
-		if(this.value === Bottom) {
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		}
-		const result = this.create(this.value) as this & UpperBoundsDomain<UpperBoundsValue>;
-
-		for(const key of result.value.keys()) {
-			if(!other.value.has(key)) {
-				result.removeBounds(key);
-			}
-		}
-		for(const [key, value] of other.value.entries()) {
-			const currValue = result.value.get(key);
-
-			if(isNotUndefined(currValue)) {
-				result.setBounds(key, currValue.intersection(value));
-			}
-		}
-		return result;
-	}
-
-	public meet(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		}
-		const result = this.create(this.value) as this & UpperBoundsDomain<UpperBoundsValue>;
-
-		for(const [key, value] of other.value.entries()) {
-			const currValue = result.value.get(key);
-
-			if(isUndefined(currValue)) {
-				result.setBounds(key, value);
-			} else {
-				result.setBounds(key, currValue.union(value));
-			}
-		}
-		return result;
-	}
-
-	public widen(other: this): this {
-		if(this.value === Bottom) {
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		}
-		const result = this.top() as this & UpperBoundsDomain<UpperBoundsValue>;
-		const allKeys = new Set<NodeId>([...this.value.keys(), ...other.value.keys()]);
-
-		for(const key of allKeys.values()) {
-			const thisValue = this.getBounds(key);
-			const otherValue = other.getBounds(key);
-
-			if(isNotUndefined(thisValue) && isNotUndefined(otherValue) && otherValue.isSubsetOf(thisValue)) {
-				result.setBounds(key, otherValue);
-			}
-		}
-		return result;
-	}
-
-	public narrow(_other: this): this {
+	public override narrow(_other: this): this {
 		throw new Error('Not Implemented');
 	}
 
-	public concretize(_limit: number): ReadonlySet<ReadonlyMap<NodeId, number>> | typeof Top {
+	public override concretize(_limit: number): ReadonlySet<ConcreteState<UpperBoundsValueDomain>> | typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
 		}
 		return Top;
 	}
 
-	public abstract(concrete: ReadonlySet<ReadonlyMap<NodeId, number>> | typeof Top): this {
+	public override abstract(concrete: ReadonlySet<ConcreteState<UpperBoundsValueDomain>> | typeof Top): this {
 		if(concrete === Top) {
 			return this.top();
 		}
-		if(concrete.size === 0){
+		if(concrete.size === 0) {
 			return this.bottom();
 		}
 		const allNodeIds = new Set<NodeId>();
@@ -206,7 +64,7 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 				allNodeIds.add(key);
 			}
 		}
-		const result = this.top() as this & UpperBoundsDomain<UpperBoundsValue>;
+		const result = this.top() as this & StateAbstractDomain<UpperBoundsValueDomain, StateDomainValue<UpperBoundsValueDomain>>;
 
 		for(const nodeIdA of allNodeIds.values()) {
 			for(const nodeIdB of allNodeIds.values()) {
@@ -218,43 +76,20 @@ export class UpperBoundsDomain<Value extends UpperBoundsLift = UpperBoundsLift> 
 					const valueA = map.get(nodeIdA);
 					const valueB = map.get(nodeIdB);
 
-					return isNotUndefined(valueA) && isNotUndefined(valueB) && valueA <= valueB;
-				})) {
-					const currentValue = result.value.get(nodeIdA);
-					if(isNotUndefined(currentValue)) {
-						result.setBounds(nodeIdA, currentValue.union(new Set([nodeIdB])));
-					} else {
-						result.setBounds(nodeIdA, new Set([nodeIdB]));
+					if(typeof valueA === 'number' && typeof valueB === 'number') {
+						return isNotUndefined(valueA) && isNotUndefined(valueB) && valueA <= valueB;
 					}
+					return false;
+				})) {
+					const currentValue = result.get(nodeIdA) ?? UpperBoundsValueDomain.top();
+					currentValue.add(nodeIdB);
 				}
 			}
 		}
 		return result;
 	}
 
-	public toJson(): unknown {
-		if(this.value === Bottom){
-			return this.value.description;
-		}
-		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, [...value]]));
-	}
-
-	public toString(): string {
-		if(this.value === Bottom) {
-			return BottomSymbol;
-		}
-		return '(' + this.value.entries().map(([key, value]) => `${key} -> {${value.values().map(id => id.toString()).toArray().join(', ')}}`).toArray().join(', ') + ')';
-	}
-
-	public isTop(): this is this & UpperBoundsDomain<UpperBoundsTop> {
-		return this.value !== Bottom && this.value.entries().every(([key, value]) => value.size === 0 || (value.size === 1 && value.has(key)));
-	}
-
-	public isBottom(): this is this & UpperBoundsDomain<UpperBoundsBottom> {
-		return this.value == Bottom;
-	}
-
-	public isValue(): this is this & UpperBoundsDomain<UpperBoundsValue> {
-		return this.value !== Bottom;
+	public override isTop(): this is this & StateAbstractDomain<UpperBoundsValueDomain, StateDomainTop> {
+		return this.value !== Bottom && this.value.entries().every(([key, value]) => value.isValue() && (value.value.size === 0 || (value.value.size === 1 && value.has(key))));
 	}
 }

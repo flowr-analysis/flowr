@@ -6,53 +6,90 @@ import { numericInferenceLogger } from '../interval/numeric-interval-inference';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { getMin } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ClosedPentagonDomain } from './closed-pentagon-domain';
+import {
+	IntervalExpressionSemanticsMapper,
+	intervalNegativeOp,
+	intervalSubtractOp
+} from '../interval/expression-semantics';
 
+/**
+ * Maps function/operator names to the semantic functions.
+ */
 const PentagonExpressionSemanticsMapper = [
-	[Identifier.make('-'), binaryExprOpSemantics(pentagonSubtractOp)]
+	[Identifier.make('-'), unaryBinaryExprOpSemantics(pentagonNegativeOp, pentagonSubtractOp)]
 ] as const satisfies readonly PentagonSemanticsMapperInfo[];
 
 type PentagonSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
 
+type UnaryOpSemantics = (target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
+
+type BinaryOpSemantics = (target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
+
+type UnaryFnSemantics = (target: NodeId, arg: FunctionArgument, visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
+
+type NaryFnSemantics = (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
+
 /**
- * Semantics definition function for binary numeric operators.
- * @param left - The left interval operand of the binary operator.
- * @param right - The right interval operand of the binary operator.
+ * Applies the abstract expression semantics of the provided function with respect to the closed pentagon domain to the provided args.
+ * If the pentagon semantics are not available, the interval semantics are applied as fallback.
+ * @param target - Node ID of the result node.
+ * @param functionIdentifier - The {@link Identifier} of the function/operator.
+ * @param args - The arguments of the function/operator.
+ * @param visitor - The pentagon inference visitor performing the analysis used to resolve nodes.
+ * @param currentState - The current state in the inference process, to update the upper bounds of other nodes.
  * @param significantFigures - The number of significant figures used to create new intervals.
- * @returns The resulting interval after applying the binary operator semantics to the provided operands.
+ * @returns The resulting pentagon after applying the semantics.
  */
-type BinaryOpSemantics = (left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
-
-type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
-
-/**
- * T
- * @param functionIdentifier
- * @param args
- * @param visitor
- * @param significantFigures
- */
-export function applyPentagonExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, significantFigures?: number) {
+export function applyPentagonExpressionSemantics(target: NodeId, functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures?: number): ClosedPentagonValueDomain | undefined {
 	const match = PentagonExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
-		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid pentagon operation. Returning undefined semantics.`);
-		return undefined;
+		// Check if we at least have interval semantics and apply them if available.
+		const intervalMatch = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+
+		if(isUndefined(intervalMatch)) {
+			numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid pentagon operation. Returning undefined semantics.`);
+			return undefined;
+		} else {
+			const [_, semantics] = intervalMatch;
+
+			const interval = semantics(args, (node: NodeId) => visitor.getAbstractValue(node)?.value.interval, significantFigures);
+
+			if(isUndefined(interval)) {
+				return undefined;
+			} else {
+				const pentagon = ClosedPentagonValueDomain.top();
+				pentagon.value.interval = interval;
+				return pentagon;
+			}
+		}
+	} else {
+		const [_, semantics] = match;
+
+		return semantics(target, args, visitor, currentState, significantFigures);
 	}
-
-	const [_, semantics] = match;
-
-	return semantics(args, visitor, significantFigures);
 }
 
-/**
- * Guard for binary numerical operators, filtering all calls with more/less than 2 arguments.
- * If the call has exactly 2 arguments that are not empty, the provided semantics function is applied.
- * Otherwise, a warning is logged and bottom is returned.
- * @param binaryOperatorSemantics - The semantics function for the binary operator.
- * @returns A semantics function for n-ary functions that applies the provided binary numeric operator semantics if the call has exactly 2 non-empty numeric arguments, and logs a warning and returns bottom otherwise.
- */
+function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
+	return (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
+		// Usage as unary operator
+		if(args.length === 1) {
+			if(FunctionArgument.isEmpty(args[0])) {
+				numericInferenceLogger.warn('Called unary operator with an empty argument, which is not supported.');
+				return ClosedPentagonValueDomain.bottom(significantFigures);
+			}
+
+			const arg = visitor.getAbstractValue(args[0].nodeId);
+			return unaryOperatorSemantics(target, [args[0].nodeId, arg], currentState, visitor, significantFigures);
+		}
+
+		return binaryExprOpSemantics(binaryOperatorSemantics)(target, args, visitor, currentState, significantFigures);
+	};
+}
+
 function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
+	return (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
 		if(args.length !== 2) {
 			numericInferenceLogger.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
 			return ClosedPentagonValueDomain.bottom(significantFigures);
@@ -66,11 +103,53 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
 		const left = visitor.getAbstractValue(args[0].nodeId);
 		const right = visitor.getAbstractValue(args[1].nodeId);
 
-		return binaryOperatorSemantics([args[0].nodeId, left], [args[1].nodeId, right], significantFigures);
+		return binaryOperatorSemantics(target, [args[0].nodeId, left], [args[1].nodeId, right], currentState, visitor, significantFigures);
 	};
 }
 
-function pentagonSubtractOp(left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
+function _unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
+	return (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
+		if(args.length !== 1) {
+			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
+			return ClosedPentagonValueDomain.bottom(significantFigures);
+		}
+
+		return unaryFunctionSemantics(target, args[0], visitor, currentState, significantFigures);
+	};
+}
+
+function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
+	const [argNodeId, argValue] = arg;
+	if(argValue?.isValue() && argValue.value.interval.isValue()) {
+		const targetPentagon = ClosedPentagonValueDomain.top();
+
+		const interval = intervalNegativeOp(argValue.value.interval);
+		if(isUndefined(interval)) {
+			return;
+		}
+		targetPentagon.value.interval = interval;
+
+		const [a, b] = argValue.value.interval.value;
+		if(a >= 0) {
+			// target will be smaller than arg => arg is an upper bound
+			const argOrigins = visitor.getVariableOrigins(argNodeId);
+			if(argOrigins.length === 1) {
+				targetPentagon.value.upperBounds.add(argOrigins[0]);
+			}
+		}
+		if(b <= 0) {
+			// target will be greater than arg => target is upper bound for arg
+			const argOrigins = visitor.getVariableOrigins(argNodeId);
+			if(argOrigins.length === 1) {
+				currentState.get(argOrigins[0])?.value.upperBounds.add(target);
+			}
+		}
+
+		return targetPentagon;
+	}
+}
+
+function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
 	const [leftNodeId, leftValue] = left;
 	const [rightNodeId, rightValue] = right;
 
@@ -83,36 +162,39 @@ function pentagonSubtractOp(left: [NodeId, ClosedPentagonValueDomain | undefined
 
 	if(leftValue?.isValue() && leftValue.value.interval.isValue() && rightValue?.isValue() && rightValue.value.interval.isValue()) {
 		const resultPentagon = ClosedPentagonValueDomain.top();
-		const [a, b] = leftValue.value.interval.value;
+
+		let interval = intervalSubtractOp(leftValue.value.interval, rightValue.value.interval);
+		if(isUndefined(interval)) {
+			return;
+		}
+		if(rightValue.value.upperBounds.has(leftNodeId)) {
+			// right <= left: result must be positive
+			interval = interval.meet(leftValue.value.interval.create([0, Infinity]));
+		}
+		if(leftValue.value.upperBounds.has(rightNodeId)) {
+			// left <= right: result must be negative
+			interval = interval.meet(leftValue.value.interval.create([-Infinity, 0]));
+		}
+		resultPentagon.value.interval = interval;
+
+		// Upper Bounds Part
 		const [c, d] = rightValue.value.interval.value;
 
-		// Interval part
-		if((a === Infinity && d === Infinity)
-			|| (a === -Infinity && d === -Infinity)
-			|| (b === Infinity && c === Infinity)
-			|| (b === -Infinity && c === -Infinity)) {
-			return undefined;
-		}
-
-		if(rightValue.value.upperBounds.has(leftNodeId) && leftValue.value.upperBounds.has(rightNodeId)) {
-			// left and right are equal
-			resultPentagon.value.interval = leftValue.value.interval.create([0, 0]);
-		} else if(rightValue.value.upperBounds.has(leftNodeId)) {
-			// right <= left: result must be positive
-			resultPentagon.value.interval = leftValue.value.interval.create([a - d, b - c]).meet(leftValue.value.interval.create([0, Infinity]));
-		} else if(leftValue.value.upperBounds.has(rightNodeId)) {
-			// left <= right: result must be negative
-			resultPentagon.value.interval = leftValue.value.interval.create([a - d, b - c]).meet(leftValue.value.interval.create([-Infinity, 0]));
-		} else {
-			resultPentagon.value.interval = leftValue.value.interval.create([a - d, b - c]);
-		}
-
-		// Upper Bounds Part (TODO: Incomplete)
 		if(c >= 0) {
-			resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
-			resultPentagon.value.upperBounds.add(leftNodeId);
+			// Always subtract positive number => result is always smaller than left and therefore inherits its upper bounds
+			const leftOrigins = visitor.getVariableOrigins(leftNodeId);
+			if(leftOrigins.length === 1) {
+				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds.add(leftNodeId);
+			}
 		}
-
+		if(d <= 0) {
+			// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
+			const leftOrigins = visitor.getVariableOrigins(leftNodeId);
+			if(leftOrigins.length === 1) {
+				currentState.get(leftOrigins[0])?.value.upperBounds.add(target);
+			}
+		}
 
 		return resultPentagon;
 	}

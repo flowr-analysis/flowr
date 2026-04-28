@@ -187,7 +187,7 @@ function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain |
  * @param arg - The interval to negate (undefined meaning no information).
  * @returns The resulting interval after negation. If the interval is undefined, the result is also undefined.
  */
-function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+export function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(arg?.isValue()) {
 		const [a, b] = arg.value;
 		return arg.create([-b, -a]);
@@ -201,7 +201,7 @@ function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | u
  * @param right - The right interval to subtract (undefined meaning no information).
  * @returns The resulting interval after subtraction. If one of the intervals is undefined, the result is also undefined.
  */
-function intervalSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+export function intervalSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	return intervalAddOp(left, intervalNegativeOp(right));
 }
 

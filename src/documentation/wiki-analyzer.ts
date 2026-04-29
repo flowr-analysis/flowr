@@ -238,7 +238,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., \`['file:rmd', [/.*.rmd/i]]\` for the ${ctx.link(FlowrAnalyzerRmdFilePlugin)}).\\
    This will also use the ${ctx.link(makePlugin)} function under the hood to create the plugin instance.
 
-Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrConfig)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link('FlowrDefaultPlugins')}) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
@@ -280,7 +280,7 @@ Plugins allow you to extend the capabilities of the analyzer in many different w
 For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
 All plugins have to extend the ${ctx.link(FlowrAnalyzerPlugin)} base class and specify their ${ctx.link('PluginType')}.
 During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
-If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described 
+If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described
 in the [Builder Configuration](#builder-configuration) section above.
 However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
 
@@ -318,7 +318,7 @@ ${section('Project Discovery', 4)}
 
 These plugins trigger when confronted with a project analysis request (see, ${ctx.link('RProjectAnalysisRequest')}).
 Their job is to identify the files that belong to the project and add them to the analysis.
-flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a 
+flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a
 ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that simply collects all R source files in the given folder.
 
 Please note that all project discovery plugins should conform to the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} base class.

@@ -159,6 +159,11 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 	process.on('SIGTERM', end);
 }
 
+function getReplPlugins(config: FlowrConfig) {
+	const loadDefault = config.repl.plugins.findIndex(p => p === 'flowr:default');
+	return [...config.repl.plugins.slice(0, loadDefault), ...config.defaultPlugins, ...config.repl.plugins.slice(loadDefault + 1)];
+}
+
 async function mainRepl() {
 	const config = createConfig();
 
@@ -193,7 +198,7 @@ async function mainRepl() {
 	const analyzer = new FlowrAnalyzerBuilder(false)
 		.setParser(defaultEngine)
 		.setConfig(config)
-		.registerPlugins(...config.repl.plugins)
+		.registerPlugins(...getReplPlugins(config))
 		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;

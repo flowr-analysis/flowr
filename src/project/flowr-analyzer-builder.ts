@@ -45,7 +45,7 @@ export class FlowrAnalyzerBuilder {
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
 	 * By default, the standard set of plugins as returned by {@link FlowrConfig#defaultPlugins} are registered.
 	 * @param withDefaultPlugins - Whether to register the default plugins upon creation. Default is `true`.
-	 * @see {@link FlowrConfig#defaultPlugins} - for the default plugin set.
+	 * @see {@link FlowrDefaultPlugins} - for the default plugin set.
 	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} - to add more plugins.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
 	 */
@@ -70,9 +70,12 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Overwrite the configuration used by the resulting analyzer.
+		* This also unloads all default plugins and reloads them as set in the new config
 	 * @param config - The new configuration.
 	 */
 	public setConfig(config: FlowrConfig): this {
+		this.unregisterPlugins(...this.flowrConfig.defaultPlugins.map(p => Array.isArray(p) ? p[0] : p));
+		this.registerPlugins(...config.defaultPlugins);
 		this.flowrConfig = config;
 		return this;
 	}

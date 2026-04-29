@@ -92,6 +92,22 @@ export const GgPlotAddons = [
 ];
 const PlotAddons = GraphicsPlotAddons.concat(GgPlotImplicitAddons, ...PlotFunctionsWithAddParam);
 
+/**
+ * Top-level entry points of the {@link https://ellmer.tidyverse.org/ ellmer} package.
+ * Every chat backend opens a network connection to a third-party LLM provider, and
+ * `live_console` / `live_browser` start an interactive REPL or browser session, so
+ * we treat every one of these as having unknown side effects (similar to `eval` or
+ * `load`). The `chat_*` family below mirrors the providers documented at
+ * {@link https://ellmer.tidyverse.org/reference/index.html#chat}.
+ */
+export const EllmerFunctions = [
+	'chat_anthropic', 'chat_aws_bedrock', 'chat_azure_openai', 'chat_cloudflare', 'chat_cortex_analyst',
+	'chat_databricks', 'chat_deepseek', 'chat_github', 'chat_google_gemini', 'chat_google_vertex',
+	'chat_groq', 'chat_huggingface', 'chat_mistral', 'chat_ollama', 'chat_openai', 'chat_openrouter',
+	'chat_perplexity', 'chat_portkey', 'chat_snowflake', 'chat_vllm',
+	'live_console', 'live_browser'
+];
+
 const RegexConvIn = /[-/\\^$*+?.()|[\]{}]/g;
 function toRegex(n: readonly string[]): RegExp {
 	return new RegExp(`^(${
@@ -223,6 +239,7 @@ export const DefaultBuiltinConfig = [
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
 	{ type: 'function', names: ['load', 'load_all', 'setwd', 'set.seed'],      processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
+	{ type: 'function', names: EllmerFunctions,                                processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: 'all' },                             assumePrimitive: false },
 	{ type: 'function', names: ['body', 'formals', 'environment'],             processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: true },
 	{ type:      'function',
 		names:     ['.Call', '.External', '.C', '.Fortran'],

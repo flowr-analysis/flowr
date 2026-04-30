@@ -160,11 +160,11 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 }
 
 function getReplPlugins(config: FlowrConfig) {
-	const loadDefault = config.repl.plugins.findIndex(p => p === 'flowr:default');
-	if(loadDefault !== -1) {
-		return [...config.repl.plugins.slice(0, loadDefault), ...config.defaultPlugins, ...config.repl.plugins.slice(loadDefault + 1)];
+	const plugins = config.repl.plugins.filter(p => p !== 'flowr:default');
+	if(plugins.length !== config.repl.plugins.length) {
+		return plugins.concat(config.defaultPlugins);
 	} else {
-		return config.repl.plugins;
+		return plugins;
 	}
 }
 

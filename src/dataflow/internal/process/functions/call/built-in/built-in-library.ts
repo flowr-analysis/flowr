@@ -4,14 +4,16 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
-import { Identifier } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { Environment } from '../../../../../environments/environment';
+import { EdgeType } from '../../../../../graph/edge';
 
 /**
  * Process a library call like `library` or `require`
@@ -28,6 +30,7 @@ export function processLibrary<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
 	const nameToLoad = unpackNonameArg(args[0]);
+
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol) {
 		dataflowLogger.warn('No library name provided, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
@@ -47,9 +50,29 @@ export function processLibrary<OtherInfo>(
 			str:    Identifier.getName(nameToLoad.content)
 		}
 	};
-	return processKnownFunctionCall({
+	const info = processKnownFunctionCall({
 		name, args:                 wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data,
 		hasUnknownSideEffect: true,
 		origin:               BuiltInProcName.Library
 	}).information;
+
+
+	// console.log(nameToLoad?.lexeme);g
+	// console.log(data.ctx.deps.getDependency(nameToLoad?.lexeme ?? ''))
+	const oldParent = info.environment.current.parent;
+	let ggplotEnv = new Environment(oldParent);
+	ggplotEnv.n = nameToLoad?.lexeme;
+	ggplotEnv = ggplotEnv.define({
+		name:      Identifier.make('ggplot', 'ggplot2'),
+		type:      ReferenceType.Function,
+		nodeId:    NodeId.toBuiltIn('ggplot'),
+		definedAt: NodeId.toBuiltIn('ggplot2'),
+	});
+	info.environment.current.parent = ggplotEnv;
+	info.environment = {
+		level:   info.environment.level + 1,
+		current: info.environment.current
+	};
+	info.graph.addEdge(NodeId.toBuiltIn('ggplot'), rootId, EdgeType.Reads);
+	return info;
 }

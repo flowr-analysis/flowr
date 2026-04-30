@@ -36,10 +36,11 @@ import type { AutocompletablePaths } from '../util/objects';
  * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:      DeepWritable<FlowrConfig> = FlowrConfig.default();
-	private parser?:          KnownParser;
-	private input?:           Omit<NormalizeRequiredInput, 'context'>;
-	private readonly plugins: Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private flowrConfig:                 DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private parser?:                     KnownParser;
+	private input?:                      Omit<NormalizeRequiredInput, 'context'>;
+	private readonly plugins:            Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private readonly withDefaultPlugins: boolean;
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
@@ -50,6 +51,7 @@ export class FlowrAnalyzerBuilder {
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
 	 */
 	constructor(withDefaultPlugins: boolean = true) {
+		this.withDefaultPlugins = withDefaultPlugins;
 		if(withDefaultPlugins) {
 			this.registerPlugins(...this.flowrConfig.defaultPlugins);
 		}
@@ -70,12 +72,16 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Overwrite the configuration used by the resulting analyzer.
-		* This also unloads all default plugins and reloads them as set in the new config
+	 * This also unloads all default plugins and reloads them as set in the new config
+	 * if the withDefaultPlugins flag was set in the constructor
 	 * @param config - The new configuration.
 	 */
 	public setConfig(config: FlowrConfig): this {
-		this.unregisterPlugins(...this.flowrConfig.defaultPlugins.map(p => Array.isArray(p) ? p[0] : p));
-		this.registerPlugins(...config.defaultPlugins);
+		if(this.withDefaultPlugins) {
+			this.unregisterPlugins(...this.flowrConfig.defaultPlugins.map(p => Array.isArray(p) ? p[0] : p));
+			this.registerPlugins(...config.defaultPlugins);
+		}
+
 		this.flowrConfig = config;
 		return this;
 	}
@@ -126,7 +132,7 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Register one or multiple additional plugins.
-	 * For the default plugin set, please refer to {@link FlowrAnalyzerPluginDefaults}, they can be registered
+	 * For the default plugin set, please refer to {@link FlowrDefaultPlugins}, they can be registered
 	 * by passing `true` to the {@link FlowrAnalyzerBuilder} constructor.
 	 * @param plugin - One or multiple plugins to register.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} to remove plugins.

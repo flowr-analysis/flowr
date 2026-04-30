@@ -21,6 +21,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { explainWritingCode } from './data/interface/doc-writing-code';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
@@ -233,6 +234,8 @@ The following summarizes the configuration options:
 - \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
 - \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
 - \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
+- \`defaultPlugins\`: allows to configure which plugins to load by default when creating a new ${ctx.link(FlowrAnalyzer)} instance.
+- \`repl.plugins\`: allows to configure which plugins to load in the _flowR_ REPL. Use \`flowr:default\` to reference the plugins specified by \`defaultPlugins\`.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -256,7 +259,7 @@ ${codeBlock('json', JSON.stringify(
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
-				plugins:         ['file:description', 'versions:description']
+				plugins:         ['flowr:default']
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true

@@ -4,66 +4,100 @@ import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { parseRDA } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import seedrandom from 'seedrandom';
+import fs from 'fs';
+import path from 'path';
 
-describe('load-pipeline', () => {
-	const runs = 300;
-	const seed = 0;
-	const objectsPerRun = 5;
-	const maxNestingLevel = 1;
+describe('rda-files', () => {
+	describe('load-pipeline random', () => {
+		const runs = 300;
+		const seed = 0;
+		const objectsPerRun = 5;
+		const maxNestingLevel = 1;
 
-	const saveFormats = [
-		'TRUE', // ASCII
-		'FALSE' // XDR
-	];
-	const versions = [
-		// '1',
-		'2',
-		'3'
-	];
-	const compressions = [
-		'gzip',
-		'bzip2',
-		'xz',
-		'none'
-	];
+		const saveFormats = [
+			'TRUE', // ASCII
+			'FALSE' // XDR
+		];
+		const versions = [
+			// '1',
+			'2',
+			'3'
+		];
+		const compressions = [
+			'gzip',
+			'bzip2',
+			'xz',
+			'none'
+		];
 
-	for(let i = 0; i < runs; i++) {
-		const file = `/tmp/test_${i}.rda`;
-		const rng = seedrandom((seed + i).toString());
-		const rnd = new SeededRandom(rng);
-		const encoding = rnd.pick(saveFormats);
-		const version = rnd.pick(versions);
-		const compression = rnd.pick(compressions);
+		for(let i = 0; i < runs; i++) {
+			const file = `/tmp/test_${i}.rda`;
+			const rng = seedrandom((seed + i).toString());
+			const rnd = new SeededRandom(rng);
 
-		it(`Encoding: ${encoding}, Version: ${version}, Compression: ${compression} - run ${i} - seed ${seed + i}`, async() => {
+			const encoding = rnd.pick(saveFormats);
+			const version = rnd.pick(versions);
+			const compression = rnd.pick(compressions);
 
-			const rcg = new RandomRCodeGenerator(rnd);
+			it(`Encoding: ${encoding}, Version: ${version}, Compression: ${compression} - run ${i} - seed ${seed + i}`, async() => {
 
-			const { rCode, vars } = rcg.generateRCode(objectsPerRun, maxNestingLevel);
+				const rcg = new RandomRCodeGenerator(rnd);
 
-			const shellCode = `
-			${rCode}
-			save(${vars.join(', ')}, file="${file}", ascii = ${encoding}, version = ${version})
-			`;
+				const { rCode, vars } = rcg.generateRCode(objectsPerRun, maxNestingLevel);
 
-			const rShell = new RShellExecutor();
-			rShell.run(shellCode);
-			const shellResult = rShell.run(`print(load("${file}"))`);
+				const shellCode = `${rCode}
+					save(${vars.join(', ')}, file="${file}", ascii = ${encoding}, version = ${version})`;
+				const rShell = new RShellExecutor();
+				rShell.run(shellCode);
 
-			expect(parseROutputToList(shellResult).sort())
-				.toEqual(vars.sort());
+				const shellVars = getVarsFromShell(file, rShell);
+				rShell.close();
 
-			const result = await parseRDA(new FlowrTextFile(file));
+				expect(shellVars)
+					.toEqual(vars.sort());
 
-			expect(result).toBeDefined();
-			if(!result) {
-				throw new Error(`Run ${i} failed`);
-			}
+				const result = await parseRDA(new FlowrTextFile(file));
 
-			expect(result.flatMap(x => x.name)).toEqual(vars);
-		});
-	}
+				expect(result).toBeDefined();
+
+				expect(result?.flatMap(x => x.name)).toEqual(vars);
+			});
+		}
+	});
+
+	describe('load-pipeline real-world', () => {
+		const dir = 'test/testfiles/project/plugins/rda-files/zenodo';
+		const files = fs.readdirSync(dir).filter(file => file.endsWith('.RData') || file.endsWith('.rda')).map(file => path.join(dir, file));
+
+		for(const file of files) {
+			it(`File: ${file}`, async() => {
+				const rShell = new RShellExecutor();
+				const shellVars = getVarsFromShell(file, rShell);
+				rShell.close();
+
+				if(!shellVars || shellVars.length === 0) {
+					return;
+				}
+
+				const result = await parseRDA(new FlowrTextFile(file));
+
+				expect(result).toBeDefined();
+
+				expect(result?.flatMap(x => x.name).sort()).toEqual(shellVars.sort());
+			});
+		}
+	});
 });
+
+function getVarsFromShell(file: string, rShell: RShellExecutor) {
+	const vars = rShell.run(`
+		e <- new.env()
+		print(load("${file}", envir = e))
+		rm(e)
+		gc()
+	`);
+	return parseROutputToList(vars).sort();
+}
 
 function parseROutputToList(output: string): string[] {
 	return output

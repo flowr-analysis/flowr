@@ -41,13 +41,14 @@ export class RandomRCodeGenerator {
 			const { value, type, len } = this.generateObject(0, maxNestingLevel);
 			let code = `${name} ${operator} ${value}`;
 
-			// if(!(value === null || len === 0 || typesWithoutAttributes.has(type))) {
-			// 	const attribute = this.rnd.pick([
-			// 		() => this.generateAttribute(name),
-			// 		() => ({ value: '', len: 0 }),
-			// 	])();
-			// 	code = `${code}\n${attribute.value}`;
-			// }
+			if(!(value === null || len === 0 || typesWithoutAttributes.has(type))) {
+				const attribute = this.rnd.pick([
+					() => this.generateAttribute(name),
+					() => ({ value: `class(${name}) <- "foo"` }),
+					() => ({ value: '' }),
+				])();
+				code = `${code}\n${attribute.value}`;
+			}
 
 			codeMap.set(name, code);
 			vars.push(name);
@@ -142,8 +143,8 @@ export class RandomRCodeGenerator {
 		return { value: `c(${elements.join(', ')})`, type: 'vector', len: len };
 	}
 
-	generateList(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
-		const len = this.rnd.int(10);
+	generateList(nestingLevel: number, maxNestingLevel: number, length?: number): { value: string, type: string, len: number } {
+		const len = length || this.rnd.int(10);
 		const elements = Array.from({ length: len }, () =>
 			this.generateObject(nestingLevel + 1, maxNestingLevel).value
 		);
@@ -160,11 +161,10 @@ export class RandomRCodeGenerator {
 		return { value: `list(${elements.join(', ')})`, type: 'Map', len: len };
 	}
 
-	// TODO: list with len of Matrix
 	generateMatrix(maxNestingLevel: number): { value: string, type: string, len: number } {
 		const rows = this.rnd.int(3) + 1;
 		const cols = this.rnd.int(3) + 1;
-		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel);
+		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel, rows);
 		const byRow = this.rnd.pick(['TRUE', 'FALSE']);
 		return { value: `matrix(c(${elements.value}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len: elements.len };
 	}

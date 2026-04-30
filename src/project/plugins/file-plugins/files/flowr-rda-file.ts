@@ -6,9 +6,12 @@ import * as bzip2 from 'bzip2';
 import * as zlib from 'node:zlib';
 import * as lzmaNative from 'lzma-native';
 import { R_FunTabOffsets } from './r-fun-tab';
+import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 
 export type RDA = string;
 let currentDepth = 0;
+let lastName: string | undefined = undefined;
+let setLastName = false;
 let format: 'XDR' | 'ASCII' | 'BINARY';
 let offset = 0;
 const RCodeSetMax = 63;
@@ -57,7 +60,9 @@ export type CompressionType = 'COMP_GZ' | 'COMP_BZ' | 'COMP_XZ' | 'COMP_LZMA' | 
 
 
 /**
- *
+ * Parses a RDA-file by decompressing and deserializing
+ * @param file - RDA-file to parse
+ * @returns Parsed RDA-File as an RObject
  */
 export async function parseRDA(file: FlowrFileProvider): Promise<RObject[] | null> {
 	// can read gzip, bzip2 and xz forms of compression when reading from a file, and gzip compression when reading from a connection.
@@ -76,6 +81,15 @@ export async function parseRDA(file: FlowrFileProvider): Promise<RObject[] | nul
 	// saveload.c --> do_load() --> version 1 and earlier load
 }
 
+/**
+ * Detects the compression used for the RDA-file.
+ * @param buf - Buffer with compressed RDA-file content
+ * @param with_zlib - Whether zlib support should be used
+ * @returns Compression type of compressed RDA-file
+ * @remarks
+ * Based on the original R implementation:
+ * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710
+ */
 function detectCompression(buf: Buffer, with_zlib: boolean = false): CompressionType {
 	if(buf.length >= 2 && buf[0] == 0x1f && buf[1] == 0x8b) {
 		return 'COMP_GZ';
@@ -118,7 +132,10 @@ function detectCompression(buf: Buffer, with_zlib: boolean = false): Compression
 }
 
 /**
- *
+ * Decompresses the given RDA-file
+ * @param fileContent - File content as a  {@link Buffer}
+ * @param compressionType - {@link CompressionType} of RDA-file
+ * @returns Decompressed RDA-file
  */
 export async function decompress(fileContent: Buffer, compressionType: CompressionType): Promise<Buffer> {
 	let buffer: Buffer;
@@ -182,7 +199,7 @@ interface RObject {
 	hasAttribute?: boolean,
 	attributes?:   RObject[],
 	hasTag?:       boolean,
-	tags?:         RObject,
+	tag?:          RObject,
 	type?:         SexpType,
 	value:         unknown,
 	frame?:        object,
@@ -211,7 +228,7 @@ function newEmptyRObject(): RObject {
 		hasAttribute: undefined,
 		attributes:   [],
 		hasTag:       undefined,
-		tags:         undefined,
+		tag:          undefined,
 		type:         undefined,
 		value:        RValues.NilValue,
 		frame:        undefined,
@@ -227,6 +244,14 @@ function newEmptyRObject(): RObject {
 	};
 }
 
+/**
+ * Detects the serialization type used for the RDA-file.
+ * @param buf - Buffer with decompressed RDA-file content
+ * @returns Serialization type of decompressed RDA-file
+ * @remarks
+ * Based on the original R implementation:
+ * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1808-L1858
+ */
 function determineSerializationType(buf: Buffer): SerializationTypes {
 	if(buf.length < 5) {
 		if(buf.length === 0) {
@@ -265,6 +290,14 @@ function determineSerializationType(buf: Buffer): SerializationTypes {
 	return Number(buf.toString('ascii', 0, 4));
 }
 
+/**
+ * Deserializes a decompressed RDA-file.
+ * @param buffer - Buffer with decompressed RDA-file content
+ * @returns Deserialized RDA-file
+ * @remarks
+ * Based on the original R implementation:
+ * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1923-L1972
+ */
 function deserialize2(buffer: Buffer): RObject | RValues.NilValue{
 	offset = 0;
 
@@ -289,15 +322,22 @@ function deserialize2(buffer: Buffer): RObject | RValues.NilValue{
 		serializationType === 'R_MAGIC_BINARY_V2' ||
 		serializationType === 'R_MAGIC_BINARY_V3'
 	) {
-		const result = unserialize2(buffer);
+		const result = deserialize(buffer);
 		currentDepth--;
 		return result;
 	}
 	return RValues.NilValue;
 }
 
-// equivalent in real R-code: serialize.c --> R_Unserialize()
-function unserialize2(buffer: Buffer) {
+/**
+ * Deserializes a decompressed RDA-file.
+ * @param buffer - Buffer with decompressed RDA-file content
+ * @returns Deserialized RDA-file
+ * @remarks
+ * Based on the original R implementation:
+ * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2237-L2292
+ */
+function deserialize(buffer: Buffer) {
 
 	switch(String.fromCodePoint(buffer[offset])) {
 		case 'A': format = 'ASCII'; break; /* also for asciihex */
@@ -328,7 +368,7 @@ function unserialize2(buffer: Buffer) {
 				throw new Error('invalid length of encoding name');
 			}
 			const nativeEncoding = inString(buffer, neLen);
-			console.log('Encoding detected: ', nativeEncoding);
+			// console.log('Encoding detected: ', nativeEncoding);
 			break;
 		}
 		default:
@@ -349,6 +389,14 @@ function unserialize2(buffer: Buffer) {
 	return readItem(refTable, buffer);
 }
 
+/**
+ * Determine integer value.
+ * @param buffer - Buffer with decompressed RDA-file content
+ * @returns number
+ * @remarks
+ * Based on the original R implementation:
+ * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L396-L420
+ */
 function inInteger(buffer: Buffer): number | RValues {
 	switch(format) {
 		case 'ASCII': {
@@ -551,12 +599,28 @@ enum RValues {
 	NegInf            = 'Neg_inf',
 }
 
+function R_FindNamespace1(info: RObject): RObject {
+	const where = newEmptyRObject();
+	where.type = SexpType.CharSxp;
+	where.value = lastName;
+	const code = `..getNamespace("${info.value[0].name as string}", "${where.value as string}")`;
+	const shell = new RShellExecutor();
+	const result = shell.run(code);
+	shell.close();
+	const val = newEmptyRObject();
+	val.type = SexpType.EnvSxp;
+	if(result == '<environment: R_GlobalEnv>') {
+		val.value = RValues.GlobalEnv; // maybe GlobalEnvSxp?
+	} else {
+		console.log(result);
+	}
+	return val;
+}
+
 function readItemRecursive(flags: number, refTable: RObject[], buffer: Buffer): RObject | RValues.NilValue {
 	const [type, levels, object, hasAttribute, _hasTag] = unpackFlags(flags);
 
 	let s: RObject = newEmptyRObject();
-
-	console.debug(type);
 
 	switch(type) {
 		case SexpType.NilValueSxp:
@@ -578,10 +642,11 @@ function readItemRecursive(flags: number, refTable: RObject[], buffer: Buffer): 
 		case SexpType.AltRepSxp:
 		{
 			currentDepth++;
-			const info = readItem(refTable, buffer) as RObject;
-			const state = readItem(refTable, buffer) as RObject;
-			const attr = readItem(refTable, buffer) as RObject;
-			s = ALTREP_UNSERIALIZE_EX(info, state, attr, object, levels);
+			console.warn('AltReps are not supported yet!');
+			const _info = readItem(refTable, buffer) as RObject;
+			const _state = readItem(refTable, buffer) as RObject;
+			const _attr = readItem(refTable, buffer) as RObject;
+			// s = ALTREP_UNSERIALIZE_EX(info, state, attr, object, levels);
 			currentDepth--;
 			return s;
 		}
@@ -602,7 +667,7 @@ function readItemRecursive(flags: number, refTable: RObject[], buffer: Buffer): 
 		}
 		case SexpType.NamespaceSxp:
 			s = inStringVec(buffer, refTable);
-			// s = R_FindNamespace1(s); --> Here we would have to insert namespace infos
+			s = R_FindNamespace1(s); // --> Here we would have to insert namespace infos
 			addReadRef(refTable, s);
 			return s;
 		case SexpType.EnvSxp:
@@ -659,7 +724,7 @@ function readItemRecursive(flags: number, refTable: RObject[], buffer: Buffer): 
 					s.address = null;
 					currentDepth++;
 					s.protected = readItem(refTable, buffer) as RObject;
-					s.tags = readItem(refTable, buffer) as RObject | undefined;
+					s.tag = readItem(refTable, buffer) as RObject | undefined;
 					currentDepth--;
 					break;
 				}
@@ -680,7 +745,7 @@ function readItemRecursive(flags: number, refTable: RObject[], buffer: Buffer): 
 						if(R_FunTabOffsets[name]) {
 							s.value = mkPRIMSXP(name, SexpType.BuiltInSxp);
 						} else {
-							throw new Error(`unrecognized internal function name "${cbuf}"`);
+							throw new Error(`unrecognized internal function name "${name}"`);
 							s.value = RValues.NilValue;
 						}
 					}
@@ -915,7 +980,12 @@ function readItemIterative(flags: number, refTable: RObject[], buffer: Buffer): 
 		currentDepth++;
 
 		s.attributes = hasAttr ? [readItem(refTable, buffer) as RObject] : undefined;
-		s.tags = hasTag ? readItem(refTable, buffer) : undefined;
+		s.tag = hasTag ? readItem(refTable, buffer) : undefined;
+
+		if(hasTag && currentDepth == 1 && typeof s.tag === 'object' && s.tag !== undefined) {
+			lastName = s.tag.name;
+			setLastName = true;
+		}
 
 		s.car = readItem(refTable, buffer);
 		currentDepth--;
@@ -1003,6 +1073,7 @@ function newWeakRef(key, val, fin, onexit){
 }
 
 function mkPRIMSXP(index: number, evaluation: number){
+	// TODO
 	const type = evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp;
 	let primCache = null;
 	let funTabSize = 0;
@@ -1169,7 +1240,7 @@ function inIntegerVec(buffer: Buffer, len: number): number[]{
 	}
 }
 
-function inRealVec(buffer: Buffer, len: number): number[] | null[]{
+function inRealVec(buffer: Buffer, len: number): (number | RValues)[] | null[]{
 	// TODO
 	switch(format) {
 		case 'XDR': {
@@ -1177,9 +1248,15 @@ function inRealVec(buffer: Buffer, len: number): number[] | null[]{
 			let t = 0;
 			for(let done = 0; done < len; done += t) {
 				t = Math.min(ChunkSize, len - done);
-				const value = buffer.readDoubleBE(offset);
-				offset += SizeOfDouble;
-				result.push(value);
+
+				const chunkBytes = t * SizeOfDouble;
+				const chunk = buffer.subarray(offset, offset + chunkBytes);
+				offset += chunkBytes;
+
+				for(let i = 0; i < t; i++) {
+					const value = chunk.readDoubleBE(i * SizeOfDouble);
+					result.push(value);
+				}
 			}
 			return result;
 		}
@@ -1188,14 +1265,14 @@ function inRealVec(buffer: Buffer, len: number): number[] | null[]{
 			const result = [];
 			const t = 0;
 			for(let done = 0; done < len; done += t) {
-				// 	    this = min2(CHUNK_SIZE, length - done);
+				const t = Math.min(ChunkSize, len - done);
 				// 		    stream->InBytes(stream, REAL(obj) + done,
 				// 			    (int)(sizeof(double) * this));
 			}
 			return result;
 		}
 		default: {
-			const result = new Array(len);
+			const result: (number | RValues)[] = [];
 			for(let cnt = 0; cnt < len; cnt++) {
 				result[cnt] = inReal(buffer);
 			}
@@ -1236,15 +1313,14 @@ function inReal(buffer: Buffer): number | RValues {
 			return d;
 		}
 		default:
-			return RValues;
+			return RValues.NilValue;
 	}
 }
 
-function inComplexVec(buffer: Buffer, len: number): {r: number, i: number}[] {
+function inComplexVec(buffer: Buffer, len: number): {r: number | RValues, i: number| RValues}[] {
 	// TODO
 	switch(format) {
 		case 'XDR': {
-			// const buf = new Array(ChunkSize * 16);
 			const result: { r: number | RValues, i: number | RValues }[] = [];
 			let t = 0;
 			for(let done = 0; done < len; done += t) {
@@ -1253,7 +1329,7 @@ function inComplexVec(buffer: Buffer, len: number): {r: number, i: number}[] {
 					result[done] = inComplex(buffer);
 				}
 			}
-			break;
+			return result;
 		}
 		case 'BINARY': {
 			let t = 0;
@@ -1262,7 +1338,7 @@ function inComplexVec(buffer: Buffer, len: number): {r: number, i: number}[] {
 				// stream->InBytes(stream, COMPLEX(obj) + done,
 				// 	(int)(sizeof(Rcomplex) * this));
 			}
-			break;
+			return [];
 		}
 		default: {
 			const result: {r: number, i: number}[] = [];
@@ -1302,90 +1378,45 @@ function SET_VECTOR_ELT(x: RObject, i: number, v: RObject) {
 }
 
 function readBC(refTable: RObject[], buffer: Buffer): RObject {
-	// allocVector(VECSXP, InInteger(buffer));
-	const reps = inInteger(buffer);
-	const ans = readBC1(refTable, reps, buffer);
-	return ans;
+	const reps = newEmptyRObject();
+	reps.type = SexpType.VecSxp;
+	reps.value = new Array(inInteger(buffer) as number);
+	return readBC1(refTable, reps, buffer);
+}
+
+function R_registerBC(bytes: RObject, s: RObject) {
+	throw new Error('not implemented yet');
 }
 
 function readBC1(refTable: RObject[], reps: RObject, buffer: Buffer): RObject {
 	const s = newEmptyRObject();
 	s.type = SexpType.BcodesSxp;
 	currentDepth++;
-	s.car = readItem(refTable, buffer);
+	s.car = readItem(refTable, buffer) as RObject;
 	currentDepth--;
 	const bytes = s.car;
-	s.car = R_bcEncode(bytes);
+	// s.car = R_bcEncode(bytes);
 	s.cdr = ReadBCConsts(refTable, reps, buffer); /* consts */
-	s.tags = undefined; /* expr */
-	R_registerBC(bytes, s);
+	s.tag = undefined; /* expr */
+	// R_registerBC(bytes, s);
 	return s;
 }
 
-function R_bcEncode(bytes: Int32Array){
-	// TODO
-
-	const m = (8 + 4 - 1) / 4;
-
-	const n = bytes.length;
-	if(n === 0) {
-		return RValues.NilValue;
-	}
-	const ipc = parseInt(bytes); // ??? TODO
-
-	const v = ipc[0];
-	const R_bcMinVersion = 9;
-	const R_bcVersion = 12;
-	if(v < R_bcMinVersion || v > R_bcVersion) {
-		// allocVector(INTSXP, m * 2);
-		const code = new Array(m*2);
-		const pc = code;
-		pc[0].i = v;
-		// pc[1].v = opinfo[BCMISMATCH_OP].addr;
-		return code;
-	} else {
-		const code = new Array(m * n);
-		// memset(INTEGER(code), 0, m * n * sizeof(int));
-		const pc = code;
-
-		for(let i = 0; i < n; i++) {
-			pc[i].i = ipc[i];
-		}
-
-		/* install the current version number */
-		pc[0].i = R_bcVersion;
-
-		/* Revert to version 2 to allow for some one compiling in a
-		   new R, loading/saving in an old one, and then trying to run
-		   in a new one. This has happened! Setting the version number
-		   back tells bcEval to drop back to eval. */
-		// if (n == 2 && ipc[1] == BCMISMATCH_OP)
-		pc[0].i = 2;
-
-		for(let i = 1; i < n;) {
-			const op = pc[i].i;
-			const OPCOUNT = 129;
-			if(op < 0 || op >= OPCOUNT) {
-				throw new Error('unknown instruction code');
-			}
-			pc[i].v = opinfo[op].addr;
-			i += opinfo[op].argc + 1;
-		}
-
-		return code;
-	}
+function _R_bcEncode(_bytes: Int32Array){
+	throw new Error('Not implemented');
 }
 
 function ReadBCConsts(refTable: RObject[], reps: RObject, buffer: Buffer): RObject {
-	const n = inInteger(buffer);
-	// allocVector(VECSXP)
-	let ans = n;
+	const n = inInteger(buffer) as number;
+	const ans = newEmptyRObject();
+	ans.type = SexpType.VecSxp;
+	ans.value = new Array(n);
 	for(let i = 0; i < n; i++) {
 		const type = inInteger(buffer);
 		switch(type) {
 			case SexpType.BcodesSxp: {
 				const c = readBC1(refTable, reps, buffer);
-				ans = SET_VECTOR_ELT(ans, i, c);
+				SET_VECTOR_ELT(ans, i, c);
 				break;
 			}
 			case SexpType.LangSxp:
@@ -1395,22 +1426,22 @@ function ReadBCConsts(refTable: RObject[], reps: RObject, buffer: Buffer): RObje
 			case SexpType.AltLangSxp:
 			case SexpType.AttrListSxp: {
 				const c = ReadBCLang(type, refTable, reps, buffer);
-				ans = SET_VECTOR_ELT(ans, i, c);
+				SET_VECTOR_ELT(ans, i, c);
 				break;
 			}
 			default:
 				currentDepth++;
-				ans = SET_VECTOR_ELT(ans, i, readItem(refTable, buffer));
+				SET_VECTOR_ELT(ans, i, readItem(refTable, buffer) as RObject);
 				currentDepth--;
 		}
 	}
 	return ans;
 }
 
-function ReadBCLang(type, refTable, reps, buffer: Buffer): RObject {
+function ReadBCLang(type: SexpType, refTable: RObject[], reps: RObject, buffer: Buffer): RObject {
 	switch(type) {
 		case SexpType.BcRepRef:
-			return VECTOR_ELT(reps, inInteger(buffer));
+			return VECTOR_ELT(reps, inInteger(buffer) as number) as RObject;
 		case SexpType.BcRepDef:
 		case SexpType.LangSxp:
 		case SexpType.ListSxp:
@@ -1418,27 +1449,28 @@ function ReadBCLang(type, refTable, reps, buffer: Buffer): RObject {
 		case SexpType.AttrListSxp:
 		{
 			let pos = -1;
-			let hasattr = false;
+			let hasAttr = false;
 			if(type == SexpType.BcRepDef) {
-				pos = inInteger(buffer);
-				type = inInteger(buffer);
+				pos = inInteger(buffer) as number;
+				type = inInteger(buffer) as number;
 			}
 			switch(type) {
-				case SexpType.AltLangSxp: type = SexpType.LangSxp; hasattr = true; break;
-				case SexpType.AttrListSxp: type = SexpType.ListSxp; hasattr = true; break;
+				case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
+				case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
 			}
-			const ans = type;
+			const ans = newEmptyRObject();
+			ans.type = type;
 			if(pos >= 0) {
 				SET_VECTOR_ELT(reps, pos, ans);
 			}
 			currentDepth++;
-			if(hasattr) {
-				ans.attributes = readItem(refTable, buffer);
+			if(hasAttr) {
+				ans.attributes?.push(readItem(refTable, buffer) as RObject);
 			}
-			ans.tag = readItem(refTable, buffer);
+			ans.tag = readItem(refTable, buffer) as RObject;
 			currentDepth--;
-			ans.car = ReadBCLang(inInteger(buffer), refTable, reps, buffer);
-			ans.cdr = ReadBCLang(inInteger(buffer), refTable, reps, buffer);
+			ans.car = ReadBCLang(inInteger(buffer) as number, refTable, reps, buffer);
+			ans.cdr = ReadBCLang(inInteger(buffer) as number, refTable, reps, buffer);
 			return ans;
 		}
 		default:
@@ -1502,14 +1534,13 @@ function R_BytecodeExpr(s: RObject): RObject | RValues.NilValue{
 
 function ALTREP_UNSERIALIZE_EX(info: RObject, state, attr,objf: boolean,levs: number): RObject {
 	// TODO
-	console.log('you should not be here');
-	const csym = info.car;
-	const psym = (info.cdr as RObject).car;
-	const type = (((info.cdr as RObject).cdr as RObject).car as RObject).value as number;
+	const cSym = info.car;
+	const pSym = (info.cdr as RObject).car;
+	const type = (((info.cdr as RObject).cdr as RObject).car as RObject).type as SexpType;
 
 	/* look up the class in the registry and handle failure */
-	const c = ALTREP_UNSERIALIZE_CLASS(info);
-	if(c == undefined) {
+	const clss = ALTREP_UNSERIALIZE_CLASS(info);
+	if(clss == undefined) {
 		switch(type) {
 			case SexpType.LglSxp:
 			case SexpType.IntSxp:
@@ -1519,12 +1550,14 @@ function ALTREP_UNSERIALIZE_EX(info: RObject, state, attr,objf: boolean,levs: nu
 			case SexpType.RawSxp:
 			case SexpType.VecSxp:
 			case SexpType.ExprSxp:
-				// console.warn(`cannot unserialize ALTVEC object of class '${CHAR(PRINTNAME(csym))}' from package '${CHAR(PRINTNAME(psym))}' returning length zero vector`);
+				console.warn(`cannot unserialize ALTVEC object of class '${cSym?.name}' from package '${pSym?.name}' returning length zero vector`);
 				return info.type = 0;
 			default:
 				throw new Error('cannot unserialize this ALTREP object');
 		}
 	}
+
+	return undefined;
 
 	/* check the registered and unserialized types match */
 	// const rtype = ALTREP_CLASS_BASE_TYPE(c);
@@ -1538,33 +1571,34 @@ function ALTREP_UNSERIALIZE_EX(info: RObject, state, attr,objf: boolean,levs: nu
 }
 
 function ALTREP_UNSERIALIZE_CLASS(info: RObject) {
-	if(info.type == SexpType.ListSxp) {
-		const csym = info.car;
-		const  psym = (info.cdr as RObject).car;
-		const c = LookupClass(csym, psym);
-		// if (c == NULL) {
-		// 	SEXP pname = ScalarString(PRINTNAME(psym));
-		// 	PROTECT(pname);
-		// 	R_tryCatchError(find_namespace, pname,
-		// 		handle_namespace_error, NULL);
-		// 	c = LookupClass(csym, psym);
-		// }
-		return c;
-	}
-	return null;
+	return undefined;
+
+	// if(info.type == SexpType.ListSxp) {
+	// 	const cSym = info.car;
+	// 	const  pSym = (info.cdr as RObject).car;
+	// 	let clss = LookupClass(cSym, pSym);
+	// 	if(clss === undefined) {
+	// 		// const pName = ScalarString(pSym.name);
+	// 		// R_tryCatchError(find_namespace, pname,
+	// 		// 	handle_namespace_error, NULL);
+	// 		clss = LookupClass(cSym, pSym);
+	// 	}
+	// 	return clss;
+	// }
+	// return null;
 }
 
-function LookupClass(csym: RObject, psym: RObject) {
-	const entry = LookupClassEntry(csym, psym);
-	return entry !== null ? entry.car : null;
-}
+// function LookupClass(cSym: RObject, pSym: RObject) {
+// 	const entry = LookupClassEntry(cSym, pSym);
+// 	return entry === undefined ? undefined : entry.car;
+// }
 
-function LookupClassEntry(csym: RObject, psym: RObject) {
-	// for (const chain = CDR(Registry); chain != R_NilValue; chain = CDR(chain))
-	// if (TAG(CAR(chain)) == csym && CADR(CAR(chain)) == psym)
-	// 	return CAR(chain);
-	// return NULL;
-}
+// function LookupClassEntry(cSym: RObject, pSym: RObject): RObject {
+// 	for (const chain = CDR(Registry); chain !== RValues.NilValue; chain = CDR(chain))
+// 	// if (TAG(CAR(chain)) == csym && CADR(CAR(chain)) == psym)
+// 	// 	return CAR(chain);
+// 	// return NULL;
+// }
 
 function restoreHashCount(s: RObject): RObject{
 	if(s.hashTab !== RValues.NilValue) {
@@ -1589,11 +1623,11 @@ function flattenRObject(node: RObject): RObject[] {
 			return;
 		}
 
-		const name = n.tags?.name;
+		const name = n.tag?.name;
 
 		if(name !== undefined) {
 			const copy: RObject = {
-				name:         n.tags?.name,
+				name:         n.tag?.name,
 				value:        n.car?.value,
 				hasAttribute: n.hasAttribute,
 				attributes:   n.attributes,

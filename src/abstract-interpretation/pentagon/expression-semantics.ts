@@ -191,7 +191,6 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 		}
 		if(d <= 0) {
 			// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
-			const leftOrigins = visitor.getVariableOrigins(leftNodeId);
 			if(leftOrigins.length <= 1) {
 				currentState.get(leftOrigin)?.value.upperBounds.add(target);
 			}

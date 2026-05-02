@@ -62,9 +62,9 @@ export enum DomainMatchingType {
 	Overapproximation = 'overapproximation'
 }
 
-export type SlicingCriterionExpected = { domain: IntervalDomain | undefined, matching?: DomainMatchingType };
+export type IntervalSlicingCriterionExpected = { domain: IntervalDomain | undefined, matching?: DomainMatchingType };
 
-export type IntervalTestExpected = { [key: SlicingCriterion]: SlicingCriterionExpected };
+export type IntervalTestExpected = { [key: SlicingCriterion]: IntervalSlicingCriterionExpected };
 
 /**
  * Executes the {@link NumericIntervalInferenceVisitor} on the given code and tests the inferred interval values for each slicing criterion against the expected result.
@@ -97,10 +97,10 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 
 	test.each(
 		// Append the test name manually because we need to access a property of criterionExpected, which cannot be done using vitest's test.each syntax.
-		(Object.entries(expected) as [criterion: SlicingCriterion, criterionExpected: SlicingCriterionExpected][])
+		(Object.entries(expected) as [criterion: SlicingCriterion, criterionExpected: IntervalSlicingCriterionExpected][])
 			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.matching ?? DomainMatchingType.Exact}: ${criterionExpected.domain?.toString()} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
 	)('$0',
-		(_: string, criterion: SlicingCriterion, criterionExpected: SlicingCriterionExpected) => {
+		(_: string, criterion: SlicingCriterion, criterionExpected: IntervalSlicingCriterionExpected) => {
 			const targetId: NodeId = SlicingCriterion.parse(criterion, ast.idMap);
 
 			const inferredIntervalDomain = visitor.getAbstractValue(targetId);

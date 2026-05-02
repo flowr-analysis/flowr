@@ -39,6 +39,14 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 			if(sourcePentagon?.isValue() && targetPentagon?.isValue()) {
 				sourcePentagon.value.upperBounds.add(target);
 				targetPentagon.value.upperBounds.add(sourceOrigin);
+				// To every upper-bounds that contains source, also add target: a small reduction step to increase precision.
+				if(this.currentState.isValue()) {
+					this.currentState.value.forEach(closedPentagonValue => {
+						if(closedPentagonValue.value.upperBounds.has(sourceOrigin)) {
+							closedPentagonValue.value.upperBounds.add(target);
+						}
+					});
+				}
 			}
 		}
 	}

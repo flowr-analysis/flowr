@@ -15,7 +15,7 @@ export class ClosedPentagonValueDomain extends ProductDomain<AbstractClosedPenta
 	}
 
 	public static top(): ClosedPentagonValueDomain {
-		return new ClosedPentagonValueDomain({ interval: IntervalDomain.top(), upperBounds: UpperBoundsValueDomain.top() as UpperBoundsValueDomain });
+		return new ClosedPentagonValueDomain({ interval: IntervalDomain.top(), upperBounds: UpperBoundsValueDomain.top() });
 	}
 
 	public static bottom(significantFigures?: number): ClosedPentagonValueDomain {

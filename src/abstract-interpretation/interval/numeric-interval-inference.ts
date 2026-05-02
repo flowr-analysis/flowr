@@ -62,13 +62,25 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 		return this.currentState.set(call.id, result);
 	}
 
-	protected override applyConditionSemantics(state: StateAbstractDomain<IntervalDomain> | undefined, conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> | undefined {
+	protected override applyConditionSemantics(state: StateAbstractDomain<IntervalDomain>, conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> {
 		let result: StateAbstractDomain<IntervalDomain> | undefined;
 
 		if(trueBranch) {
-			result = applyIntervalConditionSemantics(conditionNodeId, state, this, this.config.dfg);
+			result = applyIntervalConditionSemantics(
+				conditionNodeId,
+				state,
+				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),
+				(node: NodeId, state?: StateAbstractDomain<IntervalDomain>) => this.getAbstractValue(node, state),
+				(node: NodeId) => this.getVariableOrigins(node),
+				this.config.dfg);
 		} else {
-			result = applyNegatedIntervalConditionSemantics(conditionNodeId, state, this, this.config.dfg);
+			result = applyNegatedIntervalConditionSemantics(
+				conditionNodeId,
+				state,
+				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),
+				(node: NodeId, state?: StateAbstractDomain<IntervalDomain>) => this.getAbstractValue(node, state),
+				(node: NodeId) => this.getVariableOrigins(node),
+				this.config.dfg);
 		}
 
 		return result;

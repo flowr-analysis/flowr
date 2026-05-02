@@ -18,7 +18,7 @@ import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-c
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { guard, isNotUndefined, isUndefined } from '../util/assert';
+import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
@@ -297,9 +297,9 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 				const cfdEdge = pred.edges.find(CfgEdge.isControlDependency);
 				if(isNotUndefined(cfdEdge)) {
 					const branchType = CfgEdge.getWhen(cfdEdge);
-					if(isNotUndefined(branchType)) {
+					if(isNotUndefined(branchType) && isNotUndefined(predState)) {
 						// Apply Condition Semantics to copy of predecessor state, as we do not want to modify the trace
-						const copiedState = isUndefined(predState) ? undefined : predState.create(predState.value);
+						const copiedState = predState.create(predState.value);
 						return this.applyConditionSemantics(copiedState, pred.id, branchType === RTrue);
 					}
 				}
@@ -368,7 +368,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 * @returns The abstract state resulting from applying the condition semantics.
 	 * @protected
 	 */
-	protected applyConditionSemantics(state: StateDomain | undefined, _conditionNodeId: NodeId, _trueBranch: boolean): StateDomain | undefined {
+	protected applyConditionSemantics(state: StateDomain, _conditionNodeId: NodeId, _trueBranch: boolean): StateDomain | undefined {
 		return state;
 	}
 }

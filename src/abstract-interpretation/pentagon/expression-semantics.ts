@@ -130,18 +130,18 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 		targetPentagon.value.interval = interval;
 
 		const [a, b] = argValue.value.interval.value;
+		const argOrigins = visitor.getVariableOrigins(argNodeId);
+		const argOrigin = argOrigins.length === 1 ? argOrigins[0] : argNodeId;
 		if(a >= 0) {
 			// target will be smaller than arg => arg is an upper bound
-			const argOrigins = visitor.getVariableOrigins(argNodeId);
-			if(argOrigins.length === 1) {
-				targetPentagon.value.upperBounds.add(argOrigins[0]);
+			if(argOrigins.length <= 1) {
+				targetPentagon.value.upperBounds.add(argOrigin);
 			}
 		}
 		if(b <= 0) {
 			// target will be greater than arg => target is upper bound for arg
-			const argOrigins = visitor.getVariableOrigins(argNodeId);
-			if(argOrigins.length === 1) {
-				currentState.get(argOrigins[0])?.value.upperBounds.add(target);
+			if(argOrigins.length <= 1) {
+				currentState.get(argOrigin)?.value.upperBounds.add(target);
 			}
 		}
 
@@ -180,19 +180,20 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 		// Upper Bounds Part
 		const [c, d] = rightValue.value.interval.value;
 
+		const leftOrigins = visitor.getVariableOrigins(leftNodeId);
+		const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
 		if(c >= 0) {
 			// Always subtract positive number => result is always smaller than left and therefore inherits its upper bounds
-			const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-			if(leftOrigins.length === 1) {
+			if(leftOrigins.length <= 1) {
 				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
-				resultPentagon.value.upperBounds.add(leftNodeId);
+				resultPentagon.value.upperBounds.add(leftOrigin);
 			}
 		}
 		if(d <= 0) {
 			// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
 			const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-			if(leftOrigins.length === 1) {
-				currentState.get(leftOrigins[0])?.value.upperBounds.add(target);
+			if(leftOrigins.length <= 1) {
+				currentState.get(leftOrigin)?.value.upperBounds.add(target);
 			}
 		}
 

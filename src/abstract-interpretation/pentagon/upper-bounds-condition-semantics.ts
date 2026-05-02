@@ -126,17 +126,19 @@ function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>
 	const leftValue = getUb(leftNodeId, state);
 	const rightValue = getUb(rightNodeId, state);
 
-	// We need to include the origin ids instead of the reference ids.
+	// We need to include the origin ids instead of the reference ids if the variable has an origin.
 	// We can only include the origin if there is only one origin, as we only then know that this is the only possible origin.
 	const originNodeIds = new Set<NodeId>();
 
 	const leftOrigins = getVariableOrigins(leftNodeId);
+	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0] : leftNodeId;
 	const rightOrigins = getVariableOrigins(rightNodeId);
-	if(leftOrigins.length === 1) {
-		originNodeIds.add(leftOrigins[0]);
+	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0] : rightNodeId;
+	if(leftOrigins.length <= 1) {
+		originNodeIds.add(leftOrigin);
 	}
-	if(rightOrigins.length === 1) {
-		originNodeIds.add(rightOrigins[0]);
+	if(rightOrigins.length <= 1) {
+		originNodeIds.add(rightOrigin);
 	}
 
 	const resultingUpperBounds = AbstractDomain.meetAll([leftValue, rightValue, new UpperBoundsValueDomain(originNodeIds)].filter(isNotUndefined));
@@ -145,11 +147,11 @@ function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>
 		return state.bottom();
 	}
 
-	if(leftOrigins.length === 1) {
-		set(state)(leftOrigins[0], resultingUpperBounds);
+	if(leftOrigins.length <= 1) {
+		set(state)(leftOrigin, resultingUpperBounds);
 	}
-	if(rightOrigins.length === 1) {
-		set(state)(rightOrigins[0], resultingUpperBounds);
+	if(rightOrigins.length <= 1) {
+		set(state)(rightOrigin, resultingUpperBounds);
 	}
 
 	return state;
@@ -166,11 +168,13 @@ function intervalNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 		return state.bottom();
 	}
 
-	// We can only argue if both sides have exactly one origin.
+	// We can only argue if both sides have exactly one origin (or are the origin).
 	// In that case, if both sides include each others origins, they must be equal and therefore cannot be inequal.
 	const leftOrigins = getVariableOrigins(leftNodeId);
+	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0] : leftNodeId;
 	const rightOrigins = getVariableOrigins(rightNodeId);
-	if(leftOrigins.length === 1 && rightOrigins.length === 1 && leftValue.has(rightOrigins[0]) && rightValue.has(leftOrigins[0])) {
+	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0] : rightNodeId;
+	if(leftOrigins.length <= 1 && rightOrigins.length <= 1 && leftValue.has(rightOrigin) && rightValue.has(leftOrigin)) {
 		return state.bottom();
 	}
 

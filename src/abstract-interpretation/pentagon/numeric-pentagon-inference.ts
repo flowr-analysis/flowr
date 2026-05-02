@@ -11,6 +11,7 @@ import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { applyPentagonExpressionSemantics } from './expression-semantics';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { applyNegatedPentagonConditionSemantics, applyPentagonConditionSemantics } from './condition-semantics';
 
 export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> {
 	constructor(config: AbsintVisitorConfiguration) {
@@ -25,12 +26,19 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		super.onAssignmentCall({ call, target, source });
 
 		if(isNotUndefined(source) && isNotUndefined(target)) {
-			const sourcePentagon = this.currentState.get(source);
+			const sourceOrigins = this.getVariableOrigins(source);
+			if(sourceOrigins.length > 1) {
+				return;
+			}
+
+			const sourceOrigin = sourceOrigins.length === 1 ? sourceOrigins[0] : source;
+
+			const sourcePentagon = this.currentState.get(sourceOrigin);
 			const targetPentagon = this.currentState.get(target);
 
 			if(sourcePentagon?.isValue() && targetPentagon?.isValue()) {
 				sourcePentagon.value.upperBounds.add(target);
-				targetPentagon.value.upperBounds.add(source);
+				targetPentagon.value.upperBounds.add(sourceOrigin);
 			}
 		}
 	}
@@ -74,5 +82,56 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		}
 
 		return this.currentState.set(call.id, result);
+	}
+
+	protected override applyConditionSemantics(state: ClosedPentagonDomain, conditionNodeId: NodeId, trueBranch: boolean): ClosedPentagonDomain {
+		const setInterval = (state: ClosedPentagonDomain) => (node: NodeId, interval: IntervalDomain | undefined) => {
+			if(isUndefined(interval)) {
+				state.remove(node);
+			} else {
+				let pentagon = state.get(node);
+				if(isUndefined(pentagon)) {
+					pentagon = ClosedPentagonValueDomain.top();
+				}
+				pentagon.value.interval = interval;
+				state.set(node, pentagon);
+			}
+		};
+
+		const setUpperBounds = (state: ClosedPentagonDomain) => (node: NodeId, upperBounds: UpperBoundsValueDomain) => {
+			let pentagon = state.get(node);
+			if(isUndefined(pentagon)) {
+				pentagon = ClosedPentagonValueDomain.top();
+			}
+			pentagon.value.upperBounds = upperBounds;
+			state.set(node, pentagon);
+		};
+
+		const getInterval = (node: NodeId, state?: ClosedPentagonDomain) => this.getAbstractValue(node, state)?.value.interval;
+		const getUpperBounds = (node: NodeId, state?: ClosedPentagonDomain) => this.getAbstractValue(node, state)?.value.upperBounds;
+		const reducePentagon = (state: ClosedPentagonDomain) => state.create(state.value);
+
+		if(trueBranch) {
+			return applyPentagonConditionSemantics(
+				conditionNodeId,
+				state,
+				setInterval,
+				setUpperBounds,
+				getInterval,
+				getUpperBounds,
+				reducePentagon,
+				(node: NodeId) => this.getVariableOrigins(node),
+				this.config.dfg);
+		}
+		return applyNegatedPentagonConditionSemantics(
+			conditionNodeId,
+			state,
+			setInterval,
+			setUpperBounds,
+			getInterval,
+			getUpperBounds,
+			reducePentagon,
+			(node: NodeId) => this.getVariableOrigins(node),
+			this.config.dfg);
 	}
 }

@@ -14,22 +14,22 @@ export class ClosedPentagonValueDomain extends ProductDomain<AbstractClosedPenta
 		return new ClosedPentagonValueDomain(value);
 	}
 
-	public static top(): ClosedPentagonValueDomain {
-		return new ClosedPentagonValueDomain({ interval: IntervalDomain.top(), upperBounds: UpperBoundsValueDomain.top() });
+	public static top(significantFigures?: number): ClosedPentagonValueDomain {
+		return new ClosedPentagonValueDomain({ interval: IntervalDomain.top(significantFigures), upperBounds: UpperBoundsValueDomain.top() });
 	}
 
 	public static bottom(significantFigures?: number): ClosedPentagonValueDomain {
 		return new ClosedPentagonValueDomain({ interval: IntervalDomain.bottom(significantFigures), upperBounds: UpperBoundsValueDomain.bottom() });
 	}
 
-	public override top(): this & ProductDomain<AbstractClosedPentagon>;
-	public override top(): ClosedPentagonValueDomain {
-		return ClosedPentagonValueDomain.top();
+	public override top(significantFigures?: number): this & ProductDomain<AbstractClosedPentagon>;
+	public override top(significantFigures?: number): ClosedPentagonValueDomain {
+		return ClosedPentagonValueDomain.top(significantFigures);
 	}
 
-	public override bottom(): this & ProductDomain<AbstractClosedPentagon>;
-	public override bottom(): ClosedPentagonValueDomain {
-		return ClosedPentagonValueDomain.bottom();
+	public override bottom(significantFigures?: number): this & ProductDomain<AbstractClosedPentagon>;
+	public override bottom(significantFigures?: number): ClosedPentagonValueDomain {
+		return ClosedPentagonValueDomain.bottom(significantFigures);
 	}
 
 	public override toString(): string {

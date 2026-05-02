@@ -31,22 +31,19 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 
 	public override create(value: StateDomainLift<ClosedPentagonValueDomain>): this;
 	public override create(value: StateDomainLift<ClosedPentagonValueDomain>): ClosedPentagonDomain {
-		return new ClosedPentagonDomain(value, ClosedPentagonValueDomain.top());
+		return new ClosedPentagonDomain(value, this.domain);
 	}
 
 	public override set(node: NodeId, value: ClosedPentagonValueDomain) {
-		if(this._value !== Bottom) {
+		if(this.value !== Bottom) {
 			const valueWithoutNodeItself = value.create(value.value);
 			valueWithoutNodeItself.value.upperBounds.remove(node);
-			(this._value as Map<NodeId, ClosedPentagonValueDomain>).set(node, valueWithoutNodeItself);
+			super.set(node, valueWithoutNodeItself);
 		}
 	}
 
 	public override get(node: NodeId): ClosedPentagonValueDomain | undefined {
-		if(this._value === Bottom) {
-			return this.domain.bottom();
-		}
-		const value = this._value.get(node);
+		const value = super.get(node);
 		if(isNotUndefined(value) && value.value.upperBounds.has(node)) {
 			value.value.upperBounds.remove(node);
 		}
@@ -63,17 +60,6 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 
 	public override widen(other: this): this {
 		return this.create(super.widen(other).value);
-	}
-
-	public override narrow(_other: this): this {
-		throw new Error('Not Implemented');
-	}
-
-	public override concretize(_limit: number): ReadonlySet<ConcreteState<ClosedPentagonValueDomain>> | typeof Top {
-		if(this.value === Bottom) {
-			return new Set();
-		}
-		return Top;
 	}
 
 	public override abstract(concrete: ReadonlySet<ConcreteState<ClosedPentagonValueDomain>> | typeof Top): this {
@@ -130,11 +116,7 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 		return result;
 	}
 
-	public override isTop(): this is this & StateAbstractDomain<ClosedPentagonValueDomain, StateDomainTop> {
-		return this.value !== Bottom && this.value.values().every(pentagon => pentagon.value.interval.isTop() && pentagon.value.upperBounds.isTop());
-	}
-
-	public static reduce(value: StateDomainLift<ClosedPentagonValueDomain>): StateDomainLift<ClosedPentagonValueDomain> {
+	private static reduce(value: StateDomainLift<ClosedPentagonValueDomain>): StateDomainLift<ClosedPentagonValueDomain> {
 		if(value === Bottom || value.values().some((value) => value.value.interval.isBottom() || value.value.upperBounds.isBottom())) {
 			return Bottom;
 		}

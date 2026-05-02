@@ -1,6 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { Top } from '../domains/lattice';
-import { Bottom, BottomSymbol } from '../domains/lattice';
+import { Bottom, BottomSymbol, Top } from '../domains/lattice';
 import { AbstractDomain } from '../domains/abstract-domain';
 import { setEquals } from '../../util/collections/set';
 
@@ -112,7 +111,7 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 	}
 
 	public concretize(_limit: number): ReadonlySet<Concrete> | typeof Top {
-		throw new Error('Not Possible');
+		return Top;
 	}
 
 	public abstract(_concrete: ReadonlySet<Concrete> | typeof Top): this {

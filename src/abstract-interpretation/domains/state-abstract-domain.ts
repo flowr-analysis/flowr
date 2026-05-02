@@ -41,11 +41,11 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain, T extends StateAbstractDomain<Domain, StateDomainLift<Domain>>>(this: new (value: StateDomainTop, domain: Domain) => T, domain: Domain): T {
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
 		return new this(new Map<NodeId, never>(), domain);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain, T extends StateAbstractDomain<Domain, StateDomainLift<Domain>>>(this: new (value: StateDomainBottom, domain: Domain) => T, domain: Domain): T {
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
 		return new this(Bottom, domain);
 	}
 

@@ -59,7 +59,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 			if(isUndefined(interval)) {
 				return undefined;
 			} else {
-				const pentagon = ClosedPentagonValueDomain.top();
+				const pentagon = ClosedPentagonValueDomain.top(significantFigures);
 				pentagon.value.interval = interval;
 				return pentagon;
 			}

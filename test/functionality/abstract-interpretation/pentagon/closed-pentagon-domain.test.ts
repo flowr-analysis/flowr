@@ -28,11 +28,11 @@ describe('Weakly Relational Closed Pentagon Domain', () => {
 	const ClosedPentagonBottom: StateDomainBottom = Bottom;
 
 	assertAbstractDomain(createDomain, ClosedPentagonTop, ClosedPentagonTop, {
-		equal: true, leq: true, join: ClosedPentagonTop, meet: ClosedPentagonTop, concrete: Top, abstract: ClosedPentagonTop, widen: ClosedPentagonTop
+		equal: true, leq: true, join: ClosedPentagonTop, meet: ClosedPentagonTop, concrete: [new Map()], abstract: ClosedPentagonTop, widen: ClosedPentagonTop
 	});
 
 	assertAbstractDomain(createDomain, ClosedPentagonTop, ClosedPentagonBottom, {
-		equal: false, leq: false, join: ClosedPentagonTop, meet: ClosedPentagonBottom, concrete: Top, abstract: ClosedPentagonTop, widen: ClosedPentagonTop
+		equal: false, leq: false, join: ClosedPentagonTop, meet: ClosedPentagonBottom, concrete: [new Map()], abstract: ClosedPentagonTop, widen: ClosedPentagonTop
 	});
 
 	assertAbstractDomain(createDomain, ClosedPentagonBottom, ClosedPentagonTop, {

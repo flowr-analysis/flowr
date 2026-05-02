@@ -28,8 +28,8 @@ function getSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain
 
 type IntervalConditionSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NAryFnSemantics<StateDomain>, negatedSemantics: NAryFnSemantics<StateDomain>];
 
-type SetIntervalState<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (state: StateDomain) => (node: NodeId, interval: IntervalDomain | undefined) => void;
-type GetInterval<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (nodeId: NodeId, state?: StateDomain) => IntervalDomain | undefined;
+export type SetIntervalState<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (state: StateDomain) => (node: NodeId, interval: IntervalDomain | undefined) => void;
+export type GetInterval<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (nodeId: NodeId, state?: StateDomain) => IntervalDomain | undefined;
 type GetVariableOrigins = (node: NodeId) => NodeId[];
 
 /**

@@ -11,7 +11,9 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable, isNotUndefined, isUndefined } from '../../../../src/util/assert';
-import { UpperBoundsValueDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-value-domain';
+import {
+	UpperBoundsValueDomain
+} from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-value-domain';
 
 /**
  * Helper for creating upper-bounds based on slicing criteria for testing the pentagon domain inference.

@@ -2,7 +2,7 @@ import { IntervalDomain } from '../domains/interval-domain';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ConcreteState, StateDomainBottom, StateDomainLift, StateDomainTop } from '../domains/state-abstract-domain';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
-import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
+import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { Bottom, Top } from '../domains/lattice';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ClosedPentagonValueDomain } from './closed-pentagon-value-domain';

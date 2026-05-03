@@ -4,11 +4,11 @@ import type { GetInterval, SetIntervalState } from '../interval/condition-semant
 import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from '../interval/condition-semantics';
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
-import type { GetUb, SetUbState } from './upper-bounds-condition-semantics';
+import type { GetUb, SetUbState } from './upper-bounds/upper-bounds-condition-semantics';
 import {
 	applyNegatedUpperBoundsConditionSemantics,
 	applyUpperBoundsConditionSemantics
-} from './upper-bounds-condition-semantics';
+} from './upper-bounds/upper-bounds-condition-semantics';
 
 type GetVariableOrigins = (node: NodeId) => NodeId[];
 

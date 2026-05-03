@@ -160,7 +160,7 @@ function intervalPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | u
  * @param right - The right interval to add (undefined meaning no information).
  * @returns The resulting interval after addition. If one of the intervals is undefined, the result is also undefined.
  */
-function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+export function intervalAddOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
 	const smallestSignificantFigures = getMin([left?.significantFigures, right?.significantFigures].filter(isNotUndefined));
 	if(left?.isBottom() || right?.isBottom()) {
 		return left?.bottom(smallestSignificantFigures) ?? right?.bottom(smallestSignificantFigures);

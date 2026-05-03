@@ -1,5 +1,5 @@
 import { ProductDomain } from '../domains/product-domain';
-import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
+import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { IntervalDomain } from '../domains/interval-domain';
 
 /** The type of the abstract product representing the closed pentagon */

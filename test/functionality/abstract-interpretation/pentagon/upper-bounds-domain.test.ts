@@ -1,10 +1,12 @@
 import { describe } from 'vitest';
 import { assertAbstractDomain } from '../domains/domain';
-import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-domain';
+import { UpperBoundsDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-domain';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { StateDomainLift } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
-import { UpperBoundsValueDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-value-domain';
+import {
+	UpperBoundsValueDomain
+} from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-value-domain';
 
 describe('Weakly Relational Upper Bounds Domain', () => {
 	const createDomain = (value: StateDomainLift<UpperBoundsValueDomain>) => {

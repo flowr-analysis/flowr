@@ -8,6 +8,7 @@ import { getMin } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ClosedPentagonDomain } from './closed-pentagon-domain';
 import {
+	intervalAddOp,
 	IntervalExpressionSemanticsMapper,
 	intervalNegativeOp,
 	intervalSubtractOp
@@ -17,6 +18,7 @@ import {
  * Maps function/operator names to the semantic functions.
  */
 const PentagonExpressionSemanticsMapper = [
+	[Identifier.make('+'), unaryBinaryExprOpSemantics(pentagonUnaryIdentityOp, pentagonAddOp)],
 	[Identifier.make('-'), unaryBinaryExprOpSemantics(pentagonNegativeOp, pentagonSubtractOp)]
 ] as const satisfies readonly PentagonSemanticsMapperInfo[];
 
@@ -118,6 +120,63 @@ function _unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFn
 	};
 }
 
+function pentagonUnaryIdentityOp(_target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
+	return arg[1];
+}
+
+function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
+	const [leftNodeId, leftValue] = left;
+	const [rightNodeId, rightValue] = right;
+
+	const smallestSignificantFigures = getMin([leftValue?.value.interval.significantFigures, rightValue?.value.interval.significantFigures].filter(isNotUndefined));
+
+	if(leftValue?.isBottom() || rightValue?.isBottom()) {
+		return ClosedPentagonValueDomain.bottom(smallestSignificantFigures);
+	}
+
+	if(leftValue?.isValue() && leftValue.value.interval.isValue() && rightValue?.isValue() && rightValue.value.interval.isValue()) {
+		const resultPentagon = ClosedPentagonValueDomain.top(smallestSignificantFigures);
+
+		// Interval part
+		const interval = intervalAddOp(leftValue.value.interval, rightValue.value.interval);
+		if(isUndefined(interval)) {
+			return undefined;
+		}
+		resultPentagon.value.interval = interval;
+
+		// Upper-bounds part
+		const [a, b] = leftValue.value.interval.value;
+		const [c, d] = rightValue.value.interval.value;
+
+		const leftOrigins = visitor.getVariableOrigins(leftNodeId);
+		const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
+		const rightOrigins = visitor.getVariableOrigins(rightNodeId);
+		const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0]: rightNodeId;
+
+		if(rightOrigins.length <= 1) {
+			if(a >= 0) {
+				currentState.get(rightOrigin)?.value.upperBounds.add(target);
+			}
+			if(b <= 0) {
+				resultPentagon.value.upperBounds = rightValue.value.upperBounds.create(rightValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds.add(rightOrigin);
+			}
+		}
+		if(leftOrigins.length <= 1) {
+			if(c >= 0) {
+				currentState.get(leftOrigin)?.value.upperBounds.add(target);
+			}
+			if(d <= 0) {
+				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds.add(leftOrigin);
+			}
+		}
+
+		return resultPentagon;
+	}
+	return undefined;
+}
+
 function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
 	const [argNodeId, argValue] = arg;
 	if(argValue?.isValue() && argValue.value.interval.isValue()) {
@@ -153,6 +212,11 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 	const [leftNodeId, leftValue] = left;
 	const [rightNodeId, rightValue] = right;
 
+	const leftOrigins = visitor.getVariableOrigins(leftNodeId);
+	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
+	const rightOrigins = visitor.getVariableOrigins(rightNodeId);
+	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0]: rightNodeId;
+
 	const smallestSignificantFigures = getMin([leftValue?.value.interval.significantFigures, rightValue?.value.interval.significantFigures].filter(isNotUndefined));
 
 	if(leftValue?.isBottom() || rightValue?.isBottom()) {
@@ -161,17 +225,17 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 
 
 	if(leftValue?.isValue() && leftValue.value.interval.isValue() && rightValue?.isValue() && rightValue.value.interval.isValue()) {
-		const resultPentagon = ClosedPentagonValueDomain.top();
+		const resultPentagon = ClosedPentagonValueDomain.top(smallestSignificantFigures);
 
 		let interval = intervalSubtractOp(leftValue.value.interval, rightValue.value.interval);
 		if(isUndefined(interval)) {
-			return;
+			return undefined;
 		}
-		if(rightValue.value.upperBounds.has(leftNodeId)) {
+		if(rightValue.value.upperBounds.has(leftOrigin)) {
 			// right <= left: result must be positive
 			interval = interval.meet(leftValue.value.interval.create([0, Infinity]));
 		}
-		if(leftValue.value.upperBounds.has(rightNodeId)) {
+		if(leftValue.value.upperBounds.has(rightOrigin)) {
 			// left <= right: result must be negative
 			interval = interval.meet(leftValue.value.interval.create([-Infinity, 0]));
 		}
@@ -180,18 +244,14 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 		// Upper Bounds Part
 		const [c, d] = rightValue.value.interval.value;
 
-		const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-		const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
-		if(c >= 0) {
-			// Always subtract positive number => result is always smaller than left and therefore inherits its upper bounds
-			if(leftOrigins.length <= 1) {
+		if(leftOrigins.length <= 1) {
+			if(c >= 0) {
+				// Always subtract positive number => result is always smaller than left and therefore inherits its upper bounds
 				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
 				resultPentagon.value.upperBounds.add(leftOrigin);
 			}
-		}
-		if(d <= 0) {
-			// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
-			if(leftOrigins.length <= 1) {
+			if(d <= 0) {
+				// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
 				currentState.get(leftOrigin)?.value.upperBounds.add(target);
 			}
 		}

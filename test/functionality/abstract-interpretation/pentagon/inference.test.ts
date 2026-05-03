@@ -127,13 +127,17 @@ describe('Pentagon Inference', () => {
 				x <- b + a
 				x <- a - b
 				x <- b - a
+				x <- -b
+				x <- -a
 			`, {
-				'2@a': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
-				'4@b': { interval: IntervalTests.interval(1, 4), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
-				// '6@x': { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['6@a', '6@b']), lowerBounds: UpperBoundsTests.bounds(['6@a'], ['6@b']) },
-				// '7@x': { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']), lowerBounds: UpperBoundsTests.bounds(['7@a'], ['7@b']) },
-				'8@x': { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['8@a'], ['8@b']), lowerBounds: UpperBoundsTests.bounds([], ['8@a', '8@b']) },
-				'9@x': { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']), lowerBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']) }
+				'2@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
+				'4@b':  { interval: IntervalTests.interval(1, 4), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
+				'6@x':  { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['6@a', '6@b']), lowerBounds: UpperBoundsTests.bounds(['6@a'], ['6@b']) },
+				'7@x':  { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']), lowerBounds: UpperBoundsTests.bounds(['7@a'], ['7@b']) },
+				'8@x':  { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['8@a'], ['8@b']), lowerBounds: UpperBoundsTests.bounds([], ['8@a', '8@b']) },
+				'9@x':  { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']), lowerBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']) },
+				'10@x': { interval: IntervalTests.interval(-4, -1), upperBounds: UpperBoundsTests.bounds(['10@b']), lowerBounds: UpperBoundsTests.bounds([], ['10@b']) },
+				'11@x': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['11@a']), lowerBounds: UpperBoundsTests.bounds([], ['11@a']) }
 			});
 
 			testPentagonDomain(`
@@ -146,13 +150,84 @@ describe('Pentagon Inference', () => {
 				x <- b + a
 				x <- a - b
 				x <- b - a
+				x <- -b
+				x <- -a
+			`, {
+				'2@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
+				'4@b':  { interval: IntervalTests.interval(-4, -1), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
+				'6@x':  { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['6@a'], ['6@b']), lowerBounds: UpperBoundsTests.bounds([], ['6@a', '6@b']) },
+				'7@x':  { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['7@a'], ['7@b']), lowerBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']) },
+				'8@x':  { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['8@a', '8@b']), lowerBounds: UpperBoundsTests.bounds(['8@a'], ['8@b']) },
+				'9@x':  { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']), lowerBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']) },
+				'10@x': { interval: IntervalTests.interval(1, 4), upperBounds: UpperBoundsTests.bounds([], ['10@b']), lowerBounds: UpperBoundsTests.bounds(['10@b']) },
+				'11@x': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['11@a']), lowerBounds: UpperBoundsTests.bounds([], ['11@a']) }
+			});
+
+			// == and !=
+			testPentagonDomain(`
+				ifelse(c, a <- -3, a <- 3)
+				a <- a + 0
+				ifelse(c, b <- -3, b <- 3)
+				b <- b + 0
+				
+				if(a == b) {
+					print("This is possible", a, b)
+				} else {
+					print("This is also possible", a, b)
+				}
 			`, {
 				'2@a': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
-				'4@b': { interval: IntervalTests.interval(-4, -1), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
-				// '6@x': { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['6@a'], ['6@b']), lowerBounds: UpperBoundsTests.bounds([], ['6@a', '6@b']) },
-				// '7@x': { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds(['7@a'], ['7@b']), lowerBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']) },
-				'8@x': { interval: IntervalTests.interval(-2, 7), upperBounds: UpperBoundsTests.bounds([], ['8@a', '8@b']), lowerBounds: UpperBoundsTests.bounds(['8@a'], ['8@b']) },
-				'9@x': { interval: IntervalTests.interval(-7, 2), upperBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']), lowerBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']) }
+				'4@b': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
+				'7@a': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['7@b']) },
+				'7@b': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['7@a']) },
+				'9@a': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['9@b']) },
+				'9@b': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['9@a']) }
+			});
+
+			testPentagonDomain(`
+				ifelse(c, a <- -3, a <- 3)
+				a <- a + 0
+				b <- a
+				
+				if(a == b) {
+					print("This is possible", a, b)
+				} else {
+					print("This is NOT possible", a, b)
+				}
+				a
+				b
+			`, {
+				'2@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
+				'3@b':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['3@a']), lowerBounds: UpperBoundsTests.bounds(['3@a']) },
+				'6@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['6@b']) },
+				'6@b':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['6@a']) },
+				'8@a':  { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() },
+				'8@b':  { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() },
+				'10@a': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['3@b']) },
+				'11@b': { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['10@a']) },
+			});
+
+			// <=, >, >=, <
+			testPentagonDomain(`
+				ifelse(c, a <- -3, a <- 3)
+				a <- a + 0
+				ifelse(c, b <- -3, b <- 3)
+				b <- b + 0
+				
+				if(a <= b) {
+					z <- b - a
+				} else {
+					z <- a - b
+				}
+				z
+			`, {
+				'2@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.top() },
+				'4@b':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['2@a']), lowerBounds: UpperBoundsTests.bounds([], ['2@a']) },
+				'7@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds(['7@b']) },
+				'7@z':  { interval: IntervalTests.interval(0, 6), upperBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']), lowerBounds: UpperBoundsTests.bounds([], ['7@a', '7@b']) },
+				'9@a':  { interval: IntervalTests.interval(-3, 3), upperBounds: UpperBoundsTests.bounds([], ['9@b']), lowerBounds: UpperBoundsTests.bounds(['9@b']) },
+				'9@z':  { interval: IntervalTests.interval(0, 6), upperBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']), lowerBounds: UpperBoundsTests.bounds([], ['9@a', '9@b']) },
+				'11@z': { interval: IntervalTests.interval(0, 6), upperBounds: UpperBoundsTests.bounds([], ['7@a', '7@b', '9@a', '9@b']) }
 			});
 		});
 	});

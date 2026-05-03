@@ -7,7 +7,7 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { IntervalDomain } from '../domains/interval-domain';
 import { numericInferenceLogger } from '../interval/numeric-interval-inference';
-import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
+import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { applyPentagonExpressionSemantics } from './expression-semantics';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';

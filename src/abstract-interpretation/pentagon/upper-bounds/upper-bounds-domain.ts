@@ -1,8 +1,13 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Bottom, Top } from '../domains/lattice';
-import { isNotUndefined } from '../../util/assert';
-import type { ConcreteState, StateDomainLift, StateDomainTop, StateDomainValue } from '../domains/state-abstract-domain';
-import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Bottom, Top } from '../../domains/lattice';
+import { isNotUndefined } from '../../../util/assert';
+import type {
+	ConcreteState,
+	StateDomainLift,
+	StateDomainTop,
+	StateDomainValue
+} from '../../domains/state-abstract-domain';
+import { StateAbstractDomain } from '../../domains/state-abstract-domain';
 import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
 
 export class UpperBoundsDomain extends StateAbstractDomain<UpperBoundsValueDomain> {

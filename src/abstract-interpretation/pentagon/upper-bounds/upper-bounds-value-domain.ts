@@ -1,7 +1,7 @@
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Bottom, BottomSymbol, Top } from '../domains/lattice';
-import { AbstractDomain } from '../domains/abstract-domain';
-import { setEquals } from '../../util/collections/set';
+import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Bottom, BottomSymbol, Top } from '../../domains/lattice';
+import { AbstractDomain } from '../../domains/abstract-domain';
+import { setEquals } from '../../../util/collections/set';
 
 const UpperBoundsTop: UpperBoundsValue = new Set<NodeId>();
 

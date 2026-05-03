@@ -9,7 +9,9 @@ import type {
 } from '../../../../src/abstract-interpretation/domains/state-abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { UpperBoundsValueDomain } from '../../../../src/abstract-interpretation/pentagon/upper-bounds-value-domain';
+import {
+	UpperBoundsValueDomain
+} from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-value-domain';
 import { ClosedPentagonValueDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-value-domain';
 
 describe('Weakly Relational Closed Pentagon Domain', () => {

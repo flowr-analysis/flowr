@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { ClosedPentagonDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-domain';
 import { assertAbstractDomain } from '../domains/domain';
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
@@ -63,5 +63,17 @@ describe('Weakly Relational Closed Pentagon Domain', () => {
 	// Compare {V ∈ [1, 1], W ∈ [1, 1]} and {V ∈ [1, 1], W ∈ [1, 1]} => Should be equal and infer constraint V <= W and W <= V
 	assertAbstractDomain(createDomain, pentagon([['V', [[1, 1], []]], ['W', [[1, 1], []]]]), pentagon([['V', [[1, 1], []]], ['W', [[1, 1], []]]]), {
 		equal: true, leq: true, join: pentagon([['V', [[1, 1], ['W']]], ['W', [[1, 1], ['V']]]]), meet: pentagon([['V', [[1, 1], ['W']]], ['W', [[1, 1], ['V']]]]), widen: pentagon([['V', [[1, 1], ['W']]], ['W', [[1, 1], ['V']]]]), abstract: ClosedPentagonTop
+	});
+
+	describe('Class Tests', () => {
+		test('All values shall be copied when creating a new ClosedPentagonDomain', () => {
+			const a = new ClosedPentagonDomain(new Map([[ 1, new ClosedPentagonValueDomain( { interval: new IntervalDomain([1, 1]), upperBounds: new UpperBoundsValueDomain(new Set()) } ) ]]), ClosedPentagonValueDomain.top());
+
+			const b = a.create(a.value);
+
+			a.get(1)?.value.upperBounds.add(3);
+
+			expect(a).not.toEqual(b);
+		});
 	});
 });

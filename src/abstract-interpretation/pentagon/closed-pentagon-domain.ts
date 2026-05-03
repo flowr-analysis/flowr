@@ -6,6 +6,7 @@ import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain
 import { Bottom, Top } from '../domains/lattice';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ClosedPentagonValueDomain } from './closed-pentagon-value-domain';
+import type { Writable } from 'ts-essentials';
 
 /**
  * The closed pentagon domain as reduced product domain of an interval state domain and a weakly relational upper bounds domain.
@@ -13,7 +14,8 @@ import { ClosedPentagonValueDomain } from './closed-pentagon-value-domain';
 export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValueDomain> {
 	constructor(value: StateDomainLift<ClosedPentagonValueDomain>, domain: ClosedPentagonValueDomain) {
 		if(value !== Bottom) {
-			super(ClosedPentagonDomain.reduce(value), domain);
+			const copiedValue = new Map(value.entries().map(([key, value]) => [key, value.create(value.value)]));
+			super(ClosedPentagonDomain.reduce(copiedValue), domain);
 		} else {
 			super(Bottom, domain);
 		}
@@ -39,6 +41,8 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 			const valueWithoutNodeItself = value.create(value.value);
 			valueWithoutNodeItself.value.upperBounds.remove(node);
 			super.set(node, valueWithoutNodeItself);
+			// Directly apply the reduction to assure that the state is always reduced.
+			(this._value as Writable<StateDomainLift<ClosedPentagonValueDomain>>) = ClosedPentagonDomain.reduce(this.value);
 		}
 	}
 

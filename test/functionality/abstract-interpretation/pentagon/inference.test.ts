@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { type IntervalSlicingCriterionExpected, IntervalTests } from '../interval/interval';
+import { DomainMatchingType, type IntervalSlicingCriterionExpected, IntervalTests } from '../interval/interval';
 import type { PentagonSlicingCriterionExpected } from './pentagon';
 import { testPentagonDomain, UpperBoundsTests } from './pentagon';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
@@ -43,7 +43,7 @@ describe('Pentagon Inference', () => {
 				}
 			});
 
-			describe.each(['+', '-', '*'])('%s infix semantics', (identifier) => {
+			describe.each(['+', '-', '*', '/', '^'])('%s infix semantics', (identifier) => {
 				for(const [args, expected] of intervalToPentagonTestCases(binaryOperatorSuccessTestCases.concat(binaryInfixOperatorSpecialCases))) {
 					const slicingCriterionExpected: PentagonSlicingCriterionExpected | undefined = expected.get(identifier);
 					if(!isUndefined(slicingCriterionExpected)) {
@@ -52,7 +52,7 @@ describe('Pentagon Inference', () => {
 				}
 			});
 
-			describe.each(['+', '-', '*'])('%s function semantics', (identifier) => {
+			describe.each(['+', '-', '*', '/', '^'])('%s function semantics', (identifier) => {
 				for(const [args, expected] of intervalToPentagonTestCases(binaryOperatorSuccessTestCases.concat(binaryOperatorSpecialCases))) {
 					const slicingCriterionExpected: PentagonSlicingCriterionExpected | undefined = expected.get(identifier);
 					if(!isUndefined(slicingCriterionExpected)) {
@@ -116,6 +116,44 @@ describe('Pentagon Inference', () => {
 	});
 
 	describe('condition semantics', () => {
+		describe('while semantics', () => {
+			testPentagonDomain(`
+				x <- ifelse(c, 1, 3) + 0
+				while (x < 10) {
+					x <- x + 1
+					x <- x - 1
+				}
+				print(x)
+			`, {
+				'1@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.top() },
+				'2@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.top() },
+				'3@x': { interval: IntervalTests.interval(2, 4), upperBounds: UpperBoundsTests.bounds([], ['1@x', '4@x']), lowerBounds: UpperBoundsTests.bounds(['4@x']) },
+				'4@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds(['3@x']) },
+				'6@x': { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() }
+			});
+
+			testPentagonDomain(`
+				x <- 0
+				a <- 7
+				while (x == 0) {
+					if (a <= 2) {
+						x <- 12
+					}
+					a <- a - 1
+				}
+				cat(x, a)
+			`, {
+				'1@x': { interval: IntervalTests.scalar(0), upperBounds: UpperBoundsTests.top() },
+				'2@a': { interval: IntervalTests.scalar(7), upperBounds: UpperBoundsTests.top() },
+				'3@x': { interval: IntervalTests.interval(0, 12), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+				'4@a': { interval: IntervalTests.interval(2, 7), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+				'5@x': { interval: IntervalTests.scalar(12), upperBounds: UpperBoundsTests.top() },
+				'7@a': { interval: IntervalTests.interval(1, 6), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+				'9@x': { interval: IntervalTests.scalar(12), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+				'9@a': { interval: IntervalTests.scalar(1), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+			});
+		});
+
 		describe('if else semantis', () => {
 			testPentagonDomain(`
 				ifelse(c, a <- -3, a <- 3)

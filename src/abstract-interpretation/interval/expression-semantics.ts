@@ -4,7 +4,7 @@ import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 import { numericInferenceLogger } from './numeric-interval-inference';
-import { getMin, getMinMax } from '../../util/numbers';
+import { getMax, getMin, getMinMax } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 /**
@@ -14,6 +14,8 @@ export const IntervalExpressionSemanticsMapper = [
 	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalPositiveOp, intervalAddOp)],
 	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegativeOp, intervalSubtractOp)],
 	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
+	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
+	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
 	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
 ] as const satisfies readonly IntervalSemanticsMapperInfo[];
 
@@ -235,6 +237,62 @@ function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDom
 		return left.create([minMax.min, minMax.max], smallestSignificantFigures);
 	}
 
+	return undefined;
+}
+
+function intervalDivideOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	const smallestSignificantFigures = getMin([left?.significantFigures, right?.significantFigures].filter(isNotUndefined));
+	if(left?.isBottom() || right?.isBottom()) {
+		return left?.bottom(smallestSignificantFigures) ?? right?.bottom(smallestSignificantFigures);
+	}
+
+	if(left?.isValue() && right?.isValue()) {
+		const [c, d] = right.value;
+		if(0 < c || d < 0) {
+			return intervalMultiplyOp(left, right.create([1/d, 1/c]));
+		} else {
+			return intervalMultiplyOp(left, right.create([Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY]));
+		}
+	}
+	return undefined;
+}
+
+function intervalPowerOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	const smallestSignificantFigures = getMin([left?.significantFigures, right?.significantFigures].filter(isNotUndefined));
+	if(left?.isBottom() || right?.isBottom()) {
+		return left?.bottom(smallestSignificantFigures) ?? right?.bottom(smallestSignificantFigures);
+	}
+
+	if(left?.isValue() && right?.isValue()) {
+		const [a, b] = left.value;
+		const [c, d] = right.value;
+
+		if(c !== d) {
+			return undefined;
+		}
+
+		if(!Number.isInteger(c)) {
+			if(a >= 0) {
+				if(c === Infinity) {
+					return left.create([a**c, b**c]);
+				}
+				if(c === -Infinity) {
+					return left.create([b**c, a**c]);
+				}
+			}
+			return undefined;
+		}
+
+		if(c === 0) {
+			return left.create([1, 1], smallestSignificantFigures);
+		} else if(0 <= a || (c % 2) === 1) {
+			return left.create([a ** c, b ** c], smallestSignificantFigures);
+		} else if(b <= 0 && (c % 2) === 0) {
+			return left.create([b ** c, a ** c], smallestSignificantFigures);
+		}
+		const max = getMax([a ** c, b ** c]) ?? Number.POSITIVE_INFINITY;
+		return left.create([0, max]);
+	}
 	return undefined;
 }
 

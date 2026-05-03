@@ -21,6 +21,8 @@ function getSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain
 		[Identifier.make('<'), binaryCondOpSemantics(upperBoundsLessOp), binaryCondOpSemantics(upperBoundsGreaterEqualOp)],
 		[Identifier.make('<='), binaryCondOpSemantics(upperBoundsLessEqualOp), binaryCondOpSemantics(upperBoundsGreaterOp)],
 		[Identifier.make('is.na'), unaryCondOpSemantics(upperBoundsUnaryIdentity), unaryCondOpSemantics(upperBoundsUnaryIdentity)],
+		[Identifier.make('||'), binaryCondOpSemantics(upperBoundsOrOp), binaryCondOpSemantics(upperBoundsNegatedOrOp)],
+		[Identifier.make('&&'), binaryCondOpSemantics(upperBoundsAndOp), binaryCondOpSemantics(upperBoundsNegatedAndOp)],
 	] as const satisfies UpperBoundsConditionSemanticsMapperInfo<StateDomain>[];
 }
 
@@ -260,7 +262,33 @@ function upperBoundsUnaryIdentity<StateDomain extends AnyStateDomain<AnyAbstract
 	return state;
 }
 
+function upperBoundsOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+	const rightState = applyUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
 
+	return leftState.join(rightState);
+}
+
+function upperBoundsAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+	const rightState = applyUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+
+	return leftState.meet(rightState);
+}
+
+function upperBoundsNegatedOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyNegatedUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+	const rightState = applyNegatedUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+
+	return leftState.meet(rightState);
+}
+
+function upperBoundsNegatedAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyNegatedUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+	const rightState = applyNegatedUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
+
+	return leftState.join(rightState);
+}
 
 
 

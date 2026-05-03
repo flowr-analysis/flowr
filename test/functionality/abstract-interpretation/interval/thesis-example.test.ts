@@ -57,7 +57,7 @@ describe('Thesis example', () => {
 			'6@low':     { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
 			'6@high':    { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
 			'7@mid':     { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
-			'9@result':  { domain: IntervalTests.scalar(-1) },
+			'9@result':  { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation },
 			'13@result': { domain: IntervalTests.interval(1, Infinity), matching: DomainMatchingType.Overapproximation },
 			'16@low':    { domain: IntervalTests.interval(2, Infinity), matching: DomainMatchingType.Overapproximation },
 			'18@high':   { domain: IntervalTests.interval(0, Infinity), matching: DomainMatchingType.Overapproximation },

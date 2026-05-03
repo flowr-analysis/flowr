@@ -22,7 +22,9 @@ function getSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain
 		[Identifier.make('>='), binaryCondOpSemantics(intervalGreaterEqualOp), binaryCondOpSemantics(intervalLessOp)],
 		[Identifier.make('<'), binaryCondOpSemantics(intervalLessOp), binaryCondOpSemantics(intervalGreaterEqualOp)],
 		[Identifier.make('<='), binaryCondOpSemantics(intervalLessEqualOp), binaryCondOpSemantics(intervalGreaterOp)],
-		[Identifier.make('is.na'), unaryCondOpSemantics(intervalIsNaFn), unaryCondOpSemantics(intervalUnaryIdentity)]
+		[Identifier.make('is.na'), unaryCondOpSemantics(intervalIsNaFn), unaryCondOpSemantics(intervalUnaryIdentity)],
+		[Identifier.make('||'), binaryCondOpSemantics(intervalOrOp), binaryCondOpSemantics(intervalNegatedOrOp)],
+		[Identifier.make('&&'), binaryCondOpSemantics(intervalAndOp), binaryCondOpSemantics(intervalNegatedAndOp)],
 	] as const satisfies IntervalConditionSemanticsMapperInfo<StateDomain>[];
 }
 
@@ -314,4 +316,32 @@ function intervalIsNaFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(a
 
 function intervalUnaryIdentity<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(_argNodeId: NodeId, state: StateDomain): StateDomain {
 	return state;
+}
+
+function intervalOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetIntervalState<StateDomain>, getInterval: GetInterval<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyIntervalConditionSemantics(leftNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+	const rightState = applyIntervalConditionSemantics(rightNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+
+	return leftState.join(rightState);
+}
+
+function intervalAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetIntervalState<StateDomain>, getInterval: GetInterval<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyIntervalConditionSemantics(leftNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+	const rightState = applyIntervalConditionSemantics(rightNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+
+	return leftState.meet(rightState);
+}
+
+function intervalNegatedOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetIntervalState<StateDomain>, getInterval: GetInterval<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyNegatedIntervalConditionSemantics(leftNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+	const rightState = applyNegatedIntervalConditionSemantics(rightNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+
+	return leftState.meet(rightState);
+}
+
+function intervalNegatedAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetIntervalState<StateDomain>, getInterval: GetInterval<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
+	const leftState = applyNegatedIntervalConditionSemantics(leftNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+	const rightState = applyNegatedIntervalConditionSemantics(rightNodeId, state.create(state.value), set, getInterval, getVariableOrigins, dfg);
+
+	return leftState.join(rightState);
 }

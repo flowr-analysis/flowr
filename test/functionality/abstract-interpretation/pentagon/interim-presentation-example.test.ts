@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { testPentagonDomain, UpperBoundsTests } from './pentagon';
-import { DomainMatchingType, IntervalTests } from '../interval/interval';
+import { IntervalTests } from '../interval/interval';
 
 describe('Interim Presentation Example', () => {
 	testPentagonDomain(`
@@ -28,10 +28,12 @@ describe('Interim Presentation Example', () => {
 			print(z)
 		`, {
 		'6@a':  { interval: IntervalTests.interval(-Infinity, Infinity), upperBounds: UpperBoundsTests.top() },
-		'6@x':  { interval: IntervalTests.interval(1, Infinity), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
+		'6@x':  { interval: IntervalTests.interval(1, Infinity), upperBounds: UpperBoundsTests.top() },
 		'7@b':  { interval: IntervalTests.interval(-Infinity, Infinity), upperBounds: UpperBoundsTests.top() },
-		'7@y':  { interval: IntervalTests.interval(1, Infinity), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
-		'10@x': { interval: IntervalTests.bottom(), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bottom() },
-		'10@y': { interval: IntervalTests.bottom(), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bottom() },
+		'7@y':  { interval: IntervalTests.interval(1, Infinity), upperBounds: UpperBoundsTests.top() },
+		'10@x': { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() },
+		'10@y': { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() },
+		'20@z': { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bottom() },
+		'22@z': { interval: IntervalTests.interval(0, Infinity), upperBounds: UpperBoundsTests.top() }
 	});
 });

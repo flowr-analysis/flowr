@@ -7,14 +7,6 @@ export const Scaled = Symbol('Scaled');
 type Lift = typeof Scaled | typeof Unscaled | typeof Top | typeof Bottom;
 
 export class ScaleDomain<Value extends Lift = Lift> extends AbstractDomain<Lift, Lift, typeof Top, typeof Bottom, Value> {
-	public static Unscaled() {
-		return Unscaled;
-	}
-
-	public static Scaled(): symbol {
-		return Scaled;
-	}
-
 	public create(value: Lift): this;
 	public create(value: Lift): ScaleDomain {
 		return new ScaleDomain<Lift>(value);

@@ -39,7 +39,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	private _currentState: MutableStateAbstractDomain<Domain>;
 
 	/**
-	 * Whether the current abstract state has been copied/cloned and is save to modify in place.
+	 * Whether the current abstract state has been copied/cloned and is safe to modify in place.
 	 */
 	private stateCopied: boolean = false;
 

@@ -14,6 +14,7 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
+import { isUndefined } from '../../../../../../util/assert';
 
 /**
  * Process a library call like `library` or `require`
@@ -56,23 +57,66 @@ export function processLibrary<OtherInfo>(
 		origin:               BuiltInProcName.Library
 	}).information;
 
+	const dependency = data.ctx.deps.getDependency(nameToLoad.lexeme);
+	/*if(dependency && dependency.name === 'ggplot2'){
+		if(dependency.namespaceInfo?.exportedSymbols.find(v => v === 'ggplot')){
+			linkLibraryGlob('ggplot', dependency.name, info, rootId);
+		}
+	}*/
+	if(dependency){
+		dependency.namespaceInfo?.exportedSymbols.forEach(v => linkLibraryGlob(v, dependency.name, info, rootId));
+	}
+	return info;
+}
 
+function linkLibraryGlob(func: string, pack: string, info: DataflowInformation, rootId: NodeId): void{
+	const globalEnv = getGlobalEnv(info);
+	if(isUndefined(globalEnv)){
+		return;
+	}
+	const oldGlobParent = globalEnv.parent;
+	let ggplotEnv = new Environment(oldGlobParent);
+	ggplotEnv.n = pack;
+	ggplotEnv = ggplotEnv.define({
+		name:      Identifier.make(func, pack),
+		type:      ReferenceType.Function,
+		nodeId:    NodeId.toBuiltIn(func),
+		definedAt: NodeId.toBuiltIn(pack),
+	});
+	globalEnv.parent = ggplotEnv;
+	info.environment = {
+		level:   info.environment.level + 1,
+		current: info.environment.current
+	};
+	info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
+}
+
+function getGlobalEnv(info: DataflowInformation){
+	if(info.environment.level < 0){
+		return undefined;
+	}
+	let env = info.environment.current;
+	for(let i = 0; i < info.environment.level; i++){
+		env = env.parent;
+	}
+	return env;
+}
+/*function linkLibrary(func: string, pack: string, info: DataflowInformation, rootId: NodeId): void{
 	// console.log(nameToLoad?.lexeme);g
 	// console.log(data.ctx.deps.getDependency(nameToLoad?.lexeme ?? ''))
 	const oldParent = info.environment.current.parent;
 	let ggplotEnv = new Environment(oldParent);
-	ggplotEnv.n = nameToLoad?.lexeme;
+	ggplotEnv.n = pack;
 	ggplotEnv = ggplotEnv.define({
-		name:      Identifier.make('ggplot', 'ggplot2'),
+		name:      Identifier.make(func, pack),
 		type:      ReferenceType.Function,
-		nodeId:    NodeId.toBuiltIn('ggplot'),
-		definedAt: NodeId.toBuiltIn('ggplot2'),
+		nodeId:    NodeId.toBuiltIn(func),
+		definedAt: NodeId.toBuiltIn(pack),
 	});
 	info.environment.current.parent = ggplotEnv;
 	info.environment = {
 		level:   info.environment.level + 1,
 		current: info.environment.current
 	};
-	info.graph.addEdge(NodeId.toBuiltIn('ggplot'), rootId, EdgeType.Reads);
-	return info;
-}
+	info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads);
+}*/

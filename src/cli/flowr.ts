@@ -159,6 +159,15 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 	process.on('SIGTERM', end);
 }
 
+function getReplPlugins(config: FlowrConfig) {
+	const plugins = config.repl.plugins.filter(p => p !== 'flowr:default');
+	if(plugins.length !== config.repl.plugins.length) {
+		return plugins.concat(config.defaultPlugins);
+	} else {
+		return plugins;
+	}
+}
+
 async function mainRepl() {
 	const config = createConfig();
 
@@ -190,9 +199,10 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
-	const analyzer = new FlowrAnalyzerBuilder()
+	const analyzer = new FlowrAnalyzerBuilder(false)
 		.setParser(defaultEngine)
 		.setConfig(config)
+		.registerPlugins(...getReplPlugins(config))
 		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;

@@ -33,7 +33,7 @@ describe('rmd', () => {
 			[ // #1 - simple
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 1,
@@ -41,7 +41,7 @@ describe('rmd', () => {
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 2,
@@ -55,7 +55,7 @@ describe('rmd', () => {
 			[ // #2 - new lines at end
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 1,
@@ -63,7 +63,7 @@ describe('rmd', () => {
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 2,
@@ -77,7 +77,7 @@ describe('rmd', () => {
 			[ // #3 - new lines between and at end
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 1,
@@ -85,7 +85,7 @@ describe('rmd', () => {
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
 						startpos: {
 							line: 5,
@@ -109,23 +109,23 @@ describe('rmd', () => {
 			blocks: [
 				{
 					code:    'test <- 42\ncat(test)\n',
-					options: '',
+					options: new Map<string, string>(),
 				},
 				{
 					code:    'x <- "Hello World"\n',
-					options: 'abc',
+					options: new Map<string, string>(),
 				},
 				{
 					code:    '  cat("Hi")\n',
-					options: 'ops, echo=FALSE',
+					options: new Map<string, string>([['echo', 'FALSE']]),
 				},
 				{
 					code:    '#| cache=FALSE\ncat(test)\n',
-					options: 'echo=FALSE, cache=FALSE',
+					options: new Map<string, string>([['echo', 'FALSE'], ['cache', 'FALSE']]),
 				},
 				{
 					code:    'v <- c(1,2,3)\n',
-					options: 'test'
+					options: new Map<string, string>()
 				}
 			],
 			options: { title: 'Sample Document', output: 'pdf_document' }
@@ -148,7 +148,7 @@ print(42)
 			blocks: [
 				{
 					code:    'print(42)\n',
-					options: '',
+					options: new Map<string, string>(),
 				},
 			],
 			options: {
@@ -156,5 +156,32 @@ print(42)
 			}
 		});
 	});
-});
 
+
+	test('do not load with overridden engine', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.Rmd', `
+\`\`\`{r}
+print(42)
+\`\`\`
+
+
+\`\`\`{r engine='python'}
+print(42)
+\`\`\`
+
+\`\`\`{python}
+print(42)
+\`\`\`
+		`));
+
+		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
+			blocks: [
+				{
+					code:    'print(42)\n',
+					options: new Map<string, string>()
+				}
+			],
+			options: {}
+		});
+	});
+});

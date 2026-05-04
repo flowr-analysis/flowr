@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import type { AbstractDomainValue, AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import type { AbstractValue, AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { BoundedSetDomain } from '../../../../src/abstract-interpretation/domains/bounded-set-domain';
 import { IntervalDomain, IntervalTop } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
@@ -11,7 +11,7 @@ import { assertAbstractDomain } from './domain';
 
 describe('Abstract Domains', () => {
 	describe('Singleton Domain', () => {
-		const create = (value: AbstractDomainValue<SingletonDomain<number>>) => new SingletonDomain(value);
+		const create = (value: AbstractValue<SingletonDomain<number>>) => new SingletonDomain(value);
 
 		assertAbstractDomain(create, Bottom, Bottom, {
 			equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom, concrete: []
@@ -190,12 +190,12 @@ describe('Abstract Domains', () => {
 
 	const intervalTests = [{
 		name:   'Interval Domain',
-		create: (value: AbstractDomainValue<IntervalDomain>) => new IntervalDomain(value),
+		create: (value: AbstractValue<IntervalDomain>) => new IntervalDomain(value),
 		min:    IntervalTop[0],
 		max:    IntervalTop[1]
 	}, {
 		name:   'Positive Interval Domain',
-		create: (value: AbstractDomainValue<PosIntervalDomain>) => new PosIntervalDomain(value),
+		create: (value: AbstractValue<PosIntervalDomain>) => new PosIntervalDomain(value),
 		min:    PosIntervalTop[0],
 		max:    PosIntervalTop[1]
 	}];

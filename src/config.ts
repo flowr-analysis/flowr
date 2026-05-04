@@ -14,6 +14,7 @@ import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
+import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -96,6 +97,9 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	readonly applyReplacements?:    Record<string, string>[]
 }
 
+export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
+	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
+
 /**
  * The configuration file format for flowR.
  * @see {@link FlowrConfig.default} for the default configuration.
@@ -118,13 +122,17 @@ export interface FlowrConfig extends MergeableRecord {
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
-	}
+	},
+	/** Plugins to load by default when creating a new FlowrAnalyzer */
+	readonly defaultPlugins: ConfigPlugin<string>[]
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
 		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
+		/** Plugins to load in REPL mode */
+		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -245,6 +253,22 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 	'r-shell':     { type: 'r-shell' }
 };
 
+export const FlowrDefaultPlugins = [
+	'file:description',
+	'versions:description',
+	'loading-order:description',
+	'meta:description',
+	'files:vignette',
+	'files:test',
+	'file:rmd',
+	'file:qmd',
+	'file:rnw',
+	'file:ipynb',
+	'file:namespace',
+	'file:news',
+	'file:license',
+] satisfies ConfigPlugin<string>[];
+
 /**
  * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
  */
@@ -265,9 +289,11 @@ export const FlowrConfig = {
 					}
 				}
 			},
-			repl: {
+			defaultPlugins: FlowrDefaultPlugins,
+			repl:           {
 				quickStats:      false,
-				dfProcessorHeat: false
+				dfProcessorHeat: false,
+				plugins:         ['flowr:default'],
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -317,9 +343,11 @@ export const FlowrConfig = {
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 			}).optional().description('Semantics regarding how to handle the R environment.')
 		}).description('Configure language semantics and how flowR handles them.'),
-		repl: Joi.object({
+		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
+		repl:           Joi.object({
 			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
+			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')

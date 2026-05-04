@@ -1,8 +1,8 @@
 import { assert, beforeAll, test } from 'vitest';
-import type { AbstractDataFrameShape, DataFrameDomain, DataFrameShapeProperty } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
+import type { AbstractDataFrameShape, DataFrameDomain } from '../../../../src/abstract-interpretation/data-frame/dataframe-domain';
 import type { DataFrameOperationArgs, DataFrameOperationName } from '../../../../src/abstract-interpretation/data-frame/semantics';
 import { type DataFrameOperations, DataFrameShapeInferenceVisitor } from '../../../../src/abstract-interpretation/data-frame/shape-inference';
-import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import type { AbstractValue, AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 import type { ArrayRangeValue } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { FlowrConfig } from '../../../../src/config';
@@ -67,8 +67,8 @@ export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
  */
 export interface ExpectedDataFrameShape {
 	colnames: [min: string[], range: string[] | typeof Top] | typeof Bottom,
-	cols:     DataFrameShapeProperty<'cols'>,
-	rows:     DataFrameShapeProperty<'rows'>
+	cols:     AbstractValue<AbstractDataFrameShape['cols']>,
+	rows:     AbstractValue<AbstractDataFrameShape['rows']>
 }
 
 type ExpectedDataFrameOperation = {

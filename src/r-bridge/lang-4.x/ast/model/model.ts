@@ -25,7 +25,7 @@ import type { RUnaryOp } from './nodes/r-unary-op';
 import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
-import type { ParentInformation } from './processing/decorate';
+import type { AstIdMap, ParentInformation } from './processing/decorate';
 import type { NodeId } from './processing/node-id';
 import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
@@ -350,7 +350,7 @@ export const RNode = {
 	 * linear chain of parents leading to the root node.
 	 * @see {@link iterateParents} - to get all parents of a node
 	 */
-	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): RNode<OtherInfo & ParentInformation> | undefined {
+	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
 		const parentId = node.info.parent;
 		if(parentId === undefined) {
 			return undefined;
@@ -360,7 +360,7 @@ export const RNode = {
 	/**
 	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
 	 */
-	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): Generator<RNode<OtherInfo & ParentInformation>> {
+	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): Generator<RNode<OtherInfo & ParentInformation>> {
 		let currentNode: RNode<OtherInfo & ParentInformation> | undefined = node;
 		while(currentNode) {
 			currentNode = RNode.directParent(currentNode, idMap);
@@ -373,7 +373,7 @@ export const RNode = {
 	 * In contrast to the nesting stored in the {@link RNode} structure,
 	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
 	 */
-	depth(this: void, node: RNode<ParentInformation>, idMap: Map<NodeId, RNode<ParentInformation>>): number {
+	depth(this: void, node: RNode<ParentInformation>, idMap: AstIdMap<ParentInformation>): number {
 		let depth = 0;
 		let currentNode: RNode | undefined = node;
 		while(currentNode) {

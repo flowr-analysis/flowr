@@ -7,7 +7,8 @@ import { guard } from '../util/assert';
 export class TaintAnalysis<Domain extends AnyAbstractDomain> {
 	private readonly domain:   Domain;
 	private readonly analyzer: FlowrAnalyzer;
-	private mapper:            FnTaintMapper<Domain> | undefined;
+	private mapper:            FnTaintMapper<Domain> = {};
+	private msg:               string | undefined;
 
 	constructor(domain: Domain, analyzer: FlowrAnalyzer) {
 		this.domain = domain;
@@ -15,7 +16,17 @@ export class TaintAnalysis<Domain extends AnyAbstractDomain> {
 	}
 
 	public through(fnMapping: FnTaintMapper<Domain>): this {
-		this.mapper = fnMapping;
+		this.mapper = { ...this.mapper, ...fnMapping };
+		return this;
+	}
+
+	public to(fnMapping: FnTaintMapper<Domain>): this {
+		this.mapper = { ...this.mapper, ...fnMapping };
+		return this;
+	}
+
+	public report(msg: string): this {
+		this.msg = msg;
 		return this;
 	}
 

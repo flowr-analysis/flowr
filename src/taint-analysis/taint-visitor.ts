@@ -1,11 +1,12 @@
 import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absint-visitor';
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import type { AbstractDomainValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { FnTaintMapper } from './function-mapper';
+import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import type { FnTaintMapper, ResolvedTaint } from './function-mapper';
 import { mapFnCallToTaint } from './function-mapper';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 // TODO Parameter handling
 // TODO Add taint propagation, dependent taint eval
@@ -28,13 +29,31 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		if(node === undefined) {
 			return;
 		}
-		const taint = mapFnCallToTaint(node, this.fnCallMapper);
+
+		const taint = mapFnCallToTaint(node, this.fnCallMapper, this.config.dfg, this.config.ctx);
 		if(taint) {
 			this.applyFnCall(node, taint);
 		}
 	}
 
-	private applyFnCall(node: RNode<ParentInformation>, taint: AbstractDomainValue<AnyAbstractDomain>) {
-		this.updateState(node.info.id, this.domain.create(taint));
+	private applyFnCall(node: RNode<ParentInformation>, taint: ResolvedTaint<Domain>) {
+		if(!taint) {
+			this.updateState(node.info.id, this.domain.top());
+		} else if('taint' in taint) {
+			this.updateState(node.info.id, this.domain.create(taint.taint));
+		} else {
+			if(taint.argument === EmptyArgument || !taint.argument.value?.info) {
+				this.updateState(node.info.id, this.domain.top());
+				return;
+			}
+			const currentValue = this.getAbstractValue(taint.argument.value.info.id);
+			if(currentValue === undefined) {
+				this.updateState(node.info.id, this.domain.top());
+				return;
+			}
+			// @ts-ignore
+			const newValue = taint.condition.cond(currentValue.value);
+			this.updateState(node.info.id, this.domain.create(newValue));
+		}
 	}
 }

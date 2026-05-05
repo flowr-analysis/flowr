@@ -321,21 +321,3 @@ describe('Pentagon Inference', () => {
 		});
 	});
 });
-
-describe('DEBUG', () => {
-	test('K', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
-
-		analyzer.addRequest('file:///home/henry/Documents/Code/A-Comparison-of-the-Interval-and-the-Closed-Pentagon-Domain-for-Dead-Code-Detection-in-R/prestudy/eval/ssoc/runnable/projects/zenodo/3/');
-
-		const ast = await analyzer.normalize();
-		const dfg = (await analyzer.dataflow()).graph;
-		const cfg = await analyzer.controlflow();
-		const ctx = analyzer.inspectContext();
-
-		const visitor = new NumericPentagonInferenceVisitor({
-			normalizedAst: ast,
-			dfg:           dfg,
-			controlFlow:   cfg,
-			ctx:           ctx
-		});

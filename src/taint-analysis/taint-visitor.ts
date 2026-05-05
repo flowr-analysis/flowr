@@ -47,7 +47,7 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 				this.updateState(id, this.domain.top());
 				return;
 			}
-			// @ts-ignore
+			// @ts-expect-error Ignore for now
 			const newValue = taint.condition.cond(currentValue.value);
 			this.updateState(id, this.domain.create(newValue));
 		}

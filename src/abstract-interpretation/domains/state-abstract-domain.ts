@@ -1,19 +1,19 @@
-import type { Writable } from 'ts-essentials';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain, domainElementToString } from './abstract-domain';
+import { AbstractDomain, type AnyAbstractDomain, type ConcreteDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
+import type { StateDomainLike } from './state-domain-like';
 
 /** The type of the concrete state of the concrete domain of a state abstract domain that maps keys to a concrete value in the concrete domain */
 export type ConcreteState<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, ConcreteDomain<Domain>>;
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
-type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
+export type StateDomainValue<Domain extends AnyAbstractDomain> = ReadonlyMap<NodeId, Domain>;
 /** The type of the Top element of the state abstract domain as (empty) map of keys to domain values */
-type StateDomainTop = ReadonlyMap<NodeId, never>;
+export type StateDomainTop = ReadonlyMap<NodeId, never>;
 /** The type of the Bottom element of the state abstract domain as {@link Bottom} symbol */
-type StateDomainBottom = typeof Bottom;
+export type StateDomainBottom = typeof Bottom;
 /** The type of the abstract values of the state abstract domain that are Top, Bottom, or actual values */
-type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
+export type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain> | StateDomainBottom;
 
 /**
  * A state abstract domain that maps AST node IDs of a program to abstract values of an abstract domain.
@@ -22,9 +22,10 @@ type StateDomainLift<Domain extends AnyAbstractDomain> = StateDomainValue<Domain
  * @see {@link NodeId} for the node IDs of the AST nodes
  */
 export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
-	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value> {
+	extends AbstractDomain<ConcreteState<Domain>, StateDomainValue<Domain>, StateDomainTop, StateDomainBottom, Value>
+	implements StateDomainLike<Domain> {
 
-	protected domain: Domain;
+	public readonly domain: Domain;
 
 	constructor(value: Value, domain: Domain) {
 		if(value === Bottom || value.values().some(entry => entry.isBottom())) {
@@ -40,45 +41,40 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainTop> {
-		return new StateAbstractDomain(new Map<NodeId, never>(), domain);
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(new Map<NodeId, never>(), domain);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): StateAbstractDomain<Domain, StateDomainBottom> {
-		return new StateAbstractDomain(Bottom, domain);
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+		return new this(Bottom, domain);
 	}
 
-	public get(key: NodeId): Domain | undefined {
-		return this.value === Bottom ? this.domain.bottom() : this.value.get(key);
+	public get(node: NodeId): Domain | undefined {
+		return this.value === Bottom ? this.domain.bottom() : this.value.get(node);
 	}
 
-	public has(key: NodeId): boolean {
-		return this.value !== Bottom && this.value.has(key);
+	public has(node: NodeId): boolean {
+		return this.value !== Bottom && this.value.has(node);
 	}
 
-	protected set(key: NodeId, value: Domain): void {
-		if(value.isBottom()) {
-			(this._value as Writable<StateDomainLift<Domain>>) = Bottom;
-		}
-		if(this._value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).set(key, value);
-		}
-	}
-
-	protected remove(key: NodeId): void {
+	public set(node: NodeId, value: Domain): void {
 		if(this.value !== Bottom) {
-			(this._value as Map<NodeId, Domain>).delete(key);
+			(this._value as Map<NodeId, Domain>).set(node, value);
 		}
 	}
 
-	public top(): this & StateAbstractDomain<Domain, StateDomainTop>;
-	public top(): StateAbstractDomain<Domain, StateDomainTop> {
-		return StateAbstractDomain.top(this.domain);
+	public remove(node: NodeId): void {
+		if(this.value !== Bottom) {
+			(this._value as Map<NodeId, Domain>).delete(node);
+		}
 	}
 
-	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom>;
-	public bottom(): StateAbstractDomain<Domain, StateDomainBottom> {
-		return StateAbstractDomain.bottom(this.domain);
+	public top(): this & StateAbstractDomain<Domain, StateDomainTop> {
+		return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
+	}
+
+	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom> {
+		return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
 	}
 
 	public equals(other: this): boolean {
@@ -263,7 +259,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return '(' + this.value.entries().toArray().map(([key, value]) => `${domainElementToString(key)} -> ${value.toString()}`).join(', ') + ')';
+		return '(' + this.value.entries().toArray().map(([key, value]) => `${AbstractDomain.toString(key)} -> ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): this is this & StateAbstractDomain<Domain, StateDomainTop> {
@@ -271,45 +267,10 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	}
 
 	public isBottom(): this is this & StateAbstractDomain<Domain, StateDomainBottom> {
-		return this.value == Bottom;
+		return this.value === Bottom;
 	}
 
 	public isValue(): this is this & StateAbstractDomain<Domain, StateDomainValue<Domain>> {
 		return this.value !== Bottom;
 	}
 }
-
-/**
- * A mutable version of the {@link StateAbstractDomain} with {@link MutableStateAbstractDomain#set|`set`} and {@link MutableStateAbstractDomain#remove|`remove`}.
- */
-export class MutableStateAbstractDomain<Domain extends AnyAbstractDomain, Value extends StateDomainLift<Domain> = StateDomainLift<Domain>>
-	extends StateAbstractDomain<Domain, Value> {
-
-	public create(value: StateDomainLift<Domain>): this;
-	public create(value: StateDomainLift<Domain>): MutableStateAbstractDomain<Domain> {
-		return new MutableStateAbstractDomain(value, this.domain);
-	}
-
-	public static top<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainTop> {
-		return new MutableStateAbstractDomain(new Map<NodeId, never>(), domain);
-	}
-
-	public static bottom<Domain extends AnyAbstractDomain>(domain: Domain): MutableStateAbstractDomain<Domain, StateDomainBottom> {
-		return new MutableStateAbstractDomain(Bottom, domain);
-	}
-
-	public set(key: NodeId, value: Domain): void {
-		super.set(key, value);
-	}
-
-	public remove(key: NodeId): void {
-		super.remove(key);
-	}
-}
-
-/**
- * The type of the value abstract domain of a state abstract domain (i.e. the abstract domain a state abstract domain maps to).
- * @template StateDomain - The state abstract domain to get the value abstract domain type for
- */
-export type ValueAbstractDomain<StateDomain extends StateAbstractDomain<AnyAbstractDomain>> =
-	StateDomain extends StateAbstractDomain<infer Domain> ? Domain : never;

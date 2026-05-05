@@ -2,8 +2,8 @@ import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { NumericInferenceVisitor } from './numeric-inference';
-import { numericInferenceLogger } from './numeric-inference';
+import type { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
+import { numericInferenceLogger } from './numeric-interval-inference';
 import { getMin, getMinMax } from '../../util/numbers';
 
 /**
@@ -42,7 +42,7 @@ type BinaryOpSemantics = (left: IntervalDomain | undefined, right: IntervalDomai
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
+type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
 
 /**
  * Semantics definition function n-ary functions/operators.
@@ -51,7 +51,7 @@ type UnaryFnSemantics = (arg: FunctionArgument, visitor: NumericInferenceVisitor
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
+type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined) => IntervalDomain | undefined;
 
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
@@ -61,11 +61,7 @@ type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInfer
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
-	if(visitor.currentState.isBottom()) {
-		return IntervalDomain.bottom(significantFigures);
-	}
-
+export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
 	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
@@ -88,7 +84,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
  * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
 function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		// Usage as unary operator
 		if(args.length === 1) {
 			if(FunctionArgument.isEmpty(args[0])) {
@@ -112,7 +108,7 @@ function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, bi
  * @returns A semantics function for n-ary functions that applies the provided binary numeric operator semantics if the call has exactly 2 non-empty numeric arguments, and logs a warning and returns bottom otherwise.
  */
 function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 2) {
 			numericInferenceLogger.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
@@ -138,7 +134,7 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
  * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
  */
 function unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
@@ -249,7 +245,7 @@ function intervalMultiplyOp(left: IntervalDomain | undefined, right: IntervalDom
  * @returns Bottom if the provided argument is bottom or empty, otherwise overapproximates to the interval [0, Infinity].
  *          If the argument can be resolved to a supported value, the resulting interval is more precise (e.g.: [1,1] for scalar numbers).
  */
-function intervalLengthFn(arg: FunctionArgument, visitor: NumericInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined {
+function intervalLengthFn(arg: FunctionArgument, visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined): IntervalDomain | undefined {
 	if(FunctionArgument.isEmpty(arg)) {
 		numericInferenceLogger.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom(significantFigures);

@@ -6,8 +6,8 @@ import { DefaultMap } from '../../util/collections/defaultmap';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import path from 'path';
-import { NumericInferenceVisitor } from './numeric-inference';
 import { spawn } from 'child_process';
+import { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 
 interface InstrumentAnnotation {
 	range:  SourceRange;
@@ -38,7 +38,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 	analyzer.addRequest(fileProtocol + workingDir);
 	await analyzer.dataflow();
 
-	const visitor = new NumericInferenceVisitor({
+	const visitor = new NumericIntervalInferenceVisitor({
 		normalizedAst: await analyzer.normalize(),
 		dfg:           (await analyzer.dataflow()).graph,
 		controlFlow:   await analyzer.controlflow(),

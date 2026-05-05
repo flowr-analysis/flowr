@@ -33,38 +33,38 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (1 ms)
+    Query: linter (7 ms)
        ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Seeded Randomness (seeded-randomness):
            ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Absolute Paths (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Unused Definitions (unused-definitions):
            ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Naming Convention (naming-convention):
            ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Network Functions (network-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ Dead Code (dead-code):
            ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Problematic inputs (problematic-inputs):
-           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: searchTimeMs: 1, processTimeMs: 0
        ╰ Stop without call.=False argument (stop-call):
            ╰ Metadata: consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Roxygen Arguments (roxygen-arguments):
            ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈1 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈7 ms (1ms accuracy, total 7 ms)
     ```
     
     
@@ -86,42 +86,42 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (2 ms)\
+    Query: **linter** (11 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 3, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 1</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 2</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+    _All queries together required ≈11 ms (1ms accuracy, total 11 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _11.3 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -161,7 +161,7 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 3,
               "processTimeMs": 0
             }
           },
@@ -173,7 +173,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -202,7 +202,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "naming-convention": {
@@ -230,7 +230,7 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 2
             }
           },
           "dead-code": {
@@ -252,7 +252,7 @@ It offers a wide variety of features, for example:
           "problematic-inputs": {
             "results": [],
             ".meta": {
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -273,11 +273,11 @@ It offers a wide variety of features, for example:
           }
         },
         ".meta": {
-          "timing": 2
+          "timing": 11
         }
       },
       ".meta": {
-        "timing": 2
+        "timing": 11
       }
     }
     ```
@@ -356,7 +356,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+    All queries together required ≈4 ms (1ms accuracy, total 5 ms)
     ```
     
     
@@ -436,6 +436,7 @@ It offers a wide variety of features, for example:
     
     ```text
     https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMFxuICAgIDEoW1wiYCM5MTtSU3ltYm9sIzkzOyB0ZXN0ZmlsZXNcbiAgICAgICgxKVxuICAgICAgKjEuNi0xNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDFcbiAgICAyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoMilcbiAgICAgICoxLjEtMTQqXG4gICAgKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuL2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    Copied mermaid url to clipboard (dataflow: 0ms).
     ```
     
     
@@ -734,7 +735,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _1.6 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _3.1 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -799,8 +800,25 @@ please check out flowR's [Zenodo archive](https://zenodo.org/doi/10.5281/zenodo.
 If you are interested in the theoretical background of _flowR_,
 please check out the following publications (if you find that a paper is missing here, please open [a new issue](https://github.com/flowr-analysis/flowr/issues/new/choose)):
 
+* [Supporting the Comprehension of Data Analysis Scripts (FSE '25, Tool)](https://doi.org/10.1145/3803437.3806402)  
+  This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.
+  <details><summary>BibTeX</summary>
+  
+   
+   ```bibtex
+   @article{10.1145/3803437.3806402,
+   	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+   	title = {Supporting the Comprehension of Data Analysis Scripts},
+   	year = {2026},
+   	doi = {10.1145/3803437.3806402}
+   }
+   ```
+   
+  
+  </details>
+
 * [Statically Analyzing the Dataflow of R Programs (OOPSLA '25)](https://doi.org/10.1145/3763087)  
-  Please cite this paper if you are using flowR in your research.
+  **Please cite this paper if you are using flowR in your research.**
   <details><summary>BibTeX</summary>
   
    
@@ -829,7 +847,7 @@ please check out the following publications (if you find that a paper is missing
   </details>
 
 * [flowR: A Static Program Slicer for R (ASE '24, Tool)](https://doi.org/10.1145/3691620.3695359)  
-  This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">VS Code Extension</a>.
+  This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank">VS Code Extension</a>.
   <details><summary>BibTeX</summary>
   
    

@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import { type SatisfiableDomain, SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -208,7 +208,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		} else if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		const string = this.value.values().map(domainElementToString).toArray().join(', ');
+		const string = this.value.values().map(AbstractDomain.toString).toArray().join(', ');
 
 		return `{${string}}`;
 	}

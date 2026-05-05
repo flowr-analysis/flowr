@@ -4,13 +4,11 @@ import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FnTaintMapper, ResolvedTaint } from './function-mapper';
 import { mapFnCallToTaint } from './function-mapper';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
-// TODO Parameter handling
-// TODO Add taint propagation, dependent taint eval
-// TODO Definition of violations
+// TODO Evaluation of violations
+// TODO Taints dependent on multiple input parameters
 export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<Domain> {
 	private readonly domain:       Domain;
 	private readonly fnCallMapper: FnTaintMapper<Domain>;
@@ -31,29 +29,27 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		}
 
 		const taint = mapFnCallToTaint(node, this.fnCallMapper, this.config.dfg, this.config.ctx);
-		if(taint) {
-			this.applyFnCall(node, taint);
-		}
+		this.applyFnCall(node.info.id, taint);
 	}
 
-	private applyFnCall(node: RNode<ParentInformation>, taint: ResolvedTaint<Domain>) {
+	private applyFnCall(id: NodeId, taint: ResolvedTaint<Domain>) {
 		if(!taint) {
-			this.updateState(node.info.id, this.domain.top());
+			this.updateState(id, this.domain.top());
 		} else if('taint' in taint) {
-			this.updateState(node.info.id, this.domain.create(taint.taint));
+			this.updateState(id, this.domain.create(taint.taint));
 		} else {
 			if(taint.argument === EmptyArgument || !taint.argument.value?.info) {
-				this.updateState(node.info.id, this.domain.top());
+				this.updateState(id, this.domain.top());
 				return;
 			}
 			const currentValue = this.getAbstractValue(taint.argument.value.info.id);
 			if(currentValue === undefined) {
-				this.updateState(node.info.id, this.domain.top());
+				this.updateState(id, this.domain.top());
 				return;
 			}
 			// @ts-ignore
 			const newValue = taint.condition.cond(currentValue.value);
-			this.updateState(node.info.id, this.domain.create(newValue));
+			this.updateState(id, this.domain.create(newValue));
 		}
 	}
 }

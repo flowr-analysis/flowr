@@ -4,7 +4,7 @@ import { type AbstractProduct, PartialProductDomain } from './partial-product-do
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
 
 /**
- * A reduction function for abstract values of a product domain
+ * A reduction function for abstract values of a product domain.
  */
 export type Reduction<Product extends AbstractProduct> = (value: Product) => Product;
 

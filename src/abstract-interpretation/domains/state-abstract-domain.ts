@@ -58,7 +58,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	}
 
 	public set(node: NodeId, value: Domain): void {
-		if(this._value !== Bottom) {
+		if(this.value !== Bottom) {
 			(this._value as Map<NodeId, Domain>).set(node, value);
 		}
 	}
@@ -71,12 +71,11 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 
 	public top(): this & StateAbstractDomain<Domain, StateDomainTop>;
 	public top(): StateAbstractDomain<Domain, StateDomainTop> {
-		return StateAbstractDomain.top(this.domain) as StateAbstractDomain<Domain, StateDomainTop>;
+		return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
 	}
 
-	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom>;
-	public bottom(): StateAbstractDomain<Domain, StateDomainBottom> {
-		return StateAbstractDomain.bottom(this.domain) as StateAbstractDomain<Domain,  StateDomainBottom>;
+	public bottom(): this & StateAbstractDomain<Domain, StateDomainBottom> {
+		return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
 	}
 
 	public equals(other: this): boolean {

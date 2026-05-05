@@ -14,7 +14,7 @@ import type { Writable } from 'ts-essentials';
 export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValueDomain> {
 	constructor(value: StateDomainLift<ClosedPentagonValueDomain>, domain: ClosedPentagonValueDomain) {
 		if(value !== Bottom) {
-			super(value, domain);
+			super(ClosedPentagonDomain.reduce(value), domain);
 		} else {
 			super(Bottom, domain);
 		}

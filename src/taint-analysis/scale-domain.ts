@@ -6,6 +6,7 @@ export const Scaled = Symbol('Scaled');
 
 type Lift = typeof Scaled | typeof Unscaled | typeof Top | typeof Bottom;
 
+// TODO Builder pattern in the DSL for the definition of finite taint lattices
 export class ScaleDomain<Value extends Lift = Lift> extends AbstractDomain<Lift, Lift, typeof Top, typeof Bottom, Value> {
 	public create(value: Lift): this;
 	public create(value: Lift): ScaleDomain {
@@ -27,7 +28,7 @@ export class ScaleDomain<Value extends Lift = Lift> extends AbstractDomain<Lift,
 	}
 
 	public leq(other: this): boolean {
-		throw new Error('Method not implemented.');
+		return this.value === Bottom || other.value === Top ;
 	}
 
 	public join(other: this): this {
@@ -62,12 +63,12 @@ export class ScaleDomain<Value extends Lift = Lift> extends AbstractDomain<Lift,
 		return this.create(Bottom);
 	}
 
-	public widen(_other: this): this {
-		throw new Error('Method not implemented.');
+	public widen(other: this): this {
+		return this.join(other);  // Using join for widening as the lattice is finite
 	}
 
-	public narrow(_other: this): this {
-		throw new Error('Method not implemented.');
+	public narrow(other: this): this {
+		return this.meet(other);  // Using meet for narrowing as the lattice is finite
 	}
 
 	public concretize(_limit: number): typeof Top | ReadonlySet<Lift> {

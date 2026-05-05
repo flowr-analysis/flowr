@@ -2,7 +2,7 @@ import type { FlowrAnalyzer } from '../project/flowr-analyzer';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { FnTaintMapper } from './function-mapper';
 import { TaintInferenceVisitor } from './taint-visitor';
-import { guard } from '../util/assert';
+import type { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 
 export class TaintAnalysis<Domain extends AnyAbstractDomain> {
 	private readonly domain:   Domain;
@@ -30,9 +30,7 @@ export class TaintAnalysis<Domain extends AnyAbstractDomain> {
 		return this;
 	}
 
-	public async run() {
-		guard(this.mapper !== undefined, 'No function mapping set. Please call the method through before running the analysis');
-
+	public async run(): Promise<StateAbstractDomain<Domain>> {
 		const visitor = new TaintInferenceVisitor(this.domain, this.mapper, {
 			controlFlow:   await this.analyzer.controlflow(),
 			ctx:           this.analyzer.inspectContext(),

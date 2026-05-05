@@ -25,7 +25,6 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	}
 
 	const functionName = Identifier.getName(node.functionName.content);
-
 	const taint = mapper[functionName]?.taint;
 
 	if(isTaintCond(taint)) {
@@ -48,7 +47,11 @@ export interface FnTaintMapperInfo<Domain extends AnyAbstractDomain> {
 	readonly taint: TaintOrTaintCond<Domain>;
 }
 
-export type TaintCond<Domain extends AnyAbstractDomain> = {
+export type TaintOrTaintCond<Domain extends AnyAbstractDomain> =  TaintCond<Domain> | AbstractDomainValue<Domain>;
+
+export type FnTaintMapper<Domain extends AnyAbstractDomain> = Record<string, FnTaintMapperInfo<Domain>>;
+
+export type TaintCond<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	pos:  number;
 	cond: (inParam: AbstractDomainValue<Domain>) => AbstractDomainValue<Domain>;
 };
@@ -56,13 +59,9 @@ export type TaintCond<Domain extends AnyAbstractDomain> = {
 /**
  *
  */
-export function isTaintCond(value: unknown): value is TaintCond<any> {
+export function isTaintCond(value: unknown): value is TaintCond {
 	if(typeof value !== 'object' || value === null) {
 		return false;
 	}
 	return ['pos', 'cond' ].every(property => property in value);
 }
-
-export type TaintOrTaintCond<Domain extends AnyAbstractDomain> =  TaintCond<Domain> | AbstractDomainValue<Domain>;
-
-export type FnTaintMapper<Domain extends AnyAbstractDomain> = Record<string, FnTaintMapperInfo<Domain>>;

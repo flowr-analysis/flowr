@@ -47,6 +47,8 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 						}
 					});
 				}
+				this.currentState.set(sourceOrigin, sourcePentagon);
+				this.currentState.set(target, targetPentagon);
 			}
 		}
 	}
@@ -107,9 +109,10 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		};
 
 		const setUpperBounds = (state: ClosedPentagonDomain) => (node: NodeId, upperBounds: UpperBoundsValueDomain) => {
-			let pentagon = state.get(node);
+			const pentagon = state.get(node);
 			if(isUndefined(pentagon)) {
-				pentagon = ClosedPentagonValueDomain.top();
+				// As we currently cannot describe that we have upper bounds-info but not know whether it is a numeric scalar value, we cannot infer upper-bounds values for non-numeric scalar values.
+				return;
 			}
 			pentagon.value.upperBounds = upperBounds;
 			state.set(node, pentagon);

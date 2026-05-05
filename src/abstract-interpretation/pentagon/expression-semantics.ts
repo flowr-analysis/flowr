@@ -155,7 +155,11 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 
 		if(rightOrigins.length <= 1) {
 			if(a >= 0) {
-				currentState.get(rightOrigin)?.value.upperBounds.add(target);
+				const rightPentagon = currentState.get(rightOrigin);
+				if(isNotUndefined(rightPentagon)) {
+					rightPentagon.value.upperBounds.add(target);
+					currentState.set(rightOrigin, rightPentagon);
+				}
 			}
 			if(b <= 0) {
 				resultPentagon.value.upperBounds = rightValue.value.upperBounds.create(rightValue.value.upperBounds.value);
@@ -164,7 +168,11 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 		}
 		if(leftOrigins.length <= 1) {
 			if(c >= 0) {
-				currentState.get(leftOrigin)?.value.upperBounds.add(target);
+				const leftPentagon = currentState.get(leftOrigin);
+				leftPentagon?.value.upperBounds.add(target);
+				if(isNotUndefined(leftPentagon)) {
+					currentState.set(leftOrigin, leftPentagon);
+				}
 			}
 			if(d <= 0) {
 				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
@@ -200,7 +208,11 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 		if(b <= 0) {
 			// target will be greater than arg => target is upper bound for arg
 			if(argOrigins.length <= 1) {
-				currentState.get(argOrigin)?.value.upperBounds.add(target);
+				const argPentagon = currentState.get(argOrigin);
+				argPentagon?.value.upperBounds.add(target);
+				if(isNotUndefined(argPentagon)) {
+					currentState.set(argOrigin, argPentagon);
+				}
 			}
 		}
 
@@ -252,7 +264,11 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 			}
 			if(d <= 0) {
 				// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
-				currentState.get(leftOrigin)?.value.upperBounds.add(target);
+				const leftPentagon = currentState.get(leftOrigin);
+				leftPentagon?.value.upperBounds.add(target);
+				if(isNotUndefined(leftPentagon)) {
+					currentState.set(leftOrigin, leftPentagon);
+				}
 			}
 		}
 

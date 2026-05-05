@@ -8,6 +8,7 @@ import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import path from 'path';
 import { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 import { spawn } from 'child_process';
+import { NumericPentagonInferenceVisitor } from '../pentagon/numeric-pentagon-inference';
 
 interface InstrumentAnnotation {
 	range:  SourceRange;
@@ -45,7 +46,15 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		ctx:           analyzer.inspectContext()
 	});
 
+	const pentagonVisitor = new NumericPentagonInferenceVisitor({
+		normalizedAst: await analyzer.normalize(),
+		dfg:           (await analyzer.dataflow()).graph,
+		controlFlow:   await analyzer.controlflow(),
+		ctx:           analyzer.inspectContext()
+	});
+
 	visitor.start();
+	pentagonVisitor.start();
 
 	// Get all locations of POIs
 	// In this case, our POIs are assignment calls
@@ -72,7 +81,9 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		if(RBinaryOp.is(resolved)) {
 			const lhs = RNode.lexeme(resolved.lhs) ?? '';
 
+			const lhsOrigins = visitor.getVariableOrigins(resolved.lhs.info.id);
 			const inferredValue = visitor.getAbstractValue(resolved.lhs.info.id);
+			const inferredPentagonValue = pentagonVisitor.getAbstractValue(resolved.lhs.info.id);
 
 			const outputCsvPath = (path.join(outputFolder, SourceLocation.getFile(loc)?.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
 
@@ -82,6 +93,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 				after:  '; ' +
 							'cat(' +
 								`"${resolved.lhs.info.id}", ` +
+								`paste('"', "[${lhsOrigins.join(', ')}]", '"', sep=""), ` +
 								`"${lhs}", ` +
 								`paste('"', "${SourceLocation.getRange(loc).slice(0, 4).toString()}", '"', sep=""), ` +
 								`typeof(${lhs}), ` +
@@ -90,6 +102,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 								`paste(length(${lhs}), collapse=""), ` +
 								`paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), ` +
 								`paste('"', "${inferredValue?.toString() ?? 'undefined'}", '"', sep=""), ` +
+								`paste('"', "${inferredPentagonValue?.toString() ?? 'undefined'}", '"', sep=""),` +
 								'"\\n", ' +
 								`sep=",", file="${outputCsvPath}", append=TRUE)` +
 						' }',
@@ -121,7 +134,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		const outputCsvPath = (path.join(outputFolder, file.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
 
 		// Assure that the csv header is printed at the beginning of the file
-		fileLines[0] = `(function() {if (!dir.exists("${path.dirname(outputCsvPath)}")) {dir.create("${path.dirname(outputCsvPath)}")}; cat("id,name,source_location,type,is_numeric,is_vector,length,value,inferredValue,\\n", file="${outputCsvPath}")})();` + fileLines[0];
+		fileLines[0] = `(function() {if (!dir.exists("${path.dirname(outputCsvPath)}")) {dir.create("${path.dirname(outputCsvPath)}")}; cat("id,origins,name,source_location,type,is_numeric,is_vector,length,value,inferredValue,inferredPentagon,\\n", file="${outputCsvPath}")})();` + fileLines[0];
 
 		fs.writeFileSync(file, fileLines.join('\n'), 'utf-8');
 	}
@@ -156,7 +169,7 @@ const folder = process.argv[2];
 const outputFolder = process.argv[3];
 const script = process.argv[4];
 
-void instrument(folder, path.join('/tmp', folder), outputFolder).then(() => execute(path.join('/tmp', folder), script)).catch(err => {
+instrument(folder, path.join('/tmp', folder), outputFolder).then(() => execute(path.join('/tmp', folder), script)).catch(err => {
 	console.error('Error during analysis:', err);
 	process.exit(1);
 });

@@ -14,8 +14,7 @@ import type { Writable } from 'ts-essentials';
 export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValueDomain> {
 	constructor(value: StateDomainLift<ClosedPentagonValueDomain>, domain: ClosedPentagonValueDomain) {
 		if(value !== Bottom) {
-			const copiedValue = new Map(value.entries().map(([key, value]) => [key, value.create(value.value)]));
-			super(ClosedPentagonDomain.reduce(copiedValue), domain);
+			super(value, domain);
 		} else {
 			super(Bottom, domain);
 		}
@@ -51,7 +50,7 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 		if(isNotUndefined(value) && value.value.upperBounds.has(node)) {
 			value.value.upperBounds.remove(node);
 		}
-		return value;
+		return value?.create(value.value);
 	}
 
 	public override join(other: this): this {

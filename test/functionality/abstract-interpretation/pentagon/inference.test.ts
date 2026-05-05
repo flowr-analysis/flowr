@@ -268,5 +268,74 @@ describe('Pentagon Inference', () => {
 				'11@z': { interval: IntervalTests.interval(0, 6), upperBounds: UpperBoundsTests.bounds([], ['7@a', '7@b', '9@a', '9@b']) }
 			});
 		});
+
+		describe('for semantics', () => {
+			testPentagonDomain(`
+				for (i in seq(1, length(lbs))) {
+					if (lbs[i] == "wind_field_cp") {
+					  # dark blue
+					  col_h <- 250
+					  col_c <- 45
+					  col_l <- 40
+					} else if (lbs[i] == "wind_field") {
+					  # middle blue
+					  col_h <- 250
+					  col_c <- 45
+					  col_l <- 60
+					} else if (lbs[i] == "wind_field_noMF") {
+					  # light blue
+					  col_h <- 250
+					  col_c <- 45
+					  col_l <- 80
+					} else if (lbs[i] == "mass_field") {
+					  # light red
+					  col_h <- 10
+					  col_c <- 45
+					  col_l <- 70
+					} else if (lbs[i] == "mass_field_sx") {
+					  # darkred
+					  col_h <- 10
+					  col_c <- 45
+					  col_l <- 40
+					} else {
+					  stop("  * Error: Cluster name does not exist \\n")
+					}
+				}
+			`, {
+				'4@col_h':  { interval: IntervalTests.scalar(250), upperBounds: UpperBoundsTests.top() },
+				'5@col_c':  { interval: IntervalTests.scalar(45), upperBounds: UpperBoundsTests.top() },
+				'6@col_l':  { interval: IntervalTests.scalar(40), upperBounds: UpperBoundsTests.top() },
+				'9@col_h':  { interval: IntervalTests.scalar(250), upperBounds: UpperBoundsTests.top() },
+				'10@col_c': { interval: IntervalTests.scalar(45), upperBounds: UpperBoundsTests.top() },
+				'11@col_l': { interval: IntervalTests.scalar(60), upperBounds: UpperBoundsTests.top() },
+				'14@col_h': { interval: IntervalTests.scalar(250), upperBounds: UpperBoundsTests.top() },
+				'15@col_c': { interval: IntervalTests.scalar(45), upperBounds: UpperBoundsTests.top() },
+				'16@col_l': { interval: IntervalTests.scalar(80), upperBounds: UpperBoundsTests.top() },
+				'19@col_h': { interval: IntervalTests.scalar(10), upperBounds: UpperBoundsTests.top() },
+				'20@col_c': { interval: IntervalTests.scalar(45), upperBounds: UpperBoundsTests.top() },
+				'21@col_l': { interval: IntervalTests.scalar(70), upperBounds: UpperBoundsTests.top() },
+				'24@col_h': { interval: IntervalTests.scalar(10), upperBounds: UpperBoundsTests.top() },
+				'25@col_c': { interval: IntervalTests.scalar(45), upperBounds: UpperBoundsTests.top() },
+				'26@col_l': { interval: IntervalTests.scalar(40), upperBounds: UpperBoundsTests.top() },
+			});
+		});
 	});
 });
+
+describe('DEBUG', () => {
+	test('K', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setEngine('tree-sitter').build();
+
+		analyzer.addRequest('file:///home/henry/Documents/Code/A-Comparison-of-the-Interval-and-the-Closed-Pentagon-Domain-for-Dead-Code-Detection-in-R/prestudy/eval/ssoc/runnable/projects/zenodo/3/');
+
+		const ast = await analyzer.normalize();
+		const dfg = (await analyzer.dataflow()).graph;
+		const cfg = await analyzer.controlflow();
+		const ctx = analyzer.inspectContext();
+
+		const visitor = new NumericPentagonInferenceVisitor({
+			normalizedAst: ast,
+			dfg:           dfg,
+			controlFlow:   cfg,
+			ctx:           ctx
+		});

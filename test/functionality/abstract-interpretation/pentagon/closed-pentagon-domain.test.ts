@@ -13,6 +13,7 @@ import {
 	UpperBoundsValueDomain
 } from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-value-domain';
 import { ClosedPentagonValueDomain } from '../../../../src/abstract-interpretation/pentagon/closed-pentagon-value-domain';
+import { isNotUndefined } from '../../../../src/util/assert';
 
 describe('Weakly Relational Closed Pentagon Domain', () => {
 	const createDomain = (value: StateDomainLift<ClosedPentagonValueDomain>) => {
@@ -71,7 +72,11 @@ describe('Weakly Relational Closed Pentagon Domain', () => {
 
 			const b = a.create(a.value);
 
-			a.get(1)?.value.upperBounds.add(3);
+			const pentagon = a.get(1);
+			pentagon?.value.upperBounds.add(3);
+			if(isNotUndefined(pentagon)) {
+				a.set(1, pentagon);
+			}
 
 			expect(a).not.toEqual(b);
 		});

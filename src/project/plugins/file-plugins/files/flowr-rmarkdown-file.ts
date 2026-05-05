@@ -8,7 +8,7 @@ import { log } from '../../../../util/log';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
- * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
+ * Finally, it provides access to the single cells, and all cells fused together as one R file.
  */
 export class FlowrRMarkdownFile extends FlowrFile<string> {
 	private data?:            RmdInfo;
@@ -48,8 +48,10 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 	}
 }
 
+export type CodeBlockOptions = Map<string, string>;
+
 export interface CodeBlock {
-	options: string,
+	options: CodeBlockOptions,
 	code:    string,
 }
 
@@ -93,9 +95,15 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 			continue;
 		}
 
+		const options = parseCodeBlockOptions(node.info, node.literal);
+		const engineOpt = options.get('engine');
+		if(engineOpt !== undefined && engineOpt.trim().toLowerCase() !== 'r') {
+			continue;
+		}
+
 		blocks.push({
 			code:     node.literal,
-			options:  parseCodeBlockOptions(node.info, node.literal),
+			options:  options,
 			startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
 		});
 	}
@@ -108,6 +116,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 	};
 }
 
+// We need the [\s,] part, otherwise {rust} would also match
 const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
 
 /**
@@ -148,10 +157,12 @@ export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number
 	return output;
 }
 
+const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
+
 /**
  * Parses the options of an R code block from its header and content
  */
-export function parseCodeBlockOptions(header: string, content: string): string {
+export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''
 		: header.substring(3, header.length-1).trim();
@@ -162,10 +173,17 @@ export function parseCodeBlockOptions(header: string, content: string): string {
 			break;
 		}
 
-		const opt = line.substring(3);
+		const opt = line.substring(2).trim();
 
 		opts += opts.length === 0 ? opt : `, ${opt}`;
 	}
 
-	return opts;
+	const parsedOptions = new Map<string, string>();
+	for(const match of opts.matchAll(OptionsRegex)) {
+		if(match[1] && match[2] !== undefined) { // key must not be empty, but value can be empty string for example
+			parsedOptions.set(match[1], match[2]);
+		}
+	}
+
+	return parsedOptions;
 }

@@ -6,8 +6,8 @@ import { DefaultMap } from '../../util/collections/defaultmap';
 import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import { RBinaryOp } from '../../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import path from 'path';
-import { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 import { spawn } from 'child_process';
+import { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 
 interface InstrumentAnnotation {
 	range:  SourceRange;

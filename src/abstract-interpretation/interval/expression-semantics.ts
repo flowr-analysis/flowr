@@ -62,10 +62,6 @@ type NaryFnSemantics = (args: readonly FunctionArgument[], visitor: NumericInter
  * @returns The resulting interval after applying the semantics.
  */
 export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
-	if(visitor.currentState.isBottom()) {
-		return IntervalDomain.bottom(significantFigures);
-	}
-
 	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {

@@ -1,14 +1,14 @@
 import { IntervalDomain } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
-import {
-	NumericIntervalInferenceVisitor
-} from '../../../../src/abstract-interpretation/interval/numeric-interval-inference';
 import { beforeAll, expect, test } from 'vitest';
 import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { NormalizedAst, ParentInformation } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RProject } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { assertUnreachable, isUndefined } from '../../../../src/util/assert';
+import {
+	NumericIntervalInferenceVisitor
+} from '../../../../src/abstract-interpretation/interval/numeric-interval-inference';
 
 /**
  * Helper for creating interval values and expected results for testing the interval domain inference.

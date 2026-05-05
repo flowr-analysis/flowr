@@ -82,7 +82,7 @@ const generalPluginLog = log.getSubLogger({ name: 'plugins' });
  * For example, if you want to create a plugin that determines the loading order of files, extend {@link FlowrAnalyzerLoadingOrderPlugin} instead.
  * These classes also provide sensible overrides of {@link FlowrAnalyzerPlugin.defaultPlugin} to be used when no plugin of this type is registered or triggered.
  *
- * For a collection of default plugins, see {@link FlowrAnalyzerPluginDefaults}.
+ * For a collection of default plugins, see {@link FlowrDefaultPlugins}.
  */
 export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<unknown> = In> implements FlowrAnalyzerPluginInterface<In, Out> {
 	public abstract readonly name:        string;

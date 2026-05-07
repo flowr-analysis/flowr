@@ -9,6 +9,10 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 // TODO Evaluation of violations
 // TODO Taints dependent on multiple input parameters
+/**
+ * Abstract interpretation visitor for conducting taint analyses (i.e., applying finite taint lattices on the control-flow graph).
+ * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
+ */
 export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<Domain> {
 	private readonly domain:       Domain;
 	private readonly fnCallMapper: FnTaintMapper<Domain>;

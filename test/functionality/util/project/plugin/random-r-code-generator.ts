@@ -37,17 +37,26 @@ export class RandomRCodeGenerator {
 
 		for(let i = 0; i < numberOfObjects; i++) {
 			const name = `var_${i}`;
-			const operator = this.rnd.pick(['<-', '=', '<<-']);
-			const { value, type, len } = this.generateObject(0, maxNestingLevel);
-			let code = `${name} ${operator} ${value}`;
 
-			if(!(value === null || len === 0 || typesWithoutAttributes.has(type))) {
-				const attribute = this.rnd.pick([
-					() => this.generateAttribute(name),
-					() => ({ value: `class(${name}) <- "foo"` }),
-					() => ({ value: '' }),
-				])();
-				code = `${code}\n${attribute.value}`;
+			const rnd = this.rnd.int(100);
+
+			let code = '';
+
+			if(rnd < 80){
+				const operator = this.rnd.pick(['<-', '=', '<<-']);
+				const { value, type, len } = this.generateObject(0, maxNestingLevel);
+				code = `${name} ${operator} ${value}`;
+
+				if(!(value === null || len === 0 || typesWithoutAttributes.has(type))) {
+					const attribute = this.rnd.pick([
+						() => this.generateAttribute(name),
+						() => ({ value: `class(${name}) <- "foo"` }),
+						() => ({ value: '' }),
+					])();
+					code = `${code}\n${attribute.value}`;
+				}
+			} else {
+				code += this.generateS4(name);
 			}
 
 			codeMap.set(name, code);
@@ -60,6 +69,15 @@ export class RandomRCodeGenerator {
 			rCode,
 			vars
 		};
+	}
+
+	generateS4(name: string){
+		return `setClass("Employee", slots=list(name="character",
+                                age="numeric",
+                                role="character"))
+				${name} <- new("Employee", name = "Sanket",
+                        age = 21,
+                        role = "Software Developer")`;
 	}
 
 	generateObject(nestingLevel: number, maxNestingLevel: number): {value: string, type: string, len: number} {
@@ -85,7 +103,6 @@ export class RandomRCodeGenerator {
 			() => this.generatePrimitive(),
 			() => this.generatePromise(),
 			() => this.generateFactor(nestingLevel + 1, maxNestingLevel),
-
 		])();
 	}
 

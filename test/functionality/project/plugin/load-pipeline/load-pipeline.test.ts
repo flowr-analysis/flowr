@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import { parseRDA } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
+import { RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import seedrandom from 'seedrandom';
 import fs from 'fs';
@@ -56,18 +56,34 @@ describe('rda-files', () => {
 				expect(shellVars)
 					.toEqual(vars.sort());
 
-				const result = await parseRDA(new FlowrTextFile(file));
+				const parser = new RDAParser();
+				const result = await timed(
+					`run ${i} - no shortcut`,
+					() => parser.parseRDA(new FlowrTextFile(file))
+				);
 
 				expect(result).toBeDefined();
 
 				expect(result?.flatMap(x => x.name)).toEqual(vars);
+
+				// -----------------------------------------------------------------------------------------------------
+
+				const shortcutParser = new RDAParser();
+				const result2 = await timed(
+					`run ${i} - shortcut`,
+					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
+				);
+
+				expect(result2).toBeDefined();
+
+				expect(result2?.flatMap(x => x.name)).toEqual(vars);
 			});
 		}
 	});
 
 	describe('load-pipeline real-world', () => {
-		const dir = 'test/testfiles/project/plugins/rda-files/zenodo';
-		const files = fs.readdirSync(dir).filter(file => file.endsWith('.RData') || file.endsWith('.rda')).map(file => path.join(dir, file));
+		const dir = 'test/testfiles/project/plugins/rda-files/';
+		const files = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda')).map(file => path.join(dir, file));
 
 		for(const file of files) {
 			it(`File: ${file}`, async() => {
@@ -79,11 +95,27 @@ describe('rda-files', () => {
 					return;
 				}
 
-				const result = await parseRDA(new FlowrTextFile(file));
+				const parser = new RDAParser();
+				const result = await timed(
+					`${file} - no shortcut`,
+					() => parser.parseRDA(new FlowrTextFile(file))
+				);
 
 				expect(result).toBeDefined();
 
 				expect(result?.flatMap(x => x.name).sort()).toEqual(shellVars.sort());
+
+				// -----------------------------------------------------------------------------------------------------
+
+				const shortcutParser = new RDAParser();
+				const result2 = await timed(
+					`run ${file} - shortcut`,
+					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
+				);
+
+				expect(result2).toBeDefined();
+
+				expect(result2?.flatMap(x => x.name).sort()).toEqual(shellVars.sort());
 			});
 		}
 	});
@@ -104,4 +136,13 @@ function parseROutputToList(output: string): string[] {
 		.split('\n')
 		.flatMap(line => line.match(/"([^"]+)"/g) || [])
 		.map(s => s.replace(/"/g, ''));
+}
+
+async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+	const t0 = performance.now();
+	const res = await fn();
+	const t1 = performance.now();
+
+	console.log(`${label}: ${t1 - t0} ms`);
+	return res;
 }

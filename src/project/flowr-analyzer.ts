@@ -21,6 +21,7 @@ import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
+import { TaintAnalysis } from '../taint-analysis/builder/taint-analysis';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -137,6 +138,10 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	 * @param query - The list of queries.
 	 */
 	query<Types extends SupportedQueryTypes = SupportedQueryTypes>(query: Queries<Types>): Promise<QueryResults<Types>>;
+	/**
+	 * Access the taint analysis API for the request.
+	 */
+	taint(): TaintAnalysis;
 	/**
 	 * Run a search on the current analysis.
 	 */
@@ -311,6 +316,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		Search extends FlowrSearchLike
 	>(search: Search): Promise<GetSearchElements<SearchOutput<Search>>> {
 		return runSearch(search, this);
+	}
+
+	public taint(): TaintAnalysis {
+		return new TaintAnalysis(this);
 	}
 
 	/**

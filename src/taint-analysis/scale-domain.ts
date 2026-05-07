@@ -1,5 +1,5 @@
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import { Bottom, Top } from '../abstract-interpretation/domains/lattice';
+import { Bottom, BottomSymbol, Top, TopSymbol } from '../abstract-interpretation/domains/lattice';
 
 export const Unscaled = Symbol('Unscaled');
 export const Scaled = Symbol('Scaled');
@@ -80,11 +80,18 @@ export class ScaleDomain<Value extends Lift = Lift> extends AbstractDomain<Lift,
 	}
 
 	public toJson(): unknown {
-		throw new Error('Method not implemented.');
+		return this.value.description;
 	}
 
 	public toString(): string {
-		return this.value.toString();
+		if(this.value === Top) {
+			return TopSymbol;
+		} else if(this.value === Scaled) {
+			return 'Scaled';
+		} else if(this.value === Unscaled) {
+			return 'Unscaled';
+		}
+		return BottomSymbol;
 	}
 
 	public isTop(): this is ScaleDomain<typeof Top> {

@@ -1,5 +1,5 @@
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
-import { runScaleAnalysis } from './scale-inference';
+import { TaintAnalysis } from './builder/taint-analysis';
 
 async function main() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -10,11 +10,13 @@ async function main() {
 		x <- c(1 , 2 , 3 , 4 , 5)
 		y <- c(2 , 3 , 4 , 5 , 6)
 		x <- scale(x)
-		y <- mean(x)
+		y <- mean(y)
 		x > y
 `.trim());
 
-	const result = await runScaleAnalysis(analyzer);
+	const result = await new TaintAnalysis(analyzer)
+		.addPredefined('scale')
+		.run();
 	console.log(result);
 }
 

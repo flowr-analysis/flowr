@@ -11,7 +11,7 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
-import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
+import { AbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
 
@@ -22,7 +22,7 @@ export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfigurat
  *
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  */
-export abstract class AbstractInterpretationVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
+export abstract class AbstractInterpretationVisitor<StateDomain extends AnyStateDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.

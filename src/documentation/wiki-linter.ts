@@ -177,7 +177,7 @@ function(x) {
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
-		const tags = rule.info.tags.toSorted((a, b) => {
+		const htags = rule.info.tags.toSorted((a, b) => {
 			// sort but specials first
 			if(a === b) {
 				return 0;
@@ -190,7 +190,9 @@ function(x) {
 				return 1;
 			}
 			return a.localeCompare(b);
-		}).map(t => makeTagBadge(t, types)).join(' ');
+		}).map(t => makeTagBadge(t, types));
+		htags.push(`<a href='#${rule.info.version}'>![` + rule.info.version + '](https://img.shields.io/badge/' + rule.info.version.toLowerCase() + `-${'teal'}) </a>`);
+		const tags = htags.join(' ');
 
 		const certaintyDoc = getDocumentationForType(`LintingRuleCertainty::${rule.info.certainty}`, types, '', { fuzzy: true }).replaceAll('\n', ' ');
 		const certaintyText = `\`${textWithTooltip(rule.info.certainty, certaintyDoc)}\``;
@@ -213,7 +215,6 @@ This rule is a ${certaintyText} rule.
  
 ${rule.info.description}\\
 _This linting rule is implemented in ${shortLinkFile(ruleType, types)}._
-
 
 ### Configuration
 

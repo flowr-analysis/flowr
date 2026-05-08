@@ -116,6 +116,7 @@ export const ROXYGEN_ARGS = {
 	info: {
 		name:          'Roxygen Arguments',
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Documentation, LintingRuleTag.Style],
+		version:       '1.0.0',
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Checks whether a function has undocumented or overdocumented parameters',
 		defaultConfig: {}

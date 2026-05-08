@@ -115,6 +115,7 @@ export const FILE_PATH_VALIDITY = {
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
+		version:       '1.0.0',
 		defaultConfig: {
 			additionalReadFunctions:  [],
 			additionalWriteFunctions: [],

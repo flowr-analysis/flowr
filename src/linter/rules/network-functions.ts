@@ -40,6 +40,7 @@ export const NETWORK_FUNCTIONS = {
 	info:        {
 		name:          'Network Functions',
 		tags:          [LintingRuleTag.Reproducibility, LintingRuleTag.Security, LintingRuleTag.Performance, LintingRuleTag.Smell],
+		version:       '1.0.0',
 		// ensures all network functions found are actually network functions through its limited config, but doesn't find all network functions since the config is pre-crawled, and the DFG may be over-approximated
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',

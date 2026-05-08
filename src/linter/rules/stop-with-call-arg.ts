@@ -84,6 +84,7 @@ export const STOP_WITH_CALL_ARG = {
 	info: {
 		name:          'Stop without call.=False argument',
 		tags:          [LintingRuleTag.Smell],
+		version:       '1.0.0',
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Checks whether stop calls without call. argument set to FALSE are used.',
 		defaultConfig: {}

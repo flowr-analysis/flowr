@@ -244,6 +244,7 @@ export const NAMING_CONVENTION = {
 		certainty:     LintingRuleCertainty.OverApproximative,
 		description:   'Checks whether the symbols conform to a certain naming convention',
 		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
+		version:       '1.0.0',
 		defaultConfig: {
 			caseing:        'auto',
 			ignoreNonAlpha: true

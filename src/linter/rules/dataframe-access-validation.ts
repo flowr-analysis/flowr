@@ -134,6 +134,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	info: {
 		name:          'Dataframe Access Validation',
 		tags:          [LintingRuleTag.Bug, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
+		version:       '1.0.0',
 		// this rule is unable to detect all cases of dataframe access, but sufficiently ensures returned results are valid
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Validates the existence of accessed columns and rows of dataframes.',

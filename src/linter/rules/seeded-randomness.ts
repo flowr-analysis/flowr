@@ -172,6 +172,7 @@ export const SEEDED_RANDOMNESS = {
 			],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
+		version:     '1.0.0',
 		// only finds proper randomness producers and consumers due to its config, but will not find all producers/consumers since not all existing deprecated functions will be in the config
 		certainty:   LintingRuleCertainty.BestEffort,
 		name:        'Seeded Randomness',

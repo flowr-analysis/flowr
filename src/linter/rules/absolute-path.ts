@@ -207,6 +207,7 @@ export const ABSOLUTE_PATH = {
 		name:          'Absolute Paths',
 		description:   'Checks whether file paths are absolute.',
 		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Smell, LintingRuleTag.QuickFix],
+		version:       '1.0.0',
 		// checks all found paths for whether they're absolute to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {

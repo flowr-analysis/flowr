@@ -125,6 +125,7 @@ export const PROBLEMATIC_INPUTS = {
 		name:          'Problematic inputs',
 		description:   'Detects uses of configured dynamic calls (e.g. eval, system) whose inputs are not statically constant. Prints the computed input-sources for the call and flags usages that depend on non-constant/trusted inputs.',
 		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell, LintingRuleTag.Readability, LintingRuleTag.Performance],
+		version:       '0.1.0',
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			consider: defaultConsider

@@ -55,6 +55,7 @@ export const USELESS_LOOP = {
 		description:   'Detect loops which only iterate once',
 		certainty:     LintingRuleCertainty.BestEffort,
 		tags:          [LintingRuleTag.Smell, LintingRuleTag.Readability],
+		version:       '1.0.0',
 		defaultConfig: {
 			loopyFunctions: loopyFunctions
 		}

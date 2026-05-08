@@ -26,6 +26,8 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	 * A short list of tags that describe and categorize the linting rule.
 	 */
 	readonly tags:          readonly LintingRuleTag[];
+	/** version of the rule */
+	readonly version:       string;
 	/**
 	 * The linting rule's certainty in terms of the rule's calculations' precision and recall.
 	 */

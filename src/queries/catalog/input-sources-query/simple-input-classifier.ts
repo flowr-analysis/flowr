@@ -36,7 +36,7 @@ function singleValue(values: (ConstantValue | undefined)[]): ConstantValue | und
 	let seen = false;
 	for(const v of values) {
 		if(v === undefined) {
-			continue;
+			return undefined;
 		}
 		if(!seen) {
 			result = v;

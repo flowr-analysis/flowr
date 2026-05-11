@@ -1,4 +1,4 @@
-import { assert } from 'vitest';
+import { assert, test } from 'vitest';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../../src/abstract-interpretation/absint-visitor';
 import type { AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import type { AnyStateDomain } from '../../../src/abstract-interpretation/domains/state-domain-like';
@@ -15,6 +15,8 @@ import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/cri
 import { assertUnreachable, guard, isNotUndefined } from '../../../src/util/assert';
 import { SourceRange } from '../../../src/util/range';
 import { Record } from '../../../src/util/record';
+import { decorateLabelContext, type TestLabel } from '../_helper/label';
+import { skipTestBecauseConfigNotMet, type TestConfiguration } from '../_helper/shell';
 
 /**
  * Whether an inferred value should equal the expected value, or should be an over-approximation of the expected value.
@@ -39,6 +41,8 @@ export interface InferenceTestOptions {
 	readonly files?:        FlowrFileProvider[];
 	/**The domain matching type to use to compare the inferred values with the expected values (defaults to {@link DomainMatchingType.Exact} for assertion tests and {@link DomainMatchingType.Overapproximation} for validation tests) */
 	readonly matchingType?: DomainMatchingType;
+	/** Whether the validation test with the execution of the R code should be skipped (defaults to `false`) */
+	readonly skipRun?:      boolean | (() => boolean);
 }
 
 /**
@@ -105,7 +109,51 @@ export function getInferredValueForCriterion<Domain extends AnyAbstractDomain>(
 }
 
 /**
- * Asserts that the inferred values when performing the inference on the code match expected values.
+ * Combined test to assert that the inferred values match expected values for given slicing criteria and
+ * validate the inferred values against the actual values at these locations when running the code.
+ * When only providing a list of locations (slicing criteria), only the validation test is performed.
+ * The `skipRun` option of the test options can be used to skip the validation test (skip running the code) and only perform the assertion test.
+ * Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).
+ *
+ * Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion.
+ * Make sure that this does not break the provided code.
+ * @param name - The label of the test.
+ * @param shell - The R shell to use to run the code.
+ * @param code - The R code to infer the data frame shape for and to run for validation.
+ * @param expected - The expected values for each slicing criterion to test or a list of slicing criteria to validate the inferred value for.
+ * @param inference - A function that takes a config and returns an abstract interpretation visitor to perform the inference.
+ * @param createOutputCode - A function that takes a marker and a symbol and returns a code line to output the analyzed properties for the symbol.
+ * @param parseOutput - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
+ * @param options - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
+ */
+export function testInferredValues<Domain extends AnyAbstractDomain>(
+	name: string | TestLabel,
+	shell: RShell,
+	code: string,
+	expected: TestCase<Domain> | SlicingCriteria,
+	inference: (config: AbsintVisitorConfiguration) => AbstractInterpretationVisitor<AnyStateDomain<Domain>>,
+	createOutputCode: (marker: string, symbol: string) => string,
+	parseOutput: (output: string) => Domain | undefined,
+	options?: InferenceTestOptions & Partial<TestConfiguration>
+) {
+	if(!Array.isArray(expected)) {
+		test(decorateLabelContext(name, ['absint']), async() => {
+			await assertInferredValues(code.trim(), expected, inference, options);
+		});
+	}
+	if(options?.skipRun !== true) {
+		test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(name, ['absint']), async({ skip }) => {
+			if(typeof options?.skipRun === 'function' ? options.skipRun() : options?.skipRun) {
+				skip();
+			}
+			const locations = Array.isArray(expected) ? expected : Record.keys(expected);
+			await validateInferredValues(shell, code.trim(), locations, inference, createOutputCode, parseOutput, options);
+		});
+	}
+}
+
+/**
+ * Asserts that the inferred values at given locations (as slicing criteria) match expected values.
  * @param code - The code to perform the inference on.
  * @param expected - A record mapping locations (as slicing criteria) to their expected values.
  * @param inference - A function that takes a config and returns an abstract interpretation visitor to perform the inference.
@@ -126,13 +174,17 @@ export async function assertInferredValues<Domain extends AnyAbstractDomain>(
 }
 
 /**
- * Validates the inferred values when performing the inference against the actual values when running the code.
+ * Validates the inferred values at given locations (as slicing criteria) against the actual values when running the code.
+ * Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).
+ *
+ * Note that this functions inserts print statements for the actual values in the code in the line after each slicing criterion.
+ * Make sure that this does not break the provided code.
  * @param shell - The R shell to run the instrumented code.
  * @param code - The code to perform the inference on and to run for validation.
  * @param locations - The symbol locations (as slicing criteria) to validate the inferred values against the actual values for.
  * @param inference - A function that takes a config and returns an abstract interpretation visitor to perform the inference.
  * @param createOutputCode - A function that takes a marker and a symbol and returns a code line to output the analyzed properties for the symbol.
- * @param deserializeOutput - A function that takes the output of the instrumented code and deserializes it into a value of the abstract domain.
+ * @param parseOutput - A function that takes the output of the instrumented code and parses it into a value of the abstract domain.
  * @param options - The inference test options, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
  */
 export async function validateInferredValues<Domain extends AnyAbstractDomain>(
@@ -141,7 +193,7 @@ export async function validateInferredValues<Domain extends AnyAbstractDomain>(
 	locations: SlicingCriteria,
 	inference: (config: AbsintVisitorConfiguration) => AbstractInterpretationVisitor<AnyStateDomain<Domain>>,
 	createOutputCode: (marker: string, symbol: string) => string,
-	deserializeOutput: (output: string) => Domain | undefined,
+	parseOutput: (output: string) => Domain | undefined,
 	options?: InferenceTestOptions
 ): Promise<void> {
 	const createMarker = (criterion: SlicingCriterion) => `INFERENCE ${criterion}`;
@@ -178,7 +230,7 @@ export async function validateInferredValues<Domain extends AnyAbstractDomain>(
 		const line = output.find(line => line.includes(marker));
 		guard(isNotUndefined(line), `Cannot parse output of instrumented code for ${criterion}`);
 
-		const expected = deserializeOutput(line);
+		const expected = parseOutput(line);
 		assertInferredValue(criterion, inferred, expected, options?.matchingType ?? DomainMatchingType.Overapproximation);
 	}
 }

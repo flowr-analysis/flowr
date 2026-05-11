@@ -15,7 +15,7 @@ import { guard, isNotUndefined } from '../../../../src/util/assert';
 import { Record } from '../../../../src/util/record';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import { type InferenceTestOptions, type TestCase, assertInferredValues, runInference, validateInferredValues } from '../inference';
+import { type InferenceTestOptions, type TestCase, runInference, testInferredValues } from '../inference';
 
 /**
  * The expected data frame shape for data frame shape tests.
@@ -36,86 +36,69 @@ type ExpectedDataFrameOperation = {
 /**
  * The test options for data frame shape inference tests, extending the general {@link TestConfiguration} and {@link InferenceTestOptions}.
  */
-export interface DataFrameTestOptions extends Partial<TestConfiguration>, InferenceTestOptions {
+export interface DataFrameTestOptions extends InferenceTestOptions, Partial<TestConfiguration> {
 	/** An optional name or test label for the test (defaults to the code) */
-	readonly name?:    string | TestLabel;
-	/** Whether the real test with the execution of the R code should be skipped (defaults to `false`) */
-	readonly skipRun?: boolean | (() => boolean);
+	readonly name?: string | TestLabel;
 }
 
 /**
- * Combined test to assert the inferred data frame shapes against expected values using {@link assertInferredDataFrameShape} and
- * validate the inferred shapes against the actual values when running the code using {@link validateInferredDataFrameShape} for given slicing criteria.
+ * Combined test to assert that the inferred data frame shapes match expected values for given slicing criteria and
+ * validate the inferred shapes against the actual values at these locations when running the code.
+ * When only providing a list of locations (slicing criteria), only the validation test is performed.
+ * The `skipRun` option of the test options can be used to skip the validation test (skip running the code) and only perform the assertion test.
  * Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).
  *
- * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
+ * Note that this functions inserts print statements for the shape properties in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
  * @param shell - The R shell to use to run the code.
  * @param code - The R code to infer the data frame shape for and to run for validation.
- * @param expected - The expected data frame shape constraints for each slicing criterion to test.
+ * @param expected - The expected data frame shape constraints for each slicing criterion to test or a list of slicing criteria to validate the inferred shape for.
  * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
 export function testInferredDataFrameShape(
 	shell: RShell,
 	code: string,
-	expected: TestCase<ExpectedDataFrameShape>,
+	expected: TestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
-	assertInferredDataFrameShape(code, expected, options);
-	validateInferredDataFrameShape(shell, code, Record.keys(expected), options);
+	const test = Array.isArray(expected) ? expected : Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
+	const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor({ ...config, trackOperations: false });
+	testInferredValues(options?.name ?? code.trim(), shell, code, test, inference, createOutputCode, parseOutput, options);
 }
 
 /**
- * Combined test for code reading data from external files with one run for the file argument using {@link assertInferredDataFrameShape} and
- * another run for the text argument using {@link testInferredDataFrameShape}.
+ * Combined test for code reading data from external files with one run for the file argument without running the code and
+ * another run for the text argument with running the code via {@link testInferredDataFrameShape}.
  * This ensures that the code is only executed for the text argument.
  * Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).
  *
- * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
+ * Note that this functions inserts print statements for the shape properties in the code in the line after each slicing criterion.
  * Make sure that this does not break the provided code.
  * @param shell - The R shell to use to run the code.
  * @param fileArg - The file argument for the assertion run
  * @param textArg - The text argument for the validation run where the code is executed.
  * @param getCode - A function to get the R code for `fileArg` or `textArg` to infer the data frame shape for and to run for validation.
- * @param expected - The expected data frame shape constraints for each slicing criterion to test.
+ * @param expected - The expected data frame shape constraints for each slicing criterion to test or a list of slicing criteria to validate the inferred shape for.
  * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
 export function testInferredDataFrameShapeWithSource(
 	shell: RShell,
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
-	expected: TestCase<ExpectedDataFrameShape>,
+	expected: TestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
-	assertInferredDataFrameShape(getCode(fileArg), expected, options);
+	testInferredDataFrameShape(shell, getCode(fileArg), expected, { ...options, skipRun: true });
 	testInferredDataFrameShape(shell, getCode(textArg), expected, options);
 }
 
 /**
- * Asserts that the inferred data frame shapes for given slicing criteria match expected values.
- * @param code - The R code to infer the data frame shape for.
- * @param expected - The expected data frame shape constraints for each slicing criterion.
- * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
- */
-export function assertInferredDataFrameShape(
-	code: string,
-	expected: TestCase<ExpectedDataFrameShape>,
-	options?: DataFrameTestOptions
-) {
-	test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(options?.name ?? code.trim(), ['absint']), async() => {
-		const test = Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
-		const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor(config);
-		await assertInferredValues(code.trim(), test, inference, options);
-	});
-}
-
-/**
- * Asserts that the mapped abstract data frame operations for given slicing criteria include expected abstract operations.
+ * Tests that the mapped abstract data frame operations for given slicing criteria include expected abstract operations.
  * @param code - The R code to map the abstract operations for.
  * @param expected - A subset of the expected abstract data frame operations for each slicing criterion.
  * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
  */
-export function assertDataFrameOperation(
+export function testMappedDataFrameOperations(
 	code: string,
 	expected: TestCase<ExpectedDataFrameOperation[]>,
 	options?: DataFrameTestOptions
@@ -127,33 +110,6 @@ export function assertDataFrameOperation(
 			const operations = getInferredOperationsForCriterion(result, criterion) ?? [];
 			assert.containsSubset(operations, expectedOperations, `Expected abstract operations for criterion "${criterion}" to include ${JSON.stringify(expectedOperations)}, but got ${JSON.stringify(operations)}`);
 		}
-	});
-}
-
-/**
- * Validates that the inferred data frame shapes at given slicing criteria match or over-approximate
- * the actual shape properties at these locations by instrumenting the code.
- * Only slicing criteria for symbols are allowed (e.g., no slicing criteria for function calls or operators).
- *
- * Note that this functions inserts print statements for the shape properties in the line after each slicing criterion.
- * Make sure that this does not break the provided code.
- * @param shell - The R shell to use to run the code.
- * @param code - The R code to infer the data frame shape for and to run for validation.
- * @param locations - The symbol locations (as slicing criteria) to validate the inferred data frame shapes against the actual values for.
- * @param options - The test configuration options, including the name for the test and whether the execution should be skipped (see {@link TestConfiguration} and {@link DataFrameTestOptions}).
- */
-export function validateInferredDataFrameShape(
-	shell: RShell,
-	code: string,
-	locations: SlicingCriteria,
-	options?: DataFrameTestOptions
-) {
-	test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(options?.name ?? code.trim(), ['absint']), async({ skip }) => {
-		if(typeof options?.skipRun === 'function' ? options.skipRun() : options?.skipRun) {
-			skip();
-		}
-		const inference = (config: AbsintVisitorConfiguration) => new DataFrameShapeInferenceVisitor(config);
-		await validateInferredValues(shell, code.trim(), locations, inference, createOutputCode, parseOutput, options);
 	});
 }
 

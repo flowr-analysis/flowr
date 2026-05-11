@@ -4,7 +4,7 @@ import { PosIntervalTop } from '../../../../src/abstract-interpretation/domains/
 import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { MIN_VERSION_LAMBDA, MIN_VERSION_PIPE } from '../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { withShell } from '../../_helper/shell';
-import { assertInferredDataFrameShape, assertDataFrameOperation, testInferredDataFrameShape, testInferredDataFrameShapeWithSource, validateInferredDataFrameShape } from './data-frame';
+import { testMappedDataFrameOperations, testInferredDataFrameShape, testInferredDataFrameShapeWithSource } from './data-frame';
 
 /** The minimum version required for calling `head` and `tail` with a vector argument, e.g. `head(df, c(1, 2))` */
 export const MIN_VERSION_HEAD_TAIL_VECTOR = '4.0.0';
@@ -195,12 +195,13 @@ print(df)
 			{ '5@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		assertInferredDataFrameShape(
+		testInferredDataFrameShape(
+			shell,
 			`
 df <- data.frame(id = 1:5)
 repeat {
 	df <- rbind(df, 10)
-	if (unknown) {
+	if (nrow(df) > 10) {
 		break
 	}
 }
@@ -209,11 +210,12 @@ print(df)
 			{ '8@df': { colnames: [['id'], []], cols: [1, 1], rows: [5, Infinity] } }
 		);
 
-		assertInferredDataFrameShape(
+		testInferredDataFrameShape(
+			shell,
 			`
 df <- data.frame(id = 1:5)
 repeat {
-	if (unknown) {
+	if (nrow(df) > 10) {
 		break
 	}
 	df <- rbind(df, 10)
@@ -303,7 +305,8 @@ print(df)
 			{ '7@df': { colnames: [['id'], Top], cols: [1, 2], rows: [10, 10] } }
 		);
 
-		assertInferredDataFrameShape(
+		testInferredDataFrameShape(
+			shell,
 			`
 df <- data.frame(id = 1:5)
 repeat {
@@ -312,10 +315,12 @@ repeat {
 df[10, ] <- c(6, 11)
 print(df)
 			`,
-			{ '6@df': undefined } // unreachable
+			{ '6@df': undefined }, // unreachable
+			{ skipRun: true }
 		);
 
-		assertInferredDataFrameShape(
+		testInferredDataFrameShape(
+			shell,
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 load('object_file')
@@ -324,7 +329,8 @@ print(df)
 			{
 				'1@df': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [5, 5] },
 				'3@df': undefined
-			}
+			},
+			{ skipRun: true }
 		);
 
 		testInferredDataFrameShape(
@@ -354,7 +360,7 @@ print(df)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 if (2 < 1) {
@@ -729,7 +735,7 @@ df2 <- as.data.frame(df1)
 	});
 
 	describe('Col/Row Access', () => {
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df$id
@@ -745,7 +751,7 @@ df$'id'
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df["id"]
@@ -767,7 +773,7 @@ df[1, ]
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[1, "id"]
@@ -783,7 +789,7 @@ df[[1, 1]]
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[c("id", "name")]
@@ -1110,7 +1116,7 @@ result <- df[df$id == 2, "name", drop = FALSE]
 			{ '2@result': { colnames: [['name'], []], cols: [1, 1], rows: [0, 3] } }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 df[["nam", exact = FALSE]]
@@ -1167,7 +1173,7 @@ result <- df[c(1, 1, 1, 1, 1), ]
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3)
@@ -1176,7 +1182,7 @@ result <- df[1, ]
 				['2@result']
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -1185,7 +1191,7 @@ result <- df[sample(1:3, 1), sample(1:3, 1)]
 				['2@result']
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -1194,7 +1200,7 @@ result <- df[rep("id", times = 12)]
 				['2@result']
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -1714,7 +1720,7 @@ print(df)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 null <- \\() NULL
@@ -1726,7 +1732,7 @@ print(df)
 				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 null <- \\() NULL
@@ -1738,7 +1744,7 @@ print(df)
 				{ minRVersion: MIN_VERSION_LAMBDA }
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 null <- \\() NULL
@@ -2814,7 +2820,7 @@ df <- subset(df, select = c(id, name), drop = TRUE)
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, id > 1, c("name", "label"))
@@ -2822,7 +2828,7 @@ result <- subset(df, id > 1, c("name", "label"))
 			{ '2@subset': [{ operation: 'accessCols', columns: ['id', 'name', 'label'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, label != "A", -id)
@@ -2830,7 +2836,7 @@ result <- subset(df, label != "A", -id)
 			{ '2@subset': [{ operation: 'accessCols', columns: ['id', 'label'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, select = 1:2)
@@ -2838,7 +2844,7 @@ result <- subset(df, select = 1:2)
 			{ '2@subset': [{ operation: 'accessCols', columns: [1, 2] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, id > 1, c("name", "label"))
@@ -2846,7 +2852,7 @@ result <- subset(df, id > 1, c("name", "label"))
 			{ '2@subset': [{ operation: 'accessCols', columns: ['id', 'name', 'label'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, label != "A", -id)
@@ -2854,7 +2860,7 @@ result <- subset(df, label != "A", -id)
 			{ '2@subset': [{ operation: 'accessCols', columns: ['id', 'label'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- subset(df, select = 1:2)
@@ -2863,7 +2869,7 @@ result <- subset(df, select = 1:2)
 		);
 
 		describe('Unsupported', { fails: true }, () => {
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
@@ -2872,7 +2878,7 @@ result <- subset(df, select = rep("id", times = 12))
 				['2@result']
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
@@ -2881,7 +2887,7 @@ result <- subset(df, select = -c(3, 4, 5))
 				['2@result']
 			);
 
-			validateInferredDataFrameShape(
+			testInferredDataFrameShape(
 				shell,
 				`
 df <- data.frame(id = 1:3, name = 4:6, score = 7:9)
@@ -2984,7 +2990,7 @@ df <- dplyr::filter(df, FALSE, .preserve = TRUE)
 			{ skipRun: skipLibraries }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6)
 result <- dplyr::filter(df, id != 2, is.numeric(name))
@@ -3293,7 +3299,7 @@ df <- dplyr::select(df, contains("a"))
 			{ skipRun: skipLibraries }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- dplyr::select(df, c("id", "name"))
@@ -3301,7 +3307,7 @@ result <- dplyr::select(df, c("id", "name"))
 			{ '2@select': [{ operation: 'accessCols', columns: ['id', 'name'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- dplyr::select(df, id, -label)
@@ -3309,7 +3315,7 @@ result <- dplyr::select(df, id, -label)
 			{ '2@select': [{ operation: 'accessCols', columns: ['id', 'label'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:3, name = 4:6, label = "A")
 result <- dplyr::select(df, 1:2)
@@ -3415,7 +3421,7 @@ df <- transform(df, "A")
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- transform(df, name = letters[id], level = score^2)
@@ -3423,7 +3429,7 @@ df <- transform(df, name = letters[id], level = score^2)
 			{ '2@transform': [{ operation: 'accessCols', columns: ['id', 'score'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, score = id, level = score / max(score))
@@ -3431,7 +3437,7 @@ df <- transform(df, score = id, level = score / max(score))
 			{ '2@transform': [{ operation: 'accessCols', columns: ['id'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- transform(df, name = letters[id], level = score^2)
@@ -3439,7 +3445,7 @@ df <- transform(df, name = letters[id], level = score^2)
 			{ '2@transform': [{ operation: 'accessCols', columns: ['id', 'score'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- transform(df, score = id, level = score / max(score))
@@ -3592,7 +3598,7 @@ df <- dplyr::mutate(df, label = "A", .before = NULL)
 			{ skipRun: skipLibraries }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, score = 31:35)
 df <- dplyr::mutate(df, name = letters[id], level = score^2)
@@ -3600,7 +3606,7 @@ df <- dplyr::mutate(df, name = letters[id], level = score^2)
 			{ '2@mutate': [{ operation: 'accessCols', columns: ['id', 'score'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, name = 6:10)
 df <- dplyr::mutate(df, score = id, level = score / max(score))
@@ -3823,7 +3829,7 @@ df <- filter(df, FALSE) |> summarize(score = mean(score))
 			{ skipRun: skipLibraries, minRVersion: MIN_VERSION_PIPE }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:5, name = c("A", "A", "B", "A", "B"), score = c(80, 75, 90, 70, 85))
 df <- dplyr::group_by(df, id, name)
@@ -3831,7 +3837,7 @@ df <- dplyr::group_by(df, id, name)
 			{ '2@group_by': [{ operation: 'accessCols', columns: ['id', 'name'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df, name = letters[id], level = score / max(score))
@@ -3839,7 +3845,7 @@ df <- dplyr::summarize(df, name = letters[id], level = score / max(score))
 			{ '2@summarize': [{ operation: 'accessCols', columns: ['id', 'score'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"), score = c(80, 75, 90, 70, 85, 82))
 df <- dplyr::summarize(df, level = score / max(score), sum = sum(level))
@@ -4749,7 +4755,7 @@ df <- dplyr::full_join(df1, df2, by = sample(colnames(df1)[1:3], 2))
 			{ skipRun: skipLibraries }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -4758,7 +4764,7 @@ df <- dplyr::inner_join(df1, df2, by = "id")
 			{ '3@inner_join': [{ operation: 'accessCols', columns: ['id'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -4767,7 +4773,7 @@ df <- dplyr::left_join(df1, df2, by = "id")
 			{ '3@left_join': [{ operation: 'accessCols', columns: ['id'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -4776,7 +4782,7 @@ df <- dplyr::right_join(df1, df2, by = "id")
 			{ '3@right_join': [{ operation: 'accessCols', columns: ['id'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, category = c("A", "B", "B", "A", "C", "B"))
@@ -5150,7 +5156,7 @@ df <- merge(df1, df2, "id", no.dups = FALSE)
 			}
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))
@@ -5159,7 +5165,7 @@ df <- merge(df1, df2, by = c("id", "name"))
 			{ '3@merge': [{ operation: 'accessCols', columns: ['id', 'name'] }] }
 		);
 
-		assertDataFrameOperation(
+		testMappedDataFrameOperations(
 			`
 df1 <- data.frame(id = 1:4, name = "A", score = c(80, 75, 90, 70))
 df2 <- data.frame(id = 1:6, name = "A", category = c("A", "B", "B", "A", "C", "B"))

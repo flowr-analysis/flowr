@@ -1,22 +1,18 @@
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
-import { CfgVertex } from '../control-flow/control-flow-graph';
-import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
-import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
+import { type CfgExpressionVertex, type CfgStatementVertex, CfgVertex, type ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { SemanticCfgGuidedVisitor, type SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexFunctionCall, type DataflowGraphVertexVariableDefinition, isFunctionCallVertex, VertexType } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
-import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
-import type { StateAbstractDomain } from './domains/state-abstract-domain';
-import { MutableStateAbstractDomain } from './domains/state-abstract-domain';
+import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
@@ -26,22 +22,17 @@ export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfigurat
  *
  * However, the visitor does not yet support inter-procedural abstract interpretation and abstract condition semantics.
  */
-export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDomain, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
+export abstract class AbstractInterpretationVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Config extends AbsintVisitorConfiguration = AbsintVisitorConfiguration>
 	extends SemanticCfgGuidedVisitor<NoInfo, ControlFlowInformation, NormalizedAst, DataflowGraph, Config & { defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' }> {
 	/**
 	 * The abstract trace of the abstract interpretation visitor mapping node IDs to the abstract state at the respective node.
 	 */
-	private readonly trace: Map<NodeId, MutableStateAbstractDomain<Domain>> = new Map();
+	protected readonly trace: Map<NodeId, StateDomain> = new Map();
 
 	/**
 	 * The current abstract state domain at the currently processed AST node.
 	 */
-	private _currentState: MutableStateAbstractDomain<Domain>;
-
-	/**
-	 * Whether the current abstract state has been copied/cloned and is safe to modify in place.
-	 */
-	private stateCopied: boolean = false;
+	protected currentState: StateDomain;
 
 	/**
 	 * The current worklist stack of next vertex IDs to visit.
@@ -53,30 +44,15 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
 
-	constructor(config: Config, domain: Domain) {
+	/**
+	 * A map mapping assignments of replacement calls to their replacement calls for replacement calls that have already been visited but whose assignment has not yet been processed.
+	 */
+	private readonly replacements: Map<NodeId, NodeId[]> = new Map();
+
+	constructor(config: Config, stateDomain: StateDomain) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
 
-		this._currentState = MutableStateAbstractDomain.top(domain);
-	}
-
-	public get currentState(): StateAbstractDomain<Domain> {
-		return this._currentState;
-	}
-
-	public removeState(node: NodeId): void {
-		if(!this.stateCopied) {
-			this._currentState = this._currentState.create(this.currentState.value);
-			this.stateCopied = true;
-		}
-		this._currentState.remove(node);
-	}
-
-	public updateState(node: NodeId, value: Domain): void {
-		if(!this.stateCopied) {
-			this._currentState = this._currentState.create(this.currentState.value);
-			this.stateCopied = true;
-		}
-		this._currentState.set(node, value);
+		this.currentState = stateDomain.top();
 	}
 
 	/**
@@ -86,21 +62,24 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * @param state - An optional state abstract domain used to resolve the inferred abstract value (defaults to the state at the requested node)
 	 * @returns The inferred abstract value of the node, or `undefined` if no value was inferred for the node
 	 */
-	public getAbstractValue(id: RNode<ParentInformation> | NodeId | undefined, state?: StateAbstractDomain<Domain>): Domain | undefined {
+	public getAbstractValue(id: RNode<ParentInformation> | NodeId | undefined, state?: StateDomain): ValueDomain<StateDomain> | undefined {
 		const node = (id === undefined || typeof id === 'object') ? id : this.getNormalizedAst(id);
 		state ??= node !== undefined ? this.getAbstractState(node.info.id) : undefined;
 
-		if(node === undefined) {
+		if(state?.isBottom()) {
+			return this.currentState.domain.bottom() as ValueDomain<StateDomain>;
+		} else if(node === undefined) {
 			return;
 		} else if(state?.has(node.info.id)) {
-			return state.get(node.info.id);
+			return state.get(node.info.id) as ValueDomain<StateDomain>;
 		}
 		const vertex = this.getDataflowGraph(node.info.id);
 		const call = isFunctionCallVertex(vertex) ? vertex : undefined;
 		const origins = Array.isArray(call?.origin) ? call.origin : [];
 
 		if(node.type === RType.Symbol) {
-			const values = this.getVariableOrigins(node.info.id).map(origin => state?.get(origin));
+			const values = this.getVariableOrigins(node.info.id)
+				.map(origin => (this.getAbstractState(origin)?.isBottom() ? this.currentState.domain.bottom() : state?.get(origin)) as ValueDomain<StateDomain>);
 
 			if(values.length > 0 && values.every(isNotUndefined)) {
 				return AbstractDomain.joinAll(values);
@@ -116,7 +95,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 				return this.getAbstractValue(call.args[1].nodeId, state);
 			}
 		} else if(origins.includes(BuiltInProcName.IfThenElse)) {
-			let values: (Domain | undefined)[] = [];
+			let values: (ValueDomain<StateDomain> | undefined)[] = [];
 
 			if(node.type === RType.IfThenElse && node.otherwise !== undefined) {
 				values = [node.then, node.otherwise].map(entry => this.getAbstractValue(entry, state));
@@ -135,7 +114,7 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * @param id - The ID of the node to get the abstract state at
 	 * @returns The abstract state at the node, or `undefined` if the node has no abstract state (i.e. the node has not been visited or is unreachable).
 	 */
-	public getAbstractState(id: NodeId | undefined): StateAbstractDomain<Domain> | undefined {
+	public getAbstractState(id: NodeId | undefined): StateDomain | undefined {
 		return id === undefined ? undefined : this.trace.get(id);
 	}
 
@@ -144,19 +123,19 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 	 * This requires that the abstract interpretation visitor has been completed, or at least started.
 	 * @returns The inferred abstract state at the end of the program
 	 */
-	public getEndState(): StateAbstractDomain<Domain> {
+	public getEndState(): StateDomain {
 		const exitPoints = this.config.controlFlow.exitPoints.map(id => this.getCfgVertex(id)).filter(isNotUndefined);
 		const exitNodes = exitPoints.map(CfgVertex.getRootId).filter(isNotUndefined);
 		const states = exitNodes.map(node => this.trace.get(node)).filter(isNotUndefined);
 
-		return AbstractDomain.joinAll(states, this._currentState.bottom());
+		return AbstractDomain.joinAll(states, this.currentState.bottom());
 	}
 
 	/**
 	 * Gets the inferred abstract trace mapping AST nodes to the inferred abstract state at the respective node.
 	 * @returns The inferred abstract trace of the program
 	 */
-	public getAbstractTrace(): ReadonlyMap<NodeId, StateAbstractDomain<Domain>> {
+	public getAbstractTrace(): ReadonlyMap<NodeId, StateDomain> {
 		return this.trace;
 	}
 
@@ -192,16 +171,11 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		if(vertex === undefined || this.shouldSkipVertex(vertex)) {
 			return true;
 		}
+		// retrieve new abstract state by joining states of predecessor nodes
 		const predecessors = this.getPredecessorNodes(CfgVertex.getId(vertex));
 		const predecessorStates = predecessors.map(pred => this.trace.get(pred)).filter(isNotUndefined);
+		this.currentState = AbstractDomain.joinAll(predecessorStates, this.currentState.top());
 
-		// retrieve new abstract state by joining states of predecessor nodes
-		if(predecessorStates.length <= 1) {
-			this._currentState = predecessorStates[0] ?? this._currentState.top();
-		} else {
-			this._currentState = AbstractDomain.joinAll(predecessorStates);
-			this.stateCopied = true;
-		}
 		const nodeId = CfgVertex.getRootId(vertex);
 
 		// differentiate between widening points and other vertices
@@ -209,27 +183,23 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 			const oldState = this.trace.get(nodeId);
 
 			if(oldState !== undefined && this.shouldWiden(vertex)) {
-				this._currentState = oldState.widen(this._currentState);
-				this.stateCopied = true;
+				this.currentState = oldState.widen(this.currentState);
 			}
-			this.trace.set(nodeId, this._currentState);
-			this.stateCopied = false;
+			this.trace.set(nodeId, this.currentState);
 
 			const visitedCount = this.visited.get(nodeId) ?? 0;
 			this.visited.set(nodeId, visitedCount + 1);
 
 			// continue visiting after widening point if visited for the first time or the state changed
-			return visitedCount === 0 || !oldState?.equals(this._currentState);
+			return visitedCount === 0 || !oldState?.equals(this.currentState);
 		} else {
 			this.onVisitNode(vertexId);
 
 			// discard the inferred abstract state when encountering unsupported function calls
 			if(this.isUnsupportedFunctionCall(nodeId)) {
-				this._currentState = this._currentState.top();
-				this.stateCopied = true;
+				this.currentState = this.currentState.top();
 			}
-			this.trace.set(nodeId, this._currentState);
-			this.stateCopied = false;
+			this.trace.set(nodeId, this.currentState);
 
 			const predecessorVisits = predecessors.map(pred => this.visited.get(pred) ?? 0);
 			const visitedCount = this.visited.get(nodeId) ?? 0;
@@ -240,7 +210,36 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		}
 	}
 
+	protected visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex): void {
+		const nodeId = CfgVertex.getRootId(vertex);
+		const replacements = this.replacements.get(nodeId);
+
+		if(replacements !== undefined) {
+			this.replacements.delete(nodeId);
+
+			for(const replacement of replacements) {
+				const call = this.getDataflowGraph(replacement);
+
+				if(isFunctionCallVertex(call)) {
+					this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
+				}
+			}
+		}
+	}
+
 	protected override onDispatchFunctionCallOrigin(call: DataflowGraphVertexFunctionCall, origin: BuiltInProcName) {
+		if(origin === BuiltInProcName.Replacement) {
+			const node = this.getNormalizedAst(call.id);
+			const assignment = RNode.iterateParents(node, this.config.normalizedAst.idMap)
+				.find(parent => this.getDataflowGraph(parent.info.id) === undefined);
+
+			if(node !== undefined && assignment !== undefined) {
+				const replacements = this.replacements.get(assignment.info.id) ?? [];
+				replacements.push(node.info.id);
+				this.replacements.set(assignment.info.id, replacements);
+				return;
+			}
+		}
 		super.onDispatchFunctionCallOrigin(call, origin);
 
 		switch(origin) {
@@ -278,10 +277,8 @@ export abstract class AbstractInterpretationVisitor<Domain extends AnyAbstractDo
 		this.unassigned.delete(target);
 
 		if(value !== undefined) {
-			this.updateState(target, value);
-			this.trace.set(target, this._currentState);
-			this.stateCopied = false;
-
+			this.currentState.set(target, value);
+			this.trace.set(target, this.currentState);
 		}
 	}
 

@@ -2,14 +2,17 @@ import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../dataflow/environments/identifier';
-import type { AbstractDomainValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
+import type {
+	AbstractValue,
+	AnyAbstractDomain
+} from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
 import { getFunctionArgument, getFunctionArguments } from '../abstract-interpretation/data-frame/mappers/arguments';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
-export type ResolvedTaint<Domain extends AnyAbstractDomain> = { condition: TaintCond<Domain>, argument: PotentiallyEmptyRArgument<ParentInformation> } | { taint: AbstractDomainValue<Domain> } | undefined;
+export type ResolvedTaint<Domain extends AnyAbstractDomain> = { condition: TaintCond<Domain>, argument: PotentiallyEmptyRArgument<ParentInformation> } | { taint: AbstractValue<Domain> } | undefined;
 
 /**
  *
@@ -47,13 +50,13 @@ export interface FnTaintMapperInfo<Domain extends AnyAbstractDomain> {
 	readonly taint: TaintOrTaintCond<Domain>;
 }
 
-export type TaintOrTaintCond<Domain extends AnyAbstractDomain> =  TaintCond<Domain> | AbstractDomainValue<Domain>;
+export type TaintOrTaintCond<Domain extends AnyAbstractDomain> =  TaintCond<Domain> | AbstractValue<Domain>;
 
 export type FnTaintMapper<Domain extends AnyAbstractDomain> = Record<string, FnTaintMapperInfo<Domain>>;
 
 export type TaintCond<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	pos:  number;
-	cond: (inParam: AbstractDomainValue<Domain>) => AbstractDomainValue<Domain>;
+	cond: (inParam: AbstractValue<Domain>) => AbstractValue<Domain>;
 };
 
 /**

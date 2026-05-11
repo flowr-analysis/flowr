@@ -6,6 +6,8 @@ import type { FnTaintMapper, ResolvedTaint } from './function-mapper';
 import { mapFnCallToTaint } from './function-mapper';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
+import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 
 // TODO Evaluation of violations
 // TODO Taints dependent on multiple input parameters
@@ -13,12 +15,12 @@ import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
  * Abstract interpretation visitor for conducting taint analyses (i.e., applying finite taint lattices on the control-flow graph).
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
-export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<Domain> {
+export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<AnyStateDomain<Domain>> {
 	private readonly domain:       Domain;
 	private readonly fnCallMapper: FnTaintMapper<Domain>;
 
 	constructor(domain: Domain, fnCallMapper: FnTaintMapper<Domain>, visitorConfig: AbsintVisitorConfiguration) {
-		super(visitorConfig, domain.top());
+		super(visitorConfig, StateAbstractDomain.top(domain.top()));
 		this.domain = domain;
 		this.fnCallMapper = fnCallMapper;
 	}
@@ -38,22 +40,22 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 
 	private applyFnCall(id: NodeId, taint: ResolvedTaint<Domain>) {
 		if(!taint) {
-			this.updateState(id, this.domain.top());
+			this.currentState.set(id, this.domain.top());
 		} else if('taint' in taint) {
-			this.updateState(id, this.domain.create(taint.taint));
+			this.currentState.set(id, this.domain.create(taint.taint));
 		} else {
 			if(taint.argument === EmptyArgument || !taint.argument.value?.info) {
-				this.updateState(id, this.domain.top());
+				this.currentState.set(id, this.domain.top());
 				return;
 			}
 			const currentValue = this.getAbstractValue(taint.argument.value.info.id);
 			if(currentValue === undefined) {
-				this.updateState(id, this.domain.top());
+				this.currentState.set(id, this.domain.top());
 				return;
 			}
 			// @ts-expect-error Ignore for now
 			const newValue = taint.condition.cond(currentValue.value);
-			this.updateState(id, this.domain.create(newValue));
+			this.currentState.set(id, this.domain.create(newValue));
 		}
 	}
 }

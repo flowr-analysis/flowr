@@ -6,13 +6,14 @@ import Joi from 'joi';
 import { executeTaintQuery } from './taint-query-executor';
 import type { PredefinedTaintAnalysis } from '../../../taint-analysis/predefined';
 import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined';
-import type { StateAbstractDomain } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { AnyAbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
+import type { AnyStateDomain } from '../../../abstract-interpretation/domains/state-domain-like';
+import type { StateDomainLift } from '../../../abstract-interpretation/domains/state-abstract-domain';
 
 export interface TaintQuery extends BaseQueryFormat {
 	readonly type: 'taint';
@@ -20,7 +21,7 @@ export interface TaintQuery extends BaseQueryFormat {
 }
 
 export interface TaintQueryResult extends BaseQueryResult {
-	readonly results: Map<string, StateAbstractDomain<AnyAbstractDomain>>
+	readonly results: Map<string, AnyStateDomain<AnyAbstractDomain>>
 }
 
 const prefix = 'definitions:';
@@ -96,7 +97,7 @@ export const TaintQueryDefinition = {
 
 		for(const [name, domains] of state) {
 			result.push(`   ╰ **${name}**:`);
-			const lift = domains.value;
+			const lift = domains.value as StateDomainLift<AnyAbstractDomain>;
 			if(lift === Bottom) {
 				result.push(`      ╰ state: ${BottomSymbol}`);
 				return true;

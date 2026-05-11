@@ -2,9 +2,9 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer
 import type { TaintAnalysisDefinition } from './taint-analysis-definition';
 import type { PredefinedTaintAnalysis } from '../predefined';
 import { predefinedTaintAnalyses } from '../predefined';
-import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import { TaintInferenceVisitor } from '../taint-visitor';
+import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 
 /**
  * Fluent builder class for conducting taint analyses.
@@ -32,8 +32,8 @@ export class TaintAnalysis {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add} or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<string, StateAbstractDomain<AnyAbstractDomain>>> {
-		const results: Map<string, StateAbstractDomain<AnyAbstractDomain>> = new Map();
+	public async run(): Promise<Map<string, AnyStateDomain<AnyAbstractDomain>>> {
+		const results: Map<string, AnyStateDomain<AnyAbstractDomain>> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
 				controlFlow:   await this.analyzer.controlflow(),

@@ -1,8 +1,7 @@
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TaintAnalysisDefinition } from './taint-analysis-definition';
-import type { PredefinedTaintAnalysis } from '../predefined';
-import { predefinedTaintAnalyses } from '../predefined';
-import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
+import type { PredefinedTaintAnalysis } from '../predefined/predefined';
+import { predefinedTaintAnalyses } from '../predefined/predefined';
 import { TaintInferenceVisitor } from '../taint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 

@@ -9,7 +9,7 @@ import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
-import { applyIntervalConditionSemantics, applyNegatedIntervalConditionSemantics } from './condition-semantics';
+import { getIntervalConditionSemantics } from './condition-semantics';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
 
@@ -65,8 +65,10 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 	protected override applyConditionSemantics(state: StateAbstractDomain<IntervalDomain>, conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> {
 		let result: StateAbstractDomain<IntervalDomain> | undefined;
 
+		const { applyConditionSemantics: intervalPositiveSemantics, applyNegatedConditionSemantics: intervalNegativeSemantics } = getIntervalConditionSemantics<StateAbstractDomain<IntervalDomain>>();
+
 		if(trueBranch) {
-			result = applyIntervalConditionSemantics(
+			result = intervalPositiveSemantics(
 				conditionNodeId,
 				state,
 				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),
@@ -74,7 +76,7 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 				(node: NodeId) => this.getVariableOrigins(node),
 				this.config.dfg);
 		} else {
-			result = applyNegatedIntervalConditionSemantics(
+			result = intervalNegativeSemantics(
 				conditionNodeId,
 				state,
 				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),

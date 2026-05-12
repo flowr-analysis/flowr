@@ -11,7 +11,8 @@ import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { applyPentagonExpressionSemantics } from './expression-semantics';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { applyNegatedPentagonConditionSemantics, applyPentagonConditionSemantics } from './condition-semantics';
+import { getIntervalConditionSemantics } from '../interval/condition-semantics';
+import { getUpperBoundsConditionSemantics } from './upper-bounds/upper-bounds-condition-semantics';
 
 export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> {
 	constructor(config: AbsintVisitorConfiguration) {
@@ -122,27 +123,44 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		const getUpperBounds = (node: NodeId, state?: ClosedPentagonDomain) => this.getAbstractValue(node, state)?.value.upperBounds;
 		const reducePentagon = (state: ClosedPentagonDomain) => state.create(state.value);
 
+		const { applyConditionSemantics: intervalPositiveSemantics, applyNegatedConditionSemantics: intervalNegativeSemantics } = getIntervalConditionSemantics<ClosedPentagonDomain>();
+		const { applyConditionSemantics: upperBoundsPositiveSemantics, applyNegatedConditionSemantics: upperBoundsNegativeSemantics } = getUpperBoundsConditionSemantics<ClosedPentagonDomain>();
+
 		if(trueBranch) {
-			return applyPentagonConditionSemantics(
-				conditionNodeId,
-				state,
-				setInterval,
-				setUpperBounds,
-				getInterval,
-				getUpperBounds,
-				reducePentagon,
-				(node: NodeId) => this.getVariableOrigins(node),
-				this.config.dfg);
+			return reducePentagon(
+				upperBoundsPositiveSemantics(
+					conditionNodeId,
+					intervalPositiveSemantics(
+						conditionNodeId,
+						state,
+						setInterval,
+						getInterval,
+						(node: NodeId) => this.getVariableOrigins(node),
+						this.config.dfg
+					),
+					setUpperBounds,
+					getUpperBounds,
+					(node: NodeId) => this.getVariableOrigins(node),
+					this.config.dfg
+				)
+			);
 		}
-		return applyNegatedPentagonConditionSemantics(
-			conditionNodeId,
-			state,
-			setInterval,
-			setUpperBounds,
-			getInterval,
-			getUpperBounds,
-			reducePentagon,
-			(node: NodeId) => this.getVariableOrigins(node),
-			this.config.dfg);
+		return reducePentagon(
+			upperBoundsNegativeSemantics(
+				conditionNodeId,
+				intervalNegativeSemantics(
+					conditionNodeId,
+					state,
+					setInterval,
+					getInterval,
+					(node: NodeId) => this.getVariableOrigins(node),
+					this.config.dfg
+				),
+				setUpperBounds,
+				getUpperBounds,
+				(node: NodeId) => this.getVariableOrigins(node),
+				this.config.dfg
+			)
+		);
 	}
 }

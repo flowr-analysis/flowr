@@ -4,163 +4,42 @@ import { AbstractDomain } from '../../domains/abstract-domain';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { UpperBoundsValueDomain } from './upper-bounds-value-domain';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { FunctionArgument } from '../../../dataflow/graph/graph';
 import { isNotUndefined, isUndefined } from '../../../util/assert';
-import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
-import { numericInferenceLogger } from '../../interval/numeric-interval-inference';
+import type {
+	ConditionSemanticsMapperInfo,
+	GetValue,
+	GetVariableOrigins,
+	SetValue,
+	UnaryConditionSemantics } from '../../absint-condition-semantics';
+import {
+	binaryConditionSemanticsGuard,
+	createConditionApplier,
+	unaryConditionSemanticsGuard,
+	unaryIdentityConditionSemantics
+} from '../../absint-condition-semantics';
 
-function getSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): UpperBoundsConditionSemanticsMapperInfo<StateDomain>[] {
+/**
+ *
+ */
+export function getUpperBoundsConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<UpperBoundsValueDomain, StateDomain>, applyNegatedConditionSemantics: UnaryConditionSemantics<UpperBoundsValueDomain, StateDomain> } {
+	return createConditionApplier<UpperBoundsValueDomain, StateDomain>(getUpperBoundsSemanticsMapper<StateDomain>());
+}
+
+function getUpperBoundsSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): ConditionSemanticsMapperInfo<UpperBoundsValueDomain, StateDomain>[] {
 	return [
-		[Identifier.make('!'), unaryCondOpSemantics(applyNegatedUpperBoundsConditionSemantics), unaryCondOpSemantics(applyUpperBoundsConditionSemantics)],
-		[Identifier.make('('), unaryCondOpSemantics(applyUpperBoundsConditionSemantics), unaryCondOpSemantics(applyNegatedUpperBoundsConditionSemantics)],
-		[Identifier.make('=='), binaryCondOpSemantics(upperBoundsEqualsOp), binaryCondOpSemantics(upperBoundsNotEqualsOp)],
-		[Identifier.make('!='), binaryCondOpSemantics(upperBoundsNotEqualsOp), binaryCondOpSemantics(upperBoundsEqualsOp)],
-		[Identifier.make('>'), binaryCondOpSemantics(upperBoundsGreaterOp), binaryCondOpSemantics(upperBoundsLessEqualOp)],
-		[Identifier.make('>='), binaryCondOpSemantics(upperBoundsGreaterEqualOp), binaryCondOpSemantics(upperBoundsLessOp)],
-		[Identifier.make('<'), binaryCondOpSemantics(upperBoundsLessOp), binaryCondOpSemantics(upperBoundsGreaterEqualOp)],
-		[Identifier.make('<='), binaryCondOpSemantics(upperBoundsLessEqualOp), binaryCondOpSemantics(upperBoundsGreaterOp)],
-		[Identifier.make('is.na'), unaryCondOpSemantics(upperBoundsUnaryIdentity), unaryCondOpSemantics(upperBoundsUnaryIdentity)],
-		[Identifier.make('||'), binaryCondOpSemantics(upperBoundsOrOp), binaryCondOpSemantics(upperBoundsNegatedOrOp)],
-		[Identifier.make('&&'), binaryCondOpSemantics(upperBoundsAndOp), binaryCondOpSemantics(upperBoundsNegatedAndOp)],
-	] as const satisfies UpperBoundsConditionSemanticsMapperInfo<StateDomain>[];
+		[Identifier.make('=='), binaryConditionSemanticsGuard(upperBoundsEqualsOp), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp)],
+		[Identifier.make('!='), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp), binaryConditionSemanticsGuard(upperBoundsEqualsOp)],
+		[Identifier.make('>'), binaryConditionSemanticsGuard(upperBoundsGreaterOp), binaryConditionSemanticsGuard(upperBoundsLessEqualOp)],
+		[Identifier.make('>='), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp), binaryConditionSemanticsGuard(upperBoundsLessOp)],
+		[Identifier.make('<'), binaryConditionSemanticsGuard(upperBoundsLessOp), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp)],
+		[Identifier.make('<='), binaryConditionSemanticsGuard(upperBoundsLessEqualOp), binaryConditionSemanticsGuard(upperBoundsGreaterOp)],
+		[Identifier.make('is.na'), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+	] as const satisfies ConditionSemanticsMapperInfo<UpperBoundsValueDomain, StateDomain>[];
 }
 
-type UpperBoundsConditionSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: UbNAryFnSemantics<StateDomain>, negatedSemantics: UbNAryFnSemantics<StateDomain>];
+// Semantics
 
-export type SetUbState<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (state: StateDomain) => (node: NodeId, upperBounds: UpperBoundsValueDomain) => void;
-export type GetUb<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (nodeId: NodeId, state?: StateDomain) => UpperBoundsValueDomain | undefined;
-type GetVariableOrigins = (node: NodeId) => NodeId[];
-
-/**
- * Upper-bounds condition semantics definition for n-ary functions, where the semantics can be applied to any number of arguments.
- * @param argNodeIds - The node ids of the arguments of the function.
- * @param state - The state to retrieve the argument values and apply the semantics to.
- * @param set - Setter function to update an upper-bound in the provided state.
- * @param getUb - Retrieves the inferred abstract upper-bound from the visitor for the provided node.
- * @param getVariableOrigins - Retrieves the origins of a node from the visitor.
- * @param dfg - The dataflow graph containing the vertex and its arguments.
- * @returns The filtered state after applying the semantics.
- */
-type UbNAryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (argNodeIds: readonly (NodeId | undefined)[], state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph) => StateDomain;
-
-/**
- * Upper-bounds condition semantics definition for unary operators.
- * @param argNodeId - The node id of the argument of the unary operator.
- * @param state - The state to retrieve the argument values and apply the semantics to.
- * @param set - Setter function to update an upper-bound in the provided state.
- * @param getUb - Retrieves the inferred abstract upper-bound from the visitor for the provided node.
- * @param getVariableOrigins - Retrieves the origins of a node from the visitor.
- * @param dfg - The dataflow graph containing the vertex and its arguments.
- * @returns The filtered state after applying the semantics.
- */
-type UbUnaryOperatorSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (argNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph) => StateDomain;
-
-/**
- * Upper-bounds condition semantics definition for binary operators.
- * @param leftNodeId - The node id of the left argument of the binary operator.
- * @param rightNodeId - The node id of the right argument of the binary operator.
- * @param state - The state to retrieve the argument values and apply the semantics to.
- * @param set - Setter function to update an upper-bound in the provided state.
- * @param getUb - Retrieves the inferred abstract upper-bound from the visitor for the provided node.
- * @param getVariableOrigins - Retrieves the origins of a node from the visitor.
- * @param dfg - The dataflow graph containing the vertex and its arguments.
- * @returns The filtered state after applying the semantics.
- */
-type UbBinaryOperatorSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph) => StateDomain;
-
-/**
- * Applies the abstract condition semantics of the provided function with respect to the upper-bounds domain to the provided args.
- * @param argNodeId - The node id representing the condition to which the semantics should be applied.
- * @param state - The state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
- * @param set - Setter function to update an upper-bound in the provided state.
- * @param getUb - Retrieves the inferred abstract upper-bound from the visitor for the provided node.
- * @param getVariableOrigins - Retrieves the origins of a node from the visitor.
- * @param dfg - The dataflow graph containing the vertex and its arguments.
- * @returns The filtered state after applying the semantics.
- */
-export function applyUpperBoundsConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(argNodeId: NodeId | undefined, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	if(isUndefined(argNodeId)) {
-		return state;
-	}
-
-	const vertex = dfg.getVertex(argNodeId);
-	if(isFunctionCallVertex(vertex)) {
-		const match = getSemanticsMapper<StateDomain>().find(([id]) => Identifier.matches(id, vertex.name));
-
-		if(isNotUndefined(match)) {
-			const [_, semantics] = match;
-			return semantics(vertex.args.map(FunctionArgument.getReference), state, set, getUb, getVariableOrigins, dfg);
-		}
-	}
-
-	return state;
-}
-
-/**
- * Applies the negated abstract condition semantics of the provided function with respect to the upper-bounds domain to the provided args.
- * @param argNodeId - The node id representing the condition to which the semantics should be applied.
- * @param state - The state before applying the semantics, which can be used to determine the resulting state after applying the semantics.
- * @param set - Setter function to update an upper-bound in the provided state.
- * @param getUb - Retrieves the inferred abstract upper-bound from the visitor for the provided node.
- * @param getVariableOrigins - Retrieves the origins of a node from the visitor.
- * @param dfg - The dataflow graph containing the vertex and its arguments.
- * @returns The filtered state after applying the negated semantics.
- */
-export function applyNegatedUpperBoundsConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(argNodeId: NodeId | undefined, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	if(isUndefined(argNodeId)) {
-		return state;
-	}
-
-	const vertex = dfg.getVertex(argNodeId);
-	if(isFunctionCallVertex(vertex)) {
-		const match = getSemanticsMapper<StateDomain>().find(([id]) => Identifier.matches(id, vertex.name));
-
-		if(isNotUndefined(match)) {
-			const [, , negatedSemantics] = match;
-			return negatedSemantics(vertex.args.map(FunctionArgument.getReference), state, set, getUb, getVariableOrigins, dfg);
-		}
-	}
-
-	return state;
-}
-
-/**
- * Guard for unary operators, filtering all calls with more/less than 1 argument or with undefined argument.
- * If the call has exactly 1 defined argument, the provided unary operator semantics is applied to it.
- * Otherwise, the state is returned unmodified and a warning is logged.
- * @param unaryOperatorSemantics - The semantics to apply if the call has exactly 1 defined argument.
- * @returns The semantics to apply for a unary operator call, which includes the guard for the number of arguments.
- */
-function unaryCondOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(unaryOperatorSemantics: UbUnaryOperatorSemantics<StateDomain>): UbNAryFnSemantics<StateDomain> {
-	return (argNodeIds: readonly (NodeId | undefined)[], state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph) => {
-		if(argNodeIds.length !== 1 || isUndefined(argNodeIds[0])) {
-			numericInferenceLogger.warn('Called unary condition operator with more/less than 1 argument or with undefined argument.');
-			return state;
-		}
-		return unaryOperatorSemantics(argNodeIds[0], state, set, getUb, getVariableOrigins, dfg);
-	};
-}
-
-/**
- * Guard for binary operators, filtering all calls with more/less than 2 arguments or with undefined arguments.
- * If the call has exactly 2 defined arguments, the provided binary operator semantics is applied to them.
- * Otherwise, the state is returned unmodified and a warning is logged.
- * @param binaryOperatorSemantics - The semantics to apply if the call has exactly 2 defined arguments.
- * @returns The semantics to apply for a binary operator call, which includes the guard for the number of arguments.
- */
-function binaryCondOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(binaryOperatorSemantics: UbBinaryOperatorSemantics<StateDomain>): UbNAryFnSemantics<StateDomain> {
-	return (argNodeIds: readonly (NodeId | undefined)[], state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph) => {
-		if(argNodeIds.length !== 2 || isUndefined(argNodeIds[0]) || isUndefined(argNodeIds[1])) {
-			numericInferenceLogger.warn('Called binary condition operator with more/less than 2 arguments or with undefined arguments.');
-			return state;
-		}
-
-		return binaryOperatorSemantics(argNodeIds[0], argNodeIds[1], state, set, getUb, getVariableOrigins, dfg);
-	};
-}
-
-function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	const leftValue = getUb(leftNodeId, state);
 	const rightValue = getUb(rightNodeId, state);
 
@@ -195,7 +74,7 @@ function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 	return state;
 }
 
-function upperBoundsNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, _set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, _set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	const leftValue = getUb(leftNodeId, state);
 	const rightValue = getUb(rightNodeId, state);
 
@@ -219,7 +98,7 @@ function upperBoundsNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 	return state;
 }
 
-function upperBoundsGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	const leftValue = getUb(leftNodeId, state);
 	const rightValue = getUb(rightNodeId, state);
 
@@ -246,52 +125,14 @@ function upperBoundsGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstrac
 	return state;
 }
 
-function upperBoundsGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	return upperBoundsGreaterEqualOp(leftNodeId, rightNodeId, state, set, getUb, getVariableOrigins);
 }
 
-function upperBoundsLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	return upperBoundsGreaterEqualOp(rightNodeId, leftNodeId, state, set, getUb, getVariableOrigins);
 }
 
-function upperBoundsLessOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
+function upperBoundsLessOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<UpperBoundsValueDomain, StateDomain>, getUb: GetValue<UpperBoundsValueDomain, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
 	return upperBoundsGreaterOp(rightNodeId, leftNodeId, state, set, getUb, getVariableOrigins);
 }
-
-function upperBoundsUnaryIdentity<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(_argNodeId: NodeId, state: StateDomain): StateDomain {
-	return state;
-}
-
-function upperBoundsOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	const leftState = applyUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-	const rightState = applyUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-
-	return leftState.join(rightState);
-}
-
-function upperBoundsAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	const leftState = applyUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-	const rightState = applyUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-
-	return leftState.meet(rightState);
-}
-
-function upperBoundsNegatedOrOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	const leftState = applyNegatedUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-	const rightState = applyNegatedUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-
-	return leftState.meet(rightState);
-}
-
-function upperBoundsNegatedAndOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetUbState<StateDomain>, getUb: GetUb<StateDomain>, getVariableOrigins: GetVariableOrigins, dfg: DataflowGraph): StateDomain {
-	const leftState = applyNegatedUpperBoundsConditionSemantics(leftNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-	const rightState = applyNegatedUpperBoundsConditionSemantics(rightNodeId, state.create(state.value), set, getUb, getVariableOrigins, dfg);
-
-	return leftState.join(rightState);
-}
-
-
-
-
-
-

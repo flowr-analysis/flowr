@@ -146,26 +146,26 @@ async function getFilter<Elements extends FlowrSearchElement<ParentInformation>[
 		filter: FlowrFilterExpression
 	}): Promise<CascadeEmpty<Elements, Elements | []>> {
 	const dataflow = await data.dataflow();
-	return elements.mutate(
-		e => e.filter(e => evalFilter(filter, { element: e, data: { dataflow } })) as Elements
+	return await elements.mutate(
+		async e => (await Promise.all(e.map(async e => await evalFilter(filter, { element: e, data: { dataflow } }) ? [e] : []))).flat() as Elements
 	) as unknown as CascadeEmpty<Elements, Elements | []>;
 }
 
-async function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+function getWith<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
 	input: ReadonlyFlowrAnalysisProvider, elements: FSE, { info, args }: {
 		info:  Enrichment,
 		args?: EnrichmentElementArguments<Enrichment>
-	}): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+	}): FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]> {
 
-	return (await elements.enrich(input, info, args)).mutate(
-		async s => await Promise.all(s.map(e => enrichElement(e, elements, input, info, args))) as Elements
+	return (elements.enrich(input, info, args)).mutate(
+		s => s.map(e => enrichElement(e, elements, input, info, args)) as Elements
 	) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
 }
 
-function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
-	data: ReadonlyFlowrAnalysisProvider, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): FlowrSearchElements<ParentInformation, Elements> {
-	return elements.mutate(
-		elements => elements.flatMap(e => map(e, data, mapper, args)) as Elements
+async function getMap<Elements extends FlowrSearchElement<ParentInformation>[], FSE extends FlowrSearchElements<ParentInformation, Elements>>(
+	data: ReadonlyFlowrAnalysisProvider, elements: FSE, { mapper, args }: { mapper: Mapper, args: MapperArguments<Mapper> }): Promise<FlowrSearchElements<ParentInformation, Elements>> {
+	return await elements.mutate(
+		async elements => (await Promise.all(elements.map(async e => await map(e, data, mapper, args)))).flat() as Elements
 	) as unknown as FlowrSearchElements<ParentInformation, Elements>;
 }
 

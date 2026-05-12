@@ -32,8 +32,8 @@ export class TaintAnalysis {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add} or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<string, AnyStateDomain<AnyAbstractDomain>>> {
-		const results: Map<string, AnyStateDomain<AnyAbstractDomain>> = new Map();
+	public async run(): Promise<Map<string, AnyStateDomain>> {
+		const results: Map<string, AnyStateDomain> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
 				controlFlow:   await this.analyzer.controlflow(),

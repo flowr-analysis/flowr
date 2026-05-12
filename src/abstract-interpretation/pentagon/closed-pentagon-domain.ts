@@ -125,23 +125,29 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 		}
 
 		for(const [key, pentagon] of value.entries()) {
-			const reducedPentagon = pentagon.create(pentagon.value);
+			const newInferredBounds = new Set<NodeId>();
+			const removeBounds = new Set<NodeId>();
 			for(const [otherKey, otherPentagon] of value.entries()) {
 				if(key === otherKey) {
 					continue;
 				}
 				const keyInterval = pentagon.value.interval;
 				const otherKeyInterval = otherPentagon.value.interval;
-				if(keyInterval.isValue() && otherKeyInterval.isValue() && keyInterval.value[1] <= otherKeyInterval.value[0]) {
-					reducedPentagon.value.upperBounds.add(otherKey);
+				if(!pentagon.value.upperBounds.has(otherKey) && keyInterval.isValue() && otherKeyInterval.isValue() && keyInterval.value[1] <= otherKeyInterval.value[0]) {
+					newInferredBounds.add(otherKey);
 				}
 			}
 
-			if(reducedPentagon.value.upperBounds.has(key)) {
-				reducedPentagon.value.upperBounds.remove(key);
+			if(pentagon.value.upperBounds.has(key)) {
+				removeBounds.add(key);
 			}
 
-			(value as Map<NodeId, ClosedPentagonValueDomain>).set(key, reducedPentagon);
+			if(newInferredBounds.size > 0 || removeBounds.size > 0) {
+				const reducedPentagon = pentagon.create(pentagon.value);
+				newInferredBounds.values().forEach(bound => reducedPentagon.value.upperBounds.add(bound));
+				removeBounds.values().forEach(bound => reducedPentagon.value.upperBounds.remove(bound));
+				(value as Map<NodeId, ClosedPentagonValueDomain>).set(key, reducedPentagon);
+			}
 		}
 
 		return value;

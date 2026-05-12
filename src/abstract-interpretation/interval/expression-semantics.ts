@@ -11,8 +11,8 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
  * Maps function/operator names to the semantic functions.
  */
 export const IntervalExpressionSemanticsMapper = [
-	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalPositiveOp, intervalAddOp)],
-	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegativeOp, intervalSubtractOp)],
+	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalUnaryIdentityOp, intervalAddOp)],
+	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegateOp, intervalSubtractOp)],
 	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
 	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
 	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
@@ -147,12 +147,7 @@ function unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnS
 	};
 }
 
-/**
- * Applies the unary plus operator to the provided interval.
- * @param arg - The interval to apply the unary plus operator to (undefined meaning no information).
- * @returns The resulting interval after applying the unary plus operator, which is the same as the input interval.
- */
-function intervalPositiveOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+function intervalUnaryIdentityOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
 	return arg;
 }
 
@@ -189,7 +184,7 @@ export function intervalAddOp(left: IntervalDomain | undefined, right: IntervalD
  * @param arg - The interval to negate (undefined meaning no information).
  * @returns The resulting interval after negation. If the interval is undefined, the result is also undefined.
  */
-export function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+export function intervalNegateOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
 	if(arg?.isValue()) {
 		const [a, b] = arg.value;
 		return arg.create([-b, -a]);
@@ -204,7 +199,7 @@ export function intervalNegativeOp(arg: IntervalDomain | undefined): IntervalDom
  * @returns The resulting interval after subtraction. If one of the intervals is undefined, the result is also undefined.
  */
 export function intervalSubtractOp(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
-	return intervalAddOp(left, intervalNegativeOp(right));
+	return intervalAddOp(left, intervalNegateOp(right));
 }
 
 /**

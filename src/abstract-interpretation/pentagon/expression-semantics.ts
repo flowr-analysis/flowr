@@ -10,7 +10,7 @@ import type { ClosedPentagonDomain } from './closed-pentagon-domain';
 import {
 	intervalAddOp,
 	IntervalExpressionSemanticsMapper,
-	intervalNegativeOp,
+	intervalNegateOp,
 	intervalSubtractOp
 } from '../interval/expression-semantics';
 
@@ -190,7 +190,7 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 	if(argValue?.isValue() && argValue.value.interval.isValue()) {
 		const targetPentagon = ClosedPentagonValueDomain.top();
 
-		const interval = intervalNegativeOp(argValue.value.interval);
+		const interval = intervalNegateOp(argValue.value.interval);
 		if(isUndefined(interval)) {
 			return;
 		}

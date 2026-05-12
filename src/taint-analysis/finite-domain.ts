@@ -101,7 +101,7 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 			return true;
 		}
 		if(this.value === this._config.top) {
-			return other.value === this._config.bottom;
+			return other.value === this._config.top;
 		}
 		if(other.value === this._config.top) {
 			return true;

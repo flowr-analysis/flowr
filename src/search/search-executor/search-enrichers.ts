@@ -22,12 +22,13 @@ import {
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 
+
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
 	/**
 	 * A function that is applied to each element of the search to enrich it with additional data.
 	 */
-	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: (() => Promise<ElementContent>) | undefined) => AsyncOrSync<ElementContent>
-	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: (() => Promise<SearchContent>) | undefined) => AsyncOrSync<SearchContent>
+	readonly enrichElement?: (element: FlowrSearchElement<ParentInformation>, search: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, args: ElementArguments | undefined, previousValue: ElementContent | undefined) => AsyncOrSync<ElementContent>
+	readonly enrichSearch?:  (search: FlowrSearchElements<ParentInformation>, data: ReadonlyFlowrAnalysisProvider, args: SearchArguments | undefined, previousValue: SearchContent | undefined) => AsyncOrSync<SearchContent>
 	/**
 	 * The mapping function used by the {@link Mapper.Enrichment} mapper.
 	 */
@@ -37,22 +38,6 @@ export type EnrichmentElementContent<E extends Enrichment> = typeof Enrichments[
 export type EnrichmentElementArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer EA, infer _SC, infer _SA> ? EA : never;
 export type EnrichmentSearchContent<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer SC, infer _SA> ? SC : never;
 export type EnrichmentSearchArguments<E extends Enrichment> = typeof Enrichments[E] extends EnrichmentData<infer _EC, infer _EA, infer _SC, infer SA> ? SA : never;
-
-export class LazyEnrichmentContent<Content>{
-	private readonly enrichment: () => Promise<Content>;
-	private content:             Content | undefined;
-
-	constructor(enrichment: () => Promise<Content>) {
-		this.enrichment = enrichment;
-	}
-
-	public async get(): Promise<Content> {
-		if(this.content === undefined) {
-			this.content = await this.enrichment();
-		}
-		return this.content;
-	}
-}
 
 /**
  * An enumeration that stores the names of the available enrichments that can be applied to a set of search elements.
@@ -161,7 +146,7 @@ export const Enrichments = {
 			}
 
 			if(prev) {
-				content.targets.push(...(await prev()).targets);
+				content.targets.push(...prev.targets);
 			}
 			return content;
 		},
@@ -171,7 +156,7 @@ export const Enrichments = {
 	[Enrichment.LastCall]: {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);
-			const content = prev ? (await prev()) : { linkedIds: [] };
+			const content = prev ?? { linkedIds: [] };
 			const df = (await analyzer.dataflow()).graph;
 			const vertex = df.getVertex(e.node.info.id);
 			if(vertex?.tag === VertexType.FunctionCall) {
@@ -193,8 +178,8 @@ export const Enrichments = {
 		mapper: ({ linkedIds }) => linkedIds
 	} satisfies EnrichmentData<LastCallContent, Omit<LinkToLastCall, 'type'>[]>,
 	[Enrichment.CfgInformation]: {
-		enrichElement: async(e, search, _data, _args, prev) => {
-			const searchContent: CfgInformationSearchContent = await search.enrichmentContent(Enrichment.CfgInformation);
+		enrichElement: (e, search, _data, _args, prev) => {
+			const searchContent: CfgInformationSearchContent = search.enrichmentContent(Enrichment.CfgInformation);
 			return {
 				...prev,
 				isRoot:      searchContent.cfg.graph.rootIds().has(e.node.info.id),
@@ -210,13 +195,12 @@ export const Enrichments = {
 			};
 
 			// short-circuit if we already have a cfg stored
-			const prevValue = prev && await prev();
-			if(!args.forceRefresh && prevValue?.simpleCfg) {
-				return prevValue;
+			if(!args.forceRefresh && prev?.simpleCfg) {
+				return prev;
 			}
 
 			const content: CfgInformationSearchContent = {
-				...prevValue,
+				...prev,
 				cfg: await data.controlflow(args.simplificationPasses, CfgKind.WithDataflow),
 			};
 			if(args.checkReachable) {
@@ -228,7 +212,7 @@ export const Enrichments = {
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,
-		enrichSearch:  async(_search, _data, args, prev) => prev ? deepMergeObject(await prev(), args) : args as QueryDataSearchContent
+		enrichSearch:  (_search, _data, args, prev) => deepMergeObject(prev as QueryDataSearchContent, args)
 	} satisfies EnrichmentData<QueryDataElementContent, QueryDataElementContent, QueryDataSearchContent, QueryDataSearchContent>
 } as const;
 
@@ -238,23 +222,22 @@ export const Enrichments = {
  * @param e - The search element whose enrichment content should be retrieved.
  * @param enrichment - The enrichment content, if present, else `undefined`.
  */
-export async function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): Promise<EnrichmentElementContent<E>> {
-	return await (e?.enrichments?.[enrichment] as LazyEnrichmentContent<EnrichmentElementContent<E>>)?.get();
+export function enrichmentContent<E extends Enrichment>(e: FlowrSearchElement<ParentInformation>, enrichment: E): EnrichmentElementContent<E> {
+	return e?.enrichments?.[enrichment] as EnrichmentElementContent<E>;
 }
 
 /**
  * Enriches the given search element with the given enrichment type, using the provided analysis data.
  */
-export function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
-	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Element {
+export async function enrichElement<Element extends FlowrSearchElement<ParentInformation>, E extends Enrichment>(
+	e: Element, s: FlowrSearchElements<ParentInformation>, analyzer: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentElementArguments<E>): Promise<Element> {
 	const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>>;
 	const prev = e?.enrichments;
-	const prevEnrichment = prev?.[enrichment];
 	return {
 		...e,
 		enrichments: {
 			...prev ?? {},
-			[enrichment]: new LazyEnrichmentContent<EnrichmentElementContent<E> | undefined>(async() => await enrichmentData.enrichElement?.(e, s, analyzer, args, prevEnrichment && (() => prevEnrichment.get())))
+			[enrichment]: await enrichmentData.enrichElement?.(e, s, analyzer, args, prev?.[enrichment])
 		}
 	};
 }

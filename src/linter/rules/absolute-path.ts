@@ -136,15 +136,15 @@ export const ABSOLUTE_PATH = {
 		}
 		return q.unique();
 	},
-	processSearchResult: async(elements, config, data): Promise<{ results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata }> => {
+	processSearchResult: (elements, config, data): { results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata } => {
 		const metadata: AbsoluteFilePathMetadata = {
 			totalConsidered: 0,
 			totalUnknown:    0
 		};
-		const queryResults = (await elements.enrichmentContent(Enrichment.QueryData))?.queries;
+		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		return {
-			results: (await Promise.all(elements.getElements().map(async element => {
+			results: elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
 				const wd = inferWd(node.info.file, config.useAsWd);
@@ -159,46 +159,43 @@ export const ABSOLUTE_PATH = {
 					} else {
 						return [];
 					}
-				} else {
-					const queryData = await enrichmentContent(element, Enrichment.QueryData);
-					if(queryData) {
-						const result = queryResults[queryData.query] as QueryResults<'dependencies'>['dependencies'];
-						const mappedStrings = result.read.filter(r => r.value !== undefined && r.value !== Unknown && isAbsolutePath(r.value, regex)).map(r => {
-							const elem = data.normalize.idMap.get(r.nodeId);
-							return {
-								certainty: LintingResultCertainty.Certain,
-								filePath:  r.value,
-								loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
-								quickFix:  buildQuickFix(elem, r.value as string, wd)
-							};
-						});
-						if(mappedStrings.length > 0) {
-							return mappedStrings;
-						} else if(result.read.every(r => r.value !== Unknown)) {
-							// if we have no absolute paths, but all paths are known, we can return an empty array
-							return [];
-						}
-					} else {
-						const dfNode = data.dataflow.graph.getVertex(node.info.id);
-						if(isFunctionCallVertex(dfNode)) {
-							const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
-							const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
-							if(strings) {
-								return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
-									certainty: LintingResultCertainty.Uncertain,
-									filePath:  str,
-									loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-									quickFix:  undefined
-								}));
-							}
-						}
-						// check whether the df node is a function call that returns a file path
+				} else if(enrichmentContent(element, Enrichment.QueryData)) {
+					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
+					const mappedStrings = result.read.filter(r => r.value !== undefined && r.value !== Unknown && isAbsolutePath(r.value, regex)).map(r => {
+						const elem = data.normalize.idMap.get(r.nodeId);
+						return {
+							certainty: LintingResultCertainty.Certain,
+							filePath:  r.value,
+							loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
+							quickFix:  buildQuickFix(elem, r.value as string, wd)
+						};
+					});
+					if(mappedStrings.length > 0) {
+						return mappedStrings;
+					} else if(result.read.every(r => r.value !== Unknown)) {
+						// if we have no absolute paths, but all paths are known, we can return an empty array
+						return [];
 					}
+				} else {
+					const dfNode = data.dataflow.graph.getVertex(node.info.id);
+					if(isFunctionCallVertex(dfNode)) {
+						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
+						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
+						if(strings) {
+							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
+								certainty: LintingResultCertainty.Uncertain,
+								filePath:  str,
+								loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
+								quickFix:  undefined
+							}));
+						}
+					}
+					// check whether the df node is a function call that returns a file path
 				}
 
 				metadata.totalUnknown++;
 				return undefined;
-			}))).flat().filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult),
+			}).filter(isNotUndefined).map(r => compactRecord(r) as AbsoluteFilePathResult),
 			'.meta': metadata
 		};
 	},

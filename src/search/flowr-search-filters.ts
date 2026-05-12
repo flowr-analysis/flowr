@@ -7,7 +7,6 @@ import { Enrichment, enrichmentContent } from './search-executor/search-enricher
 import type { DataflowInformation } from '../dataflow/info';
 import { Identifier } from '../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import type { AsyncOrSync } from 'ts-essentials';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -33,7 +32,7 @@ export enum FlowrFilter {
 	 */
 	OriginKind = 'origin-kind'
 }
-export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => AsyncOrSync<boolean>;
+export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
 export const ValidFlowrFilters: Set<string> = new Set(Object.values(FlowrFilter));
 export const ValidFlowrFiltersReverse = Object.fromEntries(Object.entries(FlowrFilter).map(([k, v]) => [v, k]));
@@ -42,9 +41,9 @@ export const FlowrFilters = {
 	[FlowrFilter.DropEmptyArguments]: ((e: FlowrSearchElement<ParentInformation>, _args: never) => {
 		return e.node.type !== RType.Argument || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
-	[FlowrFilter.MatchesEnrichment]: (async(e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
+	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		if(args.enrichment === Enrichment.CallTargets) {
-			const c: CallTargetsContent = await enrichmentContent(e, Enrichment.CallTargets);
+			const c: CallTargetsContent = enrichmentContent(e, Enrichment.CallTargets);
 			if(c === undefined || c.targets === undefined) {
 				return false;
 			}
@@ -58,7 +57,7 @@ export const FlowrFilters = {
 			}
 			return false;
 		} else {
-			const content = JSON.stringify(await enrichmentContent(e, args.enrichment));
+			const content = JSON.stringify(enrichmentContent(e, args.enrichment));
 			return content !== undefined && args.test.test(content);
 		}
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
@@ -242,19 +241,19 @@ interface FilterData {
 }
 
 const evalVisit = {
-	and: async({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		(await evalTree(left, data)) && (await evalTree(right, data)),
-	or: async({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		(await evalTree(left, data)) || (await evalTree(right, data)),
-	xor: async({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
-		(await evalTree(left, data)) !== (await evalTree(right, data)),
-	not: async({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
-		!(await evalTree(operand, data)),
+	and: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) && evalTree(right, data),
+	or: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) || evalTree(right, data),
+	xor: ({ left, right }: BooleanBinaryNode<BooleanNode>, data: FilterData) =>
+		evalTree(left, data) !== evalTree(right, data),
+	not: ({ operand }: BooleanUnaryNode<BooleanNode>, data: FilterData) =>
+		!evalTree(operand, data),
 	'r-type': ({ value }: LeafRType, { element }: FilterData) =>
 		element.node.type === value,
 	'vertex-type': ({ value }: LeafVertexType, { data, element }: FilterData) =>
 		data.dataflow.graph.getVertex(element.node.info.id)?.tag === value,
-	'special': async({ value }: LeafSpecial, { data, element }: FilterData) => {
+	'special': ({ value }: LeafSpecial, { data, element }: FilterData) => {
 		const name = typeof value === 'string' ? value : value.name;
 		const args = typeof value === 'string' ? undefined as unknown as FlowrFilterArgs<FlowrFilter> : value.args;
 		const getHandler = FlowrFilters[name];
@@ -265,7 +264,7 @@ const evalVisit = {
 	}
 };
 
-async function evalTree(tree: BooleanNode, data: FilterData): Promise<boolean> {
+function evalTree(tree: BooleanNode, data: FilterData): boolean {
 	/* we ensure that the types fit */
 	return evalVisit[tree.type](tree as never, data);
 }
@@ -273,9 +272,9 @@ async function evalTree(tree: BooleanNode, data: FilterData): Promise<boolean> {
 /**
  * Evaluates the given filter expression against the provided data.
  */
-export async function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): Promise<boolean> {
+export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpression<Filter>, data: FilterData): boolean {
 	if(filter instanceof FlowrFilterCombinator) {
-		return await evalTree(filter.get(), data);
+		return evalTree(filter.get(), data);
 	} else if(typeof filter === 'string' && ValidFlowrFilters.has(filter)) {
 		const handler = FlowrFilters[filter as FlowrFilter];
 		return handler(data.element, undefined as unknown as FlowrFilterArgs<FlowrFilter>, data.data);
@@ -285,6 +284,6 @@ export async function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilter
 		return handler(data.element, args, data.data);
 	} else {
 		const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
-		return await evalTree(tree.get(), data);
+		return evalTree(tree.get(), data);
 	}
 }

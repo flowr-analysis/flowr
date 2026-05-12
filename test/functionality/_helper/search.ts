@@ -14,7 +14,6 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import type { AsyncOrSync } from 'ts-essentials';
 
 /**
  * Asserts the result of a search or a set of searches (all of which should return the same result)!
@@ -24,7 +23,7 @@ export function assertSearch(
 	name: string | TestLabel,
 	parser: KnownParser,
 	code: string,
-	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => AsyncOrSync<boolean>),
+	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
 	const effectiveName = decorateLabelContext(name, ['search']);
@@ -69,8 +68,8 @@ export function assertSearch(
 							arrayEqual(result.map(r => r.node.info.id).sort(), [...expected].sort()),
 							`Expected search results to match. Wanted: [${expected.join(', ')}], got: [${result.map(r => r.node.info.id).join(', ')}]`);
 					} else {
-						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => AsyncOrSync<boolean>;
-						assert(await expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
+						const expectedFunc = expected as (result: FlowrSearchElement<ParentInformation>[]) => boolean;
+						assert(expectedFunc([...result]), `Expected search results ${JSON.stringify(result)} to match expected function`);
 					}
 				} /* v8 ignore next 4 */ catch(e: unknown) {
 					console.error('Dataflow-Graph', Dataflow.visualize.mermaid.url(dataflow));
@@ -94,13 +93,13 @@ export function assertSearchEnrichment(
 	matchType: 'some' | 'every',
 	...searches: FlowrSearchLike[]
 ) {
-	assertSearch(name, parser, code, async results => {
+	assertSearch(name, parser, code, results => {
 		for(const expected of expectedEnrichments) {
 			for(const [enrichment, content] of Object.entries(expected)) {
 				let any = false;
 				for(const result of results) {
 					try {
-						assert.deepEqual(await enrichmentContent(result, enrichment as Enrichment), content);
+						assert.deepEqual(enrichmentContent(result, enrichment as Enrichment), content);
 						any = true;
 					} catch(e: unknown) {
 						if(matchType === 'every') {

@@ -70,7 +70,7 @@ export const SEEDED_RANDOMNESS = {
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
 			{ callName: getDefaultAssignments().flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
 		]),
-	processSearchResult: async(elements, config, { dataflow, analyzer }) => {
+	processSearchResult: (elements, config, { dataflow, analyzer }) => {
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
 		const assignmentArgIndexes = new Map<string, number>(getDefaultAssignments().flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
@@ -81,25 +81,22 @@ export const SEEDED_RANDOMNESS = {
 			callsWithOtherBranchProducers: 0
 		};
 		return {
-			results: (await Promise.all((await Promise.all(elements.getElements()
+			results: elements.getElements()
 				// map and filter consumers
-				.map(async element => {
-					const content = await enrichmentContent(element, Enrichment.CallTargets);
-					return content.targets.map(target => {
-						metadata.consumerCalls++;
-						return {
-							involvedId:    element.node.info.id,
-							loc:           SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-							target:        target as BrandedIdentifier,
-							searchElement: element
-						};
-					});
-				}))).flat()
+				.flatMap(element => enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+					metadata.consumerCalls++;
+					return {
+						involvedId:    element.node.info.id,
+						loc:           SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
+						target:        target as BrandedIdentifier,
+						searchElement: element
+					};
+				}))
 				// filter by calls that aren't preceded by a randomness producer
-				.map(async element => {
+				.flatMap(element => {
 					const dfgElement = dataflow.graph.getVertex(element.searchElement.node.info.id);
 					const cds = dfgElement ? new Set(dfgElement.cds) : new Set();
-					const producers = (await enrichmentContent(element.searchElement, Enrichment.LastCall)).linkedIds
+					const producers = enrichmentContent(element.searchElement, Enrichment.LastCall).linkedIds
 						.map(e => dataflow.graph.getVertex(e.node.info.id) as DataflowGraphVertexFunctionCall);
 					const { assignment, func } = Object.groupBy(producers, f => assignmentArgIndexes.has(Identifier.getName(f.name)) ? 'assignment' : 'func');
 					let nonConstant = false;
@@ -158,7 +155,7 @@ export const SEEDED_RANDOMNESS = {
 						function:   element.target,
 						loc:        element.loc
 					}];
-				}))).flat(),
+				}),
 			'.meta': metadata
 		};
 	},

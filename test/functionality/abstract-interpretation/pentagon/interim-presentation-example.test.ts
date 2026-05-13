@@ -4,9 +4,9 @@ import { IntervalTests } from '../interval/interval';
 
 describe('Interim Presentation Example', () => {
 	testPentagonDomain(`
-			ifelse(c, a <- -Inf, a <- Inf)
+			a <- ifelse(c, -Inf, Inf)
 			a <- a + 1
-			ifelse(c, b <- -Inf, b <- Inf)
+			b <- ifelse(c, -Inf, Inf)
 			b <- b + 1
 			
 			x <- a ^ 2 + 1

@@ -120,11 +120,15 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 	}
 
 	private static reduce(value: StateDomainLift<ClosedPentagonValueDomain>): StateDomainLift<ClosedPentagonValueDomain> {
-		if(value === Bottom || value.values().some((value) => value.value.interval.isBottom() || value.value.upperBounds.isBottom())) {
+		if(value === Bottom) {
 			return Bottom;
 		}
 
 		for(const [key, pentagon] of value.entries()) {
+			if(pentagon.value.interval.isBottom() || pentagon.value.upperBounds.isBottom()) {
+				return Bottom;
+			}
+
 			const newInferredBounds = new Set<NodeId>();
 			const removeBounds = new Set<NodeId>();
 			for(const [otherKey, otherPentagon] of value.entries()) {

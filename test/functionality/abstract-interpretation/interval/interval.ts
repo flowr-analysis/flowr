@@ -58,7 +58,7 @@ export const IntervalTests = {
 };
 
 export enum DomainMatchingType {
-	Exact = 'exact',
+	Equal = 'equal',
 	Overapproximation = 'overapproximation'
 }
 
@@ -98,7 +98,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 	test.each(
 		// Append the test name manually because we need to access a property of criterionExpected, which cannot be done using vitest's test.each syntax.
 		(Object.entries(expected) as [criterion: SlicingCriterion, criterionExpected: IntervalSlicingCriterionExpected][])
-			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.matching ?? DomainMatchingType.Exact}: ${criterionExpected.domain?.toString()} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
+			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.matching ?? DomainMatchingType.Equal}: ${criterionExpected.domain?.toString()} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
 	)('$0',
 		(_: string, criterion: SlicingCriterion, criterionExpected: IntervalSlicingCriterionExpected) => {
 			const targetId: NodeId = SlicingCriterion.parse(criterion, ast.idMap);
@@ -106,14 +106,14 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 			const inferredIntervalDomain = visitor.getAbstractValue(targetId);
 
 			if(isUndefined(criterionExpected.matching)) {
-				criterionExpected.matching = DomainMatchingType.Exact;
+				criterionExpected.matching = DomainMatchingType.Equal;
 			}
 
 			const errorContext = `expected inferred value ${inferredIntervalDomain?.toString()} to be ${criterionExpected.matching} 
 			match for ${criterionExpected.domain?.toString()} in final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
 
 			if(!isUndefined(inferredIntervalDomain) && !isUndefined(criterionExpected.domain)) {
-				if(criterionExpected.matching === DomainMatchingType.Exact) {
+				if(criterionExpected.matching === DomainMatchingType.Equal) {
 					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
 					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
@@ -123,7 +123,7 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 				}
 			} else {
 				// At least one of the domains is undefined (Top)
-				if(criterionExpected.matching === DomainMatchingType.Exact) {
+				if(criterionExpected.matching === DomainMatchingType.Equal) {
 					// Expect both to be undefined (Top)
 					expect(inferredIntervalDomain?.value, 'Result differs: ' + errorContext).toBe(criterionExpected.domain?.value);
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {

@@ -74,7 +74,7 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 
 		const pentagon = new ClosedPentagonValueDomain({
 			interval:    IntervalDomain.scalar(node.content.num, this.config.ctx.config.abstractInterpretation.numeric.significantFigures),
-			upperBounds: new UpperBoundsValueDomain(new Set())
+			upperBounds: UpperBoundsValueDomain.top()
 		});
 		this.currentState.set(node.info.id, pentagon);
 	}

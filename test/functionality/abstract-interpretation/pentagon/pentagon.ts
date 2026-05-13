@@ -14,6 +14,7 @@ import { assertUnreachable, isNotUndefined, isUndefined } from '../../../../src/
 import {
 	UpperBoundsValueDomain
 } from '../../../../src/abstract-interpretation/pentagon/upper-bounds/upper-bounds-value-domain';
+import { Record } from '../../../../src/util/record';
 
 /**
  * Helper for creating upper-bounds based on slicing criteria for testing the pentagon domain inference.
@@ -78,8 +79,18 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 
 	test.each(
 		// Append the test name manually because we need to access a property of criterionExpected, which cannot be done using vitest's test.each syntax.
-		(Object.entries(expected) as [criterion: SlicingCriterion, criterionExpected: PentagonSlicingCriterionExpected][])
-			.map(([criterion, criterionExpected]) => [`should infer ${criterionExpected.intervalMatching ?? DomainMatchingType.Exact}: ${criterionExpected.interval?.toString()} and include upper-bounds {${criterionExpected.upperBounds === Bottom ? BottomSymbol : criterionExpected.upperBounds.includes.values().toArray().join(', ')}}/exclude {${criterionExpected.upperBounds === Bottom ? BottomSymbol : criterionExpected.upperBounds.notIncludes.values().toArray().join(', ')}} for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`, criterion, criterionExpected] as const)
+		Record.entries(expected)
+			.map(([criterion, criterionExpected]) =>
+				[
+					`should infer ${criterionExpected.intervalMatching ?? DomainMatchingType.Equal}: ` +
+					`${criterionExpected.interval?.toString()} and include upper-bounds ` +
+					`{${criterionExpected.upperBounds === Bottom ? BottomSymbol : criterionExpected.upperBounds.includes.values().toArray().join(', ')}}` +
+					'/exclude ' +
+					`{${criterionExpected.upperBounds === Bottom ? BottomSymbol : criterionExpected.upperBounds.notIncludes.values().toArray().join(', ')}} ` +
+					`for ${criterion} at ${code.trim().replaceAll('\n', ' \\n ')}`,
+					criterion,
+					criterionExpected
+				] as const)
 	)('$0',
 		(_: string, criterion: SlicingCriterion, criterionExpected: PentagonSlicingCriterionExpected) => {
 			// Check interval part
@@ -88,14 +99,15 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 			const inferredPentagonDomain = visitor.getAbstractValue(targetId);
 
 			if(isUndefined(criterionExpected.intervalMatching)) {
-				criterionExpected.intervalMatching = DomainMatchingType.Exact;
+				criterionExpected.intervalMatching = DomainMatchingType.Equal;
 			}
 
-			const intervalErrorContext = `expected inferred value ${inferredPentagonDomain?.value.interval.toString()} to be ${criterionExpected.intervalMatching} 
-			match for ${criterionExpected.interval?.toString()} in final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
+			const intervalErrorContext = `expected inferred value ${inferredPentagonDomain?.value.interval.toString()} ` +
+				`to be ${criterionExpected.intervalMatching} match for ${criterionExpected.interval?.toString()}. ` +
+				`Final state ${visitor.getEndState().toString()} for ${code.trim().replaceAll('\n', ' \\n ')}`;
 
 			if(isNotUndefined(inferredPentagonDomain?.value.interval) && isNotUndefined(criterionExpected.interval)) {
-				if(criterionExpected.intervalMatching === DomainMatchingType.Exact) {
+				if(criterionExpected.intervalMatching === DomainMatchingType.Equal) {
 					expect(criterionExpected.interval.equals(inferredPentagonDomain.value.interval), 'Result differs: ' + intervalErrorContext).toBe(true);
 				} else if(criterionExpected.intervalMatching === DomainMatchingType.Overapproximation) {
 					expect(criterionExpected.interval.leq(inferredPentagonDomain.value.interval), 'Result differs: ' + intervalErrorContext).toBe(true);
@@ -105,7 +117,7 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 				}
 			} else {
 				// At least one of the domains is undefined (Top)
-				if(criterionExpected.intervalMatching === DomainMatchingType.Exact) {
+				if(criterionExpected.intervalMatching === DomainMatchingType.Equal) {
 					// Expect both to be undefined (Top)
 					expect(inferredPentagonDomain?.value.interval.value, 'Result differs: ' + intervalErrorContext).toBe(criterionExpected.interval?.value);
 				} else if(criterionExpected.intervalMatching === DomainMatchingType.Overapproximation) {
@@ -141,8 +153,8 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 				expectedUpperBoundsValueDomain = new UpperBoundsValueDomain(new Set(upperBoundsCriterionMapping.keys()));
 			}
 
-			const upperBoundsErrorContext = `expected inferred value ${inferredPentagonDomain?.value.upperBounds.toString()} to include ${expectedUpperBoundsValueDomain.toString()}
-			in final state ${visitor.getEndState().toString()} for "${code.trim().replaceAll('\n', ' \\n ')}" with mapping
+			const upperBoundsErrorContext = `expected inferred value ${inferredPentagonDomain?.value.upperBounds.toString()} to include ${expectedUpperBoundsValueDomain.toString()}.
+			Final state ${visitor.getEndState().toString()} for "${code.trim().replaceAll('\n', ' \\n ')}" with mapping
 			{${upperBoundsCriterionMapping.entries().map(([node, criterion]) => node.toString() + ' -> ' + criterion.toString()).toArray().join(', ')}}`;
 
 			if(isUndefined(criterionExpected.interval)) {

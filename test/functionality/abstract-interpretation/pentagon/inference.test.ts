@@ -156,9 +156,9 @@ describe('Pentagon Inference', () => {
 
 		describe('if else semantis', () => {
 			testPentagonDomain(`
-				ifelse(c, a <- -3, a <- 3)
+				a <- ifelse(c, -3, 3)
 				a <- a + 0
-				ifelse(c, b <- 1, b <- 4)
+				b <- ifelse(c, b 1, 4)
 				b <- b + 0
 				
 				x <- a + b
@@ -179,9 +179,9 @@ describe('Pentagon Inference', () => {
 			});
 
 			testPentagonDomain(`
-				ifelse(c, a <- -3, a <- 3)
+				a <- ifelse(c, -3, 3)
 				a <- a + 0
-				ifelse(c, b <- -1, b <- -4)
+				b <- ifelse(c, -1, -4)
 				b <- b + 0
 				
 				x <- a + b
@@ -203,9 +203,9 @@ describe('Pentagon Inference', () => {
 
 			// == and !=
 			testPentagonDomain(`
-				ifelse(c, a <- -3, a <- 3)
+				a <- ifelse(c, -3, 3)
 				a <- a + 0
-				ifelse(c, b <- -3, b <- 3)
+				b <- ifelse(c, -3, 3)
 				b <- b + 0
 				
 				if(a == b) {
@@ -223,7 +223,7 @@ describe('Pentagon Inference', () => {
 			});
 
 			testPentagonDomain(`
-				ifelse(c, a <- -3, a <- 3)
+				a <- ifelse(c, -3, 3)
 				a <- a + 0
 				b <- a
 				
@@ -247,9 +247,9 @@ describe('Pentagon Inference', () => {
 
 			// <=, >, >=, <
 			testPentagonDomain(`
-				ifelse(c, a <- -3, a <- 3)
+				a <- ifelse(c, -3, 3)
 				a <- a + 0
-				ifelse(c, b <- -3, b <- 3)
+				b <- ifelse(c, -3, 3)
 				b <- b + 0
 				
 				if(a <= b) {

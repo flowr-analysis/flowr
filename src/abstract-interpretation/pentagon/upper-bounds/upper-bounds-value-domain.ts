@@ -10,7 +10,13 @@ type UpperBoundsTop = typeof UpperBoundsTop;
 type UpperBoundsBottom = typeof Bottom;
 export type UpperBoundsLift = UpperBoundsValue | UpperBoundsBottom;
 
-export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsLift, Concrete = unknown> extends AbstractDomain<Concrete, UpperBoundsValue, UpperBoundsTop, UpperBoundsBottom, Value> {
+/**
+ * The weakly relational upper bounds domain is a mapping from NodeIds to a set of all NodeIds that are upper bounds.
+ * We use the {@link StateAbstractDomain} to model the mapping from NodeId to a "value domain".
+ * This domain represents the "value domain" as set of NodeIds with the semantics of the upper bounds domain,
+ * meaning that the top element is represented by the empty set and the bottom element is represented by {@link Bottom}.
+ */
+export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsLift> extends AbstractDomain<unknown, UpperBoundsValue, UpperBoundsTop, UpperBoundsBottom, Value> {
 	constructor(value: Value) {
 		if(value !== Bottom) {
 			super(new Set(value) as UpperBoundsLift as Value);
@@ -20,8 +26,8 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 	}
 
 	public create(value: UpperBoundsLift): this;
-	public create(value: UpperBoundsLift): UpperBoundsValueDomain<UpperBoundsLift, Concrete> {
-		return new UpperBoundsValueDomain<UpperBoundsLift, Concrete>(value);
+	public create(value: UpperBoundsLift): UpperBoundsValueDomain {
+		return new UpperBoundsValueDomain<UpperBoundsLift>(value);
 	}
 
 	public has(node: NodeId): boolean {
@@ -44,18 +50,18 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 		return new UpperBoundsValueDomain<UpperBoundsTop>(UpperBoundsTop);
 	}
 
-	public top(): this & UpperBoundsValueDomain<UpperBoundsTop, Concrete>;
-	public top(): UpperBoundsValueDomain<UpperBoundsTop, Concrete> {
-		return UpperBoundsValueDomain.top() as UpperBoundsValueDomain<UpperBoundsTop, Concrete>;
+	public top(): this & UpperBoundsValueDomain<UpperBoundsTop>;
+	public top(): UpperBoundsValueDomain<UpperBoundsTop> {
+		return UpperBoundsValueDomain.top();
 	}
 
 	public static bottom(): UpperBoundsValueDomain<UpperBoundsBottom> {
 		return new UpperBoundsValueDomain<UpperBoundsBottom>(Bottom);
 	}
 
-	public bottom(): this & UpperBoundsValueDomain<UpperBoundsBottom, Concrete>;
-	public bottom(): UpperBoundsValueDomain<UpperBoundsBottom, Concrete> {
-		return UpperBoundsValueDomain.bottom() as UpperBoundsValueDomain<UpperBoundsBottom, Concrete>;
+	public bottom(): this & UpperBoundsValueDomain<UpperBoundsBottom>;
+	public bottom(): UpperBoundsValueDomain<UpperBoundsBottom> {
+		return UpperBoundsValueDomain.bottom();
 	}
 
 	public equals(other: this): boolean {
@@ -110,23 +116,23 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 		throw new Error('Not Implemented');
 	}
 
-	public concretize(_limit: number): ReadonlySet<Concrete> | typeof Top {
+	public concretize(_limit: number): ReadonlySet<unknown> | typeof Top {
 		return Top;
 	}
 
-	public abstract(_concrete: ReadonlySet<Concrete> | typeof Top): this {
+	public abstract(_concrete: ReadonlySet<unknown> | typeof Top): this {
 		throw new Error('Not Possible');
 	}
 
-	public isTop(): this is UpperBoundsValueDomain<UpperBoundsTop, Concrete> {
+	public isTop(): this is UpperBoundsValueDomain<UpperBoundsTop> {
 		return this.value !== Bottom && this.value.size === 0;
 	}
 
-	public isBottom(): this is UpperBoundsValueDomain<UpperBoundsBottom, Concrete> {
+	public isBottom(): this is UpperBoundsValueDomain<UpperBoundsBottom> {
 		return this.value === Bottom;
 	}
 
-	public isValue(): this is UpperBoundsValueDomain<UpperBoundsValue, Concrete> {
+	public isValue(): this is UpperBoundsValueDomain<UpperBoundsValue> {
 		return this.value !== Bottom;
 	}
 

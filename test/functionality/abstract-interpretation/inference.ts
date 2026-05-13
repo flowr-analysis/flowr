@@ -29,7 +29,7 @@ export enum DomainMatchingType {
 /**
  * A test case for value inference, mapping identifiers specified as slicing criteria to their expected values.
  */
-export type TestCase<ExpectedValue> = Record<SlicingCriterion, ExpectedValue | undefined>;
+export type InferenceTestCase<ExpectedValue> = Record<SlicingCriterion, ExpectedValue | undefined>;
 
 /**
  * Options for inference tests, including the flowR config to use, additional files to add to the flowR project context, and the domain matching type to use when comparing inferred values with expected values.
@@ -130,7 +130,7 @@ export function testInferredValues<Domain extends AnyAbstractDomain>(
 	name: string | TestLabel,
 	shell: RShell,
 	code: string,
-	expected: TestCase<Domain> | SlicingCriteria,
+	expected: InferenceTestCase<Domain> | SlicingCriteria,
 	inference: (config: AbsintVisitorConfiguration) => AbstractInterpretationVisitor<AnyStateDomain<Domain>>,
 	createOutputCode: (marker: string, symbol: string) => string,
 	parseOutput: (output: string) => Domain | undefined,
@@ -161,7 +161,7 @@ export function testInferredValues<Domain extends AnyAbstractDomain>(
  */
 export async function assertInferredValues<Domain extends AnyAbstractDomain>(
 	code: string,
-	expected: TestCase<Domain>,
+	expected: InferenceTestCase<Domain>,
 	inference: (config: AbsintVisitorConfiguration) => AbstractInterpretationVisitor<AnyStateDomain<Domain>>,
 	options?: InferenceTestOptions
 ): Promise<void> {

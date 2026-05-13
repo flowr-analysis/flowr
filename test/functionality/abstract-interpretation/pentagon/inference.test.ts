@@ -158,7 +158,7 @@ describe('Pentagon Inference', () => {
 			testPentagonDomain(`
 				a <- ifelse(c, -3, 3)
 				a <- a + 0
-				b <- ifelse(c, b 1, 4)
+				b <- ifelse(c, 1, 4)
 				b <- b + 0
 				
 				x <- a + b

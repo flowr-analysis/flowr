@@ -9,6 +9,7 @@ import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
+import type { IntervalValueDomainAccess } from './condition-semantics';
 import { getIntervalConditionSemantics } from './condition-semantics';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
@@ -16,7 +17,7 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
-export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> implements IntervalValueDomainAccess<StateAbstractDomain<IntervalDomain>> {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, StateAbstractDomain.top(IntervalDomain.top()));
 	}
@@ -62,26 +63,30 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 		return this.currentState.set(call.id, result);
 	}
 
+	setInterval(state: StateAbstractDomain<IntervalDomain>): (node: NodeId, value: (IntervalDomain | undefined)) => void {
+		return (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval);
+	}
+
+	getInterval(node: NodeId, state?: StateAbstractDomain<IntervalDomain>): IntervalDomain | undefined {
+		return this.getAbstractValue(node, state);
+	}
+
 	protected override applyConditionSemantics(state: StateAbstractDomain<IntervalDomain>, conditionNodeId: NodeId, trueBranch: boolean): StateAbstractDomain<IntervalDomain> {
 		let result: StateAbstractDomain<IntervalDomain> | undefined;
 
-		const { applyConditionSemantics: intervalPositiveSemantics, applyNegatedConditionSemantics: intervalNegativeSemantics } = getIntervalConditionSemantics<StateAbstractDomain<IntervalDomain>>();
+		const { applyConditionSemantics: intervalPositiveSemantics, applyNegatedConditionSemantics: intervalNegativeSemantics } = getIntervalConditionSemantics<StateAbstractDomain<IntervalDomain>, this>();
 
 		if(trueBranch) {
 			result = intervalPositiveSemantics(
 				conditionNodeId,
 				state,
-				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),
-				(node: NodeId, state?: StateAbstractDomain<IntervalDomain>) => this.getAbstractValue(node, state),
-				(node: NodeId) => this.getVariableOrigins(node),
+				this,
 				this.config.dfg);
 		} else {
 			result = intervalNegativeSemantics(
 				conditionNodeId,
 				state,
-				(state: StateAbstractDomain<IntervalDomain>) => (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval),
-				(node: NodeId, state?: StateAbstractDomain<IntervalDomain>) => this.getAbstractValue(node, state),
-				(node: NodeId) => this.getVariableOrigins(node),
+				this,
 				this.config.dfg);
 		}
 

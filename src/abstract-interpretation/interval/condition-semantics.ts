@@ -7,28 +7,31 @@ import { Ternary } from '../../util/logic';
 import { FloatingPointComparison } from '../../util/floating-point';
 import { getMin } from '../../util/numbers';
 import type { AnyStateDomain } from '../domains/state-domain-like';
-import type {
-	ConditionSemanticsMapperInfo,
-	GetValue,
-	GetVariableOrigins,
-	SetValue,
-	UnaryConditionSemantics
-} from '../absint-condition-semantics';
+import type { ConditionSemanticsMapperInfo, UnaryConditionSemantics } from '../absint-condition-semantics';
 import {
 	binaryConditionSemanticsGuard,
 	createConditionApplier,
 	unaryConditionSemanticsGuard,
 	unaryIdentityConditionSemantics
 } from '../absint-condition-semantics';
+import type { AbstractInterpretationVisitor } from '../absint-visitor';
+
+
+export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
+	setInterval(state: StateDomain): (node: NodeId, value: IntervalDomain | undefined) => void;
+	getInterval(node: NodeId, state?: StateDomain): IntervalDomain | undefined;
+}
+
+type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
 
 /**
  *
  */
-export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<IntervalDomain | undefined, StateDomain>, applyNegatedConditionSemantics: UnaryConditionSemantics<IntervalDomain | undefined, StateDomain> } {
-	return createConditionApplier<IntervalDomain | undefined, StateDomain>(getIntervalSemanticsMapper<StateDomain>(), onUnknownPositiveFunctionCall, onUnknownNegativeFunctionCall);
+export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
+	return createConditionApplier<StateDomain, Visitor>(getIntervalSemanticsMapper<StateDomain, Visitor>(), onUnknownPositiveFunctionCall, onUnknownNegativeFunctionCall);
 }
 
-function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): ConditionSemanticsMapperInfo<IntervalDomain | undefined, StateDomain>[] {
+function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): ConditionSemanticsMapperInfo<StateDomain, Visitor>[] {
 	return [
 		[Identifier.make('=='), binaryConditionSemanticsGuard(intervalEqualsOp), binaryConditionSemanticsGuard(intervalNotEqualsOp)],
 		[Identifier.make('!='), binaryConditionSemanticsGuard(intervalNotEqualsOp), binaryConditionSemanticsGuard(intervalEqualsOp)],
@@ -37,10 +40,10 @@ function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstra
 		[Identifier.make('<'), binaryConditionSemanticsGuard(intervalLessOp), binaryConditionSemanticsGuard(intervalGreaterEqualOp)],
 		[Identifier.make('<='), binaryConditionSemanticsGuard(intervalLessEqualOp), binaryConditionSemanticsGuard(intervalGreaterOp)],
 		[Identifier.make('is.na'), unaryConditionSemanticsGuard(intervalIsNaFn), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
-	] as const satisfies ConditionSemanticsMapperInfo<IntervalDomain | undefined, StateDomain>[];
+	] as const satisfies ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
 }
 
-function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(argNodeId: NodeId | undefined, state: StateDomain, _setValue: SetValue<IntervalDomain | undefined, StateDomain>, getValue: GetValue<IntervalDomain | undefined, StateDomain>) {
+function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
 	if(isUndefined(argNodeId)) {
 		return state;
 	}
@@ -48,7 +51,7 @@ function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 	// If the argument is not a known condition function call, we need to check if it is an expression.
 	// As the visitor has visited these nodes before, getAbstractValue will resolve to an interval if it is an expression.
 
-	const argState = getValue(argNodeId);
+	const argState = visitor.getInterval(argNodeId);
 
 	// As the handling for top (indicating either expression returning top or absence of expression) is the same for
 	// evaluating an expression and evaluating a condition, we can just apply the semantics for evaluating an expression
@@ -60,7 +63,7 @@ function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 	return state;
 }
 
-function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(argNodeId: NodeId | undefined, state: StateDomain, _setValue: SetValue<IntervalDomain | undefined, StateDomain>, getValue: GetValue<IntervalDomain | undefined, StateDomain>) {
+function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
 	if(isUndefined(argNodeId)) {
 		return state;
 	}
@@ -68,7 +71,7 @@ function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 	// If the argument is not a known condition function call, we need to check if it is an expression.
 	// As the visitor has visited these nodes before, getAbstractValue will resolve to an interval if it is an expression.
 
-	const argState = getValue(argNodeId);
+	const argState = visitor.getInterval(argNodeId);
 
 	// As the handling for top (indicating either expression returning top or absence of expression) is the same for
 	// evaluating a negated expression and evaluating a negated condition, we can just apply the semantics for
@@ -82,9 +85,9 @@ function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 
 // Semantics
 
-function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>, getVariableOrigins: GetVariableOrigins) {
-	const leftValue = getInterval(leftNodeId, state);
-	const rightValue = getInterval(rightNodeId, state);
+function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor) {
+	const leftValue = visitor.getInterval(leftNodeId, state);
+	const rightValue = visitor.getInterval(rightNodeId, state);
 
 	let meet: IntervalDomain | undefined = undefined;
 	// TOP = undefined is the neutral element in the meet
@@ -100,27 +103,27 @@ function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>
 		return state.bottom();
 	}
 
-	getVariableOrigins(leftNodeId).forEach(originNodeId => {
+	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
 		if(isUndefined(meet)) {
-			set(state)(originNodeId, undefined);
+			visitor.setInterval(state)(originNodeId, undefined);
 		} else {
-			set(state)(originNodeId, meet);
+			visitor.setInterval(state)(originNodeId, meet);
 		}
 	});
-	getVariableOrigins(rightNodeId).forEach(originNodeId => {
+	visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
 		if(isUndefined(meet)) {
-			set(state)(originNodeId, undefined);
+			visitor.setInterval(state)(originNodeId, undefined);
 		} else {
-			set(state)(originNodeId, meet);
+			visitor.setInterval(state)(originNodeId, meet);
 		}
 	});
 
 	return state;
 }
 
-function intervalNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, _set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>): StateDomain {
-	const leftValue = getInterval(leftNodeId, state);
-	const rightValue = getInterval(rightNodeId, state);
+function intervalNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	const leftValue = visitor.getInterval(leftNodeId, state);
+	const rightValue = visitor.getInterval(rightNodeId, state);
 
 	if(isNotUndefined(leftValue) && leftValue.isValue() && isNotUndefined(rightValue) && rightValue.isValue()) {
 		const [a, b] = leftValue.value;
@@ -134,9 +137,9 @@ function intervalNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 	return state;
 }
 
-function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>, getVariableOrigins: GetVariableOrigins) {
-	const leftValue = getInterval(leftNodeId, state);
-	const rightValue = getInterval(rightNodeId, state);
+function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor) {
+	const leftValue = visitor.getInterval(leftNodeId, state);
+	const rightValue = visitor.getInterval(rightNodeId, state);
 
 	if(isUndefined(leftValue) || isUndefined(rightValue)) {
 		return state;
@@ -149,12 +152,12 @@ function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>
 		if(c < b || FloatingPointComparison.isNearlyLess(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxLowerBound = a < c ? c : a;
-			getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				set(state)(originNodeId, leftValue.create([maxLowerBound, b], smallestSignificantFigures));
+			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
+				visitor.setInterval(state)(originNodeId, leftValue.create([maxLowerBound, b], smallestSignificantFigures));
 			});
 			const minUpperBound = b < d ? b : d;
-			getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				set(state)(originNodeId, rightValue.create([c, minUpperBound], smallestSignificantFigures));
+			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
+				visitor.setInterval(state)(originNodeId, rightValue.create([c, minUpperBound], smallestSignificantFigures));
 			});
 			return state;
 		}
@@ -163,13 +166,13 @@ function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>
 	return state.bottom();
 }
 
-function intervalLessOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>, getVariableOrigins: GetVariableOrigins) {
-	return intervalGreaterOp(rightNodeId, leftNodeId, state, set, getInterval, getVariableOrigins);
+function intervalLessOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor) {
+	return intervalGreaterOp(rightNodeId, leftNodeId, state, visitor);
 }
 
-function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
-	const leftValue = getInterval(leftNodeId, state);
-	const rightValue = getInterval(rightNodeId, state);
+function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	const leftValue = visitor.getInterval(leftNodeId, state);
+	const rightValue = visitor.getInterval(rightNodeId, state);
 
 	if(isUndefined(leftValue) || isUndefined(rightValue)) {
 		return state;
@@ -182,12 +185,12 @@ function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 		if(c <= b || FloatingPointComparison.isNearlyLessOrEqual(c, b, leftValue.significantFigures) != Ternary.Never) {
 			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxAC = a < c ? c : a;
-			getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				set(state)(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
+			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
+				visitor.setInterval(state)(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
 			});
 			const minBD = b < d ? b : d;
-			getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				set(state)(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
+			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
+				visitor.setInterval(state)(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
 			});
 			return state;
 		}
@@ -196,12 +199,12 @@ function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 	return state.bottom();
 }
 
-function intervalLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>, getVariableOrigins: GetVariableOrigins): StateDomain {
-	return intervalGreaterEqualOp(rightNodeId, leftNodeId, state, set, getInterval, getVariableOrigins);
+function intervalLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	return intervalGreaterEqualOp(rightNodeId, leftNodeId, state, visitor);
 }
 
-function intervalIsNaFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(argNodeId: NodeId, state: StateDomain, _set: SetValue<IntervalDomain | undefined, StateDomain>, getInterval: GetValue<IntervalDomain | undefined, StateDomain>) {
-	const argValue = getInterval(argNodeId, state);
+function intervalIsNaFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	const argValue = visitor.getInterval(argNodeId, state);
 
 	if(isUndefined(argValue)) {
 		return state;

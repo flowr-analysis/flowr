@@ -13,12 +13,8 @@ import { applyPentagonExpressionSemantics } from './expression-semantics';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IntervalValueDomainAccess } from '../interval/condition-semantics';
 import { getIntervalConditionSemantics } from '../interval/condition-semantics';
-import type {
-	UpperBoundsDomainAccess
-} from './upper-bounds/upper-bounds-condition-semantics';
-import {
-	getUpperBoundsConditionSemantics
-} from './upper-bounds/upper-bounds-condition-semantics';
+import type { UpperBoundsDomainAccess } from './upper-bounds/upper-bounds-condition-semantics';
+import { getUpperBoundsConditionSemantics } from './upper-bounds/upper-bounds-condition-semantics';
 
 export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> implements IntervalValueDomainAccess<ClosedPentagonDomain>, UpperBoundsDomainAccess<ClosedPentagonDomain> {
 	constructor(config: AbsintVisitorConfiguration) {
@@ -33,12 +29,10 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		super.onAssignmentCall({ call, target, source });
 
 		if(isNotUndefined(source) && isNotUndefined(target)) {
-			const sourceOrigins = this.getVariableOrigins(source);
-			if(sourceOrigins.length > 1) {
+			const sourceOrigin = this.getUniqueOrigin(source);
+			if(isUndefined(sourceOrigin)) {
 				return;
 			}
-
-			const sourceOrigin = sourceOrigins.length === 1 ? sourceOrigins[0] : source;
 
 			const sourcePentagon = this.currentState.get(sourceOrigin);
 			const targetPentagon = this.currentState.get(target);
@@ -134,6 +128,17 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 
 	getUpperBounds(node: NodeId, state?: ClosedPentagonDomain): UpperBoundsValueDomain {
 		return this.getAbstractValue(node, state)?.value.upperBounds ?? UpperBoundsValueDomain.top();
+	}
+
+	getUniqueOrigin(node: NodeId): NodeId | undefined {
+		const origins = this.getVariableOrigins(node);
+		if(origins.length === 0) {
+			return node;
+		}
+		if(origins.length === 1) {
+			return origins[0];
+		}
+		return undefined;
 	}
 
 	protected override applyConditionSemantics(state: ClosedPentagonDomain, conditionNodeId: NodeId, trueBranch: boolean): ClosedPentagonDomain {

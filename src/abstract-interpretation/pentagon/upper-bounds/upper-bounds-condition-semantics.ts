@@ -21,6 +21,7 @@ import type { AbstractInterpretationVisitor } from '../../absint-visitor';
 export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
 	setUpperBounds(state: StateDomain): (node: NodeId, value: UpperBoundsValueDomain) => void;
 	getUpperBounds(node: NodeId, state?: StateDomain): UpperBoundsValueDomain;
+	getUniqueOrigin(node: NodeId): NodeId | undefined;
 }
 
 type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & UpperBoundsDomainAccess<StateDomain>;
@@ -53,29 +54,23 @@ function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 
 	// We need to include the origin ids instead of the reference ids if the variable has an origin.
 	// We can only include the origin if there is only one origin, as we only then know that this is the only possible origin.
-	const originNodeIds = new Set<NodeId>();
+	const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
+	const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
 
-	const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0] : leftNodeId;
-	const rightOrigins = visitor.getVariableOrigins(rightNodeId);
-	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0] : rightNodeId;
-	if(leftOrigins.length <= 1) {
-		originNodeIds.add(leftOrigin);
-	}
-	if(rightOrigins.length <= 1) {
-		originNodeIds.add(rightOrigin);
-	}
-
-	const resultingUpperBounds = AbstractDomain.meetAll([leftValue, rightValue, new UpperBoundsValueDomain(originNodeIds)].filter(isNotUndefined));
+	const resultingUpperBounds = AbstractDomain.meetAll([
+		leftValue,
+		rightValue,
+		new UpperBoundsValueDomain(new Set([leftOrigin, rightOrigin].filter(isNotUndefined)))
+	].filter(isNotUndefined));
 
 	if(resultingUpperBounds.isBottom()) {
 		return state.bottom();
 	}
 
-	if(leftOrigins.length <= 1) {
+	if(isNotUndefined(leftOrigin)) {
 		visitor.setUpperBounds(state)(leftOrigin, resultingUpperBounds);
 	}
-	if(rightOrigins.length <= 1) {
+	if(isNotUndefined(rightOrigin)) {
 		visitor.setUpperBounds(state)(rightOrigin, resultingUpperBounds);
 	}
 
@@ -95,11 +90,9 @@ function upperBoundsNotEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 
 	// We can only argue if both sides have exactly one origin (or are the origin).
 	// In that case, if both sides include each others origins, they must be equal and therefore cannot be inequal.
-	const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0] : leftNodeId;
-	const rightOrigins = visitor.getVariableOrigins(rightNodeId);
-	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0] : rightNodeId;
-	if(leftOrigins.length <= 1 && rightOrigins.length <= 1 && leftValue.has(rightOrigin) && rightValue.has(leftOrigin)) {
+	const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
+	const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
+	if(isNotUndefined(leftOrigin) && isNotUndefined(rightOrigin )&& leftValue.has(rightOrigin) && rightValue.has(leftOrigin)) {
 		return state.bottom();
 	}
 
@@ -110,18 +103,20 @@ function upperBoundsGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstrac
 	const leftValue = visitor.getUpperBounds(leftNodeId, state);
 	const rightValue = visitor.getUpperBounds(rightNodeId, state);
 
-	const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0] : leftNodeId;
-	const rightOrigins = visitor.getVariableOrigins(rightNodeId);
-	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0] : rightNodeId;
+	const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
+	const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
 
 	// We want to upper bounds of the right side, which we can only do if there is exactly on origin that we can update.
-	if(rightOrigins.length > 1) {
+	if(isUndefined(rightOrigin)) {
 		return state;
 	}
 
 	// We can only include the left side as upper bounds, if the left side has exactly one origin that we can include.
-	const resultingUpperBounds = AbstractDomain.meetAll([leftValue, rightValue, new UpperBoundsValueDomain(new Set(leftOrigins.length <= 1 ? [leftOrigin] : []))].filter(isNotUndefined));
+	const resultingUpperBounds = AbstractDomain.meetAll([
+		leftValue,
+		rightValue,
+		new UpperBoundsValueDomain(new Set([leftOrigin].filter(isNotUndefined)))
+	].filter(isNotUndefined));
 
 	// Update the upper-bounds of the right side
 	if(resultingUpperBounds.isBottom()) {

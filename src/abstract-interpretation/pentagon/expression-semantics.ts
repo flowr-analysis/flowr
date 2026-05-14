@@ -148,12 +148,10 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 		const [a, b] = leftValue.value.interval.value;
 		const [c, d] = rightValue.value.interval.value;
 
-		const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-		const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
-		const rightOrigins = visitor.getVariableOrigins(rightNodeId);
-		const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0]: rightNodeId;
+		const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
+		const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
 
-		if(rightOrigins.length <= 1) {
+		if(isNotUndefined(rightOrigin)) {
 			if(a >= 0) {
 				const rightPentagon = currentState.get(rightOrigin);
 				if(isNotUndefined(rightPentagon)) {
@@ -166,7 +164,7 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 				resultPentagon.value.upperBounds.add(rightOrigin);
 			}
 		}
-		if(leftOrigins.length <= 1) {
+		if(isNotUndefined(leftOrigin)) {
 			if(c >= 0) {
 				const leftPentagon = currentState.get(leftOrigin);
 				leftPentagon?.value.upperBounds.add(target);
@@ -197,17 +195,15 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 		targetPentagon.value.interval = interval;
 
 		const [a, b] = argValue.value.interval.value;
-		const argOrigins = visitor.getVariableOrigins(argNodeId);
-		const argOrigin = argOrigins.length === 1 ? argOrigins[0] : argNodeId;
-		if(a >= 0) {
-			// target will be smaller than arg => arg is an upper bound
-			if(argOrigins.length <= 1) {
+		const argOrigin = visitor.getUniqueOrigin(argNodeId);
+		if(isNotUndefined(argOrigin)) {
+			if(a >= 0) {
+				// target will be smaller than arg => arg is an upper bound
 				targetPentagon.value.upperBounds.add(argOrigin);
 			}
-		}
-		if(b <= 0) {
-			// target will be greater than arg => target is upper bound for arg
-			if(argOrigins.length <= 1) {
+
+			if(b <= 0) {
+				// target will be greater than arg => target is upper bound for arg
 				const argPentagon = currentState.get(argOrigin);
 				argPentagon?.value.upperBounds.add(target);
 				if(isNotUndefined(argPentagon)) {
@@ -224,10 +220,8 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 	const [leftNodeId, leftValue] = left;
 	const [rightNodeId, rightValue] = right;
 
-	const leftOrigins = visitor.getVariableOrigins(leftNodeId);
-	const leftOrigin = leftOrigins.length === 1 ? leftOrigins[0]: leftNodeId;
-	const rightOrigins = visitor.getVariableOrigins(rightNodeId);
-	const rightOrigin = rightOrigins.length === 1 ? rightOrigins[0]: rightNodeId;
+	const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
+	const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
 
 	const smallestSignificantFigures = getMin([leftValue?.value.interval.significantFigures, rightValue?.value.interval.significantFigures].filter(isNotUndefined));
 
@@ -243,11 +237,11 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 		if(isUndefined(interval)) {
 			return undefined;
 		}
-		if(rightValue.value.upperBounds.has(leftOrigin)) {
+		if(rightValue.value.upperBounds.has(leftOrigin ?? leftNodeId)) {
 			// right <= left: result must be positive
 			interval = interval.meet(leftValue.value.interval.create([0, Infinity]));
 		}
-		if(leftValue.value.upperBounds.has(rightOrigin)) {
+		if(leftValue.value.upperBounds.has(rightOrigin ?? rightNodeId)) {
 			// left <= right: result must be negative
 			interval = interval.meet(leftValue.value.interval.create([-Infinity, 0]));
 		}
@@ -256,7 +250,7 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 		// Upper Bounds Part
 		const [c, d] = rightValue.value.interval.value;
 
-		if(leftOrigins.length <= 1) {
+		if(isNotUndefined(leftOrigin)) {
 			if(c >= 0) {
 				// Always subtract positive number => result is always smaller than left and therefore inherits its upper bounds
 				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);

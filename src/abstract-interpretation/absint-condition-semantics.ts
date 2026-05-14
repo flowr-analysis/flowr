@@ -38,7 +38,9 @@ export type ConditionSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyA
 	[identifier: Identifier, semantics: NAryConditionSemantics<StateDomain, Visitor>, negatedSemantics: NAryConditionSemantics<StateDomain, Visitor>];
 
 /**
- *
+ * Returns a callback, that extracts exactly one argument and calls the provided unary condition semantics function.
+ * If more or less than one argument is provided, no semantics are applied and a warning is logged.
+ * @param unaryConditionSemantics - The condition semantics to call.
  */
 export function unaryConditionSemanticsGuard<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>>(
 	unaryConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>
@@ -53,7 +55,9 @@ export function unaryConditionSemanticsGuard<StateDomain extends AnyStateDomain<
 }
 
 /**
- *
+ * Returns a callback, that extracts exactly two arguments and calls the provided unary condition semantics function.
+ * If more or less than two arguments are provided, no semantics are applies and a warning is logged.
+ * @param binaryConditionSemantics - The condition semantics to call.
  */
 export function binaryConditionSemanticsGuard<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>>(
 	binaryConditionSemantics: BinaryConditionSemantics<StateDomain, Visitor>
@@ -68,21 +72,26 @@ export function binaryConditionSemanticsGuard<StateDomain extends AnyStateDomain
 }
 
 /**
- *
+ * Returns the unmodified state.
  */
 export function unaryIdentityConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(_argNodeId: NodeId, state: StateDomain): StateDomain {
 	return state;
 }
 
 /**
- *
+ * Returns the unmodified state.
  */
 export function binaryIdentityConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(_leftNodeId: NodeId, _rightNodeId: NodeId, state: StateDomain): StateDomain {
 	return state;
 }
 
 /**
- *
+ * Creates and returns the applyConditionSemantics and applyNegatedConditionSemantics functions for a given state domain and visitor.
+ * The returned functions should be called by the {@link AbstractInterpretationVisitor.applyConditionSemantics} function of the state domain specific visitor.
+ * Default semantics for "!", "(", "&&", and "||" are already provided, but can be overridden by providing custom semantics.
+ * @param domainSpecificMapper - List of custom semantics. For each identifier, the semantics and its negated semantics have to be provided.
+ * @param onUnknownPositiveFunctionCall - This function is called by applyConditionSemantics if a function call vertex is encountered for which no semantics are provided, or the vertex is no function call (e.g. an expression).
+ * @param onUnknownNegativeFunctionCall - This function is called by applyNegatedConditionSemantics if a function call vertex is encountered for which no semantics are provided, or the vertex is no function call (e.g. an expression).
  */
 export function createConditionApplier<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>>(
 	domainSpecificMapper: ConditionSemanticsMapperInfo<StateDomain, Visitor>[],

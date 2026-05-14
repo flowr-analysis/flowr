@@ -16,7 +16,10 @@ import {
 } from '../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../absint-visitor';
 
-
+/**
+ * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies interval condition
+ * semantics.
+ */
 export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
 	setInterval(state: StateDomain): (node: NodeId, value: IntervalDomain | undefined) => void;
 	getInterval(node: NodeId, state?: StateDomain): IntervalDomain | undefined;
@@ -25,7 +28,8 @@ export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<An
 type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
 
 /**
- *
+ * Wrapper for the interval condition semantics that adds all interval specific condition semantics and returns the
+ * applyConditionSemantics and applyNegatedConditionSemantics functions.
  */
 export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
 	return createConditionApplier<StateDomain, Visitor>(getIntervalSemanticsMapper<StateDomain, Visitor>(), onUnknownPositiveFunctionCall, onUnknownNegativeFunctionCall);

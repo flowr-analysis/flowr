@@ -14,6 +14,10 @@ import {
 } from '../../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../../absint-visitor';
 
+/**
+ * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies upper bounds
+ * condition semantics.
+ */
 export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
 	setUpperBounds(state: StateDomain): (node: NodeId, value: UpperBoundsValueDomain) => void;
 	getUpperBounds(node: NodeId, state?: StateDomain): UpperBoundsValueDomain;
@@ -22,7 +26,8 @@ export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyA
 type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & UpperBoundsDomainAccess<StateDomain>;
 
 /**
- *
+ * Wrapper for the upper bounds condition semantics that adds all upper bounds specific condition semantics and returns
+ * the applyConditionSemantics and applyNegatedConditionSemantics functions.
  */
 export function getUpperBoundsConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends UpperBoundsConditionSemanticsVisitor<StateDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
 	return createConditionApplier<StateDomain, Visitor>(getUpperBoundsSemanticsMapper<StateDomain, Visitor>());

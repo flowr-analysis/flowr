@@ -37,9 +37,7 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 
 	public override set(node: NodeId, value: ClosedPentagonValueDomain) {
 		if(this.value !== Bottom) {
-			const valueWithoutNodeItself = value.create(value.value);
-			valueWithoutNodeItself.value.upperBounds.remove(node);
-			super.set(node, valueWithoutNodeItself);
+			super.set(node, value);
 			// Directly apply the reduction to assure that the state is always reduced.
 			(this._value as Writable<StateDomainLift<ClosedPentagonValueDomain>>) = ClosedPentagonDomain.reduce(this.value);
 		}

@@ -73,6 +73,20 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 	}
 }
 
+/**
+ * Adds the provided target as upper bound to the pentagon of node if the pentagon exists in the provided state.
+ * @param target - Node to add as upper bound.
+ * @param node - Node to update upper bounds for.
+ * @param state - State that contains node pentagon.
+ */
+function addTargetAsUpperBoundToNodeInState(target: NodeId, node: NodeId, state: ClosedPentagonDomain) {
+	const pentagon = state.get(node);
+	if(isNotUndefined(pentagon)) {
+		pentagon.value.upperBounds.add(target);
+		state.set(node, pentagon);
+	}
+}
+
 function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
 	return (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
 		// Usage as unary operator
@@ -153,11 +167,7 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 
 		if(isNotUndefined(rightOrigin)) {
 			if(a >= 0) {
-				const rightPentagon = currentState.get(rightOrigin);
-				if(isNotUndefined(rightPentagon)) {
-					rightPentagon.value.upperBounds.add(target);
-					currentState.set(rightOrigin, rightPentagon);
-				}
+				addTargetAsUpperBoundToNodeInState(target, rightOrigin, currentState);
 			}
 			if(b <= 0) {
 				resultPentagon.value.upperBounds = rightValue.value.upperBounds.create(rightValue.value.upperBounds.value);
@@ -166,11 +176,7 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 		}
 		if(isNotUndefined(leftOrigin)) {
 			if(c >= 0) {
-				const leftPentagon = currentState.get(leftOrigin);
-				leftPentagon?.value.upperBounds.add(target);
-				if(isNotUndefined(leftPentagon)) {
-					currentState.set(leftOrigin, leftPentagon);
-				}
+				addTargetAsUpperBoundToNodeInState(target, leftOrigin, currentState);
 			}
 			if(d <= 0) {
 				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
@@ -204,11 +210,7 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 
 			if(b <= 0) {
 				// target will be greater than arg => target is upper bound for arg
-				const argPentagon = currentState.get(argOrigin);
-				argPentagon?.value.upperBounds.add(target);
-				if(isNotUndefined(argPentagon)) {
-					currentState.set(argOrigin, argPentagon);
-				}
+				addTargetAsUpperBoundToNodeInState(target, argOrigin, currentState);
 			}
 		}
 
@@ -258,11 +260,7 @@ function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDo
 			}
 			if(d <= 0) {
 				// Always subtract negative number => result is always bigger than left and therefore left receives target as upper bound
-				const leftPentagon = currentState.get(leftOrigin);
-				leftPentagon?.value.upperBounds.add(target);
-				if(isNotUndefined(leftPentagon)) {
-					currentState.set(leftOrigin, leftPentagon);
-				}
+				addTargetAsUpperBoundToNodeInState(target, leftOrigin, currentState);
 			}
 		}
 

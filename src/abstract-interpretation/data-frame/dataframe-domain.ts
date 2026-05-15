@@ -56,10 +56,18 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 
 	protected reduce(value: AbstractDataFrameShape): AbstractDataFrameShape {
 		if(value.colnames.isValue() && value.cols.isValue()) {
-			if(value.colnames.value.min.size >= value.cols.value[1]) {
+			const minColNames = value.colnames.value.min.size;
+			const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
+
+			if(minColNames >= value.cols.value[1]) {
 				value = {
 					...value,
-					colnames: value.colnames.meet({ min: new Set(), range: value.colnames.value.min })
+					colnames: value.colnames.create({ min: value.colnames.value.min, range: new Set() })
+				};
+			} else if(value.colnames.isFinite() && value.colnames.value.range.size !== 0 && maxColNames <= value.cols.value[0]) {
+				value = {
+					...value,
+					colnames: value.colnames.create({ min: value.colnames.upper(), range: new Set() })
 				};
 			}
 		}
@@ -67,10 +75,10 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 			const minColNames = value.colnames.value.min.size;
 			const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
 
-			if(minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) {
+			if((minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) && Math.max(minColNames, value.cols.value[0]) <= Math.min(maxColNames, value.cols.value[1])) {
 				value = {
 					...value,
-					cols: value.cols.meet([minColNames, maxColNames])
+					cols: value.cols.create([Math.max(minColNames, value.cols.value[0]), Math.min(maxColNames, value.cols.value[1])])
 				};
 			}
 		}

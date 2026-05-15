@@ -1,16 +1,10 @@
 import type { Writable } from 'ts-essentials';
 import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
-import { Top } from './lattice';
 import { Record } from '../../util/record';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	[key in string]?: Domain
-};
-
-/** The type of the concrete product of an abstract product mapping each property to a concrete value in the respective concrete domain */
-export type ConcreteProductOf<Product extends AbstractProduct> = {
-	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
 
 /**
@@ -20,25 +14,28 @@ export type ConcreteProductOf<Product extends AbstractProduct> = {
  * @template Product - Type of the abstract product of the product domain mapping (optional) property names to abstract domains
  */
 export abstract class PartialProductDomain<Product extends AbstractProduct>
-	extends AbstractDomain<ConcreteProductOf<Product>, Product, Product, Product> {
+	extends AbstractDomain<Product, Product, Product> {
 
 	public readonly domain: Required<Product>;
 
-	constructor(value: Product, domain: Required<Product>) {
+	constructor(value: Product, domain: Required<Product>, reduce = true) {
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
-		(this._value as Writable<Product>) = this.reduce(this.value);
 		this.domain = domain;
+
+		if(reduce) {
+			(this._value as Writable<Product>) = this.reduce(this.value);
+		}
 	}
 
-	public abstract create(value: Product): this;
+	public abstract create(value: Product, reduce?: boolean): this;
 
 	public bottom(): this {
-		const result = this.create(this.domain);
+		const result = {} as Product;
 
-		for(const key in result.value) {
-			result.value[key] = this.domain[key]?.bottom() as typeof result.value[typeof key];
+		for(const key in this.domain) {
+			result[key] = this.domain[key]?.bottom() as typeof result[typeof key];
 		}
-		return result;
+		return this.create(result);
 	}
 
 	public top(): this {
@@ -50,7 +47,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 			return true;
 		}
 		for(const key in this.value) {
-			if(this.value[key] == other.value[key]) {
+			if(this.value[key] === other.value[key]) {
 				continue;
 			} else if(this.value[key] === undefined || other.value[key] === undefined || !this.value[key].equals(other.value[key])) {
 				return false;
@@ -125,46 +122,6 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public concretize(limit: number): ReadonlySet<ConcreteProductOf<Product>> | typeof Top {
-		let result = new Set([{} as ConcreteProductOf<Product>]);
-
-		for(const key in this.value) {
-			if(this.value[key] === undefined) {
-				continue;
-			}
-			const concrete = this.value[key].concretize(limit);
-
-			if(concrete === Top) {
-				return Top;
-			}
-			const newResult = new Set<ConcreteProductOf<Product>>();
-
-			for(const value of concrete) {
-				for(const entry of result) {
-					if(newResult.size >= limit) {
-						return Top;
-					}
-					newResult.add({ ...entry, [key]: value });
-				}
-			}
-			result = newResult;
-		}
-		return result;
-	}
-
-	public abstract(concrete: ReadonlySet<ConcreteProductOf<Product>> | typeof Top): this {
-		if(concrete === Top) {
-			return this.top();
-		}
-		const result = {} as Product;
-
-		for(const key in this.domain) {
-			const concreteValues = new Set(concrete.values().map(value => value[key]));
-			result[key] = this.domain[key]?.abstract(concreteValues) as typeof result[typeof key];
-		}
-		return this.create(result);
-	}
-
 	public toJson(): unknown {
 		return Record.mapProperties(this.value, entry => entry?.toJson());
 	}
@@ -182,7 +139,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	public isBottom(): boolean;
 	public isBottom(): this is this;
 	public isBottom(): this is this {
-		return Record.values(this.value).every(value => value.isBottom());
+		return Record.values(this.value).some(value => value.isBottom());
 	}
 
 	public isValue(): boolean;

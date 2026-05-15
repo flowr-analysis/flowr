@@ -6,14 +6,14 @@ import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Bottom element of the bounded set domain as empty set */
-export const BoundedSetBottom: ReadonlySet<never> = new Set();
+export const SetBottom: ReadonlySet<never> = new Set();
 
 /** The type of the actual values of the bounded set domain as set */
 type BoundedSetValue<T> = ReadonlySet<T>;
 /** The type of the Top element of the bounded set domain as {@link Top} symbol */
 type BoundedSetTop = typeof Top;
 /** The type of the Bottom element of the bounded set domain as empty set */
-type BoundedSetBottom = typeof BoundedSetBottom;
+type BoundedSetBottom = typeof SetBottom;
 /** The type of the abstract values of the bounded set domain that are Top, Bottom, or actual values */
 type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
 
@@ -24,11 +24,11 @@ type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLift<T>>
-	extends AbstractDomain<T, BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value>
+	extends AbstractDomain<BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value>
 	implements SatisfiableDomain<T> {
 
-	public readonly limit:    number;
-	private readonly setType: typeof Set<T>;
+	public readonly limit:      number;
+	protected readonly setType: typeof Set<T>;
 
 	/**
 	 * @param limit   - A limit for the maximum number of elements to store in the set
@@ -48,31 +48,32 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		this.setType = setType;
 	}
 
-	public create(value: BoundedSetLift<T> | T[]): this;
-	public create(value: BoundedSetLift<T> | T[]): BoundedSetDomain<T> {
-		return new BoundedSetDomain(value, this.limit, this.setType);
+	public create(value: BoundedSetLift<T> | T[]): this {
+		return new BoundedSetDomain(value, this.limit, this.setType) as this;
+	}
+
+	public from(...values: T[]): this {
+		return this.create(values);
 	}
 
 	public static top<T>(limit?: number, setType?: typeof Set<T>): BoundedSetDomain<T, BoundedSetTop> {
-		return new BoundedSetDomain(Top, limit, setType);
+		return new this(Top, limit, setType);
 	}
 
 	public static bottom<T>(limit?: number, setType?: typeof Set<T>): BoundedSetDomain<T, BoundedSetBottom> {
-		return new BoundedSetDomain(BoundedSetBottom, limit, setType);
+		return new this(SetBottom, limit, setType);
 	}
 
-	public static abstract<T>(concrete: ReadonlySet<T> | typeof Top, limit?: number, setType?: typeof Set<T>): BoundedSetDomain<T> {
-		return new BoundedSetDomain(concrete, limit, setType);
+	public static from<T>(values: T | T[], limit?: number, setType?: typeof Set<T>): BoundedSetDomain<T> {
+		return new this(Array.isArray(values) ? values : [values], limit, setType);
 	}
 
-	public top(): this & BoundedSetDomain<T, BoundedSetTop>;
-	public top(): BoundedSetDomain<T, BoundedSetTop> {
-		return BoundedSetDomain.top(this.limit, this.setType);
+	public top(): this & BoundedSetDomain<T, BoundedSetTop> {
+		return this.create(Top) as this & BoundedSetDomain<T, BoundedSetTop>;
 	}
 
-	public bottom(): this & BoundedSetDomain<T, BoundedSetBottom>;
-	public bottom(): BoundedSetDomain<T, BoundedSetBottom> {
-		return BoundedSetDomain.bottom(this.limit, this.setType);
+	public bottom(): this & BoundedSetDomain<T, BoundedSetBottom> {
+		return this.create(SetBottom) as this & BoundedSetDomain<T, BoundedSetBottom>;
 	}
 
 	public equals(other: this): boolean {
@@ -86,7 +87,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 	public join(other: BoundedSetLift<T> | T[]): this;
 	public join(other: this): this;
 	public join(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Top || otherValue === Top) {
 			return this.top();
@@ -98,7 +99,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 	public meet(other: BoundedSetLift<T> | T[]): this;
 	public meet(other: this): this;
 	public meet(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Top) {
 			return this.create(otherValue);
@@ -113,7 +114,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
 	 */
 	public subtract(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = other instanceof BoundedSetDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Top) {
 			return this.top();
@@ -132,15 +133,6 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
 	}
 
-	public concretize(limit: number): ReadonlySet<T> |  typeof Top {
-		return this.value === Top || this.value.size > limit ? Top : this.value;
-	}
-
-	public abstract(concrete: ReadonlySet<T> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<T> | typeof Top): BoundedSetDomain<T> {
-		return BoundedSetDomain.abstract(concrete, this.limit, this.setType);
-	}
-
 	public satisfies(value: T): Ternary {
 		if(this.isValue() && this.value.has(value)) {
 			return this.value.size === 1 ? Ternary.Always : Ternary.Maybe;
@@ -152,7 +144,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 
 	public toJson(): unknown {
 		if(this.value === Top) {
-			return this.value.description;
+			return Top.description;
 		}
 		return this.value.values().toArray();
 	}
@@ -176,5 +168,14 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 
 	public isValue(): this is BoundedSetDomain<T, BoundedSetValue<T>> {
 		return this.value !== Top;
+	}
+
+	private toValue(value: this | BoundedSetLift<T> | T[]): BoundedSetLift<T> {
+		if(value instanceof BoundedSetDomain) {
+			return value.value;
+		} else if(Array.isArray(value)) {
+			return new this.setType(value);
+		}
+		return value;
 	}
 }

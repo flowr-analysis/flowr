@@ -13,9 +13,8 @@ export type AbstractDataFrameShape = {
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
-	public create(value: AbstractDataFrameShape): this;
-	public create(value: AbstractDataFrameShape): DataFrameDomain {
-		return new DataFrameDomain(value);
+	public create(value: AbstractDataFrameShape): this {
+		return new DataFrameDomain(value) as this;
 	}
 
 	/**

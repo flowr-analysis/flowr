@@ -23,12 +23,12 @@ type IntervalLift = IntervalValue | IntervalBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
-	extends AbstractDomain<number, IntervalValue, IntervalTop, IntervalBottom, Value>
+	extends AbstractDomain<IntervalValue, IntervalTop, IntervalBottom, Value>
 	implements SatisfiableDomain<number> {
 
 	constructor(value: Value) {
 		if(Array.isArray(value)) {
-			if(value.some(isNaN) || value[0] > value[1] || value[0] === +Infinity || value[1] === -Infinity) {
+			if(value.some(Number.isNaN) || value[0] > value[1] || value[0] === +Infinity || value[1] === -Infinity) {
 				super(Bottom as Value);
 			} else {
 				super([value[0], value[1]] as const as Value);
@@ -38,36 +38,38 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	public create(value: IntervalLift): this;
-	public create(value: IntervalLift): IntervalDomain {
-		return new IntervalDomain(value);
+	public create(value: IntervalLift): this {
+		return new IntervalDomain(value) as this;
+	}
+
+	public from(...values: number[]): this {
+		if(values.length === 0) {
+			return this.bottom();
+		}
+		return this.create([Math.min(...values), Math.max(...values)]);
 	}
 
 	public static top(): IntervalDomain<IntervalTop> {
-		return new IntervalDomain(IntervalTop);
+		return new this(IntervalTop);
 	}
 
 	public static bottom(): IntervalDomain<IntervalBottom> {
-		return new IntervalDomain(Bottom);
+		return new this(Bottom);
 	}
 
-	public static abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
-		if(concrete === Top) {
-			return IntervalDomain.top();
-		} else if(concrete.size === 0 || concrete.values().some(isNaN)) {
-			return IntervalDomain.bottom();
+	public static from(...values: number[]): IntervalDomain {
+		if(values.length === 0) {
+			return this.bottom();
 		}
-		return new IntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
+		return new this([Math.min(...values), Math.max(...values)]);
 	}
 
-	public top(): this & IntervalDomain<IntervalTop>;
-	public top(): IntervalDomain<IntervalTop> {
-		return IntervalDomain.top();
+	public top(): this & IntervalDomain<IntervalTop> {
+		return this.create(IntervalTop) as this & IntervalDomain<IntervalTop>;
 	}
 
-	public bottom(): this & IntervalDomain<IntervalBottom>;
-	public bottom(): IntervalDomain<IntervalBottom> {
-		return IntervalDomain.bottom();
+	public bottom(): this & IntervalDomain<IntervalBottom> {
+		return this.create(Bottom) as this & IntervalDomain<IntervalBottom>;
 	}
 
 	public equals(other: this): boolean {
@@ -127,25 +129,6 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			this.value[0] === -Infinity ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
 		]);
-	}
-
-	public concretize(limit: number): ReadonlySet<number> | typeof Top {
-		if(this.value === Bottom) {
-			return new Set();
-		} else if(!isFinite(this.value[0]) || !isFinite(this.value[1]) || this.value[1] - this.value[0] + 1 > limit) {
-			return Top;
-		}
-		const set = new Set<number>();
-
-		for(let x = this.value[0]; x <= this.value[1]; x++) {
-			set.add(x);
-		}
-		return set;
-	}
-
-	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<number> | typeof Top): IntervalDomain {
-		return IntervalDomain.abstract(concrete);
 	}
 
 	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {
@@ -267,7 +250,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	public toJson(): unknown {
 		if(this.value === Bottom) {
-			return this.value.description;
+			return Bottom.description;
 		}
 		return this.value;
 	}
@@ -276,7 +259,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return `[${isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
+		return `[${Number.isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${Number.isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
 	}
 
 	public isTop(): this is IntervalDomain<IntervalTop> {

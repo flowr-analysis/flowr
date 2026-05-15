@@ -7,31 +7,30 @@ import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 export const DEFAULT_INFERENCE_LIMIT = 50;
 
 /**
- * An abstract domain as complete lattice with a widening operator, narrowing operator, concretization function, and abstraction function.
+ * An abstract domain as complete lattice with a widening and narrowing operator.
  * All operations of value abstract domains should not modify the domain in-place but return new values using {@link create}.
- * @template Concrete - Type of an concrete element of the concrete domain for the abstract domain
- * @template Abstract - Type of an abstract element of the abstract domain representing possible elements (excludes `Top` and `Bot`)
- * @template Top      - Type of the Top element of the abstract domain representing all possible elements
- * @template Bot      - Type of the Bottom element of the abstract domain representing no possible elements
- * @template Value    - Type of the abstract elements of the abstract domain (defaults to `Abstract` or `Top` or `Bot`)
+ * @template Value - Type of an abstract element of the abstract domain representing possible elements (excludes `Top` and `Bot`)
+ * @template Top   - Type of the Top element of the abstract domain representing all possible elements
+ * @template Bot   - Type of the Bottom element of the abstract domain representing no possible elements
+ * @template Lift  - Type of the current abstract value in the abstract domain (defaults to `Value` or `Top` or `Bot`)
  */
-export abstract class AbstractDomain<Concrete, Abstract, Top, Bot, Value extends Abstract | Top | Bot = Abstract | Top | Bot>
-implements Lattice<Abstract, Top, Bot, Value> {
-	protected readonly _value: Value;
+export abstract class AbstractDomain<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot>
+implements Lattice<Value, Top, Bot, Lift> {
+	protected readonly _value: Lift;
 
-	constructor(value: Value) {
+	constructor(value: Lift) {
 		this._value = value;
 	}
 
-	public get value(): Value {
+	public get value(): Lift {
 		return this._value;
 	}
 
-	public abstract create(value: Abstract | Top | Bot): this;
+	public abstract create(value: Value | Top | Bot): this;
 
-	public abstract top(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Top>;
+	public abstract top(): this & AbstractDomain<Value, Top, Bot, Top>;
 
-	public abstract bottom(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
+	public abstract bottom(): this & AbstractDomain<Value, Top, Bot, Bot>;
 
 	public abstract equals(other: this): boolean;
 
@@ -75,26 +74,15 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	 */
 	public abstract narrow(other: this): this;
 
-	/**
-	 * Maps the current abstract value into a set of possible concrete values as concretization function of the abstract domain.
-	 * The result should be `Top` if the number of concrete values would reach the `limit` or the resulting set would have infinite many elements.
-	 */
-	public abstract concretize(limit: number): ReadonlySet<Concrete> | typeof Top;
-
-	/**
-	 * Maps a set of possible concrete values into an abstract value as abstraction function of the abstract domain (should additionally be provided as static function).
-	 */
-	public abstract abstract(concrete: ReadonlySet<Concrete> | typeof Top): this;
-
 	public abstract toJson(): unknown;
 
 	public abstract toString(): string;
 
-	public abstract isTop(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Top>;
+	public abstract isTop(): this is AbstractDomain<Value, Top, Bot, Top>;
 
-	public abstract isBottom(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
+	public abstract isBottom(): this is AbstractDomain<Value, Top, Bot, Bot>;
 
-	public abstract isValue(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Abstract>;
+	public abstract isValue(): this is AbstractDomain<Value, Top, Bot, Value>;
 
 	/**
 	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.
@@ -139,39 +127,32 @@ implements Lattice<Abstract, Top, Bot, Value> {
 /**
  * A type representing any abstract domain without additional information.
  */
-export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown, unknown>;
+export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown>;
 
 /**
  * The type of the abstract values of an abstract domain (including the Top and Bottom element).
  * @template Domain - The abstract domain to get the abstract value type for
  */
 export type AbstractValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
-
-/**
- * The type of the concrete domain of an abstract domain.
- * @template Domain - The abstract domain to get the concrete domain type for
- */
-export type ConcreteDomain<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
 
 /**
  * The type of an abstract domain holding an abstract value of the domain.
  * @template Domain - The abstract domain abstract domain value type for
  */
 export type AbstractDomainValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Value> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Value> : never;
 
 /**
  * The type an abstract domain holding the Top element (greatest element) of the domain.
  * @template Domain - The abstract domain to get the abstract domain top for
  */
 export type AbstractDomainTop<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Top> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Top> : never;
 
 /**
  * The type an abstract domain holding the Bottom element (least element) of the domain.
  * @template Domain - The abstract domain to get the abstract domain bottom for
  */
 export type AbstractDomainBottom<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Bot> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Bot> : never;

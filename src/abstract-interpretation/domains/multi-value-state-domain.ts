@@ -20,27 +20,26 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 		super(value, new MultiValueDomain(domain, domain, reductions));
 	}
 
-	public create(value: StateDomainLift<MultiValueDomain<Product>>): this;
-	public create(value: StateDomainLift<MultiValueDomain<Product>>): StateAbstractDomain<MultiValueDomain<Product>> {
-		return new MultiValueStateDomain(value, this.domain.domain, this.domain.reductions);
+	public create(value: StateDomainLift<MultiValueDomain<Product>>): this {
+		return new MultiValueStateDomain(value, this.domain.domain, this.domain.reductions) as this;
 	}
 
 	public getValue<Key extends keyof Product>(node: NodeId, property: Key): Product[Key] | undefined {
 		if(this.value === Bottom) {
 			return this.domain.value[property]?.bottom() as Product[Key];
 		}
-		return this.value.get(node)?.value[property];
+		return this.get(node)?.value[property];
 	}
 
 	public hasValue(node: NodeId, property: keyof Product): boolean {
-		return this.value !== Bottom && this.value.get(node)?.value[property] !== undefined;
+		return this.value !== Bottom && this.get(node)?.value[property] !== undefined;
 	}
 
 	public setValue<Key extends keyof Product>(node: NodeId, property: Key, value: Product[Key]): void {
 		if(this.value !== Bottom) {
 			const oldValue = this.get(node);
 			const newValue = { ...oldValue?.value ?? {}, [property]: value };
-			(this._value as Map<NodeId, MultiValueDomain<Product>>).set(node, new MultiValueDomain(newValue as Product, this.domain.domain, this.domain.reductions));
+			this.set(node, new MultiValueDomain(newValue as Product, this.domain.domain, this.domain.reductions));
 		}
 	}
 }
@@ -61,9 +60,8 @@ export class MultiValueDomain<Product extends AbstractProduct>
 		this.reductions = reductions;
 	}
 
-	public create(value: Product): this;
-	public create(value: Product): MultiValueDomain<Product> {
-		return new MultiValueDomain(value, this.domain, this.reductions);
+	public create(value: Product): this {
+		return new MultiValueDomain(value, this.domain, this.reductions) as this;
 	}
 
 	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly Reduction<Product>[] = []): MultiValueDomain<Product> {

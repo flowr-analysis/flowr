@@ -22,11 +22,11 @@ type SetUpperBoundLift<T> = SetUpperBoundValue<T> | SetUpperBoundTop | SetUpperB
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUpperBoundLift<T>>
-	extends AbstractDomain<ReadonlySet<T>, SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>
+	extends AbstractDomain<SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>
 	implements SatisfiableDomain<ReadonlySet<T>> {
 
-	public readonly limit:    number;
-	private readonly setType: typeof Set<T>;
+	public readonly limit:      number;
+	protected readonly setType: typeof Set<T>;
 
 	/**
 	 * @param limit -  A limit for the maximum number of elements to store in the set
@@ -46,36 +46,44 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		this.setType = setType;
 	}
 
-	public create(value: SetUpperBoundLift<T> | T[]): this;
-	public create(value: SetUpperBoundLift<T> | T[]): SetUpperBoundDomain<T> {
-		return new SetUpperBoundDomain(value, this.limit, this.setType);
+	public create(value: SetUpperBoundLift<T> | T[]): this {
+		return new SetUpperBoundDomain(value, this.limit, this.setType) as this;
+	}
+
+	public from(...values: Set<T>[] | T[][]): this {
+		if(values.length === 0) {
+			return this.bottom();
+		}
+		const sets = values.map(value => new Set(value));
+
+		return this.create(sets.reduce((result, set) => result.union(set)));
 	}
 
 	public static top<T>(limit?: number, setType?: typeof Set<T>): SetUpperBoundDomain<T, SetUpperBoundTop> {
-		return new SetUpperBoundDomain(Top, limit, setType);
+		return new this(Top, limit, setType);
 	}
 
 	public static bottom<T>(limit?: number, setType?: typeof Set<T>): SetUpperBoundDomain<T, SetUpperBoundBottom> {
-		return new SetUpperBoundDomain(Bottom, limit, setType);
+		return new this(Bottom, limit, setType);
 	}
 
-	public static abstract<T>(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top, limit?: number, setType?: typeof Set<T>): SetUpperBoundDomain<T> {
-		if(concrete === Top) {
-			return SetUpperBoundDomain.top(limit, setType);
-		} else if(concrete.size === 0) {
-			return SetUpperBoundDomain.bottom(limit, setType);
+	public static from<T>(values: Set<T> | T[] | Set<T>[] | T[][], limit?: number, setType?: typeof Set<T>): SetUpperBoundDomain<T> {
+		values = !Array.isArray(values) ? [values] : values.every(value => value instanceof Set || Array.isArray(value)) ? values : [values];
+
+		if(values.length === 0) {
+			return this.bottom();
 		}
-		return new SetUpperBoundDomain(concrete.values().reduce((result, set) => result.union(set)), limit, setType);
+		const sets = values.map(value => new Set(value));
+
+		return new this(sets.reduce((result, set) => result.union(set)), limit, setType);
 	}
 
-	public top(): this & SetUpperBoundDomain<T, SetUpperBoundTop>;
-	public top(): SetUpperBoundDomain<T, SetUpperBoundTop> {
-		return SetUpperBoundDomain.top(this.limit, this.setType);
+	public top(): this & SetUpperBoundDomain<T, SetUpperBoundTop> {
+		return this.create(Top) as this & SetUpperBoundDomain<T, SetUpperBoundTop>;
 	}
 
-	public bottom(): this & SetUpperBoundDomain<T, SetUpperBoundBottom>;
-	public bottom(): SetUpperBoundDomain<T, SetUpperBoundBottom> {
-		return SetUpperBoundDomain.bottom(this.limit, this.setType);
+	public bottom(): this & SetUpperBoundDomain<T, SetUpperBoundBottom> {
+		return this.create(Bottom) as this & SetUpperBoundDomain<T, SetUpperBoundBottom>;
 	}
 
 	public equals(other: this): boolean {
@@ -89,7 +97,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	public join(other: SetUpperBoundLift<T> | T[]): this;
 	public join(other: this): this;
 	public join(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Top || otherValue === Top) {
 			return this.top();
@@ -105,7 +113,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	public meet(other: SetUpperBoundLift<T> | T[]): this;
 	public meet(other: this): this;
 	public meet(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Bottom || otherValue === Bottom) {
 			return this.bottom();
@@ -122,7 +130,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
 	 */
 	public subtract(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = other instanceof SetUpperBoundDomain ? other.value : Array.isArray(other) ? new this.setType(other) : other;
+		const otherValue = this.toValue(other);
 
 		if(this.value === Top) {
 			return this.top();
@@ -149,29 +157,6 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 			return this.bottom();
 		}
 		return this.isTop() ? this.create(other.value) : this.create(this.value);
-	}
-
-	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
-		if(this.value === Bottom) {
-			return new Set();
-		} else if(this.value === Top || 2**(this.value.size) > limit) {
-			return Top;
-		}
-		const subsets = [new this.setType()];
-
-		for(const element of this.value.values()) {
-			const newSubsets = subsets.map(subset => new this.setType([...subset, element]));
-
-			for(const subset of newSubsets) {
-				subsets.push(subset);
-			}
-		}
-		return new Set(subsets);
-	}
-
-	public abstract(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<ReadonlySet<T>> | typeof Top): SetUpperBoundDomain<T> {
-		return SetUpperBoundDomain.abstract(concrete, this.limit, this.setType);
 	}
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
@@ -223,5 +208,14 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 
 	public isValue(): this is SetUpperBoundDomain<T, SetUpperBoundValue<T>> {
 		return this.value !== Top && this.value !== Bottom;
+	}
+
+	private toValue(value: this | SetUpperBoundLift<T> | T[]): SetUpperBoundLift<T> {
+		if(value instanceof SetUpperBoundDomain) {
+			return value.value;
+		} else if(Array.isArray(value)) {
+			return new this.setType(value);
+		}
+		return value;
 	}
 }

@@ -1,5 +1,5 @@
 import { IntervalDomain } from './interval-domain';
-import { Bottom, Top } from './lattice';
+import { Bottom } from './lattice';
 
 /** The Top element of the positive interval domain as interval [0, +∞] */
 export const PosIntervalTop: PosIntervalValue = [0, +Infinity];
@@ -29,26 +29,12 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 		}
 	}
 
-	public create(value: PosIntervalLift): this;
-	public create(value: PosIntervalLift): PosIntervalDomain {
-		return new PosIntervalDomain(value);
+	public create(value: PosIntervalLift): this {
+		return new PosIntervalDomain(value) as this;
 	}
 
 	public static top(): PosIntervalDomain<PosIntervalTop> {
-		return new PosIntervalDomain(PosIntervalTop);
-	}
-
-	public static bottom(): PosIntervalDomain<PosIntervalBottom> {
-		return new PosIntervalDomain(Bottom);
-	}
-
-	public static abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
-		if(concrete === Top) {
-			return PosIntervalDomain.top();
-		} else if(concrete.size === 0 || concrete.values().some(value => isNaN(value) || value < 0)) {
-			return PosIntervalDomain.bottom();
-		}
-		return new PosIntervalDomain([Math.min(...concrete), Math.max(...concrete)]);
+		return new this(PosIntervalTop);
 	}
 
 	public top(): this & PosIntervalDomain<PosIntervalTop>;
@@ -84,11 +70,6 @@ export class PosIntervalDomain<Value extends PosIntervalLift = PosIntervalLift>
 			this.value[0] === 0 ? other.value[0] : this.value[0],
 			this.value[1] === +Infinity ? other.value[1] : this.value[1]
 		]);
-	}
-
-	public abstract(concrete: ReadonlySet<number> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<number> | typeof Top): PosIntervalDomain {
-		return PosIntervalDomain.abstract(concrete);
 	}
 
 	public subtract(other: this | PosIntervalLift): this {

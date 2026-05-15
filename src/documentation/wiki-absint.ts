@@ -131,9 +131,6 @@ In _flowR_, an abstract domain is represented by the class ${ctx.link(AbstractDo
  * ${ctx.linkM(AbstractDomain, 'meet')} to meet two abstract values to get the greates lower bound (GLB)
  * ${ctx.linkM(AbstractDomain, 'widen')} to perform widening with another abstract value to ensure termination of the fixpoint iteration
  * ${ctx.linkM(AbstractDomain, 'narrow')} to perform narrowing with another abstract value to refine the abstract value after widening
-<!-- --->
- * ${ctx.linkM(AbstractDomain, 'concretize')} representing the concretization function of the abstract domain
- * ${ctx.linkM(AbstractDomain, 'abstract')} representing the abstraction function of the abstract domain
 
 ${details('Class Diagram', `
 All boxes link to their respective implementation in the source code.

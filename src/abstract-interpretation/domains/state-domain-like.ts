@@ -4,7 +4,7 @@ import { type AnyAbstractDomain } from './abstract-domain';
 /**
  * An interface for state-like domains that store abstract values for AST nodes.
  */
-export interface StateDomainLike<Domain extends AnyAbstractDomain> {
+export interface StateDomain<Domain extends AnyAbstractDomain> {
 	/**
 	 * The underlying value domain of the state domain.
 	 */
@@ -34,11 +34,11 @@ export interface StateDomainLike<Domain extends AnyAbstractDomain> {
 /**
  * A type representing any state abstract domain that stores abstract values for AST nodes.
  */
-export type AnyStateDomain<Domain extends AnyAbstractDomain> = AnyAbstractDomain & StateDomainLike<Domain>;
+export type AnyStateDomain<Domain extends AnyAbstractDomain = AnyAbstractDomain> = AnyAbstractDomain & StateDomain<Domain>;
 
 /**
  * The type of the value abstract domain of a state abstract domain.
  * @template StateDomain - The state abstract domain to get the value abstract domain type for
  */
-export type ValueDomain<StateDomain extends AnyStateDomain<AnyAbstractDomain>> =
+export type ValueDomain<StateDomain extends AnyStateDomain> =
 	StateDomain extends AnyStateDomain<infer Domain> ? Domain : never;

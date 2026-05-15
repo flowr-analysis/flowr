@@ -20,39 +20,45 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-	extends AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>
+	extends AbstractDomain<SingletonValue<T>, SingletonTop, SingletonBottom, Value>
 	implements SatisfiableDomain<T> {
 
-	public create(value: SingletonLift<T>): this;
-	public create(value: SingletonLift<T>): SingletonDomain<T> {
-		return new SingletonDomain(value);
+	public create(value: SingletonLift<T>): this {
+		return new SingletonDomain(value) as this;
+	}
+
+	public from(...values: T[]): this {
+		if(values.length === 0) {
+			return this.bottom();
+		} else if(values.length > 1) {
+			return this.top();
+		}
+		return this.create(values[0]);
 	}
 
 	public static top<T>(): SingletonDomain<T, SingletonTop> {
-		return new SingletonDomain(Top);
+		return new this(Top);
 	}
 
 	public static bottom<T>(): SingletonDomain<T, SingletonBottom> {
-		return new SingletonDomain(Bottom);
+		return new this(Bottom);
 	}
 
-	public static abstract<T>(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
-		if(concrete === Top || concrete.size > 1) {
-			return SingletonDomain.top();
-		} else if(concrete.size === 0) {
-			return SingletonDomain.bottom();
+	public static from<T>(...values: T[]): SingletonDomain<T> {
+		if(values.length === 0) {
+			return this.bottom();
+		} else if(values.length > 1) {
+			return this.top();
 		}
-		return new SingletonDomain([...concrete][0]);
+		return new this(values[0]);
 	}
 
-	public top(): this & SingletonDomain<T, SingletonTop>;
-	public top(): SingletonDomain<T, SingletonTop> {
-		return SingletonDomain.top();
+	public top(): this & SingletonDomain<T, SingletonTop> {
+		return this.create(Top) as this & SingletonDomain<T, SingletonTop>;
 	}
 
-	public bottom(): this & SingletonDomain<T, SingletonBottom>;
-	public bottom(): SingletonDomain<T, SingletonBottom> {
-		return SingletonDomain.bottom();
+	public bottom(): this & SingletonDomain<T, SingletonBottom> {
+		return this.create(Bottom) as this & SingletonDomain<T, SingletonBottom>;
 	}
 
 	public equals(other: this): boolean {
@@ -101,20 +107,6 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 
 	public narrow(other: this): this {
 		return this.meet(other);  // Using meet for narrowing as the lattice is finite
-	}
-
-	public concretize(): ReadonlySet<T> |  typeof Top {
-		if(this.value === Top) {
-			return Top;
-		} else if(this.value === Bottom) {
-			return new Set();
-		}
-		return new Set([this.value as T]);
-	}
-
-	public abstract(concrete: ReadonlySet<T> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
-		return SingletonDomain.abstract(concrete);
 	}
 
 	public satisfies(value: T): Ternary {

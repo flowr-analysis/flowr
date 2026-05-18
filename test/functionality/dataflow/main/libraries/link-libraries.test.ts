@@ -186,16 +186,18 @@ exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current
+importFrom(stats,setNames)
+import(random_placeholder)`)).content().current
 		}));
 		analyzer.context().deps.addDependency(new Package({
-			name:          'dplyr',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(across)\nexport(test)')).content().current
+			name:          'random_placeholder',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current
 		}));
-		analyzer.addRequest('library(ggplot2)\nlibrary(dplyr)\nggplot(data = NULL, mapping = aes())');
+		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		//console.log(analyzer.context().env);
-		console.log(df.environment.current);
+		//console.log(df.environment.current);
+		console.log(Dataflow.visualize.mermaid.url(df.graph));
 
 	});
 }));

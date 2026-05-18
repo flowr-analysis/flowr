@@ -154,7 +154,7 @@ describe('Pentagon Inference', () => {
 			});
 		});
 
-		describe('if else semantis', () => {
+		describe('if else semantics', () => {
 			testPentagonDomain(`
 				a <- ifelse(c, -3, 3)
 				a <- a + 0

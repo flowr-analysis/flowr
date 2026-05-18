@@ -7,7 +7,7 @@ import { Ternary } from '../../util/logic';
 import { FloatingPointComparison } from '../../util/floating-point';
 import { getMin } from '../../util/numbers';
 import type { AnyStateDomain } from '../domains/state-domain-like';
-import type { ConditionSemanticsMapperInfo, UnaryConditionSemantics } from '../absint-condition-semantics';
+import type { ConditionAppliers, ConditionSemanticsMapperInfo } from '../absint-condition-semantics';
 import {
 	binaryConditionSemanticsGuard,
 	createConditionApplier,
@@ -23,11 +23,11 @@ type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbs
  * Wrapper for the interval condition semantics that adds all interval specific condition semantics and returns the
  * applyConditionSemantics and applyNegatedConditionSemantics functions.
  */
-export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
+export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): ConditionAppliers<StateDomain, Visitor> {
 	return createConditionApplier<StateDomain, Visitor>(getIntervalSemanticsMapper<StateDomain, Visitor>(), onUnknownPositiveFunctionCall, onUnknownNegativeFunctionCall);
 }
 
-function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): ConditionSemanticsMapperInfo<StateDomain, Visitor>[] {
+function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[] {
 	return [
 		[Identifier.make('=='), binaryConditionSemanticsGuard(intervalEqualsOp), binaryConditionSemanticsGuard(intervalNotEqualsOp)],
 		[Identifier.make('!='), binaryConditionSemanticsGuard(intervalNotEqualsOp), binaryConditionSemanticsGuard(intervalEqualsOp)],
@@ -36,7 +36,7 @@ function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstra
 		[Identifier.make('<'), binaryConditionSemanticsGuard(intervalLessOp), binaryConditionSemanticsGuard(intervalGreaterEqualOp)],
 		[Identifier.make('<='), binaryConditionSemanticsGuard(intervalLessEqualOp), binaryConditionSemanticsGuard(intervalGreaterOp)],
 		[Identifier.make('is.na'), unaryConditionSemanticsGuard(intervalIsNaFn), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
-	] as const satisfies ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
+	] as const;
 }
 
 function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
@@ -78,8 +78,6 @@ function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 
 	return state;
 }
-
-// Semantics
 
 function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor) {
 	const leftValue = visitor.getInterval(leftNodeId, state);
@@ -162,6 +160,9 @@ function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>
 	return state.bottom();
 }
 
+/**
+ * Simply calls the {@link intervalGreaterOp} with the left and right nodes switched, as `a < b` is equivalent to `b > a`.
+ */
 function intervalLessOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor) {
 	return intervalGreaterOp(rightNodeId, leftNodeId, state, visitor);
 }
@@ -195,6 +196,9 @@ function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 	return state.bottom();
 }
 
+/**
+ * Simply calls the {@link intervalGreaterEqualOp} with the left and right nodes switched, as `a <= b` is equivalent to `b >= a`.
+ */
 function intervalLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
 	return intervalGreaterEqualOp(rightNodeId, leftNodeId, state, visitor);
 }

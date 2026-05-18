@@ -23,7 +23,7 @@ export function getIntervalExpressionSemanticsMapper<StateDomain extends AnyStat
 		[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
 		[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
 		[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
-	] as const satisfies readonly IntervalSemanticsMapperInfo<StateDomain>[];
+	] as const;
 }
 
 type IntervalSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NaryFnSemantics<StateDomain>];

@@ -85,6 +85,8 @@ export function binaryIdentityConditionSemantics<StateDomain extends AnyStateDom
 	return state;
 }
 
+export type ConditionAppliers<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>> = { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> };
+
 /**
  * Creates and returns the applyConditionSemantics and applyNegatedConditionSemantics functions for a given state domain and visitor.
  * The returned functions should be called by the {@link AbstractInterpretationVisitor.applyConditionSemantics} function of the state domain specific visitor.
@@ -94,10 +96,10 @@ export function binaryIdentityConditionSemantics<StateDomain extends AnyStateDom
  * @param onUnknownNegativeFunctionCall - This function is called by applyNegatedConditionSemantics if a function call vertex is encountered for which no semantics are provided, or the vertex is no function call (e.g. an expression).
  */
 export function createConditionApplier<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>>(
-	domainSpecificMapper: ConditionSemanticsMapperInfo<StateDomain, Visitor>[],
+	domainSpecificMapper: readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[],
 	onUnknownPositiveFunctionCall?: UnaryConditionSemantics<StateDomain, Visitor>,
 	onUnknownNegativeFunctionCall?: UnaryConditionSemantics<StateDomain, Visitor>,
-): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
+): ConditionAppliers<StateDomain, Visitor> {
 	const ConditionSemanticsMapper = [
 		...domainSpecificMapper,
 		[Identifier.make('!'), unaryConditionSemanticsGuard(applyNegatedConditionSemantics), unaryConditionSemanticsGuard(applyConditionSemantics)],

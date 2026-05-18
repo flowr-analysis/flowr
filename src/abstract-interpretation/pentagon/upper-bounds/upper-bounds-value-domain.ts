@@ -74,7 +74,7 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 	}
 
 	public leq(other: this): boolean {
-		if(this.isBottom()) {
+		if(this.isBottom() || other.isTop()) {
 			return true;
 		} else if(other.isBottom()) {
 			return false;

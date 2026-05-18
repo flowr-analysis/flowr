@@ -11,7 +11,7 @@ export type AbstractClosedPentagon = {
 /**
  * The weakly relational closed pentagon domain is product combining the interval state domain and the upper-bounds domain.
  * To remove the duplicate mapping from NodeId to values
- * (interval state domain: NodeId -&gt; interval, upper bounds: NodeId -&gt; Set(NodeId)),
+ * (interval state domain: NodeId `->` interval, upper bounds: NodeId `->` Set(NodeId)),
  * we implement the domain as a single mapping from NodeIds to a product of intervals ({@link IntervalDomain}) and the
  * upper bounds set ({@link UpperBoundsValueDomain}).
  * We use the {@link StateAbstractDomain} to model the mapping from NodeId to a "value domain".

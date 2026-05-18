@@ -24,7 +24,16 @@ import type { AnyAbstractDomain } from '../domains/abstract-domain';
 export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
 	setUpperBounds(state: StateDomain): (node: NodeId, value: UpperBoundsValueDomain) => void;
 	getUpperBounds(node: NodeId, state?: StateDomain): UpperBoundsValueDomain;
-	getUniqueOrigin(node: NodeId): NodeId | undefined;
+
+	/**
+	 * This method is required when updating the upper bounds value as we can only add origin node ids as upper bounds.
+	 * If we have multiple origins, we cannot say which one is the correct origin to add, so we cannot update the upper bounds.
+	 * For this, this method returns the origin of the provided node in the dfg if there is exactly one origin
+	 * (or the provided node already is the origin).
+	 * If there are multiple origins, `undefined` is returned.
+	 * @param node - Node to get the origin for.
+	 */
+	getOriginIfUnique(node: NodeId): NodeId | undefined;
 }
 
 export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> implements IntervalValueDomainAccess<ClosedPentagonDomain>, UpperBoundsDomainAccess<ClosedPentagonDomain> {
@@ -40,7 +49,7 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		super.onAssignmentCall({ call, target, source });
 
 		if(isNotUndefined(source) && isNotUndefined(target)) {
-			const sourceOrigin = this.getUniqueOrigin(source);
+			const sourceOrigin = this.getOriginIfUnique(source);
 			if(isUndefined(sourceOrigin)) {
 				return;
 			}
@@ -141,7 +150,7 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		return this.getAbstractValue(node, state)?.value.upperBounds ?? UpperBoundsValueDomain.top();
 	}
 
-	getUniqueOrigin(node: NodeId): NodeId | undefined {
+	getOriginIfUnique(node: NodeId): NodeId | undefined {
 		const origins = this.getVariableOrigins(node);
 		if(origins.length === 0) {
 			return node;
@@ -158,25 +167,13 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		const { applyConditionSemantics: intervalPositiveSemantics, applyNegatedConditionSemantics: intervalNegativeSemantics } = getIntervalConditionSemantics<ClosedPentagonDomain, this>();
 		const { applyConditionSemantics: upperBoundsPositiveSemantics, applyNegatedConditionSemantics: upperBoundsNegativeSemantics } = getUpperBoundsConditionSemantics<ClosedPentagonDomain, this>();
 
-		if(trueBranch) {
-			return reducePentagon(
-				upperBoundsPositiveSemantics(
-					conditionNodeId,
-					intervalPositiveSemantics(
-						conditionNodeId,
-						state,
-						this,
-						this.config.dfg
-					),
-					this,
-					this.config.dfg
-				)
-			);
-		}
+		const intervalSemantics = trueBranch ? intervalPositiveSemantics : intervalNegativeSemantics;
+		const ubSemantics = trueBranch ? upperBoundsPositiveSemantics : upperBoundsNegativeSemantics;
+
 		return reducePentagon(
-			upperBoundsNegativeSemantics(
+			ubSemantics(
 				conditionNodeId,
-				intervalNegativeSemantics(
+				intervalSemantics(
 					conditionNodeId,
 					state,
 					this,

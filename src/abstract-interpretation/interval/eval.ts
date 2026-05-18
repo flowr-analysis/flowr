@@ -37,18 +37,18 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		.setEngine('tree-sitter')
 		.build();
 	analyzer.addRequest(fileProtocol + workingDir);
-	await analyzer.dataflow();
+	const dfg = (await analyzer.dataflow()).graph;
 
 	const visitor = new NumericIntervalInferenceVisitor({
 		normalizedAst: await analyzer.normalize(),
-		dfg:           (await analyzer.dataflow()).graph,
+		dfg:           dfg,
 		controlFlow:   await analyzer.controlflow(),
 		ctx:           analyzer.inspectContext()
 	});
 
 	const pentagonVisitor = new NumericPentagonInferenceVisitor({
 		normalizedAst: await analyzer.normalize(),
-		dfg:           (await analyzer.dataflow()).graph,
+		dfg:           dfg,
 		controlFlow:   await analyzer.controlflow(),
 		ctx:           analyzer.inspectContext()
 	});
@@ -80,6 +80,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		}
 		if(RBinaryOp.is(resolved)) {
 			const lhs = RNode.lexeme(resolved.lhs) ?? '';
+			const rhs = RNode.lexeme(resolved.rhs) ?? '';
 
 			const lhsOrigins = visitor.getVariableOrigins(resolved.lhs.info.id);
 			const inferredValue = visitor.getAbstractValue(resolved.lhs.info.id);
@@ -93,19 +94,19 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 				after:  '; ' +
 							'cat(' +
 								`"${resolved.lhs.info.id}", ` +
-								`paste('"', "[${lhsOrigins.join(', ')}]", '"', sep=""), ` +
+								`"[${lhsOrigins.join(', ')}]", ` +
 								`"${lhs}", ` +
-								`paste('"', "${SourceLocation.getRange(loc).slice(0, 4).toString()}", '"', sep=""), ` +
+								`'"${SourceLocation.getRange(loc).slice(0, 4).toString()}"', ` +
 								`typeof(${lhs}), ` +
 								`tolower(as.character(is.numeric(${lhs}))), ` +
 								`tolower(as.character(is.vector(${lhs}))), ` +
-								`paste(length(${lhs}), collapse=""), ` +
-								`paste0('"', gsub('"', '""', gsub("\\n", " ", ifelse(is.numeric(${lhs}), paste(${lhs}, collapse=","), ""))), '"'), ` +
-								`paste('"', "${inferredValue?.toString() ?? 'undefined'}", '"', sep=""), ` +
-								`paste('"', "${inferredPentagonValue?.toString() ?? 'undefined'}", '"', sep=""),` +
+								`paste0(length(${lhs})), ` +
+								`paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), ` +
+								`'"${inferredValue?.toString() ?? 'undefined'}"', ` +
+								`'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
 								'"\\n", ' +
 								`sep=",", file="${outputCsvPath}", append=TRUE)` +
-						' }',
+						`; ${rhs} }`,
 			});
 		}
 	}

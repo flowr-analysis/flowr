@@ -2,24 +2,31 @@ import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
+import type { IntervalValueDomainAccess } from './numeric-interval-inference';
 import { numericInferenceLogger } from './numeric-interval-inference';
 import { getMax, getMin, getMinMax } from '../../util/numbers';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AnyStateDomain } from '../domains/state-domain-like';
+import type { AnyAbstractDomain } from '../domains/abstract-domain';
+import type { AbstractInterpretationVisitor } from '../absint-visitor';
+import type { StateAbstractDomain } from '../domains/state-abstract-domain';
+
+type IntervalExpressionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
 
 /**
  * Maps function/operator names to the semantic functions.
  */
-export const IntervalExpressionSemanticsMapper = [
-	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalUnaryIdentityOp, intervalAddOp)],
-	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegateOp, intervalSubtractOp)],
-	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
-	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
-	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
-	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
-] as const satisfies readonly IntervalSemanticsMapperInfo[];
+export function getIntervalExpressionSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): readonly IntervalSemanticsMapperInfo<StateDomain>[] {
+	return [
+		[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalUnaryIdentityOp, intervalAddOp)],
+		[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegateOp, intervalSubtractOp)],
+		[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
+		[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
+		[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
+		[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
+	] as const satisfies readonly IntervalSemanticsMapperInfo<StateDomain>[];
+}
 
-type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
+type IntervalSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NaryFnSemantics<StateDomain>];
 
 /**
  * Semantics definition function for unary numeric operators.
@@ -41,31 +48,31 @@ type BinaryOpSemantics = (left: IntervalDomain | undefined, right: IntervalDomai
 /**
  * Semantics definition function for unary functions.
  * @param arg - The raw argument of the function.
- * @param getInterval - A function to retrieve the current inferred interval for the provided node id.
+ * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-type UnaryFnSemantics = (arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined) => IntervalDomain | undefined;
+type UnaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined) => IntervalDomain | undefined;
 
 /**
  * Semantics definition function n-ary functions/operators.
  * @param args - The raw arguments of the function/operator.
- * @param getInterval - A function to retrieve the current inferred interval for the provided node id.
+ * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-type NaryFnSemantics = (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined) => IntervalDomain | undefined;
+type NaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined) => IntervalDomain | undefined;
 
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
  * @param functionIdentifier - The {@link Identifier} of the function/operator.
  * @param args - The arguments of the function/operator.
- * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
+ * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
-	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateAbstractDomain<IntervalDomain>>, significantFigures?: number): IntervalDomain | undefined {
+	const match = getIntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
 		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);
@@ -74,7 +81,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
 
 	const [_, semantics] = match;
 
-	return semantics(args, (node: NodeId ) => visitor.getAbstractValue(node), significantFigures);
+	return semantics(args, visitor, significantFigures);
 }
 
 /**
@@ -86,8 +93,8 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
  * @param binaryOperatorSemantics - The semantics function for the binary operator.
  * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
-function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined => {
+function unaryBinaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics<StateDomain> {
+	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined => {
 		// Usage as unary operator
 		if(args.length === 1) {
 			if(FunctionArgument.isEmpty(args[0])) {
@@ -95,11 +102,11 @@ function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, bi
 				return IntervalDomain.bottom(significantFigures);
 			}
 
-			const arg = getInterval(args[0].nodeId);
+			const arg = visitor.getInterval(args[0].nodeId);
 			return unaryOperatorSemantics(arg, significantFigures);
 		}
 
-		return binaryExprOpSemantics(binaryOperatorSemantics)(args, getInterval, significantFigures);
+		return binaryExprOpSemantics(binaryOperatorSemantics)(args, visitor, significantFigures);
 	};
 }
 
@@ -110,8 +117,8 @@ function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, bi
  * @param binaryOperatorSemantics - The semantics function for the binary operator.
  * @returns A semantics function for n-ary functions that applies the provided binary numeric operator semantics if the call has exactly 2 non-empty numeric arguments, and logs a warning and returns bottom otherwise.
  */
-function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined => {
+function binaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics<StateDomain> {
+	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 2) {
 			numericInferenceLogger.warn('Called binary operator with more/less than 2 arguments, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
@@ -122,8 +129,8 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
 			return IntervalDomain.bottom(significantFigures);
 		}
 
-		const left = getInterval(args[0].nodeId);
-		const right = getInterval(args[1].nodeId);
+		const left = visitor.getInterval(args[0].nodeId);
+		const right = visitor.getInterval(args[1].nodeId);
 
 		return binaryOperatorSemantics(left, right, significantFigures);
 	};
@@ -136,14 +143,14 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
  * @param unaryFunctionSemantics - The semantics function for the unary function.
  * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
  */
-function unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined => {
+function unaryExprFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(unaryFunctionSemantics: UnaryFnSemantics<StateDomain>): NaryFnSemantics<StateDomain> {
+	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
 		}
 
-		return unaryFunctionSemantics(args[0], getInterval, significantFigures);
+		return unaryFunctionSemantics(args[0], visitor, significantFigures);
 	};
 }
 
@@ -294,12 +301,12 @@ function intervalPowerOp(left: IntervalDomain | undefined, right: IntervalDomain
 /**
  * Infers the interval resulting from applying the `length` function to the provided argument.
  * @param arg - The argument to apply the `length` function to.
- * @param getInterval - A function to retrieve the current inferred interval for the provided node id.
+ * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns Bottom if the provided argument is bottom or empty, otherwise overapproximates to the interval [0, Infinity].
  *          If the argument can be resolved to a supported value, the resulting interval is more precise (e.g.: [1,1] for scalar numbers).
  */
-function intervalLengthFn(arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined {
+function intervalLengthFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
 	if(FunctionArgument.isEmpty(arg)) {
 		numericInferenceLogger.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom(significantFigures);
@@ -308,7 +315,7 @@ function intervalLengthFn(arg: FunctionArgument, getInterval: (node: NodeId) => 
 	let inferredLength: IntervalDomain = IntervalDomain.top(significantFigures);
 
 	// Check if the value is a scalar number
-	const inferredInterval = getInterval(arg.nodeId);
+	const inferredInterval = visitor.getInterval(arg.nodeId);
 	if(inferredInterval?.isBottom()) {
 		inferredLength = inferredInterval.bottom(significantFigures);
 	} else if(inferredInterval?.isValue()) {

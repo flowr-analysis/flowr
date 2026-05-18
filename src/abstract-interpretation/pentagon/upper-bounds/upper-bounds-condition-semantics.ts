@@ -13,16 +13,7 @@ import {
 	unaryIdentityConditionSemantics
 } from '../../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../../absint-visitor';
-
-/**
- * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies upper bounds
- * condition semantics.
- */
-export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
-	setUpperBounds(state: StateDomain): (node: NodeId, value: UpperBoundsValueDomain) => void;
-	getUpperBounds(node: NodeId, state?: StateDomain): UpperBoundsValueDomain;
-	getUniqueOrigin(node: NodeId): NodeId | undefined;
-}
+import type { UpperBoundsDomainAccess } from '../numeric-pentagon-inference';
 
 type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & UpperBoundsDomainAccess<StateDomain>;
 

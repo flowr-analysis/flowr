@@ -15,15 +15,7 @@ import {
 	unaryIdentityConditionSemantics
 } from '../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../absint-visitor';
-
-/**
- * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies interval condition
- * semantics.
- */
-export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
-	setInterval(state: StateDomain): (node: NodeId, value: IntervalDomain | undefined) => void;
-	getInterval(node: NodeId, state?: StateDomain): IntervalDomain | undefined;
-}
+import type { IntervalValueDomainAccess } from './numeric-interval-inference';
 
 type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
 

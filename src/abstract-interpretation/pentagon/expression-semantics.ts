@@ -8,8 +8,8 @@ import { getMin } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ClosedPentagonDomain } from './closed-pentagon-domain';
 import {
+	getIntervalExpressionSemanticsMapper,
 	intervalAddOp,
-	IntervalExpressionSemanticsMapper,
 	intervalNegateOp,
 	intervalSubtractOp
 } from '../interval/expression-semantics';
@@ -48,7 +48,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 
 	if(isUndefined(match)) {
 		// Check if we at least have interval semantics and apply them if available.
-		const intervalMatch = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+		const intervalMatch = getIntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 		if(isUndefined(intervalMatch)) {
 			numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid pentagon operation. Returning undefined semantics.`);
@@ -56,7 +56,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 		} else {
 			const [_, semantics] = intervalMatch;
 
-			const interval = semantics(args, (node: NodeId) => visitor.getAbstractValue(node)?.value.interval, significantFigures);
+			const interval = semantics(args, visitor, significantFigures);
 
 			if(isUndefined(interval)) {
 				return undefined;

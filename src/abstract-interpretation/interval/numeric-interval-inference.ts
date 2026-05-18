@@ -9,10 +9,20 @@ import { isUndefined } from '../../util/assert';
 import { log } from '../../util/log';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { StateAbstractDomain } from '../domains/state-abstract-domain';
-import type { IntervalValueDomainAccess } from './condition-semantics';
 import { getIntervalConditionSemantics } from './condition-semantics';
+import type { AnyStateDomain } from '../domains/state-domain-like';
+import type { AnyAbstractDomain } from '../domains/abstract-domain';
 
 export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
+
+/**
+ * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies interval condition
+ * semantics.
+ */
+export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
+	setInterval(state: StateDomain): (node: NodeId, value: IntervalDomain | undefined) => void;
+	getInterval(node: NodeId, state?: StateDomain): IntervalDomain | undefined;
+}
 
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.

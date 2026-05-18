@@ -43,7 +43,10 @@ function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstra
 		[Identifier.make('>='), binaryConditionSemanticsGuard(intervalGreaterEqualOp), binaryConditionSemanticsGuard(intervalLessOp)],
 		[Identifier.make('<'), binaryConditionSemanticsGuard(intervalLessOp), binaryConditionSemanticsGuard(intervalGreaterEqualOp)],
 		[Identifier.make('<='), binaryConditionSemanticsGuard(intervalLessEqualOp), binaryConditionSemanticsGuard(intervalGreaterOp)],
-		[Identifier.make('is.na'), unaryConditionSemanticsGuard(intervalIsNaFn), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+		[Identifier.make('is.na'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+		[Identifier.make('is.null'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+		[Identifier.make('is.character'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+		[Identifier.make('is.numeric'), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval)],
 	] as const satisfies ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
 }
 
@@ -207,7 +210,7 @@ function intervalLessEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 	return intervalGreaterEqualOp(rightNodeId, leftNodeId, state, visitor);
 }
 
-function intervalIsNaFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+function intervalBottomIfArgIsInterval<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
 	const argValue = visitor.getInterval(argNodeId, state);
 
 	if(isUndefined(argValue)) {

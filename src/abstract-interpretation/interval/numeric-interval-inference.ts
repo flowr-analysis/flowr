@@ -54,7 +54,7 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 			return;
 		}
 
-		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
+		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, this.config.dfg);
 
 		if(isUndefined(result)) {
 			return;

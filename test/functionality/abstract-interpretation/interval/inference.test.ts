@@ -37,42 +37,48 @@ export const binaryOperatorSpecialCases: IntervalInferenceOperatorTestCase = [
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])],
 	[['3'], new Map([
 		['+', { domain: IntervalTests.scalar(3) }],
 		['-', { domain: IntervalTests.scalar(-3) }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])],
 	[['3', ''], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])],
 	[['', '7'], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])],
 	[['', ''], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])],
 	[['3', '4', ''], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }],
 	])]
 ] as const;
 
@@ -89,168 +95,240 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['-', { domain: IntervalTests.scalar(0) }],
 		['*', { domain: IntervalTests.scalar(0) }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.scalar(1) }]
+		['^', { domain: IntervalTests.scalar(1) }],
+		['%%', { domain: IntervalTests.top() }],
 	])],
 	[['2.5', '0'], new Map([
 		['+', { domain: IntervalTests.scalar(2.5) }],
 		['-', { domain: IntervalTests.scalar(2.5) }],
 		['*', { domain: IntervalTests.scalar(0) }],
 		['/', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY), matching: DomainMatchingType.Overapproximation }],
-		['^', { domain: IntervalTests.scalar(1) }]
+		['^', { domain: IntervalTests.scalar(1) }],
+		['%%', { domain: IntervalTests.top() }],
 	])],
 	[['0', '-5'], new Map([
 		['+', { domain: IntervalTests.scalar(-5) }],
 		['-', { domain: IntervalTests.scalar(5) }],
 		['*', { domain: IntervalTests.scalar(0) }],
 		['/', { domain: IntervalTests.scalar(0) }],
-		['^', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY) }]
+		['^', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY) }],
+		['%%', { domain: IntervalTests.scalar(0%(-5)) }],
 	])],
 	[['2', '5'], new Map([
 		['+', { domain: IntervalTests.scalar(2+5) }],
 		['-', { domain: IntervalTests.scalar(2-5) }],
 		['*', { domain: IntervalTests.scalar(2*5) }],
 		['/', { domain: IntervalTests.scalar(2/5) }],
-		['^', { domain: IntervalTests.scalar(2**5) }]
+		['^', { domain: IntervalTests.scalar(2**5) }],
+		['%%', { domain: IntervalTests.scalar(2%5) }]
 	])],
 	[['384', '92'], new Map([
 		['+', { domain: IntervalTests.scalar(384+92) }],
 		['-', { domain: IntervalTests.scalar(384-92) }],
 		['*', { domain: IntervalTests.scalar(384*92) }],
 		['/', { domain: IntervalTests.scalar(384/92) }],
-		['^', { domain: IntervalTests.scalar(384**92) }]
+		['^', { domain: IntervalTests.scalar(384**92) }],
+		['%%', { domain: IntervalTests.scalar(384%92) }]
 	])],
 	[['(-5)', '18'], new Map([
 		['+', { domain: IntervalTests.scalar((-5)+18) }],
 		['-', { domain: IntervalTests.scalar((-5)-18) }],
 		['*', { domain: IntervalTests.scalar((-5)*18) }],
 		['/', { domain: IntervalTests.scalar((-5)/18) }],
-		['^', { domain: IntervalTests.scalar((-5)**18) }]
+		['^', { domain: IntervalTests.scalar((-5)**18) }],
+		['%%', { domain: IntervalTests.scalar((-5)%18) }]
 	])],
 	[['(-15)', '-2'], new Map([
 		['+', { domain: IntervalTests.scalar((-15)+(-2)) }],
 		['-', { domain: IntervalTests.scalar((-15)-(-2)) }],
 		['*', { domain: IntervalTests.scalar((-15)*(-2)) }],
 		['/', { domain: IntervalTests.scalar((-15)/(-2)) }],
-		['^', { domain: IntervalTests.scalar((-15)**(-2)) }]
+		['^', { domain: IntervalTests.scalar((-15)**(-2)) }],
+		['%%', { domain: IntervalTests.scalar((-15)%(-2)) }]
 	])],
 	[['2.7', '1.3'], new Map([
 		['+', { domain: IntervalTests.scalar(2.7+1.3) }],
 		['-', { domain: IntervalTests.scalar(2.7-1.3) }],
 		['*', { domain: IntervalTests.scalar(2.7*1.3) }],
 		['/', { domain: IntervalTests.scalar(2.7/1.3) }],
-		['^', { domain: IntervalTests.scalar(2.7**1.3), matching: DomainMatchingType.Overapproximation }]
+		['^', { domain: IntervalTests.scalar(2.7**1.3), matching: DomainMatchingType.Overapproximation }],
+		['%%', { domain: IntervalTests.scalar(2.7%1.3) }]
 	])],
 	[['2', '1.3'], new Map([
 		['+', { domain: IntervalTests.scalar(2+1.3) }],
 		['-', { domain: IntervalTests.scalar(2-1.3) }],
 		['*', { domain: IntervalTests.scalar(2*1.3) }],
 		['/', { domain: IntervalTests.scalar(2/1.3) }],
-		['^', { domain: IntervalTests.scalar(2**1.3), matching: DomainMatchingType.Overapproximation }]
+		['^', { domain: IntervalTests.scalar(2**1.3), matching: DomainMatchingType.Overapproximation }],
+		['%%', { domain: IntervalTests.scalar(2%1.3) }]
 	])],
 	[['5', '-3'], new Map([
 		['+', { domain: IntervalTests.scalar(5+(-3)) }],
 		['-', { domain: IntervalTests.scalar(5-(-3)) }],
 		['*', { domain: IntervalTests.scalar(5*(-3)) }],
 		['/', { domain: IntervalTests.scalar(5/(-3), 16) }],
-		['^', { domain: IntervalTests.scalar(5**(-3)) }]
+		['^', { domain: IntervalTests.scalar(5**(-3)) }],
+		['%%', { domain: IntervalTests.scalar(5%(-3)) }]
 	])],
 	[['(-2)', '4'], new Map([
 		['+', { domain: IntervalTests.scalar((-2)+4) }],
 		['-', { domain: IntervalTests.scalar((-2)-4) }],
 		['*', { domain: IntervalTests.scalar((-2)*4) }],
 		['/', { domain: IntervalTests.scalar((-2)/4) }],
-		['^', { domain: IntervalTests.scalar((-2)**4) }]
+		['^', { domain: IntervalTests.scalar((-2)**4) }],
+		['%%', { domain: IntervalTests.scalar((-2)%4) }]
 	])],
 	[['(-3)', '-6'], new Map([
 		['+', { domain: IntervalTests.scalar((-3)+(-6)) }],
 		['-', { domain: IntervalTests.scalar((-3)-(-6)) }],
 		['*', { domain: IntervalTests.scalar((-3)*(-6)) }],
 		['/', { domain: IntervalTests.scalar((-3)/(-6)) }],
-		['^', { domain: IntervalTests.scalar((-3)**(-6)) }]
+		['^', { domain: IntervalTests.scalar((-3)**(-6)) }],
+		['%%', { domain: IntervalTests.scalar((-3)%(-6)) }]
 	])],
 	[['1e10', '1e-5'], new Map([
 		['+', { domain: IntervalTests.scalar(1e10+1e-5) }],
 		['-', { domain: IntervalTests.scalar(1e10-1e-5) }],
 		['*', { domain: IntervalTests.scalar(1e10*1e-5) }],
 		['/', { domain: IntervalTests.scalar(1e10/1e-5) }],
-		['^', { domain: IntervalTests.scalar(1e10**1e-5), matching: DomainMatchingType.Overapproximation }]
+		['^', { domain: IntervalTests.scalar(1e10**1e-5), matching: DomainMatchingType.Overapproximation }],
+		['%%', { domain: IntervalTests.scalar(1e10%1e-5) }]
 	])],
 	[['Inf', '0'], new Map([
 		['+', { domain: IntervalTests.scalar(Infinity) }],
 		['-', { domain: IntervalTests.scalar(Infinity) }],
 		['*', { domain: IntervalTests.top() }],
 		['/', { domain: IntervalTests.scalar(Infinity), matching: DomainMatchingType.Overapproximation }],
-		['^', { domain: IntervalTests.scalar(1) }]
+		['^', { domain: IntervalTests.scalar(1) }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['Inf', '5'], new Map([
 		['+', { domain: IntervalTests.scalar(Infinity + 5) }],
 		['-', { domain: IntervalTests.scalar(Infinity - 5) }],
 		['*', { domain: IntervalTests.scalar(Infinity * 5) }],
 		['/', { domain: IntervalTests.scalar(Infinity) }],
-		['^', { domain: IntervalTests.scalar(Infinity) }]
+		['^', { domain: IntervalTests.scalar(Infinity) }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['Inf', '-3'], new Map([
 		['+', { domain: IntervalTests.scalar(Infinity+(-3)) }],
 		['-', { domain: IntervalTests.scalar(Infinity-(-3)) }],
 		['*', { domain: IntervalTests.scalar(Infinity*(-3)) }],
 		['/', { domain: IntervalTests.scalar(Number.NEGATIVE_INFINITY) }],
-		['^', { domain: IntervalTests.scalar(0) }]
+		['^', { domain: IntervalTests.scalar(0) }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['87', 'Inf'], new Map([
 		['+', { domain: IntervalTests.scalar(87+Infinity) }],
 		['-', { domain: IntervalTests.scalar(87-Infinity) }],
 		['*', { domain: IntervalTests.scalar(87*Infinity) }],
 		['/', { domain: IntervalTests.scalar(0) }],
-		['^', { domain: IntervalTests.scalar(Infinity) }]
+		['^', { domain: IntervalTests.scalar(Infinity) }],
+		['%%', { domain: IntervalTests.scalar(87) }],
 	])],
 	[['Inf', 'Inf'], new Map([
 		['+', { domain: IntervalTests.scalar(Infinity+Infinity) }],
 		['-', { domain: IntervalTests.top() }],
 		['*', { domain: IntervalTests.scalar(Infinity*Infinity) }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.scalar(Infinity) }]
+		['^', { domain: IntervalTests.scalar(Infinity) }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['(-Inf)', 'Inf'], new Map([
 		['+', { domain: IntervalTests.top() }],
 		['-', { domain: IntervalTests.scalar((-Infinity)-Infinity) }],
 		['*', { domain: IntervalTests.scalar((-Infinity)*Infinity) }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.top() }]
+		['^', { domain: IntervalTests.top() }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['(-Inf)', '(-Inf)'], new Map([
 		['+', { domain: IntervalTests.scalar((-Infinity)+(-Infinity)) }],
 		['-', { domain: IntervalTests.top() }],
 		['*', { domain: IntervalTests.scalar((-Infinity)*(-Infinity)) }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.top() }]
+		['^', { domain: IntervalTests.top() }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['NaN', '3'], new Map([
 		['+', { domain: IntervalTests.top() }],
 		['-', { domain: IntervalTests.top() }],
 		['*', { domain: IntervalTests.top() }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.top() }]
+		['^', { domain: IntervalTests.top() }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['3', '"Hallo"'], new Map([
 		['+', { domain: IntervalTests.top() }],
 		['-', { domain: IntervalTests.top() }],
 		['*', { domain: IntervalTests.top() }],
 		['/', { domain: IntervalTests.top() }],
-		['^', { domain: IntervalTests.top() }]
+		['^', { domain: IntervalTests.top() }],
+		['%%', { domain: IntervalTests.top() }]
 	])],
 	[['`+`()', '7'], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }]
 	])],
 	[['7', '`+`()'], new Map([
 		['+', { domain: IntervalTests.bottom() }],
 		['-', { domain: IntervalTests.bottom() }],
 		['*', { domain: IntervalTests.bottom() }],
 		['/', { domain: IntervalTests.bottom() }],
-		['^', { domain: IntervalTests.bottom() }]
+		['^', { domain: IntervalTests.bottom() }],
+		['%%', { domain: IntervalTests.bottom() }]
+	])],
+	[['5', 'ifelse(c, -2, 4)'], new Map([
+		['+', { domain: IntervalTests.interval(5-2, 5+4) }],
+		['-', { domain: IntervalTests.interval(5-4, 5+2) }],
+		['*', { domain: IntervalTests.interval(-10, 20) }],
+		['/', { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY) }],
+		['^', { domain: IntervalTests.top() }],
+		['%%', { domain: IntervalTests.top() }]
+	])],
+	[['5', 'ifelse(c, 1, 4)'], new Map([
+		['+', { domain: IntervalTests.interval(6, 9) }],
+		['-', { domain: IntervalTests.interval(1, 4) }],
+		['*', { domain: IntervalTests.interval(5, 20) }],
+		['/', { domain: IntervalTests.interval(5/4, 5) }],
+		['^', { domain: IntervalTests.interval(5, 5**4), matching: DomainMatchingType.Overapproximation }],
+		['%%', { domain: IntervalTests.interval(0, 4) }]
+	])],
+	[['5', 'ifelse(c, -1, -4)'], new Map([
+		['+', { domain: IntervalTests.interval(1, 4) }],
+		['-', { domain: IntervalTests.interval(6, 9) }],
+		['*', { domain: IntervalTests.interval(-20, -5) }],
+		['/', { domain: IntervalTests.interval(-5, 5/(-4)) }],
+		['^', { domain: IntervalTests.interval(5**(-4), 5**(-1)), matching: DomainMatchingType.Overapproximation }],
+		['%%', { domain: IntervalTests.interval(-4, 0) }]
+	])],
+	[['ifelse(c, -2, 4)', '5'], new Map([
+		['+', { domain: IntervalTests.interval(-2+5, 4+5) }],
+		['-', { domain: IntervalTests.interval((-2)-5, 4-5) }],
+		['*', { domain: IntervalTests.interval(-10, 20) }],
+		['/', { domain: IntervalTests.interval((-2)/5, 4/5) }],
+		['^', { domain: IntervalTests.interval((-2)**5, 4**5) }],
+		['%%', { domain: IntervalTests.interval(0, 4) }]
+	])],
+	[['ifelse(c, 1, 4)', '5'], new Map([
+		['+', { domain: IntervalTests.interval(6, 9) }],
+		['-', { domain: IntervalTests.interval(-4, -1) }],
+		['*', { domain: IntervalTests.interval(5, 20) }],
+		['/', { domain: IntervalTests.interval(1/5, 4/5) }],
+		['^', { domain: IntervalTests.interval(1, 4**5) }],
+		['%%', { domain: IntervalTests.interval(0, 4) }]
+	])],
+	[['ifelse(c, -1, -4)', '5'], new Map([
+		['+', { domain: IntervalTests.interval(1, 4) }],
+		['-', { domain: IntervalTests.interval(-9, -6) }],
+		['*', { domain: IntervalTests.interval(-20, -5) }],
+		['/', { domain: IntervalTests.interval((-4)/5, (-1)/5) }],
+		['^', { domain: IntervalTests.interval((-4)**5, (-1)**5) }],
+		['%%', { domain: IntervalTests.interval(0, 4) }]
 	])]
 ] as const;
 
@@ -282,7 +360,7 @@ describe('Interval Inference', () => {
 			}
 		});
 
-		describe.each(['+', '-', '*', '/', '^'])('%s infix semantics', (identifier) => {
+		describe.each(['+', '-', '*', '/', '^', '%%'])('%s infix semantics', (identifier) => {
 			for(const [args, expected] of binaryOperatorSuccessTestCases.concat(binaryInfixOperatorSpecialCases)) {
 				const slicingCriterionExpected: IntervalSlicingCriterionExpected | undefined = expected.get(identifier);
 				if(!isUndefined(slicingCriterionExpected)) {
@@ -291,7 +369,7 @@ describe('Interval Inference', () => {
 			}
 		});
 
-		describe.each(['+', '-', '*', '/', '^'])('%s function semantics', (identifier) => {
+		describe.each(['+', '-', '*', '/', '^', '%%'])('%s function semantics', (identifier) => {
 			for(const [args, expected] of binaryOperatorSuccessTestCases.concat(binaryOperatorSpecialCases)) {
 				const slicingCriterionExpected: IntervalSlicingCriterionExpected | undefined = expected.get(identifier);
 				if(!isUndefined(slicingCriterionExpected)) {
@@ -311,6 +389,86 @@ describe('Interval Inference', () => {
 			`, {
 				'1@x': { domain: IntervalTests.bottom() },
 				'2@y': { domain: IntervalTests.bottom() }
+			});
+		});
+
+		describe('sum semantics', () => {
+			const testCases: [arguments: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[['1', 'na.rm=TRUE'], { domain: IntervalTests.scalar(1) }],
+				[['1', 'NA', 'na.rm=FALSE'], { domain: IntervalTests.top() }],
+				[['1', '2', '3', 'na.rm=TRUE'], { domain: IntervalTests.scalar(6) }],
+				[['1', '2', '3', 'na.rm=FALSE'], { domain: IntervalTests.scalar(6) }],
+				[['1', 'NA', '3', 'na.rm=FALSE'], { domain: IntervalTests.top() }],
+				[['1', 'NA', '3', 'na.rm=TRUE'], { domain: IntervalTests.scalar(4), matching: DomainMatchingType.Overapproximation }],
+			];
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- sum(${args.join(',')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('max semantics', () => {
+			const testCases: [arguments: string[], expected: IntervalSlicingCriterionExpected][] = [
+				// Copy the test cases from below
+				[['1', '2', '3'], { domain: IntervalTests.scalar(3) }],
+				[['1', 'NA', '3'], { domain: IntervalTests.top() }],
+				[['1', 'NA', '3', 'na.rm=TRUE'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
+				[['c(1,2,3)'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
+				[['c(1,2,3)', 'na.rm=TRUE'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }]
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- max(${args.join(',')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('abs', () => {
+			const testCases: [arguments: string[], expected: IntervalSlicingCriterionExpected][] = [
+				// Copy the test cases from below
+				[[], { domain: IntervalTests.bottom() }],
+				[['1', '2'], { domain: IntervalTests.bottom() }],
+				[['1'], { domain: IntervalTests.scalar(1) }],
+				[['-1'], { domain: IntervalTests.scalar(1) }],
+				[['ifelse(c, -5, 2)'], { domain: IntervalTests.interval(2, 5) }],
+				[['c(1,2,3)'], { domain: IntervalTests.top() }]
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- abs(${args.join(',')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('log', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[['0'], { domain: IntervalTests.scalar(Number.NEGATIVE_INFINITY) }],
+				[['-1'], { domain: IntervalTests.top() }],
+				[['4'], { domain: IntervalTests.scalar(Math.log(4)) }],
+				[['ifelse(c, -4, 2)'], { domain: IntervalTests.top() }],
+				[['ifelse(c, 0, 5)'], { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, Math.log(5)) }],
+				[['0', 'base=2'], { domain: IntervalTests.scalar(Number.NEGATIVE_INFINITY) }],
+				[['-1', 'base=2'], { domain: IntervalTests.top() }],
+				[['4', 'base=2'], { domain: IntervalTests.scalar(Math.log(4)/Math.log(2)) }],
+				[['ifelse(c, -4, 2)', 'base=2'], { domain: IntervalTests.top() }],
+				[['ifelse(c, 0, 5)', 'base=2'], { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, Math.log(5)/Math.log(2)) }]
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- log(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
 			});
 		});
 

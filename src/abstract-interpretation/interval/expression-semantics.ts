@@ -1,11 +1,14 @@
 import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
+import type { DataflowGraph, NamedFunctionArgument, PositionalFunctionArgument } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 import { numericInferenceLogger } from './numeric-interval-inference';
 import { getMax, getMin, getMinMax } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { Bottom } from '../domains/lattice';
 
 /**
  * Maps function/operator names to the semantic functions.
@@ -17,6 +20,17 @@ export const IntervalExpressionSemanticsMapper = [
 	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
 	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
 	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
+	[Identifier.make('nrow'), unaryExprFnSemantics(intervalNrowNcolFn)],
+	[Identifier.make('ncol'), unaryExprFnSemantics(intervalNrowNcolFn)],
+	[Identifier.make('NROW'), unaryExprFnSemantics(intervalLengthFn)],
+	[Identifier.make('NCOL'), unaryExprFnSemantics(intervalLengthFn)],
+	[Identifier.make('sum'), intervalSumFn],
+	[Identifier.make('max'), intervalMaxFn],
+	[Identifier.make('abs'), unaryExprOpSemantics(intervalAbs)],
+	[Identifier.make('%%'), binaryExprOpSemantics(intervalModulo)],
+	[Identifier.make('log'), intervalLog],
+	[Identifier.make('mean'), intervalReturnNumIfAllArgsAreNum],
+	[Identifier.make('min'), intervalReturnNumIfAllArgsAreNum]
 ] as const satisfies readonly IntervalSemanticsMapperInfo[];
 
 type IntervalSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSemantics];
@@ -43,18 +57,20 @@ type BinaryOpSemantics = (left: IntervalDomain | undefined, right: IntervalDomai
  * @param arg - The raw argument of the function.
  * @param getInterval - A function to retrieve the current inferred interval for the provided node id.
  * @param significantFigures - The number of significant figures used to create new intervals.
+ * @param dfg - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-type UnaryFnSemantics = (arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined) => IntervalDomain | undefined;
+type UnaryFnSemantics = (arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph) => IntervalDomain | undefined;
 
 /**
  * Semantics definition function n-ary functions/operators.
  * @param args - The raw arguments of the function/operator.
  * @param getInterval - A function to retrieve the current inferred interval for the provided node id.
  * @param significantFigures - The number of significant figures used to create new intervals.
+ * @param dfg - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-type NaryFnSemantics = (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined) => IntervalDomain | undefined;
+type NaryFnSemantics = (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph) => IntervalDomain | undefined;
 
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
@@ -62,9 +78,10 @@ type NaryFnSemantics = (args: readonly FunctionArgument[], getInterval: (node: N
  * @param args - The arguments of the function/operator.
  * @param visitor - The numeric inference visitor performing the analysis used to resolve argument intervals.
  * @param significantFigures - The number of significant figures used to create new intervals.
+ * @param dfg - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures?: number): IntervalDomain | undefined {
+export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericIntervalInferenceVisitor, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined {
 	const match = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
@@ -74,7 +91,26 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
 
 	const [_, semantics] = match;
 
-	return semantics(args, (node: NodeId ) => visitor.getAbstractValue(node), significantFigures);
+	return semantics(args, (node: NodeId ) => visitor.getAbstractValue(node), significantFigures, dfg);
+}
+
+/**
+ * Guard for unary numerical operators, filtering all calls with more/less than 1 argument.
+ * If the call has exactly 1 argument that is not empty, the provided semantics function is applied.
+ * Otherwise, a warning is logged and bottom is returned.
+ * @param unaryOperatorSemantics - The semantics function for the unary operator.
+ * @returns A semantics function for n-ary functions that applies the provided unary numeric operator semantics if the call has exactly 1 non-empty numeric argument, and logs a warning and returns bottom otherwise.
+ */
+function unaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics): NaryFnSemantics {
+	return unaryExprFnSemantics((arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined) => {
+		if(FunctionArgument.isEmpty(arg)) {
+			numericInferenceLogger.warn('Called unary operator with an empty argument, which is not supported.');
+			return IntervalDomain.bottom(significantFigures);
+		}
+
+		const interval = getInterval(arg.nodeId);
+		return unaryOperatorSemantics(interval, significantFigures);
+	});
 }
 
 /**
@@ -87,7 +123,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
  * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
 function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined => {
 		// Usage as unary operator
 		if(args.length === 1) {
 			if(FunctionArgument.isEmpty(args[0])) {
@@ -99,7 +135,7 @@ function unaryBinaryExprOpSemantics(unaryOperatorSemantics: UnaryOpSemantics, bi
 			return unaryOperatorSemantics(arg, significantFigures);
 		}
 
-		return binaryExprOpSemantics(binaryOperatorSemantics)(args, getInterval, significantFigures);
+		return binaryExprOpSemantics(binaryOperatorSemantics)(args, getInterval, significantFigures, dfg);
 	};
 }
 
@@ -137,13 +173,13 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
  * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
  */
 function unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
-	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
 		}
 
-		return unaryFunctionSemantics(args[0], getInterval, significantFigures);
+		return unaryFunctionSemantics(args[0], getInterval, significantFigures, dfg);
 	};
 }
 
@@ -317,4 +353,261 @@ function intervalLengthFn(arg: FunctionArgument, getInterval: (node: NodeId) => 
 
 	// Assure that the inferred value meets the general length semantics of being at least 0 and most Infinity
 	return inferredLength.meet(new IntervalDomain([0, Infinity], significantFigures));
+}
+
+function intervalNrowNcolFn(arg: FunctionArgument, getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(FunctionArgument.isEmpty(arg)) {
+		numericInferenceLogger.warn('Called unary "nrow/ncol" with an empty argument, which is not supported.');
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const inferredInterval = getInterval(arg.nodeId);
+	if(isNotUndefined(inferredInterval)) {
+		if(inferredInterval.isValue()) {
+			// nrow/ncol cannot process scalar values and therefore returns null
+			return undefined;
+		}
+		if(inferredInterval.isBottom()) {
+			return IntervalDomain.bottom(significantFigures);
+		}
+	}
+
+	numericInferenceLogger.warn('Applying the nrow/ncol semantics can possibly lead to an underapproximation, as we neglect the fact that they can return null.');
+	return new IntervalDomain([0, Infinity], significantFigures);
+}
+
+function intervalSumFn(args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph) {
+	if(args.length === 0) {
+		return IntervalDomain.scalar(0, significantFigures);
+	}
+	if(args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const rmNaArg: NamedFunctionArgument | undefined = args.find(arg => FunctionArgument.isNamed(arg) && arg.name === 'na.rm') as NamedFunctionArgument | undefined;
+	let rmNa = false;
+	if(isNotUndefined(rmNaArg)) {
+		if(isNotUndefined(rmNaArg.valueId)) {
+			// Resolve the value to "TRUE" or "FALSE"
+			const valueNode = dfg.idMap?.get(rmNaArg.valueId);
+			if(RLogical.is(valueNode) && RLogical.isTrue(valueNode)) {
+				rmNa = true;
+			}
+		}
+	}
+
+	const allArgumentIntervals = args
+		.filter(arg => FunctionArgument.isNamed(arg) && arg.name !== 'na.rm' || FunctionArgument.isPositional(arg))
+		.map(arg => getInterval((arg as NamedFunctionArgument | PositionalFunctionArgument).nodeId));
+
+	// There is no argument besides the rmNa argument, so result is 0
+	if(allArgumentIntervals.length === 0) {
+		return IntervalDomain.scalar(0, significantFigures);
+	}
+
+	// Not all arguments are (known) numeric scalar values, so if NAs are removed, we know result must be numeric scalar.
+	// If NA is not removed, result could be NA => undefined.
+	if(allArgumentIntervals.some(isUndefined)) {
+		if(rmNa) {
+			return IntervalDomain.top(significantFigures);
+		}
+		return undefined;
+	}
+
+	// All arguments are known numeric scalar values, so we can return the sum of all intervals
+	return allArgumentIntervals.reduce((acc, val) => intervalAddOp(acc, val), IntervalDomain.scalar(0));
+}
+
+function intervalMaxFn(args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined, dfg: DataflowGraph) {
+	if(args.length === 0) {
+		return IntervalDomain.scalar(Number.NEGATIVE_INFINITY, significantFigures);
+	}
+	if(args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const rmNaArg: NamedFunctionArgument | undefined = args.find(arg => FunctionArgument.isNamed(arg) && arg.name === 'na.rm') as NamedFunctionArgument | undefined;
+	let rmNa = false;
+	if(isNotUndefined(rmNaArg)) {
+		if(isNotUndefined(rmNaArg.valueId)) {
+			// Resolve the value to "TRUE" or "FALSE"
+			const valueNode = dfg.idMap?.get(rmNaArg.valueId);
+			if(RLogical.is(valueNode) && RLogical.isTrue(valueNode)) {
+				rmNa = true;
+			}
+		}
+	}
+
+	const allArgumentIntervals = args
+		.filter(arg => FunctionArgument.isNamed(arg) && arg.name !== 'na.rm' || FunctionArgument.isPositional(arg))
+		.map(arg => getInterval((arg as NamedFunctionArgument | PositionalFunctionArgument).nodeId));
+
+	// There is no argument besides the rmNa argument, so result is -Infinity
+	if(allArgumentIntervals.length === 0) {
+		return IntervalDomain.scalar(Number.NEGATIVE_INFINITY, significantFigures);
+	}
+
+	// Not all arguments are (known) numeric scalar values, so if NAs are removed, we know result must be numeric scalar.
+	// If NA is not removed, result could be NA => undefined.
+	if(allArgumentIntervals.some(isUndefined)) {
+		if(rmNa) {
+			return IntervalDomain.top(significantFigures);
+		}
+		return undefined;
+	}
+
+	// All arguments are known numeric scalar values, so we can return the max
+	let maxLowerBound = Number.NEGATIVE_INFINITY;
+	let maxUpperBound = Number.NEGATIVE_INFINITY;
+
+	for(const interval of allArgumentIntervals) {
+		if(interval?.value === Bottom){
+			return IntervalDomain.bottom(significantFigures);
+		}
+		if(isNotUndefined(interval) && interval.value[0] > maxLowerBound) {
+			maxLowerBound = interval.value[0];
+		}
+		if(isNotUndefined(interval) && interval.value[1] > maxUpperBound) {
+			maxUpperBound = interval.value[1];
+		}
+	}
+
+	return new IntervalDomain([maxLowerBound, maxUpperBound], significantFigures);
+}
+
+function intervalAbs(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(isUndefined(arg) || arg.value === Bottom) {
+		return arg;
+	}
+
+	const [a, b] = arg.value;
+	const minMax = getMinMax([Math.abs(a), Math.abs(b)]);
+	if(isNotUndefined(minMax)) {
+		return arg.create([minMax.min, minMax.max]);
+	}
+	return arg.top();
+}
+
+function intervalModulo(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(isUndefined(left) || isUndefined(right)) {
+		return undefined;
+	}
+	const significantFigures = getMin([left.significantFigures, right.significantFigures].filter(isNotUndefined));
+	if(left.isBottom() || right.isBottom()) {
+		return left.bottom(significantFigures);
+	}
+	const [a, b] = left.value as [number, number];
+	const [c, d] = right.value as [number, number];
+	// left contains Inf/-Inf => Top (might be NaN)
+	// right contains 0 => Top (might be NaN)
+	if(a === Number.NEGATIVE_INFINITY || b === Number.POSITIVE_INFINITY || (c <= 0 && d >= 0)) {
+		return undefined;
+	}
+	if(a === b && c == d) {
+		return left.scalar(a % c, significantFigures);
+	}
+	// right decides the sign
+	// result is at most max of right value
+	const maxLeft = getMax([Math.abs(a), Math.abs(b)]) ?? 0;
+	const maxRight = getMax([Math.abs(c), Math.abs(d)]) ?? 0;
+	const maxModulo = maxLeft < maxRight ? maxLeft : maxRight;
+	if(c > 0) {
+		// result is positive
+		return left.create([0, maxModulo], significantFigures);
+	}
+	// result is negative
+	return left.create([-maxModulo, 0], significantFigures);
+}
+
+function intervalLog(args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(args.length === 0 || args.length > 2 || args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	if(args.length === 1 && !FunctionArgument.isPositional(args[0])) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	let operandArg: PositionalFunctionArgument;
+	let baseArg: PositionalFunctionArgument | NamedFunctionArgument | undefined = undefined;
+	if(args.length === 1) {
+		operandArg = args[0] as PositionalFunctionArgument;
+	} else {
+		if(FunctionArgument.isNamed(args[0]) && FunctionArgument.isPositional(args[1])) {
+			operandArg = args[1];
+			baseArg = args[0];
+		} else {
+			operandArg = args[0] as PositionalFunctionArgument;
+			baseArg = args[1] as NamedFunctionArgument | PositionalFunctionArgument;
+		}
+	}
+
+	const operand = getInterval(operandArg.nodeId);
+	let base: IntervalDomain | undefined = undefined;
+	if(isNotUndefined(baseArg)) {
+		let baseNodeId: NodeId | undefined;
+		if(FunctionArgument.isNamed(baseArg) && baseArg?.name === 'base') {
+			baseNodeId = baseArg?.valueId;
+		} else if(FunctionArgument.isPositional(baseArg)) {
+			baseNodeId = baseArg?.nodeId;
+		} else {
+			// Invalid argument
+			return IntervalDomain.bottom(significantFigures);
+		}
+
+		if(isNotUndefined(baseNodeId)) {
+			base = getInterval(baseNodeId);
+		} else {
+			base = IntervalDomain.top(significantFigures);
+		}
+	}
+
+	if(isUndefined(operand) || operand.isBottom()) {
+		return operand;
+	}
+	if(base?.isBottom()) {
+		return operand.bottom(significantFigures);
+	}
+
+	const [a, b] = operand.value as [number, number];
+
+	if(a < 0) {
+		return undefined;
+	}
+	if(a == b) {
+		if(isUndefined(base)) {
+			return operand.scalar(Math.log(a));
+		}
+		const [c, d] = base?.value as [number, number];
+		if(c === d) {
+			return operand.scalar(Math.log(a) / Math.log(c));
+		}
+		return operand.top();
+	}
+	if(isUndefined(base)) {
+		return operand.create([Math.log(a), Math.log(b)]);
+	}
+	const [c, d] = base?.value as [number, number];
+	if(c === d) {
+		return operand.create([Math.log(a) / Math.log(c), Math.log(b) / Math.log(c)]);
+	}
+	return operand.top();
+}
+
+function intervalReturnNumIfAllArgsAreNum(args: readonly FunctionArgument[], getInterval: (node: NodeId) => IntervalDomain | undefined, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(args.length === 0 || args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const allArgIntervals = args.map(arg => {
+		if(FunctionArgument.isPositional(arg)) {
+			return getInterval(arg.nodeId);
+		}
+		return undefined;
+	});
+
+	if(allArgIntervals.some(isUndefined)) {
+		return undefined;
+	}
+	return IntervalDomain.top();
 }

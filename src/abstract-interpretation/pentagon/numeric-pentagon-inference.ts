@@ -86,7 +86,7 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 			return;
 		}
 
-		const result = applyPentagonExpressionSemantics(call.id, call.name, call.args, this, this.currentState, this.config.ctx.config.abstractInterpretation.numeric.significantFigures);
+		const result = applyPentagonExpressionSemantics(call.id, call.name, call.args, this, this.currentState, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, this.config.dfg);
 
 		if(isUndefined(result)) {
 			return;

@@ -6,8 +6,7 @@ export const Unscaled = Symbol('Unscaled');
 export const Scaled = Symbol('Scaled');
 
 const scaleDomain = new FiniteDomainBuilder()
-	.addElement(Unscaled)
-	.addElement(Scaled)
+	.addElements(Unscaled, Scaled)
 	.addLeqOrder(Bottom, [Unscaled, Scaled])
 	.addLeqOrder(Unscaled, Top)
 	.addLeqOrder(Scaled, Top)

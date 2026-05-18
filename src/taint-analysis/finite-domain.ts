@@ -1,5 +1,6 @@
 import { AbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from '../abstract-interpretation/domains/lattice';
+import { guard } from '../util/assert';
 
 export interface FiniteLatticeConfig<Element, Top, Bot> {
 	/** The Top element of the lattice (greatest element). */
@@ -47,8 +48,8 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 	}
 
 	private findLeastUpperBound(other: this): this {
-		const thisSuccessors = this._config.leq.get(this.value) ?? new Set();
-		const otherSuccessors = this._config.leq.get(other.value) ?? new Set();
+		const thisSuccessors = this.transitiveClosure(this.value);
+		const otherSuccessors = this.transitiveClosure(other.value);
 
 		const commonSuccessors = new Set<Element>();
 		for(const succ of thisSuccessors) {
@@ -62,7 +63,7 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 			if(minimal === undefined) {
 				minimal = candidate;
 			} else {
-				const candidateSuccessors = this._config.leq.get(candidate) ?? new Set();
+				const candidateSuccessors = this.transitiveClosure(candidate);
 				if(candidateSuccessors.has(minimal)) {
 					minimal = candidate;
 				}
@@ -92,25 +93,63 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		return this.findGreatestLowerBound(other);
 	}
 
-	private findGreatestLowerBound(_other: this): this {
-		return this; // TODO
+	private findGreatestLowerBound(other: this): this {
+		const elements = this._config.elements; // Retrieve all elements in the lattice
+		let greatestLowerBound: Element | null = null;
+
+		for(const candidate of elements) {
+			if(this.leq(this.create(candidate), this) && this.leq(this.create(candidate), other)) {
+				if(
+					greatestLowerBound === null ||
+					this.leq(this.create(greatestLowerBound), this.create(candidate))
+				) {
+					greatestLowerBound = candidate;
+				}
+			}
+		}
+
+		return this.create(greatestLowerBound as Element);
 	}
 
-	leq(other: this): boolean {
-		if(this.value === this._config.bottom) {
+	leq(elementA: this, elementB?: this): boolean {
+		const a = elementB === undefined ? this : elementA;
+		const b = elementB ?? elementA;
+
+		if(a.value === b.value) {
+			return true; // Reflexivity
+		}
+
+		if(a.value === b._config.top) {
+			return b.value === a._config.top;
+		}
+		if(b.value === a._config.top) {
 			return true;
 		}
-		if(this.value === this._config.top) {
-			return other.value === this._config.top;
-		}
-		if(other.value === this._config.top) {
+
+		if(a.value === a._config.bottom) {
 			return true;
 		}
-		if(other.value === this._config.bottom) {
+		if(b.value === a._config.bottom) {
 			return false;
 		}
-		const successors = this._config.leq.get(this.value);
-		return successors?.has(other.value) ?? false;
+
+		const closure = this.transitiveClosure(a.value);
+		return closure.has(b.value);
+	}
+
+	private transitiveClosure(element: Element): Set<Element> {
+		const visited = new Set<Element>();
+		const stack = [element];
+		while(stack.length > 0) {
+			const current = stack.pop();
+			guard(current, 'Error in transitive lattice closure');
+			if(current !== element) {
+				visited.add(current);
+			}
+			const successors = this._config.leq.get(current) ?? new Set();
+			stack.push(...successors);
+		}
+		return visited;
 	}
 
 	create(value: Element): this;

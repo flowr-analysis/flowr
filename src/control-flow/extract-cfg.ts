@@ -33,8 +33,11 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-anal
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
+import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 
@@ -76,6 +79,50 @@ const cfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFl
 	}
 };
 
+// type CfgProcessor<Info = ParentInformation> = (node: RNode<Info>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => ControlFlowInformation;
+
+function ensureCfg(arg: ControlFlowInformation | typeof EmptyArgument) {
+	return arg === EmptyArgument
+		? emptyControlFlowInformation()
+		: arg;
+}
+
+const originToCfgProcessor = {
+	[BuiltInProcName.Access]:     (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgAccess(node as RAccess<ParentInformation>, ensureCfg(args[0]), args.slice(1)),
+	[BuiltInProcName.Pipe]:       (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgBinaryOp(node as RBinaryOp<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1])),
+	[BuiltInProcName.ForLoop]:    (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgFor(node as RForLoop<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1]), ensureCfg(args[2])),
+	[BuiltInProcName.RepeatLoop]: (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgRepeat(node as RRepeatLoop<ParentInformation>, ensureCfg(args[0])),
+	[BuiltInProcName.WhileLoop]:  (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgWhile(node as RWhileLoop<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1])),
+	[BuiltInProcName.Break]:      (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => cfgBreak(node as RBreak<ParentInformation>, down),
+	[BuiltInProcName.IfThenElse]: (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState) => cfgIfThenElse(node as RIfThenElse<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1]), ensureCfg(args[2])),
+	[BuiltInProcName.Function]:   (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => cfgFunctionCall(node as RFunctionCall<ParentInformation>, ensureCfg(args[0]), args.slice(1), down),
+} as const;
+
+function dataflowCfgFolds(dfg: DataflowGraph): StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> {
+	const withOrigin = (node: RNode<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, defaultHandler: keyof typeof originToCfgProcessor) => {
+
+		const origin = getOriginInDfg(dfg, node.info.id);
+
+		if(origin !== undefined && origin.length === 1 && origin[0].type === OriginType.BuiltInFunctionOrigin) {
+			const handler = originToCfgProcessor[origin[0].proc as keyof typeof originToCfgProcessor] ?? originToCfgProcessor[defaultHandler];
+			return handler(node, args, down);
+		}
+
+		// TODO: Respect all origins
+
+		return originToCfgProcessor[defaultHandler](node, args, down);
+	};
+
+	const newFolds = {
+		...cfgFolds,
+	};
+	newFolds.functions = {
+		...cfgFolds.functions,
+		foldFunctionCall: (call, name, args, down) => withOrigin(call, [name, ...args], down, BuiltInProcName.Function)
+	};
+	return newFolds;
+}
+
 const ignoreFunctDefCfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
 	...cfgFolds,
 	functions: {
@@ -83,17 +130,6 @@ const ignoreFunctDefCfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownSt
 		foldFunctionDefinition: cfgLeaf(CfgVertexType.Expression)
 	}
 };
-
-function dataflowCfgFolds(dataflowGraph: DataflowGraph): StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> {
-	const newFolds = {
-		...cfgFolds,
-	};
-	newFolds.functions = {
-		...cfgFolds.functions,
-		foldFunctionCall: cfgFunctionCallWithDataflow(dataflowGraph, newFolds)
-	};
-	return newFolds;
-}
 
 /**
  * Given a normalized AST, this approximates the control flow graph of the program.

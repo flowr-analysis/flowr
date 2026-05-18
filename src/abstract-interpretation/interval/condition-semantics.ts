@@ -15,16 +15,16 @@ import {
 	unaryIdentityConditionSemantics
 } from '../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../absint-visitor';
-import type { IntervalValueDomainAccess } from './numeric-interval-inference';
+import type { IntervalInference } from './numeric-interval-inference';
 
-type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
+type IntervalConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalInference<StateDomain>;
 
 /**
  * Wrapper for the interval condition semantics that adds all interval specific condition semantics and returns the
  * applyConditionSemantics and applyNegatedConditionSemantics functions.
  */
 export function getIntervalConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): ConditionAppliers<StateDomain, Visitor> {
-	return createConditionApplier<StateDomain, Visitor>(getIntervalSemanticsMapper<StateDomain, Visitor>(), onUnknownPositiveFunctionCall, onUnknownNegativeFunctionCall);
+	return createConditionApplier<StateDomain, Visitor>(getIntervalSemanticsMapper<StateDomain, Visitor>(), applyUnknownPositiveCondition, applyUnknownNegativeCondition);
 }
 
 function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(): readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[] {
@@ -39,7 +39,7 @@ function getIntervalSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstra
 	] as const;
 }
 
-function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
+function applyUnknownPositiveCondition<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
 	if(isUndefined(argNodeId)) {
 		return state;
 	}
@@ -59,7 +59,7 @@ function onUnknownPositiveFunctionCall<StateDomain extends AnyStateDomain<AnyAbs
 	return state;
 }
 
-function onUnknownNegativeFunctionCall<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
+function applyUnknownNegativeCondition<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
 	if(isUndefined(argNodeId)) {
 		return state;
 	}
@@ -99,16 +99,16 @@ function intervalEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>,
 
 	visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
 		if(isUndefined(meet)) {
-			visitor.setInterval(state)(originNodeId, undefined);
+			visitor.setInterval(state, originNodeId, undefined);
 		} else {
-			visitor.setInterval(state)(originNodeId, meet);
+			visitor.setInterval(state, originNodeId, meet);
 		}
 	});
 	visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
 		if(isUndefined(meet)) {
-			visitor.setInterval(state)(originNodeId, undefined);
+			visitor.setInterval(state, originNodeId, undefined);
 		} else {
-			visitor.setInterval(state)(originNodeId, meet);
+			visitor.setInterval(state, originNodeId, meet);
 		}
 	});
 
@@ -147,11 +147,11 @@ function intervalGreaterOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>
 			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxLowerBound = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				visitor.setInterval(state)(originNodeId, leftValue.create([maxLowerBound, b], smallestSignificantFigures));
+				visitor.setInterval(state, originNodeId, leftValue.create([maxLowerBound, b], smallestSignificantFigures));
 			});
 			const minUpperBound = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				visitor.setInterval(state)(originNodeId, rightValue.create([c, minUpperBound], smallestSignificantFigures));
+				visitor.setInterval(state, originNodeId, rightValue.create([c, minUpperBound], smallestSignificantFigures));
 			});
 			return state;
 		}
@@ -183,11 +183,11 @@ function intervalGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstractDo
 			const smallestSignificantFigures = getMin([leftValue.significantFigures, rightValue.significantFigures].filter(isNotUndefined));
 			const maxAC = a < c ? c : a;
 			visitor.getVariableOrigins(leftNodeId).forEach(originNodeId => {
-				visitor.setInterval(state)(originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
+				visitor.setInterval(state, originNodeId, leftValue.create([maxAC, b], smallestSignificantFigures));
 			});
 			const minBD = b < d ? b : d;
 			visitor.getVariableOrigins(rightNodeId).forEach(originNodeId => {
-				visitor.setInterval(state)(originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
+				visitor.setInterval(state, originNodeId, rightValue.create([c, minBD], smallestSignificantFigures));
 			});
 			return state;
 		}

@@ -6,7 +6,7 @@ import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '
 import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { IntervalDomain } from '../domains/interval-domain';
-import type { IntervalValueDomainAccess } from '../interval/numeric-interval-inference';
+import type { IntervalInference } from '../interval/numeric-interval-inference';
 import { numericInferenceLogger } from '../interval/numeric-interval-inference';
 import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { isNotUndefined, isUndefined } from '../../util/assert';
@@ -21,8 +21,8 @@ import type { AnyAbstractDomain } from '../domains/abstract-domain';
  * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies upper bounds
  * condition semantics.
  */
-export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
-	setUpperBounds(state: StateDomain): (node: NodeId, value: UpperBoundsValueDomain) => void;
+export interface UpperBoundsInference<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
+	setUpperBounds(state: StateDomain, node: NodeId, value: UpperBoundsValueDomain): void;
 	getUpperBounds(node: NodeId, state?: StateDomain): UpperBoundsValueDomain;
 
 	/**
@@ -36,7 +36,7 @@ export interface UpperBoundsDomainAccess<StateDomain extends AnyStateDomain<AnyA
 	getOriginIfUnique(node: NodeId): NodeId | undefined;
 }
 
-export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> implements IntervalValueDomainAccess<ClosedPentagonDomain>, UpperBoundsDomainAccess<ClosedPentagonDomain> {
+export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisitor<ClosedPentagonDomain> implements IntervalInference<ClosedPentagonDomain>, UpperBoundsInference<ClosedPentagonDomain> {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, ClosedPentagonDomain.top(ClosedPentagonValueDomain.top()));
 	}
@@ -62,11 +62,11 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 				targetPentagon.value.upperBounds.add(sourceOrigin);
 				// To every upper-bounds that contains source, also add target: a small reduction step to increase precision.
 				if(this.currentState.isValue()) {
-					this.currentState.value.forEach(closedPentagonValue => {
+					for(const [_, closedPentagonValue] of this.currentState.value) {
 						if(closedPentagonValue.value.upperBounds.has(sourceOrigin)) {
 							closedPentagonValue.value.upperBounds.add(target);
 						}
-					});
+					}
 				}
 				this.currentState.set(sourceOrigin, sourcePentagon);
 				this.currentState.set(target, targetPentagon);
@@ -115,35 +115,31 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 		return this.currentState.set(call.id, result);
 	}
 
-	setInterval(state: ClosedPentagonDomain): (node: NodeId, value: (IntervalDomain | undefined)) => void {
-		return (node: NodeId, value: (IntervalDomain | undefined)) => {
-			if(isUndefined(value)) {
-				state.remove(node);
-			} else {
-				let pentagon = state.get(node);
-				if(isUndefined(pentagon)) {
-					pentagon = ClosedPentagonValueDomain.top();
-				}
-				pentagon.value.interval = value;
-				state.set(node, pentagon);
+	setInterval(state: ClosedPentagonDomain, node: NodeId, value: (IntervalDomain | undefined)): void {
+		if(isUndefined(value)) {
+			state.remove(node);
+		} else {
+			let pentagon = state.get(node);
+			if(isUndefined(pentagon)) {
+				pentagon = ClosedPentagonValueDomain.top();
 			}
-		};
+			pentagon.value.interval = value;
+			state.set(node, pentagon);
+		}
 	}
 
 	getInterval(node: NodeId, state?: ClosedPentagonDomain): IntervalDomain | undefined {
 		return this.getAbstractValue(node, state)?.value.interval;
 	}
 
-	setUpperBounds(state: ClosedPentagonDomain): (node: NodeId, value: UpperBoundsValueDomain) => void {
-		return (node: NodeId, value: UpperBoundsValueDomain) => {
-			const pentagon = state.get(node);
-			if(isUndefined(pentagon)) {
-				// As we currently cannot describe that we have upper bounds-info but not know whether it is a numeric scalar value, we cannot infer upper-bounds values for non-numeric scalar values.
-				return;
-			}
-			pentagon.value.upperBounds = value;
-			state.set(node, pentagon);
-		};
+	setUpperBounds(state: ClosedPentagonDomain, node: NodeId, value: UpperBoundsValueDomain): void {
+		const pentagon = state.get(node);
+		if(isUndefined(pentagon)) {
+			// As we currently cannot describe that we have upper bounds-info but not know whether it is a numeric scalar value, we cannot infer upper-bounds values for non-numeric scalar values.
+			return;
+		}
+		pentagon.value.upperBounds = value;
+		state.set(node, pentagon);
 	}
 
 	getUpperBounds(node: NodeId, state?: ClosedPentagonDomain): UpperBoundsValueDomain {

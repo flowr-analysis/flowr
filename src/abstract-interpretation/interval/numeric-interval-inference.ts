@@ -19,15 +19,15 @@ export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inferenc
  * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies interval condition
  * semantics.
  */
-export interface IntervalValueDomainAccess<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
-	setInterval(state: StateDomain): (node: NodeId, value: IntervalDomain | undefined) => void;
+export interface IntervalInference<StateDomain extends AnyStateDomain<AnyAbstractDomain>> {
+	setInterval(state: StateDomain, node: NodeId, value: IntervalDomain | undefined): void;
 	getInterval(node: NodeId, state?: StateDomain): IntervalDomain | undefined;
 }
 
 /**
  * The control flow graph visitor to infer scalar numeric values using abstract interpretation.
  */
-export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> implements IntervalValueDomainAccess<StateAbstractDomain<IntervalDomain>> {
+export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> implements IntervalInference<StateAbstractDomain<IntervalDomain>> {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, StateAbstractDomain.top(IntervalDomain.top()));
 	}
@@ -73,8 +73,8 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 		return this.currentState.set(call.id, result);
 	}
 
-	setInterval(state: StateAbstractDomain<IntervalDomain>): (node: NodeId, value: (IntervalDomain | undefined)) => void {
-		return (node: NodeId, interval: IntervalDomain | undefined) => isUndefined(interval) ? state.remove(node) : state.set(node, interval);
+	setInterval(state: StateAbstractDomain<IntervalDomain>, node: NodeId, value: (IntervalDomain | undefined)): void {
+		return isUndefined(value) ? state.remove(node) : state.set(node, value);
 	}
 
 	getInterval(node: NodeId, state?: StateAbstractDomain<IntervalDomain>): IntervalDomain | undefined {

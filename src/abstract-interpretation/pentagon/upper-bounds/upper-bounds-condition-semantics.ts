@@ -13,9 +13,9 @@ import {
 	unaryIdentityConditionSemantics
 } from '../../absint-condition-semantics';
 import type { AbstractInterpretationVisitor } from '../../absint-visitor';
-import type { UpperBoundsDomainAccess } from '../numeric-pentagon-inference';
+import type { UpperBoundsInference } from '../numeric-pentagon-inference';
 
-type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & UpperBoundsDomainAccess<StateDomain>;
+type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & UpperBoundsInference<StateDomain>;
 
 /**
  * Wrapper for the upper bounds condition semantics that adds all upper bounds specific condition semantics and returns
@@ -57,10 +57,10 @@ function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomai
 	}
 
 	if(isNotUndefined(leftOrigin)) {
-		visitor.setUpperBounds(state)(leftOrigin, resultingUpperBounds);
+		visitor.setUpperBounds(state, leftOrigin, resultingUpperBounds);
 	}
 	if(isNotUndefined(rightOrigin)) {
-		visitor.setUpperBounds(state)(rightOrigin, resultingUpperBounds);
+		visitor.setUpperBounds(state, rightOrigin, resultingUpperBounds);
 	}
 
 	return state;
@@ -112,7 +112,7 @@ function upperBoundsGreaterEqualOp<StateDomain extends AnyStateDomain<AnyAbstrac
 		return state.bottom();
 	}
 
-	visitor.setUpperBounds(state)(rightOrigin, resultingUpperBounds);
+	visitor.setUpperBounds(state, rightOrigin, resultingUpperBounds);
 
 	return state;
 }

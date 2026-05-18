@@ -120,8 +120,8 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
 	};
 }
 
-function pentagonUnaryIdentityOp(_target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
-	return arg[1];
+function pentagonUnaryIdentityOp(_target: NodeId, [_, argPentagon]: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
+	return argPentagon;
 }
 
 function pentagonAddOp(target: NodeId, [leftNodeId, leftValue]: [NodeId, ClosedPentagonValueDomain | undefined], [rightNodeId, rightValue]: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {

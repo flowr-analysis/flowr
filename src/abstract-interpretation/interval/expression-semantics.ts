@@ -2,7 +2,7 @@ import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
-import type { IntervalValueDomainAccess } from './numeric-interval-inference';
+import type { IntervalInference } from './numeric-interval-inference';
 import { numericInferenceLogger } from './numeric-interval-inference';
 import { getMax, getMin, getMinMax } from '../../util/numbers';
 import type { AnyStateDomain } from '../domains/state-domain-like';
@@ -10,7 +10,7 @@ import type { AnyAbstractDomain } from '../domains/abstract-domain';
 import type { AbstractInterpretationVisitor } from '../absint-visitor';
 import type { StateAbstractDomain } from '../domains/state-abstract-domain';
 
-type IntervalExpressionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalValueDomainAccess<StateDomain>;
+type IntervalExpressionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalInference<StateDomain>;
 
 /**
  * Maps function/operator names to the semantic functions.

@@ -5,22 +5,86 @@ import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattic
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import type { FiniteDomain } from '../../../src/taint-analysis/finite-domain';
 
+function topAndBottomCases(create: (d: symbol) => FiniteDomain<symbol, symbol, symbol>, top: symbol = Top, bottom: symbol = Bottom) {
+	assertAbstractDomain(create, bottom, bottom, {
+		equal: true, leq: true, join: bottom, meet: bottom, widen: bottom, narrow: bottom, concrete: []
+	});
+	assertAbstractDomain(create, top, top, {
+		equal: true, leq: true, join: top, meet: Top, widen: top, narrow: top, concrete: []
+	});
+	assertAbstractDomain(create, bottom, top, {
+		equal: false, leq: true, join: top, meet: bottom, widen: top, narrow: bottom, concrete: []
+	});
+	assertAbstractDomain(create, top, bottom, {
+		equal: false, leq: false, join: top, meet: bottom, widen: top, narrow: bottom, concrete: []
+	});
+}
+
 describe('Finite Domain', () => {
-	const minimalDomain = new FiniteDomainBuilder().addLeqOrder(Bottom, Top).build();
-	const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => minimalDomain.create(value);
-
-	assertAbstractDomain(create, Bottom, Bottom, {
-		equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom, concrete: []
-	});
-	assertAbstractDomain(create, Top, Top, {
-		equal: true, leq: true, join: Top, meet: Top, widen: Top, narrow: Top, concrete: Top
-	});
-	assertAbstractDomain(create, Bottom, Top, {
-		equal: false, leq: true, join: Top, meet: Bottom, widen: Top, narrow: Bottom, concrete: []
-	});
-	assertAbstractDomain(create, Top, Bottom, {
-		equal: false, leq: false, join: Top, meet: Bottom, widen: Top, narrow: Bottom, concrete: Top
+	describe('Minimal Lattice', () => {
+		const minimalDomain = new FiniteDomainBuilder().addLeqOrder(Bottom, Top).build();
+		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => minimalDomain.create(value);
+		topAndBottomCases(create);
 	});
 
-	// TODO More complex cases
+
+	describe('Custom Top and Bottom', () => {
+		const T = Symbol('T');
+		const B = Symbol('B');
+
+		const customTopAndBottom = new FiniteDomainBuilder()
+			.setBottom(B)
+			.setTop(T)
+			.addLeqOrder(B, T).build();
+
+		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => customTopAndBottom.create(value);
+		topAndBottomCases(create, T, B);
+	});
+
+	describe('More Complex Lattice', () => {
+		const A = Symbol('A');
+		const B = Symbol('B');
+		const C = Symbol('C');
+		const D = Symbol('D');
+		const E = Symbol('E');
+
+		const lattice = new FiniteDomainBuilder()
+			.addElements(A, B, C, D, E)
+			.addLeqOrder(Bottom, [A, C])
+			.addLeqOrder(A, B)
+			.addLeqOrder(B, D)
+			.addLeqOrder(C, D)
+			.addLeqOrder(D, Top)
+			.build();
+		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => lattice.create(value);
+		topAndBottomCases(create);
+
+		assertAbstractDomain(create, Bottom, A, {
+			equal: false, leq: true, join: A, meet: Bottom, widen: A, narrow: Bottom, concrete: []
+		});
+		assertAbstractDomain(create, A, Bottom, {
+			equal: false, leq: false, join: A, meet: Bottom, widen: A, narrow: Bottom, concrete: []
+		});
+
+		assertAbstractDomain(create, A, Top, {
+			equal: false, leq: true, join: Top, meet: A, widen: Top, narrow: A, concrete: []
+		});
+		assertAbstractDomain(create, Top, A, {
+			equal: false, leq: false, join: Top, meet: A, widen: Top, narrow: A, concrete: []
+		});
+
+		assertAbstractDomain(create, A, C, {
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: []
+		});
+		assertAbstractDomain(create, C, A, {
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: []
+		});
+
+		assertAbstractDomain(create, B, C, {
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: []
+		});
+		assertAbstractDomain(create, C, B, {
+			equal: false, leq: false, join: D, meet: Bottom, widen: D, narrow: Bottom, concrete: []
+		});
+	});
 });

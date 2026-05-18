@@ -8,32 +8,36 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 	private _top:              Top | undefined;
 	private _bottom:           Bottom | undefined;
 
-	constructor() {
-		this.setTop(Top as Top);
-		this.setBottom(Bottom as Bottom);
-	}
-
-	addElement(element: Element): this {
-		this.elements.add(element);
-		if(!this.leqMap.has(element)) {
-			this.leqMap.set(element, new Set());
+	addElements(...elements: Element[]): this {
+		for(const element of elements) {
+			this.elements.add(element);
+			if(!this.leqMap.has(element)) {
+				this.leqMap.set(element, new Set());
+			}
 		}
 		return this;
 	}
 
 	setTop(element: Top): this {
 		this._top = element;
-		this.addElement(element as Element);
+		this.addElements(element as Element);
 		return this;
 	}
 
 	setBottom(element: Bottom): this {
 		this._bottom = element;
-		this.addElement(element as Element);
+		this.addElements(element as Element);
 		return this;
 	}
 
 	addLeqOrder(from: Element, to: Element | Element[]): this {
+		if(from === Bottom) {
+			this.addElements(Bottom as Element);
+		}
+		if(to === Top) {
+			this.addElements(Top as Element);
+		}
+
 		if(!this.elements.has(from)) {
 			throw new Error(`Source element not registered: ${String(from)}`);
 		}
@@ -42,7 +46,7 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 		}
 		for(const t of to) {
 			if(!this.elements.has(t)) {
-				throw new Error(`Target element not registered: ${String(to)}`);
+				throw new Error(`Target element not registered: ${String(t)}`);
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -53,6 +57,14 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 	}
 
 	private buildConfig(): FiniteLatticeConfig<Element, Top, Bottom> {
+		if(!this._top) {
+			this.setTop(Top as Top);
+		}
+
+		if(!this._bottom) {
+			this.setBottom(Bottom as Bottom);
+		}
+
 		return {
 			top:      this._top as Top,
 			bottom:   this._bottom as Bottom,

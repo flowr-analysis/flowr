@@ -46,7 +46,9 @@ export const functionFinderUtil = {
 					name: FlowrFilter.MatchesEnrichment,
 					args: {
 						enrichment: Enrichment.CallTargets,
-						test:       testFunctionsIgnoringPackage(functions)
+						test:       {
+							targets: testFunctionsIgnoringPackage(functions)
+						}
 					}
 				})
 		);
@@ -127,5 +129,3 @@ export const functionFinderUtil = {
 		return Ternary.Never;
 	}
 };
-
-

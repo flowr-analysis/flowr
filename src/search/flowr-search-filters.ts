@@ -2,10 +2,9 @@ import { RType, ValidRTypes } from '../r-bridge/lang-4.x/ast/model/type';
 import { ValidVertexTypes, VertexType } from '../dataflow/graph/vertex';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrSearchElement } from './flowr-search';
-import type { CallTargetsContent } from './search-executor/search-enrichers';
-import { Enrichment, enrichmentContent } from './search-executor/search-enrichers';
+import type { Enrichment } from './search-executor/search-enrichers';
+import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
-import { Identifier } from '../dataflow/environments/identifier';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
@@ -42,23 +41,48 @@ export const FlowrFilters = {
 		return e.node.type !== RType.Argument || e.node.name !== undefined;
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
-		if(args.enrichment === Enrichment.CallTargets) {
-			const c: CallTargetsContent = enrichmentContent(e, Enrichment.CallTargets);
-			if(c === undefined || c.targets === undefined) {
+		const content = enrichmentContent(e, args.enrichment);
+		return content && testRecursive(content, args.test);
+
+		function testRecursive(realChild: Record<string, unknown>, expectedChild: Record<string, unknown>): boolean {
+			// if we want to test exact equality, we need to make sure our expected object is the same "size" as our real object
+			if(args.testExact && Object.keys(realChild) !== Object.keys(expectedChild)) {
 				return false;
 			}
-			for(const fn of c.targets) {
-				if(typeof fn === 'string' && args.test.test(fn)) {
-					return true;
+
+			for(const [expectedKey, expectedValue] of Object.entries(expectedChild)) {
+				const realValue = realChild[expectedKey];
+				if(!realValue) {
+					return false;
 				}
-				if(typeof fn === 'object' && 'node' in fn && fn.node.type === RType.FunctionCall && fn.node.named && args.test.test(Identifier.getName(fn.node.functionName.content))) {
-					return true;
+
+				// for arrays, we match our expected value against each array entry
+				if(Array.isArray(realValue)) {
+					const match = expectedValue instanceof RegExp ?
+						(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
+						(value: unknown) => expectedValue === value;
+					if(match === undefined || !(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+						return false;
+					}
+				}
+
+				// for objects, we recursively match
+				if(typeof realValue === 'object') {
+					if(!testRecursive(realValue as Record<string, unknown>, expectedValue as Record<string, unknown>)) {
+						return false;
+					}
+				}
+
+				// for anything else, we match with our regular expression
+				if(expectedValue instanceof RegExp) {
+					if(!expectedValue.test(typeof realValue === 'string' ? realValue : String(realValue as unknown))) {
+						return false;
+					}
+				} else if(expectedValue !== realValue) {
+					return false;
 				}
 			}
-			return false;
-		} else {
-			const content = JSON.stringify(enrichmentContent(e, args.enrichment));
-			return content !== undefined && args.test.test(content);
+			return true;
 		}
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
@@ -76,8 +100,16 @@ export const FlowrFilters = {
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
 export interface MatchesEnrichmentArgs<E extends Enrichment> {
-	enrichment: E,
-	test:       RegExp
+	enrichment:  E,
+	/**
+	 * The object to test the enrichment value against, which should be a partial {@link EnrichmentElementContent} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the enrichment value at each {@link RegExp} location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given regular expression or value, or only some.
+	 */
+	test:        Record<string, unknown>,
+	arrayMatch?: 'some' | 'every',
+	/**
+	 * Whether the {@link test} object needs to match the real value exactly (true), or whether it is a subset of the real value (false).
+	 */
+	testExact?:  boolean
 }
 export interface OriginKindArgs {
 	origin:                BuiltInProcName | RegExp;

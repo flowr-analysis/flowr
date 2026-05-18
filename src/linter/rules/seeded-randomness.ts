@@ -63,7 +63,9 @@ export const SEEDED_RANDOMNESS = {
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
-				test:       testFunctionsIgnoringPackage(config.randomnessConsumers)
+				test:       {
+					targets: testFunctionsIgnoringPackage(config.randomnessConsumers)
+				}
 			}
 		})
 		.with(Enrichment.LastCall, [

@@ -12,7 +12,7 @@ import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/proc
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
-import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
+import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 import { CfgKind } from '../../project/cfg-kind';
@@ -21,6 +21,8 @@ import {
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
+import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -47,6 +49,7 @@ export enum Enrichment {
 	CallTargets = 'call-targets',
 	LastCall = 'last-call',
 	CfgInformation = 'cfg-information',
+	Roxygen = 'roxygen',
 	QueryData = 'query-data'
 }
 
@@ -93,11 +96,15 @@ export interface CfgInformationArguments extends MergeableRecord {
 	checkReachable?:       boolean
 }
 
+export interface RoxygenElementContent extends MergeableRecord {
+	documentation: readonly RoxygenTag[]
+	tags:          { [T in KnownRoxygenTags]?: readonly (RoxygenTag & { type: T })[] }
+}
+
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
 	query: Query['type']
 }
-
 export interface QueryDataSearchContent extends MergeableRecord {
 	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
 }
@@ -208,7 +215,28 @@ export const Enrichments = {
 			}
 			return content;
 		}
-	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, AsyncOrSyncType<CfgInformationSearchContent>>,
+	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>,
+	[Enrichment.Roxygen]: {
+		enrichElement: async(e, _search, analyzer, _args, prev) => {
+			const content = (prev ?? {
+				documentation: [],
+				tags:          {}
+			}) as DeepWritable<RoxygenElementContent>;
+
+			const normalize = await analyzer.normalize();
+			const roxygen = getDocumentationOf(e.node.info.id, normalize.idMap);
+			if(roxygen !== undefined) {
+				const comments = (Array.isArray(roxygen) ? roxygen : [roxygen]) as RoxygenTag[];
+				content.documentation.push(...comments);
+				for(const comment of comments) {
+					content.tags[comment.type] ??= [];
+					(content.tags[comment.type] as RoxygenTag[]).push(comment);
+				}
+			}
+
+			return content;
+		}
+	} satisfies EnrichmentData<RoxygenElementContent>,
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,

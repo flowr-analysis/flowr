@@ -19,7 +19,7 @@ import { linkFlowRSourceFile } from './doc-util/doc-files';
 import { details, section } from './doc-util/doc-structure';
 import { DocMaker, type DocMakerArgs } from './wiki-mk/doc-maker';
 
-class IntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
+export class IntervalInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<IntervalDomain>> {
 	constructor(config: AbsintVisitorConfiguration) {
 		super(config, StateAbstractDomain.top(IntervalDomain.top()));
 	}
@@ -60,7 +60,7 @@ async function inferIntervals(): Promise<string> {
 
 	analyzer.addRequest(`
 		x <- 42
-		y <- if (runif() < 0.5) 6 else 12
+		y <- if (runif(1) < 0.5) 6 else 12
 		z <- x + y
 	`.trim());
 
@@ -169,7 +169,7 @@ To implement a custom abstract interpretation analysis, we can just create a new
 
 For example, if we want to perform a (very basic) interval analysis using abstract interpretation in _flowR_, we can implement the following ${ctx.link(IntervalInferenceVisitor)} that extends ${ctx.link(AbstractInterpretationVisitor)} using a ${ctx.link(StateAbstractDomain)} for the ${ctx.link(IntervalDomain)}:
 
-${ctx.code(IntervalInferenceVisitor)}
+${ctx.code(IntervalInferenceVisitor, { hideDefinedAt: true })}
 
 The interval inference visitor first overrides the ${ctx.link(`${SemanticCfgGuidedVisitor.name}:::onNumberConstant`)} function to infer intervals for visited control flow vertices that represent numeric constants. For numeric constants, the resulting interval consists just of the number value of the constant. We then update the current abstract state of the visitor by setting the inferred abstract value of the currently visited control flow vertex to the new interval.
 
@@ -177,7 +177,7 @@ In this simple example, we only want to support the addition and subtraction of 
 
 If we now want to run the interval inference, we can write the following code:
 
-${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5 })}
+${ctx.code(inferIntervals, { dropLinesStart: 1, dropLinesEnd: 5, hideDefinedAt: true })}
 
 We first need a ${ctx.linkPage('wiki/Analyzer', 'flowR analyzer')} (in this case, using the ${ctx.linkPage('wiki/Engines', 'tree-sitter engine')}). In this example, we want to analyze a small example code that assigns \`42\` to the variable \`x\`, randomly assigns \`6\` or \`12\` to the variable \`y\`, and assignes the sum of \`x\` and \`y\` to the variable \`z\`. For the abstract interpretation visitor, we need to retrieve the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')}, ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, ${ctx.linkPage('wiki/Control Flow Graph', 'control flow graph')}, and context of the flowR anaylzer. For performance reasons, we construct the control flow graph without simplification passes, data flow information, and function definitions. We then create a new ${ctx.link(IntervalInferenceVisitor)} using the control flow graph, dataflow graph, normalized AST, and analyzer context, and start the visitor using ${ctx.linkM(AbstractInterpretationVisitor, 'start', { hideClass: true })}. After the visitor is finished, we retrieve the inferred abstract state at the end of the program using ${ctx.linkM(AbstractInterpretationVisitor, 'getEndState', { hideClass: true })}.
 
@@ -215,46 +215,7 @@ When comparing inferred values with expected values, the framework supports two 
 
 For example, to use the test framework for the ${ctx.link(IntervalInferenceVisitor)} defined above, we first define how to print the properties of an actual numeric scalar value in R using \`createOutputCode\` and how to parse it into an abstract domain value using \`parseOutput\`. Then, we can use ${ctx.link('testInferredValues')} to create a test for our code example by providing a test name, an R shell, the code to test, the test locations as slicing criteria with expected values, the inference visitor, and our \`createOutputCode\` and \`parseOutput\` function:
 
-${codeBlock('ts', `
-function createOutputCode(marker: string, symbol: string): string {
-	return \`cat(sprintf("\${marker}: %s,%s,%s\\n", is.numeric(\${symbol}), length(\${symbol}) == 1, paste(\${symbol}, collapse=";")))\`;
-}
-
-function parseOutput(output: string): IntervalDomain | undefined {
-	const OutputRegex = /(TRUE|FALSE),(TRUE|FALSE),(.*)$/;
-	const result = output.match(OutputRegex);
-
-	if(result?.length === 4) {
-		const numeric = result[1] === 'TRUE';
-		const scalar = result[2] === 'TRUE';
-		const value = Number.parseInt(result[3]);
-
-		if(numeric && scalar && !Number.isNaN(value)) {
-			return new IntervalDomain([value, value]);
-		}
-	}
-}
-
-describe('Interval Inference', withShell(shell => {
-	testInferredValues(
-		'simple addition',
-		shell,
-		\`
-x <- 42
-y <- if (runif() < 0.5) 6 else 12
-z <- x + y
-        \`.trim(),
-		{
-			'1@x': new IntervalDomain([42, 42]),
-			'2@y': new IntervalDomain([6, 12]),
-			'3@z': new IntervalDomain([48, 54])
-		},
-		config => new IntervalInferenceVisitor(config),
-		createOutputCode,
-		parseOutput
-	);
-}));
-`.trim())}
+${ctx.codeFile('test/functionality/abstract-interpretation/wiki-absint.ts', { skipImports: true, hideDefinedAt: true })}
 
 The assertion test verifies that the inferred intervals match the specified expected values exactly (using ${ctx.link('DomainMatchingType::Equal')}). The validation test instruments the code by inserting print statements after each tested location, executes the instrumented code with the R shell, and checks that each inferred interval at these locations is an over-approximation of the actual runtime value (using ${ctx.link('DomainMatchingType::Overapproximation')}). For example, the inferred interval \`[6, 12]\` for \`y\` is a sound over-approximation of the actual value \`6\` or \`12\`, depending on the random branch taken at runtime.
 

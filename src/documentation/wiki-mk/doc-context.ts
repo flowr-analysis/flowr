@@ -4,7 +4,7 @@ import type {
 	PrintHierarchyArguments,
 	TypeElementKind
 } from '../doc-util/doc-types';
-import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder } from '../doc-util/doc-types';
+import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder, printCodeOfFile } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
@@ -168,7 +168,7 @@ export interface GeneralDocContext {
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
 	 * @example
 	 * ```ts
-	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2  })
+	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2 })
 	 * ```
 	 *
 	 * Creates a code snippet for the `exampleFn` function in the code base,
@@ -192,6 +192,20 @@ export interface GeneralDocContext {
 	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 */
 	code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
+
+	/**
+	 * Returns the code snippet for a code file as markdown string.
+	 * @param path - The path to the file to create a code snippet for.
+	 * @param fmt  - Formatting options for the code snippet (see {@link FnElementInfo})
+	 * @example
+	 * ```ts
+	 * code('src/path/to/file.ts', { skipImports: true })
+	 * ```
+	 *
+	 * Creates a code snippet for the source file `src/path/to/file.ts` function,
+	 * dropping the lines with import statements of the source code.
+	 */
+	codeFile(path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string;
 
 	/**
 	 * Returns the hierarchy (e.g., class inheritance) for a code element as markdown string,
@@ -333,6 +347,12 @@ export function makeDocContextForTypes(
 				program, info,
 				...fmt,
 			}, getNameFromElementIdOrRef(element));
+		},
+		codeFile(this: void, path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string {
+			return printCodeOfFile({
+				program, info,
+				...fmt,
+			}, path);
 		},
 		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();

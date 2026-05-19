@@ -312,6 +312,8 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
 				return this.onDefaultFunctionCall({ call });
+			case BuiltInProcName.Load:
+				return this.onLoadCall({call});
 			default:
 				assertUnreachable(origin);
 		}
@@ -687,4 +689,6 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onReturnCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	private onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

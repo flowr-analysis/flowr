@@ -4,11 +4,14 @@ import fs from 'node:fs';
 // @ts-ignores
 import * as bzip2 from 'bzip2';
 import * as zlib from 'node:zlib';
-import * as lzmaNative from 'lzma-native';
 import { R_FunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
+import { decompress } from 'lzma1';
 
-export class FlowrRDAFile extends FlowrFile<Promise<RObject[]>> {
+/**
+ * This decorates a text file and provides access to its content in the format of an {@link RObject}.
+ */
+export class FlowrRDAFile extends FlowrFile<RObject[]> {
 	private readonly wrapped:  FlowrFileProvider;
 	private readonly shortcut: boolean;
 
@@ -26,8 +29,8 @@ export class FlowrRDAFile extends FlowrFile<Promise<RObject[]>> {
 	 * Loads and parses the content of the wrapped file as an RDA structure.
 	 * @see {@link parseRDA} for details on the parsing logic.
 	 */
-	protected async loadContent(): Promise<RObject[]> {
-		return await new RDAParser().parseRDA(this.wrapped, this.shortcut) ?? [{}];
+	protected loadContent(): RObject[] {
+		return new RDAParser().parseRDA(this.wrapped, this.shortcut) ?? [{}];
 	}
 
 	/**
@@ -52,7 +55,7 @@ type RObject = RValues.NilValue | RObjectData;
 type Real = number | RValues.NilValue | RValues.NaReal | RValues.NaN | RValues.PosInf | RValues.NegInf;
 type Complex = { r: Real, i: Real };
 
-interface RObjectData {
+export interface RObjectData {
 	name?:         string;
 	type?:         SexpType,
 	levels?:       number,
@@ -78,6 +81,7 @@ interface RObjectData {
 	gp?:           number;
 	hashTab?:      unknown;
 	offset?:       number;
+	altRep?:       boolean;
 }
 
 enum SexpType {
@@ -156,11 +160,13 @@ export class RDAParser{
 	private setLastName = false;
 	private offset = 0;
 	private readonly RCodeSetMax = 63;
-	private RWeakRefs = null;
+	private RWeakRefs:         null | RObjectData = null;
 	private readonly ChunkSize = 8906;
 	private readonly SizeOfDouble = 8;
+	private readonly WordSize = 128;
 	private format!:           'XDR' | 'ASCII' | 'BINARY';
 	private readonly refTable: RObject[] = [];
+	private Registry:          RObjectData | null = null;
 
 
 	private opinfo = {
@@ -175,12 +181,12 @@ export class RDAParser{
 	 * @param shortcut - If true, only the names of objects in the rda are returned, if false, all data is collected
 	 * @returns Parsed RDA-File as an RObject
 	 */
-	async parseRDA(file: FlowrFileProvider, shortcut?: boolean): Promise<RObjectData[] | null> {
+	parseRDA(file: FlowrFileProvider, shortcut?: boolean): RObjectData[] | null {
 		this.file = file;
 		this.shortcut = shortcut || false;
 		const fileContent = fs.readFileSync(file.path());
 		const compressionType = this.detectCompression(fileContent);
-		this.buffer = await this.decompress(fileContent, compressionType);
+		this.buffer = this.decompress(fileContent, compressionType);
 		const result = this.deserialize2();
 		if(result === RValues.NilValue) {
 			return null;
@@ -245,7 +251,7 @@ export class RDAParser{
 	 * @param compressionType - {@link CompressionType} of RDA-file
 	 * @returns Decompressed RDA-file
 	 */
-	async decompress(fileContent: Buffer, compressionType: CompressionType): Promise<Buffer> {
+	decompress(fileContent: Buffer, compressionType: CompressionType): Buffer {
 		let buffer: Buffer;
 
 		switch(compressionType) {
@@ -268,16 +274,7 @@ export class RDAParser{
 
 			case 'COMP_XZ':
 			case 'COMP_LZMA': {
-				buffer = await new Promise<Buffer>((resolve, reject) => {
-					// @ts-expect-error
-					lzmaNative.decompress(fileContent, (result: Buffer | Error) => {
-						if(result instanceof Error) {
-							reject(result);
-						} else {
-							resolve(result);
-						}
-					});
-				});
+				buffer = Buffer.from(decompress(fileContent));
 				break;
 			}
 
@@ -467,6 +464,16 @@ export class RDAParser{
 		}
 	}
 
+	skipInteger(): void {
+		if(this.format === 'ASCII') {
+			this.skipWord();
+		} else if(this.format === 'BINARY' || this.format === 'XDR') {
+			this.offset += 4;
+		} else {
+			return;
+		}
+	}
+
 	assertInteger(value: number | RValues.NaInteger): number {
 		if(value === RValues.NaInteger) {
 			throw new Error('Unexpected NA integer');
@@ -502,6 +509,28 @@ export class RDAParser{
 		}
 
 		return word.join('');
+	}
+
+	skipWord(): string {
+		let c;
+		let i = 0;
+
+		do{
+			c = this.inChar();
+			if(c === -1){
+				throw new Error('Read character is -1.');
+			}
+		} while(this.isSpace(c));
+
+		while(!this.isSpace(c) && i < this.WordSize) {
+			i++;
+			c = this.inChar();
+		}
+		if(i >= this.WordSize) {
+			throw new Error(`$\{i} >= ${this.WordSize} when reading word.`);
+		}
+
+		return '';
 	}
 
 	inChar(): number {
@@ -578,6 +607,42 @@ export class RDAParser{
 		}
 	}
 
+	skipString(len: number): void {
+		if(this.format === 'ASCII') {
+			if(len > 0){
+				while(this.offset < this.buffer.length) {
+					const c = this.buffer[this.offset++];
+					if(!this.isSpace(c)) {
+						break;
+					}
+				}
+
+				this.offset--;
+
+				for(let i = 0; i < len; i++) {
+					let c = String.fromCodePoint(this.buffer[this.offset++]);
+					if(c === '\\'){
+						c = String.fromCodePoint(this.buffer[this.offset++]);
+						switch(c){
+							case '0': case '1': case '2': case '3':
+							case '4': case '5': case '6': case '7': {
+								let j = 0;
+								while('0' <= c && c < '8' && j < 3) {
+									c = String.fromCodePoint(this.buffer[this.offset++]);
+									j++;
+								}
+								this.offset--;
+								break;
+							}
+						}
+					}
+				}
+			}
+		} else {
+			this.offset += len;
+		}
+	}
+
 	decodeVersion(writerVersion: number): number[] {
 		const v = writerVersion / 65536;
 		writerVersion = writerVersion % 65536;
@@ -591,6 +656,26 @@ export class RDAParser{
 	readItem(): RObject {
 		const flags = this.assertInteger(this.inInteger());
 		return this.readItemRecursive(flags);
+	}
+
+	R_FindNamespace(info: RObjectData): RObjectData {
+		const namespaceName = (info.value as RObjectData).name as string;
+
+		const code = `getNamespace("${namespaceName}")`;
+		const shell = new RShellExecutor();
+		const result = shell.run(code);
+		shell.close();
+
+		const val: RObjectData = {};
+		val.type = SexpType.EnvSxp;
+
+		if(result === '<environment: R_GlobalEnv>') {
+			val.value = RValues.GlobalEnv;
+		} else {
+			console.log(result);
+		}
+
+		return val;
 	}
 
 	R_FindNamespace1(info: RObjectData): RObjectData {
@@ -637,10 +722,11 @@ export class RDAParser{
 			{
 				this.currentDepth++;
 				console.warn('AltReps are not supported yet!');
-				const _info = this.readItem();
-				const _state = this.readItem();
-				const _attr = this.readItem();
-				// s = ALTREP_UNSERIALIZE_EX(info, state, attr, object, levels); //TODO
+				const info = this.readItem() as RObjectData;
+				const state = this.readItem() as RObjectData;
+				const attr = this.readItem() as RObjectData;
+				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
+				s = this.AltRepUnserializeEx(info, state, attr, object, levels); //TODO
 				this.currentDepth--;
 				return s;
 			}
@@ -725,9 +811,9 @@ export class RDAParser{
 								throw new Error('invalid length');
 							}
 							const name = this.inString(len);
-
+							const index = R_FunTabOffsets[name] as number;
 							if(name in R_FunTabOffsets) {
-								s.value = this.mkPrimSxp(name, SexpType.BuiltInSxp); // TODO
+								s = this.mkPrimSxp(index, SexpType.BuiltInSxp); // TODO
 							} else {
 								s.value = RValues.NilValue;
 								throw new Error(`unrecognized internal function name "${name}"`);
@@ -752,32 +838,20 @@ export class RDAParser{
 					{
 						const len = this.readLength();
 						s.type = type;
-						if(this.shortcut && this.format === 'XDR') {
-							this.offset += len * 4;
-						} else {
-							s.value = this.inIntegerVec(len);
-						}
+						s.value = this.inIntegerVec(len);
 						break;
 					}
 					case SexpType.RealSxp:
 					{
 						const len = this.readLength();
 						s.type = type;
-						if(this.shortcut && this.format === 'XDR'){
-							this.offset += len * this.SizeOfDouble;
-						} else {
-							s.value = this.inRealVec(len);
-						}
+						s.value = this.inRealVec(len);
 						break;
 					}
 					case SexpType.CplxSxp: {
 						const len = this.readLength();
 						s.type = type;
-						if(this.shortcut && this.format === 'XDR'){
-							this.offset += len * this.SizeOfDouble * 2;
-						} else {
-							s.value = this.inComplexVec(len);
-						}
+						s.value = this.inComplexVec(len);
 						break;
 					}
 					case SexpType.StrSxp: {
@@ -805,7 +879,7 @@ export class RDAParser{
 						break;
 					}
 					case SexpType.BcodesSxp:
-						s = this.readBC();
+						s = this.readBC() as RObjectData;
 						break;
 					case SexpType.ClassRefSxp:
 						throw new Error('this version of R cannot read class references');
@@ -835,11 +909,195 @@ export class RDAParser{
 					this.currentDepth--;
 				} else {
 					this.currentDepth++;
-					s.attributes = hasAttribute ? [this.readItem()] : undefined;
+					s.attributes = hasAttribute ? [this.readItem()] as RObjectData[] : undefined;
 					this.currentDepth--;
 				}
 				if(s.type === SexpType.BcodesSxp && !this.R_BCVersionOK(s)) {
-					return this.R_BytecodeExpr(s);
+					return this.R_BytecodeExpr(s) as RObjectData;
+				}
+				return s;
+		}
+	}
+
+	skipItem(): RObjectData {
+		const flags = this.assertInteger(this.inInteger());
+		const [type, levels, _object, hasAttribute, _hasTag] = this.unpackFlags(flags);
+
+		let s: RObjectData = {};
+
+		switch(type) {
+			case SexpType.NilValueSxp:
+			case SexpType.EmptyEnvSxp:
+			case SexpType.BaseEnvSxp:
+			case SexpType.GlobalEnvSxp:
+			case SexpType.UnboundValueSxp:
+			case SexpType.MissingArgSxp:
+			case SexpType.BaseNamespaceSxp:
+				s.type = SexpType.EnvSxp;
+				return s;
+			case SexpType.RefSxp:
+				return this.getReadRef(this.inRefIndex(flags));
+			case SexpType.NamespaceSxp:
+				this.skipStringVec();
+				s.type = SexpType.EnvSxp;
+				this.addReadRef(s);
+				return s;
+			case SexpType.PackageSxp:
+			case SexpType.PersistSxp: {
+				this.skipStringVec();
+				s.type = SexpType.CharSxp;
+				return s;
+			}
+			case SexpType.AltRepSxp:
+			{
+				this.currentDepth++;
+				const info = this.skipItem();
+				const _state = this.skipItem();
+				const _attr = this.skipItem();
+
+				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
+				this.currentDepth--;
+				return s;
+			}
+			case SexpType.SymSxp: {
+				this.currentDepth++;
+				s = this.skipItem();
+				this.currentDepth--;
+				s.type = SexpType.SymSxp;
+				this.addReadRef(s);
+				return s;
+			}
+			case SexpType.EnvSxp:
+			{
+				this.skipInteger();
+				s.type = SexpType.EnvSxp;
+				this.addReadRef(s);
+
+				this.currentDepth++;
+				this.SetEnClos(s, this.assertRObjectData(this.skipItem()));
+				s.frame = this.skipItem();
+				s.hashTab = this.skipItem();
+				s.attributes = this.assertRObjectData(this.skipItem()).attributes;
+
+				this.currentDepth--;
+
+				if(!s.enClos || s.enClos === RValues.NilValue) {
+					this.SetEnClos(s, {
+						value:  RValues.BaseEnv,
+						type:   SexpType.EnvSxp,
+						enClos: RValues.NilValue
+					} as RObjectData);
+				}
+				return s;
+			}
+			case SexpType.ListSxp:
+			case SexpType.LangSxp:
+			case SexpType.CloSxp:
+			case SexpType.PromSxp:
+			case SexpType.DotSxp:
+				return this.readItemIterative(flags);
+			default:
+				switch(type) {
+					case SexpType.ExtptrSxp: {
+						s.type = type;
+						this.addReadRef(s);
+						this.currentDepth++;
+						s.protected = this.skipItem();
+						s.tag = this.skipItem();
+						this.currentDepth--;
+						break;
+					}
+					case SexpType.WeakRefSxp:
+						s.value = this.R_MakeWeakRef(RValues.NilValue, RValues.NilValue, RValues.NilValue, false);
+						this.addReadRef(s);
+						break;
+					case SexpType.SpecialSxp:
+					case SexpType.BuiltInSxp:
+						{
+							s.type = type;
+							const len = this.assertInteger(this.inInteger());
+							if(len < 0) {
+								throw new Error('invalid length');
+							}
+							this.skipString(len);
+						}
+						break;
+					case SexpType.CharSxp: {
+						const len = this.assertInteger(this.inInteger());
+						if(len < -1) {
+							throw new Error(`Invalid length ${len} of string.`);
+						} else if(len == -1) {
+							s.name = RValues.NaString;
+						} else if(len < 1000) {
+							s.name = this.readChar(len, levels);
+						} else {
+							s.name = this.readChar(len, levels);
+						}
+						break;
+					}
+					case SexpType.LglSxp:
+					case SexpType.IntSxp:
+					{
+						const len = this.readLength();
+						s.type = type;
+						s.value = this.skipIntegerVec(len);
+						break;
+					}
+					case SexpType.RealSxp:
+					{
+						const len = this.readLength();
+						s.type = type;
+						s.value = this.skipRealVec(len);
+						break;
+					}
+					case SexpType.CplxSxp: {
+						const len = this.readLength();
+						s.type = type;
+						this.skipComplexVec(len);
+						break;
+					}
+					case SexpType.StrSxp:
+					case SexpType.VecSxp:
+					case SexpType.ExprSxp: {
+						const len = this.readLength();
+						s.type = type;
+						this.currentDepth++;
+						for(let count = 0; count < len; ++count) {
+							this.skipItem();
+						}
+						this.currentDepth--;
+						break;
+					}
+					case SexpType.BcodesSxp:
+						this.skipBC();
+						s.type = SexpType.VecSxp;
+						break;
+					case SexpType.ClassRefSxp:
+						throw new Error('this version of R cannot read class references');
+					case SexpType.GenericRefSxp:
+						throw new Error('this version of R cannot read generic function references');
+					case SexpType.RawSxp: {
+						const len = this.readLength();
+						s.type = type;
+						this.skipRaw(len);
+						break;
+					}
+					case SexpType.ObjSxp:
+						s.type = SexpType.ObjSxp;
+						break;
+					default:
+						throw new Error(`ReadItem: unknown type ${type}, perhaps written by later version of R`);
+				}
+				if(s.type === SexpType.CharSxp) {
+					this.currentDepth++;
+					if(hasAttribute) {
+						this.skipItem();
+					}
+					this.currentDepth--;
+				} else {
+					this.currentDepth++;
+					s.attributes = hasAttribute ? [this.skipItem()] : undefined;
+					this.currentDepth--;
 				}
 				return s;
 		}
@@ -868,6 +1126,22 @@ export class RDAParser{
 		return result;
 	}
 
+	skipRaw(len: number): void{
+		if(this.format === 'ASCII') {
+			for(let ix = 0; ix < len; ix++) {
+				this.skipWord();
+			}
+		} else {
+			let t = 0;
+			for(let done = 0; done < len; done += t) {
+				t = Math.min(this.ChunkSize, len - done);
+				for(let i = 0; i < t; i++) {
+					this.offset += 1;
+				}
+			}
+		}
+	}
+
 	rFindPackageEnv(_s: RObject): void {
 		throw new Error('Not implemented yet!');
 	}
@@ -888,7 +1162,7 @@ export class RDAParser{
 		if(i < 0 || i >= this.refTable.length) {
 			throw new Error('reference index out of range');
 		}
-		return this.refTable[i];
+		return this.refTable[i] as RObjectData;
 	}
 
 	inRefIndex(flags: number): number {
@@ -918,6 +1192,18 @@ export class RDAParser{
 		}
 		this.currentDepth--;
 		return s;
+	}
+
+	skipStringVec(): void {
+		if(this.inInteger() !== 0) {
+			throw new Error('names in persistent strings are not supported yet');
+		}
+		const len = this.assertInteger(this.inInteger());
+		this.currentDepth++;
+		for(let i = 0; i < len; i++) {
+			this.skipItem();
+		}
+		this.currentDepth--;
 	}
 
 	SetEnClos(x: RObjectData, v: RObjectData): void {
@@ -968,15 +1254,15 @@ export class RDAParser{
 			s.object = isObject;
 			this.currentDepth++;
 
-			s.attributes = hasAttr ? [this.assertRObjectData(this.readItem())] : undefined;
+			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
 			s.tag = hasTag ? this.readItem() : RValues.NilValue;
 
-			if(hasTag && this.currentDepth == this.initialDepth && typeof s.tag === 'object') {
+			if(hasTag && this.currentDepth == 1 && typeof s.tag === 'object') {
 				this.lastName = s.tag.name;
 				this.setLastName = true;
 			}
 
-			s.car = this.readItem();
+			s.car = this.shortcut ? this.skipItem() : this.readItem();
 			this.currentDepth--;
 
 			if(sFirst === null) {
@@ -1003,8 +1289,8 @@ export class RDAParser{
 		return sFirst as RObjectData;
 	}
 
-	// TODO
-	R_MakeWeakRef(key, val, fin, onexit): RObject {
+	// TODO types
+	R_MakeWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType | RValues.NilValue, onexit: boolean): RObject {
 		switch(fin) {
 			case SexpType.NilSxp:
 			case SexpType.CloSxp:
@@ -1017,8 +1303,8 @@ export class RDAParser{
 		return this.newWeakRef(key, val, fin, onexit);
 	}
 
-	// TODO
-	newWeakRef(key, val, fin, onexit): RObject{
+	// TODO types
+	newWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType, onexit: boolean): RObject{
 		switch(key) {
 			case SexpType.NilSxp:
 			case SexpType.EnvSxp:
@@ -1036,7 +1322,7 @@ export class RDAParser{
 
 		w.type = SexpType.WeakRefSxp;
 
-		if(!key || key !== RValues.NilValue){
+		if(!key){ //|| key !== RValues.NilValue
 			// 	SET_WEAKREF_KEY(w, key);
 			w.key = key;
 			// 	SET_WEAKREF_VALUE(w, val);
@@ -1046,12 +1332,18 @@ export class RDAParser{
 			// 	SET_WEAKREF_NEXT(w, RWeakRefs);
 			w.next = this.RWeakRefs;
 			// 	CLEAR_READY_TO_FINALIZE(w);
-			w.gp &= ~1;
+			if(w.gp) {
+				w.gp &= ~1;
+			}
 
 			if(onexit){
-				w.gp |= 2;
+				if(w.gp) {
+					w.gp |= 2;
+				}
 			} else {
-				w.gp &= ~2;
+				if(w.gp) {
+					w.gp &= ~2;
+				}
 			}
 
 			this.RWeakRefs = w;
@@ -1060,7 +1352,7 @@ export class RDAParser{
 	}
 
 	// TODO
-	mkPrimSxp(index: number, evaluation: number): RObject {
+	mkPrimSxp(index: number, evaluation: number): RObjectData {
 		const type = evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp;
 		let primCache: RObject = RValues.NilValue;
 		let funTabSize = 0;
@@ -1160,6 +1452,35 @@ export class RDAParser{
 		}
 	}
 
+	skipIntegerVec(len: number): (number | RValues.NaInteger)[] {
+		switch(this.format) {
+			case 'XDR':
+			{
+				let t = 0;
+				for(let done = 0; done < len; done += t) {
+					t = Math.min(this.ChunkSize, len - done);
+					for(let cnt = 0; cnt < t; cnt++) {
+						if(this.offset + 4 > this.buffer.length) {
+							throw new Error('XDR read failed');
+						}
+						this.offset += 4;
+					}
+				}
+				break;
+			}
+			case 'BINARY':
+			{
+				throw new Error('No binary support yet.');
+			}
+			default: {
+				for(let cnt = 0; cnt < len; cnt++) {
+					this.skipInteger();
+				}
+			}
+		}
+		return [];
+	}
+
 	inRealVec(len: number): (number | RValues)[] | null[]{
 		switch(this.format) {
 			case 'XDR': {
@@ -1191,6 +1512,30 @@ export class RDAParser{
 				return result;
 			}
 		}
+	}
+
+	skipRealVec(len: number): (number | RValues)[] | null[] {
+		switch(this.format) {
+			case 'XDR': {
+				let t = 0;
+				for(let done = 0; done < len; done += t) {
+					t = Math.min(this.ChunkSize, len - done);
+					const chunkBytes = t * this.SizeOfDouble;
+					this.offset += chunkBytes;
+				}
+				break;
+			}
+			case 'BINARY':
+			{
+				throw new Error('No binary support yet.');
+			}
+			default: {
+				for(let cnt = 0; cnt < len; cnt++) {
+					this.skipReal();
+				}
+			}
+		}
+		return [];
 	}
 
 	inReal(): Real {
@@ -1229,6 +1574,17 @@ export class RDAParser{
 		}
 	}
 
+	skipReal(): void {
+		if(this.format === 'ASCII') {
+			this.skipWord();
+			return;
+
+		} else if(this.format === 'BINARY' || this.format === 'XDR') {
+			this.offset += 8;
+			return;
+		}
+	}
+
 	inComplexVec(len: number): Complex[] {
 		switch(this.format) {
 			case 'XDR': {
@@ -1255,15 +1611,57 @@ export class RDAParser{
 		}
 	}
 
+	skipComplexVec(len: number): void {
+		switch(this.format) {
+			case 'XDR': {
+				let t = 0;
+				for(let done = 0; done < len; done += t) {
+					t = Math.min(this.ChunkSize, len - done);
+					for(let cnt = 0; cnt < t; cnt++) {
+						this.skipComplex();
+					}
+				}
+				break;
+			}
+			case 'BINARY': {
+				throw new Error('No binary support yet.');
+			}
+			default: {
+				for(let cnt = 0; cnt < len; cnt++) {
+					this.skipComplex();
+				}
+			}
+		}
+	}
+
 	inComplex(): Complex {
 		return { r: this.inReal(), i: this.inReal() };
 	}
 
+	skipComplex(): void {
+		this.skipReal();
+		this.skipReal();
+	}
+
 	SET_STRING_ELT(x: RObjectData, i: number, v: RObjectData): void {
-		if(i < 0 || i >= (x.value as Array<string>).length) {
-			throw new Error('index out of bounds');
+		if(x.type !== SexpType.StrSxp) {
+			throw new Error(`SET_STRING_ELT() can only be applied to a 'character vector', not a '${x.type}'`);
 		}
-		x.value[i] = v.name;
+		// if(v.type !== SexpType.CharSxp) {
+		// 	throw new Error(`Value of SET_STRING_ELT() must be a 'CHARSXP' not a '${v.type}'`);
+		// }
+
+		const arr = x.value as [];
+
+		if(i < 0 || i >= arr.length) {
+			throw new Error(`attempt to set index ${i}/${arr.length} in SET_STRING_ELT`);
+		}
+
+		// if(x.altRep){
+		// 	this.ALTSTRING_SET_ELT(x, i, v);
+		// }
+
+		// arr[i] = v.name;
 	}
 
 	SET_VECTOR_ELT(x: RObjectData, i: number, v: RObject): void {
@@ -1276,7 +1674,7 @@ export class RDAParser{
 			throw new Error(`attempt to set index ${i}/${(x.value as Array<RObject>).length} in SET_VECTOR_ELT`);
 		}
 
-		x.value[i] = v;
+		(x.value as RObject[])[i] = v;
 	}
 
 	readBC(): RObject {
@@ -1284,6 +1682,44 @@ export class RDAParser{
 		reps.type = SexpType.VecSxp;
 		reps.value = new Array(this.assertInteger(this.inInteger()));
 		return this.readBC1(reps);
+	}
+
+	skipBC(): void{
+		this.skipInteger();
+		this.skipBC1();
+	}
+
+	skipBC1(): void {
+		this.currentDepth++;
+		this.skipItem();
+		this.currentDepth--;
+		this.skipBCConsts();
+	}
+
+	skipBCConsts(): void {
+		const n = this.assertInteger(this.inInteger());
+		for(let i = 0; i < n; i++) {
+			const type = this.inInteger();
+			switch(type) {
+				case SexpType.BcodesSxp: {
+					this.skipBC1();
+					break;
+				}
+				case SexpType.LangSxp:
+				case SexpType.ListSxp:
+				case SexpType.BcRepDef:
+				case SexpType.BcRepRef:
+				case SexpType.AltLangSxp:
+				case SexpType.AttrListSxp: {
+					this.skipBCLang(type);
+					break;
+				}
+				default:
+					this.currentDepth++;
+					this.skipItem();
+					this.currentDepth--;
+			}
+		}
 	}
 
 	R_registerBC(_bytes: RObject, _s: RObject) {
@@ -1343,7 +1779,7 @@ export class RDAParser{
 	ReadBCLang(type: SexpType, reps: RObjectData): RObjectData {
 		switch(type) {
 			case SexpType.BcRepRef:
-				return this.VECTOR_ELT(reps, this.assertInteger(this.inInteger()));
+				return this.VECTOR_ELT(reps, this.assertInteger(this.inInteger())) as RObjectData;
 			case SexpType.BcRepDef:
 			case SexpType.LangSxp:
 			case SexpType.ListSxp:
@@ -1379,9 +1815,50 @@ export class RDAParser{
 			default:
 			{
 				this.currentDepth++;
-				const res = this.readItem();
+				const res = this.readItem() as RObjectData;
 				this.currentDepth--;
 				return res;
+			}
+		}
+	}
+
+	skipBCLang(type: SexpType) {
+		switch(type) {
+			case SexpType.BcRepRef:
+				this.skipInteger();
+				break;
+			case SexpType.BcRepDef:
+			case SexpType.LangSxp:
+			case SexpType.ListSxp:
+			case SexpType.AltLangSxp:
+			case SexpType.AttrListSxp:
+			{
+				let hasAttr = false;
+				if(type == SexpType.BcRepDef) {
+					this.skipInteger();
+					type = this.assertInteger(this.inInteger());
+				}
+				switch(type) {
+					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
+					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
+				}
+
+				this.currentDepth++;
+				if(hasAttr) {
+					this.skipItem();
+				}
+				this.readItem();
+				this.skipItem();
+				this.currentDepth--;
+				this.skipBCLang(this.assertInteger(this.inInteger()));
+				this.skipBCLang(this.assertInteger(this.inInteger()));
+				break;
+			}
+			default:
+			{
+				this.currentDepth++;
+				this.skipItem();
+				this.currentDepth--;
 			}
 		}
 	}
@@ -1394,29 +1871,30 @@ export class RDAParser{
 			throw new Error(`VECTOR_ELT() can only be applied to a 'list', not a '${x.type}'`);
 		}
 		// "VECTOR_ELT", "list", R_typeToChar(x));
-		if(i < 0 || i >= x.value?.length) {
+		if(i < 0 || i >= (x.value as RObject[])?.length) {
 			throw new Error('attempt access index %lld/%lld in VECTOR_ELT');
 		}
-		// 	(long long)i, (long long)XLENGTH(x));
-		if(x.alt) {
-			const ans = x[i];
+		// (long long)i, (long long)XLENGTH(x));
+		if(x.altRep) {
+			const ans = (x as RObject[])[i];
 			/* the element is marked as not mutable since complex
 			   assignment can't see reference counts on any intermediate
 			   containers in an ALTREP */
 			// MARK_NOT_MUTABLE(ans);
 			return ans;
 		} else {
-			return x[i];
+			return (x as RObject[])[i];
 		}
 	}
 
 	// TODO
-	R_BCVersionOK(s: RObject): boolean{
+	R_BCVersionOK(s: RObjectData): boolean{
 		if(s.type !== SexpType.BcodesSxp) {
 			return false;
 		}
 
-		const pc = s.code;
+		// const pc = s.code;
+		const pc = 0;
 		const version = pc;
 
 		return (version >= 9 && version <= 12);
@@ -1424,8 +1902,8 @@ export class RDAParser{
 
 	R_BytecodeExpr(s: RObjectData): RObject {
 		if(s.type === SexpType.BcodesSxp) {
-			if((s.cdr as RObjectData).value?.length > 0) {
-				return this.VECTOR_ELT(s.cdr, 0);
+			if(((s.cdr as RObjectData).value as RObject[])?.length > 0) {
+				return this.VECTOR_ELT(s.cdr as RObjectData, 0);
 			} else {
 				return RValues.NilValue;
 			}
@@ -1435,12 +1913,11 @@ export class RDAParser{
 	}
 
 	// TODO
-	ALTREP_UNSERIALIZE_EX(info: RObject, state, attr,objf: boolean,levs: number): RObject {
+	AltRepUnserializeEx(info: RObjectData, _state: RObjectData, _attr: RObjectData, _objf: boolean, _levs: number): RObjectData {
 		const cSym = info.car;
-		const pSym = (info.cdr as RObject).car;
-		const type = (((info.cdr as RObject).cdr as RObject).car as RObject).type as SexpType;
+		const pSym = (info.cdr as RObjectData).car;
+		const type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
 
-		/* look up the class in the registry and handle failure */
 		const clss = this.ALTREP_UNSERIALIZE_CLASS(info);
 		if(clss == undefined) {
 			switch(type) {
@@ -1452,60 +1929,77 @@ export class RDAParser{
 				case SexpType.RawSxp:
 				case SexpType.VecSxp:
 				case SexpType.ExprSxp:
-					console.warn(`cannot unserialize ALTVEC object of class '${cSym?.name}' from package '${pSym?.name}' returning length zero vector`);
-					return info.type = 0;
+					console.warn(`cannot unserialize ALTVEC object of class '${(cSym as RObjectData).name}'
+					from package '${(pSym as RObjectData).name}' returning length zero vector`);
+					info.type = type;
+					info.value = [];
+					return info;
 				default:
 					throw new Error('cannot unserialize this ALTREP object');
 			}
 		}
-
-		return undefined;
-
-		/* check the registered and unserialized types match */
-		// const rtype = ALTREP_CLASS_BASE_TYPE(c);
-		// if (type !== rtype)
-		// 	console.warn(`serialized class '${CHAR(PRINTNAME(csym))}' from package '${CHAR(PRINTNAME(psym))}' has type ${type2char(type)} registered class has type ${type2char(rtype)}`);
 		//
-		// /* dispatch to a class method */
-		// const altrep_methods_t *m = CLASS_METHODS_TABLE(c);
-		// const val = m->UnserializeEX(c, state, attr, objf, levs);
+		// const rtype = ALTREP_CLASS_BASE_TYPE(clss);
+		// if(type !== rtype) {
+		// 	console.warn(`serialized class '${(cSym as RObjectData).name}' from package
+		// '${(pSym as RObjectData).name}' has type ${SexpType[type]} registered class has type ${SexpType[rtype]}`);
+		// }
+		//
+		// const altrep_methods_t = CLASS_METHODS_TABLE(c);
+		// const val = altrep_methods_t.UnserializeEX(clss, state, attr, objf, levs);
 		// return val;
+		return {} as RObjectData;
 	}
 
 	ALTREP_UNSERIALIZE_CLASS(info: RObjectData) {
-		return undefined;
-
-		// if(info.type == SexpType.ListSxp) {
-		// 	const cSym = info.car;
-		// 	const  pSym = (info.cdr as RObject).car;
-		// 	let clss = LookupClass(cSym, pSym);
-		// 	if(clss === undefined) {
-		// 		// const pName = ScalarString(pSym.name);
-		// 		// R_tryCatchError(find_namespace, pname,
-		// 		// 	handle_namespace_error, NULL);
-		// 		clss = LookupClass(cSym, pSym);
-		// 	}
-		// 	return clss;
-		// }
-		// return null;
+		if(info.type == SexpType.ListSxp) {
+			const cSym = info.car as RObjectData;
+			const  pSym = (info.cdr as RObjectData).car as RObjectData;
+			let clss = this.LookupClass(cSym, pSym);
+			if(clss === undefined) {
+				const pName = this.ScalarString(pSym.name as string);
+				try {
+					this.R_FindNamespace(pName);
+				} catch(e){
+					console.log(`${pName} ${e}`);
+				}
+				clss = this.LookupClass(cSym, pSym);
+			}
+			return clss;
+		}
+		return null;
 	}
 
-	// LookupClass(cSym: RObject, pSym: RObject) {
-	// 	const entry = LookupClassEntry(cSym, pSym);
-	// 	return entry === undefined ? undefined : entry.car;
-	// }
+	LookupClass(cSym: RObjectData, pSym: RObjectData) {
+		const entry = this.LookupClassEntry(cSym, pSym);
+		return entry === undefined || entry === null ? undefined : entry.car as RObjectData;
+	}
 
-	// LookupClassEntry(cSym: RObject, pSym: RObject): RObject {
-	// 	for (const chain = CDR(Registry); chain !== RValues.NilValue; chain = CDR(chain))
-	// 	// if (TAG(CAR(chain)) == csym && CADR(CAR(chain)) == psym)
-	// 	// 	return CAR(chain);
-	// 	// return NULL;
-	// }
+	LookupClassEntry(cSym: RObject, pSym: RObject): RObjectData | null{
+		if(!this.Registry) {
+			return null;
+		}
+
+		for(let chain: RObjectData | null = (this.Registry).cdr as RObjectData || null; chain; chain = chain.cdr as RObjectData | null) {
+			if((chain.car as RObjectData).tag == cSym && ((chain.car as RObjectData).cdr as RObjectData).car === pSym) {
+				return chain.car as RObjectData;
+			}
+		}
+		return null;
+	}
+
+	ScalarString(x: string){
+		const ans: RObjectData = {};
+		ans.type = SexpType.StrSxp;
+		ans.value = new Array(1);
+		this.SET_STRING_ELT(ans, 0, { name: x });
+		return ans;
+	}
 
 	restoreHashCount(s: RObjectData): void{
 		if(s.hashTab !== RValues.NilValue) {
 			const table = s.hashTab as RObjectData;
-			const size = table.value.length;
+			const size = (table.value as RObject[]).length;
 			let count = 0;
 			for(let i= 0; i < size; i++) {
 				if(this.VECTOR_ELT(table, i) !== RValues.NilValue) {
@@ -1528,15 +2022,22 @@ export class RDAParser{
 			const name = (n.tag as RObjectData)?.name;
 
 			if(name !== undefined) {
-				const copy: RObject = {
-					name:         (n.tag as RObjectData).name,
-					value:        shortcut ? undefined : (n.car as RObjectData).value,
-					hasAttribute: !!n.hasAttribute,
-					attributes:   shortcut ? undefined : n.attributes,
-					type:         shortcut ? undefined : (n.car as RObjectData).type,
-					tag:          RValues.NilValue
-				};
-
+				let copy: RObjectData = {};
+				if(shortcut) {
+					copy = {
+						name: (n.tag as RObjectData).name,
+						type: (n.car as RObjectData).type,
+					};
+				} else {
+					copy= {
+						name:         (n.tag as RObjectData).name,
+						value:        (n.car as RObjectData).value,
+						hasAttribute: !!n.hasAttribute,
+						attributes:   n.attributes,
+						type:         (n.car as RObjectData).type,
+						tag:          RValues.NilValue
+					};
+				}
 				result.push(copy);
 			}
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
+import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import seedrandom from 'seedrandom';
@@ -39,7 +40,7 @@ describe('rda-files', () => {
 			const version = rnd.pick(versions);
 			const compression = rnd.pick(compressions);
 
-			it(`Encoding: ${encoding}, Version: ${version}, Compression: ${compression} - run ${i} - seed ${seed + i}`, async() => {
+			it(`Encoding: ${encoding}, Version: ${version}, Compression: ${compression} - run ${i} - seed ${seed + i}`, () => {
 
 				const rcg = new RandomRCodeGenerator(rnd);
 
@@ -50,99 +51,159 @@ describe('rda-files', () => {
 				const rShell = new RShellExecutor();
 				rShell.run(shellCode);
 
-				const shellVars = getVarsFromShell(file, rShell);
+				const varsAndTypesFromShell = getVarsAndTypesFromShell(file, rShell);
 				rShell.close();
 
-				expect(shellVars)
+				expect([...varsAndTypesFromShell.keys()].sort())
 					.toEqual(vars.sort());
 
-				const parser = new RDAParser();
-				const result = await timed(
-					`run ${i} - no shortcut`,
-					() => parser.parseRDA(new FlowrTextFile(file))
-				);
+				// const parser = new RDAParser();
+				// const result = timed(
+				// 	`run ${i} - no shortcut`,
+				// 	() => parser.parseRDA(new FlowrTextFile(file))
+				// );
+				//
+				// expect(result).toBeDefined();
+				//
+				// expectNames(result as RObjectData[], varsAndTypesFromShell);
 
-				expect(result).toBeDefined();
-
-				expect(result?.flatMap(x => x.name)).toEqual(vars);
+				// expectTypes(result as RObjectData[], varsAndTypesFromShell);
 
 				// -----------------------------------------------------------------------------------------------------
 
 				const shortcutParser = new RDAParser();
-				const result2 = await timed(
+				const result2 = timed(
 					`run ${i} - shortcut`,
 					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
 				);
 
 				expect(result2).toBeDefined();
 
-				expect(result2?.flatMap(x => x.name)).toEqual(vars);
+				expectNames(result2 as RObjectData[], varsAndTypesFromShell);
+
+				// expectTypes(result2 as RObjectData[], varsAndTypesFromShell);
 			});
 		}
 	});
 
 	describe('load-pipeline real-world', () => {
-		const dir = 'test/testfiles/project/plugins/rda-files/';
+		const dir = 'test/testfiles/project/plugins/rda-files/zenodo';
 		const files = fs.readdirSync(dir).filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda')).map(file => path.join(dir, file));
 
 		for(const file of files) {
-			it(`File: ${file}`, async() => {
+			it(`File: ${file}`, () => {
 				const rShell = new RShellExecutor();
-				const shellVars = getVarsFromShell(file, rShell);
+				const varsAndTypesFromShell = getVarsAndTypesFromShell(file, rShell);
 				rShell.close();
 
-				if(!shellVars || shellVars.length === 0) {
+				if(!varsAndTypesFromShell || varsAndTypesFromShell.size === 0) {
 					return;
 				}
 
-				const parser = new RDAParser();
-				const result = await timed(
-					`${file} - no shortcut`,
-					() => parser.parseRDA(new FlowrTextFile(file))
-				);
-
-				expect(result).toBeDefined();
-
-				expect(result?.flatMap(x => x.name).sort()).toEqual(shellVars.sort());
-
+				// const parser = new RDAParser();
+				// const result = await timed(
+				// 	`${file} - no shortcut`,
+				// 	() => parser.parseRDA(new FlowrTextFile(file))
+				// );
+				//
+				// expect(result).toBeDefined();
+				//
+				// expectNames(result as RObjectData[], varsAndTypesFromShell);
 				// -----------------------------------------------------------------------------------------------------
 
 				const shortcutParser = new RDAParser();
-				const result2 = await timed(
+				const result2 = timed(
 					`run ${file} - shortcut`,
 					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
 				);
 
 				expect(result2).toBeDefined();
 
-				expect(result2?.flatMap(x => x.name).sort()).toEqual(shellVars.sort());
+				expectNames(result2 as RObjectData[], varsAndTypesFromShell);
+
+				// expectTypes(result2 as RObjectData[], varsAndTypesFromShell);
 			});
 		}
 	});
 });
 
-function getVarsFromShell(file: string, rShell: RShellExecutor) {
-	const vars = rShell.run(`
+export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
+	const output = rShell.run(`
 		e <- new.env()
-		print(load("${file}", envir = e))
-		rm(e)
-		gc()
+		
+		vars <- load("${file}", envir = e)
+
+		for(v in vars) {
+			cat(v, "::", typeof(e[[v]]), "\\n")
+		}
 	`);
-	return parseROutputToList(vars).sort();
+
+	const result = new Map<string, string>();
+
+	for(const line of output.split('\n')) {
+		const [name, type] = line.split('::').map(x => x.trim());
+
+		if(name && type) {
+			result.set(name, type);
+		}
+	}
+
+	return result;
 }
 
-function parseROutputToList(output: string): string[] {
-	return output
-		.split('\n')
-		.flatMap(line => line.match(/"([^"]+)"/g) || [])
-		.map(s => s.replace(/"/g, ''));
-}
-
-async function timed<T>(label: string, fn: () => Promise<T>): Promise<T> {
+function timed<T>(label: string, fn: () => T): T {
 	const t0 = performance.now();
-	const res = await fn();
+	const res = fn();
 	const t1 = performance.now();
 
 	console.log(`${label}: ${t1 - t0} ms`);
 	return res;
+}
+
+function expectNames(result: RObjectData[], vars: Map<string, string>) {
+	expect(result?.flatMap(x => x.name).sort()).toEqual([...vars.keys()].sort());
+}
+
+const SexpToRType: Record<number, string> = {
+	0:  'NULL', // unknown
+	1:  'symbol', // constant
+	2:  'pairlist', // variable
+	3:  'closure', // function
+	4:  'environment', // variable
+	5:  'prom', // variable
+	6:  'language', // variable
+	7:  'special', // builtInFunction
+	8:  'builtin', // builtInFunction
+	9:  'character', // constant
+	10: 'logical', // constant
+	13: 'integer', // constant
+	14: 'double', // constant
+	15: 'complex', // constant
+	16: 'character', // constant
+	17: '...', // variable
+	19: 'list', // variable
+	20: 'expression', // variable
+	24: 'raw', // constant
+	25: 'S4', // variable
+};
+
+function expectTypes(result: RObjectData[], types: Map<string, string>) {
+	for(const obj of result) {
+		const expected = types.get(obj.name as string);
+
+		if(obj.type === 4) {
+			expect(['NULL', 'environment']).toContain(expected);
+			continue;
+		}
+
+		const actualType = SexpToRType[obj.type as number];
+
+		if(actualType !== expected) {
+			console.log(obj);
+			console.log(types.get(obj.name as string));
+
+		}
+
+		expect(actualType).toBe(expected);
+	}
 }

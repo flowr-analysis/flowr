@@ -2,18 +2,20 @@ import { FunctionArgument } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NumericPentagonInferenceVisitor } from './numeric-pentagon-inference';
 import { ClosedPentagonValueDomain } from './closed-pentagon-value-domain';
-import { numericInferenceLogger } from '../interval/numeric-interval-inference';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { getMin } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ClosedPentagonDomain } from './closed-pentagon-domain';
 import {
-	getIntervalExpressionSemanticsMapper,
 	intervalAddOp,
+	IntervalExpressionSemanticsMapper,
 	intervalNegateOp,
 	intervalSubtractOp
 } from '../interval/expression-semantics';
 import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
+import { log } from '../../util/log';
+
+const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-inference' });
 
 /**
  * Maps function/operator names to the semantic functions.
@@ -47,7 +49,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 
 	if(isUndefined(match)) {
 		// Check if we at least have interval semantics and apply them if available.
-		const intervalMatch = getIntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
+		const intervalMatch = IntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 		if(isUndefined(intervalMatch)) {
 			numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid pentagon operation. Returning undefined semantics.`);

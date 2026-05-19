@@ -3,28 +3,28 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { IntervalInference } from './numeric-interval-inference';
-import { numericInferenceLogger } from './numeric-interval-inference';
 import { getMax, getMin, getMinMax } from '../../util/numbers';
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
 import type { AbstractInterpretationVisitor } from '../absint-visitor';
 import type { StateAbstractDomain } from '../domains/state-abstract-domain';
+import { log } from '../../util/log';
 
 type IntervalExpressionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalInference<StateDomain>;
+
+const numericInferenceLogger = log.getSubLogger({ name: 'numeric-interval-inference' });
 
 /**
  * Maps function/operator names to the semantic functions.
  */
-export function getIntervalExpressionSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(): readonly IntervalSemanticsMapperInfo<StateDomain>[] {
-	return [
-		[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalUnaryIdentityOp, intervalAddOp)],
-		[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegateOp, intervalSubtractOp)],
-		[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
-		[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
-		[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
-		[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
-	] as const;
-}
+export const IntervalExpressionSemanticsMapper = <StateDomain extends AnyStateDomain<AnyAbstractDomain>>() => [
+	[Identifier.make('+'), unaryBinaryExprOpSemantics(intervalUnaryIdentityOp, intervalAddOp)],
+	[Identifier.make('-'), unaryBinaryExprOpSemantics(intervalNegateOp, intervalSubtractOp)],
+	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
+	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
+	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
+	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
+] as const satisfies readonly IntervalSemanticsMapperInfo<StateDomain>[];
 
 type IntervalSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NaryFnSemantics<StateDomain>];
 
@@ -72,7 +72,7 @@ type NaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (a
  * @returns The resulting interval after applying the semantics.
  */
 export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateAbstractDomain<IntervalDomain>>, significantFigures?: number): IntervalDomain | undefined {
-	const match = getIntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
+	const match = IntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
 		numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid interval operation. Returning undefined semantics.`);

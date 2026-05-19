@@ -13,7 +13,7 @@ import { getIntervalConditionSemantics } from './condition-semantics';
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
 
-export const numericInferenceLogger = log.getSubLogger({ name: 'numeric-inference' });
+const numericInferenceLogger = log.getSubLogger({ name: 'numeric-interval-inference' });
 
 /**
  * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies interval condition

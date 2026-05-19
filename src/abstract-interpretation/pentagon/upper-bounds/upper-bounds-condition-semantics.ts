@@ -22,20 +22,18 @@ type UpperBoundsConditionSemanticsVisitor<StateDomain extends AnyStateDomain<Any
  * the applyConditionSemantics and applyNegatedConditionSemantics functions.
  */
 export function getUpperBoundsConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends UpperBoundsConditionSemanticsVisitor<StateDomain>>(): ConditionAppliers<StateDomain, Visitor> {
-	return createConditionApplier<StateDomain, Visitor>(getUpperBoundsSemanticsMapper<StateDomain, Visitor>());
+	return createConditionApplier<StateDomain, Visitor>(UpperBoundsSemanticsMapper<StateDomain, Visitor>());
 }
 
-function getUpperBoundsSemanticsMapper<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends UpperBoundsConditionSemanticsVisitor<StateDomain>>(): readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[] {
-	return [
-		[Identifier.make('=='), binaryConditionSemanticsGuard(upperBoundsEqualsOp), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp)],
-		[Identifier.make('!='), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp), binaryConditionSemanticsGuard(upperBoundsEqualsOp)],
-		[Identifier.make('>'), binaryConditionSemanticsGuard(upperBoundsGreaterOp), binaryConditionSemanticsGuard(upperBoundsLessEqualOp)],
-		[Identifier.make('>='), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp), binaryConditionSemanticsGuard(upperBoundsLessOp)],
-		[Identifier.make('<'), binaryConditionSemanticsGuard(upperBoundsLessOp), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp)],
-		[Identifier.make('<='), binaryConditionSemanticsGuard(upperBoundsLessEqualOp), binaryConditionSemanticsGuard(upperBoundsGreaterOp)],
-		[Identifier.make('is.na'), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
-	] as const;
-}
+export const UpperBoundsSemanticsMapper = <StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends UpperBoundsConditionSemanticsVisitor<StateDomain>>() => [
+	[Identifier.make('=='), binaryConditionSemanticsGuard(upperBoundsEqualsOp), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp)],
+	[Identifier.make('!='), binaryConditionSemanticsGuard(upperBoundsNotEqualsOp), binaryConditionSemanticsGuard(upperBoundsEqualsOp)],
+	[Identifier.make('>'), binaryConditionSemanticsGuard(upperBoundsGreaterOp), binaryConditionSemanticsGuard(upperBoundsLessEqualOp)],
+	[Identifier.make('>='), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp), binaryConditionSemanticsGuard(upperBoundsLessOp)],
+	[Identifier.make('<'), binaryConditionSemanticsGuard(upperBoundsLessOp), binaryConditionSemanticsGuard(upperBoundsGreaterEqualOp)],
+	[Identifier.make('<='), binaryConditionSemanticsGuard(upperBoundsLessEqualOp), binaryConditionSemanticsGuard(upperBoundsGreaterOp)],
+	[Identifier.make('is.na'), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+] as const satisfies readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
 
 function upperBoundsEqualsOp<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends UpperBoundsConditionSemanticsVisitor<StateDomain>>(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
 	const leftValue = visitor.getUpperBounds(leftNodeId, state);

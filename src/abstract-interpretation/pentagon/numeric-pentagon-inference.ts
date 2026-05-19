@@ -7,7 +7,6 @@ import type { RNumber } from '../../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { IntervalDomain } from '../domains/interval-domain';
 import type { IntervalInference } from '../interval/numeric-interval-inference';
-import { numericInferenceLogger } from '../interval/numeric-interval-inference';
 import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { applyPentagonExpressionSemantics } from './expression-semantics';
@@ -16,6 +15,9 @@ import { getIntervalConditionSemantics } from '../interval/condition-semantics';
 import { getUpperBoundsConditionSemantics } from './upper-bounds/upper-bounds-condition-semantics';
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
+import { log } from '../../util/log';
+
+const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-inference' });
 
 /**
  * Interface that needs to be implemented by any {@link AbstractInterpretationVisitor} that applies upper bounds

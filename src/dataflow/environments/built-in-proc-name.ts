@@ -12,6 +12,8 @@ export enum BuiltInProcName {
 	AssignmentLike = 'builtin:assignment-like',
 	/** for `break` calls */
 	Break = 'builtin:break',
+	/**for next calls */
+	Next = 'builtin:next',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
 	Default = 'builtin:default',
 	/** Just a more performant variant of the default processor for built-ins that need to read all their arguments, see {@link defaultBuiltInProcessor}, this will still produce the origin `BuiltIn.Default` */

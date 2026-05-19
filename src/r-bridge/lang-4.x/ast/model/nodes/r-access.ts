@@ -2,7 +2,7 @@ import type { RAstNodeBase, Location, NoInfo } from '../model';
 import { RNode } from '../model';
 import { RType } from '../type';
 import type { RArgument, RUnnamedArgument } from './r-argument';
-import type { EmptyArgument } from './r-function-call';
+import type { EmptyArgument, EmptyArgument } from './r-function-call';
 
 /**
  * Represents an R Indexing operation with `$`, `@`, `[[`, or `[`.
@@ -54,5 +54,11 @@ export const RAccess = {
 	 */
 	isIndex<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RIndexAccess<Info> {
 		return RAccess.is(node) && (node.operator === '[' || node.operator === '[[');
+	},
+	/**
+	 * Desugar arguments from {@link StatefulFoldFunctions} from into plain array
+	 */
+	desugar<Arg>(this: void, name: Arg, access: (Arg | typeof EmptyArgument)[]): (Arg | typeof EmptyArgument)[] {
+		return [name, ...access];
 	}
 } as const;

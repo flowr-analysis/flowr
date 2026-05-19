@@ -17,7 +17,7 @@ import type { RAccess } from '../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
-import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../dataflow/graph/vertex';
+import { isFunctionCallVertex, isFunctionDefinitionVertex } from '../dataflow/graph/vertex';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { type CfgExpressionVertex,
 	CfgEdge, CfgVertex,
@@ -33,8 +33,11 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-anal
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
+import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import type { RBreak } from '../r-bridge/lang-4.x/ast/model/nodes/r-break';
+import { getOriginInDfg, OriginType } from '../dataflow/origin/dfg-get-origin';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 
@@ -76,6 +79,59 @@ const cfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFl
 	}
 };
 
+function ensureCfg(arg: ControlFlowInformation | typeof EmptyArgument) {
+	return (arg === EmptyArgument)
+		? emptyControlFlowInformation()
+		: arg;
+}
+
+function dataflowCfgFolds(dfg: DataflowGraph): StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> {
+	const functionCallWithDfg = cfgFunctionCallWithDataflow(dfg);
+	const originToCfgProcessor = {
+		[BuiltInProcName.Access]:     (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgAccess(node as RAccess<ParentInformation>, ensureCfg(args[0]), args.slice(1)),
+		[BuiltInProcName.Pipe]:       (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgBinaryOp(node as RBinaryOp<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1])),
+		[BuiltInProcName.ForLoop]:    (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgFor(node as RForLoop<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1]), ensureCfg(args[2])),
+		[BuiltInProcName.RepeatLoop]: (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgRepeat(node as RRepeatLoop<ParentInformation>, ensureCfg(args[0])),
+		[BuiltInProcName.WhileLoop]:  (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgWhile(node as RWhileLoop<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1])),
+		[BuiltInProcName.Break]:      (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => cfgBreak(node as RBreak<ParentInformation>, down),
+		[BuiltInProcName.Next]:       (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => cfgNext(node as RBreak<ParentInformation>, down),
+		[BuiltInProcName.IfThenElse]: (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], _: CfgDownState)    => cfgIfThenElse(node as RIfThenElse<ParentInformation>, ensureCfg(args[0]), ensureCfg(args[1]), args[2]),
+		[BuiltInProcName.Function]:   (node: RNode, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState) => functionCallWithDfg(node as RFunctionCall<ParentInformation>, ensureCfg(args[0]), args.slice(1), down),
+	} as const;
+
+	const withOrigin = (node: RNode<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, defaultHandler: keyof typeof originToCfgProcessor) => {
+		const origin = getOriginInDfg(dfg, node.info.id);
+
+		if(origin !== undefined && origin.length === 1 && origin[0].type === OriginType.BuiltInFunctionOrigin) {
+			const handler = originToCfgProcessor[origin[0].proc as keyof typeof originToCfgProcessor] ?? originToCfgProcessor[defaultHandler];
+			return handler(node, args, down);
+		}
+
+		return originToCfgProcessor[defaultHandler](node, args, down);
+	};
+
+	const newFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
+		...cfgFolds,
+		foldAccess:     (node, name, access, down) => withOrigin(node, [name, ...access], down, BuiltInProcName.Access),
+		foldPipe:       (op, lhs, rhs, down) => withOrigin(op, [lhs, rhs], down, BuiltInProcName.Pipe),
+		foldIfThenElse: (ifThenExpr, cond, then, otherwise, down) => withOrigin(ifThenExpr, [cond, then, otherwise ?? EmptyArgument], down, BuiltInProcName.IfThenElse),
+		loop:           {
+			...cfgFolds.loop,
+			foldFor:    (loop, variable, vector, body, down) => withOrigin(loop, [variable, vector, body], down, BuiltInProcName.ForLoop),
+			foldRepeat: (loop, body, down) => withOrigin(loop, [body], down, BuiltInProcName.RepeatLoop),
+			foldWhile:  (loop, condition, body, down) => withOrigin(loop, [condition, body], down, BuiltInProcName.WhileLoop),
+			foldBreak:  (brk, down) => withOrigin(brk, [], down, BuiltInProcName.Break),
+			foldNext:   (next, down) => withOrigin(next, [], down, BuiltInProcName.Next)
+		},
+		functions: {
+			...cfgFolds.functions,
+			foldFunctionCall: (call, name, args, down) => withOrigin(call, [name, ...args], down, BuiltInProcName.Function)
+		}
+	};
+
+	return newFolds;
+}
+
 const ignoreFunctDefCfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> = {
 	...cfgFolds,
 	functions: {
@@ -83,17 +139,6 @@ const ignoreFunctDefCfgFolds: StatefulFoldFunctions<ParentInformation, CfgDownSt
 		foldFunctionDefinition: cfgLeaf(CfgVertexType.Expression)
 	}
 };
-
-function dataflowCfgFolds(dataflowGraph: DataflowGraph): StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation> {
-	const newFolds = {
-		...cfgFolds,
-	};
-	newFolds.functions = {
-		...cfgFolds.functions,
-		foldFunctionCall: cfgFunctionCallWithDataflow(dataflowGraph, newFolds)
-	};
-	return newFolds;
-}
 
 /**
  * Given a normalized AST, this approximates the control flow graph of the program.
@@ -217,7 +262,11 @@ function identifyMayStatementType(node: RNodeWithParent) {
 	return node.info.role === RoleInParent.ExpressionListChild ? CfgVertexType.Statement : CfgVertexType.Expression;
 }
 
-function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined): ControlFlowInformation {
+function cfgIfThenElse(ifNode: RNodeWithParent, condition: ControlFlowInformation, then: ControlFlowInformation, otherwise: ControlFlowInformation | undefined | typeof EmptyArgument): ControlFlowInformation {
+	if(otherwise === EmptyArgument) {
+		otherwise = undefined;
+	}
+
 	const ifId = ifNode.info.id;
 	const graph = new ControlFlowGraph();
 	graph.addVertex(CfgVertex.makeExprOrStm(ifId, identifyMayStatementType(ifNode), { mid: condition.exitPoints, end: [CfgVertex.toExitId(ifId)] }));
@@ -472,27 +521,8 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
-const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
-	[BuiltInProcName.IfThenElse]: (folds, call, args, down) => {
-		// arguments are in order!
-		return folds.foldIfThenElse(
-			call as RNodeWithParent as RIfThenElse<ParentInformation>, // we will have to this more sophisticated if we rewrite the dfg based generation
-			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
-			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
-			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2],
-			down
-		);
-	}
-};
-function cfgFunctionCallWithDataflow(graph: DataflowGraph, folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>): typeof cfgFunctionCall {
+function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation => {
-		const vtx = graph.getVertex(call.info.id);
-		if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
-			const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
-			if(mayMap) {
-				return mayMap(folds, call, args, down, vtx);
-			}
-		}
 		const baseCfg = cfgFunctionCall(call, name, args, down);
 
 		/* try to resolve the call and link the target definitions */

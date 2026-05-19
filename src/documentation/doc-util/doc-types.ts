@@ -525,7 +525,7 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
 		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	} else {
-		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, false)}</a>)</i>\n`;
+		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a>)</i>\n`;
 	}
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
 	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t', '    ').split(/\n/g).join(`\n${indent}   `)}`;

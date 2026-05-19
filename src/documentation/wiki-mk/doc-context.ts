@@ -202,7 +202,7 @@ export interface GeneralDocContext {
 	 * code('src/path/to/file.ts', { skipImports: true })
 	 * ```
 	 *
-	 * Creates a code snippet for the source file `src/path/to/file.ts` function,
+	 * Creates a code snippet for the source file `src/path/to/file.ts`,
 	 * dropping the lines with import statements of the source code.
 	 */
 	codeFile(path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string;

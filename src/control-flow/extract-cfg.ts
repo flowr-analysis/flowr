@@ -507,27 +507,8 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 
 export const ResolvedCallSuffix = CfgVertex.toExitId('-resolved-call');
 
-// const OriginToFoldTypeMap: Partial<Record<BuiltInProcName, (folds: StatefulFoldFunctions<ParentInformation, CfgDownState, ControlFlowInformation>, call: RFunctionCall<ParentInformation>, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState, callVtx: DataflowGraphVertexFunctionCall) => ControlFlowInformation>> = {
-// 	[BuiltInProcName.IfThenElse]: (folds, call, args, down) => {
-// 		// arguments are in order!
-// 		return folds.foldIfThenElse(
-// 			call as RNodeWithParent as RIfThenElse<ParentInformation>, // we will have to this more sophisticated if we rewrite the dfg based generation
-// 			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
-// 			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
-// 			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2],
-// 			down
-// 		);
-// 	}
-// };
 function cfgFunctionCallWithDataflow(graph: DataflowGraph): typeof cfgFunctionCall {
 	return (call: RFunctionCall<ParentInformation>, name: ControlFlowInformation, args: (ControlFlowInformation | typeof EmptyArgument)[], down: CfgDownState): ControlFlowInformation => {
-		//const vtx = graph.getVertex(call.info.id);
-		// if(vtx?.tag === VertexType.FunctionCall && vtx.onlyBuiltin && vtx.origin.length === 1) {
-		// 	const mayMap = OriginToFoldTypeMap[vtx.origin[0] as BuiltInProcName];
-		// 	if(mayMap) {
-		// 		return mayMap(folds, call, args, down, vtx);
-		// 	}
-		// }
 		const baseCfg = cfgFunctionCall(call, name, args, down);
 
 		/* try to resolve the call and link the target definitions */

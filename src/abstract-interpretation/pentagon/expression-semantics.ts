@@ -3,7 +3,6 @@ import { FunctionArgument } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NumericPentagonInferenceVisitor } from './numeric-pentagon-inference';
 import { ClosedPentagonValueDomain } from './closed-pentagon-value-domain';
-import { numericInferenceLogger } from '../interval/numeric-interval-inference';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { getMin } from '../../util/numbers';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -14,6 +13,10 @@ import {
 	intervalNegateOp,
 	intervalSubtractOp
 } from '../interval/expression-semantics';
+import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
+import { log } from '../../util/log';
+
+const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-inference' });
 
 /**
  * Maps function/operator names to the semantic functions.
@@ -28,8 +31,6 @@ type PentagonSemanticsMapperInfo = [identifier: Identifier, semantics: NaryFnSem
 type UnaryOpSemantics = (target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
 
 type BinaryOpSemantics = (target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
-
-type UnaryFnSemantics = (target: NodeId, arg: FunctionArgument, visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
 
 type NaryFnSemantics = (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined) => ClosedPentagonValueDomain | undefined;
 
@@ -50,7 +51,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 
 	if(isUndefined(match)) {
 		// Check if we at least have interval semantics and apply them if available.
-		const intervalMatch = IntervalExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
+		const intervalMatch = IntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 		if(isUndefined(intervalMatch)) {
 			numericInferenceLogger.debug(`Function identifier ${functionIdentifier.toString()} is not a valid pentagon operation. Returning undefined semantics.`);
@@ -58,14 +59,12 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 		} else {
 			const [_, semantics] = intervalMatch;
 
-			const interval = semantics(args, (node: NodeId) => visitor.getAbstractValue(node)?.value.interval, significantFigures, dfg);
+			const interval = semantics(args, visitor, significantFigures, dfg);
 
 			if(isUndefined(interval)) {
 				return undefined;
 			} else {
-				const pentagon = ClosedPentagonValueDomain.top(significantFigures);
-				pentagon.value.interval = interval;
-				return pentagon;
+				return new ClosedPentagonValueDomain({ interval: interval, upperBounds: UpperBoundsValueDomain.top() });
 			}
 		}
 	} else {
@@ -125,25 +124,11 @@ function binaryExprOpSemantics(binaryOperatorSemantics: BinaryOpSemantics): Nary
 	};
 }
 
-function _unaryExprFnSemantics(unaryFunctionSemantics: UnaryFnSemantics): NaryFnSemantics {
-	return (target: NodeId, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined): ClosedPentagonValueDomain | undefined => {
-		if(args.length !== 1) {
-			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
-			return ClosedPentagonValueDomain.bottom(significantFigures);
-		}
-
-		return unaryFunctionSemantics(target, args[0], visitor, currentState, significantFigures);
-	};
+function pentagonUnaryIdentityOp(_target: NodeId, [_, argPentagon]: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
+	return argPentagon;
 }
 
-function pentagonUnaryIdentityOp(_target: NodeId, arg: [NodeId, ClosedPentagonValueDomain | undefined]): ClosedPentagonValueDomain | undefined {
-	return arg[1];
-}
-
-function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
-	const [leftNodeId, leftValue] = left;
-	const [rightNodeId, rightValue] = right;
-
+function pentagonAddOp(target: NodeId, [leftNodeId, leftValue]: [NodeId, ClosedPentagonValueDomain | undefined], [rightNodeId, rightValue]: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
 	const smallestSignificantFigures = getMin([leftValue?.value.interval.significantFigures, rightValue?.value.interval.significantFigures].filter(isNotUndefined));
 
 	if(leftValue?.isBottom() || rightValue?.isBottom()) {
@@ -164,15 +149,15 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 		const [a, b] = leftValue.value.interval.value;
 		const [c, d] = rightValue.value.interval.value;
 
-		const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
-		const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
+		const leftOrigin = visitor.getOriginIfUnique(leftNodeId);
+		const rightOrigin = visitor.getOriginIfUnique(rightNodeId);
 
 		if(isNotUndefined(rightOrigin)) {
 			if(a >= 0) {
 				addTargetAsUpperBoundToNodeInState(target, rightOrigin, currentState);
 			}
 			if(b <= 0) {
-				resultPentagon.value.upperBounds = rightValue.value.upperBounds.create(rightValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds = resultPentagon.value.upperBounds.meet(rightValue.value.upperBounds);
 				resultPentagon.value.upperBounds.add(rightOrigin);
 			}
 		}
@@ -181,7 +166,7 @@ function pentagonAddOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain 
 				addTargetAsUpperBoundToNodeInState(target, leftOrigin, currentState);
 			}
 			if(d <= 0) {
-				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds = resultPentagon.value.upperBounds.meet(leftValue.value.upperBounds);
 				resultPentagon.value.upperBounds.add(leftOrigin);
 			}
 		}
@@ -203,7 +188,7 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 		targetPentagon.value.interval = interval;
 
 		const [a, b] = argValue.value.interval.value;
-		const argOrigin = visitor.getUniqueOrigin(argNodeId);
+		const argOrigin = visitor.getOriginIfUnique(argNodeId);
 		if(isNotUndefined(argOrigin)) {
 			if(a >= 0) {
 				// target will be smaller than arg => arg is an upper bound
@@ -220,12 +205,9 @@ function pentagonNegativeOp(target: NodeId, arg: [NodeId, ClosedPentagonValueDom
 	}
 }
 
-function pentagonSubtractOp(target: NodeId, left: [NodeId, ClosedPentagonValueDomain | undefined], right: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
-	const [leftNodeId, leftValue] = left;
-	const [rightNodeId, rightValue] = right;
-
-	const leftOrigin = visitor.getUniqueOrigin(leftNodeId);
-	const rightOrigin = visitor.getUniqueOrigin(rightNodeId);
+function pentagonSubtractOp(target: NodeId, [leftNodeId, leftValue]: [NodeId, ClosedPentagonValueDomain | undefined], [rightNodeId, rightValue]: [NodeId, ClosedPentagonValueDomain | undefined], currentState: ClosedPentagonDomain, visitor: NumericPentagonInferenceVisitor): ClosedPentagonValueDomain | undefined {
+	const leftOrigin = visitor.getOriginIfUnique(leftNodeId);
+	const rightOrigin = visitor.getOriginIfUnique(rightNodeId);
 
 	const smallestSignificantFigures = getMin([leftValue?.value.interval.significantFigures, rightValue?.value.interval.significantFigures].filter(isNotUndefined));
 

@@ -3,11 +3,13 @@ import type { DataflowGraph } from '../dataflow/graph/graph';
 import { FunctionArgument } from '../dataflow/graph/graph';
 import { Identifier } from '../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../util/assert';
-import { numericInferenceLogger } from './interval/numeric-interval-inference';
 import { isFunctionCallVertex } from '../dataflow/graph/vertex';
 import type { AnyStateDomain } from './domains/state-domain-like';
 import type { AnyAbstractDomain } from './domains/abstract-domain';
 import type { AbstractInterpretationVisitor } from './absint-visitor';
+import { log } from '../util/log';
+
+const conditionInferenceLogger = log.getSubLogger({ name: 'condition-inference' });
 
 export type NAryConditionSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>> =
 	(
@@ -47,7 +49,7 @@ export function unaryConditionSemanticsGuard<StateDomain extends AnyStateDomain<
 ): NAryConditionSemantics<StateDomain, Visitor> {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: StateDomain, visitor: Visitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 1 || isUndefined(argNodeIds[0])) {
-			numericInferenceLogger.warn('Called unary condition operator with more/less than 1 argument or with undefined argument.');
+			conditionInferenceLogger.warn('Called unary condition operator with more/less than 1 argument or with undefined argument.');
 			return state;
 		}
 		return unaryConditionSemantics(argNodeIds[0], state, visitor, dfg);
@@ -64,7 +66,7 @@ export function binaryConditionSemanticsGuard<StateDomain extends AnyStateDomain
 ): NAryConditionSemantics<StateDomain, Visitor> {
 	return (argNodeIds: readonly (NodeId | undefined)[], state: StateDomain, visitor: Visitor, dfg: DataflowGraph) => {
 		if(argNodeIds.length !== 2 || isUndefined(argNodeIds[0]) || isUndefined(argNodeIds[1])) {
-			numericInferenceLogger.warn('Called binary condition operator with more/less than 2 arguments or with undefined arguments.');
+			conditionInferenceLogger.warn('Called binary condition operator with more/less than 2 arguments or with undefined arguments.');
 			return state;
 		}
 		return binaryConditionSemantics(argNodeIds[0], argNodeIds[1], state, visitor, dfg);
@@ -85,6 +87,8 @@ export function binaryIdentityConditionSemantics<StateDomain extends AnyStateDom
 	return state;
 }
 
+export type ConditionAppliers<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>> = { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> };
+
 /**
  * Creates and returns the applyConditionSemantics and applyNegatedConditionSemantics functions for a given state domain and visitor.
  * The returned functions should be called by the {@link AbstractInterpretationVisitor.applyConditionSemantics} function of the state domain specific visitor.
@@ -94,10 +98,10 @@ export function binaryIdentityConditionSemantics<StateDomain extends AnyStateDom
  * @param onUnknownNegativeFunctionCall - This function is called by applyNegatedConditionSemantics if a function call vertex is encountered for which no semantics are provided, or the vertex is no function call (e.g. an expression).
  */
 export function createConditionApplier<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends AbstractInterpretationVisitor<StateDomain>>(
-	domainSpecificMapper: ConditionSemanticsMapperInfo<StateDomain, Visitor>[],
+	domainSpecificMapper: readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[],
 	onUnknownPositiveFunctionCall?: UnaryConditionSemantics<StateDomain, Visitor>,
 	onUnknownNegativeFunctionCall?: UnaryConditionSemantics<StateDomain, Visitor>,
-): { applyConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor>, applyNegatedConditionSemantics: UnaryConditionSemantics<StateDomain, Visitor> } {
+): ConditionAppliers<StateDomain, Visitor> {
 	const ConditionSemanticsMapper = [
 		...domainSpecificMapper,
 		[Identifier.make('!'), unaryConditionSemanticsGuard(applyNegatedConditionSemantics), unaryConditionSemanticsGuard(applyConditionSemantics)],

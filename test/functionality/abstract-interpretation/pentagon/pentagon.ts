@@ -69,9 +69,9 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 
 		visitor = new NumericPentagonInferenceVisitor({
 			normalizedAst: ast,
-			dfg:           dfg,
+			dfg,
 			controlFlow:   cfg,
-			ctx:           ctx
+			ctx
 		});
 
 		visitor.start();
@@ -132,6 +132,11 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 			// Check if upper bounds are included
 			if((isUndefined(inferredPentagonDomain) && criterionExpected.intervalMatching === DomainMatchingType.Overapproximation)) {
 				// Assume no info to be the allowed overapproximation => therefore we cannot have any upper bounds info, so we skip the test
+				return;
+			}
+			if(criterionExpected.interval?.isBottom() && criterionExpected.intervalMatching === DomainMatchingType.Overapproximation) {
+				// If the interval is expected to be bottom, then the upper bounds must also be bottom.
+				// As we allow overapproximations, the upper bounds can be any value, so we skip the test
 				return;
 			}
 

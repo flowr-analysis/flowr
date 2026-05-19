@@ -11,7 +11,7 @@ export type AbstractClosedPentagon = {
 /**
  * The weakly relational closed pentagon domain is product combining the interval state domain and the upper-bounds domain.
  * To remove the duplicate mapping from NodeId to values
- * (interval state domain: NodeId -&gt; interval, upper bounds: NodeId -&gt; Set(NodeId)),
+ * (interval state domain: NodeId `->` interval, upper bounds: NodeId `->` Set(NodeId)),
  * we implement the domain as a single mapping from NodeIds to a product of intervals ({@link IntervalDomain}) and the
  * upper bounds set ({@link UpperBoundsValueDomain}).
  * We use the {@link StateAbstractDomain} to model the mapping from NodeId to a "value domain".
@@ -32,14 +32,14 @@ export class ClosedPentagonValueDomain extends ProductDomain<AbstractClosedPenta
 		return new ClosedPentagonValueDomain({ interval: IntervalDomain.bottom(significantFigures), upperBounds: UpperBoundsValueDomain.bottom() });
 	}
 
-	public override top(significantFigures?: number): this & ProductDomain<AbstractClosedPentagon>;
-	public override top(significantFigures?: number): ClosedPentagonValueDomain {
-		return ClosedPentagonValueDomain.top(significantFigures);
+	public override top(): this & ProductDomain<AbstractClosedPentagon>;
+	public override top(): ClosedPentagonValueDomain {
+		return ClosedPentagonValueDomain.top(this.value.interval.significantFigures);
 	}
 
-	public override bottom(significantFigures?: number): this & ProductDomain<AbstractClosedPentagon>;
-	public override bottom(significantFigures?: number): ClosedPentagonValueDomain {
-		return ClosedPentagonValueDomain.bottom(significantFigures);
+	public override bottom(): this & ProductDomain<AbstractClosedPentagon>;
+	public override bottom(): ClosedPentagonValueDomain {
+		return ClosedPentagonValueDomain.bottom(this.value.interval.significantFigures);
 	}
 
 	public override toString(): string {

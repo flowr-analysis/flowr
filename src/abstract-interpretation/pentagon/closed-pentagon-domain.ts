@@ -146,8 +146,12 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 
 			if(newInferredBounds.size > 0 || removeBounds.size > 0) {
 				const reducedPentagon = pentagon.create(pentagon.value);
-				newInferredBounds.values().forEach(bound => reducedPentagon.value.upperBounds.add(bound));
-				removeBounds.values().forEach(bound => reducedPentagon.value.upperBounds.remove(bound));
+				for(const bound of newInferredBounds.values()) {
+					reducedPentagon.value.upperBounds.add(bound);
+				}
+				for(const bound of removeBounds.values()) {
+					reducedPentagon.value.upperBounds.remove(bound);
+				}
 				(value as Map<NodeId, ClosedPentagonValueDomain>).set(key, reducedPentagon);
 			}
 		}

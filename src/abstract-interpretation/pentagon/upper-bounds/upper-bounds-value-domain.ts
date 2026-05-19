@@ -74,12 +74,12 @@ export class UpperBoundsValueDomain<Value extends UpperBoundsLift = UpperBoundsL
 	}
 
 	public leq(other: this): boolean {
-		if(this.isBottom()) {
+		if(this.value === Bottom || other.isTop()) {
 			return true;
-		} else if(other.isBottom()) {
+		} else if(other.value === Bottom) {
 			return false;
 		}
-		return (other.value as UpperBoundsValue).isSubsetOf(this.value as UpperBoundsValue);
+		return other.value.isSubsetOf(this.value);
 	}
 
 	public join(other: this): this {

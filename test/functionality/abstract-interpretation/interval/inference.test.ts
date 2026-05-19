@@ -472,6 +472,156 @@ describe('Interval Inference', () => {
 			});
 		});
 
+		describe('round', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[['0'], { domain: IntervalTests.scalar(0) }],
+				[['-1'], { domain: IntervalTests.scalar(-1) }],
+				[['4'], { domain: IntervalTests.scalar(4) }],
+				[['ifelse(c, -4.2, 2.5)'], { domain: IntervalTests.interval(-4, 3) }],
+				[['ifelse(c, 0.1112, 5.2)'], { domain: IntervalTests.interval(0, 5) }],
+				[['0.2851', 'digits=2'], { domain: IntervalTests.scalar(0.29) }],
+				[['-1.779', '2'], { domain: IntervalTests.scalar(-1.78) }],
+				[['4.555', 'ifelse(c, 1, 2)'], { domain: IntervalTests.interval(4.56, 4.6), matching: DomainMatchingType.Overapproximation }],
+				[['digits=-1', '255'], { domain: IntervalTests.scalar(260) }],
+				[['2', 'x=12.8888'], { domain: IntervalTests.scalar(12.89) }],
+				[['digits=ifelse(c, -3, 4)', '888888.888888'], { domain: IntervalTests.scalar(888888.8889, 889000), matching: DomainMatchingType.Overapproximation }]
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- round(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('sign', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[[], { domain: IntervalTests.bottom() }],
+				[['0.2851', '2'], { domain: IntervalTests.bottom() }],
+				[['0'], { domain: IntervalTests.scalar(0) }],
+				[['-1'], { domain: IntervalTests.scalar(-1) }],
+				[['4'], { domain: IntervalTests.scalar(1) }],
+				[['ifelse(c, -4.2, 2.5)'], { domain: IntervalTests.interval(-1, 1) }],
+				[['ifelse(c, 0.1112, 5.2)'], { domain: IntervalTests.scalar(1) }],
+				[['ifelse(c, 0, 2)'], { domain: IntervalTests.interval(0, 1) }],
+				[['ifelse(c, -12, 0)'], { domain: IntervalTests.interval(-1, 0) }],
+				[['ifelse(c, -200, -0.01)'], { domain: IntervalTests.scalar(-1) }]
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- sign(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('sqrt', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[[], { domain: IntervalTests.bottom() }],
+				[['0.2851', '2'], { domain: IntervalTests.bottom() }],
+				[['0'], { domain: IntervalTests.scalar(0) }],
+				[['-1'], { domain: IntervalTests.top() }],
+				[['4'], { domain: IntervalTests.scalar(2) }],
+				[['ifelse(c, -4.2, 2.5)'], { domain: IntervalTests.top() }],
+				[['ifelse(c, 0.1112, 5.2)'], { domain: IntervalTests.interval(Math.sqrt(0.1112), Math.sqrt(5.2)) }],
+				[['ifelse(c, 0, 2)'], { domain: IntervalTests.interval(0, Math.sqrt(2)) }],
+				[['ifelse(c, 4, 9)'], { domain: IntervalTests.interval(2, 3) }],
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- sqrt(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('runif', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[[], { domain: IntervalTests.bottom() }],
+				[['Hallo'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['-1'], { domain: IntervalTests.bottom() }],
+				[['2, x=3'], { domain: IntervalTests.bottom() }],
+				[['0'], { domain: IntervalTests.top() }],
+				[['0.2851', '2', '5'], { domain: IntervalTests.top() }],
+				[['n=2, 3'], { domain: IntervalTests.top() }],
+				[['4'], { domain: IntervalTests.top() }],
+				[['n=1, -3'], { domain: IntervalTests.interval(-3, 0) }],
+				[['1', 'ifelse(c, -4.2, 2.5)', '4'], { domain: IntervalTests.interval(-4.2, 4) }],
+				[['1', 'ifelse(c, -2, 3)', 'ifelse(c, 6, 7)'], { domain: IntervalTests.interval(-2, 7) }],
+				[['1', 'max=3'], { domain: IntervalTests.interval(0, 3) }],
+				[['1', 'max=3', 'min=-1'], { domain: IntervalTests.interval(-1, 3) }],
+				[['max=3', '1', 'min=-1'], { domain: IntervalTests.interval(-1, 3) }],
+				[['max=3', 'min=-1', 'n=1'], { domain: IntervalTests.interval(-1, 3) }],
+				[['1', 'ifelse(c, 0.1112, 5.2)', 'ifelse(c, 3, 6)'], { domain: IntervalTests.interval(0.1112, 6), matching: DomainMatchingType.Overapproximation }],
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- runif(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('as.numeric', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[[], { domain: IntervalTests.top() }],
+				[['Hallo'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['n=2, 3'], { domain: IntervalTests.bottom() }],
+				[['2, x=3'], { domain: IntervalTests.scalar(2) }],
+				[['x=2, 3'], { domain: IntervalTests.scalar(2) }],
+				[['0.2851', '2'], { domain: IntervalTests.scalar(0.2851) }],
+				[['0'], { domain: IntervalTests.scalar(0) }],
+				[['-1'], { domain: IntervalTests.scalar(-1) }],
+				[['4'], { domain: IntervalTests.scalar(4) }],
+				[['ifelse(c, -4.2, 2.5)'], { domain: IntervalTests.interval(-4.2, 2.5) }],
+				[['ifelse(c, 0.1112, 5.2)'], { domain: IntervalTests.interval(0.1112, 5.2) }],
+				[['ifelse(c, 0, 2)'], { domain: IntervalTests.interval(0, 2) }],
+				[['ifelse(c, 4, 9)'], { domain: IntervalTests.interval(4, 9) }],
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- as.numeric(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
+		describe('as.integer', () => {
+			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[[], { domain: IntervalTests.top() }],
+				[['Hallo'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['n=2, 3'], { domain: IntervalTests.bottom() }],
+				[['2, x=3'], { domain: IntervalTests.scalar(2) }],
+				[['x=2, 3'], { domain: IntervalTests.scalar(2) }],
+				[['0.2851', '2'], { domain: IntervalTests.scalar(0) }],
+				[['0'], { domain: IntervalTests.scalar(0) }],
+				[['-1'], { domain: IntervalTests.scalar(-1) }],
+				[['4'], { domain: IntervalTests.scalar(4) }],
+				[['ifelse(c, -4.2, 2.5)'], { domain: IntervalTests.interval(-4, 2) }],
+				[['ifelse(c, 0.1112, 5.2)'], { domain: IntervalTests.interval(0, 5) }],
+				[['ifelse(c, 0, 2)'], { domain: IntervalTests.interval(0, 2) }],
+				[['ifelse(c, -1.678392, -9.2313)'], { domain: IntervalTests.interval(-9, -1) }],
+			];
+
+			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- as.integer(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+		});
+
 		describe('basic combined calculation', () => {
 			testIntervalDomain('x <- 3 + 5 * 7 - 3', { '1@x': { domain: IntervalTests.scalar(3+5*7-3) } });
 			testIntervalDomain('x <- (3 + 2) * (7 - 2 * 2)', { '1@x': { domain: IntervalTests.scalar((3+2)*(7-2*2)) } });
@@ -863,6 +1013,59 @@ describe('Interval Inference', () => {
 				'13@y': { domain: IntervalTests.bottom() },
 				'16@x': { domain: IntervalTests.scalar(5), matching: DomainMatchingType.Overapproximation }, // OA as there is a read edge from 16@x to 1@x, although else branch is bottom
 				'16@y': { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation } // OA as there is a read edge from 16@y to 2@y, although else branch is bottom
+			});
+		});
+
+		describe('is.finite', () => {
+			const testCases: [arguments: string, expected: IntervalSlicingCriterionExpected][] = [
+				// Copy the test cases from below
+				['""', { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				['c(1,2,3)', { domain: IntervalTests.top() }],
+				['Inf', { domain: IntervalTests.bottom() }],
+				['-Inf', { domain: IntervalTests.bottom() }],
+				['1', { domain: IntervalTests.scalar(1) }],
+				['-1', { domain: IntervalTests.scalar(-1) }],
+				['ifelse(c, -5, 2)', { domain: IntervalTests.interval(-5, 2) }],
+				['ifelse(c, -Inf, 3)', { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, 3) }],
+				['ifelse(c, -Inf, Inf)', { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY) }]
+			];
+
+			describe.each(testCases)('arg: %s, result: %s', (arg, expected) => {
+				testIntervalDomain(`
+					x <- ${arg}
+					if(is.finite(x)) {
+						x
+					}
+				`, {
+					'3@x': expected
+				});
+			});
+		});
+
+		describe('is.infinite', () => {
+			const testCases: [arguments: string, expected: IntervalSlicingCriterionExpected][] = [
+				// Copy the test cases from below
+				['""', { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				['c(1,2,3)', { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				['1', { domain: IntervalTests.bottom() }],
+				['-1', { domain: IntervalTests.bottom() }],
+				['ifelse(c, -5, 2)', { domain: IntervalTests.bottom() }],
+				['Inf', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY) }],
+				['-Inf', { domain: IntervalTests.scalar(Number.NEGATIVE_INFINITY) }],
+				['ifelse(c, -Inf, 3)', { domain: IntervalTests.scalar(Number.NEGATIVE_INFINITY) }],
+				['ifelse(c, Inf, 3)', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY) }],
+				['ifelse(c, -Inf, Inf)', { domain: IntervalTests.interval(Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY) }]
+			];
+
+			describe.each(testCases)('arg: %s, result: %s', (arg, expected) => {
+				testIntervalDomain(`
+					x <- ${arg}
+					if(is.infinite(x)) {
+						x
+					}
+				`, {
+					'3@x': expected
+				});
 			});
 		});
 	});

@@ -27,6 +27,7 @@ export const IntervalExpressionSemanticsMapper = <StateDomain extends AnyStateDo
 	[Identifier.make('*'), binaryExprOpSemantics(intervalMultiplyOp)],
 	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
 	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
+	[Identifier.make('sqrt'), unaryExprOpSemantics(intervalSqrtOp)],
 	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
 	[Identifier.make('nrow'), unaryExprFnSemantics(intervalNrowNcolFn)],
 	[Identifier.make('ncol'), unaryExprFnSemantics(intervalNrowNcolFn)],
@@ -38,7 +39,13 @@ export const IntervalExpressionSemanticsMapper = <StateDomain extends AnyStateDo
 	[Identifier.make('%%'), binaryExprOpSemantics(intervalModulo)],
 	[Identifier.make('log'), intervalLog],
 	[Identifier.make('mean'), intervalReturnNumIfAllArgsAreNum],
-	[Identifier.make('min'), intervalReturnNumIfAllArgsAreNum]
+	[Identifier.make('min'), intervalReturnNumIfAllArgsAreNum],
+	[Identifier.make('median'), intervalReturnNumIfAllArgsAreNum],
+	[Identifier.make('round'), intervalRound],
+	[Identifier.make('sign'), unaryExprOpSemantics(intervalSign)],
+	[Identifier.make('runif'), intervalRunif],
+	[Identifier.make('as.numeric'), intervalAsNumeric],
+	[Identifier.make('as.integer'), intervalAsInteger]
 ] as const satisfies readonly IntervalSemanticsMapperInfo<StateDomain>[];
 
 type IntervalSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NaryFnSemantics<StateDomain>];
@@ -335,6 +342,23 @@ function intervalPowerOp(left: IntervalDomain | undefined, right: IntervalDomain
 	return undefined;
 }
 
+function intervalSqrtOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(arg?.isBottom()) {
+		return arg?.bottom();
+	}
+
+	if(arg?.isValue()) {
+		const [a, b] = arg.value;
+
+		if(a < 0) {
+			// Negative values produce NaN which we cannot represent using our interval domain
+			return undefined;
+		}
+		return arg.create([Math.sqrt(a), Math.sqrt(b)]);
+	}
+	return undefined;
+}
+
 /**
  * Infers the interval resulting from applying the `length` function to the provided argument.
  * @param arg - The argument to apply the `length` function to.
@@ -618,4 +642,201 @@ function intervalReturnNumIfAllArgsAreNum<StateDomain extends AnyStateDomain<Any
 		return undefined;
 	}
 	return IntervalDomain.top();
+}
+
+function intervalRound<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(args.length === 0 || args.length > 2 || args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	let x: IntervalDomain | undefined | 'unknown' = 'unknown';
+	let digits: IntervalDomain | undefined | 'unknown' = 'unknown';
+
+	const namedArguments = args.filter(FunctionArgument.isNamed);
+
+	for(const arg of namedArguments) {
+		if(arg.name === 'x' && isNotUndefined(arg.valueId)) {
+			x = visitor.getInterval(arg.valueId);
+		} else if(arg.name === 'digits' && isNotUndefined(arg.valueId)) {
+			digits = visitor.getInterval(arg.valueId);
+		}
+	}
+
+	const positionalArguments = args.filter(FunctionArgument.isPositional);
+
+	for(const arg of positionalArguments) {
+		if(x === 'unknown') {
+			x = visitor.getInterval(arg.nodeId);
+		} else if(digits === 'unknown') {
+			digits = visitor.getInterval(arg.nodeId);
+		}
+	}
+
+	if(x === 'unknown' || isUndefined(x)) {
+		return undefined;
+	}
+	if(isUndefined(digits)) {
+		// digits can be any value, so we overapproximate
+		return IntervalDomain.top();
+	}
+	if(x.value === Bottom) {
+		return x.bottom();
+	}
+	if(digits === 'unknown') {
+		// digits is not specified, so default is round with digits=0
+		return x.create([Math.round(x.value[0]), Math.round(x.value[1])]);
+	}
+	if(digits.value === Bottom) {
+		return x.bottom();
+	}
+	const [lDigits, uDigits] = digits.value;
+	if(lDigits === uDigits && Number.isInteger(lDigits)) {
+		const roundingFactor = 10 ** lDigits;
+		return x.create([Math.round(x.value[0] * roundingFactor) / roundingFactor, Math.round(x.value[1] * roundingFactor) / roundingFactor]);
+	}
+	return x.top();
+}
+
+function intervalSign(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(isUndefined(arg) || arg.value === Bottom) {
+		return arg;
+	}
+
+	const [a, b] = arg.value;
+
+	return arg.create([Math.sign(a), Math.sign(b)]);
+}
+
+function intervalRunif<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(args.length === 0 || args.length > 3 || args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	let n: IntervalDomain | undefined | 'unknown' = 'unknown';
+	let min: IntervalDomain | undefined | 'unknown' = 'unknown';
+	let max: IntervalDomain | undefined | 'unknown' = 'unknown';
+
+	const namedArguments = args.filter(FunctionArgument.isNamed);
+
+	for(const arg of namedArguments) {
+		if(isNotUndefined(arg.valueId)) {
+			const interval = visitor.getInterval(arg.valueId);
+			if(arg.name === 'n'){
+				n = interval;
+			} else if(arg.name === 'min') {
+				min = interval;
+			} else if(arg.name === 'max') {
+				max = interval;
+			} else {
+				// Unused argument, so return bottom
+				return IntervalDomain.bottom(significantFigures);
+			}
+		}
+	}
+
+	const positionalArguments = args.filter(FunctionArgument.isPositional);
+
+	for(const arg of positionalArguments) {
+		const interval = visitor.getInterval(arg.nodeId);
+		if(n === 'unknown') {
+			n = interval;
+		} else if(min === 'unknown') {
+			min = interval;
+		} else if(max === 'unknown') {
+			max = interval;
+		} else {
+			// Unused argument, so return bottom
+			return IntervalDomain.bottom(significantFigures);
+		}
+	}
+
+	if(n === 'unknown') {
+		return IntervalDomain.bottom();
+	}
+
+	if(isUndefined(n) || n.value === Bottom) {
+		return n;
+	}
+
+	const [ln, un] = n.value;
+
+	// runif throws an error if n < 0
+	if(un < 0) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+	// We can only infer something if exactly one value is returned by the function.
+	if(ln !== un || ln !== 1) {
+		return undefined;
+	}
+
+	let [lmin, rmin] = [0, 0];
+	let [lmax, rmax] = [0, 0];
+	// min and max default to 0 if not specified
+	if(min !== 'unknown') {
+		if(min?.value === Bottom) {
+			return IntervalDomain.bottom();
+		}
+		if(isUndefined(min)) {
+			// We do not know if the min arg potentially produces an error
+			return undefined;
+		}
+		[lmin, rmin] = min.value;
+	}
+
+	if(max !== 'unknown') {
+		if(max?.value === Bottom) {
+			return IntervalDomain.bottom();
+		}
+		if(isUndefined(max)) {
+			// We do not know if the max arg potentially produces an error
+			return undefined;
+		}
+		[lmax, rmax] = max.value;
+	}
+
+	if(rmin > lmax) {
+		// runif produces NaN if the provided min arg is greater than the provided max arg, so if the interval overlap
+		// we need to overapproximate.
+		return undefined;
+	}
+
+	return n.create([lmin, rmax]);
+}
+
+function intervalAsNumeric<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
+	if(args.length === 0) {
+		// Providing no args returns numeric(0) which requires overapproximation
+		return undefined;
+	}
+	if(args.some(FunctionArgument.isEmpty)) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	let x: IntervalDomain | undefined = undefined;
+	// uses the first argument if it is named x or positional
+	if(FunctionArgument.isNamed(args[0])) {
+		if(args[0].name === 'x' && isNotUndefined(args[0].valueId)) {
+			x = visitor.getInterval(args[0].valueId);
+		} else {
+			return IntervalDomain.bottom(significantFigures);
+		}
+	} else if(FunctionArgument.isPositional(args[0])) {
+		x = visitor.getInterval(args[0].nodeId);
+	}
+
+	return x?.create(x.value);
+}
+
+function intervalAsInteger<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
+	const asNumeric = intervalAsNumeric(args, visitor, significantFigures);
+
+	if(isUndefined(asNumeric)) {
+		return undefined;
+	}
+	if(asNumeric.value === Bottom) {
+		return IntervalDomain.bottom(significantFigures);
+	}
+
+	const [a, b] = asNumeric.value;
+	return asNumeric.create([Math.trunc(a), Math.trunc(b)]);
 }

@@ -37,7 +37,11 @@ export const IntervalSemanticsMaper = <StateDomain extends AnyStateDomain<AnyAbs
 	[Identifier.make('is.na'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
 	[Identifier.make('is.null'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
 	[Identifier.make('is.character'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+	[Identifier.make('is.factor'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
 	[Identifier.make('is.numeric'), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval)],
+	[Identifier.make('is.nan'), unaryConditionSemanticsGuard(intervalBottomIfArgIsInterval), unaryConditionSemanticsGuard(unaryIdentityConditionSemantics)],
+	[Identifier.make('is.infinite'), unaryConditionSemanticsGuard(intervalIsInfinite), unaryConditionSemanticsGuard(intervalIsFinite)],
+	[Identifier.make('is.finite'), unaryConditionSemanticsGuard(intervalIsFinite), unaryConditionSemanticsGuard(intervalIsInfinite)]
 ] as const satisfies readonly ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
 
 function applyUnknownPositiveCondition<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId | undefined, state: StateDomain, visitor: Visitor) {
@@ -212,4 +216,57 @@ function intervalBottomIfArgIsInterval<StateDomain extends AnyStateDomain<AnyAbs
 	}
 
 	return state.bottom();
+}
+
+function intervalIsInfinite<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	const argValue = visitor.getInterval(argNodeId, state);
+
+	// Only if we can resolve the argument to an interval, and it has no infinit bounds we can safely return bottom.
+	// Otherwise, the condition might be satisfiable.
+	if(isNotUndefined(argValue)) {
+		if(argValue.isValue()) {
+			const [a, b] = argValue.value;
+			if(Number.isFinite(a) && Number.isFinite(b)) {
+				return state.bottom();
+			}
+			if(!Number.isFinite(a) && !Number.isFinite(b)) {
+				// As both sides are infinite, we cannot enhance the bounds for the condition body
+				return state;
+			}
+			// If only one side is infinite, this is the only infinite value, if the condition evaluates to true,
+			// this is the only possible value
+			if(!Number.isFinite(a)) {
+				visitor.getVariableOrigins(argNodeId).forEach(originNodeId => {
+					visitor.setInterval(state, originNodeId, argValue.scalar(a));
+				});
+			}
+			if(!Number.isFinite(b)) {
+				visitor.getVariableOrigins(argNodeId).forEach(originNodeId => {
+					visitor.setInterval(state, originNodeId, argValue.scalar(b));
+				});
+			}
+		}
+	}
+
+	return state;
+}
+
+function intervalIsFinite<StateDomain extends AnyStateDomain<AnyAbstractDomain>, Visitor extends IntervalConditionSemanticsVisitor<StateDomain>>(argNodeId: NodeId, state: StateDomain, visitor: Visitor): StateDomain {
+	const argValue = visitor.getInterval(argNodeId, state);
+
+	// Only if we can resolve the argument to an interval, and it is scalar -Inf or +Inf, we can safely return bottom.
+	// Otherwise, we need to overapproximate to state and assume the condition to be true.
+	if(isNotUndefined(argValue)) {
+		if(argValue.isValue()) {
+			const [a, b] = argValue.value;
+			if(a == b && !Number.isFinite(a)) {
+				return state.bottom();
+			}
+			// Normally, we could remove the infinite bounds when we assume the condition to be satisfiable.
+			// However, as there is no largest value smaller than Inf, and we only have closed intervals,
+			// the intervals remain as they are.
+		}
+	}
+
+	return state;
 }

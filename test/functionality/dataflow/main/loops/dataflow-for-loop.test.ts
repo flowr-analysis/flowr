@@ -233,7 +233,7 @@ print(x)`,  emptyGraph()
 				shell, `x <- 1
 repeat {
    x <- 2;
-   if(foo) 
+   if(foo)
       break
 }
 print(x)`, emptyGraph()
@@ -288,7 +288,7 @@ print(x)`,  emptyGraph()
 					.call('7', '<-', [argumentInCall('5'), argumentInCall('6')], { origin: [BuiltInProcName.Assignment], returns: ['5'], reads: [NodeId.toBuiltIn('<-'), 6], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', '0', '2'), cds: [{ id: '15' }] })
 					.calls('7', NodeId.toBuiltIn('<-'))
 					.argument('7', ['6', '5'])
-					.call('8', 'next', [], { origin: [BuiltInProcName.Default], returns: [], reads: [NodeId.toBuiltIn('next')], environment: defaultEnv().defineVariable('x', '5', '7'), cds: [{ id: '15' }] })
+					.call('8', 'next', [], { origin: [BuiltInProcName.Next], returns: [], reads: [NodeId.toBuiltIn('next')], environment: defaultEnv().defineVariable('x', '5', '7'), cds: [{ id: '15' }] })
 					.calls('8', NodeId.toBuiltIn('next'))
 					.argument('14', '7')
 					.call('14', '{', [argumentInCall('7')], { origin: [BuiltInProcName.ExpressionList], returns: [], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '0', '2'), cds: [{ id: '15' }] })
@@ -357,7 +357,7 @@ print(x)`, emptyGraph()
 				shell, `x <- 1
 for(i in 1:100) {
    x <- 2;
-   if(foo) 
+   if(foo)
       break
 }
 print(x)`,  emptyGraph()
@@ -421,7 +421,7 @@ print(x)`,  emptyGraph()
 					.call('11', '<-', [argumentInCall('9', { cds: [] }), argumentInCall('10', { cds: [{ id: '19', when: true }] })], { returns: ['9'], reads: [NodeId.toBuiltIn('<-'), 10], onlyBuiltIn: true, cds: [{ id: '19', when: true }] })
 					.calls('11', NodeId.toBuiltIn('<-'))
 					.argument('11', ['10', '9'])
-					.call('12', 'next', [], { returns: [], reads: [NodeId.toBuiltIn('next')], cds: [{ id: '19', when: true }], environment: defaultEnv().defineVariable('x', '9', '11', [{ id: '19', when: true }]) })
+					.call('12', 'next', [], { origin: [BuiltInProcName.Next], returns: [], reads: [NodeId.toBuiltIn('next')], cds: [{ id: '19', when: true }], environment: defaultEnv().defineVariable('x', '9', '11', [{ id: '19', when: true }]) })
 					.calls('12', NodeId.toBuiltIn('next'))
 					.argument('18', '11')
 					.call('18', '{', [argumentInCall('11', { cds: [] })], { returns: [], reads: [NodeId.toBuiltIn('{')], cds: [{ id: '19', when: true }] })
@@ -489,7 +489,7 @@ print(x)`,  emptyGraph()
 				shell, `x <- 1
 while(TRUE) {
    x <- 2;
-   if(foo) 
+   if(foo)
       break
 }
 print(x)`, emptyGraph()
@@ -544,7 +544,7 @@ print(x)`, emptyGraph()
 					.call('8', '<-', [argumentInCall('6', { cds: [] }), argumentInCall('7', { cds: [{ id: '16', when: true }] })], { returns: ['6'], reads: [NodeId.toBuiltIn('<-'), 7], onlyBuiltIn: true, cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2') })
 					.calls('8', NodeId.toBuiltIn('<-'))
 					.argument('8', ['7', '6'])
-					.call('9', 'next', [], { returns: [], reads: [NodeId.toBuiltIn('next')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]) })
+					.call('9', 'next', [], { origin: [BuiltInProcName.Next], returns: [], reads: [NodeId.toBuiltIn('next')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]) })
 					.calls('9', NodeId.toBuiltIn('next'))
 					.argument('15', '8')
 					.call('15', '{', [argumentInCall('8', { cds: [{ id: 16, when: true }] })], { returns: [], reads: [NodeId.toBuiltIn('{')], cds: [{ id: 16, when: true }], environment: defaultEnv().defineVariable('x', '0', '2').defineVariable('x', '6', '8', [{ id: '16', when: true }]).defineVariable('x', '11', '13', []) })

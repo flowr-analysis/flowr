@@ -284,6 +284,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onS7DispatchCall({ call });
 			case BuiltInProcName.Break:
 				return this.onBreakCall({ call });
+			case BuiltInProcName.Next:
+				return this.onNextCall({ call });
 			case BuiltInProcName.Return:
 				return this.onReturnCall({ call });
 			case BuiltInProcName.Unnamed:
@@ -683,7 +685,17 @@ export class SemanticCfgGuidedVisitor<
 	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
 	 * @protected
 	 */
-	protected onBreakCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onBreakCall(_data: { call: DataflowGraphVertexFunctionCall }) { }
+
+	/**
+	 * This event triggers for every call to `next` in a loop.
+	 *
+	 * For example, this triggers for `next` in `repeat { next }`.
+	 *
+	 * More specifically, this relates to the corresponding {@link BuiltInProcessorMapper} handler.
+	 * @protected
+	 */
+	protected onNextCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to `return` to explicitly return a value in a function.

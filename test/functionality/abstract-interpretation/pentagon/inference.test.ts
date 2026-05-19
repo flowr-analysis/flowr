@@ -116,6 +116,54 @@ describe('Pentagon Inference', () => {
 	});
 
 	describe('condition semantics', () => {
+		describe('and semantics', () => {
+			testPentagonDomain(`
+				x <- ifelse(c, 1, 3) + 0
+				y <- ifelse(c, 1, 3) + 0
+				z <- ifelse(c, 1, 3) + 0
+				
+				if(x < y && x < z) {
+					print(x, y, z)
+				} else {
+					print(x, y, z)
+				}
+			`, {
+				'1@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.top() },
+				'2@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x']), lowerBounds: UpperBoundsTests.bounds([], ['1@x']) },
+				'3@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']) },
+				'6@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds(['2@y', '3@z'], []), lowerBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']) },
+				'6@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']), lowerBounds: UpperBoundsTests.bounds(['1@x'], ['3@z']) },
+				'6@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']), lowerBounds: UpperBoundsTests.bounds(['1@x'], ['2@y']) },
+				'8@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']), lowerBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']) },
+				'8@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']) },
+				'8@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']) },
+			});
+		});
+
+		describe('or semantics', () => {
+			testPentagonDomain(`
+				x <- ifelse(c, 1, 3) + 0
+				y <- ifelse(c, 1, 3) + 0
+				z <- ifelse(c, 1, 3) + 0
+				
+				if(x < y || x < z) {
+					print(x, y, z)
+				} else {
+					print(x, y, z)
+				}
+			`, {
+				'1@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.top() },
+				'2@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x']), lowerBounds: UpperBoundsTests.bounds([], ['1@x']) },
+				'3@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']) },
+				'6@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']), lowerBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']) },
+				'6@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']) },
+				'6@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']) },
+				'8@x': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds([], ['2@y', '3@z']), lowerBounds: UpperBoundsTests.bounds(['2@y', '3@z'], []) },
+				'8@y': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds(['1@x'], ['3@z']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '3@z']) },
+				'8@z': { interval: IntervalTests.interval(1, 3), upperBounds: UpperBoundsTests.bounds(['1@x'], ['2@y']), lowerBounds: UpperBoundsTests.bounds([], ['1@x', '2@y']) },
+			});
+		});
+
 		describe('while semantics', () => {
 			testPentagonDomain(`
 				x <- ifelse(c, 1, 3) + 0

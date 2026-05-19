@@ -347,6 +347,54 @@ describe('Interval Inference', () => {
 	});
 
 	describe('condition semantics', () => {
+		describe('and semantics', () => {
+			testIntervalDomain(`
+				x <- ifelse(c, 1, 3)
+				y <- 2
+				z <- ifelse(c, 2, 4)
+				
+				if(x == y && x == z) {
+					print(x, y, z)
+				} else {
+					print(x, y, z)
+				}
+			`, {
+				'1@x': { domain: IntervalTests.interval(1, 3) },
+				'2@y': { domain: IntervalTests.scalar(2) },
+				'3@z': { domain: IntervalTests.interval(2, 4) },
+				'6@x': { domain: IntervalTests.scalar(2) },
+				'6@y': { domain: IntervalTests.scalar(2) },
+				'6@z': { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation },
+				'8@x': { domain: IntervalTests.interval(1, 3) },
+				'8@y': { domain: IntervalTests.scalar(2) },
+				'8@z': { domain: IntervalTests.interval(2, 4) },
+			});
+		});
+
+		describe('or semantics', () => {
+			testIntervalDomain(`
+				x <- ifelse(c, 1, 3)
+				y <- 2
+				z <- ifelse(c, 2, 4)
+				
+				if(x == y || x == z) {
+					print(x, y, z)
+				} else {
+					print(x, y, z)
+				}
+			`, {
+				'1@x': { domain: IntervalTests.interval(1, 3) },
+				'2@y': { domain: IntervalTests.scalar(2) },
+				'3@z': { domain: IntervalTests.interval(2, 4) },
+				'6@x': { domain: IntervalTests.interval(2, 3) },
+				'6@y': { domain: IntervalTests.scalar(2) },
+				'6@z': { domain: IntervalTests.interval(2, 4) },
+				'8@x': { domain: IntervalTests.interval(1, 3) },
+				'8@y': { domain: IntervalTests.scalar(2) },
+				'8@z': { domain: IntervalTests.interval(2, 4) },
+			});
+		});
+
 		describe('while semantics', () => {
 			testIntervalDomain(`
 				x <- 1

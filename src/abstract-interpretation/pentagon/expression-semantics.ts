@@ -155,7 +155,7 @@ function pentagonAddOp(target: NodeId, [leftNodeId, leftValue]: [NodeId, ClosedP
 				addTargetAsUpperBoundToNodeInState(target, rightOrigin, currentState);
 			}
 			if(b <= 0) {
-				resultPentagon.value.upperBounds = rightValue.value.upperBounds.create(rightValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds = resultPentagon.value.upperBounds.meet(rightValue.value.upperBounds);
 				resultPentagon.value.upperBounds.add(rightOrigin);
 			}
 		}
@@ -164,7 +164,7 @@ function pentagonAddOp(target: NodeId, [leftNodeId, leftValue]: [NodeId, ClosedP
 				addTargetAsUpperBoundToNodeInState(target, leftOrigin, currentState);
 			}
 			if(d <= 0) {
-				resultPentagon.value.upperBounds = leftValue.value.upperBounds.create(leftValue.value.upperBounds.value);
+				resultPentagon.value.upperBounds = resultPentagon.value.upperBounds.meet(leftValue.value.upperBounds);
 				resultPentagon.value.upperBounds.add(leftOrigin);
 			}
 		}

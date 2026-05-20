@@ -5,14 +5,14 @@ import { FiniteDomainBuilder } from '../builder/domain';
 export const Unscaled = Symbol('Unscaled');
 export const Scaled = Symbol('Scaled');
 
-const scaleDomain = new FiniteDomainBuilder()
+export const scaleDomain = new FiniteDomainBuilder()
 	.addElements(Unscaled, Scaled)
 	.addLeqOrder(Bottom, [Unscaled, Scaled])
 	.addLeqOrder(Unscaled, Top)
 	.addLeqOrder(Scaled, Top)
 	.build();
 
-export const scaleAnalysis = new TaintAnalysisDefinition('Scale', scaleDomain)
+export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
 	.through({
 		'c':     { taint: Unscaled },
 		'scale': { taint: Scaled },

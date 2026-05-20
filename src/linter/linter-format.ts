@@ -41,7 +41,7 @@ export interface LinterRuleInformation<Config extends MergeableRecord = never> {
  * The base interface for a linting rule, which contains all of its relevant settings.
  * The registry of valid linting rules is stored in {@link LintingRules}.
  */
-export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
+export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord = never, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	/**
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
@@ -52,8 +52,8 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
 	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, analyzer: ReadonlyFlowrAnalysisProvider }) => AsyncOrSync<{
-		results: Result[],
-		'.meta': Metadata
+		results:  Result[],
+		'.meta'?: Metadata
 	}>
 	/**
 	 * A set of functions used to pretty-print the given linting result.

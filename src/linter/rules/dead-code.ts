@@ -28,8 +28,6 @@ export interface DeadCodeConfig extends MergeableRecord {
 	simplificationPasses?: CfgSimplificationPassName[]
 }
 
-export type DeadCodeMetadata = MergeableRecord;
-
 export const DEAD_CODE = {
 	createSearch: (config) => Q.all().with(Enrichment.CfgInformation, {
 		checkReachable:       true,
@@ -53,8 +51,7 @@ export const DEAD_CODE = {
 						loc:        SourceLocation.fromNode(element.node)
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
-			),
-			'.meta': {}
+			)
 		};
 	},
 	prettyPrint: {
@@ -69,7 +66,7 @@ export const DEAD_CODE = {
 		description:   'Marks areas of code that are never reached during execution.',
 		defaultConfig: {}
 	}
-} as const satisfies LintingRule<DeadCodeResult, DeadCodeMetadata, DeadCodeConfig>;
+} as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
 	for(let i = results.length-1; i >= 0; i--){

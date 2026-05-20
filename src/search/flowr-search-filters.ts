@@ -111,7 +111,7 @@ export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] exte
 export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	enrichment:  E,
 	/**
-	 * The object to test the enrichment value against, which should be a partial {@link EnrichmentElementContent} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the enrichment value at each {@link RegExp} location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given regular expression or value, or only some.
+	 * The object to test the enrichment value against, which should be a partial {@link EnrichmentElementContent} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the enrichment value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
 	 */
 	test:        Record<string, unknown>,
 	arrayMatch?: 'some' | 'every'

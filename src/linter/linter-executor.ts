@@ -34,7 +34,7 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		return {
 			...result,
 			'.meta': {
-				...(result['.meta'] as LintingRuleMetadata<Name>),
+				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
 				searchTimeMs:  searchTime,
 				processTimeMs: processTime
 			}

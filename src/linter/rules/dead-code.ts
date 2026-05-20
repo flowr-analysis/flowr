@@ -9,11 +9,12 @@ import { SourceLocation } from '../../util/range';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
-import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
 import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { Writable } from 'ts-essentials';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { FlowrFilter, FlowrFilterCombinator } from '../../search/flowr-search-filters';
 
 export interface DeadCodeResult extends LintingResult {
 	readonly loc: SourceLocation
@@ -27,28 +28,25 @@ export interface DeadCodeConfig extends MergeableRecord {
 	simplificationPasses?: CfgSimplificationPassName[]
 }
 
-export interface DeadCodeMetadata extends MergeableRecord {
-	consideredNodes: number
-}
+export type DeadCodeMetadata = MergeableRecord;
 
 export const DEAD_CODE = {
 	createSearch: (config) => Q.all().with(Enrichment.CfgInformation, {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
-	}),
+	}).filter(FlowrFilterCombinator.is({
+		name: FlowrFilter.MatchesEnrichment,
+		args: {
+			enrichment: Enrichment.CfgInformation,
+			test:       {
+				isReachable: true
+			}
+		}
+	}).or(FlowrFilterCombinator.is({ name: FlowrFilter.RoleInParent, args: { roleInParent: RoleInParent.ExpressionListGrouping } })).not()),
 	processSearchResult: (elements, _config, _data) => {
-		const meta: DeadCodeMetadata = {
-			consideredNodes: 0
-		};
 		return {
 			results: combineResults(
 				elements.getElements()
-					// TODO convert to filters: filter by element role + filter by enrichment content
-					.filter(element => {
-						meta.consideredNodes++;
-						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
-						return element.node.info.role !== RoleInParent.ExpressionListGrouping && !cfgInformation.isReachable;
-					})
 					.map(element => ({
 						certainty:  LintingResultCertainty.Certain,
 						involvedId: element.node.info.id,
@@ -56,7 +54,7 @@ export const DEAD_CODE = {
 					}))
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
 			),
-			'.meta': meta
+			'.meta': {}
 		};
 	},
 	prettyPrint: {

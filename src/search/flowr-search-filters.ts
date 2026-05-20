@@ -8,6 +8,7 @@ import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { expensiveTrace } from '../util/log';
 import { searchLogger } from './search-executor/search-generators';
+import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -31,7 +32,8 @@ export enum FlowrFilter {
 	 * Only returns search elements whose {@link FunctionOriginInformation} match a given pattern or value.
 	 * This filter accepts {@link OriginKindArgs}, which includes the {@link DataflowGraphVertexFunctionCall.origin} to match for, whether to match for every or some origins, and whether to include non-function-calls in the filtered query.
 	 */
-	OriginKind = 'origin-kind'
+	OriginKind = 'origin-kind',
+	RoleInParent = 'role-in-parent',
 }
 export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
@@ -104,7 +106,10 @@ export const FlowrFilters = {
 			(origin: string) => (args.origin as RegExp).test(origin);
 		const origins = Array.isArray(dfgNode.origin) ? dfgNode.origin : [dfgNode.origin];
 		return args.matchType === 'every' ? origins.every(match) : origins.some(match);
-	}) satisfies FlowrFilterFunction<OriginKindArgs>
+	}) satisfies FlowrFilterFunction<OriginKindArgs>,
+	[FlowrFilter.RoleInParent]: ((e: FlowrSearchElement<ParentInformation>, { roleInParent }) => {
+		return e.node.info.role === roleInParent;
+	}) satisfies FlowrFilterFunction<{ roleInParent: RoleInParent }>,
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
@@ -147,7 +152,7 @@ interface BooleanUnaryNode<Composite> {
 
 type LeafRType = { readonly type: 'r-type', readonly value: RType };
 type LeafVertexType = { readonly type: 'vertex-type', readonly value: VertexType };
-type LeafSpecial = { readonly type: 'special', readonly value: FlowrFilterName | FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>> };
+type LeafSpecial<F extends FlowrFilter = FlowrFilter> = { readonly type: 'special', readonly value: FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> };
 
 type Leaf = LeafRType | LeafVertexType | LeafSpecial;
 
@@ -171,13 +176,13 @@ export class FlowrFilterCombinator {
 		this.tree = this.unpack(init);
 	}
 
-	public static is(value: BooleanNodeOrCombinator | ValidFilterTypes): FlowrFilterCombinator {
+	public static is<F extends FlowrFilter = FlowrFilter>(value: BooleanNodeOrCombinator | ValidFilterTypes<F>): FlowrFilterCombinator {
 		if(typeof value === 'string' && ValidFlowrFilters.has(value)) {
 			return new this({ type: 'special', value: value as FlowrFilter });
 		} else if(typeof value === 'object') {
-			const name = (value as FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>>)?.name;
+			const name = (value as FlowrFilterWithArgs<F, FlowrFilterArgs<F>>)?.name;
 			if(name && ValidFlowrFilters.has(name)) {
-				return new this({ type: 'special', value: value as FlowrFilterWithArgs<FlowrFilter, FlowrFilterArgs<FlowrFilter>> });
+				return new this({ type: 'special', value: value as FlowrFilterWithArgs<F, FlowrFilterArgs<F>> } as LeafSpecial<F>);
 			} else {
 				return new this(value as BooleanNodeOrCombinator);
 			}
@@ -190,19 +195,19 @@ export class FlowrFilterCombinator {
 		}
 	}
 
-	public and(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
+	public and<F extends FlowrFilter = FlowrFilter>(right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
 		return this.binaryRight('and', right);
 	}
 
-	public or(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
+	public or<F extends FlowrFilter = FlowrFilter>(right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
 		return this.binaryRight('or', right);
 	}
 
-	public xor(right: BooleanNodeOrCombinator | ValidFilterTypes): this {
+	public xor<F extends FlowrFilter = FlowrFilter>(right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
 		return this.binaryRight('xor', right);
 	}
 
-	private binaryRight(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes): this {
+	private binaryRight<F extends FlowrFilter = FlowrFilter>(op: BooleanBinaryNode<BooleanNode>['type'], right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
 		this.tree = {
 			type:  op,
 			left:  this.tree,

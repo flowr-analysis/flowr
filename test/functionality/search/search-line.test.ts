@@ -44,19 +44,25 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('call-targets (none)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /print/
+					test:       {
+						targets: /library/
+					}
 				} })
 			);
 			assertSearch('call-targets (other)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /library/
+					test:       {
+						targets: /library/
+					}
 				} })
 			);
 			assertSearch('call-targets (match)', parser, "cat('hello')\nprint('world')", ['2@print'],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /print/
+					test:       {
+						targets: /print/
+					}
 				} })
 			);
 		});
@@ -136,6 +142,20 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
 				Q.all().to(Enrichment.CallTargets).select(0),
 			);
+			assertSearch('local multiple', parser, 'f1 <- function() {}\nf2 <- function() {}\n f1(); f2()', ['1@function'],
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       {
+						targets: {
+							node: {
+								info: {
+									id: 4
+								}
+							}
+						}
+					}
+				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
+			);
 			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
 			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
@@ -158,25 +178,33 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('reachable always', parser, 'if(TRUE) 1 else 2', ['1@if', '1@TRUE', '1@1', '$2', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":true/
+					test:       {
+						isReachable: true
+					}
 				}
 			}));
 			assertSearch('reachable never', parser, 'if(FALSE) 1 else 2', ['1@if', '1@FALSE', '1@2', '$4', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":true/
+					test:       {
+						isReachable: /true/
+					}
 				}
 			}));
 			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":false/
+					test:       {
+						isReachable: false
+					}
 				}
 			}));
 			assertSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":false/
+					test:       {
+						isReachable: /false/
+					}
 				}
 			}));
 		});

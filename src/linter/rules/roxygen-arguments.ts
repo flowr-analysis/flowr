@@ -12,14 +12,11 @@ import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
 import { VertexType } from '../../dataflow/graph/vertex';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { RoxygenTag, RoxygenTagParam } from '../../r-bridge/roxygen2/roxygen-ast';
 import { KnownRoxygenTags } from '../../r-bridge/roxygen2/roxygen-ast';
 import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import type { RParameter } from '../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
-import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
-import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 
 export interface RoxygenArgsResult extends LintingResult {
 	readonly loc:              SourceLocation
@@ -30,14 +27,6 @@ export interface RoxygenArgsResult extends LintingResult {
 export type RoxygenArgsConfig = MergeableRecord;
 
 export type RoxygenArgsMetadata = MergeableRecord;
-
-function getDocumentation(id: NodeId, idMap: AstIdMap): readonly RoxygenTag[] | undefined {
-	const comment = getDocumentationOf(id, idMap);
-	if(comment === undefined){
-		return undefined;
-	}
-	return Array.isArray(comment) ? comment : [comment] as readonly RoxygenTag[];
-}
 
 function calculateArgumentDiff(inheritedParams: readonly string[], functionParam: readonly string[], roxygenParam: readonly string[]): false | { under: string[], over: string[] }{
 
@@ -65,8 +54,10 @@ function calculateArgumentDiff(inheritedParams: readonly string[], functionParam
 }
 
 export const ROXYGEN_ARGS = {
-	createSearch:        () => Q.all().filter(VertexType.FunctionDefinition),
-	processSearchResult: (elements, _config, { normalize }) => {
+	createSearch: () => Q.all()
+		.filter(VertexType.FunctionDefinition)
+		.with(Enrichment.Roxygen),
+	processSearchResult: (elements, _config) => {
 		return {
 			results:
 				elements.getElements()
@@ -75,22 +66,20 @@ export const ROXYGEN_ARGS = {
 						underDocumented: [] as string[],
 						overDocumented:  [] as string[]
 					}))
-					.filter(({ element: { node }, underDocumented, overDocumented }) => {
-						const comments = getDocumentation(node.info.id, normalize.idMap);
-						if(!comments) {
+					.filter(({ element, underDocumented, overDocumented }) => {
+						const roxygen = enrichmentContent(element, Enrichment.Roxygen);
+						if(!roxygen.documentation.length) {
 							return false;
 						}
-						const parameters = getParameters(node);
 						//get parameter names
-						const functionParamNames = parameters.map(p => p.name.content.toString());
-						const inheritedParams = comments.filter(tag => (tag?.inherited && tag.type === KnownRoxygenTags.Param)).map(tag => ((tag as RoxygenTagParam).value.name));
-						const roxygenParamNames  = comments
-							.filter(tag => tag.type === KnownRoxygenTags.Param)
-							.map(tag => tag.value.name);
+						const params = roxygen.tags[KnownRoxygenTags.Param] ?? [];
+						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
+						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
+						const roxygenParamNames = params.map(tag => tag.value.name);
 						if(functionParamNames === null || roxygenParamNames == null){
 							return false;
 						}
-						const result = calculateArgumentDiff(inheritedParams, functionParamNames, roxygenParamNames);
+						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
 						if(result === false){
 							return false;
 						}

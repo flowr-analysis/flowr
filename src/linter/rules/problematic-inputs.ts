@@ -66,8 +66,6 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 	inputFns?: InputClassifierConfig
 }
 
-export type ProblematicInputsMetadata = MergeableRecord;
-
 export const PROBLEMATIC_INPUTS = {
 	createSearch: config => {
 		const considerArr = normalizeConsider(config);
@@ -87,7 +85,7 @@ export const PROBLEMATIC_INPUTS = {
 			const nid = element.node.info.id;
 			const criterion = SlicingCriterion.fromId(nid);
 			const q: InputSourcesQuery = { type: 'input-sources', criterion, config: config.inputFns };
-			const all = await data.analyzer.query([q]);
+			const all = await data.query([q]);
 			const inputSourcesResult = all['input-sources'];
 			const sources = inputSourcesResult?.results?.[criterion] ?? [];
 
@@ -103,10 +101,7 @@ export const PROBLEMATIC_INPUTS = {
 			}
 		}
 
-		return {
-			results,
-			'.meta': {}
-		};
+		return { results };
 	},
 	/* helper to format input sources for pretty printing */
 	prettyPrint: {
@@ -130,4 +125,4 @@ export const PROBLEMATIC_INPUTS = {
 			consider: defaultConsider
 		}
 	}
-} as const satisfies LintingRule<ProblematicInputsResult, ProblematicInputsMetadata, ProblematicInputsConfig>;
+} as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

@@ -58,18 +58,20 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 export const DATA_FRAME_ACCESS_VALIDATION = {
 	createSearch:        () => Q.all(),
 	processSearchResult: async(elements, config, data) => {
-		let ctx = data.analyzer.inspectContext();
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
+		let ctx = data.inspectContext();
 		ctx = {
 			...ctx,
-			config: FlowrConfig.amend(data.analyzer.flowrConfig, flowrConfig => {
+			config: FlowrConfig.amend(data.flowrConfig, flowrConfig => {
 				if(config.readLoadedData !== undefined) {
 					(flowrConfig.abstractInterpretation.dataFrame.readLoadedData as { readExternalFiles: boolean }).readExternalFiles = config.readLoadedData;
 				}
 				return flowrConfig;
 			})
 		};
-		const cfg = await data.analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
-		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: data.dataflow.graph, normalizedAst: data.normalize, ctx });
+		const cfg = await data.controlflow(undefined, CfgKind.NoFunctionDefs);
+		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		inference.start();
 
 		const accessOperations = getAccessOperations(elements, inference);
@@ -109,8 +111,8 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			)
 			.map(({ nodeId, operand, ...accessed }) => ({
 				...accessed,
-				node:    data.normalize.idMap.get(nodeId),
-				operand: operand === undefined ? undefined : data.normalize.idMap.get(operand),
+				node:    normalize.idMap.get(nodeId),
+				operand: operand === undefined ? undefined : normalize.idMap.get(operand),
 			}))
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,

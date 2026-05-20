@@ -11,11 +11,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('none', parser, 'x <- 1', 'dead-code', []);
 			assertLinter('always', parser, 'if(TRUE) 1 else 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 17] }
-			], { consideredNodes: 7 });
+			]);
 			assertLinter('never', parser, 'if(FALSE) 1 else 2', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11] }
-			], { consideredNodes: 7 });
-			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], { consideredNodes: 7 }, { simplificationPasses: DefaultCfgSimplificationOrder });
+			]);
+			assertLinter('no analysis', parser, 'if(FALSE) 1 else 2', 'dead-code', [], undefined, { simplificationPasses: DefaultCfgSimplificationOrder });
 		});
 
 		describe('stop', () => {

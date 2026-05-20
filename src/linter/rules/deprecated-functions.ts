@@ -4,7 +4,7 @@ import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectCon
 
 export const DEPRECATED_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: functionFinderUtil.processSearchResult,
+	processSearchResult: async(e, c, d) => await functionFinderUtil.processSearchResult(e, c, d),
 	prettyPrint:         functionFinderUtil.prettyPrint('deprecated'),
 	info:                {
 		name:          'Deprecated Functions',

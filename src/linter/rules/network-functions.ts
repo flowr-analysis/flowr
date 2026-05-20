@@ -16,26 +16,30 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: (e, c, d) => functionFinderUtil.processSearchResult(e, c, d,
-		es => {
-			const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
-			for(const e of es) {
-				const val = functionFinderUtil.requireArgumentValue(
-					e,
-					ReadFunctions,
-					d,
-					c.onlyTriggerWithArgument
-				);
-				if(val === Ternary.Never) {
-					continue;
+	processSearchResult: (e, c, d) => {
+		return functionFinderUtil.processSearchResult(e, c, d,
+			async(es) => {
+				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
+				for(const e of es) {
+					const val = await functionFinderUtil.requireArgumentValue(
+						e,
+						ReadFunctions,
+						d,
+						c.onlyTriggerWithArgument
+					);
+					if(val === Ternary.Never) {
+						continue;
+					}
+					const x = e as unknown as FlowrSearchElement<ParentInformation> & {
+						certainty: LintingResultCertainty
+					};
+					x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
+					res.push(x);
 				}
-				const x = e as unknown as FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty };
-				x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
-				res.push(x);
+				return res;
 			}
-			return res;
-		}
-	),
+		);
+	},
 	prettyPrint: functionFinderUtil.prettyPrint('network operations'),
 	info:        {
 		name:          'Network Functions',

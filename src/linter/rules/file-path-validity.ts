@@ -82,7 +82,7 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if any write to the same file happens before the read, and exclude this case if so
-				const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.analyzer.flowrConfig.solver.resolveSource?.ignoreCapitalization));
+				const writesToFile = results.write.filter(r => samePath(r.value as string, matchingRead.value as string, data.flowrConfig.solver.resolveSource?.ignoreCapitalization));
 				const writesBefore = writesToFile.map(w => happensBefore(cfg, w.nodeId, element.node.info.id));
 				if(writesBefore.some(w => w === Ternary.Always)) {
 					metadata.totalWritesBeforeAlways++;
@@ -90,9 +90,9 @@ export const FILE_PATH_VALIDITY = {
 				}
 
 				// check if the file exists!
-				const paths = findSource(data.analyzer.flowrConfig.solver.resolveSource, matchingRead.value as string, {
+				const paths = findSource(data.flowrConfig.solver.resolveSource, matchingRead.value as string, {
 					referenceChain: element.node.info.file ? [element.node.info.file] : [],
-					ctx:            data.analyzer.inspectContext()
+					ctx:            data.inspectContext()
 				});
 				if(paths && paths.length) {
 					metadata.totalValid++;

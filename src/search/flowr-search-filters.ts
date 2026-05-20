@@ -57,22 +57,16 @@ export const FlowrFilters = {
 				}
 
 				if(Array.isArray(realValue)) {
-					if(typeof expectedValue === 'object') {
-						// if we don't expect an array where there is one, then match array entries against our expected structure
-						const match = (value: unknown) => testRecursive(value as Record<string, unknown>, expectedValue as Record<string, unknown>);
-						if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
-							expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
-							return false;
-						}
-					} else {
-						// for arrays where we don't expect an array, we match our expected value against each array entry
-						const match = expectedValue instanceof RegExp ?
-							(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
-							(value: unknown) => expectedValue === value;
-						if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
-							expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected regular expression or string ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
-							return false;
-						}
+					const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
+						// if we expect a regular expression but an array is supplied, test each value
+						(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
+						// if we expect an object that is not a regular expression, match against our expected structure
+						(value: unknown) => testRecursive(value as Record<string, unknown>, expectedValue as Record<string, unknown>) :
+						// in any other case (primitives!), match against the exact value
+						(value: unknown) => expectedValue === value;
+					if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+						expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected value ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
+						return false;
 					}
 				} else if(typeof realValue === 'object') {
 					// for objects, we recursively match

@@ -85,7 +85,7 @@ export const PROBLEMATIC_INPUTS = {
 			const nid = element.node.info.id;
 			const criterion = SlicingCriterion.fromId(nid);
 			const q: InputSourcesQuery = { type: 'input-sources', criterion, config: config.inputFns };
-			const all = await data.analyzer.query([q]);
+			const all = await data.query([q]);
 			const inputSourcesResult = all['input-sources'];
 			const sources = inputSourcesResult?.results?.[criterion] ?? [];
 

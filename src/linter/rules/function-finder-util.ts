@@ -4,7 +4,7 @@ import { Enrichment, enrichmentContent } from '../../search/search-executor/sear
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, type LintingResult, LintingResultCertainty } from '../linter-format';
 import type { FlowrSearchElement, FlowrSearchElements } from '../../search/flowr-search';
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { MergeableRecord } from '../../util/objects';
 import { isNotUndefined } from '../../util/assert';
 import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argument';
@@ -98,7 +98,8 @@ export const functionFinderUtil = {
 	requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
 		pool: readonly FunctionInfo[],
-		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider },
+		dataflow: DataflowInformation,
+		analyzer: ReadonlyFlowrAnalysisProvider,
 		requireValue: RegExp | string | undefined
 	): Ternary {
 		const info = pool.find(f => f.name === element.node.lexeme);
@@ -106,16 +107,16 @@ export const functionFinderUtil = {
 		if(info === undefined) {
 			return Ternary.Always;
 		}
-		const vert = data.dataflow.graph.getVertex(element.node.info.id);
+		const vert = dataflow.graph.getVertex(element.node.info.id);
 		if(isFunctionCallVertex(vert)){
 			const args = getArgumentStringValue(
-				data.analyzer.flowrConfig.solver.variables,
-				data.dataflow.graph,
+				analyzer.flowrConfig.solver.variables,
+				dataflow.graph,
 				vert,
 				info.argIdx,
 				info.argName,
 				info.resolveValue,
-				data.analyzer.inspectContext());
+				analyzer.inspectContext());
 			// we obtain all values, at least one of them has to trigger for the request
 			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
 			if(argValues.length === 0){

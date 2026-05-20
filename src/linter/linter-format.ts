@@ -3,13 +3,11 @@ import type { FlowrSearchElement, FlowrSearchElements } from '../search/flowr-se
 import type { MergeableRecord } from '../util/objects';
 import type { GeneratorNames } from '../search/search-executor/search-generators';
 import type { TransformerNames } from '../search/search-executor/search-transformer';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceLocation } from '../util/range';
-import type { DataflowInformation } from '../dataflow/info';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../util/assert';
@@ -51,7 +49,7 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, analyzer: ReadonlyFlowrAnalysisProvider }) => AsyncOrSync<{
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: ReadonlyFlowrAnalysisProvider) => AsyncOrSync<{
 		results:  Result[],
 		'.meta'?: Metadata
 	}>

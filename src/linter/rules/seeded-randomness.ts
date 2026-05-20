@@ -72,7 +72,8 @@ export const SEEDED_RANDOMNESS = {
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
 			{ callName: getDefaultAssignments().flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
 		]),
-	processSearchResult: (elements, config, { dataflow, analyzer }) => {
+	processSearchResult: async(elements, config, data) => {
+		const dataflow = await data.dataflow();
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
 		const assignmentArgIndexes = new Map<string, number>(getDefaultAssignments().flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
@@ -106,7 +107,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0, analyzer.inspectContext())) {
+						if(isConstantArgument(dataflow.graph, f, 0, data.inspectContext())) {
 							const fCds = new Set(f.cds).difference(cds);
 							metadata.callsWithFunctionProducers++;
 							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
@@ -127,7 +128,7 @@ export const SEEDED_RANDOMNESS = {
 						const dest = FunctionArgument.getReference(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
-							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, analyzer.inspectContext())) {
+							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, data.inspectContext())) {
 								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
 									metadata.callsWithAssignmentProducers++;

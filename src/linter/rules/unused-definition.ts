@@ -93,7 +93,9 @@ export const UNUSED_DEFINITION = {
 	/* this can be done better once we have types */
 	createSearch: config => Q.all().filter(
 		config.includeFunctionDefinitions ? FlowrFilterCombinator.is(VertexType.VariableDefinition).or(VertexType.FunctionDefinition) : VertexType.VariableDefinition),
-	processSearchResult: (elements, config, data): { results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata } => {
+	processSearchResult: async(elements, config, data): Promise<{ results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata }> => {
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
 		const metadata: UnusedDefinitionMetadata = {
 			totalConsidered: 0
 		};
@@ -101,7 +103,7 @@ export const UNUSED_DEFINITION = {
 			results: onlyKeepSupersetOfUnused(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 
-				const dfgVertex = data.dataflow.graph.getVertex(element.node.info.id);
+				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (
 					!isVariableDefinitionVertex(dfgVertex)
 					&& isFunctionDefinitionVertex(dfgVertex) && !config.includeFunctionDefinitions
@@ -109,7 +111,7 @@ export const UNUSED_DEFINITION = {
 					return undefined;
 				}
 
-				const ingoingEdges = data.dataflow.graph.ingoingEdges(dfgVertex.id);
+				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
 				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
 				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
@@ -125,7 +127,7 @@ export const UNUSED_DEFINITION = {
 					variableName,
 					involvedId: element.node.info.id,
 					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-					quickFix:   buildQuickFix(element.node, data.dataflow.graph, data.normalize)
+					quickFix:   buildQuickFix(element.node, dataflow.graph, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
 			'.meta': metadata

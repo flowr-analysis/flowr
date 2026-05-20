@@ -16,16 +16,14 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: async(e, c, d) => {
-		const dataflow = await d.dataflow();
+	processSearchResult: (e, c, d) => {
 		return functionFinderUtil.processSearchResult(e, c, d,
-			es => {
+			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					const val = functionFinderUtil.requireArgumentValue(
+					const val = await functionFinderUtil.requireArgumentValue(
 						e,
 						ReadFunctions,
-						dataflow,
 						d,
 						c.onlyTriggerWithArgument
 					);

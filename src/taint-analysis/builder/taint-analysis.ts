@@ -3,7 +3,7 @@ import type { TaintAnalysisDefinition } from './taint-analysis-definition';
 import type { PredefinedTaintAnalysis } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
 import { TaintInferenceVisitor } from '../taint-visitor';
-import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
+import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 
 /**
  * Fluent builder class for conducting taint analyses.
@@ -31,8 +31,8 @@ export class TaintAnalysis {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add} or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<string, AnyStateDomain>> {
-		const results: Map<string, AnyStateDomain> = new Map();
+	public async run(): Promise<Map<string, TaintInferenceVisitor<AnyAbstractDomain>>> {
+		const results: Map<string, TaintInferenceVisitor<AnyAbstractDomain>> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
 				controlFlow:   await this.analyzer.controlflow(),
@@ -41,7 +41,7 @@ export class TaintAnalysis {
 				normalizedAst: await this.analyzer.normalize()
 			});
 			visitor.start();
-			results.set(def.name, visitor.getEndState());
+			results.set(def.name, visitor);
 		}
 		return results;
 	}

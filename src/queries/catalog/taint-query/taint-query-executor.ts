@@ -18,7 +18,10 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 		analysis.addPredefined(def);
 	}
 
-	const results = await analysis.run();
+	const visitors = await analysis.run();
+	const results = new Map(
+		Array.from(visitors, ([k, v]) => [k, v.getEndState()])
+	);
 
 	return {
 		results: results,

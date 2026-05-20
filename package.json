@@ -27,7 +27,6 @@
     "summarizer": "ts-node src/cli/summarizer-app.ts",
     "export-quads": "ts-node src/cli/export-quads-app.ts",
     "capabilities-markdown": "ts-node src/documentation/doc-capabilities.ts",
-    "taint-test": "ts-node src/taint-analysis/test.ts",
     "wiki": "ts-node src/cli/wiki.ts",
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "build": "tsc --project .",

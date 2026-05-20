@@ -51,7 +51,7 @@ export const functionFinderUtil = {
 				})
 		);
 	},
-	processSearchResult: <T extends FlowrSearchElement<ParentInformation>[]>(
+	processSearchResult: async <T extends FlowrSearchElement<ParentInformation>[]>(
 		elements: FlowrSearchElements<ParentInformation, T>,
 		_config: unknown,
 		_data: unknown,
@@ -62,10 +62,10 @@ export const functionFinderUtil = {
 			totalFunctionDefinitions: 0
 		};
 
-		const results = refineSearch(elements.getElements())
-			.flatMap(element => {
+		const results = (await Promise.all(refineSearch(elements.getElements())
+			.map(async element => {
 				metadata.totalCalls++;
-				return enrichmentContent(element, Enrichment.CallTargets).targets.map(target => {
+				return (await enrichmentContent(element, Enrichment.CallTargets)).targets.map(target => {
 					metadata.totalFunctionDefinitions++;
 					return {
 						node:      element.node,
@@ -74,7 +74,7 @@ export const functionFinderUtil = {
 						certainty: element.certainty
 					};
 				});
-			});
+			}))).flat();
 
 		return {
 			results:
@@ -127,5 +127,3 @@ export const functionFinderUtil = {
 		return Ternary.Never;
 	}
 };
-
-

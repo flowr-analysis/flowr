@@ -36,23 +36,26 @@ export const DEAD_CODE = {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
 	}),
-	processSearchResult: (elements, _config, _data) => {
+	processSearchResult: async(elements, _config, _data) => {
 		const meta: DeadCodeMetadata = {
 			consideredNodes: 0
 		};
 		return {
 			results: combineResults(
-				elements.getElements()
-					.filter(element => {
+				(await Promise.all(elements.getElements()
+					.map(async element => {
 						meta.consideredNodes++;
-						const cfgInformation = enrichmentContent(element, Enrichment.CfgInformation);
-						return element.node.info.role !== RoleInParent.ExpressionListGrouping && !cfgInformation.isReachable;
-					})
-					.map(element => ({
-						certainty:  LintingResultCertainty.Certain,
-						involvedId: element.node.info.id,
-						loc:        SourceLocation.fromNode(element.node)
-					}))
+						const cfgInformation = await enrichmentContent(element, Enrichment.CfgInformation);
+						if(element.node.info.role !== RoleInParent.ExpressionListGrouping && !cfgInformation.isReachable){
+							return [({
+								certainty:  LintingResultCertainty.Certain,
+								involvedId: element.node.info.id,
+								loc:        SourceLocation.fromNode(element.node)
+							})];
+						} else {
+							return [];
+						}
+					}))).flat()
 					.filter(element => isNotUndefined(element.loc)) as Writable<DeadCodeResult>[]
 			),
 			'.meta': meta

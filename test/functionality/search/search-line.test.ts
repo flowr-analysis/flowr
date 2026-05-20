@@ -142,6 +142,20 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
 				Q.all().to(Enrichment.CallTargets).select(0),
 			);
+			assertSearch('local multiple', parser, 'f1 <- function() {}\nf2 <- function() {}\n f1(); f2()', ['1@function'],
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       {
+						targets: {
+							node: {
+								info: {
+									id: 4
+								}
+							}
+						}
+					}
+				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
+			);
 			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
 			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!

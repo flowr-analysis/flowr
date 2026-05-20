@@ -6,6 +6,8 @@ import type { Enrichment } from './search-executor/search-enrichers';
 import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { expensiveTrace } from '../util/log';
+import { searchLogger } from './search-executor/search-generators';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -45,43 +47,56 @@ export const FlowrFilters = {
 		return content && testRecursive(content, args.test);
 
 		function testRecursive(realChild: Record<string, unknown>, expectedChild: Record<string, unknown>): boolean {
-			// if we want to test exact equality, we need to make sure our expected object is the same "size" as our real object
-			if(args.testExact && Object.keys(realChild) !== Object.keys(expectedChild)) {
-				return false;
-			}
+			expensiveTrace(searchLogger, () => `Comparing ${JSON.stringify(realChild)} against ${JSON.stringify(expectedChild)}`);
 
 			for(const [expectedKey, expectedValue] of Object.entries(expectedChild)) {
 				const realValue = realChild[expectedKey];
 				if(!realValue) {
+					expensiveTrace(searchLogger, () => `Real value ${JSON.stringify(realValue)} does not exist for expected key ${expectedKey}`);
 					return false;
 				}
 
-				// for arrays, we match our expected value against each array entry
 				if(Array.isArray(realValue)) {
-					const match = expectedValue instanceof RegExp ?
-						(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
-						(value: unknown) => expectedValue === value;
-					if(match === undefined || !(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
-						return false;
+					if(typeof expectedValue === 'object') {
+						// if we don't expect an array where there is one, then match array entries against our expected structure
+						const match = (value: unknown) => testRecursive(value as Record<string, unknown>, expectedValue as Record<string, unknown>);
+						if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+							expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
+							return false;
+						}
+					} else {
+						// for arrays where we don't expect an array, we match our expected value against each array entry
+						const match = expectedValue instanceof RegExp ?
+							(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
+							(value: unknown) => expectedValue === value;
+						if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
+							expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected regular expression or string ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
+							return false;
+						}
 					}
-				}
-
-				// for objects, we recursively match
-				if(typeof realValue === 'object') {
+				} else if(typeof realValue === 'object') {
+					// for objects, we recursively match
 					if(!testRecursive(realValue as Record<string, unknown>, expectedValue as Record<string, unknown>)) {
+						expensiveTrace(searchLogger, () => `Object ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)}`);
 						return false;
 					}
 				}
 
-				// for anything else, we match with our regular expression
+				// for anything else, we match with our regular expression or string
 				if(expectedValue instanceof RegExp) {
 					if(!expectedValue.test(typeof realValue === 'string' ? realValue : String(realValue as unknown))) {
+						expensiveTrace(searchLogger, () => `Value ${JSON.stringify(realValue)} does not match expected regular expression ${expectedValue}`);
 						return false;
 					}
-				} else if(expectedValue !== realValue) {
-					return false;
+				} else if(typeof expectedValue !== 'object') {
+					if(expectedValue !== realValue) {
+						expensiveTrace(searchLogger, () => `Value ${JSON.stringify(realValue)} does not match expected string ${JSON.stringify(expectedValue)}`);
+						return false;
+					}
 				}
 			}
+
+			expensiveTrace(searchLogger, () => `Object ${JSON.stringify(realChild)} matches ${JSON.stringify(expectedChild)}`);
 			return true;
 		}
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
@@ -105,11 +120,7 @@ export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	 * The object to test the enrichment value against, which should be a partial {@link EnrichmentElementContent} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the enrichment value at each {@link RegExp} location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given regular expression or value, or only some.
 	 */
 	test:        Record<string, unknown>,
-	arrayMatch?: 'some' | 'every',
-	/**
-	 * Whether the {@link test} object needs to match the real value exactly (true), or whether it is a subset of the real value (false).
-	 */
-	testExact?:  boolean
+	arrayMatch?: 'some' | 'every'
 }
 export interface OriginKindArgs {
 	origin:                BuiltInProcName | RegExp;

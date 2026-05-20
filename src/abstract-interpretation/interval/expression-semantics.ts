@@ -28,11 +28,11 @@ export const IntervalExpressionSemanticsMapper = <StateDomain extends AnyStateDo
 	[Identifier.make('/'), binaryExprOpSemantics(intervalDivideOp)],
 	[Identifier.make('^'), binaryExprOpSemantics(intervalPowerOp)],
 	[Identifier.make('sqrt'), unaryExprOpSemantics(intervalSqrtOp)],
-	[Identifier.make('length'), unaryExprFnSemantics(intervalLengthFn)],
+	[Identifier.make('length'), unaryExprFnSemantics(intervalOneIfArgIsNumElsePositiveNum)],
 	[Identifier.make('nrow'), unaryExprFnSemantics(intervalNrowNcolFn)],
 	[Identifier.make('ncol'), unaryExprFnSemantics(intervalNrowNcolFn)],
-	[Identifier.make('NROW'), unaryExprFnSemantics(intervalLengthFn)],
-	[Identifier.make('NCOL'), unaryExprFnSemantics(intervalLengthFn)],
+	[Identifier.make('NROW'), unaryExprFnSemantics(intervalOneIfArgIsNumElsePositiveNum)],
+	[Identifier.make('NCOL'), unaryExprFnSemantics(intervalOneIfArgIsNumElsePositiveNum)],
 	[Identifier.make('sum'), intervalSumFn],
 	[Identifier.make('max'), intervalMaxFn],
 	[Identifier.make('abs'), unaryExprOpSemantics(intervalAbs)],
@@ -45,7 +45,9 @@ export const IntervalExpressionSemanticsMapper = <StateDomain extends AnyStateDo
 	[Identifier.make('sign'), unaryExprOpSemantics(intervalSign)],
 	[Identifier.make('runif'), intervalRunif],
 	[Identifier.make('as.numeric'), intervalAsNumeric],
-	[Identifier.make('as.integer'), intervalAsInteger]
+	[Identifier.make('as.integer'), intervalAsInteger],
+	[Identifier.make('sin'), unaryExprOpSemantics(intervalSinCosOp)],
+	[Identifier.make('cos'), unaryExprOpSemantics(intervalSinCosOp)],
 ] as const satisfies readonly IntervalSemanticsMapperInfo<StateDomain>[];
 
 type IntervalSemanticsMapperInfo<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = [identifier: Identifier, semantics: NaryFnSemantics<StateDomain>];
@@ -360,14 +362,13 @@ function intervalSqrtOp(arg: IntervalDomain | undefined): IntervalDomain | undef
 }
 
 /**
- * Infers the interval resulting from applying the `length` function to the provided argument.
  * @param arg - The argument to apply the `length` function to.
  * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
  * @returns Bottom if the provided argument is bottom or empty, otherwise overapproximates to the interval [0, Infinity].
  *          If the argument can be resolved to a supported value, the resulting interval is more precise (e.g.: [1,1] for scalar numbers).
  */
-function intervalLengthFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
+function intervalOneIfArgIsNumElsePositiveNum<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {
 	if(FunctionArgument.isEmpty(arg)) {
 		numericInferenceLogger.warn('Called unary "length" with an empty argument, which is not supported.');
 		return IntervalDomain.bottom(significantFigures);
@@ -839,4 +840,12 @@ function intervalAsInteger<StateDomain extends AnyStateDomain<AnyAbstractDomain>
 
 	const [a, b] = asNumeric.value;
 	return asNumeric.create([Math.trunc(a), Math.trunc(b)]);
+}
+
+function intervalSinCosOp(arg: IntervalDomain | undefined): IntervalDomain | undefined {
+	if(isUndefined(arg) || arg.value === Bottom) {
+		return arg;
+	}
+
+	return arg.create([-1, 1]);
 }

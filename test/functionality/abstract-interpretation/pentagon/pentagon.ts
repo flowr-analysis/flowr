@@ -112,6 +112,10 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 				} else if(criterionExpected.intervalMatching === DomainMatchingType.Overapproximation) {
 					expect(criterionExpected.interval.leq(inferredPentagonDomain.value.interval), 'Result differs: ' + intervalErrorContext).toBe(true);
 					expect(criterionExpected.interval.equals(inferredPentagonDomain.value.interval), 'Result is not an overapproximation but an exact match.').toBe(false);
+				} else if(criterionExpected.intervalMatching === DomainMatchingType.Underapproximation) {
+					expect(inferredPentagonDomain.value.interval.leq(criterionExpected.interval), 'Result differs: ' + intervalErrorContext).toBe(true);
+					expect(criterionExpected.interval.equals(inferredPentagonDomain.value.interval), 'Result is not an underapproximation but an exact match.').toBe(false);
+					expect(criterionExpected.interval.leq(inferredPentagonDomain.value.interval), 'Result is not an underapproximation but an overapproximation.').toBe(false);
 				} else {
 					assertUnreachable(criterionExpected.intervalMatching);
 				}
@@ -124,6 +128,10 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 					// At least one domain is undefined (Top), so the inferred domain has to be undefined (Top) to be an overapproximation of the expected domain.
 					expect(inferredPentagonDomain?.value.interval, 'Result differs: ' + intervalErrorContext).toBeUndefined();
 					expect(inferredPentagonDomain?.value.interval.value, 'Result is not an overapproximation but an exact match.').not.toBe(criterionExpected.interval?.value);
+				} else if(criterionExpected.intervalMatching === DomainMatchingType.Underapproximation) {
+					// At elas one domain is undefined (Top), so the expected domain has to be undefined (Top) to be an underapproximation of the expected domain.
+					expect(criterionExpected.interval, 'Result differs: ' + intervalErrorContext).toBeUndefined();
+					expect(inferredPentagonDomain?.value.interval, 'Result is not an underapproximation but an overapproximation or exact match.').not.toBeUndefined();
 				} else {
 					assertUnreachable(criterionExpected.intervalMatching);
 				}
@@ -183,7 +191,7 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 
 			if(isNotUndefined(criterionExpected.lowerBounds)) {
 				// Check whether targetId is included in the upper bounds of all lower bounds (or excluded respectively)
-				const targetNodeOrigins = visitor.getVariableOrigins(targetId);
+				const targetNodeOrigins = visitor.getVariableOrigins(targetId).filter(nodeId => !visitor.getAbstractValue(nodeId)?.isBottom());
 				if(targetNodeOrigins.length > 1) {
 					throw new Error(`Element cannot have lower bound - the element has multiple origins: {${targetNodeOrigins.join(', ')}}`);
 				}

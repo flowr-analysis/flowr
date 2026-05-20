@@ -149,7 +149,7 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 	}
 
 	getOriginIfUnique(node: NodeId): NodeId | undefined {
-		const origins = this.getVariableOrigins(node);
+		const origins = this.getVariableOrigins(node).filter(nodeId => !this.getAbstractValue(nodeId)?.isBottom());
 		if(origins.length === 0) {
 			return node;
 		}

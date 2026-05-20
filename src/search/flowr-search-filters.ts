@@ -33,6 +33,10 @@ export enum FlowrFilter {
 	 * This filter accepts {@link OriginKindArgs}, which includes the {@link DataflowGraphVertexFunctionCall.origin} to match for, whether to match for every or some origins, and whether to include non-function-calls in the filtered query.
 	 */
 	OriginKind = 'origin-kind',
+	/**
+	 * Only returns search element whose {@link RoleInParent} matches a given {@link RoleInParent}.
+	 * This filter accepts an object containing a `roleInParent` argument of type {@link RoleInParent}.
+	 */
 	RoleInParent = 'role-in-parent',
 }
 export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
@@ -119,6 +123,9 @@ export interface MatchesEnrichmentArgs<E extends Enrichment> {
 	 * The object to test the enrichment value against, which should be a partial {@link EnrichmentElementContent} with each value to test for replaced by a {@link RegExp} or value to match against. The test will pass if the partial structure matches and the enrichment value at each {@link RegExp}, string or primitive location matches the corresponding regular expression. For array entries, {@link arrayMatch} determines whether every element in the array has to match the given expected value, or only some.
 	 */
 	test:        Record<string, unknown>,
+	/**
+	 * For array entries, the expected value in {@link test} is compared against each array entry in the real value. This property determines whether every element in the array has to match, or only some. If unset, this defaults to `some`.
+	 */
 	arrayMatch?: 'some' | 'every'
 }
 export interface OriginKindArgs {

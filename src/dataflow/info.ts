@@ -22,6 +22,8 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
+	/** the filepath that caused this dependency (e.g., for load() calls where the file must exist) */
+	readonly file?:        string
 }
 
 /**

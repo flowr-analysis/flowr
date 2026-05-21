@@ -5,6 +5,7 @@ import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nod
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
+import { initializeCleanDataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
@@ -14,14 +15,17 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
 import { FlowrTextFile } from '../../../../../../project/context/flowr-file';
-import { EdgeType } from '../../../../../graph/edge';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
+import { expensiveTrace } from '../../../../../../util/log';
+import { dataflowLogger } from '../../../../../logger';
+import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { pushLocalEnvironment } from '../../../../../environments/scoping';
 
 /**
  * Processes a built-in 'load' function call.
  */
-export function processLoad<OtherInfo>(
+export function processLoadCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
@@ -30,8 +34,16 @@ export function processLoad<OtherInfo>(
 	if(args.length === 0) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
+	const information = initializeCleanDataflowInformation(rootId, data);
 
 	const sourceFileArgument = args[0];
+
+	if(data.ctx.config.ignoreLoadCalls) {
+		expensiveTrace(dataflowLogger, () => `Skipping load call ${JSON.stringify(sourceFileArgument)} (disabled in config file)`);
+		handleUnknownSideEffect(information.graph, information.environment, rootId);
+		return information;
+	}
+
 	let sourceFile: string[] | undefined;
 
 	if(sourceFileArgument !== EmptyArgument && sourceFileArgument?.value?.type === RType.String) {
@@ -41,6 +53,8 @@ export function processLoad<OtherInfo>(
 	}
 
 	if(sourceFile?.length === 1) {
+		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load });
+
 		const path = removeRQuotes(sourceFile[0]);
 		let filepath = path ? findSource(data.ctx.config.solver.resolveSource, path, data) : path;
 
@@ -51,12 +65,10 @@ export function processLoad<OtherInfo>(
 		if(filepath !== undefined) {
 			const rdaParser = new RDAParser();
 			const variables = rdaParser.parseRDA(new FlowrTextFile(filepath), true);
-
 			if(variables) {
-				const fn = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load });
 				let envir = fn.information.environment;
-
 				const loadLocation = data.completeAst.idMap.get(rootId)?.location;
+				const loadCds = [...(data.cds ?? []), { id: rootId, when: true, file: filepath }];
 
 				for(const variable of variables) {
 					if(variable.name) {
@@ -78,20 +90,41 @@ export function processLoad<OtherInfo>(
 							}
 						} as unknown as RSymbol<OtherInfo & ParentInformation>);
 
-						fn.information.graph.addVertex({
-							tag: VertexType.VariableDefinition,
-							id:  syntheticId,
-							cds: data.cds,
-						}, envir);
+						const isClosure = variable.type === 3;
+						const cleanEnv = isClosure ? pushLocalEnvironment(data.ctx.env.makeCleanEnv()) : envir;
 
-						fn.information.graph.addEdge(syntheticId, rootId, EdgeType.DefinedBy);
+						if(isClosure) {
+							fn.information.graph.addVertex({
+								tag:         VertexType.FunctionDefinition,
+								id:          syntheticId,
+								cds:         loadCds,
+								environment: cleanEnv,
+								subflow:     {
+									entryPoint:        syntheticId,
+									graph:             new Set(),
+									out:               [],
+									in:                [],
+									unknownReferences: [],
+									hooks:             [],
+									environment:       cleanEnv
+								},
+								exitPoints: [],
+								params:     {},
+							}, cleanEnv);
+						} else {
+							fn.information.graph.addVertex({
+								tag: VertexType.VariableDefinition,
+								id:  syntheticId,
+								cds: loadCds,
+							}, envir);
+						}
 
 						const nodeToDefine = {
 							nodeId:    syntheticId,
 							name:      variable.name,
 							type:      SexpTypeToReferenceType(variable.type) as InGraphReferenceType,
 							definedAt: rootId,
-							cds:       data.cds,
+							cds:       loadCds,
 						};
 						fn.information.graph.setDefinitionOfVertex(nodeToDefine);
 						const newCurrent = envir.current.define(nodeToDefine, data.ctx.config);
@@ -102,6 +135,7 @@ export function processLoad<OtherInfo>(
 				return { ...fn.information, environment: envir };
 			}
 		}
+		fn.information.graph.markIdForUnknownSideEffects(rootId);
 	}
 
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load }).information;
@@ -122,7 +156,6 @@ function SexpTypeToReferenceType(type?: number): ReferenceType{
 		case 15: // complex
 		case 16: // character/string
 		case 24: // raw
-			return ReferenceType.Constant;
 		case 2: // pairlist
 		case 4: // env
 		case 5: // prom

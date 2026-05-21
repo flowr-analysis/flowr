@@ -97,6 +97,10 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
 	readonly ignoreSourceCalls: boolean
+	/**
+	 * Whether load calls should be ignored, causing {@link processLoadCall}'s behavior to be skipped
+	 */
+	readonly ignoreLoadCalls:   boolean
 	/** Configure language semantics and how flowR handles them */
 	readonly semantics: {
 		/** Semantics regarding the handling of the environment */
@@ -110,13 +114,13 @@ export interface FlowrConfigOptions extends MergeableRecord {
 			}
 		}
 	}
-    /** Configuration options for the REPL */
-    readonly repl: {
-        /** Whether to show quick stats in the REPL after each evaluation */
-        quickStats:   boolean
-	    /** This instruments the dataflow processors to count how often each processor is called */
-	    dfProcessorHeat: boolean;
-    }
+	/** Configuration options for the REPL */
+	readonly repl: {
+		/** Whether to show quick stats in the REPL after each evaluation */
+		quickStats:   boolean
+		/** This instruments the dataflow processors to count how often each processor is called */
+		dfProcessorHeat: boolean;
+	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
@@ -243,6 +247,7 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 
 export const defaultConfigOptions: FlowrConfigOptions = {
 	ignoreSourceCalls: false,
+	ignoreLoadCalls:   false,
 	semantics:         {
 		environment: {
 			overwriteBuiltIns: {
@@ -292,6 +297,7 @@ export const defaultConfigOptions: FlowrConfigOptions = {
 
 export const flowrConfigFileSchema = Joi.object({
 	ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
+	ignoreLoadCalls:   Joi.boolean().optional().description('Whether load calls should be ignored, causing {@link processLoadCall}\'s behavior to be skipped.'),
 	semantics:         Joi.object({
 		environment: Joi.object({
 			overwriteBuiltIns: Joi.object({

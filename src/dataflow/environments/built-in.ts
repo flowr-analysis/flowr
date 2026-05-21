@@ -53,7 +53,7 @@ import { processTryCatch } from '../internal/process/functions/call/built-in/bui
 import { processRegisterHook } from '../internal/process/functions/call/built-in/built-in-register-hook';
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
-import { processLoad } from '../internal/process/functions/call/built-in/built-in-load';
+import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 
 export type BuiltIn = `built-in:${string}`;
 
@@ -225,7 +225,7 @@ export enum BuiltInProcName {
 	Library             = 'builtin:library',
 	/** for `list` calls, see {@link processList} */
 	List                = 'builtin:list',
-	/** for 'load' calls see {@link processLoad} */
+	/** for 'load' calls see {@link processLoadCall} */
 	Load = 'builtin:load',
 	/** for `local` calls, see {@link processLocal} */
 	Local               = 'builtin:local',
@@ -280,7 +280,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.IfThenElse]:         processIfThenElse,
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
-	[BuiltInProcName.Load]:               processLoad,
+	[BuiltInProcName.Load]:               processLoadCall,
 	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.Quote]:              processQuote,

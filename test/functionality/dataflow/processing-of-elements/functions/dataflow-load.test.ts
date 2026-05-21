@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { getVarsAndTypesFromShell } from '../../../project/plugin/load-pipeline/load-pipeline.test';
+import { defaultEnv } from '../../../_helper/dataflow/environment-builder';
 
 describe('load', withTreeSitter(parser => {
 	const dir = 'test/testfiles/project/plugins/rda-files/zenodo';
@@ -23,10 +24,23 @@ describe('load', withTreeSitter(parser => {
 		}
 
 		let graph = emptyGraph();
-		for(const [varName] of varsAndTypesFromShell) {
-			console.warn(`${varName}`);
+
+		for(const [varName, varType] of varsAndTypesFromShell) {
 			const syntheticId = `3:loaded:${varName.replaceAll('.', '_')}`;
-			graph = graph.defineVariable(syntheticId);
+			const cds = [{ id: '3', when: true }];
+			if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
+				graph = graph.defineFunction(syntheticId, [], {
+					entryPoint:        syntheticId,
+					graph:             new Set(),
+					out:               [],
+					in:                [],
+					unknownReferences: [],
+					hooks:             [],
+					environment:       defaultEnv(),
+				}, { cds });
+			} else {
+				graph = graph.defineVariable(syntheticId, undefined, { cds });
+			}
 		}
 
 		assertDataflow(

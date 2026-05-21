@@ -165,26 +165,26 @@ function expectNames(result: RObjectData[], vars: Map<string, string>) {
 }
 
 const SexpToRType: Record<number, string> = {
-	0:  'NULL', // unknown
-	1:  'symbol', // constant
-	2:  'pairlist', // variable
-	3:  'closure', // function
-	4:  'environment', // variable
-	5:  'prom', // variable
-	6:  'language', // variable
-	7:  'special', // builtInFunction
-	8:  'builtin', // builtInFunction
-	9:  'character', // constant
-	10: 'logical', // constant
-	13: 'integer', // constant
-	14: 'double', // constant
-	15: 'complex', // constant
-	16: 'character', // constant
-	17: '...', // variable
-	19: 'list', // variable
-	20: 'expression', // variable
-	24: 'raw', // constant
-	25: 'S4', // variable
+	0:  'NULL',
+	1:  'symbol',
+	2:  'pairlist',
+	3:  'closure',
+	4:  'environment',
+	5:  'prom',
+	6:  'language',
+	7:  'special',
+	8:  'builtin',
+	9:  'character',
+	10: 'logical',
+	13: 'integer',
+	14: 'double',
+	15: 'complex',
+	16: 'character',
+	17: '...',
+	19: 'list',
+	20: 'expression',
+	24: 'raw',
+	25: 'S4',
 };
 
 function expectTypes(result: RObjectData[], types: Map<string, string>) {

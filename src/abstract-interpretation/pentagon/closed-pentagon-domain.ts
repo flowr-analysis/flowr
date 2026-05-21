@@ -117,7 +117,7 @@ export class ClosedPentagonDomain extends StateAbstractDomain<ClosedPentagonValu
 		return result;
 	}
 
-	private static reduce(value: StateDomainLift<ClosedPentagonValueDomain>): StateDomainLift<ClosedPentagonValueDomain> {
+	public static reduce(value: StateDomainLift<ClosedPentagonValueDomain>): StateDomainLift<ClosedPentagonValueDomain> {
 		if(value === Bottom) {
 			return Bottom;
 		}

@@ -80,7 +80,6 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		}
 		if(RBinaryOp.is(resolved)) {
 			const lhs = RNode.lexeme(resolved.lhs) ?? '';
-			const rhs = RNode.lexeme(resolved.rhs) ?? '';
 
 			const lhsOrigins = visitor.getVariableOrigins(resolved.lhs.info.id);
 			const inferredValue = visitor.getAbstractValue(resolved.lhs.info.id);
@@ -92,21 +91,21 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 				range:  SourceLocation.getRange(loc),
 				before: '{ ',
 				after:  '; ' +
-							'cat(' +
-								`"${resolved.lhs.info.id}", ` +
-								`"[${lhsOrigins.join(', ')}]", ` +
-								`"${lhs}", ` +
-								`'"${SourceLocation.getRange(loc).slice(0, 4).toString()}"', ` +
-								`typeof(${lhs}), ` +
-								`tolower(as.character(is.numeric(${lhs}))), ` +
-								`tolower(as.character(is.vector(${lhs}))), ` +
-								`paste0(length(${lhs})), ` +
-								`paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), ` +
-								`'"${inferredValue?.toString() ?? 'undefined'}"', ` +
-								`'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
-								'"\\n", ' +
-								`sep=",", file="${outputCsvPath}", append=TRUE)` +
-						`; ${rhs} }`,
+                    'cat(' +
+                    `"${resolved.lhs.info.id}", ` +
+                    `"[${lhsOrigins.join(', ')}]", ` +
+                    `"${lhs}", ` +
+                    `'"${SourceLocation.getRange(loc).slice(0, 4).toString()}"', ` +
+                    `typeof(${lhs}), ` +
+                    `tolower(as.character(is.numeric(${lhs}))), ` +
+                    `tolower(as.character(is.vector(${lhs}))), ` +
+                    `paste0(length(${lhs})), ` +
+                    `paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), ` +
+                    `'"${inferredValue?.toString() ?? 'undefined'}"', ` +
+                    `'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
+                    '"\\n", ' +
+                    `sep=",", file="${outputCsvPath}", append=TRUE)` +
+                    ' }',
 			});
 		}
 	}

@@ -34,30 +34,39 @@ export function computeEditRegion(oldContent: string, newContent: string): Parse
 
 	const oldEndIndex = oldSuffixIndex;
 	const newEndIndex = newSuffixIndex;
+	const [startPosition, oldEndPosition] = indexesToPoints(oldContent, [startIndex, oldEndIndex]);
+	const [newEndPosition] = indexesToPoints(newContent, [newEndIndex]);
 
 	return {
 		startIndex,
 		oldEndIndex,
 		newEndIndex,
-		startPosition:  indexToPoint(oldContent, startIndex),
-		oldEndPosition: indexToPoint(oldContent, oldEndIndex),
-		newEndPosition: indexToPoint(newContent, newEndIndex),
+		startPosition,
+		oldEndPosition,
+		newEndPosition,
 	};
 }
 
 
-function indexToPoint(text: string, index: number): Parser.Point {
+function indexesToPoints(text: string, orderedIndexes: readonly number[]): Parser.Point[] {
 	let row = 0;
 	let column = 0;
+	let currentIndex = 0;
+	const points: Parser.Point[] = [];
 
-	for(let i = 0; i < index; i++) {
-		if(text[i] === '\n') {
-			row++;
-			column = 0;
-		} else {
-			column++;
+	for(const targetIndex of orderedIndexes) {
+		while(currentIndex < targetIndex) {
+			if(text[currentIndex] === '\n') {
+				row++;
+				column = 0;
+			} else {
+				column++;
+			}
+			currentIndex++;
 		}
+
+		points.push({ row, column });
 	}
 
-	return { row, column };
+	return points;
 }

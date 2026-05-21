@@ -167,7 +167,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			case InvalidationEventType.Full:
 				this.reset();
 				break;
-			case InvalidationEventType.FileInvalidate:
+			case InvalidationEventType.SingleFileInvalidate:
 				// nothing to do
 				break;
 			default:
@@ -373,9 +373,5 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getAllFiles(): FlowrFileProvider[] {
 		return [...this.files.values(), ...this.inlineFiles];
-	}
-
-	public getFile(path: FilePath): FlowrFileProvider | undefined {
-		return this.files.get(path);
 	}
 }

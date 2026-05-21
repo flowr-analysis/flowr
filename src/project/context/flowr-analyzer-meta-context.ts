@@ -53,7 +53,7 @@ export class FlowrAnalyzerMetaContext implements ReadOnlyFlowrAnalyzerMetaContex
 			case InvalidationEventType.Full:
 				this.reset();
 				break;
-			case InvalidationEventType.FileInvalidate:
+			case InvalidationEventType.SingleFileInvalidate:
 				// nothing to do
 				break;
 			default:

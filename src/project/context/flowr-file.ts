@@ -178,7 +178,7 @@ export abstract class FlowrFile<Content extends StringableContent = StringableCo
 		const oldContent = this.contentCache;
 		this.contentCache = undefined;
 		for(const invalidator of this.onInvalidate) {
-			invalidator({ type: InvalidationEventType.FileInvalidate, oldContent, filePath: this.path()  });
+			invalidator({ type: InvalidationEventType.SingleFileInvalidate, oldContent, filePath: this.path()  });
 		}
 	}
 }

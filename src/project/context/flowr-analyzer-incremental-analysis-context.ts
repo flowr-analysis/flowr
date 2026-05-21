@@ -12,6 +12,9 @@ export interface ReadOnlyFlowrAnalyzerIncrementalAnalysisContext {
 	 * The name of this context.
 	 */
 	readonly name: string;
+
+	getOldParseResultOf(filePath: FilePath): Parser.Tree | undefined;
+	getOldContentOf(filePath: FilePath): string | undefined;
 }
 
 
@@ -25,7 +28,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 	/**
 	 * The files that have been changed since the last analysis mapping to their old content.
 	 */
-	private changedFilesWithOldContent: Map<FilePath, string> = new Map();
+	private changedFilesWithOldContent: Map<FilePath, string | undefined> = new Map();
 	private oldParseResults:            Map<FilePath, Parser.Tree> = new Map();
 
 
@@ -38,7 +41,7 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		this.oldParseResults = new Map();
 	}
 
-	handleFileInvalidate(filePath: FilePath, oldContent: string): void {
+	handleFileInvalidate(filePath: FilePath, oldContent: string | undefined): void {
 		if(this.changedFilesWithOldContent.has(filePath)) {
 			// If a file is changed multiple times since the last analysis, we only want to store the original old content as the old analysis results were computed with that.
 			return;
@@ -53,8 +56,8 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 			case InvalidationEventType.Full:
 				this.reset();
 				break;
-			case InvalidationEventType.FileInvalidate:
-				this.handleFileInvalidate(event.filePath, event.oldContent?.toString() ?? '');
+			case InvalidationEventType.SingleFileInvalidate:
+				this.handleFileInvalidate(event.filePath, event.oldContent?.toString());
 				break;
 			default:
 				assertUnreachable(type);
@@ -76,9 +79,11 @@ export class FlowrAnalyzerIncrementalAnalysisContext implements ReadOnlyFlowrAna
 		return this.oldParseResults.get(filePath);
 	}
 
-	public getAndRemoveOldContentOf(filePath: FilePath): string | undefined {
-		const oldContent = this.changedFilesWithOldContent.get(filePath);
+	public getOldContentOf(filePath: FilePath): string | undefined {
+		return this.changedFilesWithOldContent.get(filePath);
+	}
+
+	public deleteOldContentOf(filePath: FilePath): void {
 		this.changedFilesWithOldContent.delete(filePath);
-		return oldContent;
 	}
 }

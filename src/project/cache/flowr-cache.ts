@@ -1,20 +1,39 @@
 import { assertUnreachable } from '../../util/assert';
 import type { StringableContent } from '../context/flowr-file';
 
+/**
+ * Invalidation events describe how the cached analyzer state became stale.
+ *
+ * The current codebase triggers these events in two main ways:
+ * - {@link InvalidationEventType.Full}: emitted by explicit reset flows such as
+ *   {@link FlowrAnalyzerContext#reset} or {@link FlowrAnalyzerCache#reset}. Use this
+ *   when the whole project state should be treated as stale.
+ * - {@link InvalidationEventType.SingleFileInvalidate}: emitted by
+ *   {@link FlowrFile#invalidate}, including {@link FlowrInlineTextFile#updateInlineContent},
+ *   when one known file changed.
+ */
 export const enum InvalidationEventType {
 	Full = 'full',
-	FileInvalidate = 'file-invalidate',
+	SingleFileInvalidate = 'single-file-invalidate',
 }
 
-export interface FileContentInvalidateEvent<Content extends StringableContent = StringableContent> {
-	readonly type:       InvalidationEventType.FileInvalidate;
+/**
+ * Invalidation event for a single file identified by {@link filePath}.
+ *
+ * {@link oldContent} contains the file content from immediately before the
+ * change that triggered this event. In other words, it is the pre-change content
+ * for this invalidation, not necessarily the content from the last completed
+ * analysis run.
+ */
+export interface SingleFileInvalidationEvent<Content extends StringableContent = StringableContent> {
+	readonly type:       InvalidationEventType.SingleFileInvalidate;
 	readonly oldContent: Content | undefined;
 	readonly filePath:   string;
 }
 
 export type InvalidationEvent<Content extends StringableContent = StringableContent> =
 	{ type: InvalidationEventType.Full }
- |  FileContentInvalidateEvent<Content>;
+ |  SingleFileInvalidationEvent<Content>;
 
 
 export type InvalidationEventHandler<Content extends StringableContent = StringableContent> = (event: InvalidationEvent<Content>) => void;
@@ -42,7 +61,7 @@ export abstract class FlowrCache<Cache> implements InvalidationEventReceiver {
 		/* we will update this as soon as we support incremental update patterns */
 		switch(type) {
 			case InvalidationEventType.Full:
-			case InvalidationEventType.FileInvalidate:
+			case InvalidationEventType.SingleFileInvalidate:
 				this.value = undefined;
 				break;
 			default:

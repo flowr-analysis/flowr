@@ -21,7 +21,7 @@ export function computeReparseInfo(ctx: FlowrAnalyzerContext, filePath: FilePath
 		return undefined;
 	}
 
-	const oldContent = ctx.inc.getAndRemoveOldContentOf(filePath);
+	const oldContent = ctx.inc.getOldContentOf(filePath);
 	if(oldContent === undefined) {
 		// this file has not been invalidated since the last parse, no reparse needed
 		return {
@@ -30,7 +30,7 @@ export function computeReparseInfo(ctx: FlowrAnalyzerContext, filePath: FilePath
 		};
 	}
 
-	const newContent = ctx.files.getFile(filePath)?.content().toString() ?? '';
+	const newContent = ctx.files.resolveRequest({ request: 'file', content: filePath }).r.content;
 	if(newContent === oldContent) {
 		// this file was invalidated, but the content did not change, no reparse needed
 		return {

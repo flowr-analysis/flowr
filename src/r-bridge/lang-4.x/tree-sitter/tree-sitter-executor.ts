@@ -20,8 +20,8 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	public readonly name = 'tree-sitter';
 	private readonly parser: Parser;
+	public readonly incremental = true;
 	private static language: Parser.Language;
-	public incremental = true;
 
 	/**
 	 * Initializes the underlying tree-sitter parser. This only needs to be called once globally.
@@ -84,6 +84,11 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		}
 
 		const reparseInfo = computeReparseInfo(ctx, request.filePath);
+		// `computeReparseInfo` needs the stored old content to compute the edit against the
+		// previous tree. Once that snapshot has been consumed, drop it so a later invalidation
+		// can record a fresh old-content baseline for the next stored tree.
+		ctx.inc.deleteOldContentOf(request.filePath);
+
 		if(!reparseInfo) {
 			// incremental parsing not possible
 			return this.parser.parse(sourceCode);

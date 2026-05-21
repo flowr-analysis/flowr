@@ -68,7 +68,7 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		const type = event.type;
 		switch(type) {
 			case InvalidationEventType.Full:
-			case InvalidationEventType.FileInvalidate:
+			case InvalidationEventType.SingleFileInvalidate:
 				this.initCacheProviders();
 				break;
 			default:

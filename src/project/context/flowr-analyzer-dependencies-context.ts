@@ -61,7 +61,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			case InvalidationEventType.Full:
 				this.reset();
 				break;
-			case InvalidationEventType.FileInvalidate:
+			case InvalidationEventType.SingleFileInvalidate:
 				// nothing to do
 				break;
 			default:

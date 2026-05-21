@@ -497,28 +497,30 @@ In other words, this context only transports incremental handoff state between a
 
 ${section('Incremental Parsing', 4)}
 
-Currently, the implemented use of this context is Tree-sitter's incremental parsing support.
-When a file is represented by a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} and its content is invalidated via
-${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
-the analyzer receives a file invalidation event.
-At that point, the incremental context only records the file path together with the old source text.
-No edit region is computed eagerly during invalidation.
+This context is used to exploit Tree-sitter's incremental parsing feature.
+For one file, the incremental state follows a fixed lifecycle:
 
-After a successful parse-oriented analysis run, the analyzer cache stores the latest Tree-sitter parse trees in this context via
-${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'storeOldParseResults', { codeFont: true, realNameWrapper: 'i' })}.
-This gives the next parse run access to the last completed parse snapshot for each file path.
+1. After a successful parse-oriented analysis run, the analyzer cache stores the latest Tree-sitter parse tree via
+   ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'storeOldParseResults', { codeFont: true, realNameWrapper: 'i' })}.
+   This tree is the baseline for the next incremental parse of that file.
+2. When a mutable file provider such as ${ctx.link('FlowrInlineTextFile')} is invalidated via
+   ${ctx.linkM(FlowrInlineTextFile, 'invalidate', { codeFont: true, realNameWrapper: 'i' })},
+   the analyzer receives a file invalidation event and stores the file path together with the old source text.
+   If the same file is invalidated again before the next parse, this stored old text is intentionally **not** replaced:
+   the stored parse tree still belongs to the version from before the first invalidation, so the incremental parse must keep that matching old-content baseline.
+3. When parsing is requested again, flowR retrieves
+   * the previous parse tree from
+     ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldParseResultOf', { codeFont: true, realNameWrapper: 'i' })}
+   * the stored old source text from
+     ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldContentOf', { codeFont: true, realNameWrapper: 'i' })}
 
-On the next parse run, Tree-sitter combines both pieces of information lazily:
-
-* the previous parse tree obtained from
-  ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getOldParseResultOf', { codeFont: true, realNameWrapper: 'i' })}
-* the old source text obtained from
-  ${ctx.linkM(FlowrAnalyzerIncrementalAnalysisContext, 'getAndRemoveOldContentOf', { codeFont: true, realNameWrapper: 'i' })}
-
-Using these together with the current file content, flowR computes a minimal ${ctx.link('Parser.Edit')} only when a new parse is actually requested.
-If the file content did not change, the previous tree can be reused directly.
-Otherwise, the edit is applied to the previous tree and Tree-sitter reparses incrementally instead of starting from scratch.
-The stored old-content entry is consumed when it is used, so invalidation state only survives until the next relevant parse.
+   Using these together with the current file content, flowR computes a minimal ${ctx.link('Parser.Edit')} only when a new parse is actually requested.
+   If the file content did not change, the previous tree can be reused directly.
+   Otherwise, the edit is applied to the previous tree and Tree-sitter reparses incrementally instead of starting from scratch.
+4. The stored old-content entry is removed when it is used because it belongs only to that previous parse snapshot.
+   After the new parse succeeds, the analyzer stores a new parse tree baseline.
+   A later invalidation must then be able to record a fresh old-content value that matches this new tree.
+   If the old-content entry were kept, later invalidations of the same file would not replace it, and the next incremental parse could compare the current file content against stale old text that no longer matches the stored previous tree.
 
 ${section('Incremental Dataflow', 4)}
 

@@ -18,6 +18,9 @@ export class FlowrRDAFile extends FlowrFile<RObject[]> {
 	/**
 	 * Prefer the static {@link FlowrRDAFile.from} method to create instances of this class as it will not re-create if already a description file
 	 * and handle role assignments.
+	 * @param file     - The underlying file provider whose path points to an RDA file.
+	 * @param shortcut - When `true`, only top-level object names and types are
+	 *                   collected during parsing. Payload data is skipped.
 	 */
 	constructor(file: FlowrFileProvider, shortcut?: boolean) {
 		super(file.path(), file.roles);
@@ -28,13 +31,18 @@ export class FlowrRDAFile extends FlowrFile<RObject[]> {
 	/**
 	 * Loads and parses the content of the wrapped file as an RDA structure.
 	 * @see {@link parseRDA} for details on the parsing logic.
+	 * @returns An array of top-level {@link RObject}s or `[{}]` when the
+	 *          file contains no R objects.
 	 */
 	protected loadContent(): RObject[] {
 		return new RDAParser().parseRDA(this.wrapped, this.shortcut) ?? [{}];
 	}
 
 	/**
-	 * RDA file lifter, this does not re-create if already an RDA file
+	 * RDA file lifter, this does not re-create if already an RDA file.
+	 * @param file - A raw {@link FlowrFileProvider} or an existing {@link FlowrRDAFile}.
+	 * @param role - Optional {@link FileRole} to assign before returning.
+	 * @returns The (possibly newly created) {@link FlowrRDAFile}.
 	 */
 	public static from(file: FlowrFileProvider | FlowrRDAFile, role?: FileRole): FlowrRDAFile {
 		if(role) {
@@ -44,8 +52,14 @@ export class FlowrRDAFile extends FlowrFile<RObject[]> {
 	}
 }
 
+/**
+ * Compression algorithm wrapping an RDA file.
+ */
 export type CompressionType = 'COMP_GZ' | 'COMP_BZ' | 'COMP_XZ' | 'COMP_LZMA' | 'COMP_ZSTD' | 'COMP_UNKNOWN_OR_NO';
 
+/**
+ * RDA file serialization format and version.
+ */
 type SerializationTypes = 'R_MAGIC_EMPTY' | 'R_MAGIC_CORRUPT' | 'R_MAGIC_ASCII_V1' | 'R_MAGIC_BINARY_V1' |
 	'R_MAGIC_XDR_V1' | 'R_MAGIC_ASCII_V2' | 'R_MAGIC_BINARY_V2' | 'R_MAGIC_XDR_V2' | 'R_MAGIC_ASCII_V3' |
 	'R_MAGIC_BINARY_V3' | 'R_MAGIC_XDR_V3' | 'R_MAGIC_MAYBE_TOONEW' | number;
@@ -55,6 +69,11 @@ type RObject = RValues.NilValue | RObjectData;
 type Real = number | RValues.NilValue | RValues.NaReal | RValues.NaN | RValues.PosInf | RValues.NegInf;
 type Complex = { r: Real, i: Real };
 
+/**
+ * Structured representation of a deserialized R SEXP node.
+ *
+ * Not all fields are populated on every instance. If a field is populated depends on the {@link SexpType}.
+ */
 export interface RObjectData {
 	name?:         string;
 	type?:         SexpType,
@@ -84,6 +103,11 @@ export interface RObjectData {
 	altRep?:       boolean;
 }
 
+/**
+ * Numeric identifiers for R SEXP types.
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinternals.h#L111-L144 | R source: SEXP}
+ * @see {@link http://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L681-L711 | R source: SEXP}
+ */
 enum SexpType {
 	NilSxp           = 0,
 	SymSxp           = 1,
@@ -132,6 +156,10 @@ enum SexpType {
 	AltRepSxp        = 238,
 }
 
+/**
+ * Special values used internally by R serialization.
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinternals.h#L401-L471 | R source: RValues}
+ */
 enum RValues {
 	NilValue        = 'NIL',
 	EmptyEnv        = 'EMPTY_ENV',
@@ -146,27 +174,32 @@ enum RValues {
 	NaReal          = 'NA_real_',
 	NaComplex       = 'NA_complex_',
 	NaN               = 'NaN',
-	PosInf            = 'PosInf',
+	PosInf            = 'Pos_Inf',
 	NegInf            = 'Neg_inf',
 }
 
+/**
+ * Parser for RDA files.
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c | R source: serialize.c}
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c | R source: saveload.c}
+ */
 export class RDAParser{
-	private file!:             FlowrFileProvider;
-	private shortcut!:         boolean;
-	private buffer!:           Buffer;
-	private currentDepth:      number = 0;
-	private initialDepth!:     number;
-	private lastName:          string | undefined = undefined;
+	private file!:                 FlowrFileProvider;
+	private shortcut!:             boolean;
+	private buffer!:               Buffer;
+	private currentDepth:          number = 0;
+	private readonly initialDepth: number = 1;
+	private lastName:              string | undefined = undefined;
 	private setLastName = false;
 	private offset = 0;
 	private readonly RCodeSetMax = 63;
-	private RWeakRefs:         null | RObjectData = null;
+	private RWeakRefs:             null | RObjectData = null;
 	private readonly ChunkSize = 8906;
 	private readonly SizeOfDouble = 8;
 	private readonly WordSize = 128;
-	private format!:           'XDR' | 'ASCII' | 'BINARY';
-	private readonly refTable: RObject[] = [];
-	private Registry:          RObjectData | null = null;
+	private format!:               'XDR' | 'ASCII' | 'BINARY';
+	private readonly refTable:     RObject[] = [];
+	private Registry:              RObjectData | null = null;
 
 
 	private opinfo = {
@@ -176,10 +209,13 @@ export class RDAParser{
 	};
 
 	/**
-	 * Parses an RDA-file by decompressing and deserializing
-	 * @param file - RDA-file to parse
-	 * @param shortcut - If true, only the names of objects in the rda are returned, if false, all data is collected
-	 * @returns Parsed RDA-File as an RObject
+	 * Parses an RDA file.
+	 *
+	 * The file is decompressed, deserialized and converted into a flattened
+	 * object representation.
+	 * @param file - RDA file provider.
+	 * @param shortcut - When `true`, only names and types are collected.
+	 * @returns List of found {@link RObjectData} or `null` if the file is empty.
 	 */
 	parseRDA(file: FlowrFileProvider, shortcut?: boolean): RObjectData[] | null {
 		this.file = file;
@@ -196,13 +232,11 @@ export class RDAParser{
 	}
 
 	/**
-	 * Detects the compression used for the RDA-file.
-	 * @param buf - Buffer with compressed RDA-file content
-	 * @param with_zlib - Whether zlib support should be used
-	 * @returns Compression type of compressed RDA-file
-	 * @remarks
-	 * Based on the original R implementation:
-	 * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710
+	 * Detects the compression algorithm used for an RDA file.
+	 * @param buf - Raw file buffer.
+	 * @param with_zlib - Whether zlib headers should also be considered.
+	 * @returns Detected {@link CompressionType}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/connections.c#L2675-L2710 | R source: comp_type_from_memory}
 	 */
 	detectCompression(buf: Buffer, with_zlib: boolean = false): CompressionType {
 		if(buf.length >= 2 && buf[0] == 0x1f && buf[1] == 0x8b) {
@@ -246,10 +280,11 @@ export class RDAParser{
 	}
 
 	/**
-	 * Decompresses the given RDA-file
-	 * @param fileContent - File content as a  {@link Buffer}
-	 * @param compressionType - {@link CompressionType} of RDA-file
-	 * @returns Decompressed RDA-file
+	 * Decompresses the given RDA file buffer.
+	 * @param fileContent - Raw compressed file buffer.
+	 * @param compressionType - {@link CompressionType} as returned by {@link detectCompression}.
+	 * @returns Decompressed buffer.
+	 * @throws Error for unsupported compression types.
 	 */
 	decompress(fileContent: Buffer, compressionType: CompressionType): Buffer {
 		let buffer: Buffer;
@@ -295,10 +330,8 @@ export class RDAParser{
 	/**
 	 * Detects the serialization type used for the RDA-file.
 	 * @param buf - Buffer with decompressed RDA-file content
-	 * @returns Serialization type of decompressed RDA-file
-	 * @remarks
-	 * Based on the original R implementation:
-	 * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1808-L1858
+	 * @returns The identified {@link SerializationTypes} of decompressed RDA-file
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1808-L1858 | R source: R_ReadMagic}
 	 */
 	determineSerializationType(buf: Buffer): SerializationTypes {
 		if(buf.length < 5) {
@@ -340,10 +373,8 @@ export class RDAParser{
 
 	/**
 	 * Deserializes a decompressed RDA-file.
-	 * @returns Deserialized RDA-file as RObject or RValues.NilValue, if the deserialization fails
-	 * @remarks
-	 * Based on the original R implementation:
-	 * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1923-L1972
+	 * @returns Deserialized RDA-file as {@link RObject} or {@link RValues.NilValue}, if the deserialization fails
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L1923-L1972 | R source: R_LoadFromFile}
 	 */
 	deserialize2(): RObject{
 		this.offset = 0;
@@ -371,15 +402,20 @@ export class RDAParser{
 			this.currentDepth--;
 			return result;
 		}
+		if(
+			serializationType === 'R_MAGIC_ASCII_V1' ||
+			serializationType === 'R_MAGIC_XDR_V1'   ||
+			serializationType === 'R_MAGIC_BINARY_V1'
+		){
+			console.warn('Version one rda files are not supported yet');
+		}
 		return RValues.NilValue;
 	}
 
 	/**
 	 * Deserializes a decompressed RDA-file.
-	 * @returns Deserialized RDA-file
-	 * @remarks
-	 * Based on the original R implementation:
-	 * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2237-L2292
+	 * @returns Deserialized RDA-file as {@link RObject}
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2237-L2292 | R source: R_Unserialize}
 	 */
 	deserialize(): RObject {
 
@@ -430,11 +466,9 @@ export class RDAParser{
 	}
 
 	/**
-	 * Determine integer value.
-	 * @returns number
-	 * @remarks
-	 * Based on the original R implementation:
-	 * https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L396-L420
+	 * Reads a serialized integer value from the current buffer position.
+	 * @returns Parsed integer value or {@link RValues.NaInteger}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L396-L420 | R source: inInteger}
 	 */
 	inInteger(): number | RValues.NaInteger {
 		switch(this.format) {
@@ -464,6 +498,11 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer offset past a serialized integer value.
+	 *
+	 * Mirrors {@link inInteger}.
+	 */
 	skipInteger(): void {
 		if(this.format === 'ASCII') {
 			this.skipWord();
@@ -474,6 +513,12 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Ensures that the given value is not {@link RValues.NaInteger}.
+	 * @param value - Integer value to be tested.
+	 * @returns The validated integer value.
+	 * @throws Error if the value equals `RValues.NaInteger`.
+	 */
 	assertInteger(value: number | RValues.NaInteger): number {
 		if(value === RValues.NaInteger) {
 			throw new Error('Unexpected NA integer');
@@ -481,6 +526,12 @@ export class RDAParser{
 		return value;
 	}
 
+	/**
+	 * Ensures that the given object is not {@link RValues.NilValue}.
+	 * @param obj - R object to validate.
+	 * @returns The validated {@link RObjectData}.
+	 * @throws Error if the object equals {@link RValues.NilValue}.
+	 */
 	assertRObjectData(obj: RObject): RObjectData {
 		if(obj === RValues.NilValue) {
 			throw new Error('Unexpected NilValue');
@@ -488,6 +539,13 @@ export class RDAParser{
 		return obj;
 	}
 
+	/**
+	 * Reads an ASCII word from the input buffer.
+	 * @param size - Maximum allowed word size.
+	 * @returns The parsed word.
+	 * @throws Error if EOF is reached or the word exceeds the allowed size.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L378-L394 | R source: inWord}
+	 */
 	inWord(size: number): string {
 		let i = 0;
 		let c;
@@ -511,6 +569,13 @@ export class RDAParser{
 		return word.join('');
 	}
 
+	/**
+	 * Skips an ASCII word in the input buffer.
+	 *
+	 * Mirrors {@link inWord}
+	 * @returns An empty string.
+	 * @throws Error if EOF is reached or the word exceeds `WordSize`.
+	 */
 	skipWord(): string {
 		let c;
 		let i = 0;
@@ -533,6 +598,10 @@ export class RDAParser{
 		return '';
 	}
 
+	/**
+	 * Reads the next character from the input buffer.
+	 * @returns The next character or `-1` on EOF.
+	 */
 	inChar(): number {
 		if(this.offset >= this.buffer.length) {
 			return -1;
@@ -543,10 +612,21 @@ export class RDAParser{
 		return char;
 	}
 
+	/**
+	 * Checks whether the given byte represents a whitespace character.
+	 * @param c - Character code to check.
+	 * @returns `true` if the character is whitespace.
+	 */
 	isSpace(c: number): boolean {
 		return c >= 9 && c <= 13 || c === 32;
 	}
 
+	/**
+	 * Reads a serialized string from the buffer.
+	 * @param len - Length of the serialized string.
+	 * @returns Decoded string.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L505-L550 | R source: inString}
+	 */
 	inString(len: number): string {
 		if(this.format === 'ASCII') {
 			if(len > 0){
@@ -607,6 +687,12 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Skips a serialized string depending on the current serialization format.
+	 *
+	 * Mirrors {@link inString}
+	 * @param len - Length of the serialized string.
+	 */
 	skipString(len: number): void {
 		if(this.format === 'ASCII') {
 			if(len > 0){
@@ -643,6 +729,12 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Decodes an R writer version integer into v, p, and s.
+	 * @param writerVersion - Encoded writer version.
+	 * @returns Tuple containing version components `[v,p,s]`.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2230-L2235 | R source: decodeVersion}
+	 */
 	decodeVersion(writerVersion: number): number[] {
 		const v = writerVersion / 65536;
 		writerVersion = writerVersion % 65536;
@@ -653,11 +745,26 @@ export class RDAParser{
 		return [v,p,s];
 	}
 
+	/**
+	 * Reads the next flags and dispatches to {@link readItemRecursive}.
+	 * This is the main recursive entry point called for every R object encountered
+	 * during deserialization.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2117-L2121 | R source: ReadItem}
+	 */
 	readItem(): RObject {
 		const flags = this.assertInteger(this.inInteger());
 		return this.readItemRecursive(flags);
 	}
 
+	/**
+	 * Resolves a namespace reference by name using `getNamespace()` in R.
+	 * Simpler variant of {@link R_FindNamespace1}.
+	 * @param info - The {@link RObjectData} holding the namespace/package info.
+	 * @returns An {@link RObjectData} of type {@link SexpType.EnvSxp} whose
+	 *          `value` is set to the resolved environment. Currently only
+	 *          `R_GlobalEnv` is handled; other results are logged as warnings.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3795-L3804 | R source: R_FindNamespace}
+	 */
 	R_FindNamespace(info: RObjectData): RObjectData {
 		const namespaceName = (info.value as RObjectData).name as string;
 
@@ -678,6 +785,14 @@ export class RDAParser{
 		return val;
 	}
 
+	/**
+	 * Resolves a serialized namespace reference by executing R at runtime.
+	 * @param info - The {@link RObjectData} holding the namespace/package info.
+	 * @returns An {@link RObjectData} of type {@link SexpType.EnvSxp} whose
+	 *          `value` is set to the resolved environment. Currently only
+	 *          `R_GlobalEnv` is handled; other results are logged as warnings.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1785-L1796 | R source: R_FindNamespace1}
+	 */
 	R_FindNamespace1(info: RObjectData): RObjectData {
 		const where: RObjectData = {};
 		where.type = SexpType.CharSxp;
@@ -696,6 +811,15 @@ export class RDAParser{
 		return val;
 	}
 
+	/**
+	 * Deserializes a single SEXP node recursively.
+	 *
+	 * The method dispatches to the corresponding deserialization logic
+	 * depending on the encoded {@link SexpType}.
+	 * @param flags - Serialized SEXP flags word.
+	 * @returns Deserialized {@link RObjectData}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1871-L2115 | R source: ReadItem_Recursive}
+	 */
 	readItemRecursive(flags: number): RObjectData {
 		const [type, levels, object, hasAttribute, _hasTag] = this.unpackFlags(flags);
 
@@ -726,7 +850,7 @@ export class RDAParser{
 				const state = this.readItem() as RObjectData;
 				const attr = this.readItem() as RObjectData;
 				s.type = (((info.cdr as RObjectData).cdr as RObjectData).car as RObjectData).type as SexpType;
-				s = this.AltRepUnserializeEx(info, state, attr, object, levels); //TODO
+				s = this.AltRepUnserializeEx(info, state, attr, object, levels);
 				this.currentDepth--;
 				return s;
 			}
@@ -768,7 +892,7 @@ export class RDAParser{
 				if(s.attributes?.some(e => e.name === RValues.ClassSymbol)){
 					s._isObject = true;
 				}
-				// R_RestoreHashCount(s); -> TODO
+				// R_RestoreHashCount(s);
 				if(locked) {
 					s._isLocked = false;
 				}
@@ -813,7 +937,7 @@ export class RDAParser{
 							const name = this.inString(len);
 							const index = R_FunTabOffsets[name] as number;
 							if(name in R_FunTabOffsets) {
-								s = this.mkPrimSxp(index, SexpType.BuiltInSxp); // TODO
+								s = this.mkPrimSxp(index, SexpType.BuiltInSxp);
 							} else {
 								s.value = RValues.NilValue;
 								throw new Error(`unrecognized internal function name "${name}"`);
@@ -919,6 +1043,13 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Skips a serialized SEXP node, only filling in its type and calling other skip methods to
+	 * advance the buffer position.
+	 *
+	 * Mirrors the structure of {@link readItemRecursive} but skips payload data.
+	 * @returns A minimal {@link RObjectData} with little to no payload.
+	 */
 	skipItem(): RObjectData {
 		const flags = this.assertInteger(this.inInteger());
 		const [type, levels, _object, hasAttribute, _hasTag] = this.unpackFlags(flags);
@@ -1103,6 +1234,12 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Reads `len` raw bytes from the buffer into a number array.
+	 * @param len - Number of raw bytes to read.
+	 * @returns Array of unsigned byte values.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2062-L2084 | R source: ReadItem_Recursive}
+	 */
 	inRaw(len: number): number[]{
 		const result = [];
 		switch(this.format) {
@@ -1126,6 +1263,12 @@ export class RDAParser{
 		return result;
 	}
 
+	/**
+	 * Advances the buffer offset past `len` raw bytes without reading values.
+	 *
+	 * Mirrors {@link inRaw}.
+	 * @param len - Number of raw bytes to skip.
+	 */
 	skipRaw(len: number): void{
 		if(this.format === 'ASCII') {
 			for(let ix = 0; ix < len; ix++) {
@@ -1142,10 +1285,23 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Resolves package environments.
+	 * @param _s - String-vec {@link RObject} identifying the package.
+	 *
+	 * Not implemented yet!
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3732-L3741 | R source: R_FindPackageEnv}
+	 */
 	rFindPackageEnv(_s: RObject): void {
 		throw new Error('Not implemented yet!');
 	}
 
+	/**
+	 * Decodes the SEXP flags.
+	 * @param flags - Raw 32-bit flags word.
+	 * @returns `[type, levels, isObject, hasAttribute, hasTag]`.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L748-L756 | R source: UnpackFlags}
+	 */
 	unpackFlags(flags: number): [number, number, boolean, boolean, boolean] {
 		const pType = flags & 255;
 		const pLevels = flags >> 12;
@@ -1156,6 +1312,13 @@ export class RDAParser{
 		return [pType, pLevels, pIsObj, pHasAttr, pHasTag];
 	}
 
+	/**
+	 * Retrieves an object from the reference table.
+	 * @param index - 1-based reference index.
+	 * @returns A registered {@link RObjectData}.
+	 * @throws Error if the index is out of range.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1461-L1469 | R source: GetReadRef}
+	 */
 	getReadRef(index: number): RObjectData {
 		const i = index - 1;
 
@@ -1165,6 +1328,15 @@ export class RDAParser{
 		return this.refTable[i] as RObjectData;
 	}
 
+	/**
+	 * Extracts the reference index from the given flags.
+	 *
+	 * When bits 8–31 are non-zero they encode the index directly;
+	 * otherwise the index is read as the next integer from the stream.
+	 * @param flags - Raw 32-bit flags word.
+	 * @returns A 1-based reference index.
+	 * @see {@link http://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L782-L789 | R source: InRefIndex}
+	 */
 	inRefIndex(flags: number): number {
 		const i = flags >> 8;
 		if(i === 0) {
@@ -1174,10 +1346,21 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Appends an object to the reference table so it can be resolved later by {@link getReadRef}.
+	 * @param value - The {@link RObject} to register.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1471-L1490 | R source: AddReadRef}
+	 */
 	addReadRef(value: RObject): void {
 		this.refTable.push(value);
 	}
 
+	/**
+	 * Reads a persistent string vector from the stream.
+	 * @returns An {@link RObjectData} of type `CharSxp` whose `value` array holds the deserialized string items.
+	 * @throws Error if the names flag is non-zero.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1492-L1504 | R source: InStringVec}
+	 */
 	inStringVec(): RObjectData {
 		if(this.inInteger() !== 0) {
 			throw new Error('names in persistent strings are not supported yet');
@@ -1194,6 +1377,12 @@ export class RDAParser{
 		return s;
 	}
 
+	/**
+	 * Advances the buffer past a persistent string vector without reading values.
+	 *
+	 * Mirrors {@link inStringVec}.
+	 * @throws Error if the names flag is non-zero.
+	 */
 	skipStringVec(): void {
 		if(this.inInteger() !== 0) {
 			throw new Error('names in persistent strings are not supported yet');
@@ -1206,6 +1395,13 @@ export class RDAParser{
 		this.currentDepth--;
 	}
 
+	/**
+	 * Sets the enclosing environment of an environment object.
+	 * @param x - Environment whose enclosure should be set.
+	 * @param v - Parent environment.
+	 * @throws Error if the parent is invalid or would introduce a cycle.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4677-L4690 | R source: SET_ENCLOS}
+	 */
 	SetEnClos(x: RObjectData, v: RObjectData): void {
 		if(v.value === undefined || v.value === RValues.NilValue) {
 			v.value = RValues.EmptyEnv;
@@ -1222,6 +1418,13 @@ export class RDAParser{
 		x.enClos = v;
 	}
 
+	/**
+	 * Iteratively deserializes linked-list based SEXP structures.
+	 * @param flags - Initial flags.
+	 * @returns Head node of the reconstructed pairlist chain as {@link RObjectData}.
+	 * @throws Error if the initial type is not a valid pairlist type.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1800-L1868 | R source: ReadItem_Iterative}
+	 */
 	readItemIterative(flags: number): RObjectData{
 		let sFirst: RObjectData | null = null;
 		let sLast: RObjectData = {};
@@ -1257,7 +1460,7 @@ export class RDAParser{
 			s.attributes = hasAttr ? [this.shortcut ? this.skipItem() : this.assertRObjectData(this.readItem())] : undefined;
 			s.tag = hasTag ? this.readItem() : RValues.NilValue;
 
-			if(hasTag && this.currentDepth == 1 && typeof s.tag === 'object') {
+			if(hasTag && this.currentDepth == this.initialDepth && typeof s.tag === 'object') {
 				this.lastName = s.tag.name;
 				this.setLastName = true;
 			}
@@ -1289,7 +1492,17 @@ export class RDAParser{
 		return sFirst as RObjectData;
 	}
 
-	// TODO types
+	/**
+	 * Creates a weak reference object.
+	 * @param key - Weak reference key object.
+	 * @param val - Referenced value.
+	 * @param fin - Finalizer function or NULL.
+	 * @param onexit - Whether the finalizer should run on exit.
+	 * @returns The created weak reference object as {@link RObject}.
+	 * @throws Error if the finalizer type is invalid.
+	 * TODO: ensure types are correct.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1424-L1435 | R source: R_MakeWeakRef}
+	 */
 	R_MakeWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType | RValues.NilValue, onexit: boolean): RObject {
 		switch(fin) {
 			case SexpType.NilSxp:
@@ -1303,7 +1516,18 @@ export class RDAParser{
 		return this.newWeakRef(key, val, fin, onexit);
 	}
 
-	// TODO types
+	/**
+	 * Allocates and initializes a weak reference object.
+	 *
+	 * TODO: ensure types are correct.
+	 * @param key - Weak reference key object.
+	 * @param val - Referenced value.
+	 * @param fin - Finalizer function.
+	 * @param onexit - Whether the finalizer should run on exit.
+	 * @returns The initialized weak reference object as {@link RObject}.
+	 * @throws Error if the key type is invalid.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1388-L1422 | R source: NewWeakRef}
+	 */
 	newWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType, onexit: boolean): RObject{
 		switch(key) {
 			case SexpType.NilSxp:
@@ -1351,7 +1575,16 @@ export class RDAParser{
 		return w;
 	}
 
-	// TODO
+	/**
+	 * Creates or retrieves a cached primitive function object.
+	 *
+	 * TODO: Rework primitive cache typing and initialization.
+	 * @param index - Primitive function table index.
+	 * @param evaluation - Non-zero for {@link SexpType.BuiltInSxp}, zero for {@link SexpType.SpecialSxp}.
+	 * @returns of type {@link SexpType.BuiltInSxp} or {@link SexpType.SpecialSxp}.
+	 * @throws Error if the index is out of range or the cached type mismatches.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/dstruct.c#L37-L68 | R source: mkPRIMSXP}
+	 */
 	mkPrimSxp(index: number, evaluation: number): RObjectData {
 		const type = evaluation ? SexpType.BuiltInSxp : SexpType.SpecialSxp;
 		let primCache: RObject = RValues.NilValue;
@@ -1382,7 +1615,17 @@ export class RDAParser{
 		return result;
 	}
 
-	// TODO
+	/**
+	 * Reads `len` bytes as a character string and applies encoding from the GP bits.
+	 *
+	 * Encoding flags: bit 3 = UTF-8, bit 2 = Latin-1, bit 6 = bytes (returned as-is).
+	 * @param len - Number of bytes to read.
+	 * @param levs - GP levels bits from the `CharSxp` flags word.
+	 * @returns The decoded string, or `''` when the encoding is not yet handled.
+	 * TODO: Implement UTF-8 etc..
+	 *
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1689-L1759 | R source: ReadChar}
+	 */
 	readChar(len: number, levs: number): string{
 		const cbuf = this.inString(len);
 		if(levs & (1 << 3))  {
@@ -1401,6 +1644,12 @@ export class RDAParser{
 		// throw new Error('Native encoding not supported yet.');
 	}
 
+	/**
+	 * Reads a vector length from the stream.
+	 * @returns The vector length.
+	 * @throws Error for negative lengths or an invalid high-word value.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1761-L1782 | R source: ReadLENGTH}
+	 */
 	readLength(): number {
 		const len = this.assertInteger(this.inInteger());
 		if(len < -1) {
@@ -1420,6 +1669,13 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Reads `len` integers from the buffer.
+	 * @param len - Number of integers to read.
+	 * @returns Array of integer values or {@link RValues.NaInteger}.
+	 * @throws Error for BINARY format or XDR buffer overrun.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1507-L1541 | R source: InIntegerVec}
+	 */
 	inIntegerVec(len: number): (number | RValues.NaInteger)[]{
 		switch(this.format) {
 			case 'XDR':
@@ -1452,6 +1708,14 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer past `len` serialized integers without reading values.
+	 *
+	 * Mirrors {@link inIntegerVec}.
+	 * @param len - Number of integers to skip.
+	 * @returns An empty array.
+	 * @throws Error for BINARY format or XDR buffer overrun.
+	 */
 	skipIntegerVec(len: number): (number | RValues.NaInteger)[] {
 		switch(this.format) {
 			case 'XDR':
@@ -1481,6 +1745,13 @@ export class RDAParser{
 		return [];
 	}
 
+	/**
+	 * Reads `len` doubles from the buffer.
+	 * @param len - Number of doubles to read.
+	 * @returns Array of numbers or {@link RValues}.
+	 * @throws Error for BINARY format.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1543-L1577 | R source: InRealVec}
+	 */
 	inRealVec(len: number): (number | RValues)[] | null[]{
 		switch(this.format) {
 			case 'XDR': {
@@ -1514,6 +1785,14 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer past `len` serialized doubles without reading values.
+	 *
+	 * Mirrors {@link inRealVec}.
+	 * @param len - Number of doubles to skip.
+	 * @returns An empty array.
+	 * @throws Error for BINARY format.
+	 */
 	skipRealVec(len: number): (number | RValues)[] | null[] {
 		switch(this.format) {
 			case 'XDR': {
@@ -1538,6 +1817,12 @@ export class RDAParser{
 		return [];
 	}
 
+	/**
+	 * Reads the next double from the buffer.
+	 * @returns A number or an {@link RValues}.
+	 * @throws TypeError if the ASCII token is not a valid float.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L427-L463 | R source: InReal}
+	 */
 	inReal(): Real {
 		switch(this.format){
 			case 'ASCII': {
@@ -1574,6 +1859,11 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer past the next serialized double without reading it.
+	 *
+	 * Mirrors {@link inReal}.
+	 */
 	skipReal(): void {
 		if(this.format === 'ASCII') {
 			this.skipWord();
@@ -1585,6 +1875,15 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Reads `len` complex numbers from the buffer.
+	 *
+	 * Each value is read as two consecutive doubles via {@link inComplex}.
+	 * @param len - Number of complex values to read.
+	 * @returns Array of {@link Complex} objects.
+	 * @throws Error for BINARY format.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1579-L1616 | R source: InComplexVec}
+	 */
 	inComplexVec(len: number): Complex[] {
 		switch(this.format) {
 			case 'XDR': {
@@ -1611,6 +1910,13 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer past `len` serialized complex numbers.
+	 *
+	 * Mirrors {@link inComplexVec}.
+	 * @param len - Number of complex values to skip.
+	 * @throws Error for BINARY format.
+	 */
 	skipComplexVec(len: number): void {
 		switch(this.format) {
 			case 'XDR': {
@@ -1634,15 +1940,35 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Reads a single complex number as two consecutive real values.
+	 * @returns A {@link Complex} object with `r` (real) and `i` (imaginary) parts.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L465-L471 | R source: InComplex}
+	 */
 	inComplex(): Complex {
 		return { r: this.inReal(), i: this.inReal() };
 	}
 
+	/**
+	 * Advances the buffer past a single serialized complex number (two doubles).
+	 *
+	 * Mirrors {@link inComplex}.
+	 */
 	skipComplex(): void {
 		this.skipReal();
 		this.skipReal();
 	}
 
+	/**
+	 * Sets the `i`-th element of a character vector.
+	 *
+	 * TODO: implement
+	 * @param x - The character vector with type {@link SexpType.StrSxp} to modify.
+	 * @param i - index to set.
+	 * @param v - The {@link SexpType.CharSxp} {@link RObjectData} whose `name` is stored.
+	 * @throws Error if `x` is not a {@link SexpType.StrSxp} or `i` is out of bounds.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4283-L4301 | R source: SET_STRING_ELT}
+	 */
 	SET_STRING_ELT(x: RObjectData, i: number, v: RObjectData): void {
 		if(x.type !== SexpType.StrSxp) {
 			throw new Error(`SET_STRING_ELT() can only be applied to a 'character vector', not a '${x.type}'`);
@@ -1664,6 +1990,16 @@ export class RDAParser{
 		// arr[i] = v.name;
 	}
 
+	/**
+	 * Sets the `i`-th element of a generic list or vector.
+	 *
+	 * Mirrors R's `SET_VECTOR_ELT` macro.
+	 * @param x - The list or vector to modify.
+	 * @param i - index to set.
+	 * @param v - The {@link RObject} to store at position `i`.
+	 * @throws Error if `x` is not a list type or `i` is out of bounds.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4303-L4322 | R source: SET_VECTOR_ELT}
+	 */
 	SET_VECTOR_ELT(x: RObjectData, i: number, v: RObject): void {
 		if(x.type !== SexpType.VecSxp &&
 			x.type !== SexpType.ExprSxp &&
@@ -1677,6 +2013,11 @@ export class RDAParser{
 		(x.value as RObject[])[i] = v;
 	}
 
+	/**
+	 * Deserializes an R bytecode object.
+	 * @returns A {@link SexpType.BcodesSxp} {@link RObject}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2221-L2228 | R source: ReadBC}
+	 */
 	readBC(): RObject {
 		const reps: RObjectData = {};
 		reps.type = SexpType.VecSxp;
@@ -1684,11 +2025,21 @@ export class RDAParser{
 		return this.readBC1(reps);
 	}
 
+	/**
+	 * Advances the buffer past a bytecode object without reading it.
+	 *
+	 * Mirrors {@link readBC}.
+	 */
 	skipBC(): void{
 		this.skipInteger();
 		this.skipBC1();
 	}
 
+	/**
+	 * Advances past a single bytecode.
+	 *
+	 * Mirrors {@link readBC1}.
+	 */
 	skipBC1(): void {
 		this.currentDepth++;
 		this.skipItem();
@@ -1696,6 +2047,11 @@ export class RDAParser{
 		this.skipBCConsts();
 	}
 
+	/**
+	 * Advances past all bytecode constants.
+	 *
+	 * Mirrors {@link ReadBCConsts}.
+	 */
 	skipBCConsts(): void {
 		const n = this.assertInteger(this.inInteger());
 		for(let i = 0; i < n; i++) {
@@ -1722,10 +2078,22 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Registers a bytecode object after encoding.
+	 * TODO: implement
+	 *
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8820-L8885 | R source: R_registerBC}
+	 */
 	R_registerBC(_bytes: RObject, _s: RObject) {
 		throw new Error('BC not implemented yet');
 	}
 
+	/**
+	 * Deserializes a single bytecode object.
+	 * @param reps - Pre-allocated repetition table shared across all constants.
+	 * @returns A {@link SexpType.BcodesSxp} {@link RObjectData}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2205-L2219 | R source: ReadBC1}
+	 */
 	readBC1(reps: RObjectData): RObjectData {
 		const s: RObjectData = {};
 		s.type = SexpType.BcodesSxp;
@@ -1740,10 +2108,23 @@ export class RDAParser{
 		return s;
 	}
 
+	/**
+	 * Encodes bytecode instructions.
+	 * @param _bytes - integer array
+	 * TODO: implement
+	 *
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8723-L8771 | R source: R_bcEncode}
+	 */
 	_R_bcEncode(_bytes: Int32Array){
 		throw new Error('Not implemented');
 	}
 
+	/**
+	 * Reads the constants of a bytecode object.
+	 * @param reps - Shared repetition table for `BcRepDef`/`BcRepRef` resolution.
+	 * @returns A `VecSxp` {@link RObjectData} holding all `n` constants.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2173-L2203 | R source: ReadBCConsts}
+	 */
 	ReadBCConsts(reps: RObjectData): RObjectData {
 		const n = this.assertInteger(this.inInteger());
 		const ans: RObjectData = {};
@@ -1776,6 +2157,13 @@ export class RDAParser{
 		return ans;
 	}
 
+	/**
+	 * Reads a single language object from bytecode constants.
+	 * @param type - {@link SexpType} read from the constants.
+	 * @param reps - Shared repetition table.
+	 * @returns The deserialized language {@link RObjectData}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L2125-L2171 | R source: ReadBCLang}
+	 */
 	ReadBCLang(type: SexpType, reps: RObjectData): RObjectData {
 		switch(type) {
 			case SexpType.BcRepRef:
@@ -1822,6 +2210,12 @@ export class RDAParser{
 		}
 	}
 
+	/**
+	 * Advances the buffer past a single language object.
+	 *
+	 * Mirrors {@link ReadBCLang}.
+	 * @param type - read {@link SexpType}.
+	 */
 	skipBCLang(type: SexpType) {
 		switch(type) {
 			case SexpType.BcRepRef:
@@ -1863,7 +2257,15 @@ export class RDAParser{
 		}
 	}
 
-	// TODO
+	/**
+	 * Retrieves the `i`-th element of a generic list or vector.
+	 * @param x - The list / expression / weak-ref vector.
+	 * @param i - The index to retrieve.
+	 * @returns The {@link RObject} at position `i`.
+	 * @throws Error if `x` is not a list type or `i` is out of bounds.
+	 * TODO: finish
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4122-L4142 | R source: VECTOR_ELT}
+	 */
 	VECTOR_ELT(x: RObjectData,  i: number): RObject {
 		if(x.type !== SexpType.VecSxp &&
 			x.type !== SexpType.ExprSxp &&
@@ -1887,7 +2289,13 @@ export class RDAParser{
 		}
 	}
 
-	// TODO
+	/**
+	 * Checks whether a bytecode object's version is within the supported range.
+	 * @param s - The {@link SexpType.BcodesSxp} {@link RObjectData} to check.
+	 * @returns `true` if the version is supported.
+	 * TODO: finish
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L7166-L7175 | R source: R_BCVersionOK}
+	 */
 	R_BCVersionOK(s: RObjectData): boolean{
 		if(s.type !== SexpType.BcodesSxp) {
 			return false;
@@ -1900,6 +2308,12 @@ export class RDAParser{
 		return (version >= 9 && version <= 12);
 	}
 
+	/**
+	 * Returns the source-language expression for an unsupported bytecode object.
+	 * @param s - The {@link SexpType.BcodesSxp} {@link RObjectData}.
+	 * @returns First constant pool entry if available, otherwise {@link RValues.NilValue}.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L5566-L5574 | R source: bytecodeExpr}
+	 */
 	R_BytecodeExpr(s: RObjectData): RObject {
 		if(s.type === SexpType.BcodesSxp) {
 			if(((s.cdr as RObjectData).value as RObject[])?.length > 0) {
@@ -1912,7 +2326,18 @@ export class RDAParser{
 		}
 	}
 
-	// TODO
+	/**
+	 * Attempts to unserialize an ALTREP object.
+	 * @param info - The info to be unserialized.
+	 * @param _state - Serialized state.
+	 * @param _attr - Serialized attributes.
+	 * @param _objf - IS_OBJECT flag.
+	 * @param _levs - GP levels bits.
+	 * @returns The {@link RObjectData} or .
+	 * @throws Error if the base type is not a supported vector type.
+	 * TODO: finish
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L298-L338 | R source: ALTREP_UNSERIALIZE_EX}
+	 */
 	AltRepUnserializeEx(info: RObjectData, _state: RObjectData, _attr: RObjectData, _objf: boolean, _levs: number): RObjectData {
 		const cSym = info.car;
 		const pSym = (info.cdr as RObjectData).car;
@@ -1951,6 +2376,12 @@ export class RDAParser{
 		return {} as RObjectData;
 	}
 
+	/**
+	 * Looks up the ALTREP class for the given class/package symbol pair.
+	 * @param info - The info to be looked up.
+	 * @returns The class {@link RObjectData} when found, `undefined` if unregistered, or `null` if `info` is not a `ListSxp`.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L279-L296 | R source: ALTREP_UNSERIALIZE_CLASS}
+	 */
 	ALTREP_UNSERIALIZE_CLASS(info: RObjectData) {
 		if(info.type == SexpType.ListSxp) {
 			const cSym = info.car as RObjectData;
@@ -1961,7 +2392,7 @@ export class RDAParser{
 				try {
 					this.R_FindNamespace(pName);
 				} catch(e){
-					console.log(`${pName} ${e}`);
+					console.log(`${pName.value as string} ${e as string}`);
 				}
 				clss = this.LookupClass(cSym, pSym);
 			}
@@ -1970,11 +2401,25 @@ export class RDAParser{
 		return null;
 	}
 
+	/**
+	 * Looks up an ALTREP class entry by class and package symbol.
+	 * @param cSym - Class symbol.
+	 * @param pSym - Package symbol.
+	 * @returns The {@link RObjectData} or `undefined` if not registered.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L90-L94 | R source: LookupClass}
+	 */
 	LookupClass(cSym: RObjectData, pSym: RObjectData) {
 		const entry = this.LookupClassEntry(cSym, pSym);
 		return entry === undefined || entry === null ? undefined : entry.car as RObjectData;
 	}
 
+	/**
+	 * Searches the ALTREP class registry for an entry matching the given symbols.
+	 * @param cSym - Class symbol to match.
+	 * @param pSym - Package symbol to match.
+	 * @returns The matching registry node or `null` if not found.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/altrep.c#L53-L59 | R source: LookupClassEntry}
+	 */
 	LookupClassEntry(cSym: RObject, pSym: RObject): RObjectData | null{
 		if(!this.Registry) {
 			return null;
@@ -1988,7 +2433,13 @@ export class RDAParser{
 		return null;
 	}
 
-	ScalarString(x: string){
+	/**
+	 * Creates a length-1 character vector wrapping the given string.
+	 * @param x - The string value to wrap.
+	 * @returns A {@link SexpType.StrSxp} {@link RObjectData} with one element.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/include/Rinlinedfuns.h#L1044-L1052 | R source: ScalarString}
+	 */
+	ScalarString(x: string): RObjectData{
 		const ans: RObjectData = {};
 		ans.type = SexpType.StrSxp;
 		ans.value = new Array(1);
@@ -1996,6 +2447,12 @@ export class RDAParser{
 		return ans;
 	}
 
+	/**
+	 * Recomputes and restores the cached hash-table priority count for an environment.
+	 * @param s - The {@link RObjectData} whose hash table is to be repaired.
+	 * TODO: Call `SET_HASHPRI` once the binding is available and finish.
+	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/envir.c#L3685-L3698 | R source: R_RestoreHashCount}
+	 */
 	restoreHashCount(s: RObjectData): void{
 		if(s.hashTab !== RValues.NilValue) {
 			const table = s.hashTab as RObjectData;
@@ -2007,10 +2464,15 @@ export class RDAParser{
 				}
 			}
 			// SET_HASHPRI(table, count);
-			//TODO???
 		}
 	}
 
+	/**
+	 * Converts a linked-list based R object tree into a flat array representation.
+	 * @param node - Root node of the deserialized object tree.
+	 * @param shortcut - Whether payload values should be omitted.
+	 * @returns Flattened array of top-level objects.
+	 */
 	flattenRObject(node: RObject, shortcut: boolean): RObjectData[] {
 		const result:  RObjectData[] = [];
 

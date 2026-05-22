@@ -13,6 +13,7 @@ import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
+import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 
 async function simpleNormalizedAst(code: string) {
 	const analyzer = await new FlowrAnalyzerBuilder().build();
@@ -169,6 +170,11 @@ visitAst(nodes, node => {
 });
 return ids;
 `)}
+
+### Stateful Fold
+
+A stateful fold over the normalized AST can be performed with the ${ctx.link(foldAstStateful)} function.
+It allows you to specify a down function which is called during the down-pass and can pass information to child nodes, and fold functions which are called after the down-pass in conventional fold-fashion.
 `;
 	}
 }

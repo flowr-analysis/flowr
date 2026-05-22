@@ -1,16 +1,14 @@
-import { codeBlock, codeInline } from './doc-util/doc-code';
+import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details } from './doc-util/doc-structure';
-import { DefaultNormalizedAstFold } from '../abstract-interpretation/normalized-ast-fold';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrInlineTextFile } from '../project/context/flowr-file';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { parseRoxygenCommentsOfNode } from '../r-bridge/roxygen2/roxygen-parse';
-import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RBinaryOp } from '../r-bridge/lang-4.x/ast/model/nodes/r-binary-op';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
@@ -38,44 +36,6 @@ async function quickNormalizedAstMultipleFiles() {
 	const n = await analyzer.normalize();
 	return n;
 }
-
-export /* we have it in this separate line just to hide it in the doc generation */
-class MyMathFold<Info> extends DefaultNormalizedAstFold<number, Info> {
-	constructor() {
-		/* use \`0\` as a placeholder empty for the monoid */
-		super(0);
-	}
-
-	protected override concat(a: number, b: number): number {
-		/* for this example, we ignore cases that we cannot handle */
-		return b;
-	}
-
-	override foldRNumber(node: RNumber<Info>) {
-		/* return the value of the number */
-		return node.content.num;
-	}
-
-	override foldRBinaryOp(node: RBinaryOp<Info>) {
-		if(node.operator === '+') {
-			return this.fold(node.lhs) + this.fold(node.rhs);
-		} else if(node.operator === '*') {
-			return this.fold(node.lhs) * this.fold(node.rhs);
-		} else {
-			/* in case we cannot handle the operator we could throw an error, or just use the default behavior: */
-			return super.foldRBinaryOp(node);
-		}
-	}
-}
-
-async function useMyMathFoldExample() {
-	const analyzer = await new FlowrAnalyzerBuilder().build();
-	analyzer.addRequest('1 + 3 * 2');
-	const normalize = await analyzer.normalize();
-	const result = new MyMathFold().fold(normalize.ast);
-	return result;
-}
-
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Normalized-AST
@@ -147,7 +107,7 @@ ${details('Normalized AST Node Types',
 The following segments intend to give you an overview of how to work with the normalized AST:
 
 * [How to get a Normalized AST](#how-to-get-a-normalized-ast)
-* [Visitors and Folds](#visitors-and-folds)
+* [Visitors](#visitors)
 
 > [!TIP]
 > If you want to get more information on roxygen comments attached to AST nodes,
@@ -182,8 +142,8 @@ ${printNormalizedAst((await quickNormalizedAstMultipleFiles()).ast, 'flowchart L
 
 ## Traversing the Normalized AST
 
-We provide two ways to traverse the normalized AST: [Visitors](#visitors) and [Folds](#folds).
-Please note, that they usually operate on the ${ctx.link('RExpressionList')} level, and it is up to
+We provide a visitor to traverse the normalized AST.
+Please note, that it usually operates on the ${ctx.link('RExpressionList')} level, and it is up to
 you to decide how you want to traverse multiple files with a ${ctx.link('RProject')} in the AST (you can, for example, simplify flat-map over the files).
 The ${ctx.link('RProject')} node cannot appear nested within other nodes, so you can safely assume that any child of a node is not an ${ctx.link('RProject')}.
 
@@ -208,29 +168,7 @@ visitAst(nodes, node => {
     ids.add(node.info.id);
 });
 return ids;
-`)} 
-
-### Folds
-
-We formulate a fold with the base class ${ctx.link(DefaultNormalizedAstFold)} in ${getFilePathMd('../abstract-interpretation/normalized-ast-fold.ts')}.
-Using this class, you can create your own fold behavior by overwriting the default methods.
-By default, the class provides a monoid abstraction using the _empty_ from the constructor and the _concat_ method.
-
- 
-${ctx.hierarchy(DefaultNormalizedAstFold)}
-
-Now, of course, we could provide hundreds of examples here, but we use tests to verify that the fold behaves as expected
-and happily point to them at ${getFilePathMd('../../test/functionality/r-bridge/normalize-ast-fold.test.ts')}.
-
-As a simple showcase, we want to use the fold to evaluate numeric expressions containing numbers, \`+\`, and \`*\` operators.
-
-${ctx.code(MyMathFold, { dropLinesStart: 1 })}
-
-Now, we can use the ${ctx.link(FlowrAnalyzer)} (see the ${ctx.linkPage('wiki/Analyzer')} wiki page) to get the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} and apply the fold:
- 
-${ctx.code(useMyMathFoldExample, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}
-
-Running the code, we retrieve the result: ${codeInline(String(await useMyMathFoldExample()))}.
+`)}
 `;
 	}
 }

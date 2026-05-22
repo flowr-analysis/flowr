@@ -51,12 +51,12 @@ export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value
 	/**
 	 * Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice.
 	 */
-	join(other: this): this;
+	join(other: this | Value | Top | Bot): this;
 
 	/**
 	 * Meets the current abstract value with another abstract value by creating the greatest lower bound (GLB) in the lattice.
 	 */
-	meet(other: this): this;
+	meet(other: this | Value | Top | Bot): this;
 
 	/**
 	 * Converts the lattice into a JSON serializable value.

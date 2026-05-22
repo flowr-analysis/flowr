@@ -1,9 +1,9 @@
 import { describe } from 'vitest';
 import type { AbstractValue, AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 import { BoundedSetDomain } from '../../../../src/abstract-interpretation/domains/bounded-set-domain';
-import { IntervalDomain, IntervalTop } from '../../../../src/abstract-interpretation/domains/interval-domain';
+import { type IntervalLift, IntervalDomain, IntervalTop } from '../../../../src/abstract-interpretation/domains/interval-domain';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
-import { PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
+import { type PosIntervalLift, PosIntervalDomain, PosIntervalTop } from '../../../../src/abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../../../../src/abstract-interpretation/domains/set-range-domain';
 import { SetUpperBoundDomain } from '../../../../src/abstract-interpretation/domains/set-upper-bound-domain';
 import { SingletonDomain } from '../../../../src/abstract-interpretation/domains/singleton-domain';
@@ -50,31 +50,31 @@ describe('Abstract Domains', () => {
 
 	const setTests = [{
 		name:   'Bounded Set Domain',
-		create: (value: string[] | typeof Top) => new BoundedSetDomain(value) as AnyAbstractDomain
+		create: (value: string[] | typeof Bottom | typeof Top) => new BoundedSetDomain(value === Bottom ? [] : value) as AnyAbstractDomain
 	}, {
 		name:   'Set Upper Bound Domain',
-		create: (value: string[] | typeof Top) => new SetUpperBoundDomain(value) as AnyAbstractDomain
+		create: (value: string[] | typeof Bottom | typeof Top) => new SetUpperBoundDomain(value) as AnyAbstractDomain
 	}];
 
 	for(const { name, create } of setTests) {
 		describe(name, () => {
-			assertAbstractDomain(create, [], [], {
-				equal: true, leq: true, join: [], meet: [], widen: [], narrow: []
+			assertAbstractDomain(create, Bottom, Bottom, {
+				equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom
 			});
 			assertAbstractDomain(create, Top, Top, {
 				equal: true, leq: true, join: Top, meet: Top, widen: Top, narrow: Top
 			});
-			assertAbstractDomain(create, [], Top, {
-				equal: false, leq: true, join: Top, meet: [], widen: Top, narrow: []
+			assertAbstractDomain(create, Bottom, Top, {
+				equal: false, leq: true, join: Top, meet: Bottom, widen: Top, narrow: Bottom
 			});
-			assertAbstractDomain(create, Top, [], {
-				equal: false, leq: false, join: Top, meet: [], widen: Top, narrow: []
+			assertAbstractDomain(create, Top, Bottom, {
+				equal: false, leq: false, join: Top, meet: Bottom, widen: Top, narrow: Bottom
 			});
-			assertAbstractDomain(create, [], ['id', 'age'], {
-				equal: false, leq: true, join: ['id', 'age'], meet: [], widen: Top, narrow: []
+			assertAbstractDomain(create, Bottom, ['id', 'age'], {
+				equal: false, leq: true, join: ['id', 'age'], meet: Bottom, widen: ['id', 'age'], narrow: Bottom
 			});
-			assertAbstractDomain(create, ['id', 'age'], [], {
-				equal: false, leq: false, join: ['id', 'age'], meet: [], widen: ['id', 'age'], narrow: ['id', 'age']
+			assertAbstractDomain(create, ['id', 'age'], Bottom, {
+				equal: false, leq: false, join: ['id', 'age'], meet: Bottom, widen: ['id', 'age'], narrow: Bottom
 			});
 			assertAbstractDomain(create, ['id', 'age'], ['age', 'id'], {
 				equal: true, leq: true, join: ['id', 'age'], meet: ['id', 'age'], widen: ['id', 'age'], narrow: ['id', 'age']
@@ -101,8 +101,8 @@ describe('Abstract Domains', () => {
 	}
 
 	describe('Set Range Domain', () => {
-		const create = (value: [min: string[], range: string[] | typeof Top] | typeof Bottom) =>
-			new SetRangeDomain(value === Bottom ? value : { min: value[0], range: value[1] === Top ? Top : value[1] });
+		const create = (value: [must: string[], may: string[] | typeof Top] | typeof Bottom) =>
+			new SetRangeDomain(value === Bottom ? value : { must: value[0], may: value[1] === Top ? Top : value[1] });
 
 		assertAbstractDomain(create, Bottom, Bottom, {
 			equal: true, leq: true, join: Bottom, meet: Bottom, widen: Bottom, narrow: Bottom
@@ -186,12 +186,12 @@ describe('Abstract Domains', () => {
 
 	const intervalTests = [{
 		name:   'Interval Domain',
-		create: (value: AbstractValue<IntervalDomain>) => new IntervalDomain(value),
+		create: (value: IntervalLift) => new IntervalDomain(value),
 		min:    IntervalTop[0],
 		max:    IntervalTop[1]
 	}, {
 		name:   'Positive Interval Domain',
-		create: (value: AbstractValue<PosIntervalDomain>) => new PosIntervalDomain(value),
+		create: (value: PosIntervalLift) => new PosIntervalDomain(value),
 		min:    PosIntervalTop[0],
 		max:    PosIntervalTop[1]
 	}];

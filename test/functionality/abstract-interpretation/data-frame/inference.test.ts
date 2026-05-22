@@ -362,9 +362,11 @@ print(df)
 				shell,
 				`
 if (2 < 1) {
-	df <- data.frame(id = 1:5)
+	df1 <- data.frame(id = 1:5)
+} else {
+	df2 <- data.frame(id = 1:5)
 }
-print(df)
+print(df1)
 				`.trim(),
 				[['4@df', DataFrameShapeOverapproximation]]
 			);

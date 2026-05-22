@@ -1,6 +1,7 @@
 import type { Writable } from 'ts-essentials';
-import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
+import { isNotUndefined } from '../../util/assert';
 import { Record } from '../../util/record';
+import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
@@ -22,7 +23,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
 		this.domain = domain;
 
-		if(reduce) {
+		if(reduce && this.reduce) {
 			(this._value as Writable<Product>) = this.reduce(this.value);
 		}
 	}
@@ -42,7 +43,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create({} as Product);
 	}
 
-	public equals(other: this): boolean {
+	protected equalsValue(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -56,7 +57,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return true;
 	}
 
-	public leq(other: this): boolean {
+	protected leqValue(other: this): boolean {
 		if(this.value === other.value) {
 			return true;
 		}
@@ -70,7 +71,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return true;
 	}
 
-	public join(other: this): this {
+	protected joinValue(other: this): this {
 		const result = {} as Product;
 
 		for(const key in this.domain) {
@@ -81,7 +82,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public meet(other: this): this {
+	protected meetValue(other: this): this {
 		const result = {} as Product;
 
 		for(const key in this.domain) {
@@ -96,7 +97,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public widen(other: this): this {
+	protected widenValue(other: this): this {
 		const result = {} as Product;
 
 		for(const key in this.domain) {
@@ -107,7 +108,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public narrow(other: this): this {
+	protected narrowValue(other: this): this {
 		const result = {} as Product;
 
 		for(const key in this.domain) {
@@ -122,18 +123,18 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public toJson(): unknown {
+	protected jsonify(): unknown {
 		return Record.mapProperties(this.value, entry => entry?.toJson());
 	}
 
-	public toString(): string {
+	protected stringify(): string {
 		return '(' + Record.entries(this.value).map(([key, value]) => `${key}: ${value.toString()}`).join(', ') + ')';
 	}
 
 	public isTop(): boolean;
 	public isTop(): this is this;
 	public isTop(): this is this {
-		return Record.values(this.value).length === 0;
+		return Record.values(this.value).filter(isNotUndefined).length === 0;
 	}
 
 	public isBottom(): boolean;
@@ -151,7 +152,5 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	/**
 	 * Optional reduction function for a reduced product domain.
 	 */
-	protected reduce(value: Product): Product {
-		return value;
-	}
+	protected reduce?(value: Product): Product;
 }

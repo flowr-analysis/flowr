@@ -1,3 +1,4 @@
+
 import { guard } from '../../util/assert';
 import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 
@@ -32,11 +33,44 @@ implements Lattice<Value, Top, Bot, Lift> {
 
 	public abstract bottom(): this & AbstractDomain<Value, Top, Bot, Bot>;
 
-	public abstract equals(other: this): boolean;
+	public equals(other: this): boolean {
+		if(this.value === other.value || (this.isTop() && other.isTop()) || (this.isBottom() && other.isBottom())) {
+			return true;
+		} else if(!this.isValue() || !other.isValue()) {
+			return false;
+		}
+		return this.equalsValue(other);
+	}
 
-	public abstract leq(other: this): boolean;
+	protected abstract equalsValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): boolean;
 
-	public abstract join(other: this): this;
+	public leq(other: this): boolean {
+		if(this.isBottom() || other.isTop() || this.equals(other)) {
+			return true;
+		} else if(!this.isValue() || !other.isValue()) {
+			return false;
+		}
+		return this.leqValue(other);
+	}
+
+	protected abstract leqValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): boolean;
+
+	public join(other: this | Value | Top | Bot): this {
+		other = other instanceof AbstractDomain ? other : this.create(other);
+
+		if(this.isTop() || other.isTop()) {
+			return this.top();
+		} else if(this.isBottom()) {
+			return this.create(other.value);
+		} else if(other.isBottom()) {
+			return this.create(this.value);
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.bottom();
+		}
+		return this.joinValue(other);
+	}
+
+	protected abstract joinValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Joins the current abstract value with multiple other abstract values.
@@ -50,7 +84,22 @@ implements Lattice<Value, Top, Bot, Lift> {
 		return result;
 	}
 
-	public abstract meet(other: this): this;
+	public meet(other: this | Value | Top | Bot): this {
+		other = other instanceof AbstractDomain ? other : this.create(other);
+
+		if(this.isTop()) {
+			return this.create(other.value);
+		} else if(other.isTop()) {
+			return this.create(this.value);
+		} else if(this.isBottom() || other.isBottom()) {
+			return this.bottom();
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.top();
+		}
+		return this.meetValue(other);
+	}
+
+	protected abstract meetValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Meets the current abstract value with multiple other abstract values.
@@ -67,22 +116,99 @@ implements Lattice<Value, Top, Bot, Lift> {
 	/**
 	 * Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration.
 	 */
-	public abstract widen(other: this): this;
+	public widen(other: this): this {
+		if(this.isTop() || other.isTop()) {
+			return this.top();
+		} else if(this.isBottom()) {
+			return this.create(other.value);
+		} else if(other.isBottom()) {
+			return this.create(this.value);
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.bottom();
+		}
+		return this.widenValue?.(other) ?? (other.leq(this) ? this.create(this.value) : this.top());
+	}
+
+	protected widenValue?(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Narrows the current abstract value with another abstract value as a sound over-approximation of the meet (greatest lower bound) to refine the value after widening.
 	 */
-	public abstract narrow(other: this): this;
+	public narrow(other: this): this {
+		if(this.isTop()) {
+			return this.create(other.value);
+		} else if(other.isTop()) {
+			return this.create(this.value);
+		} else if(this.isBottom() || other.isBottom()) {
+			return this.bottom();
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.top();
+		}
+		return this.narrowValue?.(other) ?? (this.isTop() ? this.create(other.value) : this.create(this.value));
+	}
 
-	public abstract toJson(): unknown;
+	protected narrowValue?(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
-	public abstract toString(): string;
+	public transform(transform: (value: Value) => Value | Top | Bot, bottomDefault: Value | Top | Bot, topDefault: Value | Top | Bot): this;
+	public transform(transform: (value: Value | Top) => Value | Top | Bot, bottomDefault: Value | Top | Bot): this;
+	public transform(transform: (value: Value | Top | Bot) => Value | Top | Bot): this;
+	public transform(transform: (value: Value) => Value | Top | Bot, bottomDefault?: Value | Top | Bot, topDefault?: Value | Top | Bot): this {
+		if(bottomDefault !== undefined && this.isBottom()) {
+			return this.create(bottomDefault);
+		} else if(topDefault !== undefined && this.isTop()) {
+			return this.create(topDefault);
+		}
+		return this.create(transform(this.value as Value));
+	}
 
-	public abstract isTop(): this is AbstractDomain<Value, Top, Bot, Top>;
+	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault: (other: Value | Top | Bot) => Value | Top | Bot, topDefault: (other: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value | Top, second: Value | Top) => Value | Top | Bot, bottomDefault: (other: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value | Top | Bot, second: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault?: (other: Value | Top | Bot) => Value | Top | Bot, topDefault?: (other: Value | Top | Bot) => Value | Top | Bot): this {
+		if(bottomDefault !== undefined) {
+			if(this.isBottom() ) {
+				return this.create(bottomDefault(other.value));
+			} else if(other.isBottom()) {
+				return this.create(bottomDefault(this.value));
+			}
+		}
+		if(topDefault !== undefined) {
+			if(this.isTop()) {
+				return this.create(topDefault(other.value));
+			} else if(other.isTop()) {
+				return this.create(topDefault(this.value));
+			}
+		}
+		return this.create(merge(this.value as Value, other.value as Value));
+	}
 
-	public abstract isBottom(): this is AbstractDomain<Value, Top, Bot, Bot>;
+	public toJson(): unknown {
+		if(this.value === Top) {
+			return Top.description;
+		} else if(this.value === Bottom) {
+			return Bottom.description;
+		}
+		return (this as this & AbstractDomain<Value, Top, Bot, Exclude<Lift, typeof Top | typeof Bottom>>).jsonify();
+	}
 
-	public abstract isValue(): this is AbstractDomain<Value, Top, Bot, Value>;
+	protected abstract jsonify(this: AbstractDomain<Value, Top, Bot, Exclude<Value | Top | Bot, typeof Top | typeof Bottom>>): unknown;
+
+	public toString(): string {
+		if(this.value === Top) {
+			return TopSymbol;
+		} else if(this.value === Bottom) {
+			return BottomSymbol;
+		}
+		return (this as this & AbstractDomain<Value, Top, Bot, Exclude<Lift, typeof Top | typeof Bottom>>).stringify();
+	}
+
+	protected abstract stringify(this: AbstractDomain<Value, Top, Bot, Exclude<Value | Top | Bot, typeof Top | typeof Bottom>>): string;
+
+	public abstract isTop(): this is this & AbstractDomain<Value, Top, Bot, Top>;
+
+	public abstract isBottom(): this is this & AbstractDomain<Value, Top, Bot, Bot>;
+
+	public abstract isValue(): this is this & AbstractDomain<Value, Top, Bot, Value>;
 
 	/**
 	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.

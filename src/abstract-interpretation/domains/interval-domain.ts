@@ -1,21 +1,22 @@
 import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
-import { Bottom, BottomSymbol, Top } from './lattice';
+import { Bottom } from './lattice';
 import { type NumericDomain, NumericalComparator } from './value-abstract-domain';
-/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
 export const IntervalTop: IntervalValue = [-Infinity, +Infinity];
 
 /** The type of the actual values of the interval domain as tuple of the lower and upper bound */
-type IntervalValue = readonly [lower: number, upper: number];
+export type IntervalValue = readonly [lower: number, upper: number];
 /** The type of the Top element of the interval domain as interval [-∞, +∞] */
-type IntervalTop = typeof IntervalTop;
+export type IntervalTop = typeof IntervalTop;
 /** The type of the Bottom element of the interval domain as {@link Bottom} symbol */
-type IntervalBottom = typeof Bottom;
+export type IntervalBottom = typeof Bottom;
 /** The type of the abstract values of the interval domain that are Top, Bottom, or actual values */
-type IntervalLift = IntervalValue | IntervalBottom;
+export type IntervalLift = IntervalValue | IntervalBottom;
+
+type IntervalBound<Value extends IntervalLift> = Value extends IntervalValue ? number : number | typeof Bottom;
 
 /**
  * The interval abstract domain as intervals with possibly infinite bounds representing possible numeric values.
@@ -40,6 +41,14 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 
 	public create(value: IntervalLift): this {
 		return new IntervalDomain(value) as this;
+	}
+
+	public get lower(): IntervalBound<Value> {
+		return (this.isValue() ? this.value[0] : Bottom) as IntervalBound<Value>;
+	}
+
+	public get upper(): IntervalBound<Value> {
+		return (this.isValue() ? this.value[1] : Bottom) as IntervalBound<Value>;
 	}
 
 	public from(...values: number[]): this {
@@ -72,98 +81,72 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return this.create(Bottom) as this & IntervalDomain<IntervalBottom>;
 	}
 
-	public equals(other: this): boolean {
-		return this.value === other.value || (this.isValue() && other.isValue() && this.value[0] === other.value[0] && this.value[1] === other.value[1]);
+	protected equalsValue(this: IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): boolean {
+		return this.lower === other.lower && this.upper === other.upper;
 	}
 
-	public leq(other: this): boolean {
-		return this.value === Bottom || (other.isValue() && other.value[0] <= this.value[0] && this.value[1] <= other.value[1]);
+	protected leqValue(this: IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): boolean {
+		return other.lower <= this.lower && this.upper <= other.upper;
 	}
 
-	public join(other: IntervalLift): this;
-	public join(other: this): this;
-	public join(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
-
-		if(this.value === Bottom) {
-			return this.create(otherValue);
-		} else if(otherValue === Bottom) {
-			return this.create(this.value);
-		} else {
-			return this.create([Math.min(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
-		}
+	protected joinValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
+		return this.create([Math.min(this.lower, other.lower), Math.max(this.upper, other.upper)]);
 	}
 
-	public meet(other: IntervalLift): this;
-	public meet(other: this): this;
-	public meet(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.max(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
-		}
+	protected meetValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
+		return this.create([Math.max(this.lower, other.lower), Math.min(this.upper, other.upper)]);
 	}
 
-	public widen(other: this): this {
-		if(this.value === Bottom) {
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		} else {
-			return this.create([
-				this.value[0] <= other.value[0] ? this.value[0] : -Infinity,
-				this.value[1] >= other.value[1] ? this.value[1] : +Infinity
-			]);
-		}
+	protected widenValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
+		return this.create([
+			this.lower <= other.lower ? this.lower : -Infinity,
+			this.upper >= other.upper ? this.upper : +Infinity
+		]);
 	}
 
-	public narrow(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		} else if(Math.max(this.value[0], other.value[0]) > Math.min(this.value[1], other.value[1])) {
+	protected narrowValue(this: this & IntervalDomain<IntervalValue>, other: IntervalDomain<IntervalValue>): this {
+		if(Math.max(this.lower, other.lower) > Math.min(this.upper, other.upper)) {
 			return this.bottom();
 		}
 		return this.create([
-			this.value[0] === -Infinity ? other.value[0] : this.value[0],
-			this.value[1] === +Infinity ? other.value[1] : this.value[1]
+			this.lower === -Infinity ? other.lower : this.lower,
+			this.upper === +Infinity ? other.upper : this.upper
 		]);
 	}
 
 	public satisfies(value: number, comparator: NumericalComparator = NumericalComparator.Equal): Ternary {
 		switch(comparator) {
 			case NumericalComparator.Equal: {
-				if(this.isValue() && this.value[0] <= value && value <= this.value[1]) {
-					return this.value[0] === this.value[1] ? Ternary.Always : Ternary.Maybe;
+				if(this.isValue() && this.lower <= value && value <= this.upper) {
+					return this.lower === this.upper ? Ternary.Always : Ternary.Maybe;
 				} else {
 					return Ternary.Never;
 				}
 			}
 			case NumericalComparator.Less: {
-				if(this.isValue() && value < this.value[1]) {
-					return value < this.value[0] ? Ternary.Always : Ternary.Maybe;
+				if(this.isValue() && value < this.upper) {
+					return value < this.lower ? Ternary.Always : Ternary.Maybe;
 				} else {
 					return Ternary.Never;
 				}
 			}
 			case NumericalComparator.LessOrEqual: {
-				if(this.isValue() && value <= this.value[1]) {
-					return value <= this.value[0] ? Ternary.Always : Ternary.Maybe;
+				if(this.isValue() && value <= this.upper) {
+					return value <= this.lower ? Ternary.Always : Ternary.Maybe;
 				} else {
 					return Ternary.Never;
 				}
 			}
 			case NumericalComparator.Greater: {
-				if(this.isValue() && this.value[0] <= value) {
-					return this.value[1] <= value ? Ternary.Always : Ternary.Maybe;
+				if(this.isValue() && this.lower <= value) {
+					return this.upper <= value ? Ternary.Always : Ternary.Maybe;
 				} else {
 					return Ternary.Never;
 				}
 			}
 			case NumericalComparator.GreaterOrEqual: {
-				if(this.isValue() && this.value[0] < value) {
-					return this.value[1] < value ? Ternary.Always : Ternary.Maybe;
+				if(this.isValue() && this.lower < value) {
+					return this.upper < value ? Ternary.Always : Ternary.Maybe;
 				} else {
 					return Ternary.Never;
 				}
@@ -175,39 +158,34 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	}
 
 	public negate(): this {
-		if(this.value === Bottom) {
-			return this.bottom();
-		} else {
+		if(this.isValue()) {
 			return this.create([-this.value[1], -this.value[0]]);
 		}
+		return this.bottom();
 	}
 
 	public add(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([this.value[0] + otherValue[0], this.value[1] + otherValue[1]]);
+		if(this.isValue() && otherValue !== Bottom) {
+			return this.create([this.lower + otherValue[0], this.upper + otherValue[1]]);
 		}
+		return this.bottom();
 	}
 
 	public subtract(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([this.value[0] - otherValue[0], this.value[1] - otherValue[1]]);
+		if(this.isValue() && otherValue !== Bottom) {
+			return this.create([this.lower - otherValue[0], this.upper - otherValue[1]]);
 		}
+		return this.bottom();
 	}
 
 	public multiply(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
+		if(this.isValue() && otherValue !== Bottom) {
 			const products = [
 				this.value[0] * otherValue[0],
 				this.value[0] * otherValue[1],
@@ -216,89 +194,80 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 			];
 			return this.create([Math.min(...products), Math.max(...products)]);
 		}
+		return this.bottom();
 	}
 
 	public divide(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
-			return this.top();
-		} else {
+		if(this.isValue() && otherValue !== Bottom) {
+			if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
+				return this.top();
+			}
 			return this.multiply(this.create([1 / otherValue[1], 1 / otherValue[0]]));
 		}
+		return this.bottom();
 	}
 
 	public min(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.min(this.value[0], otherValue[0]), Math.min(this.value[1], otherValue[1])]);
+		if(this.isValue() && otherValue !== Bottom) {
+			return this.create([Math.min(this.lower, otherValue[0]), Math.min(this.upper, otherValue[1])]);
 		}
+		return this.bottom();
 	}
 
 	public max(other: this | IntervalLift): this {
-		const otherValue = other instanceof IntervalDomain ? other.value : other;
+		const otherValue = other instanceof AbstractDomain ? other.value : other;
 
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([Math.max(this.value[0], otherValue[0]), Math.max(this.value[1], otherValue[1])]);
+		if(this.isValue() && otherValue !== Bottom) {
+			return this.create([Math.max(this.lower, otherValue[0]), Math.max(this.upper, otherValue[1])]);
 		}
+		return this.bottom();
 	}
 
 	/**
 	 * Extends the lower bound of the current abstract value down to -∞.
 	 */
 	public widenDown(): this {
-		if(this.value === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([-Infinity, this.value[1]]);
+		if(this.isValue()) {
+			return this.create([-Infinity, this.upper]);
 		}
+		return this.bottom();
 	}
 
 	/**
 	 * Extends the upper bound of the current abstract value up to +∞.
 	 */
 	public widenUp(): this {
-		if(this.value === Bottom) {
-			return this.bottom();
-		} else {
-			return this.create([this.value[0], +Infinity]);
+		if(this.isValue()) {
+			return this.create([this.lower, +Infinity]);
 		}
+		return this.bottom();
 	}
 
-	public toJson(): unknown {
-		if(this.value === Bottom) {
-			return Bottom.description;
-		}
+	protected jsonify(): unknown {
 		return this.value;
 	}
 
-	public toString(): string {
-		if(this.value === Bottom) {
-			return BottomSymbol;
-		}
-		return `[${Number.isFinite(this.value[0]) ? this.value[0] : '-∞'}, ${Number.isFinite(this.value[1]) ? this.value[1] : '+∞'}]`;
+	protected stringify(this: IntervalDomain<IntervalValue>): string {
+		return `[${Number.isFinite(this.lower) ? this.lower : '-∞'}, ${Number.isFinite(this.upper) ? this.upper : '+∞'}]`;
 	}
 
-	public isTop(): this is IntervalDomain<IntervalTop> {
-		return this.value !== Bottom && this.value[0] === -Infinity && this.value[1] === +Infinity;
+	public isTop(): this is this & IntervalDomain<IntervalTop> {
+		return this.value !== Bottom && this.lower === -Infinity && this.upper === +Infinity;
 	}
 
-	public isBottom(): this is IntervalDomain<IntervalBottom> {
+	public isBottom(): this is this & IntervalDomain<IntervalBottom> {
 		return this.value === Bottom;
 	}
 
-	public isValue(): this is IntervalDomain<IntervalValue> {
+	public isValue(): this is this & IntervalDomain<IntervalValue> {
 		return this.value !== Bottom;
 	}
 
-	public isFinite(): this is IntervalDomain<IntervalValue> {
-		return this.isValue() && Number.isFinite(this.value[0]) && Number.isFinite(this.value[1]);
+	public isFinite(): this is this & IntervalDomain<IntervalValue> {
+		return this.isValue() && Number.isFinite(this.lower) && Number.isFinite(this.upper);
 	}
 }

@@ -1,6 +1,6 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractDomain, type AnyAbstractDomain } from './abstract-domain';
-import { Bottom, BottomSymbol } from './lattice';
+import { Bottom } from './lattice';
 import type { StateDomain } from './state-domain-like';
 
 /** The type of the actual values of the state abstract domain as map of keys to domain values */
@@ -73,10 +73,8 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(Bottom) as this & StateAbstractDomain<Domain, StateDomainBottom>;
 	}
 
-	public equals(other: this): boolean {
-		if(this.value === other.value) {
-			return true;
-		} else if(this.value === Bottom || other.value === Bottom || this.value.size !== other.value.size) {
+	protected equalsValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+		if(this.value.size !== other.value.size) {
 			return false;
 		}
 		for(const [key, currValue] of this.value.entries()) {
@@ -89,10 +87,8 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return true;
 	}
 
-	public leq(other: this): boolean {
-		if(this.value === other.value || this.value === Bottom) {
-			return true;
-		} else if(other.value === Bottom || this.value.size > other.value.size) {
+	protected leqValue(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): boolean {
+		if(this.value.size > other.value.size) {
 			return false;
 		}
 		for(const [key, currValue] of this.value.entries()) {
@@ -105,12 +101,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return true;
 	}
 
-	public join(other: this): this {
-		if(this.value === Bottom){
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		}
+	protected joinValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
 		const result = new Map(this.value);
 
 		for(const [key, otherValue] of other.value.entries()) {
@@ -125,10 +116,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(result);
 	}
 
-	public meet(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		}
+	protected meetValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
 		const result = new Map<NodeId, Domain>();
 
 		for(const [key, currValue] of this.value.entries()) {
@@ -141,12 +129,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(result);
 	}
 
-	public widen(other: this): this {
-		if(this.value === Bottom){
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
-			return this.create(this.value);
-		}
+	protected widenValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
 		const result = new Map(this.value);
 
 		for(const [key, otherValue] of other.value.entries()) {
@@ -161,10 +144,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(result);
 	}
 
-	public narrow(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		}
+	protected narrowValue(this: this & StateAbstractDomain<Domain, StateDomainValue<Domain>>, other: StateAbstractDomain<Domain, StateDomainValue<Domain>>): this {
 		const result = new Map<NodeId, Domain>();
 
 		for(const [key, currValue] of this.value.entries()) {
@@ -177,17 +157,11 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(result);
 	}
 
-	public toJson(): unknown {
-		if(this.value === Bottom) {
-			return this.value.description;
-		}
+	protected jsonify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): unknown {
 		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJson()]));
 	}
 
-	public toString(): string {
-		if(this.value === Bottom) {
-			return BottomSymbol;
-		}
+	protected stringify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): string {
 		return '(' + this.value.entries().toArray().map(([key, value]) => `${key} -> ${value.toString()}`).join(', ') + ')';
 	}
 

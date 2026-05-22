@@ -10,7 +10,7 @@ import type { ExpectedDataFrameShape } from './data-frame';
 
 describe('Data Frame Domains', () => {
 	const createDomain = ({ colnames, cols, rows }: ExpectedDataFrameShape) => new DataFrameDomain({
-		colnames: new SetRangeDomain(colnames === Bottom ? colnames : { min: colnames[0], range: colnames[1] === Top ? Top : colnames[1] }),
+		colnames: new SetRangeDomain(colnames === Bottom ? colnames : { must: colnames[0], may: colnames[1] === Top ? Top : colnames[1] }),
 		cols:     new PosIntervalDomain(cols),
 		rows:     new PosIntervalDomain(rows)
 	});

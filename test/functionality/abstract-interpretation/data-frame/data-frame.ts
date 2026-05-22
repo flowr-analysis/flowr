@@ -66,7 +66,7 @@ export const DataFrameShapeOverapproximation: DataFrameShapeMatching = {
  * The expected data frame shape for data frame shape assertion tests.
  */
 export interface ExpectedDataFrameShape {
-	colnames: [min: string[], range: string[] | typeof Top] | typeof Bottom,
+	colnames: [must: string[], may: string[] | typeof Top] | typeof Bottom,
 	cols:     AbstractValue<AbstractDataFrameShape['cols']>,
 	rows:     AbstractValue<AbstractDataFrameShape['rows']>
 }
@@ -331,7 +331,7 @@ function createCodeForOutput(
 }
 
 function createSetRange(value: [string[], string[] | typeof Top] | typeof Bottom): ArrayRangeValue<string> | typeof Bottom {
-	return value === Bottom ? value : { min: value[0], range: value[1] === Top ? Top : value[1] };
+	return value === Bottom ? value : { must: value[0], may: value[1] === Top ? Top : value[1] };
 }
 
 function getDefaultMatchingType(expected: ExpectedDataFrameShape | undefined, matching?: Partial<DataFrameShapeMatching>): Partial<DataFrameShapeMatching> {

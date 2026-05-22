@@ -1,9 +1,8 @@
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
-import { Top, TopSymbol } from './lattice';
+import { Top } from './lattice';
 import type { ValueDomain } from './value-abstract-domain';
-/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Bottom element of the bounded set domain as empty set */
 export const SetBottom: ReadonlySet<never> = new Set();
@@ -76,46 +75,20 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return this.create(SetBottom) as this & BoundedSetDomain<T, BoundedSetBottom>;
 	}
 
-	public equals(other: this): boolean {
-		return this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value));
+	protected equalsValue(this: BoundedSetDomain<T, BoundedSetValue<T>>, other: BoundedSetDomain<T, BoundedSetValue<T>>): boolean {
+		return setEquals(this.value, other.value);
 	}
 
-	public leq(other: this): boolean {
-		return other.value === Top || (this.isValue() && this.value.isSubsetOf(other.value));
+	protected leqValue(this: BoundedSetDomain<T, BoundedSetValue<T>>, other: BoundedSetDomain<T, BoundedSetValue<T>>): boolean {
+		return this.value.isSubsetOf(other.value);
 	}
 
-	public join(other: BoundedSetLift<T> | T[]): this;
-	public join(other: this): this;
-	public join(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
-
-		if(this.value === Top || otherValue === Top) {
-			return this.top();
-		} else {
-			return this.create(this.value.union(otherValue));
-		}
+	protected joinValue(this: this & BoundedSetDomain<T, BoundedSetValue<T>>, other: BoundedSetDomain<T, BoundedSetValue<T>>): this {
+		return this.create(this.value.union(other.value));
 	}
 
-	public meet(other: BoundedSetLift<T> | T[]): this;
-	public meet(other: this): this;
-	public meet(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
-
-		if(this.value === Top) {
-			return this.create(otherValue);
-		} else if(otherValue === Top) {
-			return this.create(this.value);
-		} else {
-			return this.create(this.value.intersection(otherValue));
-		}
-	}
-
-	public widen(other: this): this {
-		return other.leq(this) ? this.create(this.value) : this.top();
-	}
-
-	public narrow(other: this): this {
-		return this.isTop() ? this.create(other.value) : this.create(this.value);
+	protected meetValue(this: this & BoundedSetDomain<T, BoundedSetValue<T>>, other: BoundedSetDomain<T, BoundedSetValue<T>>): this {
+		return this.create(this.value.intersection(other.value));
 	}
 
 	public satisfies(value: T): Ternary {
@@ -127,40 +100,23 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
-		if(this.value === Top) {
-			return Top.description;
-		}
+	protected jsonify(this: BoundedSetDomain<T, BoundedSetValue<T>>): unknown {
 		return this.value.values().toArray();
 	}
 
-	public toString(): string {
-		if(this.value === Top) {
-			return TopSymbol;
-		}
-		const string = this.value.values().map(AbstractDomain.toString).toArray().join(', ');
-
-		return `{${string}}`;
+	protected stringify(this: BoundedSetDomain<T, BoundedSetValue<T>>): string {
+		return `{${this.value.values().map(AbstractDomain.toString).toArray().join(', ')}}`;
 	}
 
-	public isTop(): this is BoundedSetDomain<T, BoundedSetTop> {
+	public isTop(): this is this & BoundedSetDomain<T, BoundedSetTop> {
 		return this.value === Top;
 	}
 
-	public isBottom(): this is BoundedSetDomain<T, BoundedSetBottom> {
+	public isBottom(): this is this & BoundedSetDomain<T, BoundedSetBottom> {
 		return this.value !== Top && this.value.size === 0;
 	}
 
-	public isValue(): this is BoundedSetDomain<T, BoundedSetValue<T>> {
+	public isValue(): this is this & BoundedSetDomain<T, BoundedSetValue<T>> {
 		return this.value !== Top;
-	}
-
-	private toValue(value: this | BoundedSetLift<T> | T[]): BoundedSetLift<T> {
-		if(value instanceof BoundedSetDomain) {
-			return value.value;
-		} else if(Array.isArray(value)) {
-			return new this.setType(value);
-		}
-		return value;
 	}
 }

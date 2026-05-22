@@ -2,9 +2,8 @@ import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
-import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
+import { Bottom, Top } from './lattice';
 import { type SetDomain, SetComparator } from './value-abstract-domain';
-/* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the set upper bound domain as set */
 type SetUpperBoundValue<T> = ReadonlySet<T>;
@@ -86,94 +85,51 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		return this.create(Bottom) as this & SetUpperBoundDomain<T, SetUpperBoundBottom>;
 	}
 
-	public equals(other: this): boolean {
-		return this.value === other.value || (this.isValue() && other.isValue() && setEquals(this.value, other.value));
+	protected equalsValue(this: SetUpperBoundDomain<T, SetUpperBoundValue<T>>, other: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): boolean {
+		return setEquals(this.value, other.value);
 	}
 
-	public leq(other: this): boolean {
-		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value.isSubsetOf(other.value));
+	protected leqValue(this: SetUpperBoundDomain<T, SetUpperBoundValue<T>>, other: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): boolean {
+		return this.value.isSubsetOf(other.value);
 	}
 
-	public join(other: SetUpperBoundLift<T> | T[]): this;
-	public join(other: this): this;
-	public join(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
-
-		if(this.value === Top || otherValue === Top) {
-			return this.top();
-		} else if(this.value === Bottom) {
-			return this.create(otherValue);
-		} else if(otherValue === Bottom) {
-			return this.create(this.value);
-		} else {
-			return this.create(this.value.union(otherValue));
-		}
+	protected joinValue(this: this & SetUpperBoundDomain<T, SetUpperBoundValue<T>>, other: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): this {
+		return this.create(this.value.union(other.value));
 	}
 
-	public meet(other: SetUpperBoundLift<T> | T[]): this;
-	public meet(other: this): this;
-	public meet(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
-
-		if(this.value === Bottom || otherValue === Bottom) {
-			return this.bottom();
-		} else if(this.value === Top) {
-			return this.create(otherValue);
-		} else if(otherValue === Top) {
-			return this.create(this.value);
-		} else {
-			return this.create(this.value.intersection(otherValue));
-		}
+	protected meetValue(this: this & SetUpperBoundDomain<T, SetUpperBoundValue<T>>, other: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): this {
+		return this.create(this.value.intersection(other.value));
 	}
 
 	public union(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
+		other = other instanceof AbstractDomain ? other : this.create(other);
 
-		if(this.value === Bottom || otherValue === Bottom) {
+		if(this.isBottom() || other.isBottom()) {
 			return this.bottom();
-		} else {
-			return this.join(otherValue);
 		}
+		return this.join(other);
 	}
 
 	public intersect(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
+		other = other instanceof AbstractDomain ? other : this.create(other);
 
-		if(this.value === Bottom || otherValue === Bottom) {
+		if(this.isBottom() || other.isBottom()) {
 			return this.bottom();
-		} else {
-			return this.meet(otherValue);
 		}
+		return this.meet(other);
 	}
 
-	public subtract(other: this | SetUpperBoundLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
+	public subtract(other: this | SetUpperBoundLift<T>): this {
+		other = other instanceof AbstractDomain ? other : this.create(other);
 
-		if(this.value === Top) {
-			return this.top();
-		} else if(this.value === Bottom) {
+		if(this.isBottom() || other.isBottom()) {
 			return this.bottom();
-		} else if(otherValue === Top || otherValue === Bottom) {
-			return this.create(this.value);
-		} else {
-			return this.create(this.value.difference(otherValue));
-		}
-	}
-
-	public widen(other: this): this {
-		if(this.value === Bottom) {
-			return this.create(other.value);
-		} else if(other.value === Bottom) {
+		} else if(this.isValue() && other.isValue()) {
+			return this.create(this.value.difference(other.value));
+		} else if(this.isValue()) {
 			return this.create(this.value);
 		}
-		return other.leq(this) ? this.create(this.value) : this.top();
-	}
-
-	public narrow(other: this): this {
-		if(this.value === Bottom || other.value === Bottom) {
-			return this.bottom();
-		}
-		return this.isTop() ? this.create(other.value) : this.create(this.value);
+		return this.top();
 	}
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
@@ -197,42 +153,23 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		}
 	}
 
-	public toJson(): unknown {
-		if(this.value === Top || this.value === Bottom) {
-			return this.value.description;
-		}
+	protected jsonify(this: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): unknown {
 		return this.value.values().toArray();
 	}
 
-	public toString(): string {
-		if(this.value === Top) {
-			return TopSymbol;
-		} else if(this.value === Bottom) {
-			return BottomSymbol;
-		}
-		const string = this.value.values().map(AbstractDomain.toString).toArray().join(', ');
-
-		return `{${string}}`;
+	protected stringify(this: SetUpperBoundDomain<T, SetUpperBoundValue<T>>): string {
+		return `{${this.value.values().map(AbstractDomain.toString).toArray().join(', ')}}`;
 	}
 
-	public isTop(): this is SetUpperBoundDomain<T, SetUpperBoundTop> {
+	public isTop(): this is this & SetUpperBoundDomain<T, SetUpperBoundTop> {
 		return this.value === Top;
 	}
 
-	public isBottom(): this is SetUpperBoundDomain<T, SetUpperBoundBottom> {
+	public isBottom(): this is this & SetUpperBoundDomain<T, SetUpperBoundBottom> {
 		return this.value === Bottom;
 	}
 
-	public isValue(): this is SetUpperBoundDomain<T, SetUpperBoundValue<T>> {
+	public isValue(): this is this & SetUpperBoundDomain<T, SetUpperBoundValue<T>> {
 		return this.value !== Top && this.value !== Bottom;
-	}
-
-	private toValue(value: this | SetUpperBoundLift<T> | T[]): SetUpperBoundLift<T> {
-		if(value instanceof SetUpperBoundDomain) {
-			return value.value;
-		} else if(Array.isArray(value)) {
-			return new this.setType(value);
-		}
-		return value;
 	}
 }

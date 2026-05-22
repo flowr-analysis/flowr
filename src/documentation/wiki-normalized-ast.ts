@@ -107,7 +107,7 @@ ${details('Normalized AST Node Types',
 The following segments intend to give you an overview of how to work with the normalized AST:
 
 * [How to get a Normalized AST](#how-to-get-a-normalized-ast)
-* [Visitors](#visitors)
+* [Traversing the Normalized AST](#traversing-the-normalized-ast)
 
 > [!TIP]
 > If you want to get more information on roxygen comments attached to AST nodes,

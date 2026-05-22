@@ -102,10 +102,24 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
 						},
 						{
-							name:        'Dynamic Environment Resolution',
-							id:          'dynamic-environment-resolution',
-							supported:   'not',
-							description: '_For example, using `new.env` and friends_'
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'not',
+							description:  '_For example, using `new.env` and friends_',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								}
+							]
 						},
 						{
 							name:        'Environment Sharing',

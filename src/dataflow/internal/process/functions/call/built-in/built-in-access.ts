@@ -13,10 +13,12 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { resolveByName } from '../../../../../environments/resolve-by-name';
+import { unpackArg } from '../argument/unpack-argument';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -82,6 +84,27 @@ export function processAccess<OtherInfo>(
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
+
+	/* for $ and @ access on a tracked env variable, add Reads edges to the field definition in envState */
+	if(config.treatIndicesAsString && head !== EmptyArgument && head.value?.type === RType.Symbol) {
+		const accessedDefs = resolveByName(head.value.content, data.environment, ReferenceType.Variable);
+		if(accessedDefs?.length === 1) {
+			const envDef = accessedDefs[0] as InGraphIdentifierDefinition;
+			if(envDef.envState && args.length >= 2 && args[1] !== EmptyArgument) {
+				const fieldNode = unpackArg(args[1]);
+				const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
+				if(fieldName) {
+					const fieldDefs = envDef.envState.current.memory.get(fieldName as BrandedIdentifier);
+					if(fieldDefs) {
+						for(const fd of fieldDefs) {
+							info.graph.addEdge(rootId, fd.nodeId, EdgeType.Reads);
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return {
 		...info,
 		/*

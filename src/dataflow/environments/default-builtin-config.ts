@@ -104,6 +104,8 @@ function toRegex(n: readonly string[]): RegExp {
  */
 export const DefaultBuiltinConfig = [
 	{ type: 'constant', names: ['NULL', 'NA', 'NaN', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'],  value: null,  assumePrimitive: true },
+	/* well-known environment constants — no envState tracking, assignments to these fall through to global */
+	{ type: 'constant', names: ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv'],                                  value: null,  assumePrimitive: true },
 	{ type: 'constant', names: ['TRUE', 'T'],   value: true,  assumePrimitive: true },
 	{ type: 'constant', names: ['FALSE', 'F'],  value: false, assumePrimitive: true },
 	{
@@ -263,14 +265,14 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: [Identifier.make('from', 'import'),  Identifier.make('library', 'base'), Identifier.make('require', 'base')],             processor: BuiltInProcName.Library,             config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['<-', '='],                                    processor: BuiltInProcName.Assignment,          config: { canBeReplacement: true },                                                    assumePrimitive: true  },
 	{ type: 'function', names: [':='],                                         processor: BuiltInProcName.Assignment,          config: {},                                                                            assumePrimitive: true  },
-	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true },                               assumePrimitive: true  },
-	{ type: 'function', names: ['setMethod'],                                  processor: BuiltInProcName.AssignmentLike,     config: { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] }, assumePrimitive: true  },
+	{ type: 'function', names: ['assign', 'setValidity'],                      processor: BuiltInProcName.Assignment,          config: { targetVariable: true, mayHaveMoreArgs: true, environmentArg: 'envir' },    assumePrimitive: true  },
+	{ type: 'function', names: ['setMethod'],                                  processor: BuiltInProcName.AssignmentLike,      config: { targetVariable: true, canBeReplacement: false, target: { idx: 0, name: 'f' }, source: { idx: 2, name: 'definition' }, modesForFn: ['s4'] }, assumePrimitive: true  },
 	{ type: 'function', names: ['delayedAssign'],                              processor: BuiltInProcName.Assignment,          config: { quoteSource: true, targetVariable: true },                                   assumePrimitive: true  },
 	{ type: 'function', names: ['<<-'],                                        processor: BuiltInProcName.Assignment,          config: { superAssignment: true, canBeReplacement: true },                             assumePrimitive: true  },
 	{ type: 'function', names: ['->'],                                         processor: BuiltInProcName.Assignment,          config: { swapSourceAndTarget: true, canBeReplacement: true },                         assumePrimitive: true  },
 	{ type: 'function', names: ['->>'],                                        processor: BuiltInProcName.Assignment,          config: { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true },  assumePrimitive: true  },
-	{ type: 'function', names: ['&&', '&'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
-	{ type: 'function', names: ['||', '|'],                                    processor: BuiltInProcName.SpecialBinOp,      config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
+	{ type: 'function', names: ['&&', '&'],                                    processor: BuiltInProcName.SpecialBinOp,       config: { lazy: true, evalRhsWhen: true },                                             assumePrimitive: true  },
+	{ type: 'function', names: ['||', '|'],                                    processor: BuiltInProcName.SpecialBinOp,       config: { lazy: true, evalRhsWhen: false },                                            assumePrimitive: true  },
 	{ type: 'function', names: ['|>'],                                         processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '_' }, assumePrimitive: true  },
 	{ type: 'function', names: ['%>%', '%!>%'],                                processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', rhsMightBeSymbol: true }, assumePrimitive: true  },
 	{ type: 'function', names: ['%<>%'],                                       processor: BuiltInProcName.Pipe,               config: { pipePlaceholderName: '.', assignLhs: true, rhsMightBeSymbol: true }, assumePrimitive: true  },
@@ -426,6 +428,13 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: [Identifier.make('enquo', 'rlang'), Identifier.make('enquos', 'rlang'), Identifier.make('quo', 'rlang'), Identifier.make('quos', 'rlang'), Identifier.make('sym', 'rlang'), Identifier.make('syms', 'rlang'), Identifier.make('ensym', 'rlang'), Identifier.make('ensyms', 'rlang'), Identifier.make('expr', 'rlang'), Identifier.make('exprs', 'rlang'), Identifier.make('quo_name', 'rlang'), Identifier.make('as_name', 'rlang'), Identifier.make('as_label', 'rlang'), Identifier.make('as_string', 'rlang')], processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true }, assumePrimitive: true  },
 	{ type: 'function', names: [Identifier.make('call2', 'rlang'), Identifier.make('exec', 'rlang'), Identifier.make('invoke', 'purrr'), Identifier.make('invoke_map', 'purrr')],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
+	{ type: 'function', names: ['new.env', 'new.environment'],                processor: BuiltInProcName.NewEnv,              config: {},                                                                            assumePrimitive: true  },
+	/* these return existing/well-known environments — we cannot track their contents so fall through to Default */
+	{ type:            'function', names:           ['globalenv', 'baseenv', 'emptyenv', 'parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv'],
+		processor:       BuiltInProcName.Default, config:          {}, assumePrimitive: true },
+	{ type: 'function', names: ['load', 'load_image'],                        processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true },                                                assumePrimitive: false },
+	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
+	{ type: 'function', names: ['attach'],                                    processor: BuiltInProcName.Attach,              config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['for'],                                        processor: BuiltInProcName.ForLoop,            config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['repeat'],                                     processor: BuiltInProcName.RepeatLoop,         config: {},                                                                            assumePrimitive: true  },
 	{ type: 'function', names: ['while'],                                      processor: BuiltInProcName.WhileLoop,          config: {},                                                                            assumePrimitive: true  },
@@ -461,7 +470,7 @@ export const DefaultBuiltinConfig = [
 			'requireNamespace', 'loadNamespace', 'attachNamespace', 'asNamespace',
 			Identifier.make('use', 'base'),
 			/* weird env attachments */
-			'attach', 'unname', 'data',
+			'unname', 'data',
 			/* file creation/removal */
 			'dir.create', 'dir_create', 'Sys.chmod', 'unlink', 'file.remove', 'file.rename', 'file.copy', 'file.link', 'file.append', 'Sys.junction'
 		],

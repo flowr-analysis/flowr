@@ -21,7 +21,7 @@ export interface TaintQuery extends BaseQueryFormat {
 }
 
 export interface TaintQueryResult extends BaseQueryResult {
-	readonly results: Map<string, AnyStateDomain<AnyAbstractDomain>>
+	readonly results: Map<string, AnyStateDomain>
 }
 
 const prefix = 'definitions:';

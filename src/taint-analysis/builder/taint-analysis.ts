@@ -9,30 +9,30 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
  * Fluent builder class for conducting taint analyses.
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
-export class TaintAnalysis {
+export class TaintAnalysis<Defs extends readonly string[] = []> {
 	private readonly analyzer: ReadonlyFlowrAnalysisProvider;
-	private readonly defs:     TaintAnalysisDefinition[] = [];
+	private readonly defs:     TaintAnalysisDefinition<Defs[number]>[] = [];
 
 	constructor(analyzer: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
 	}
 
-	public addPredefined(name: PredefinedTaintAnalysis) {
+	public addPredefined<Name extends string>(name: PredefinedTaintAnalysis): this & TaintAnalysis<readonly [...Defs, Name]> {
 		this.defs.push(predefinedTaintAnalyses[name]);
-		return this;
+		return this as unknown as this & TaintAnalysis<readonly [...Defs, Name]>;
 	}
 
-	public add(def: TaintAnalysisDefinition) {
+	public add<Name extends string>(def: TaintAnalysisDefinition<Name>): this & TaintAnalysis<readonly [...Defs, Name]> {
 		this.defs.push(def);
-		return this;
+		return this as unknown as this & TaintAnalysis<readonly [...Defs, Name]>;
 	}
 
 	/**
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add} or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<string, TaintInferenceVisitor<AnyAbstractDomain>>> {
-		const results: Map<string, TaintInferenceVisitor<AnyAbstractDomain>> = new Map();
+	public async run(): Promise<Map<Defs[number], TaintInferenceVisitor<AnyAbstractDomain>>> {
+		const results: Map<Defs[number], TaintInferenceVisitor<AnyAbstractDomain>> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
 				controlFlow:   await this.analyzer.controlflow(),

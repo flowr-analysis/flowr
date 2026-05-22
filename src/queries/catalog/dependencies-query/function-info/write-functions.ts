@@ -122,5 +122,6 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'vroom', name: 'vroom_write_lines', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'rio', name: 'export', argIdx: 1, argName: 'file', resolveValue: true },
 	{ package: 'rio', name: 'export_list', argIdx: 1, argName: 'file', resolveValue: true },
-	{ package: 'magick',  name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'magick', name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'compiler', name: 'cmpfile', argIdx: 1, argName: 'outfile', resolveValue: true }
 ] as const;

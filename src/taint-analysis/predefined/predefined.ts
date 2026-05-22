@@ -1,9 +1,12 @@
-import type { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { scaleAnalysis } from './scale-analysis';
-
+import type { TaintAnalysisDefinition, TaintAnalysisName } from '../builder/taint-analysis-definition';
 
 export const predefinedTaintAnalyses = {
 	'scale': scaleAnalysis,
-} as const satisfies Record<string, TaintAnalysisDefinition>;
+} as const satisfies AnalysisMap<['scale']>;
+
+type AnalysisMap<Defs extends readonly string[]> = {
+	[key in TaintAnalysisName<TaintAnalysisDefinition<Defs[number]>>]: TaintAnalysisDefinition<Defs[number]>;
+};
 
 export type PredefinedTaintAnalysis = keyof typeof predefinedTaintAnalyses;

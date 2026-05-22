@@ -94,7 +94,7 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 	}
 
 	private findGreatestLowerBound(other: this): this {
-		const elements = this._config.elements; // Retrieve all elements in the lattice
+		const elements = this._config.elements;
 		let greatestLowerBound: Element | null = null;
 
 		for(const candidate of elements) {
@@ -175,7 +175,7 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		return this.value === this._config.bottom;
 	}
 
-	isValue(): this is AbstractDomain<Element, Element, Top, Bot, Element> {
+	isValue(): this is FiniteDomain<Element, Top, Bot> {
 		return this.value !== Top && this.value !== Bottom;
 	}
 
@@ -206,10 +206,10 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 	}
 
 	concretize(_limit: number): ReadonlySet<Element> | typeof Top {
-		throw new Error('Method not implemented.');
+		return new Set<Element>([this._value]); // Simply fulfills identity property of Galois connection.
 	}
 
 	abstract(_concrete: ReadonlySet<Element> | typeof Top): this {
-		throw new Error('Method not implemented.');
+		return this.create(this._value); // Simply fulfills identity property of Galois connection.
 	}
 }

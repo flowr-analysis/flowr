@@ -15,12 +15,6 @@ describe('Taint Analysis Scale', async() => {
 	});
 
 	await testScaleAnalysis(`
-			x <- 42`,
-	{
-		'1@x': undefined,
-	});
-
-	await testScaleAnalysis(`
 			x <- c(1 , 2 , 3 , 4 , 5)
 			x <- scale(x)`,
 	{

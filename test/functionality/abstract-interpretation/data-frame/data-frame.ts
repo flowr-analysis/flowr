@@ -15,7 +15,7 @@ import { guard, isNotUndefined } from '../../../../src/util/assert';
 import { Record } from '../../../../src/util/record';
 import { type TestLabel, decorateLabelContext } from '../../_helper/label';
 import { type TestConfiguration, skipTestBecauseConfigNotMet } from '../../_helper/shell';
-import { type InferenceTestOptions, type TestCase, runInference, testInferredValues } from '../inference';
+import { type InferenceTestCase, type InferenceTestOptions, runInference, testInferredValues } from '../inference';
 
 /**
  * The expected data frame shape for data frame shape tests.
@@ -58,7 +58,7 @@ export interface DataFrameTestOptions extends InferenceTestOptions, Partial<Test
 export function testInferredDataFrameShape(
 	shell: RShell,
 	code: string,
-	expected: TestCase<ExpectedDataFrameShape> | SlicingCriteria,
+	expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
 	const test = Array.isArray(expected) ? expected : Record.mapProperties(expected, expectedShape => toDataFrameDomain(expectedShape, options?.config));
@@ -85,7 +85,7 @@ export function testInferredDataFrameShapeWithSource(
 	shell: RShell,
 	fileArg: string, textArg: string,
 	getCode: (arg: string) => string,
-	expected: TestCase<ExpectedDataFrameShape> | SlicingCriteria,
+	expected: InferenceTestCase<ExpectedDataFrameShape> | SlicingCriteria,
 	options?: DataFrameTestOptions
 ) {
 	testInferredDataFrameShape(shell, getCode(fileArg), expected, { ...options, skipRun: true });
@@ -100,7 +100,7 @@ export function testInferredDataFrameShapeWithSource(
  */
 export function testMappedDataFrameOperations(
 	code: string,
-	expected: TestCase<ExpectedDataFrameOperation[]>,
+	expected: InferenceTestCase<ExpectedDataFrameOperation[]>,
 	options?: DataFrameTestOptions
 ) {
 	test.skipIf(skipTestBecauseConfigNotMet(options))(decorateLabelContext(options?.name ?? code.trim(), ['absint']), async() => {

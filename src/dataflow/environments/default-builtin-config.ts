@@ -442,6 +442,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['Recall'],                                     processor: BuiltInProcName.Recall,              config: { libFn: true },                                                               assumePrimitive: false },
 	{ type: 'function', names: ['sys.function'],                               processor: BuiltInProcName.Recall,              config: { libFn: true, unknownOnNonZeroArg: true },                                    assumePrimitive: false },
 	{ type: 'function', names: ['c'],                                          processor: BuiltInProcName.Vector,              config: {},                                                                            assumePrimitive: true, evalHandler: 'built-in:c'  },
+	{ type: 'function', names: [Identifier.make('cmpfun', 'compiler'), Identifier.make('compile', 'compiler')], processor: BuiltInProcName.Default, config: { returnsNthArgument: 0 } },
+	{ type: 'function', names: [Identifier.make('loadcmp', 'compiler')],                                        processor: BuiltInProcName.Default, config: { hasUnknownSideEffects: true } },
 	{
 		type:      'function',
 		names:     ['setnames', 'setNames', 'setkey', 'setkeyv', 'setindex', 'setindexv', 'setattr'],
@@ -520,7 +522,7 @@ export const DefaultBuiltinConfig = [
 		config:   {
 			readIndices: false
 		}
-	}
+	},
 ] as const satisfies BuiltInDefinitions;
 
 

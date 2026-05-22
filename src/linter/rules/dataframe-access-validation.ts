@@ -1,6 +1,6 @@
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
-import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
+import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
 import { FlowrConfig } from '../../config';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { CfgKind } from '../../project/cfg-kind';

@@ -13,9 +13,8 @@ export type AbstractDataFrameShape = {
  * The data frame abstract domain as product domain of a column names domain, column count domain, and row count domain.
  */
 export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
-	public create(value: AbstractDataFrameShape): this;
-	public create(value: AbstractDataFrameShape): DataFrameDomain {
-		return new DataFrameDomain(value);
+	public create(value: AbstractDataFrameShape): this {
+		return new DataFrameDomain(value) as this;
 	}
 
 	/**
@@ -57,21 +56,29 @@ export class DataFrameDomain extends ProductDomain<AbstractDataFrameShape> {
 
 	protected reduce(value: AbstractDataFrameShape): AbstractDataFrameShape {
 		if(value.colnames.isValue() && value.cols.isValue()) {
-			if(value.colnames.value.min.size >= value.cols.value[1]) {
+			const minColNames = value.colnames.must.size;
+			const maxColNames = value.colnames.isFinite() ? value.colnames.must.size + value.colnames.may.size : Infinity;
+
+			if(minColNames >= value.cols.upper) {
 				value = {
 					...value,
-					colnames: value.colnames.meet({ min: new Set(), range: value.colnames.value.min })
+					colnames: value.colnames.create({ must: value.colnames.must, may: new Set() })
+				};
+			} else if(value.colnames.isFinite() && value.colnames.may.size > 0 && maxColNames <= value.cols.lower) {
+				value = {
+					...value,
+					colnames: value.colnames.create({ must: value.colnames.upper(), may: new Set() })
 				};
 			}
 		}
 		if(value.colnames.isValue() && value.cols.isValue()) {
-			const minColNames = value.colnames.value.min.size;
-			const maxColNames = value.colnames.isFinite() ? value.colnames.value.min.size + value.colnames.value.range.size : Infinity;
+			const minColNames = value.colnames.must.size;
+			const maxColNames = value.colnames.isFinite() ? value.colnames.must.size + value.colnames.may.size : Infinity;
 
-			if(minColNames > value.cols.value[0] || maxColNames < value.cols.value[1]) {
+			if((minColNames > value.cols.lower || maxColNames < value.cols.upper) && Math.max(minColNames, value.cols.lower) <= Math.min(maxColNames, value.cols.upper)) {
 				value = {
 					...value,
-					cols: value.cols.meet([minColNames, maxColNames])
+					cols: value.cols.create([Math.max(minColNames, value.cols.lower), Math.min(maxColNames, value.cols.upper)])
 				};
 			}
 		}

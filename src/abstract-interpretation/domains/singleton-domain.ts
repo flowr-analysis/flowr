@@ -1,7 +1,7 @@
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
-import type { SatisfiableDomain } from './satisfiable-domain';
+import type { ValueDomain } from './value-abstract-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the singleton domain as single value */
@@ -21,7 +21,7 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
 	extends AbstractDomain<SingletonValue<T>, SingletonTop, SingletonBottom, Value>
-	implements SatisfiableDomain<T> {
+	implements ValueDomain<T> {
 
 	public create(value: SingletonLift<T>): this {
 		return new SingletonDomain(value) as this;

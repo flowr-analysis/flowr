@@ -3,8 +3,7 @@ import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
-import type { SatisfiableDomain } from './satisfiable-domain';
-import { SetComparator } from './satisfiable-domain';
+import { SetComparator, type SetDomain } from './value-abstract-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the set range domain with an empty set as minimum set and {@link Top} as range set */
@@ -37,7 +36,7 @@ const DefaultLimit = { min: DEFAULT_INFERENCE_LIMIT, range: DEFAULT_INFERENCE_LI
  */
 export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	extends AbstractDomain<SetRangeValue<T>, SetRangeTop, SetRangeBottom, Value>
-	implements SatisfiableDomain<ReadonlySet<T>> {
+	implements SetDomain<T> {
 
 	public readonly limit:      SetRangeLimit;
 	protected readonly setType: typeof Set<T>;
@@ -69,7 +68,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		return new SetRangeDomain(value, this.limit, this.setType) as this;
 	}
 
-	public from(...values: Set<T>[] | T[][]): this {
+	public from(...values: ReadonlySet<T>[] | T[][]): this {
 		if(values.length === 0) {
 			return this.bottom();
 		}
@@ -211,9 +210,6 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		});
 	}
 
-	/**
-	 * Creates the union of this abstract value and another abstract value by creating the union of the minimum and maximum set, respectively.
-	 */
 	public union(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 		const thisLower = this.lower(), thisUpper = this.upper();
@@ -238,9 +234,6 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		});
 	}
 
-	/**
-	 * Creates the intersection of this abstract value and another abstract value by creating the intersection of the minimum and maximum set, respectively.
-	 */
 	public intersect(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 		const thisLower = this.lower(), thisUpper = this.upper();
@@ -265,9 +258,6 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		});
 	}
 
-	/**
-	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
-	 */
 	public subtract(other: this | SetRangeLift<T> | ArrayRangeValue<T>): this {
 		other = other instanceof SetRangeDomain ? other : this.create(other);
 		const thisLower = this.lower(), thisUpper = this.upper();

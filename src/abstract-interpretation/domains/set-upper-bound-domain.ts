@@ -3,7 +3,7 @@ import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
-import { type SatisfiableDomain, SetComparator } from './satisfiable-domain';
+import { type SetDomain, SetComparator } from './value-abstract-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The type of the actual values of the set upper bound domain as set */
@@ -23,7 +23,7 @@ type SetUpperBoundLift<T> = SetUpperBoundValue<T> | SetUpperBoundTop | SetUpperB
  */
 export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUpperBoundLift<T>>
 	extends AbstractDomain<SetUpperBoundValue<T>, SetUpperBoundTop, SetUpperBoundBottom, Value>
-	implements SatisfiableDomain<ReadonlySet<T>> {
+	implements SetDomain<T> {
 
 	public readonly limit:      number;
 	protected readonly setType: typeof Set<T>;
@@ -50,7 +50,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		return new SetUpperBoundDomain(value, this.limit, this.setType) as this;
 	}
 
-	public from(...values: Set<T>[] | T[][]): this {
+	public from(...values: ReadonlySet<T>[] | T[][]): this {
 		if(values.length === 0) {
 			return this.bottom();
 		}
@@ -126,9 +126,26 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		}
 	}
 
-	/**
-	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
-	 */
+	public union(other: this | SetUpperBoundLift<T> | T[]): this {
+		const otherValue = this.toValue(other);
+
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else {
+			return this.join(otherValue);
+		}
+	}
+
+	public intersect(other: this | SetUpperBoundLift<T> | T[]): this {
+		const otherValue = this.toValue(other);
+
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else {
+			return this.meet(otherValue);
+		}
+	}
+
 	public subtract(other: this | SetUpperBoundLift<T> | T[]): this {
 		const otherValue = this.toValue(other);
 

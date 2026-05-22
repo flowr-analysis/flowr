@@ -2,7 +2,7 @@ import { assertUnreachable } from '../../util/assert';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top } from './lattice';
-import { type SatisfiableDomain, NumericalComparator } from './satisfiable-domain';
+import { type NumericDomain, NumericalComparator } from './value-abstract-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Top element of the interval domain as interval [-∞, +∞] */
@@ -24,7 +24,7 @@ type IntervalLift = IntervalValue | IntervalBottom;
  */
 export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 	extends AbstractDomain<IntervalValue, IntervalTop, IntervalBottom, Value>
-	implements SatisfiableDomain<number> {
+	implements NumericDomain {
 
 	constructor(value: Value) {
 		if(Array.isArray(value)) {
@@ -174,9 +174,14 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	/**
-	 * Adds another abstract value to the current abstract value by adding the two lower and upper bounds, respectively.
-	 */
+	public negate(): this {
+		if(this.value === Bottom) {
+			return this.bottom();
+		} else {
+			return this.create([-this.value[1], -this.value[0]]);
+		}
+	}
+
 	public add(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
@@ -187,9 +192,6 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	/**
-	 * Subtracts another abstract value from the current abstract value by subtracting the two lower and upper bounds from each other, respectively.
-	 */
 	public subtract(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
@@ -200,9 +202,34 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	/**
-	 * Creates the minimum between the current abstract value and another abstract value by creating the minimum of the two lower and upper bounds, respectively.
-	 */
+	public multiply(other: this | IntervalLift): this {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else {
+			const products = [
+				this.value[0] * otherValue[0],
+				this.value[0] * otherValue[1],
+				this.value[1] * otherValue[0],
+				this.value[1] * otherValue[1]
+			];
+			return this.create([Math.min(...products), Math.max(...products)]);
+		}
+	}
+
+	public divide(other: this | IntervalLift): this {
+		const otherValue = other instanceof IntervalDomain ? other.value : other;
+
+		if(this.value === Bottom || otherValue === Bottom) {
+			return this.bottom();
+		} else if(otherValue[0] <= 0 && 0 <= otherValue[1]) {
+			return this.top();
+		} else {
+			return this.multiply(this.create([1 / otherValue[1], 1 / otherValue[0]]));
+		}
+	}
+
 	public min(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 
@@ -213,9 +240,6 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	/**
-	 * Creates the maximum between the current abstract value and another abstract value by creating the maximum of the two lower and upper bounds, respectively.
-	 */
 	public max(other: this | IntervalLift): this {
 		const otherValue = other instanceof IntervalDomain ? other.value : other;
 

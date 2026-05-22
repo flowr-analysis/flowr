@@ -2,7 +2,7 @@ import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Top, TopSymbol } from './lattice';
-import type { SatisfiableDomain } from './satisfiable-domain';
+import type { ValueDomain } from './value-abstract-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
 
 /** The Bottom element of the bounded set domain as empty set */
@@ -25,7 +25,7 @@ type BoundedSetLift<T> = BoundedSetValue<T> | BoundedSetTop | BoundedSetBottom;
  */
 export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLift<T>>
 	extends AbstractDomain<BoundedSetValue<T>, BoundedSetTop, BoundedSetBottom, Value>
-	implements SatisfiableDomain<T> {
+	implements ValueDomain<T> {
 
 	public readonly limit:      number;
 	protected readonly setType: typeof Set<T>;
@@ -107,21 +107,6 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 			return this.create(this.value);
 		} else {
 			return this.create(this.value.intersection(otherValue));
-		}
-	}
-
-	/**
-	 * Subtracts another abstract value from the current abstract value by removing all elements of the other abstract value from the current abstract value.
-	 */
-	public subtract(other: this | BoundedSetLift<T> | T[]): this {
-		const otherValue = this.toValue(other);
-
-		if(this.value === Top) {
-			return this.top();
-		} else if(otherValue === Top) {
-			return this.create(this.value);
-		} else {
-			return this.create(this.value.difference(otherValue));
 		}
 	}
 

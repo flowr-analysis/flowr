@@ -1,6 +1,7 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
 import type { FiniteLatticeConfig } from '../finite-domain';
 import { FiniteDomain } from '../finite-domain';
+import { guard } from '../../util/assert';
 
 export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top extends symbol, Bottom extends symbol> {
 	private readonly elements: Set<Element> = new Set();
@@ -44,13 +45,15 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 		if(!Array.isArray(to)) {
 			to = [to];
 		}
+
+		const successors = this.leqMap.get(from);
+		guard(successors, 'Internal error: A successor set should always exist');
+
 		for(const t of to) {
 			if(!this.elements.has(t)) {
 				throw new Error(`Target element not registered: ${String(t)}`);
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const successors = this.leqMap.get(from)!;
 			successors.add(t);
 		}
 		return this;
@@ -74,7 +77,6 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 	}
 
 	build(initialElement?: Element): FiniteDomain<Element, Top, Bottom> {
-		const config = this.buildConfig();
-		return new FiniteDomain(initialElement ?? this._top as Element, config);
+		return new FiniteDomain(initialElement ?? this._top as Element, this.buildConfig());
 	}
 }

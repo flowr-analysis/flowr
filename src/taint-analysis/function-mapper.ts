@@ -15,7 +15,11 @@ import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/n
 export type ResolvedTaint<Domain extends AnyAbstractDomain> = { condition: TaintCond<Domain>, argument: PotentiallyEmptyRArgument<ParentInformation> } | { taint: AbstractValue<Domain> } | undefined;
 
 /**
- *
+ * Determine the resulting taint of a function call
+ * @param node   - The function call
+ * @param mapper - Function mapper containing relations between function names and their tainting behaviour
+ * @param dfg    - Data flow graph
+ * @param ctx    - The analysis context
  */
 export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	node: RNode<ParentInformation>,
@@ -59,10 +63,7 @@ export type TaintCond<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
 	cond: (inParam: AbstractValue<Domain>) => AbstractValue<Domain>;
 };
 
-/**
- *
- */
-export function isTaintCond(value: unknown): value is TaintCond {
+function isTaintCond(value: unknown): value is TaintCond {
 	if(typeof value !== 'object' || value === null) {
 		return false;
 	}

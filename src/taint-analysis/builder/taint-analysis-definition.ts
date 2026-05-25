@@ -1,5 +1,5 @@
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
-import type { FnTaintMapper } from '../function-mapper';
+import type { TaintMapper } from '../function-mapper';
 
 export type TaintAnalysisName<Definition> = Definition extends TaintAnalysisDefinition<infer Name, infer _Domain> ? Name : never;
 
@@ -8,7 +8,7 @@ export type TaintAnalysisName<Definition> = Definition extends TaintAnalysisDefi
  */
 export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	public readonly domain: Domain;
-	public mapper:          FnTaintMapper<Domain> = {};
+	public mapper:          TaintMapper<Domain> = [];
 	public name:            string;
 
 	private msg: string | undefined;
@@ -18,13 +18,13 @@ export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbst
 		this.domain = domain;
 	}
 
-	public through(fnMapping: FnTaintMapper<Domain>): this {
-		this.mapper = { ...this.mapper, ...fnMapping };
+	public through(fnMapping: TaintMapper<Domain>): this {
+		this.mapper.push(...fnMapping);
 		return this;
 	}
 
-	public to(fnMapping: FnTaintMapper<Domain>): this {
-		this.mapper = { ...this.mapper, ...fnMapping };
+	public to(fnMapping: TaintMapper<Domain>): this {
+		this.mapper.push(...fnMapping);
 		return this;
 	}
 

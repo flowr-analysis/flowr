@@ -2,7 +2,7 @@ import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absi
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { FnTaintMapper, ResolvedTaint } from './function-mapper';
+import type { ResolvedTaint, TaintMapper } from './function-mapper';
 import { mapFnCallToTaint } from './function-mapper';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -15,9 +15,9 @@ import { StateAbstractDomain } from '../abstract-interpretation/domains/state-ab
  */
 export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends AbstractInterpretationVisitor<AnyStateDomain<Domain>> {
 	private readonly domain:       Domain;
-	private readonly fnCallMapper: FnTaintMapper<Domain>;
+	private readonly fnCallMapper: TaintMapper<Domain>;
 
-	constructor(domain: Domain, fnCallMapper: FnTaintMapper<Domain>, visitorConfig: AbsintVisitorConfiguration) {
+	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: AbsintVisitorConfiguration) {
 		super(visitorConfig, StateAbstractDomain.top(domain.top()));
 		this.domain = domain;
 		this.fnCallMapper = fnCallMapper;

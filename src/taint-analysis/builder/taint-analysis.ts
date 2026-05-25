@@ -17,14 +17,14 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 		this.analyzer = analyzer;
 	}
 
-	public addPredefined<Name extends string>(name: PredefinedTaintAnalysis): this & TaintAnalysis<readonly [...Defs, Name]> {
+	public addPredefined<Name extends PredefinedTaintAnalysis>(name: Name): TaintAnalysis<readonly [...Defs, Name]> {
 		this.defs.push(predefinedTaintAnalyses[name]);
-		return this as unknown as this & TaintAnalysis<readonly [...Defs, Name]>;
+		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
 	}
 
-	public add<Name extends string>(def: TaintAnalysisDefinition<Name>): this & TaintAnalysis<readonly [...Defs, Name]> {
+	public add<Name extends string>(def: TaintAnalysisDefinition<Name>): TaintAnalysis<readonly [...Defs, Name]> {
 		this.defs.push(def);
-		return this as unknown as this & TaintAnalysis<readonly [...Defs, Name]>;
+		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
 	}
 
 	/**

@@ -314,13 +314,13 @@ function extractSourceAndTarget<OtherInfo>(args: readonly PotentiallyEmptyRArgum
 /**
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
-	const written: (InGraphIdentifierDefinition & { name: string })[] = [];
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: Identifier })[] {
+	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
 	for(const refs of [target.in, target.unknownReferences]) {
 		for(const ref of refs) {
 			written.push({
 				nodeId:    ref.nodeId,
-				name:      ref.name as string,
+				name:      ref.name as Identifier,
 				type:      referenceType,
 				definedAt: rootId,
 				cds:       data.cds ?? (makeMaybe ? [] : undefined),
@@ -432,7 +432,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	if(!defs || defs.length !== 1) {
 		return undefined;
 	}
-	const envDef = defs[0] as InGraphIdentifierDefinition & { name: string };
+	const envDef = defs[0] as InGraphIdentifierDefinition & { name: Identifier };
 	if(!envDef.envState) {
 		return undefined;
 	}
@@ -459,7 +459,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	newEnvState = define(fieldDef, false, newEnvState);
 
 	/* replace e's definition in the result environment with one that carries the updated envState */
-	const updatedEnvDef: InGraphIdentifierDefinition & { name: string } = {
+	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		...envDef,
 		definedAt: rootId,
 		envState:  newEnvState
@@ -576,7 +576,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	/* attach a fresh environment state when the assigned value is a new.env() call */
 	if(data.ctx.config.solver.trackEnvironments && isEnvCreatorSource(sourceArg)) {
-		const envState = createFreshEnvState(data);
+		const envState = createFreshEnvState(data, sourceArg);
 		for(let i = 0; i < writeNodes.length; i++) {
 			writeNodes[i] = { ...writeNodes[i], envState };
 		}

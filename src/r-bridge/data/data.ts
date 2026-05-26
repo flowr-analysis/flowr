@@ -104,8 +104,8 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:         'Dynamic Environment Resolution',
 							id:           'dynamic-environment-resolution',
-							supported:    'not',
-							description:  '_For example, using `new.env` and friends_',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), and `attach`. Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
 							capabilities: [
 								{
 									name:        'Environment in Conditionals',
@@ -118,6 +118,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									id:          'environment-in-loops',
 									supported:   'partially',
 									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
 								}
 							]
 						},

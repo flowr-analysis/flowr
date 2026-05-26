@@ -598,6 +598,99 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 		);
 	});
 
+	describe('new.env() parent argument', () => {
+		assertDataflow(label('new.env(parent=e) with tracked parent env: child reads from parent via assign', ['dynamic-environment-resolution', 'environment-parent']),
+			shell,
+			'e <- new.env()\nassign("x", 1, envir=e)\nchild <- new.env(parent=e)\nget("x", envir=child)',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.defineVariable('3@child', 'child')
+				.use('3@e').reads('3@e', '1@e')
+				.use('4@child').reads('4@child', '3@child'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('new.env(parent=emptyenv()): fresh isolated env, assign into it does not leak to parent', ['dynamic-environment-resolution', 'environment-parent']),
+			shell,
+			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+
+		assertDataflow(label('new.env(parent=NULL): same as emptyenv(), assign does not leak', ['dynamic-environment-resolution', 'environment-parent']),
+			shell,
+			'e <- new.env(parent=NULL)\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+
+		assertDataflow(label('new.env() without parent uses default (parent.frame()) — tracked normally', ['dynamic-environment-resolution', 'environment-parent']),
+			shell,
+			'e <- new.env()\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+
+		assertSliced(label('slice through child env with emptyenv parent: includes assign and new.env', ['dynamic-environment-resolution', 'environment-parent', 'name-created']),
+			shell,
+			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)',
+			['3@get'],
+			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)'
+		);
+	});
+
+	describe('rlang::new_environment()', () => {
+		assertDataflow(label('rlang::new_environment() carries NewEnv origin — assigned variable is tracked', ['dynamic-environment-resolution']),
+			shell,
+			'e <- rlang::new_environment()\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+
+		assertDataflow(label('rlang::new_environment(parent=emptyenv()): isolated env, assign does not leak', ['dynamic-environment-resolution', 'environment-parent']),
+			shell,
+			'e <- rlang::new_environment(parent=emptyenv())\nassign("x", 1, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+	});
+
 	describe('config: trackEnvironments disabled', () => {
 		const noTrack = FlowrConfig.setInConfig(FlowrConfig.default(), 'solver.trackEnvironments', false);
 

@@ -19,7 +19,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -29,7 +29,7 @@ export interface EnvirResolution<OtherInfo> {
 	/** `data` with its `environment` replaced by the resolved `envState` for in-env lookups. */
 	readonly envirData:   DataflowProcessorInformation<OtherInfo & ParentInformation>;
 	/** The definition of the variable that holds the environment */
-	readonly envDef:      InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation };
+	readonly envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
 }
@@ -57,7 +57,7 @@ export function resolveEnvirArg<OtherInfo>(
 		if(defs?.length !== 1) {
 			return undefined;
 		}
-		const envDef = defs[0] as InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation };
+		const envDef = defs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 		if(!envDef.envState) {
 			return undefined;
 		}
@@ -73,14 +73,14 @@ export function resolveEnvirArg<OtherInfo>(
  */
 export function routeWrittenToCustomEnv(
 	result:    DataflowInformation,
-	envDef:    InGraphIdentifierDefinition & { name: Identifier, envState: REnvironmentInformation },
+	envDef:    NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },
 	newDefAt:  NodeId,
 	definedAt?: NodeId
 ): DataflowInformation {
 	const written = result.out.filter(
-		(d): d is InGraphIdentifierDefinition & { name: Identifier } =>
+		(d): d is NamedInGraphIdentifierDefinition =>
 			d.name !== undefined && 'definedAt' in d &&
-			(definedAt === undefined || d.definedAt === definedAt)
+			(definedAt === undefined || (d as InGraphIdentifierDefinition).definedAt === definedAt)
 	);
 
 	let newEnvState = envDef.envState;
@@ -90,7 +90,7 @@ export function routeWrittenToCustomEnv(
 	}
 
 	const newCurrent = result.environment.current.removeAll(namesToRemove);
-	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
+	const updatedEnvDef: NamedInGraphIdentifierDefinition = {
 		...envDef,
 		definedAt: newDefAt,
 		envState:  newEnvState

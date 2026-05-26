@@ -95,7 +95,7 @@ export function processLocal<OtherInfo>(
 
 	/* move all definitions made inside the body into the custom env's tracked state */
 	if(envirResolution) {
-		return routeWrittenToCustomEnv(baseResult, envirResolution.envDef, rootId, data);
+		return routeWrittenToCustomEnv(baseResult, envirResolution.envDef, rootId);
 	}
 	return baseResult;
 }

@@ -7,13 +7,26 @@ import type {
 	AnyAbstractDomain
 } from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
-import { getFunctionArgument, getFunctionArguments } from '../abstract-interpretation/data-frame/mappers/arguments';
+import type {
+	FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
+import { getFunctionArgument
+	, getArgumentValue
+	,
+	getFunctionArguments
+} from '../abstract-interpretation/data-frame/mappers/arguments';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { guard } from '../util/assert';
 
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =
-	{ condition: TaintCondition<Domain>, argument: PotentiallyEmptyRArgument<ParentInformation> } | { taint: AbstractValue<Domain> } | undefined;
+	{
+		condition: TaintConditionFunction<Domain>,
+		valArgs:   unknown[], // TODO Support for other types apart from booleans
+		taintArgs: PotentiallyEmptyRArgument<ParentInformation>[]
+	}
+	| { taint: AbstractValue<Domain> }
+	| undefined;
 
 /**
  * Determine the resulting taint of a function call
@@ -35,19 +48,27 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	const functionName = Identifier.getName(node.functionName.content);
 	const mapping = mapper.find(m => Identifier.matches(m.identifier, functionName));
 
-	if(mapping?.condition) {
-		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
-		const args = getFunctionArguments(node, dfg);
-		const arg = getFunctionArgument(args, { pos: mapping.condition.pos }, resolveInfo);
-		if(arg) {
-			return { condition: mapping.condition, argument: arg };
-		} else {
-			return undefined;
-		}
-	} else if(mapping?.taint) {
+	if(mapping?.taint) {
 		return { taint: mapping.taint };
-	} else {
-		return undefined;
+	} else if(mapping?.condition) {
+		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
+		const allArgs = getFunctionArguments(node, dfg);
+
+		const valArgs = mapping.condition.argValues
+			? mapping.condition.argValues.map(location => getArgumentValue(allArgs, location, resolveInfo))
+			: [];
+
+		const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
+			const arg = getFunctionArgument(allArgs, location, resolveInfo);
+			guard(arg, `Could not determine function argument for requested taint at position ${location.pos} with name ${location.name}`);
+			return arg;
+		}) : [];
+
+		return {
+			valArgs,
+			taintArgs,
+			condition: mapping.condition.condition,
+		};
 	}
 }
 
@@ -58,9 +79,19 @@ export type TaintMapping<Domain extends AnyAbstractDomain> = {
 } & (
 	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }
 	| { taint?: AbstractValue<Domain>; condition: TaintCondition<Domain> }
-	);
+);
 
 export type TaintCondition<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
-	pos:  number;
-	cond: (inParam: AbstractValue<Domain>) => AbstractValue<Domain>;
+	argValues?: FunctionParameterLocation<unknown>[],
+	argTaints?: TaintParameterLocation[],
+	condition:  TaintConditionFunction<Domain>
 };
+
+export type TaintConditionFunction<Domain extends AnyAbstractDomain> =
+	( args: unknown[], taints: AbstractValue<Domain>[]) => AbstractValue<Domain>;
+
+
+export interface TaintParameterLocation {
+	pos:   number,
+	name?: string
+}

@@ -3,14 +3,20 @@ import { TaintAnalysisDefinition } from '../builder/taint-analysis-definition';
 import { FiniteDomainBuilder } from '../builder/domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 
+export const MinMax = Symbol('Min-Max');
+export const ZeroCentered = Symbol('Zero Centered');
+export const UnitVariance = Symbol('Unit Variance');
+export const ZScore = Symbol('z-Score');
 export const Unscaled = Symbol('Unscaled');
-export const Scaled = Symbol('Scaled');
 
 export const scaleDomain = new FiniteDomainBuilder()
-	.addElements(Unscaled, Scaled)
-	.addLeqOrder(Bottom, [Unscaled, Scaled])
+	.addElements(MinMax, ZeroCentered, UnitVariance, ZScore, Unscaled)
+	.addLeqOrder(Bottom, [MinMax, ZeroCentered, UnitVariance, Unscaled])
+	.addLeqOrder(ZeroCentered, ZScore)
+	.addLeqOrder(UnitVariance, ZScore)
+	.addLeqOrder(MinMax, Top)
 	.addLeqOrder(Unscaled, Top)
-	.addLeqOrder(Scaled, Top)
+	.addLeqOrder(ZScore, Top)
 	.build();
 
 export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
@@ -20,14 +26,26 @@ export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
 	},
 	{
 		identifier: Identifier.make('scale'),
-		taint:      Scaled,
-	}
-	])
+		condition:  {
+			argValues: [
+				{ pos: 1, name: 'center', default: true },
+				{ pos: 2, name: 'scale', default: true }
+			],
+			argTaints: [{ pos: 0, name: 'x' }],
+			condition: ([center, scale], [taint]) =>
+				center && scale ? ZScore :
+					center ? ZeroCentered :
+						scale ? UnitVariance :
+							taint
+		}
+	}])
 	.to([{
 		identifier: Identifier.make('mean'),
 		condition:  {
-			pos:  0,
-			cond: (taint): symbol => taint == Scaled ? Bottom : taint
+			argTaints: [{ pos: 0, name: 'x' }],
+			condition: (_args, [taint]) => {
+				return (taint === ZeroCentered || taint === ZScore) ? Bottom : taint;
+			}
 		}
 	}])
 	.report('Warning: Mean of scaled value is always zero');

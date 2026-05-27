@@ -46,10 +46,8 @@ describe('Finite Domain', () => {
 		const B = Symbol('B');
 		const C = Symbol('C');
 		const D = Symbol('D');
-		const E = Symbol('E');
 
 		const lattice = new FiniteDomainBuilder()
-			.addElements(A, B, C, D, E)
 			.addLeqOrder(Bottom, [A, C])
 			.addLeqOrder(A, B)
 			.addLeqOrder(B, D)

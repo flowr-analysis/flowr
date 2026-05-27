@@ -9,14 +9,15 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 	private _top:              Top | undefined;
 	private _bottom:           Bottom | undefined;
 
-	addElements(...elements: Element[]): this {
+	private addElements(...elements: Element[]) {
 		for(const element of elements) {
-			this.elements.add(element);
+			if(!this.elements.has(element)) {
+				this.elements.add(element);
+			}
 			if(!this.leqMap.has(element)) {
 				this.leqMap.set(element, new Set());
 			}
 		}
-		return this;
 	}
 
 	setTop(element: Top): this {
@@ -32,12 +33,8 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 	}
 
 	addLeqOrder(from: Element, to: Element | Element[]): this {
-		if(from === Bottom) {
-			this.addElements(Bottom as Element);
-		}
-		if(to === Top) {
-			this.addElements(Top as Element);
-		}
+		this.addElements(from, ...(Array.isArray(to) ? to : [to]));
+
 
 		if(!this.elements.has(from)) {
 			throw new Error(`Source element not registered: ${String(from)}`);

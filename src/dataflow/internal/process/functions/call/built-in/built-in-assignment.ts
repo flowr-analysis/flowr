@@ -580,6 +580,17 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		for(let i = 0; i < writeNodes.length; i++) {
 			writeNodes[i] = { ...writeNodes[i], envState };
 		}
+	} else if(data.ctx.config.solver.trackEnvironments && source.type === RType.Symbol) {
+		/* propagate envState when aliasing a tracked env variable (alias <- e) */
+		const sourceDefs = resolveByName(source.content, data.environment, ReferenceType.Variable);
+		if(sourceDefs?.length === 1) {
+			const envState = (sourceDefs[0] as InGraphIdentifierDefinition).envState;
+			if(envState) {
+				for(let i = 0; i < writeNodes.length; i++) {
+					writeNodes[i] = { ...writeNodes[i], envState };
+				}
+			}
+		}
 	}
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {

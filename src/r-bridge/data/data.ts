@@ -105,7 +105,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							name:         'Dynamic Environment Resolution',
 							id:           'dynamic-environment-resolution',
 							supported:    'partially',
-							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), and `attach`. Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
 							capabilities: [
 								{
 									name:        'Environment in Conditionals',
@@ -124,6 +124,18 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									id:          'environment-parent',
 									supported:   'partially',
 									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
 								}
 							]
 						},

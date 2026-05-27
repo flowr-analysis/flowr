@@ -14,6 +14,7 @@ import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { define } from '../../../../../environments/define';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
+import { EdgeType } from '../../../../../graph/edge';
 
 /**
  * Processes `attach(what, ...)` — when `what` is a variable that holds a tracked
@@ -62,6 +63,8 @@ export function processAttach<OtherInfo>(
 				type: ReferenceType.Variable,
 			};
 			newEnvironment = define(injected as InGraphIdentifierDefinition & { name: Identifier }, false, newEnvironment);
+			/* so the slicer can trace from the injected def back to this attach call */
+			result.graph.addEdge((varDef as InGraphIdentifierDefinition).nodeId, rootId, EdgeType.Reads);
 		}
 	}
 

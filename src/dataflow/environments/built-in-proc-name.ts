@@ -90,4 +90,6 @@ export enum BuiltInProcName {
 	Vector = 'builtin:vector',
 	/** for `while` loops, see {@link processWhileLoop} */
 	WhileLoop = 'builtin:while-loop',
+	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
+	With = 'builtin:with',
 }

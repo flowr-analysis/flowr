@@ -310,7 +310,7 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
  * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
  * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.
  */
-export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier }
+export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
 
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}.

@@ -2,15 +2,13 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
@@ -125,7 +123,7 @@ export function createFreshEnvState(
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 		if(vertex?.tag === VertexType.FunctionCall && (vertex as DataflowGraphVertexFunctionCall).newEnvParent !== undefined) {
-			const parentState = (vertex as DataflowGraphVertexFunctionCall).newEnvParent!;
+			const parentState = (vertex as DataflowGraphVertexFunctionCall).newEnvParent as REnvironmentInformation;
 			return {
 				current: new Environment(parentState.current),
 				level:   parentState.level + 1

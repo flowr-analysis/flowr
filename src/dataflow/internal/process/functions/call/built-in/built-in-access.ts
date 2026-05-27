@@ -88,16 +88,21 @@ export function processAccess<OtherInfo>(
 	/* for $ and @ access on a tracked env variable, add Reads edges to the field definition in envState */
 	if(config.treatIndicesAsString && head !== EmptyArgument && head.value?.type === RType.Symbol) {
 		const accessedDefs = resolveByName(head.value.content, data.environment, ReferenceType.Variable);
-		if(accessedDefs?.length === 1) {
-			const envDef = accessedDefs[0] as InGraphIdentifierDefinition;
-			if(envDef.envState && args.length >= 2 && args[1] !== EmptyArgument) {
-				const fieldNode = unpackArg(args[1]);
-				const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
-				if(fieldName) {
-					const fieldDefs = envDef.envState.current.memory.get(fieldName as BrandedIdentifier);
+		const allHaveEnvState = accessedDefs && accessedDefs.length > 0 && accessedDefs.every(d => (d as InGraphIdentifierDefinition).envState !== undefined);
+		if(allHaveEnvState && args.length >= 2 && args[1] !== EmptyArgument) {
+			const fieldNode = unpackArg(args[1]);
+			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
+			if(fieldName) {
+				/* add reads from the $ operator symbol so backward slicing from 3@$ reaches field defs */
+				for(const accessedDef of accessedDefs) {
+					const envState = (accessedDef as InGraphIdentifierDefinition).envState;
+					if(!envState) {
+						continue;
+					}
+					const fieldDefs = envState.current.memory.get(fieldName as BrandedIdentifier);
 					if(fieldDefs) {
 						for(const fd of fieldDefs) {
-							info.graph.addEdge(rootId, fd.nodeId, EdgeType.Reads);
+							info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
 						}
 					}
 				}

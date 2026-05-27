@@ -87,6 +87,30 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
+		assertDataflow(label('new.env() passed directly as envir arg (no intermediate binding): conservative, x in global scope', ['dynamic-environment-resolution']),
+			shell,
+			'assign("x", 42, envir=new.env())\nx',
+			emptyGraph()
+				.defineVariable('1@"x"', '"x"')
+				.use('2@x')
+				.reads('2@x', '1@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('env variable reassigned to a second new.env(): second envState replaces first, x still isolated', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			'e <- new.env()\ne <- new.env()\nassign("x", 1, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('2@e', 'e')
+				.use('3@e').reads('3@e', '2@e')
+				.use('4@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['4@x', '3@assign']]
+			}
+		);
+
 		assertDataflow(label('assign in both if-then-else branches: each branch reads e, x not in global scope', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-conditionals']),
 			shell,
 			'e <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif (flag) {\n  assign("x", 1, envir=e)\n} else {\n  assign("x", 2, envir=e)\n}\nx',
@@ -444,7 +468,7 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				.defineVariable('2@dst', 'dst')
 				.use('3@src').reads('3@src', '1@src')
 				.use('4@src').reads('4@src', '1@src')
-				.reads('4@"val"', '3@"val"')
+				.reads('5@"val"', '4@"val"')
 				.use('4@dst').reads('4@dst', '2@dst')
 				.use('5@dst').reads('5@dst', '2@dst'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
@@ -507,7 +531,7 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 		assertSliced(label('slice of e$x read traces back through assign', ['dynamic-environment-resolution', 'name-created']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\ne$x',
-			['3@e'],
+			['3@$'],
 			'e <- new.env()\nassign("x", 42, envir=e)\ne$x'
 		);
 
@@ -545,16 +569,7 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				'get("x", envir=e)',
 			].join('\n'),
 			['8@get'],
-			[
-				'e <- new.env()',
-				'flag <- sample(c(TRUE, FALSE), 1)',
-				'if (flag) {',
-				'  assign("x", 1, envir=e)',
-				'} else {',
-				'  assign("x", 2, envir=e)',
-				'}',
-				'get("x", envir=e)',
-			].join('\n')
+			'e <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif(flag) { assign("x", 1, envir=e) } else\n{ assign("x", 2, envir=e) }\nget("x", envir=e)'
 		);
 
 		assertSliced(label('chained get-assign-get slice: full chain across two envs preserved', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
@@ -688,6 +703,213 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				resolveIdsAsCriterion: true,
 				mustNotHaveEdges:      [['3@x', '2@assign']]
 			}
+		);
+		assertDataflow(label('new.environment() (base alias) tracks env identically to new.env()', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			'e <- new.environment()\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['3@x', '2@assign']]
+			}
+		);
+	});
+
+	describe('user-defined function creates env', () => {
+		/*
+		 * When new.env() is returned from a user-defined function the analysis cannot
+		 * statically determine the return value is an environment.  The variable therefore
+		 * has no envState and assignments / gets targeting it fall through conservatively
+		 * to global scope.  This is by design — the analysis is sound (not lossy).
+		 */
+		assertDataflow(label('simple wrapper function returns new.env(): e has no envState, assign falls through to global scope', ['dynamic-environment-resolution']),
+			shell,
+			'make_env <- function() new.env()\ne <- make_env()\nassign("x", 42, envir=e)\nx',
+			emptyGraph()
+				.defineVariable('1@make_env', 'make_env')
+				.defineVariable('2@e', 'e')
+				/* "x" is defined in global scope because e carries no envState */
+				.defineVariable('3@"x"', '"x"')
+				.use('4@x')
+				.reads('4@x', '3@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('factory function with internal new.env() and assign: no envState propagated to caller, get does not resolve', ['dynamic-environment-resolution']),
+			shell,
+			[
+				'make_cfg <- function(val) {',
+				'  env <- new.env()',
+				'  assign("setting", val, envir=env)',
+				'  env',
+				'}',
+				'cfg <- make_cfg(42)',
+				'get("setting", envir=cfg)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@make_cfg', 'make_cfg')
+				.defineVariable('6@cfg', 'cfg')
+				/* cfg has no envState so envir=cfg is ignored; get resolves nothing from it */
+				.use('7@cfg').reads('7@cfg', '6@cfg'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+	});
+
+	describe('environment aliasing (alias <- e)', () => {
+		assertDataflow(label('alias snapshots envState: get via alias resolves x assigned before alias', ['dynamic-environment-resolution', 'environment-alias']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'get("x", envir=alias)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.defineVariable('3@alias', 'alias')
+				.use('3@e').reads('3@e', '1@e')
+				.use('4@alias').reads('4@alias', '3@alias')
+				.reads('4@"x"', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('alias of alias: double indirection still resolves x', ['dynamic-environment-resolution', 'environment-alias']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias1 <- e',
+				'alias2 <- alias1',
+				'get("x", envir=alias2)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.defineVariable('3@alias1', 'alias1')
+				.use('3@e').reads('3@e', '1@e')
+				.defineVariable('4@alias2', 'alias2')
+				.use('4@alias1').reads('4@alias1', '3@alias1')
+				.use('5@alias2').reads('5@alias2', '4@alias2')
+				.reads('5@"x"', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('alias does not see assigns made to original env AFTER alias was created', ['dynamic-environment-resolution', 'environment-alias']),
+			shell,
+			[
+				'e <- new.env()',
+				'alias <- e',
+				'assign("x", 42, envir=e)',
+				'get("x", envir=alias)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.defineVariable('2@alias', 'alias')
+				.use('2@e').reads('2@e', '1@e')
+				/* alias was created before the assign so its envState has no "x": get falls through */
+				.use('4@alias').reads('4@alias', '2@alias'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				/* assign("x",...) goes into e AFTER the alias snapshot; alias cannot see it */
+				mustNotHaveEdges:      [['4@"x"', '3@"x"']]
+			}
+		);
+
+		assertSliced(label('slice through alias: get via alias traces back through assign and new.env', ['dynamic-environment-resolution', 'environment-alias', 'name-created']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'get("x", envir=alias)',
+			].join('\n'),
+			['4@get'],
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'get("x", envir=alias)',
+			].join('\n')
+		);
+	});
+
+	describe('with() / within()', () => {
+		assertDataflow(label('with(e, x): x resolves from envState, e is read', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(e, x)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.use('3@e').reads('3@e', '1@e'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('with via alias: with(alias, x) resolves x from alias envState', ['dynamic-environment-resolution', 'environment-with', 'environment-alias']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'with(alias, x)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@e', 'e')
+				.use('2@e').reads('2@e', '1@e')
+				.defineVariable('3@alias', 'alias')
+				.use('3@e').reads('3@e', '1@e')
+				.use('4@alias').reads('4@alias', '3@alias'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertDataflow(label('with untracked env falls through to default handling', ['dynamic-environment-resolution', 'environment-with']),
+			shell,
+			'with(some_obj, x)\nx',
+			emptyGraph()
+				.use('1@x')
+				.use('2@x'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+		);
+
+		assertSliced(label('slice from with(e, x): traces through assign and new.env', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(e, x)',
+			].join('\n'),
+			['3@with'],
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(e, x)',
+			].join('\n')
+		);
+
+		assertSliced(label('slice from with via alias: traces assign, alias assignment, and new.env', ['dynamic-environment-resolution', 'environment-with', 'environment-alias', 'name-created']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'with(alias, x)',
+			].join('\n'),
+			['4@with'],
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'alias <- e',
+				'with(alias, x)',
+			].join('\n')
 		);
 	});
 

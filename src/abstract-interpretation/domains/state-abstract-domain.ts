@@ -41,11 +41,11 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return new StateAbstractDomain(value, this.domain);
 	}
 
-	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainTop>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+	public static top<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain>>(this: new (value: StateDomainTop, domain: Domain) => StateDomain, domain: Domain): StateDomain {
 		return new this(new Map<NodeId, never>(), domain);
 	}
 
-	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain, StateDomainBottom>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
+	public static bottom<Domain extends AnyAbstractDomain, StateDomain extends StateAbstractDomain<Domain>>(this: new (value: StateDomainBottom, domain: Domain) => StateDomain, domain: Domain): StateDomain {
 		return new this(Bottom, domain);
 	}
 
@@ -69,7 +69,8 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		}
 	}
 
-	public top(): this & StateAbstractDomain<Domain, StateDomainTop> {
+	public top(): this & StateAbstractDomain<Domain, StateDomainTop>;
+	public top(): StateAbstractDomain<Domain, StateDomainTop> {
 		return this.create(new Map<NodeId, never>()) as this & StateAbstractDomain<Domain, StateDomainTop>;
 	}
 

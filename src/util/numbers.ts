@@ -51,3 +51,20 @@ export function getMin(values: number[]): number | undefined {
 	}
 	return min;
 }
+
+/**
+ * Returns the maximum value from an array of numbers, or `undefined` if the array is empty.
+ * @param values - The array of numbers to get the maximum from.
+ */
+export function getMax(values: number[]): number | undefined {
+	if(values.length === 0) {
+		return undefined;
+	}
+	let max = values[0];
+	for(const value of values.slice(1)) {
+		if(value > max) {
+			max = value;
+		}
+	}
+	return max;
+}

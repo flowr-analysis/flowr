@@ -1,14 +1,7 @@
-import {
-	CfgEdge,
-	type CfgExpressionVertex,
-	type CfgStatementVertex,
-	CfgVertex,
-	type ControlFlowInformation
-} from '../control-flow/control-flow-graph';
-import {
-	SemanticCfgGuidedVisitor,
-	type SemanticCfgGuidedVisitorConfiguration
-} from '../control-flow/semantic-cfg-guided-visitor';
+import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from '../control-flow/control-flow-graph';
+import { CfgEdge, CfgVertex } from '../control-flow/control-flow-graph';
+import type { SemanticCfgGuidedVisitorConfiguration } from '../control-flow/semantic-cfg-guided-visitor';
+import { SemanticCfgGuidedVisitor } from '../control-flow/semantic-cfg-guided-visitor';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { Dataflow } from '../dataflow/graph/df-helper';
 import type { DataflowGraph } from '../dataflow/graph/graph';
@@ -19,16 +12,17 @@ import {
 	VertexType
 } from '../dataflow/graph/vertex';
 import { OriginType } from '../dataflow/origin/dfg-get-origin';
-import { type NoInfo, RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { NoInfo } from '../r-bridge/lang-4.x/ast/model/model';
+import { RLoopConstructs, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { guard, isNotUndefined, isUndefined } from '../util/assert';
+import { guard, isNotUndefined } from '../util/assert';
 import { AbstractDomain, type AnyAbstractDomain } from './domains/abstract-domain';
-import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
-import { UnsupportedFunctions } from './unsupported-functions';
 import { RTrue } from '../r-bridge/lang-4.x/convert-values';
+import { UnsupportedFunctions } from './unsupported-functions';
+import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
@@ -337,9 +331,9 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 				const cfdEdge = pred.edges.find(CfgEdge.isControlDependency);
 				if(isNotUndefined(cfdEdge)) {
 					const branchType = CfgEdge.getWhen(cfdEdge);
-					if(isNotUndefined(branchType)) {
+					if(isNotUndefined(branchType) && isNotUndefined(predState)) {
 						// Apply Condition Semantics to copy of predecessor state, as we do not want to modify the trace
-						const copiedState = isUndefined(predState) ? undefined : predState.create(predState.value);
+						const copiedState = predState.create(predState.value);
 						return this.applyConditionSemantics(copiedState, pred.id, branchType === RTrue);
 					}
 				}
@@ -408,7 +402,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 * @returns The abstract state resulting from applying the condition semantics.
 	 * @protected
 	 */
-	protected applyConditionSemantics(state: StateDomain | undefined, _conditionNodeId: NodeId, _trueBranch: boolean): StateDomain | undefined {
+	protected applyConditionSemantics(state: StateDomain, _conditionNodeId: NodeId, _trueBranch: boolean): StateDomain | undefined {
 		return state;
 	}
 }

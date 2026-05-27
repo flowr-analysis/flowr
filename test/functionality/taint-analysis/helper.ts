@@ -1,4 +1,4 @@
-import { assert } from 'vitest';
+import { assert, test } from 'vitest';
 import { scaleDomain } from '../../../src/taint-analysis/predefined/scale-analysis';
 import type { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
@@ -41,19 +41,22 @@ export async function testTaintAnalyses(code: string, analyses: Map<PredefinedTa
 
 	assert.equal(result.size, analyses.size);
 
-	for(const [name, expected] of analyses.entries()) {
-		const visitor = result.get(name);
-		guard(visitor, 'Expected taint analysis scale results are missing');
+	test(code, () => {
+		for(const [name, expected] of analyses.entries()) {
+			const visitor = result.get(name);
+			guard(visitor, 'Expected taint analysis scale results are missing');
 
-		for(const [criterion, expectation] of Record.entries(expected)) {
-			const actual = getInferredValueForCriterion(visitor, criterion);
-			if(actual && expectation) {
-				const inferred = scaleDomain.create(expectation);
-				assert.ok(actual.equals(inferred),
-					`Expected inferred taint for criterion "${criterion} to be ${expectation.toString()}, but got ${actual.toString()}`);
-			} else {
-				assert.ok(actual === undefined && expectation === undefined, `Expected inferred value for criterion "${criterion}" to be ${expectation === undefined ? 'undefined' : 'defined'}, but got ${actual?.toString()}`);
+			for(const [criterion, expectation] of Record.entries(expected)) {
+				const actual = getInferredValueForCriterion(visitor, criterion);
+
+				if(actual && expectation) {
+					const inferred = scaleDomain.create(expectation);
+					assert.ok(actual.equals(inferred),
+						`Expected inferred taint for criterion "${criterion} to be ${expectation.toString()}, but got ${actual.toString()}`);
+				} else {
+					assert.ok(actual === undefined && expectation === undefined, `Expected inferred value for criterion "${criterion}" to be ${expectation === undefined ? 'undefined' : 'defined'}, but got ${actual?.toString()}`);
+				}
 			}
 		}
-	}
+	});
 }

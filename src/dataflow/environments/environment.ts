@@ -49,6 +49,8 @@ export class Environment implements IEnvironment {
 	readonly id: number;
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
 	n?:          string;
+	/** to keep track if/whether environment was added as package/namespace/imports environment */
+	t?:          'package' |'namespace' |'imports';
 	/** if created by a closure, the node id of that closure */
 	private c?:  NodeId;
 	parent:      Environment;
@@ -92,6 +94,7 @@ export class Environment implements IEnvironment {
 		const clone = new Environment(parent, this.builtInEnv);
 		clone.c = this.c;
 		clone.n = this.n;
+		clone.t = this.t;
 		clone.memory = new Map(
 			this.memory.entries()
 				.map(([k, v]) => [k,

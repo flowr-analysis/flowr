@@ -6,7 +6,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { unpackNonameArg } from '../argument/unpack-argument';
+import { unpackArg } from '../argument/unpack-argument';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
@@ -15,11 +15,13 @@ import { BuiltInProcName } from '../../../../../environments/built-in-proc-name'
 import { Environment } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import { isUndefined } from '../../../../../../util/assert';
-import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import type { Package } from '../../../../../../project/plugins/package-version-plugins/package';
-import { isValue } from '../../../../../eval/values/r-value';
+import type { NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { convertFnArguments } from '../common';
+import { pMatch } from '../../../../linker';
 
 /**
  * Process a library call like `library` or `require`
@@ -31,13 +33,21 @@ export function processLibrary<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
-	const characterOnlyArg = args.map(v => v as RArgument).find(v => v.lexeme === 'character.only');
-	const characterOnly = characterOnlyArg?.value?.type === 'RLogical' && characterOnlyArg?.value?.content === true;
-	if(args.length > 2 || args.length === 2 && !characterOnly ){
-		dataflowLogger.warn(`Currently only one-arg library-likes are allows (for ${Identifier.toString(name.content)}), skipping`);
+	//const characterOnlyArg = args.map(v => v as RArgument).find(v => v.lexeme === 'character.only');
+	//const characterOnly = characterOnlyArg?.value?.type === 'RLogical' && characterOnlyArg?.value?.content === true;
+	if(args.length === 0){
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
-	const nameToLoad = unpackNonameArg(args[0]);
+	const params = {
+		'package':        'pkg',
+		'character.only': 'char'
+	};
+	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
+	const argMaps = pMatch(convertFnArguments(args), params);
+	const packageId = new Set(argMaps.get('pkg'));
+	const charId = new Set(argMaps.get('char'));
+
+	const nameToLoad = unpackArg(RArgument.getWithId(args, argMaps.get('pkg')?.[0]));//unpackNonameArg(args[0]);
 
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String){
 	//if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && !characterOnly || characterOnly && nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String) {
@@ -64,8 +74,26 @@ export function processLibrary<OtherInfo>(
 		origin:               BuiltInProcName.Library
 	}).information;
 	let packetName = nameToLoad?.lexeme;
+	let isCharacterOnly;
+	if(charId.size === 1){
+		const values = valueSetGuard(resolveIdToValue(charId.keys().toArray()[0], resolveArgs));
+		if(values?.type === 'set' && values.elements.length !== 0){
+			if(values.elements[0].type === 'logical'){
+				isCharacterOnly =  values.elements[0].value;
+			}
+		}
+	}
 	//case: character.only = TRUE
-	if(characterOnly){
+	if(isCharacterOnly){
+		const values = valueSetGuard(resolveIdToValue(packageId.keys().toArray()[0], resolveArgs));
+		if(values?.type === 'set' && values.elements.length !== 0){
+			if(values.elements[0].type === 'string' && 'str' in values.elements[0].value){
+				packetName =  values.elements[0].value.str;
+			}
+		}
+		//else fälle?
+	}
+	/*if(characterOnly){
 		const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 		const resolved = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
 		let t = undefined;
@@ -81,170 +109,12 @@ export function processLibrary<OtherInfo>(
 			dataflowLogger.warn('Package argument must be character only, skipping');
 			return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 		}
-	}
+	}*/
 	const dependency = data.ctx.deps.getDependency(packetName);
-	linkDependency(dependency, info, rootId, data);
+	if(dependency){
+		linkLibrary(dependency, info, rootId, data);
+	}
 	return info;
-}
-
-function linkImport<OtherInfo>(dependency: Package, info: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): Environment | undefined{
-	const globalEnv = getGlobalEnv(info);
-	if(isUndefined(globalEnv) || isUndefined(dependency.namespaceInfo)){
-		return;
-	}
-	//holds all imports of the namespace file
-	let importsEnv = new Environment(globalEnv);
-	importsEnv.n = 'imports:' + dependency.name;
-	for(const imp of dependency.namespaceInfo.importedPackages){
-		//for every dependency imported in the namespacefile
-		const importedDependency = data.ctx.deps.getDependency(imp[0]);
-		const funcToImport: string[] |undefined = imp[1] === 'all' ? importedDependency?.namespaceInfo?.exportedSymbols : importedDependency?.namespaceInfo?.exportedSymbols.filter(v => v in (imp[1] as string[]));
-		if(isUndefined(funcToImport)){
-			return;
-		}
-		const impNamespaceEnv = createNameSpaceEnv(funcToImport, (importedDependency as Package).name, info, importsEnv.id);
-		if(isUndefined(impNamespaceEnv)){
-			return;
-		}
-		/*const successor = linkImport(importedDependency as Package, info, data);
-		if(isUndefined(successor)){
-			return;
-		}*/
-		//we define all imported functions in the imports environment
-		for(const func of funcToImport){
-			importsEnv = importsEnv.define({
-				name:      Identifier.make(func, (importedDependency as Package).name),
-				type:      ReferenceType.Function,
-				nodeId:    NodeId.toBuiltIn(func),
-				definedAt: impNamespaceEnv.id
-			});
-			info.graph.addEdge(NodeId.toBuiltIn(func), impNamespaceEnv.id, EdgeType.Reads | EdgeType.Calls);
-		}
-		const importOfImpNamespace = linkImport(importedDependency as Package, info, data);
-		if(isUndefined(importOfImpNamespace)){
-			return;
-		}
-		impNamespaceEnv.parent = globalEnv;
-		/*info.environment = {
-			level:   info.environment.level + 1,
-			current: info.environment.current
-		};*/
-	}
-	return importsEnv;
-}
-
-function createNameSpaceEnv(functions: string[], pack: string, info: DataflowInformation, rootId: NodeId): Environment |undefined{
-	const globalEnv = getGlobalEnv(info);
-	if(isUndefined(globalEnv)){
-		return;
-	}
-	let packetEnv = new Environment(globalEnv);
-	packetEnv.n = 'namespace:' + pack;
-	for(const func of functions){
-		packetEnv = packetEnv.define({
-			name:      Identifier.make(func, pack),
-			type:      ReferenceType.Function,
-			nodeId:    NodeId.toBuiltIn(func),
-			definedAt: NodeId.toBuiltIn(pack),
-		});
-		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
-	}
-	/*info.environment = {
-		level:   info.environment.level + 1,
-		current: info.environment.current
-	};*/
-	return packetEnv;
-}
-
-/*
-function linkNamespaceImport<OtherInfo>(dependency: Package, info: DataflowInformation, data: DataflowProcessorInformation<OtherInfo & ParentInformation>){
-	//add imports and namespace environment as children of global environment
-	const globalEnv = getGlobalEnv(info);
-		if(isUndefined(globalEnv)){
-			return;
-		}
-		if(dependency.namespaceInfo){
-			let importsEnv = new Environment(globalEnv);
-			importsEnv.n = 'imports:' + dependency.name;
-			for(const imp of dependency.namespaceInfo.importedPackages){
-				const impDependency = data.ctx.deps.getDependency(imp[0]);
-				if(impDependency){
-					const toImport: string[] |undefined = imp[1] === 'all' ? impDependency.namespaceInfo?.exportedSymbols : impDependency.namespaceInfo?.exportedSymbols.filter(v => v in (imp[1] as string[]));
-					if(toImport){
-					for(const func of toImport){
-							importsEnv = importsEnv.define({
-								name:      Identifier.make(func, impDependency.name),
-								type:      ReferenceType.Function,
-								nodeId:    NodeId.toBuiltIn(func),
-								definedAt: NodeId.toBuiltIn(impDependency.name),
-							});
-							info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
-						}
-						linkNamespaceImport(impDependency, info, data);
-					}
-								}
-			}
-			let namespaceEnv = new Environment(importsEnv);
-			namespaceEnv.n = 'namespace:' + dependency.name;
-			info.environment = {
-			level:   info.environment.level + 2,
-			current: info.environment.current
-		};	
-	}
-}
-*/
-function linkDependency<OtherInfo>(dependency: Package | undefined, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>){
-	if(dependency && dependency.namespaceInfo){
-		//add package environment as immediate parent of global environment
-		const p = linkLibraryGlob(dependency.namespaceInfo.exportedSymbols, dependency.name, info, rootId);
-		//linkNamespaceImport(dependency, info, data);
-		if(isUndefined(p)){
-			return;
-		}
-		const b = createNameSpaceEnv(dependency.namespaceInfo.exportedSymbols, dependency.name, info, p.id);
-		if(isUndefined(b)){
-			return;
-		}
-		const a = linkImport(dependency, info, data);	
-		if(isUndefined(a)){
-			return;
-		}
-		b.parent = a;
-		info.environment = {
-			level:   info.environment.level + 2,
-			current: info.environment.current
-		};
-	}
-}
-
-
-/**
- * Creates an environment with the given package name and sets it as the immediate parent of the global environment.
- * Adds the given functions to the environment.
- */
-function linkLibraryGlob(functions: string[], pack: string, info: DataflowInformation, rootId: NodeId){
-	const globalEnv = getGlobalEnv(info);
-	if(isUndefined(globalEnv)){
-		return;
-	}
-	const oldGlobParent = globalEnv.parent;
-	let packetEnv = new Environment(oldGlobParent);
-	packetEnv.n = 'package:' + pack;
-	for(const func of functions){
-		packetEnv = packetEnv.define({
-			name:      Identifier.make(func, pack),
-			type:      ReferenceType.Function,
-			nodeId:    NodeId.toBuiltIn(func),
-			definedAt: NodeId.toBuiltIn(pack),
-		});
-		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
-	}
-	globalEnv.parent = packetEnv;
-	info.environment = {
-		level:   info.environment.level + 1,
-		current: info.environment.current
-	};
-	return packetEnv;
 }
 
 function getGlobalEnv(info: DataflowInformation){
@@ -252,8 +122,99 @@ function getGlobalEnv(info: DataflowInformation){
 		return undefined;
 	}
 	let env = info.environment.current;
-	for(let i = 1; i < info.environment.level; i++){
+	for(let i = 0; i < info.environment.level; i++){
 		env = env.parent;
 	}
 	return env;
+}
+
+function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+	const globalEnv = getGlobalEnv(info);
+	if(isUndefined(globalEnv) || isUndefined(dependency.namespaceInfo)){
+		return;
+	}
+	const pack = dependency.name;
+	const functions = dependency.namespaceInfo.exportedSymbols;
+	//add namespace environment
+	let namespaceEnv = new Environment(globalEnv);
+	namespaceEnv.n = pack;
+	namespaceEnv.t = 'namespace';
+	for(const func of functions){
+		namespaceEnv = namespaceEnv.define({
+			name:      Identifier.make(func, pack),
+			type:      ReferenceType.Function,
+			nodeId:    NodeId.toBuiltIn(func),
+			definedAt: NodeId.toBuiltIn(pack),
+		});
+		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
+	}
+	info.environment = {
+		level:   info.environment.level + 1,
+		current: namespaceEnv
+	};
+	//add package environment
+	const oldGlobParent = globalEnv.parent;
+	let packageEnv = new Environment(oldGlobParent);
+	packageEnv.n = pack;
+	packageEnv.t = 'package';
+	for(const func of functions){
+		packageEnv = packageEnv.define({
+			name:      Identifier.make(func, pack),
+			type:      ReferenceType.Function,
+			nodeId:    NodeId.toBuiltIn(func),
+			definedAt: namespaceEnv.id,
+		});
+	}
+	globalEnv.parent = packageEnv;
+	info.environment = {
+		level:   info.environment.level + 1,
+		current: info.environment.current
+	};
+	//add imports environment
+	let importsEnv: Environment |undefined = new Environment(globalEnv);
+	importsEnv.n = pack;
+	importsEnv.t = 'imports';
+	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
+	if(importsEnv){
+		info.environment = {
+			level:   info.environment.level + 1,
+			current: info.environment.current
+		};
+		namespaceEnv.parent = importsEnv;
+	}
+}
+
+function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: NamespaceInfo, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, alreadyImportedAll: Set<string>){
+	for(const imp of namespaceInfo.importedPackages){
+		const importedDependency = data.ctx.deps.getDependency(imp[0]);
+		if(isUndefined(importedDependency)){
+			continue;
+		}
+		const funcToImport: string[] | undefined = imp[1] === 'all' ? importedDependency?.namespaceInfo?.exportedSymbols : importedDependency?.namespaceInfo?.exportedSymbols.filter(v => (imp[1] as string[]).includes(v));
+		if(isUndefined(funcToImport)){
+			continue;
+		}
+		if(alreadyImportedAll.has(importedDependency.name)){
+			continue;
+		}
+		for(const func of funcToImport){
+			if(importsEnv.memory.has(importedDependency.name + ':' + func)){
+				continue;
+			}
+			importsEnv = importsEnv.define({
+				name:      Identifier.make(importedDependency.name + ':' + func, importsEnv.n),
+				type:      ReferenceType.Function,
+				nodeId:    NodeId.toBuiltIn(func),
+				definedAt: NodeId.toBuiltIn(importedDependency.name)
+			});
+		}
+		if(imp[1] === 'all'){
+			alreadyImportedAll.add(importedDependency.name);
+		}
+		//info.graph.addEdge(rootId, NodeId.toBuiltIn((importedDependency as Package).name), EdgeType.Reads | EdgeType.Calls);
+		if(importedDependency?.namespaceInfo){
+			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, data, alreadyImportedAll);
+		}
+	}
+	return importsEnv;
 }

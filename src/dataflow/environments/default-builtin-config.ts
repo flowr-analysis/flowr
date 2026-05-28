@@ -430,7 +430,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
 	/* with evaluates expr in data's environment scope; reads propagate from envState, writes are ephemeral */
 	{ type: 'function', names: ['with', 'within'],                             processor: BuiltInProcName.With,                config: {},                                                                                                                        assumePrimitive: false  },
-	{ type: 'function', names: ['new.env', 'new.environment', Identifier.make('new_environment', 'rlang')], processor: BuiltInProcName.NewEnv, config: {}, assumePrimitive: true },
+	{ type: 'function', names: ['new.env', Identifier.make('new_environment', 'rlang')], processor: BuiltInProcName.NewEnv, config: {}, assumePrimitive: true },
 	/* these return existing/well-known environments — we cannot track their contents so fall through to Default */
 	{ type:            'function', names:           ['globalenv', 'baseenv', 'emptyenv', 'parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv'],
 		processor:       BuiltInProcName.Default, config:          {}, assumePrimitive: true },

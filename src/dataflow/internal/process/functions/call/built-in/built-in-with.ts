@@ -8,20 +8,22 @@ import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../..
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
-import { resolveEnvirArg } from './built-in-envir-utils';
 import { EdgeType } from '../../../../../graph/edge';
 import { linkInputs } from '../../../../linker';
 
 /**
- * Processes `with(data, expr)`.
+ * Processes `with(data, expr)` and `within(data, expr)`.
  *
  * When `data` is a variable that holds a tracked {@link InGraphIdentifierDefinition#envState},
  * the expression `expr` is evaluated in that environment's scope so that reads of names
- * defined there resolve correctly.  Unlike `local(expr, envir=e)`, writes in `expr` are
- * NOT persisted back to the environment (R's `with` discards them in a temporary scope).
+ * defined there resolve correctly.
+ *
+ * - `with`: writes in `expr` are ephemeral (R's `with` uses a temporary scope and discards them).
+ * - `within`: writes in `expr` are persisted back into the tracked envState of `data`.
  *
  * Falls back to a normal function-call analysis when the data argument cannot be resolved
  * to a tracked environment.
@@ -39,7 +41,7 @@ export function processWithEnv<OtherInfo>(
 	const dataArg = args[0];
 	const exprArg = args[1];
 
-	if(dataArg === EmptyArgument || exprArg === EmptyArgument) {
+	if(dataArg === EmptyArgument || exprArg === EmptyArgument || !dataArg.value || !exprArg.value) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
 
@@ -87,14 +89,22 @@ export function processWithEnv<OtherInfo>(
 		[{ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function }]
 	);
 
+	/* within routes body writes back into the data environment; with discards them */
+	const isWithin = Identifier.getName(name.content) === 'within';
+	let resultEnv = data.environment;
+	if(isWithin && dfExpr.out.length > 0) {
+		const tempResult = { ...dfExpr, environment: data.environment };
+		resultEnv = routeWrittenToCustomEnv(tempResult, envirResolution.envDef, rootId).environment;
+	}
+
 	return {
 		hooks:             dfDataArg.hooks.concat(dfExpr.hooks),
-		environment:       data.environment,   /* with does not modify the caller's environment */
+		environment:       resultEnv,
 		exitPoints:        dfDataArg.exitPoints.concat(dfExpr.exitPoints),
 		graph:             merged,
 		entryPoint:        rootId,
 		in:                ingoing,
-		out:               [],                 /* writes inside with are ephemeral */
+		out:               [],   /* writes are inside envState, not directly in outer scope */
 		unknownReferences: []
 	};
 }

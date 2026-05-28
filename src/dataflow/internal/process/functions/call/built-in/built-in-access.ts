@@ -85,8 +85,8 @@ export function processAccess<OtherInfo>(
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
 
-	/* for $ and @ access on a tracked env variable, add Reads edges to the field definition in envState */
-	if(config.treatIndicesAsString && head !== EmptyArgument && head.value?.type === RType.Symbol) {
+	/* for $ access on a tracked env variable, add Reads edges to the field definition in envState */
+	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$' && head !== EmptyArgument && head.value?.type === RType.Symbol) {
 		const accessedDefs = resolveByName(head.value.content, data.environment, ReferenceType.Variable);
 		const allHaveEnvState = accessedDefs && accessedDefs.length > 0 && accessedDefs.every(d => (d as InGraphIdentifierDefinition).envState !== undefined);
 		if(allHaveEnvState && args.length >= 2 && args[1] !== EmptyArgument) {

@@ -77,7 +77,8 @@ function resolveNewEnvParentArg<OtherInfo>(
 
 		if(node.type === RType.Symbol) {
 			if(node.content === RNull) {
-				return createIsolatedEnvState(data);
+				/* new.env(parent = NULL) is invalid in R; do not fabricate an envState */
+				return undefined;
 			}
 			const defs = resolveByName(node.content, data.environment, ReferenceType.Variable);
 			if(defs?.length === 1) {

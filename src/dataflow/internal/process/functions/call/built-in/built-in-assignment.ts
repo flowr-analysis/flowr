@@ -422,7 +422,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	source:      RNode<OtherInfo & ParentInformation>,
 	replacement: RSymbol<OtherInfo & ParentInformation>
 ): DataflowInformation | undefined {
-	if(target.operator !== '$' && target.operator !== '@') {
+	if(target.operator !== '$') {
 		return undefined;
 	}
 	if(target.accessed.type !== RType.Symbol) {

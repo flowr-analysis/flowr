@@ -6,7 +6,6 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { unpackArg } from '../argument/unpack-argument';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
@@ -22,6 +21,7 @@ import type { Package } from '../../../../../../project/plugins/package-version-
 import type { NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
+import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 
 /**
  * Process a library call like `library` or `require`
@@ -44,10 +44,10 @@ export function processLibrary<OtherInfo>(
 	};
 	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 	const argMaps = pMatch(convertFnArguments(args), params);
-	const packageId = new Set(argMaps.get('pkg'));
-	const charId = new Set(argMaps.get('char'));
+	const packageId = Array.from(new Set(argMaps.get('pkg')));
+	const charId = Array.from(new Set(argMaps.get('char')));
 
-	const nameToLoad = unpackArg(RArgument.getWithId(args, argMaps.get('pkg')?.[0]));//unpackNonameArg(args[0]);
+	const nameToLoad = RArgument.getValue<OtherInfo & ParentInformation>(args, packageId[0]);
 
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String){
 	//if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && !characterOnly || characterOnly && nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String) {
@@ -68,24 +68,17 @@ export function processLibrary<OtherInfo>(
 			str:    Identifier.getName(nameToLoad.content)
 		}
 	};
-	const info = processKnownFunctionCall({
-		name, args:                 wrapArgumentsUnnamed([newArg], data.completeAst.idMap), rootId, data,
-		hasUnknownSideEffect: true,
-		origin:               BuiltInProcName.Library
-	}).information;
+
 	let packetName = nameToLoad?.lexeme;
-	let isCharacterOnly;
-	if(charId.size === 1){
-		const values = valueSetGuard(resolveIdToValue(charId.keys().toArray()[0], resolveArgs));
-		if(values?.type === 'set' && values.elements.length !== 0){
-			if(values.elements[0].type === 'logical'){
-				isCharacterOnly =  values.elements[0].value;
-			}
+	let isCharacterOnly: Lift<TernaryLogical> = false;
+	if(charId.length >= 1){
+		const values = valueSetGuard(resolveIdToValue(charId[0], resolveArgs));
+		if(values?.type === 'set' && values.elements.length === 1 && values.elements[0].type === 'logical') {
+			isCharacterOnly = values.elements[0].value;
 		}
 	}
-	//case: character.only = TRUE
-	if(isCharacterOnly){
-		const values = valueSetGuard(resolveIdToValue(packageId.keys().toArray()[0], resolveArgs));
+	if(isCharacterOnly !== false){
+		const values = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
 		if(values?.type === 'set' && values.elements.length !== 0){
 			if(values.elements[0].type === 'string' && 'str' in values.elements[0].value){
 				packetName =  values.elements[0].value.str;
@@ -93,6 +86,14 @@ export function processLibrary<OtherInfo>(
 		}
 		//else fälle?
 	}
+	// TODO: check whether we know something about the library and if so, do **not** mark it as an unkown side effect
+	console.log(packetName);
+	const info = processKnownFunctionCall({
+		name,
+		args:                 wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap), rootId, data,
+		hasUnknownSideEffect: false,
+		origin:               BuiltInProcName.Library
+	}).information;
 	/*if(characterOnly){
 		const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 		const resolved = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
@@ -113,6 +114,8 @@ export function processLibrary<OtherInfo>(
 	const dependency = data.ctx.deps.getDependency(packetName);
 	if(dependency){
 		linkLibrary(dependency, info, rootId, data);
+	} else {
+		info.graph.markIdForUnknownSideEffects(rootId);
 	}
 	return info;
 }

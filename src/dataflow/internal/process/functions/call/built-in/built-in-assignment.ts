@@ -29,14 +29,14 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
 import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -403,10 +403,7 @@ function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: Data
  */
 function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
 	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-	if(vert?.tag !== VertexType.FunctionCall) {
-		return false;
-	}
-	return vert.origin.includes(BuiltInProcName.NewEnv);
+	return isFunctionCallVertex(vert) && vert.origin.includes(BuiltInProcName.NewEnv);
 }
 
 /**
@@ -422,18 +419,11 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	source:      RNode<OtherInfo & ParentInformation>,
 	replacement: RSymbol<OtherInfo & ParentInformation>
 ): DataflowInformation | undefined {
-	if(target.operator !== '$') {
+	if(target.operator !== '$' || target.accessed.type !== RType.Symbol) {
 		return undefined;
 	}
-	if(target.accessed.type !== RType.Symbol) {
-		return undefined;
-	}
-	const defs = resolveByName(target.accessed.content, data.environment, ReferenceType.Variable);
-	if(!defs || defs.length !== 1) {
-		return undefined;
-	}
-	const envDef = defs[0] as InGraphIdentifierDefinition & { name: Identifier };
-	if(!envDef.envState) {
+	const envirResolution = resolveSymbolToEnvir(target.accessed.content, target.accessed.info.id, data);
+	if(!envirResolution) {
 		return undefined;
 	}
 
@@ -447,7 +437,6 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	const normalResult = tryReplacement(rootId, replacement, data, replacement.content,
 		[toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
-	/* add field to e's envState */
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      ReferenceType.Variable,
 		name:      fieldName,
@@ -455,21 +444,17 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		definedAt: rootId,
 		cds:       data.cds
 	};
-	let newEnvState = envDef.envState;
-	newEnvState = define(fieldDef, false, newEnvState);
-
-	/* replace e's definition in the result environment with one that carries the updated envState */
+	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
-		...envDef,
+		...envirResolution.envDef,
 		definedAt: rootId,
 		envState:  newEnvState
 	};
 	const strippedEnv = {
-		current: normalResult.environment.current.removeAll([{ name: envDef.name }]),
+		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
 		level:   normalResult.environment.level
 	};
-	const newEnvironment = define(updatedEnvDef, false, strippedEnv);
-	return { ...normalResult, environment: newEnvironment };
+	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
 }
 
 /**
@@ -487,7 +472,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 	config: AssignmentConfiguration
 ): DataflowInformation | undefined {
 	const resolution = resolveEnvirArg(args, data, config.environmentArg);
-	if(!resolution || !resolution.envDef) {
+	if(!resolution) {
 		return undefined;
 	}
 
@@ -574,21 +559,17 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	} satisfies InGraphIdentifierDefinition & { name: Identifier }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
 
-	/* attach a fresh environment state when the assigned value is a new.env() call */
-	if(data.ctx.config.solver.trackEnvironments && isEnvCreatorSource(sourceArg)) {
-		const envState = createFreshEnvState(data, sourceArg);
-		for(let i = 0; i < writeNodes.length; i++) {
-			writeNodes[i] = { ...writeNodes[i], envState };
+	if(data.ctx.config.solver.trackEnvironments) {
+		let envState: REnvironmentInformation | undefined;
+		if(isEnvCreatorSource(sourceArg)) {
+			envState = createFreshEnvState(data, sourceArg);
+		} else if(source.type === RType.Symbol) {
+			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
+			envState = (defs?.find(d => (d as InGraphIdentifierDefinition).envState !== undefined) as InGraphIdentifierDefinition | undefined)?.envState;
 		}
-	} else if(data.ctx.config.solver.trackEnvironments && source.type === RType.Symbol) {
-		/* propagate envState when aliasing a tracked env variable (alias <- e) */
-		const sourceDefs = resolveByName(source.content, data.environment, ReferenceType.Variable);
-		if(sourceDefs?.length === 1) {
-			const envState = (sourceDefs[0] as InGraphIdentifierDefinition).envState;
-			if(envState) {
-				for(let i = 0; i < writeNodes.length; i++) {
-					writeNodes[i] = { ...writeNodes[i], envState };
-				}
+		if(envState) {
+			for(let i = 0; i < writeNodes.length; i++) {
+				writeNodes[i] = { ...writeNodes[i], envState };
 			}
 		}
 	}

@@ -104,7 +104,6 @@ function toRegex(n: readonly string[]): RegExp {
  */
 export const DefaultBuiltinConfig = [
 	{ type: 'constant', names: ['NULL', 'NA', 'NaN', 'NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_'],  value: null,  assumePrimitive: true },
-	/* well-known environment constants — no envState tracking, assignments to these fall through to global */
 	{ type: 'constant', names: ['.GlobalEnv', '.BaseNamespaceEnv', '.BaseEnv'],                                  value: null,  assumePrimitive: true },
 	{ type: 'constant', names: ['TRUE', 'T'],   value: true,  assumePrimitive: true },
 	{ type: 'constant', names: ['FALSE', 'F'],  value: false, assumePrimitive: true },
@@ -428,10 +427,8 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: [Identifier.make('enquo', 'rlang'), Identifier.make('enquos', 'rlang'), Identifier.make('quo', 'rlang'), Identifier.make('quos', 'rlang'), Identifier.make('sym', 'rlang'), Identifier.make('syms', 'rlang'), Identifier.make('ensym', 'rlang'), Identifier.make('ensyms', 'rlang'), Identifier.make('expr', 'rlang'), Identifier.make('exprs', 'rlang'), Identifier.make('quo_name', 'rlang'), Identifier.make('as_name', 'rlang'), Identifier.make('as_label', 'rlang'), Identifier.make('as_string', 'rlang')], processor: BuiltInProcName.Quote, config: { quoteArgumentsWithIndex: 0, libFn: true }, assumePrimitive: true  },
 	{ type: 'function', names: [Identifier.make('call2', 'rlang'), Identifier.make('exec', 'rlang'), Identifier.make('invoke', 'purrr'), Identifier.make('invoke_map', 'purrr')],                                                             processor: BuiltInProcName.Default,               config: { libFn: true, hasUnknownSideEffects: true, unquoteFunction: true },                      assumePrimitive: false },
 	{ type: 'function', names: ['local'],                                      processor: BuiltInProcName.Local,               config: { args: { env: 'envir', expr: 'expr' } },                                                                            assumePrimitive: false  },
-	/* with evaluates expr in data's environment scope; reads propagate from envState, writes are ephemeral */
 	{ type: 'function', names: ['with', 'within'],                             processor: BuiltInProcName.With,                config: {},                                                                                                                        assumePrimitive: false  },
 	{ type: 'function', names: ['new.env', Identifier.make('new_environment', 'rlang')], processor: BuiltInProcName.NewEnv, config: {}, assumePrimitive: true },
-	/* these return existing/well-known environments — we cannot track their contents so fall through to Default */
 	{ type:            'function', names:           ['globalenv', 'baseenv', 'emptyenv', 'parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv'],
 		processor:       BuiltInProcName.Default, config:          {}, assumePrimitive: true },
 	{ type: 'function', names: ['load', 'load_image'],                        processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true },                                                assumePrimitive: false },

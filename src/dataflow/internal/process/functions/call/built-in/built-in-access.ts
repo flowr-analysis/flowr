@@ -13,12 +13,12 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
-import { type BrandedIdentifier, Identifier, type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { unpackArg } from '../argument/unpack-argument';
+import { resolveSymbolToEnvir } from './built-in-envir-utils';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -86,26 +86,16 @@ export function processAccess<OtherInfo>(
 	}
 
 	/* for $ access on a tracked env variable, add Reads edges to the field definition in envState */
-	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$' && head !== EmptyArgument && head.value?.type === RType.Symbol) {
-		const accessedDefs = resolveByName(head.value.content, data.environment, ReferenceType.Variable);
-		const allHaveEnvState = accessedDefs && accessedDefs.length > 0 && accessedDefs.every(d => (d as InGraphIdentifierDefinition).envState !== undefined);
-		if(allHaveEnvState && args.length >= 2 && args[1] !== EmptyArgument) {
+	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$'
+			&& head !== EmptyArgument && head.value?.type === RType.Symbol
+			&& args.length >= 2 && args[1] !== EmptyArgument) {
+		const envirResolution = resolveSymbolToEnvir(head.value.content, head.value.info.id, data);
+		if(envirResolution) {
 			const fieldNode = unpackArg(args[1]);
 			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
-			if(fieldName) {
-				/* add reads from the $ operator symbol so backward slicing from 3@$ reaches field defs */
-				for(const accessedDef of accessedDefs) {
-					const envState = (accessedDef as InGraphIdentifierDefinition).envState;
-					if(!envState) {
-						continue;
-					}
-					const fieldDefs = envState.current.memory.get(fieldName as BrandedIdentifier);
-					if(fieldDefs) {
-						for(const fd of fieldDefs) {
-							info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
-						}
-					}
-				}
+			const fieldDefs = fieldName ? envirResolution.envDef.envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
+			for(const fd of fieldDefs ?? []) {
+				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
 			}
 		}
 	}

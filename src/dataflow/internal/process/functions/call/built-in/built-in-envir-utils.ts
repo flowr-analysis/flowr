@@ -1,14 +1,10 @@
 /**
- * Shared utilities for built-in functions that accept an `envir`-like argument
- * (e.g. `assign`, `get`, `local`, `with`).  The two key operations are:
+ * Shared utilities for built-in functions that interact with tracked R environments.
  *
- * 1. {@link resolveEnvirArg} — find the named (or positional) argument and, when it holds
- *    a tracked {@link InGraphIdentifierDefinition#envState}, return the context needed to
- *    perform lookups/writes inside that environment.
- *
- * 2. {@link routeWrittenToCustomEnv} — after processing an expression that writes
- *    into a custom environment, move the written definitions from the caller's scope
- *    into the holder variable's `envState`.
+ * - {@link resolveEnvirArg} / {@link resolveSymbolToEnvir} — resolve a named argument or
+ *   symbol to an {@link EnvirResolution} when it holds a tracked {@link InGraphIdentifierDefinition#envState}.
+ * - {@link routeWrittenToCustomEnv} — move written definitions from the caller's scope into
+ *   the holder variable's `envState` after processing an expression that writes into a custom env.
  */
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
@@ -19,7 +15,7 @@ import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/proce
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import type { Identifier, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
+import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -34,30 +30,37 @@ export interface EnvirResolution<OtherInfo> {
 	readonly envirNodeId: NodeId;
 }
 
+/**
+ * Core resolver: maps a list of identifier definitions (from {@link resolveByName}) to an
+ * {@link EnvirResolution}.  Accepts `undefined` so callers can pass `resolveByName` results
+ * directly without an intermediate null check.
+ *
+ * Multiple reaching definitions (e.g. from if/else branches) are accepted only when every
+ * definition carries an envState; their envStates are merged into a single combined snapshot.
+ */
 function resolveDefsToEnvirResolution<OtherInfo>(
-	defs:    readonly InGraphIdentifierDefinition[],
-	nodeId:  NodeId,
-	data:    DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	defs:   readonly IdentifierDefinition[] | undefined,
+	nodeId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): EnvirResolution<OtherInfo> | undefined {
-	if(defs.length === 0) {
+	if(!defs || defs.length === 0) {
 		return undefined;
 	}
-	if(defs.length === 1) {
-		const envState = defs[0].envState;
+	const inDefs = defs as readonly InGraphIdentifierDefinition[];
+	if(inDefs.length === 1) {
+		const envState = inDefs[0].envState;
 		if(!envState) {
 			return undefined;
 		}
-		const envDef = defs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
 	}
-	/* multiple defs (e.g. after if-else): require all to have envState and merge */
-	if(!defs.every(d => d.envState !== undefined)) {
+	if(!inDefs.every(d => d.envState !== undefined)) {
 		return undefined;
 	}
-	let mergedEnvState = defs[0].envState as REnvironmentInformation;
-	for(let i = 1; i < defs.length; i++) {
-		const otherEnvState = defs[i].envState as REnvironmentInformation;
-		for(const [, varDefs] of otherEnvState.current.memory) {
+	let mergedEnvState = inDefs[0].envState as REnvironmentInformation;
+	for(let i = 1; i < inDefs.length; i++) {
+		for(const [, varDefs] of (inDefs[i].envState as REnvironmentInformation).current.memory) {
 			for(const varDef of varDefs) {
 				const named = varDef as InGraphIdentifierDefinition & { name: Identifier };
 				if(named.name !== undefined) {
@@ -67,7 +70,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 		}
 	}
 	const envDef: NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation } = {
-		...(defs[0] as NamedInGraphIdentifierDefinition),
+		...(inDefs[0] as NamedInGraphIdentifierDefinition),
 		envState: mergedEnvState
 	};
 	return { envirData: { ...data, environment: mergedEnvState }, envDef, envirNodeId: nodeId };
@@ -97,8 +100,7 @@ export function resolveEnvirArg<OtherInfo>(
 		if(node?.type !== RType.Symbol) {
 			return undefined;
 		}
-		const defs = resolveByName(node.content, data.environment, ReferenceType.Variable);
-		return defs ? resolveDefsToEnvirResolution(defs as InGraphIdentifierDefinition[], node.info.id, data) : undefined;
+		return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 	}
 
 	/* second pass: positional fallback (only when no named match existed) */
@@ -113,13 +115,26 @@ export function resolveEnvirArg<OtherInfo>(
 				if(node?.type !== RType.Symbol) {
 					return undefined;
 				}
-				const defs = resolveByName(node.content, data.environment, ReferenceType.Variable);
-				return defs ? resolveDefsToEnvirResolution(defs as InGraphIdentifierDefinition[], node.info.id, data) : undefined;
+				return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 			}
 			positionalCount++;
 		}
 	}
 	return undefined;
+}
+
+/**
+ * Resolves a symbol by name to an {@link EnvirResolution} when the symbol holds a tracked
+ * environment.  Handles multiple reaching definitions (e.g. from if/else branches) by
+ * merging their envStates — see {@link resolveDefsToEnvirResolution}.
+ * Returns `undefined` when the name cannot be resolved or none of its definitions carry an envState.
+ */
+export function resolveSymbolToEnvir<OtherInfo>(
+	symbolName: Identifier,
+	nodeId:     NodeId,
+	data:       DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> | undefined {
+	return resolveDefsToEnvirResolution(resolveByName(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
 }
 
 /**
@@ -136,7 +151,7 @@ export function routeWrittenToCustomEnv(
 	const written = result.out.filter(
 		(d): d is NamedInGraphIdentifierDefinition =>
 			d.name !== undefined && 'definedAt' in d &&
-			(definedAt === undefined || (d as InGraphIdentifierDefinition).definedAt === definedAt)
+			(definedAt === undefined || d.definedAt === definedAt)
 	);
 
 	let newEnvState = envDef.envState;
@@ -145,15 +160,10 @@ export function routeWrittenToCustomEnv(
 		newEnvState = define(w, false, newEnvState);
 	}
 
-	const newCurrent = result.environment.current.removeAll(namesToRemove);
-	const updatedEnvDef: NamedInGraphIdentifierDefinition = {
-		...envDef,
-		definedAt: newDefAt,
-		envState:  newEnvState
-	};
-	const newEnvironment = define(updatedEnvDef, false, {
-		current: newCurrent,
-		level:   result.environment.level
-	});
+	const newEnvironment = define(
+		{ ...envDef, definedAt: newDefAt, envState: newEnvState },
+		false,
+		{ current: result.environment.current.removeAll(namesToRemove), level: result.environment.level }
+	);
 	return { ...result, environment: newEnvironment };
 }

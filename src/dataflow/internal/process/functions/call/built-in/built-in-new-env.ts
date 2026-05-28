@@ -10,17 +10,14 @@ import { pushLocalEnvironment } from '../../../../../environments/scoping';
 import { Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
-import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { type InGraphIdentifierDefinition, ReferenceType } from '../../../../../environments/identifier';
-import { VertexType } from '../../../../../graph/vertex';
-import type { DataflowGraphVertexFunctionCall } from '../../../../../graph/vertex';
+import { isFunctionCallVertex } from '../../../../../graph/vertex';
 import { RNull } from '../../../../../../r-bridge/lang-4.x/convert-values';
+import { resolveSymbolToEnvir } from './built-in-envir-utils';
 
-/** R function names that signal "use the empty/terminal R environment" as parent */
 const EmptyParentEnvFunctions = new Set(['emptyenv', 'baseenv']);
 
 /**
- * Processes `new.env()`, `new.environment()`, and `rlang::new_environment()`.
+ * Processes `new.env()` and `rlang::new_environment()`.
  *
  * The resulting function-call vertex carries the {@link BuiltInProcName.NewEnv} origin so that
  * `processAssignment` can detect it and attach an `envState` to the assigned variable.
@@ -39,11 +36,9 @@ export function processNewEnv<OtherInfo>(
 
 	if(data.ctx.config.solver.trackEnvironments) {
 		const parentState = resolveNewEnvParentArg(args, data);
-		if(parentState !== undefined) {
-			const vertex = result.graph.getVertex(rootId);
-			if(vertex?.tag === VertexType.FunctionCall) {
-				(vertex as DataflowGraphVertexFunctionCall).newEnvParent = parentState;
-			}
+		const vertex = result.graph.getVertex(rootId);
+		if(parentState !== undefined && isFunctionCallVertex(vertex)) {
+			vertex.newEnvParent = parentState;
 		}
 	}
 
@@ -51,15 +46,13 @@ export function processNewEnv<OtherInfo>(
 }
 
 /**
- * Scans `args` for the `parent` argument of a `new.env()`-family call and returns the
- * {@link REnvironmentInformation} that should serve as the parent of the newly-created
- * environment, or `undefined` when no static resolution is possible (caller falls back to
- * {@link createFreshEnvState} default which uses the current execution environment).
+ * Scans `args` for the `parent` argument and returns the {@link REnvironmentInformation}
+ * to use as the parent of the newly-created environment, or `undefined` to fall through
+ * to the default (current execution environment).
  *
  * Recognised patterns:
  * - `parent = <tracked-env-var>` — returns that variable's `envState`
  * - `parent = emptyenv()` / `parent = baseenv()` — returns an isolated env (no user scope)
- * - `parent = NULL` — same as `emptyenv()`
  * - everything else — `undefined` (fall through)
  */
 function resolveNewEnvParentArg<OtherInfo>(
@@ -74,33 +67,21 @@ function resolveNewEnvParentArg<OtherInfo>(
 		if(!node) {
 			return undefined;
 		}
-
 		if(node.type === RType.Symbol) {
 			if(node.content === RNull) {
-				/* new.env(parent = NULL) is invalid in R; do not fabricate an envState */
 				return undefined;
 			}
-			const defs = resolveByName(node.content, data.environment, ReferenceType.Variable);
-			if(defs?.length === 1) {
-				const def = defs[0] as InGraphIdentifierDefinition;
-				if(def.envState) {
-					return def.envState;
-				}
-			}
-		} else if(RFunctionCall.isNamed(node) && node.functionName.type === RType.Symbol) {
-			if(EmptyParentEnvFunctions.has(node.functionName.content as string)) {
-				return createIsolatedEnvState(data);
-			}
+			return resolveSymbolToEnvir(node.content, node.info.id, data)?.envDef.envState;
+		}
+		if(RFunctionCall.isNamed(node) && node.functionName.type === RType.Symbol
+				&& EmptyParentEnvFunctions.has(node.functionName.content as string)) {
+			return createIsolatedEnvState(data);
 		}
 		return undefined;
 	}
 	return undefined;
 }
 
-/**
- * Creates an isolated (empty-parent) env state: the new environment's only
- * parent is the built-in environment, matching R's `emptyenv()` semantics.
- */
 function createIsolatedEnvState(data: Pick<DataflowProcessorInformation<never>, 'environment'>): REnvironmentInformation {
 	let root = data.environment.current;
 	while(!root.builtInEnv) {
@@ -115,7 +96,7 @@ function createIsolatedEnvState(data: Pick<DataflowProcessorInformation<never>, 
  * When called from `processAssignmentToSymbol`, pass `sourceInfo` so that a
  * statically-resolved `parent` argument (stored in the vertex's `newEnvParent` field)
  * is honoured.  Without `sourceInfo` (or when no `newEnvParent` is present), falls back
- * to `parent = parent.frame()` — i.e. uses the current execution environment as parent.
+ * to the current execution environment as parent.
  */
 export function createFreshEnvState(
 	data:       Pick<DataflowProcessorInformation<never>, 'environment'>,
@@ -123,11 +104,10 @@ export function createFreshEnvState(
 ): REnvironmentInformation {
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
-		if(vertex?.tag === VertexType.FunctionCall && (vertex as DataflowGraphVertexFunctionCall).newEnvParent !== undefined) {
-			const parentState = (vertex as DataflowGraphVertexFunctionCall).newEnvParent as REnvironmentInformation;
+		if(isFunctionCallVertex(vertex) && vertex.newEnvParent !== undefined) {
 			return {
-				current: new Environment(parentState.current),
-				level:   parentState.level + 1
+				current: new Environment(vertex.newEnvParent.current),
+				level:   vertex.newEnvParent.level + 1
 			};
 		}
 	}

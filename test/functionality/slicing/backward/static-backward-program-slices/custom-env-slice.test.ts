@@ -183,6 +183,36 @@ describe.sequential('Custom Environment Slicing', withShell(shell => {
 			['4@y'],
 			'y'
 		);
+
+		assertSliced(label('with() named args reordered: expr first, data second', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(expr=x, data=e)',
+			].join('\n'),
+			['3@with'],
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(expr=x, data=e)',
+			].join('\n')
+		);
+
+		assertSliced(label('with() partial arg name: dat= matches data param', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+			shell,
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(dat=e, x)',
+			].join('\n'),
+			['3@with'],
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'with(dat=e, x)',
+			].join('\n')
+		);
 	});
 
 	describe('config: trackEnvironments disabled', () => {

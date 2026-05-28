@@ -1,6 +1,8 @@
 /**
  * Shared utilities for built-in functions that interact with tracked R environments.
  *
+ * - {@link bindArgs} - bind call arguments to formal parameter names using R's matching rules.
+ * - {@link resolveArgToEnvir} - resolve a single already-found argument to an {@link EnvirResolution}.
  * - {@link resolveEnvirArg} / {@link resolveSymbolToEnvir} - resolve a named argument or
  *   symbol to an {@link EnvirResolution} when it holds a tracked {@link InGraphIdentifierDefinition#envState}.
  * - {@link routeWrittenToCustomEnv} - move written definitions from the caller's scope into
@@ -19,6 +21,7 @@ import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, Nam
 import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
@@ -77,47 +80,131 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 }
 
 /**
+ * Binds call arguments to formal parameter names following R's standard matching rules:
+ * 1. Exact name matches (named args bound to exact-matching formal params).
+ * 2. Partial (pmatch) name matches via {@link findByPrefixIfUnique}.
+ * 3. Remaining unnamed args fill remaining unbound formal params left-to-right.
+ *
+ * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous
+ * prefixes are rejected correctly.  Use this when multiple formals must be found
+ * simultaneously so that named-arg binding is consistent across all formals.
+ */
+export function bindArgs<OtherInfo>(
+	args:       readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	paramNames: readonly string[]
+): ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>> {
+	const bound = new Map<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
+	const used = new Set<number>();
+
+	/* pass 1: exact name matches */
+	for(let i = 0; i < args.length; i++) {
+		const arg = args[i];
+		if(arg === EmptyArgument || arg.name === undefined) {
+			continue;
+		}
+		const n = arg.name.content as string;
+		if(paramNames.includes(n) && !bound.has(n)) {
+			bound.set(n, arg);
+			used.add(i);
+		}
+	}
+	/* pass 2: partial (pmatch) name matches */
+	for(let i = 0; i < args.length; i++) {
+		if(used.has(i)) {
+			continue;
+		}
+		const arg = args[i];
+		if(arg === EmptyArgument || arg.name === undefined) {
+			continue;
+		}
+		const matched = findByPrefixIfUnique(arg.name.content as string, paramNames);
+		if(matched !== undefined && !bound.has(matched)) {
+			bound.set(matched, arg);
+			used.add(i);
+		}
+	}
+	/* pass 3: remaining unnamed args fill remaining formal params left-to-right */
+	let formalIdx = 0;
+	for(let i = 0; i < args.length; i++) {
+		if(used.has(i)) {
+			continue;
+		}
+		const arg = args[i];
+		if(arg === EmptyArgument || arg.name !== undefined) {
+			continue;
+		}
+		while(formalIdx < paramNames.length && bound.has(paramNames[formalIdx])) {
+			formalIdx++;
+		}
+		if(formalIdx < paramNames.length) {
+			bound.set(paramNames[formalIdx], arg);
+			used.add(i);
+			formalIdx++;
+		}
+	}
+	return bound;
+}
+
+/**
+ * Resolves a single already-found argument (e.g. from {@link bindArgs}) to an
+ * {@link EnvirResolution} when the argument is a symbol that holds a tracked envState.
+ * Returns `undefined` when the arg is empty, non-symbolic, or unresolved.
+ */
+export function resolveArgToEnvir<OtherInfo>(
+	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> | undefined {
+	if(arg === EmptyArgument) {
+		return undefined;
+	}
+	const node = unpackArg(arg);
+	if(node?.type !== RType.Symbol) {
+		return undefined;
+	}
+	return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+}
+
+/**
  * Scans `args` for an argument named `argName` (default `'envir'`), or - when
  * `positionalFallbackIndex` is given - for the arg at that positional index when
  * no named match is found.  When the resolved argument is a symbol that resolves
  * to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
  * returns the resolved context; otherwise returns `undefined`.
  *
- * Named matches always take priority over the positional fallback.
+ * Named matching uses pmatch semantics: pass `allParamNames` (the full formal parameter
+ * list) so ambiguous prefixes are rejected.  Defaults to `[argName]`, which allows
+ * prefix matches for `argName` only.
+ *
+ * When multiple formals must be matched simultaneously (e.g. `data` and `expr` in `with`),
+ * use {@link bindArgs} + {@link resolveArgToEnvir} instead so named binding is consistent.
  */
 export function resolveEnvirArg<OtherInfo>(
 	args:                   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data:                   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	argName                 = 'envir',
-	positionalFallbackIndex?: number
+	positionalFallbackIndex?: number,
+	allParamNames:          readonly string[] = [argName]
 ): EnvirResolution<OtherInfo> | undefined {
-	/* first pass: named arg takes priority */
+	/* named pass: pmatch against the full parameter list */
 	for(const arg of args) {
-		if(arg === EmptyArgument || arg.name?.content !== argName) {
+		if(arg === EmptyArgument || arg.name === undefined) {
 			continue;
 		}
-		const node = unpackArg(arg);
-		if(node?.type !== RType.Symbol) {
-			return undefined;
+		if(findByPrefixIfUnique(arg.name.content as string, allParamNames) === argName) {
+			return resolveArgToEnvir(arg, data);
 		}
-		return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 	}
-
-	/* second pass: positional fallback (only when no named match existed) */
+	/* positional fallback (only when no named match existed) */
 	if(positionalFallbackIndex !== undefined) {
-		let positionalCount = 0;
+		let pos = 0;
 		for(const arg of args) {
 			if(arg === EmptyArgument || arg.name !== undefined) {
 				continue;
 			}
-			if(positionalCount === positionalFallbackIndex) {
-				const node = unpackArg(arg);
-				if(node?.type !== RType.Symbol) {
-					return undefined;
-				}
-				return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+			if(pos === positionalFallbackIndex) {
+				return resolveArgToEnvir(arg, data);
 			}
-			positionalCount++;
+			pos++;
 		}
 	}
 	return undefined;

@@ -8,11 +8,14 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { resolveEnvirArg, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { bindArgs, resolveArgToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
 import { linkInputs } from '../../../../linker';
+
+/** Formal parameter names for `with(data, expr, ...)` and `within(data, expr, ...)`. */
+const withParams = ['data', 'expr'] as const;
 
 /**
  * Processes `with(data, expr)` and `within(data, expr)`.
@@ -23,6 +26,9 @@ import { linkInputs } from '../../../../linker';
  *
  * - `with`: writes in `expr` are ephemeral (R's `with` uses a temporary scope and discards them).
  * - `within`: writes in `expr` are persisted back into the tracked envState of `data`.
+ *
+ * Arguments are resolved using R's standard matching rules ({@link bindArgs}: pmatch for named
+ * args, positional fallback), so `with(expr=x, data=e)` and `with(dat=e, x)` are handled correctly.
  *
  * Falls back to a normal function-call analysis when the data argument cannot be resolved
  * to a tracked environment.
@@ -37,15 +43,16 @@ export function processWithEnv<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
 
-	const dataArg = args[0];
-	const exprArg = args[1];
+	const bound = bindArgs(args, withParams);
+	const dataArg = bound.get('data');
+	const exprArg = bound.get('expr');
 
-	if(dataArg === EmptyArgument || exprArg === EmptyArgument || !dataArg.value || !exprArg.value) {
+	if(dataArg === undefined || dataArg === EmptyArgument || dataArg.value === undefined ||
+	   exprArg === undefined || exprArg === EmptyArgument || exprArg.value === undefined) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
 
-	/* `data` is the first positional arg (or may be passed as `data=`) */
-	const envirResolution = resolveEnvirArg(args, data, 'data', 0);
+	const envirResolution = resolveArgToEnvir(dataArg, data);
 	if(!envirResolution) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
@@ -62,7 +69,7 @@ export function processWithEnv<OtherInfo>(
 	/*
 	 * processSymbol puts symbol uses in unknownReferences without creating reads edges.
 	 * Explicitly link expr's unknown references against the envState so reads edges are
-	 * created for names that resolve there (e.g. `x` in `with(e, x)` → assign).
+	 * created for names that resolve there (e.g. `x` in `with(e, x)` -> assign).
 	 * References that cannot be resolved in envState are kept for the outer scope.
 	 */
 	const remainingFromExpr: IdentifierReference[] = [];

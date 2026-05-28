@@ -293,26 +293,41 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	describe('dollar-sign read (e$x)', () => {
 		assertDataflow(label('e$x resolves to x in envState, both define and use linked', ['dynamic-environment-resolution', 'name-created']),
 			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\ne$x',
+			[
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'x <- 99',
+				'e$x',
+			].join('\n'),
 			emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
-				.use('3@e').reads('3@e', '1@e'),
-			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+				.use('4@e').reads('4@e', '1@e')
+				.reads('4@$', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@$', '3@x']] }
 		);
 	});
 
 	describe('attach() search path injection', () => {
 		assertDataflow(label('attach(e) injects env contents into scope', ['dynamic-environment-resolution', 'environment-sharing']),
 			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nattach(e)\nx',
+			[
+				'x <- 0',
+				'e <- new.env()',
+				'assign("x", 42, envir=e)',
+				'attach(e)',
+				'x',
+			].join('\n'),
 			emptyGraph()
-				.defineVariable('1@e', 'e')
-				.use('4@x'),
+				.defineVariable('2@e', 'e')
+				.use('3@e').reads('3@e', '2@e')
+				.use('4@e').reads('4@e', '2@e')
+				.reads('5@x', '3@"x"')
+				.use('5@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['4@x', '2@assign']]
+				mustNotHaveEdges:      [['5@x', '3@assign'], ['5@x', '1@x']]
 			}
 		);
 
@@ -664,13 +679,15 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			[
 				'e <- new.env()',
 				'assign("x", 42, envir=e)',
+				'x <- 3',
 				'with(e, x)',
 			].join('\n'),
 			emptyGraph()
 				.defineVariable('1@e', 'e')
 				.use('2@e').reads('2@e', '1@e')
-				.use('3@e').reads('3@e', '1@e'),
-			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+				.use('4@e').reads('4@e', '1@e')
+				.reads('4@x', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['4@x', '3@x']] }
 		);
 
 		assertDataflow(label('with via alias: with(alias, x) resolves x from alias envState', ['dynamic-environment-resolution', 'environment-with', 'environment-alias']),
@@ -679,6 +696,7 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				'e <- new.env()',
 				'assign("x", 42, envir=e)',
 				'alias <- e',
+				'x <- 3',
 				'with(alias, x)',
 			].join('\n'),
 			emptyGraph()
@@ -686,8 +704,9 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.use('2@e').reads('2@e', '1@e')
 				.defineVariable('3@alias', 'alias')
 				.use('3@e').reads('3@e', '1@e')
-				.use('4@alias').reads('4@alias', '3@alias'),
-			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+				.use('5@alias').reads('5@alias', '3@alias')
+				.reads('5@x', '2@"x"'),
+			{ expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['5@x', '4@x']] }
 		);
 
 		assertDataflow(label('with untracked env falls through to default handling', ['dynamic-environment-resolution', 'environment-with']),

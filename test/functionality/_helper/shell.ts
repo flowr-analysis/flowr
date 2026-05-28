@@ -367,7 +367,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	addFiles:              FlowrFileProvider[]
 	/** The collection of vertex ids that should not exist */
 	mustNotHaveVertices:   Set<NodeId>
-	/** The collection of edges that should not exist */
+	/** The collection of edges that should not exist, if criterias are enabled, these can be slicing criteria */
 	mustNotHaveEdges:      [NodeId, NodeId][]
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',

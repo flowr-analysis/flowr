@@ -152,11 +152,17 @@ export interface FlowrConfig extends MergeableRecord {
 		/**
 		 * How to resolve variables and their values
 		 */
-		readonly variables:   VariableResolve,
+		readonly variables:         VariableResolve,
 		/**
 		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
 		 */
-		readonly evalStrings: boolean
+		readonly evalStrings:       boolean,
+		/**
+		 * Track user-created environments (`new.env()`, `assign(..., envir=e)`, `get(..., envir=e)`,
+		 * `local({}, envir=e)`, `e$x <- v`, `attach(e)`) with precise per-variable envState.
+		 * When disabled all envir-style calls fall through to the conservative global treatment.
+		 */
+		readonly trackEnvironments: boolean
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -301,9 +307,10 @@ export const FlowrConfig = {
 			engines:       [],
 			defaultEngine: 'tree-sitter',
 			solver:        {
-				variables:     VariableResolve.Alias,
-				evalStrings:   true,
-				resolveSource: {
+				variables:         VariableResolve.Alias,
+				evalStrings:       true,
+				trackEnvironments: true,
+				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
@@ -366,9 +373,10 @@ export const FlowrConfig = {
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 		solver:        Joi.object({
-			variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-			evalStrings: Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
-			instrument:  Joi.object({
+			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
+			instrument:        Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({

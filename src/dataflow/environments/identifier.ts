@@ -2,6 +2,7 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
+import type { REnvironmentInformation } from './environment';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -297,7 +298,19 @@ export interface InGraphIdentifierDefinition extends IdentifierReference {
 	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
 	readonly value?:    NodeId[]
+	/**
+	 * If this variable holds an R environment (created by `new.env()` etc.),
+	 * this tracks the current known state of that environment.
+	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
+	 */
+	readonly envState?: REnvironmentInformation
 }
+
+/**
+ * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
+ * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.
+ */
+export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
 
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}.

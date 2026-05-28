@@ -80,10 +80,16 @@ export enum BuiltInProcName {
 	TableAssignment = 'table:assign',
 	/** for `try` calls, see {@link processTryCatch} */
 	Try = 'builtin:try',
+	/** for `attach` calls that inject environment contents into the search path, see {@link processAttach} */
+	Attach = 'builtin:attach',
+	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */
+	NewEnv = 'builtin:new-env',
 	/** for unnamed directly-linked function calls */
 	Unnamed = 'unnamed',
 	/** for vector construction calls, see {@link processVector} */
 	Vector = 'builtin:vector',
 	/** for `while` loops, see {@link processWhileLoop} */
 	WhileLoop = 'builtin:while-loop',
+	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
+	With = 'builtin:with',
 }

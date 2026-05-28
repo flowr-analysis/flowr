@@ -116,6 +116,12 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	environment:   REnvironmentInformation | undefined
 	/** More detailed Information on this function call */
 	origin:        FunctionOriginInformation[] | 'unnamed'
+	/**
+	 * For `new.env()`-family calls: the resolved parent {@link REnvironmentInformation} that the
+	 * freshly-created environment should inherit from. Set by `processNewEnv` when the `parent`
+	 * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
+	 */
+	newEnvParent?: REnvironmentInformation
 }
 
 /** Describes the processor responsible for a function call */

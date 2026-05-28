@@ -85,6 +85,8 @@ import {
 } from './catalog/input-sources-query/input-sources-query-format';
 import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
+import type { TaintQuery } from './catalog/taint-query/taint-query-format';
+import { TaintQueryDefinition } from './catalog/taint-query/taint-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -115,6 +117,7 @@ export type Query = CallContextQuery
 	| LinterQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
+	| TaintQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -165,6 +168,7 @@ export const SupportedQueries = {
 	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
 	'df-shape':             DfShapeQueryDefinition,
+	'taint':                TaintQueryDefinition,
 	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,

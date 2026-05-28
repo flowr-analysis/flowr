@@ -51,9 +51,9 @@ export function processNewEnv<OtherInfo>(
  * to the default (current execution environment).
  *
  * Recognised patterns:
- * - `parent = <tracked-env-var>` — returns that variable's `envState`
- * - `parent = emptyenv()` / `parent = baseenv()` — returns an isolated env (no user scope)
- * - everything else — `undefined` (fall through)
+ * - `parent = <tracked-env-var>` - returns that variable's `envState`
+ * - `parent = emptyenv()` / `parent = baseenv()` - returns an isolated env (no user scope)
+ * - everything else - `undefined` (fall through)
  */
 function resolveNewEnvParentArg<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],

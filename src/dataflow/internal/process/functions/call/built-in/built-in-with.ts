@@ -78,7 +78,6 @@ export function processWithEnv<OtherInfo>(
 	});
 
 	const merged = dfDataArg.graph.mergeWith(dfExpr.graph);
-	/* direct reads edge so the slicer can reach the env variable from the with call */
 	merged.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
 
 	const ingoing = dfDataArg.in.concat(

@@ -482,7 +482,6 @@ function tryRouteToCustomEnv<OtherInfo>(
 		environmentArg: undefined   // prevent re-entry
 	});
 
-	/* direct Reads edge so the slicer can reach the envir variable without needing a second Argument source */
 	normalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 
 	/* pass rootId as definedAt so only defs made at this call site are routed */

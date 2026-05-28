@@ -67,7 +67,6 @@ export function processGet<OtherInfo>(
 		information.graph.addEdge(rootId, firstProcessed.entryPoint, EdgeType.Returns | EdgeType.Reads);
 	}
 
-	/* direct Reads edge so the slicer can reach the envir variable without needing a second Argument source */
 	if(resolution) {
 		information.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	}

@@ -1,9 +1,9 @@
 /**
  * Shared utilities for built-in functions that interact with tracked R environments.
  *
- * - {@link resolveEnvirArg} / {@link resolveSymbolToEnvir} — resolve a named argument or
+ * - {@link resolveEnvirArg} / {@link resolveSymbolToEnvir} - resolve a named argument or
  *   symbol to an {@link EnvirResolution} when it holds a tracked {@link InGraphIdentifierDefinition#envState}.
- * - {@link routeWrittenToCustomEnv} — move written definitions from the caller's scope into
+ * - {@link routeWrittenToCustomEnv} - move written definitions from the caller's scope into
  *   the holder variable's `envState` after processing an expression that writes into a custom env.
  */
 import type { DataflowProcessorInformation } from '../../../../../processor';
@@ -77,8 +77,8 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 }
 
 /**
- * Scans `args` for an argument named `argName` (default `'envir'`), or — when
- * `positionalFallbackIndex` is given — for the arg at that positional index when
+ * Scans `args` for an argument named `argName` (default `'envir'`), or - when
+ * `positionalFallbackIndex` is given - for the arg at that positional index when
  * no named match is found.  When the resolved argument is a symbol that resolves
  * to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
  * returns the resolved context; otherwise returns `undefined`.
@@ -126,7 +126,7 @@ export function resolveEnvirArg<OtherInfo>(
 /**
  * Resolves a symbol by name to an {@link EnvirResolution} when the symbol holds a tracked
  * environment.  Handles multiple reaching definitions (e.g. from if/else branches) by
- * merging their envStates — see {@link resolveDefsToEnvirResolution}.
+ * merging their envStates - see {@link resolveDefsToEnvirResolution}.
  * Returns `undefined` when the name cannot be resolved or none of its definitions carry an envState.
  */
 export function resolveSymbolToEnvir<OtherInfo>(

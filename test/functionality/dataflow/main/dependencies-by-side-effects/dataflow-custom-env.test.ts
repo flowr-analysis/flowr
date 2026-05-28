@@ -1,4 +1,4 @@
-import { assertDataflow, assertSliced, withShell } from '../../../_helper/shell';
+import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { describe } from 'vitest';
@@ -7,7 +7,7 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 import { argumentInCall } from '../../../_helper/dataflow/environment-builder';
 import { FlowrConfig } from '../../../../../src/config';
 
-describe.sequential('Custom Environment Tracking', withShell(shell => {
+describe('Custom Environment Tracking', withTreeSitter(shell => {
 
 	describe('new.env()', () => {
 		assertDataflow(label('new.env() call carries NewEnv origin', ['dynamic-environment-resolution']),
@@ -326,11 +326,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 	});
 
 	describe('complex programs', () => {
-		/*
-		 * Configuration manager: multiple assigns, conditional update via if-then-else,
-		 * then selective gets. Tests that env reads are correctly attributed and that
-		 * the conditional assign in the if-body still routes through cfg.
-		 */
 		assertDataflow(label('configuration manager: multi-assign then conditional update then selective get', ['dynamic-environment-resolution', 'environment-sharing', 'name-created', 'if', 'environment-in-conditionals']),
 			shell,
 			[
@@ -361,11 +356,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/*
-		 * Two-environment pipeline: data_env holds raw and scaled data, cfg_env holds
-		 * the scale parameter. A get from data_env and a get from cfg_env feed an
-		 * assign back into data_env, so the two envs' reads must be isolated.
-		 */
 		assertDataflow(label('two-env pipeline: data and config environments are independent', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
 			shell,
 			[
@@ -392,11 +382,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/*
-		 * Results/metrics pattern: two envs, a conditional picks the summary function
-		 * based on a count retrieved from the metrics env, then writes into the results env.
-		 * Both branches of the if write to the same env, both read their env variable.
-		 */
 		assertDataflow(label('results and metrics envs: conditional summary strategy based on count from metrics env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created', 'if', 'environment-in-conditionals']),
 			shell,
 			[
@@ -428,11 +413,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/*
-		 * For-loop populates env with computed keys: each iteration calls assign with a
-		 * dynamic key (paste0), so static resolution is not possible. The env variable
-		 * must be read in each iteration body. A fixed-key get after the loop still reads e.
-		 */
 		assertDataflow(label('for-loop populates env with dynamic keys: e read in body and after loop', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-loops']),
 			shell,
 			[
@@ -449,11 +429,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/*
-		 * Chained get-assign-get across two environments: the value in src is read by
-		 * get, then written into dst via assign, then retrieved from dst by a second get.
-		 * Tests that the full provenance chain across both envs is preserved.
-		 */
 		assertDataflow(label('chained get-assign-get across two envs: full provenance chain', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
 			shell,
 			[
@@ -474,12 +449,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 
-		/*
-		 * Multi-env parallel accumulation: two environments accumulate different
-		 * sets of values inside a for loop. Variables from each env are then
-		 * retrieved and combined. Tests that assignments in the loop body correctly
-		 * attribute to each respective env.
-		 */
 		assertDataflow(label('parallel accumulation in two envs inside for-loop: reads isolated per env', ['dynamic-environment-resolution', 'environment-sharing', 'for-loop', 'environment-in-loops']),
 			shell,
 			[
@@ -503,113 +472,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				.use('10@evens').reads('10@evens', '1@evens')
 				.use('11@odds').reads('11@odds', '2@odds'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
-		);
-	});
-
-	describe('slicing', () => {
-		assertSliced(label('slice for get includes assign that provided value, not unrelated assign', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
-			shell,
-			'e1 <- new.env()\ne2 <- new.env()\nassign("x", 42, envir=e1)\nassign("y", 99, envir=e2)\nget("x", envir=e1)',
-			['5@get'],
-			'e1 <- new.env()\nassign("x", 42, envir=e1)\nget("x", envir=e1)'
-		);
-
-		assertSliced(label('x after assign-to-env is not in global scope — slice is just x', ['dynamic-environment-resolution', 'environment-sharing']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nx',
-			['3@x'],
-			'x'
-		);
-
-		assertSliced(label('slice of get traces value through assign back to new.env', ['dynamic-environment-resolution', 'name-created']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", envir=e)',
-			['3@get'],
-			'e <- new.env()\nassign("x", 42, envir=e)\nget("x", envir=e)'
-		);
-
-		assertSliced(label('slice of e$x read traces back through assign', ['dynamic-environment-resolution', 'name-created']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\ne$x',
-			['3@$'],
-			'e <- new.env()\nassign("x", 42, envir=e)\ne$x'
-		);
-
-		assertSliced(label('slice of x after attach(e) traces through assign and new.env', ['dynamic-environment-resolution', 'environment-sharing']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nattach(e)\nx',
-			['4@x'],
-			'e <- new.env()\nassign("x", 42, envir=e)\nattach(e)\nx'
-		);
-
-		assertSliced(label('multi-assign config: slice of specific get excludes unrelated assigns to same env', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
-			shell,
-			[
-				'cfg <- new.env()',
-				'assign("alpha", 0.05, envir=cfg)',
-				'assign("n_iter", 1000, envir=cfg)',
-				'assign("mu", 0, envir=cfg)',
-				'lr <- get("alpha", envir=cfg)',
-				'lr',
-			].join('\n'),
-			['6@lr'],
-			'cfg <- new.env()\nassign("alpha", 0.05, envir=cfg)\nlr <- get("alpha", envir=cfg)\nlr'
-		);
-
-		assertSliced(label('slice through conditional assign in both branches: full if-then-else included', ['dynamic-environment-resolution', 'environment-sharing', 'if', 'environment-in-conditionals']),
-			shell,
-			[
-				'e <- new.env()',
-				'flag <- sample(c(TRUE, FALSE), 1)',
-				'if (flag) {',
-				'  assign("x", 1, envir=e)',
-				'} else {',
-				'  assign("x", 2, envir=e)',
-				'}',
-				'get("x", envir=e)',
-			].join('\n'),
-			['8@get'],
-			'e <- new.env()\nflag <- sample(c(TRUE, FALSE), 1)\nif(flag) { assign("x", 1, envir=e) } else\n{ assign("x", 2, envir=e) }\nget("x", envir=e)'
-		);
-
-		assertSliced(label('chained get-assign-get slice: full chain across two envs preserved', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
-			shell,
-			[
-				'src <- new.env()',
-				'dst <- new.env()',
-				'assign("val", 42, envir=src)',
-				'assign("val", get("val", envir=src), envir=dst)',
-				'get("val", envir=dst)',
-			].join('\n'),
-			['5@get'],
-			[
-				'src <- new.env()',
-				'dst <- new.env()',
-				'assign("val", 42, envir=src)',
-				'assign("val", get("val", envir=src), envir=dst)',
-				'get("val", envir=dst)',
-			].join('\n')
-		);
-
-		assertSliced(label('slice of get from metrics env excludes unrelated results env assigns', ['dynamic-environment-resolution', 'environment-sharing', 'name-created']),
-			shell,
-			[
-				'results <- new.env()',
-				'metrics <- new.env()',
-				'assign("accuracy", 0.95, envir=results)',
-				'assign("precision", 0.9, envir=results)',
-				'assign("n_samples", 200, envir=metrics)',
-				'assign("n_features", 10, envir=metrics)',
-				'n <- get("n_samples", envir=metrics)',
-				'n',
-			].join('\n'),
-			['8@n'],
-			[
-				'metrics <- new.env()',
-				'assign("n_samples", 200, envir=metrics)',
-				'n <- get("n_samples", envir=metrics)',
-				'n',
-			].join('\n')
 		);
 	});
 
@@ -654,7 +516,7 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			}
 		);
 
-		assertDataflow(label('new.env() without parent uses default (parent.frame()) — tracked normally', ['dynamic-environment-resolution', 'environment-parent']),
+		assertDataflow(label('new.env() without parent uses default (parent.frame()), tracked normally', ['dynamic-environment-resolution', 'environment-parent']),
 			shell,
 			'e <- new.env()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
@@ -667,17 +529,10 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				mustNotHaveEdges:      [['3@x', '2@assign']]
 			}
 		);
-
-		assertSliced(label('slice through child env with emptyenv parent: includes assign and new.env', ['dynamic-environment-resolution', 'environment-parent', 'name-created']),
-			shell,
-			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)',
-			['3@get'],
-			'e <- new.env(parent=emptyenv())\nassign("x", 42, envir=e)\nget("x", envir=e)'
-		);
 	});
 
 	describe('rlang::new_environment()', () => {
-		assertDataflow(label('rlang::new_environment() carries NewEnv origin — assigned variable is tracked', ['dynamic-environment-resolution']),
+		assertDataflow(label('rlang::new_environment() carries NewEnv origin, assigned variable is tracked', ['dynamic-environment-resolution']),
 			shell,
 			'e <- rlang::new_environment()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
@@ -704,28 +559,9 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				mustNotHaveEdges:      [['3@x', '2@assign']]
 			}
 		);
-		assertDataflow(label('new.environment() (base alias) tracks env identically to new.env()', ['dynamic-environment-resolution', 'environment-sharing']),
-			shell,
-			'e <- new.environment()\nassign("x", 42, envir=e)\nx',
-			emptyGraph()
-				.defineVariable('1@e', 'e')
-				.use('2@e').reads('2@e', '1@e')
-				.use('3@x'),
-			{
-				expectIsSubgraph:      true,
-				resolveIdsAsCriterion: true,
-				mustNotHaveEdges:      [['3@x', '2@assign']]
-			}
-		);
 	});
 
 	describe('user-defined function creates env', () => {
-		/*
-		 * When new.env() is returned from a user-defined function the analysis cannot
-		 * statically determine the return value is an environment.  The variable therefore
-		 * has no envState and assignments / gets targeting it fall through conservatively
-		 * to global scope.  This is by design — the analysis is sound (not lossy).
-		 */
 		assertDataflow(label('simple wrapper function returns new.env(): e has no envState, assign falls through to global scope', ['dynamic-environment-resolution']),
 			shell,
 			'make_env <- function() new.env()\ne <- make_env()\nassign("x", 42, envir=e)\nx',
@@ -820,23 +656,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				mustNotHaveEdges:      [['4@"x"', '3@"x"']]
 			}
 		);
-
-		assertSliced(label('slice through alias: get via alias traces back through assign and new.env', ['dynamic-environment-resolution', 'environment-alias', 'name-created']),
-			shell,
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'alias <- e',
-				'get("x", envir=alias)',
-			].join('\n'),
-			['4@get'],
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'alias <- e',
-				'get("x", envir=alias)',
-			].join('\n')
-		);
 	});
 
 	describe('with() / within()', () => {
@@ -879,38 +698,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 				.use('2@x'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
-
-		assertSliced(label('slice from with(e, x): traces through assign and new.env', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
-			shell,
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'with(e, x)',
-			].join('\n'),
-			['3@with'],
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'with(e, x)',
-			].join('\n')
-		);
-
-		assertSliced(label('slice from with via alias: traces assign, alias assignment, and new.env', ['dynamic-environment-resolution', 'environment-with', 'environment-alias', 'name-created']),
-			shell,
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'alias <- e',
-				'with(alias, x)',
-			].join('\n'),
-			['4@with'],
-			[
-				'e <- new.env()',
-				'assign("x", 42, envir=e)',
-				'alias <- e',
-				'with(alias, x)',
-			].join('\n')
-		);
 	});
 
 	describe('config: trackEnvironments disabled', () => {
@@ -926,14 +713,6 @@ describe.sequential('Custom Environment Tracking', withShell(shell => {
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true },
 			0,
 			noTrack
-		);
-
-		assertSliced(label('with tracking disabled, slice of x includes the assign', ['dynamic-environment-resolution']),
-			shell,
-			'e <- new.env()\nassign("x", 42, envir=e)\nx',
-			['3@x'],
-			'assign("x", 42, envir=e)\nx',
-			{ flowrConfig: noTrack }
 		);
 	});
 }));

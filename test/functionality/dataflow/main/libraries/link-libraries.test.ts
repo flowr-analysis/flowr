@@ -202,14 +202,14 @@ import(random_placeholder)`)).content().current
 			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
-		
+
 		const df = await analyzer.dataflow();
 		let env = df.environment.current;
 		console.log(env);
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rPSsymbols = ['test1', 'test2'];
-		const rP2Symbols = ['test1', 'test2', 'test3'];
-		const rP3Symbols = ['a', 'b'];
+		//const rP2Symbols = ['test1', 'test2', 'test3'];
+		//const rP3Symbols = ['a', 'b'];
 		//namespace:ggplot -> imports:ggplot -> globalEnv -> package:ggplot -> ...
 		//ggplot namespace
 		expect(env.n === 'ggplot2' && env.t === 'namespace' && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();

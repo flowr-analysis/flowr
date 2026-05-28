@@ -171,6 +171,18 @@ describe.sequential('Custom Environment Slicing', withShell(shell => {
 				'with(alias, x)',
 			].join('\n')
 		);
+
+		assertSliced(label('with() scoping: y assigned inside with body is not in outer scope', ['dynamic-environment-resolution', 'environment-with', 'name-created']),
+			shell,
+			[
+				'x <- new.env()',
+				'x$x <- 42',
+				'with(x, { y <- x + 2 })',
+				'y',
+			].join('\n'),
+			['4@y'],
+			'y'
+		);
 	});
 
 	describe('config: trackEnvironments disabled', () => {

@@ -9,7 +9,7 @@ export type TaintAnalysisName<Definition> = Definition extends TaintAnalysisDefi
 export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	public readonly domain: Domain;
 	public mapper:          TaintMapper<Domain> = [];
-	public name:            string;
+	public name:            Name;
 
 	private msg: string | undefined;
 

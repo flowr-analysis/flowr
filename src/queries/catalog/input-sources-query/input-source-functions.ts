@@ -50,3 +50,10 @@ export const LangFunctions: Identifier[] = [
 ];
 
 export const OptionsFunctions: Identifier[] = ['options', 'getOption', 'Sys.getenv'];
+
+export const UserFunctions: Identifier[] = [
+	'readline', 'scan', 'askYesNo',
+	'file.choose', 'choose.files', 'choose.dir', 'menu', 'select.list', 'winDialogString', 'winDialog',
+	'showPrompt', 'askForPassword', 'selectDirectory', 'selectFile',
+	'dlgInput', 'dlgOpen',
+];

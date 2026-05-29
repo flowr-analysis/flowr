@@ -13,7 +13,7 @@ import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions } from './input-source-functions';
+import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, UserFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -38,7 +38,8 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputType.System]:    SystemFunctions,
 	[InputType.Ffi]:       FfiFunctions,
 	[InputType.Lang]:      LangFunctions,
-	[InputType.Options]:   OptionsFunctions
+	[InputType.Options]:   OptionsFunctions,
+	[InputType.User]:      UserFunctions
 };
 
 export interface InputSourcesQueryResult extends BaseQueryResult {
@@ -92,6 +93,7 @@ export const InputSourcesDefinition = {
 			[InputType.Ffi]:       Joi.array().items(Joi.string()).optional().description('Functions that call native code via the R FFI (.C, .Call, .Fortran, .External, dyn.load).'),
 			[InputType.Lang]:      Joi.array().items(Joi.string()).optional().description('Functions that produce language objects (e.g., substitute, quote, bquote, expression).'),
 			[InputType.Options]:   Joi.array().items(Joi.string()).optional().description('Functions that access or set global options (e.g., options, getOption).'),
+			[InputType.User]:      Joi.array().items(Joi.string()).optional().description('Functions that read interactive user input (e.g., file.choose, readline, menu, askYesNo).'),
 		}).optional()
 	}).description('Input Sources query definition'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {

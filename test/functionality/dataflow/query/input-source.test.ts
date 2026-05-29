@@ -151,6 +151,16 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	describe('User input', () => {
+		testQuery('file.choose', 'x <- file.choose()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.User], trace: InputTraceType.Alias }]
+		});
+
+		testQuery('scan also classified as File and Network', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network, InputType.User], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Catch Scope Escapes', () => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]

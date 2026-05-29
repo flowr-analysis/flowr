@@ -68,7 +68,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 				id:    tid,
 				cds:   undefined,
 				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
-			}, environments);
+			}, environments, false);
 		}
 	}
 }

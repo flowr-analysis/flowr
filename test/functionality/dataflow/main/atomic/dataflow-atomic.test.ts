@@ -41,6 +41,21 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 		}
 	});
 
+	describe('Built-in constant aliases', () => {
+		for(const [input, capability] of [
+			['T', 'logical'],
+			['F', 'logical'],
+		] as [string, SupportedFlowrCapabilityId][]) {
+			assertDataflow(label(input, [capability]), shell, input,
+				emptyGraph()
+					.use(0, input)
+					.constant(NodeId.toBuiltIn(input), {}, false)
+					.reads(0, NodeId.toBuiltIn(input)),
+				{ expectIsSubgraph: true }
+			);
+		}
+	});
+
 	assertDataflow(label('simple variable', ['name-normal']), shell,
 		'xylophone', emptyGraph().use(0, 'xylophone')
 	);

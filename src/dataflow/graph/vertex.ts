@@ -5,6 +5,7 @@ import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
 import type { Identifier } from '../environments/identifier';
 import type { BuiltInProcName } from '../environments/built-in-proc-name';
+import type { Value } from '../eval/values/r-value';
 
 
 export enum VertexType {
@@ -56,27 +57,22 @@ export interface DataflowGraphVertexAstLink {
 
 /**
  * Marker vertex for a value in the dataflow of the program.
- * This does not contain the _value_ of the referenced constant
- * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
- * (or more specifically the {@link AstIdMap}).
- *
- * If you have a {@link DataflowGraph|dataflow graph} named `graph`
- * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+ * For user-code constants (numbers, strings, logicals) the value is recovered by looking up the
+ * {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}:
  * @example
  * ```ts
  * const node = graph.idMap.get(value.id)
  * ```
  *
- * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
- * an {@link RNumber} or {@link RString}.
- *
- * This works similarly for {@link IdentifierReference|identifier references}
- * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
+ * For built-in constants whose id is not in the {@link AstIdMap} (e.g. `T` resolving to `built-in:T`),
+ * the abstract {@link Value} is stored directly in the {@link DataflowGraphVertexValue#value|value} field.
  * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
 	readonly environment?: undefined
+	/** Pre-computed abstract value; set for built-in constants (e.g. `T`, `F`) whose id is not in the AST id map */
+	readonly value?:       Value
 }
 
 /**

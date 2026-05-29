@@ -26,6 +26,8 @@ import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
+import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
 
@@ -59,6 +61,14 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
+		}
+		if(target.type === ReferenceType.BuiltInConstant) {
+			nextGraph.addVertex({
+				tag:   VertexType.Value,
+				id:    tid,
+				cds:   undefined,
+				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+			}, environments);
 		}
 	}
 }

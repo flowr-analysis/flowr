@@ -340,7 +340,7 @@ class InputClassifier {
  *```
  *              [ Unknown ]
  *                   |
- * [Param] [File] [Net], ...
+ * [Param] [File] [Net] [User], ...
  *                   |
  *            [ DerivedConstant ]
  *                   |
@@ -361,6 +361,8 @@ export enum InputType {
 	Lang = 'lang',
 	/** Global options / option accessors (options, getOption) */
 	Options = 'options',
+	/** Interactive user input (file choosers, prompts, dialogs, menu selections) */
+	User = 'user',
 	Constant = 'const',
 	/** Read from environment/call scope */
 	Scope = 'scope',

@@ -39,4 +39,35 @@ describe('flowR linter', withTreeSitter(parser => {
 			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }]
 		}]);
 	});
+	describe('Pipe Command Injection', () => {
+		assertLinter('pdf safe path', parser, 'pdf("output.pdf")', 'problematic-inputs', []);
+		assertLinter('pdf pipe constant', parser, 'pdf("|lp -o landscape")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'pdf',
+			loc:         SourceRange.from(1, 1, 1, 23),
+			pipeCommand: '|lp -o landscape',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
+		}]);
+		assertLinter('pdf pipe with named arg', parser, 'pdf("|lp -o landscape", paper = "a4r")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'pdf',
+			loc:         SourceRange.from(1, 1, 1, 38),
+			pipeCommand: '|lp -o landscape',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp -o landscape' }]
+		}]);
+		assertLinter('pdf non-file arg pipe not flagged', parser, 'pdf(file = "out.pdf", title = "|untrusted")', 'problematic-inputs', []);
+		assertLinter('pdf unknown input', parser, 'pdf(x)', 'problematic-inputs', [{
+			certainty: LintingResultCertainty.Uncertain,
+			name:      'pdf',
+			loc:       SourceRange.from(1, 1, 1, 6),
+			sources:   [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Unknown] }]
+		}]);
+		assertLinter('postscript pipe constant', parser, 'postscript("|lp")', 'problematic-inputs', [{
+			certainty:   LintingResultCertainty.Certain,
+			name:        'postscript',
+			loc:         SourceRange.from(1, 1, 1, 17),
+			pipeCommand: '|lp',
+			sources:     [{ id: 1, trace: InputTraceType.Unknown, types: [InputType.Constant], value: '|lp' }]
+		}]);
+	});
 }));

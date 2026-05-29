@@ -338,6 +338,32 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 				.use('2@x'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
+
+		assertDataflow(label('attach then local shadow then rm reveals attached binding again', ['dynamic-environment-resolution', 'environment-sharing']),
+			shell,
+			[
+				'x <- new.env()',
+				'x$foo <- 42',
+				'attach(x)',
+				'print(foo)',
+				'foo <- 14',
+				'print(foo)',
+				'rm(foo)',
+				'print(foo)',
+			].join('\n'),
+			emptyGraph()
+				.defineVariable('1@x', 'x')
+				.use('3@x').reads('3@x', '1@x')
+				.use('4@foo').reads('4@foo', '2@foo')
+				.defineVariable('5@foo', 'foo')
+				.use('6@foo').reads('6@foo', '5@foo')
+				.use('8@foo').reads('8@foo', '2@foo'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['8@foo', '5@foo']]
+			}
+		);
 	});
 
 	describe('complex programs', () => {
@@ -577,20 +603,22 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 	});
 
 	describe('user-defined function creates env', () => {
-		assertDataflow(label('simple wrapper function returns new.env(): e has no envState, assign falls through to global scope', ['dynamic-environment-resolution']),
+		assertDataflow(label('simple wrapper function returns new.env(): envState propagated, assign routes to custom env', ['dynamic-environment-resolution']),
 			shell,
 			'make_env <- function() new.env()\ne <- make_env()\nassign("x", 42, envir=e)\nx',
 			emptyGraph()
 				.defineVariable('1@make_env', 'make_env')
 				.defineVariable('2@e', 'e')
-				/* "x" is defined in global scope because e carries no envState */
-				.defineVariable('3@"x"', '"x"')
-				.use('4@x')
-				.reads('4@x', '3@"x"'),
-			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+				.use('3@e').reads('3@e', '2@e')
+				.use('4@x'),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true,
+				mustNotHaveEdges:      [['4@x', '3@assign']]
+			}
 		);
 
-		assertDataflow(label('factory function with internal new.env() and assign: no envState propagated to caller, get does not resolve', ['dynamic-environment-resolution']),
+		assertDataflow(label('factory function with internal new.env() and assign: envState propagated to caller, get resolves setting', ['dynamic-environment-resolution']),
 			shell,
 			[
 				'make_cfg <- function(val) {',
@@ -604,8 +632,8 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
 			emptyGraph()
 				.defineVariable('1@make_cfg', 'make_cfg')
 				.defineVariable('6@cfg', 'cfg')
-				/* cfg has no envState so envir=cfg is ignored; get resolves nothing from it */
-				.use('7@cfg').reads('7@cfg', '6@cfg'),
+				.use('7@cfg').reads('7@cfg', '6@cfg')
+				.reads('7@"setting"', '3@"setting"'),
 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 		);
 	});

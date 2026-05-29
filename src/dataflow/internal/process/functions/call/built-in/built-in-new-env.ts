@@ -99,8 +99,8 @@ function createIsolatedEnvState(data: Pick<DataflowProcessorInformation<never>, 
  * to the current execution environment as parent.
  */
 export function createFreshEnvState(
-	data:       Pick<DataflowProcessorInformation<never>, 'environment'>,
-	sourceInfo?: DataflowInformation
+	data:        Pick<DataflowProcessorInformation<never>, 'environment'>,
+	sourceInfo?: Pick<DataflowInformation, 'graph' | 'entryPoint'>
 ): REnvironmentInformation {
 	if(sourceInfo !== undefined) {
 		const vertex = sourceInfo.graph.getVertex(sourceInfo.entryPoint);

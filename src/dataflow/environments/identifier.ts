@@ -287,23 +287,28 @@ export interface IdentifierReference {
  * @see {@link IdentifierReference}
  */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
-	readonly type:      InGraphReferenceType
+	readonly type:             InGraphReferenceType
 	/**
 	 * The assignment node which ultimately defined this identifier
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
-	readonly definedAt: NodeId
+	readonly definedAt:        NodeId
 	/**
 	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
 	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
-	readonly value?:    NodeId[]
+	readonly value?:           NodeId[]
 	/**
 	 * If this variable holds an R environment (created by `new.env()` etc.),
 	 * this tracks the current known state of that environment.
 	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
 	 */
-	readonly envState?: REnvironmentInformation
+	readonly envState?:        REnvironmentInformation
+	/**
+	 * If this is a function that returns a tracked environment, stores the envState
+	 * that the function returns (best-effort: only set when statically detectable).
+	 */
+	readonly returnsEnvState?: REnvironmentInformation
 }
 
 /**

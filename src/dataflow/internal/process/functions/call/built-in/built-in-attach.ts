@@ -9,7 +9,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { define } from '../../../../../environments/define';
+import { Environment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
@@ -18,8 +18,10 @@ import { resolveSymbolToEnvir } from './built-in-envir-utils';
 /**
  * Processes `attach(what, ...)` - when `what` is a variable that holds a tracked
  * {@link InGraphIdentifierDefinition#envState}, all statically-known definitions from
- * that environment are injected into the current scope so that subsequent reads of
- * those names resolve correctly.
+ * that environment are injected into a new scope layer inserted *between* the current
+ * scope and its parent.  This mirrors R's behaviour: `attach` adds to the search path
+ * below `.GlobalEnv`, so existing global bindings take precedence, but after a
+ * `rm(name)` removes a global shadow the attached binding becomes visible again.
  */
 export function processAttach<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -43,7 +45,8 @@ export function processAttach<OtherInfo>(
 		return result;
 	}
 
-	let newEnvironment = result.environment;
+	/* build the attached layer with the env's known bindings */
+	let attachedLayer = new Environment(result.environment.current.parent);
 	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
@@ -52,10 +55,13 @@ export function processAttach<OtherInfo>(
 				name: varName,
 				type: ReferenceType.Variable,
 			};
-			newEnvironment = define(injected, false, newEnvironment);
+			attachedLayer = attachedLayer.define(injected);
 			result.graph.addEdge(inDef.nodeId, rootId, EdgeType.Reads);
 		}
 	}
 
-	return { ...result, environment: newEnvironment };
+	/* splice the attached layer between the current scope and its original parent */
+	const newCurrent = result.environment.current.clone(false);
+	newCurrent.parent = attachedLayer;
+	return { ...result, environment: { current: newCurrent, level: result.environment.level } };
 }

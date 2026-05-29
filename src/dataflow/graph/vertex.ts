@@ -146,28 +146,33 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
  * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag: VertexType.FunctionDefinition
+	readonly tag:    VertexType.FunctionDefinition
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
 	 * This is the `body` of the function.
 	 */
-	subflow:      DataflowFunctionFlowInformation
+	subflow:         DataflowFunctionFlowInformation
 	/**
 	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:   readonly ExitPoint[]
+	exitPoints:      readonly ExitPoint[]
 	/** Maps each param to whether it is read, this is an estimate! */
-	params:       Record<NodeId, boolean>
+	params:          Record<NodeId, boolean>
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
-	environment?: REnvironmentInformation
+	environment?:    REnvironmentInformation
 	/**
 	 * If the function is a (potential) S3/S4/S7 dispatch
 	 * Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3).
 	 * This is more of a convenience flag for later processing.
 	 */
-	mode?:        ('s3' | 's4' | 's7')[];
+	mode?:           ('s3' | 's4' | 's7')[];
+	/**
+	 * If this function statically returns a tracked environment, stores the envState it returns.
+	 * Set by `processFunctionDefinition` when exit points include NewEnv calls or symbols resolving to tracked envs.
+	 */
+	returnEnvState?: REnvironmentInformation
 }
 
 /**

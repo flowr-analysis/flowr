@@ -25,12 +25,14 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import {
 	Identifier,
+	type InGraphIdentifierDefinition,
 	type IdentifierReference,
 	isReferenceType,
 	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
@@ -167,6 +169,26 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	let returnEnvState: REnvironmentInformation | undefined;
+	if(data.ctx.config.solver.trackEnvironments) {
+		for(const ep of afterHookExitPoints) {
+			const epVertex = subgraph.getVertex(ep.nodeId);
+			if(isFunctionCallVertex(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
+				break;
+			}
+			const epNode = subgraph.idMap?.get(ep.nodeId);
+			if(epNode?.type === RType.Symbol) {
+				const defs = resolveByName(epNode.content, outEnvironment, ReferenceType.Variable);
+				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				if(def?.envState) {
+					returnEnvState = def.envState;
+					break;
+				}
+			}
+		}
+	}
+
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
@@ -175,7 +197,8 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
-		exitPoints:  afterHookExitPoints
+		exitPoints:  afterHookExitPoints,
+		returnEnvState
 	}, data.ctx.env.makeCleanEnv());
 
 	return {

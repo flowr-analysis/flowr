@@ -29,7 +29,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
-import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
@@ -560,15 +560,38 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
+		let returnsEnvState: REnvironmentInformation | undefined;
 		if(isEnvCreatorSource(sourceArg)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
-			envState = (defs?.find(d => (d as InGraphIdentifierDefinition).envState !== undefined) as InGraphIdentifierDefinition | undefined)?.envState;
+			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+			envState = def?.envState;
+			if(!envState) {
+				const fnDef = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
+				if(fnDef?.returnsEnvState) {
+					envState = fnDef.returnsEnvState;
+				}
+			}
+		} else {
+			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
+			if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
+				returnsEnvState = entryVertex.returnEnvState;
+			} else if(isFunctionCallVertex(entryVertex) && entryVertex.name) {
+				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);
+				const fnDef = fnDefs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
+				if(fnDef?.returnsEnvState) {
+					envState = fnDef.returnsEnvState;
+				}
+			}
 		}
 		if(envState) {
 			for(let i = 0; i < writeNodes.length; i++) {
 				writeNodes[i] = { ...writeNodes[i], envState };
+			}
+		} else if(returnsEnvState) {
+			for(let i = 0; i < writeNodes.length; i++) {
+				writeNodes[i] = { ...writeNodes[i], returnsEnvState };
 			}
 		}
 	}

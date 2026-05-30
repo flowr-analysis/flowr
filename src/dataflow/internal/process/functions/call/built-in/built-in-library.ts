@@ -22,6 +22,8 @@ import type { NamespaceInfo } from '../../../../../../project/plugins/file-plugi
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
+import { VertexType } from '../../../../../graph/vertex';
+import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 
 /**
  * Process a library call like `library` or `require`
@@ -87,30 +89,12 @@ export function processLibrary<OtherInfo>(
 		//else fälle?
 	}
 	// TODO: check whether we know something about the library and if so, do **not** mark it as an unkown side effect
-	console.log(packetName);
 	const info = processKnownFunctionCall({
 		name,
 		args:                 wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap), rootId, data,
 		hasUnknownSideEffect: false,
 		origin:               BuiltInProcName.Library
 	}).information;
-	/*if(characterOnly){
-		const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
-		const resolved = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
-		let t = undefined;
-		if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
-			const r = resolved.elements[0];
-			if(isValue(r.value)){
-				t = r.value.str;
-			}
-		}
-		if(t){
-			packetName = t;
-		} else {
-			dataflowLogger.warn('Package argument must be character only, skipping');
-			return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
-		}
-	}*/
 	const dependency = data.ctx.deps.getDependency(packetName);
 	if(dependency){
 		linkLibrary(dependency, info, rootId, data);
@@ -120,6 +104,8 @@ export function processLibrary<OtherInfo>(
 	return info;
 }
 
+//todo: muss fixen: wenn zwei libraries importiert über normales 'library' und nicht rekImports, gibt nicht globalEnv sondern das package:library1 zurück
+//todo: ggplotEnv hat hier level 3, sollte aber eigentlich level 2 haben, denn globalEnv muss level 0 haben, deswegen funktioniert die ganze logik nicht
 function getGlobalEnv(info: DataflowInformation){
 	if(info.environment.level < 0){
 		return undefined;
@@ -149,12 +135,23 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 			nodeId:    NodeId.toBuiltIn(func),
 			definedAt: NodeId.toBuiltIn(pack),
 		});
+		info.environment = {
+			level:   info.environment.level + 1,
+			current: namespaceEnv
+		};
+		const subflow: DataflowFunctionFlowInformation = { graph: new Set(), unknownReferences: [], in: [], out: [], environment: info.environment, entryPoint: NodeId.toBuiltIn(func), hooks: [] };
+		info.graph.addVertex({
+			tag:         VertexType.FunctionDefinition,
+			id:          NodeId.toBuiltIn(func),
+			environment: info.environment,
+			cds:         data.cds,
+			params:      {},
+			subflow:     subflow,
+			exitPoints:  [],
+		}, data.ctx.env.makeCleanEnv());
+		//info.graph.addVertex(NodeId.toBuiltIn(func) as string, info.environment);
 		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
-	info.environment = {
-		level:   info.environment.level + 1,
-		current: namespaceEnv
-	};
 	//add package environment
 	const oldGlobParent = globalEnv.parent;
 	let packageEnv = new Environment(oldGlobParent);
@@ -174,6 +171,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 		current: info.environment.current
 	};
 	//add imports environment
+	//Todo: change: es gibt immer ein importsEnv auch wenn keine import das heißt die Abfrage ob importsEnv undefined kann raus
 	let importsEnv: Environment |undefined = new Environment(globalEnv);
 	importsEnv.n = pack;
 	importsEnv.t = 'imports';

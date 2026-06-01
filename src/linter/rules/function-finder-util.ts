@@ -18,7 +18,6 @@ import { Ternary } from '../../util/logic';
 
 export interface FunctionsResult extends LintingResult {
 	function: string
-	loc:      SourceLocation
 }
 
 export interface FunctionsMetadata extends MergeableRecord {

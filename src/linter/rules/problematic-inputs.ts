@@ -102,7 +102,6 @@ function checkPipeInjection(nid: NodeId, loc: SourceLocation, name: string, sour
 
 export interface ProblematicInputsResult extends LintingResult {
 	name:         string
-	loc:          SourceLocation
 	sources:      InputSources
 	pipeCommand?: string
 }

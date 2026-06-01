@@ -235,9 +235,9 @@ export const SourceLocation = {
 	 * @returns undefined if the given range is undefined
 	 * @see {@link SourceRange.fromNode} for getting the range from an AST node
 	 */
-	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo>): SourceLocation | undefined {
+	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceLocation | undefined {
 		const range = SourceRange.fromNode(node);
-		return range !== undefined ? SourceLocation.from(range, node.info.file) : undefined;
+		return node !== undefined && range !== undefined ? SourceLocation.from(range, node.info.file) : undefined;
 	},
 	/**
 	 * Maps the file part of a {@link SourceLocation|source location} using the given mapper function.

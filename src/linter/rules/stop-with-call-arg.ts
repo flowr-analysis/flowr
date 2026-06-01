@@ -18,9 +18,7 @@ import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin
 import { pMatch } from '../../dataflow/internal/linker';
 import { valueSetGuard } from '../../dataflow/eval/values/general';
 
-export interface StopWithCallResult extends LintingResult {
-	readonly loc: SourceLocation
-}
+export type StopWithCallResult = LintingResult;
 
 export type StopWithCallConfig = MergeableRecord;
 

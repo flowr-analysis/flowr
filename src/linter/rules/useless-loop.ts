@@ -8,8 +8,7 @@ import { LintingRuleTag } from '../linter-tags';
 import type { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 export interface UselessLoopResult extends LintingResult {
-	name: string,
-	loc:  SourceLocation
+	name: string
 }
 
 export interface UselessLoopConfig extends MergeableRecord {

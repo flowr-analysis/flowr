@@ -23,7 +23,6 @@ import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
-import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
 
 /**
  * Process a library call like `library` or `require`
@@ -104,8 +103,6 @@ export function processLibrary<OtherInfo>(
 	return info;
 }
 
-//todo: muss fixen: wenn zwei libraries importiert über normales 'library' und nicht rekImports, gibt nicht globalEnv sondern das package:library1 zurück
-//todo: ggplotEnv hat hier level 3, sollte aber eigentlich level 2 haben, denn globalEnv muss level 0 haben, deswegen funktioniert die ganze logik nicht
 function getGlobalEnv(info: DataflowInformation){
 	if(info.environment.level < 0){
 		return undefined;
@@ -124,6 +121,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	const pack = dependency.name;
 	const functions = dependency.namespaceInfo.exportedSymbols;
+	/*
 	//add namespace environment
 	let namespaceEnv = new Environment(globalEnv);
 	namespaceEnv.n = pack;
@@ -139,19 +137,8 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 			level:   info.environment.level + 1,
 			current: namespaceEnv
 		};
-		const subflow: DataflowFunctionFlowInformation = { graph: new Set(), unknownReferences: [], in: [], out: [], environment: info.environment, entryPoint: NodeId.toBuiltIn(func), hooks: [] };
-		info.graph.addVertex({
-			tag:         VertexType.FunctionDefinition,
-			id:          NodeId.toBuiltIn(func),
-			environment: info.environment,
-			cds:         data.cds,
-			params:      {},
-			subflow:     subflow,
-			exitPoints:  [],
-		}, data.ctx.env.makeCleanEnv());
-		//info.graph.addVertex(NodeId.toBuiltIn(func) as string, info.environment);
-		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
+	*/
 	//add package environment
 	const oldGlobParent = globalEnv.parent;
 	let packageEnv = new Environment(oldGlobParent);
@@ -162,27 +149,45 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 			name:      Identifier.make(func, pack),
 			type:      ReferenceType.Function,
 			nodeId:    NodeId.toBuiltIn(func),
-			definedAt: namespaceEnv.id,
+			definedAt: NodeId.toBuiltIn(pack),
 		});
+		info.graph.addVertex({
+			tag:         VertexType.FunctionDefinition,
+			id:          NodeId.toBuiltIn(func),
+			environment: info.environment,
+			cds:         data.cds,
+			params:      {},
+			subflow:     {
+				graph:             new Set(),
+				unknownReferences: [],
+				in:                [],
+				out:               [],
+				environment:       info.environment,
+				entryPoint:        NodeId.toBuiltIn(func),
+				hooks:             []
+			},
+			exitPoints: [],
+		}, data.ctx.env.makeCleanEnv());
+		//info.graph.addVertex(NodeId.toBuiltIn(func) as string, info.environment);
+		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
 	globalEnv.parent = packageEnv;
-	info.environment = {
+	//info environment shouldn't change if we always return globalEnv as current
+	/*info.environment = {
 		level:   info.environment.level + 1,
 		current: info.environment.current
-	};
+	};*/
 	//add imports environment
-	//Todo: change: es gibt immer ein importsEnv auch wenn keine import das heißt die Abfrage ob importsEnv undefined kann raus
-	let importsEnv: Environment |undefined = new Environment(globalEnv);
+	let importsEnv: Environment = new Environment(oldGlobParent);
 	importsEnv.n = pack;
 	importsEnv.t = 'imports';
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
-	if(importsEnv){
-		info.environment = {
-			level:   info.environment.level + 1,
-			current: info.environment.current
-		};
-		namespaceEnv.parent = importsEnv;
-	}
+	//info environment shouldn't change if we always return globalEnv as current
+	/*info.environment = {
+		level:   info.environment.level + 1,
+		current: info.environment.current
+	};*/
+	packageEnv.parent = importsEnv;
 }
 
 function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: NamespaceInfo, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, alreadyImportedAll: Set<string>){
@@ -213,7 +218,8 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 			alreadyImportedAll.add(importedDependency.name);
 		}
 		//info.graph.addEdge(rootId, NodeId.toBuiltIn((importedDependency as Package).name), EdgeType.Reads | EdgeType.Calls);
-		if(importedDependency?.namespaceInfo){
+		//if only importFrom() we don't have to recursively import
+		if(imp[1] === 'all' && importedDependency?.namespaceInfo){
 			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, data, alreadyImportedAll);
 		}
 	}

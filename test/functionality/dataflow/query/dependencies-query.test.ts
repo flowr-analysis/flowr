@@ -226,6 +226,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
+		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""' }] });
+
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
 				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]

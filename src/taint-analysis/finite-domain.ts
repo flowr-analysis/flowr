@@ -2,7 +2,9 @@ import { AbstractDomain } from '../abstract-interpretation/domains/abstract-doma
 import { Bottom, BottomSymbol, Top, TopSymbol } from '../abstract-interpretation/domains/lattice';
 import { guard } from '../util/assert';
 
-export interface FiniteLatticeConfig<Element, Top, Bot> {
+export type LatticeElements<Top, Bottom> = (symbol | Top | Bottom)[];
+
+export interface FiniteLatticeConfig<Top, Bot, Elements extends LatticeElements<Top, Bot> = [Top, Bot]> {
 	/** The Top element of the lattice (greatest element). */
 	readonly top: Top | typeof Top;
 
@@ -10,19 +12,20 @@ export interface FiniteLatticeConfig<Element, Top, Bot> {
 	readonly bottom: Bot | typeof Bottom;
 
 	/** The set of all lattice elements. */
-	readonly elements: ReadonlySet<Element>;
+	readonly elements: ReadonlySet<Elements[number]>;
 
 	/**
 	 * The partial order defining relationships between elements.
 	 * leq[a] contains all elements b where a ≤ b (elements greater than or equal to a)
 	 */
-	readonly leq: ReadonlyMap<Element, ReadonlySet<Element>>;
+	readonly leq: ReadonlyMap<Elements[number], ReadonlySet<Elements[number]>>;
 }
 
-export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol, Bot extends symbol> extends AbstractDomain<Element, Element, Top, Bot, Element> {
-	private readonly _config: FiniteLatticeConfig<Element, Top, Bot>;
+export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements extends LatticeElements<Top, Bot>>
+	extends AbstractDomain<Elements[number], Elements[number], Top, Bot, Elements[number]> {
+	private readonly _config: FiniteLatticeConfig<Top, Bot, Elements>;
 
-	constructor(value: Element, config: FiniteLatticeConfig<Element, Top, Bot>) {
+	constructor(value: Elements[number], config: FiniteLatticeConfig<Top, Bot, Elements>) {
 		super(value);
 		this._config = config;
 	}
@@ -51,14 +54,14 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		const thisSuccessors = this.transitiveClosure(this.value);
 		const otherSuccessors = this.transitiveClosure(other.value);
 
-		const commonSuccessors = new Set<Element>();
+		const commonSuccessors = new Set<Elements[number]>();
 		for(const succ of thisSuccessors) {
 			if(otherSuccessors.has(succ)) {
 				commonSuccessors.add(succ);
 			}
 		}
 
-		let minimal: Element | undefined;
+		let minimal: Elements[number] | undefined;
 		for(const candidate of commonSuccessors) {
 			if(minimal === undefined) {
 				minimal = candidate;
@@ -95,7 +98,7 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 
 	private findGreatestLowerBound(other: this): this {
 		const elements = this._config.elements;
-		let greatestLowerBound: Element | null = null;
+		let greatestLowerBound: Elements[number] | null = null;
 
 		for(const candidate of elements) {
 			if(this.leq(this.create(candidate), this) && this.leq(this.create(candidate), other)) {
@@ -108,7 +111,8 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 			}
 		}
 
-		return this.create(greatestLowerBound as Element);
+		guard(greatestLowerBound, 'Could not determine greatest lower bound');
+		return this.create(greatestLowerBound);
 	}
 
 	leq(elementA: this, elementB?: this): boolean {
@@ -137,8 +141,8 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		return closure.has(b.value);
 	}
 
-	private transitiveClosure(element: Element): Set<Element> {
-		const visited = new Set<Element>();
+	private transitiveClosure(element: Elements[number]): Set<Elements[number]> {
+		const visited = new Set<Elements[number]>();
 		const stack = [element];
 		while(stack.length > 0) {
 			const current = stack.pop();
@@ -152,34 +156,32 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		return visited;
 	}
 
-	create(value: Element): this;
-	create(value: Element): FiniteDomain<Element, Top, Bot> {
-		return new FiniteDomain<Element, Top, Bot>(value, this._config);
+	create(value: Elements[number]): this;
+	create(value: Elements[number]): FiniteDomain<Top, Bot, Elements> {
+		return new FiniteDomain<Top, Bot, Elements>(value, this._config);
 	}
 
-	top(): this & AbstractDomain<Element, Element, Top, Bot, Top>{
-		// @ts-expect-error i should know better
-		return this.create(this._config.top as Element);
+	top(): this & FiniteDomain<Top, Bot, [Top]> {
+		return this.create(this._config.top) as this & FiniteDomain<Top, Bot, [Top]>;
 	}
 
-	bottom(): this & AbstractDomain<Element, Element, Top, Bot, Bot> {
-		// @ts-expect-error i should know better
-		return this.create(this._config.bottom as Element);
+	bottom(): this & FiniteDomain<Top, Bot, [Bot]> {
+		return this.create(this._config.bottom) as this & FiniteDomain<Top, Bot, [Bot]>;
 	}
 
-	isTop(): this is AbstractDomain<Element, Element, Top, Bot, Top> {
+	isTop(): this is AbstractDomain<Elements[number], Elements[number], Top, Bot, Top> {
 		return this.value === this._config.top;
 	}
 
-	isBottom(): this is AbstractDomain<Element, Element, Top, Bot, Bot> {
+	isBottom(): this is AbstractDomain<Elements[number], Elements[number], Top, Bot, Bot> {
 		return this.value === this._config.bottom;
 	}
 
-	isValue(): this is FiniteDomain<Element, Top, Bot> {
+	isValue(): this is AbstractDomain<Elements[number], Elements[number], Top, Bot, Bot> {
 		return this.value !== Top && this.value !== Bottom;
 	}
 
-	equals(other: FiniteDomain<Element, Top, Bot>): boolean {
+	equals(other: FiniteDomain<Top, Bot, Elements>): boolean {
 		return this.value === other.value;
 	}
 
@@ -205,11 +207,11 @@ export class FiniteDomain<Element extends Top | Bot | symbol, Top extends symbol
 		return this.join(other);  // Using join for widening as the lattice is finite
 	}
 
-	concretize(_limit: number): ReadonlySet<Element> | typeof Top {
-		return new Set<Element>([this._value]); // Simply fulfills identity property of Galois connection.
+	concretize(_limit: number): ReadonlySet<Elements[number]> | typeof Top {
+		return new Set<Elements[number]>([this._value]); // Simply fulfills identity property of Galois connection.
 	}
 
-	abstract(_concrete: ReadonlySet<Element> | typeof Top): this {
+	abstract(_concrete: ReadonlySet<Elements[number]> | typeof Top): this {
 		return this.create(this._value); // Simply fulfills identity property of Galois connection.
 	}
 }

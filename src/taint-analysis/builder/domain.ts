@@ -1,15 +1,15 @@
 import { Bottom, Top } from '../../abstract-interpretation/domains/lattice';
-import type { FiniteLatticeConfig } from '../finite-domain';
+import type { FiniteLatticeConfig, LatticeElements } from '../finite-domain';
 import { FiniteDomain } from '../finite-domain';
 import { guard } from '../../util/assert';
 
-export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top extends symbol, Bottom extends symbol> {
-	private readonly elements: Set<Element> = new Set();
-	private readonly leqMap:   Map<Element, Set<Element>> = new Map();
+export class FiniteDomainBuilder<Top extends symbol, Bottom extends symbol, Elements extends LatticeElements<Top, Bottom> = [Top, Bottom]> {
+	private readonly elements: Set<Elements[number]> = new Set();
+	private readonly leqMap:   Map<Elements[number], Set<Elements[number]>> = new Map();
 	private _top:              Top | undefined;
 	private _bottom:           Bottom | undefined;
 
-	private addElements(...elements: Element[]) {
+	private addElements(...elements: Elements[number][]) {
 		for(const element of elements) {
 			if(!this.elements.has(element)) {
 				this.elements.add(element);
@@ -22,19 +22,18 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 
 	setTop(element: Top): this {
 		this._top = element;
-		this.addElements(element as Element);
+		this.addElements(element as Elements[number]);
 		return this;
 	}
 
 	setBottom(element: Bottom): this {
 		this._bottom = element;
-		this.addElements(element as Element);
+		this.addElements(element as Elements[number]);
 		return this;
 	}
 
-	addLeqOrder(from: Element, to: Element | Element[]): this {
+	addLeqOrder(from: Elements[number], to: Elements[number] | Elements[number][]): this {
 		this.addElements(from, ...(Array.isArray(to) ? to : [to]));
-
 
 		if(!this.elements.has(from)) {
 			throw new Error(`Source element not registered: ${String(from)}`);
@@ -56,7 +55,7 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 		return this;
 	}
 
-	private buildConfig(): FiniteLatticeConfig<Element, Top, Bottom> {
+	private buildConfig(): FiniteLatticeConfig<Top, Bottom, Elements> {
 		if(!this._top) {
 			this.setTop(Top as Top);
 		}
@@ -73,7 +72,7 @@ export class FiniteDomainBuilder<Element extends Top | Bottom | symbol, Top exte
 		};
 	}
 
-	build(initialElement?: Element): FiniteDomain<Element, Top, Bottom> {
-		return new FiniteDomain(initialElement ?? this._top as Element, this.buildConfig());
+	build(initialElement?: Elements[number]): FiniteDomain<Top, Bottom, Elements> {
+		return new FiniteDomain(initialElement ?? this._top as Elements[number], this.buildConfig());
 	}
 }

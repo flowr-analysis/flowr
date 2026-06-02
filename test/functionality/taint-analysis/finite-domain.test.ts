@@ -1,11 +1,11 @@
 import { describe } from 'vitest';
-import type { AbstractValue } from '../../../src/abstract-interpretation/domains/abstract-domain';
+import type { AbstractValue, AnyAbstractDomain } from '../../../src/abstract-interpretation/domains/abstract-domain';
 import { assertAbstractDomain } from '../abstract-interpretation/domains/domain';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import type { FiniteDomain } from '../../../src/taint-analysis/finite-domain';
 
-function topAndBottomCases(create: (d: symbol) => FiniteDomain<symbol, symbol, symbol>, top: symbol = Top, bottom: symbol = Bottom) {
+function topAndBottomCases(create: (d: symbol) => AnyAbstractDomain, top: symbol = Top, bottom: symbol = Bottom) {
 	assertAbstractDomain(create, bottom, bottom, {
 		equal: true, leq: true, join: bottom, meet: bottom, widen: bottom, narrow: bottom, concrete: [bottom]
 	});
@@ -23,7 +23,7 @@ function topAndBottomCases(create: (d: symbol) => FiniteDomain<symbol, symbol, s
 describe('Finite Domain', () => {
 	describe('Minimal Lattice', () => {
 		const minimalDomain = new FiniteDomainBuilder().addLeqOrder(Bottom, Top).build();
-		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => minimalDomain.create(value);
+		const create = (value: AbstractValue<FiniteDomain<Top, Bottom, [symbol]>>) => minimalDomain.create(value);
 		topAndBottomCases(create);
 	});
 
@@ -37,7 +37,7 @@ describe('Finite Domain', () => {
 			.setTop(T)
 			.addLeqOrder(B, T).build();
 
-		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => customTopAndBottom.create(value);
+		const create = (value: AbstractValue<FiniteDomain<Top, Bottom, [symbol]>>) => customTopAndBottom.create(value);
 		topAndBottomCases(create, T, B);
 	});
 
@@ -54,7 +54,7 @@ describe('Finite Domain', () => {
 			.addLeqOrder(C, D)
 			.addLeqOrder(D, Top)
 			.build();
-		const create = (value: AbstractValue<FiniteDomain<symbol, typeof Top, typeof Bottom>>) => lattice.create(value);
+		const create = (value: AbstractValue<FiniteDomain<Top, Bottom, [symbol]>>) => lattice.create(value);
 		topAndBottomCases(create);
 
 		assertAbstractDomain(create, Bottom, A, {

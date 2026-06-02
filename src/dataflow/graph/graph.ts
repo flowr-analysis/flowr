@@ -6,6 +6,7 @@ import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
+	type DataflowGraphVertexVariableDefinition,
 	type DataflowGraphVertices, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
@@ -410,8 +411,7 @@ export class DataflowGraph<
 	 */
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
 		const vid = vertex.id;
-		const oldVertex = this.vertexInformation.get(vid);
-		if(oldVertex !== undefined && !overwrite) {
+		if(this.vertexInformation.has(vid) && !overwrite) {
 			return this;
 		}
 		const vtag = vertex.tag;
@@ -419,11 +419,11 @@ export class DataflowGraph<
 		// keep a clone of the original environment
 		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
 		this.vertexInformation.set(vid, vertex as Vertex);
-		const has =  this.types.get(vertex.tag);
-		if(has) {
-			has.push(vid);
+		const typeIds = this.types.get(vtag);
+		if(typeIds) {
+			typeIds.push(vid);
 		} else {
-			this.types.set(vertex.tag, [vid]);
+			this.types.set(vtag, [vid]);
 		}
 
 		if(asRoot) {
@@ -437,20 +437,17 @@ export class DataflowGraph<
 			return this;
 		}
 
-		const existingFrom = this.edgeInformation.get(fromId);
-		const edgeInFrom = existingFrom?.get(toId);
-
-		if(edgeInFrom === undefined) {
-			const edge = { types: type } as unknown as Edge;
-
-			if(existingFrom === undefined) {
-				this.edgeInformation.set(fromId, new Map([[toId, edge]]));
-			} else {
-				existingFrom.set(toId, edge);
-			}
+		let fromEdges = this.edgeInformation.get(fromId);
+		if(fromEdges === undefined) {
+			fromEdges = new Map([[toId, { types: type } as Edge]]);
+			this.edgeInformation.set(fromId, fromEdges);
 		} else {
-			// adding the type
-			edgeInFrom.types |= type;
+			const existing = fromEdges.get(toId);
+			if(existing === undefined) {
+				fromEdges.set(toId, { types: type } as Edge);
+			} else {
+				existing.types |= type;
+			}
 		}
 		return this;
 	}
@@ -469,7 +466,11 @@ export class DataflowGraph<
 		this.mergeVertices(otherGraph, mergeRootVertices);
 		for(const [type, ids] of otherGraph.types) {
 			const existing = this.types.get(type);
-			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
+			if(existing) {
+				existing.push(...ids);
+			} else {
+				this.types.set(type, ids.slice());
+			}
 		}
 
 		this.mergeEdges(otherGraph);
@@ -495,11 +496,12 @@ export class DataflowGraph<
 
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
 		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
-			for(const [target, edge] of edges) {
-				const existing = this.edgeInformation.get(id);
-				if(existing === undefined) {
-					this.edgeInformation.set(id, new Map([[target, edge]]));
-				} else {
+			let existing = this.edgeInformation.get(id);
+			if(existing === undefined) {
+				existing = new Map(edges);
+				this.edgeInformation.set(id, existing);
+			} else {
+				for(const [target, edge] of edges) {
 					const get = existing.get(target);
 					if(get === undefined) {
 						existing.set(target, edge);
@@ -523,12 +525,24 @@ export class DataflowGraph<
 			vertex.cds = reference.cds;
 		} else {
 			const oldTag = vertex.tag;
-			(vertex as { tag: VertexType }).tag = VertexType.VariableDefinition;
+			const vid = reference.nodeId;
+			(vertex as unknown as Writable<DataflowGraphVertexVariableDefinition>).tag = VertexType.VariableDefinition;
 			if(sourceIds) {
-				(vertex as unknown as { source: readonly NodeId[] | undefined }).source = sourceIds;
+				(vertex as unknown as Writable<DataflowGraphVertexVariableDefinition>).source = sourceIds;
 			}
-			this.types.set(oldTag, (this.types.get(oldTag) ?? []).filter(id => id !== reference.nodeId));
-			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
+			const oldIds = this.types.get(oldTag);
+			if(oldIds) {
+				const idx = oldIds.lastIndexOf(vid);
+				if(idx >= 0) {
+					oldIds.splice(idx, 1);
+				}
+			}
+			const newIds = this.types.get(VertexType.VariableDefinition);
+			if(newIds) {
+				newIds.push(vid);
+			} else {
+				this.types.set(VertexType.VariableDefinition, [vid]);
+			}
 		}
 	}
 
@@ -542,10 +556,16 @@ export class DataflowGraph<
 		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
-		this.types.set(previousTag, (this.types.get(previousTag) ?? []).filter(id => id !== infoId));
-		const g = this.types.get(VertexType.FunctionCall);
-		if(g) {
-			g.push(infoId);
+		const prevIds = this.types.get(previousTag);
+		if(prevIds) {
+			const idx = prevIds.lastIndexOf(infoId);
+			if(idx >= 0) {
+				prevIds.splice(idx, 1);
+			}
+		}
+		const callIds = this.types.get(VertexType.FunctionCall);
+		if(callIds) {
+			callIds.push(infoId);
 		} else {
 			this.types.set(VertexType.FunctionCall, [infoId]);
 		}

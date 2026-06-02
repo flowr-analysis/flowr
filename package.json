@@ -35,7 +35,7 @@
     "build:copy-wasm": "mkdir -p dist/node_modules/@davisvaughan/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@davisvaughan/tree-sitter-r/ && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
-    "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
+    "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MPL-2.0;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",

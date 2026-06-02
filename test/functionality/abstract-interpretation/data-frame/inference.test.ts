@@ -364,9 +364,11 @@ print(df)
 				shell,
 				`
 if (2 < 1) {
-	df <- data.frame(id = 1:5)
+	df1 <- data.frame(id = 1:5)
+} else {
+	df2 <- data.frame(id = 1:5)
 }
-print(df)
+print(df1)
 				`,
 				['4@df']
 			);
@@ -888,7 +890,7 @@ result <- df[1, c("id", "name")]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1, c(1, 2)]
 			`,
-			{ '2@result': { colnames: [[], ['id', 'name']], cols: [2, 2], rows: [1, 1] } }
+			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [1, 1] } }
 		);
 
 		testInferredDataFrameShape(
@@ -897,7 +899,7 @@ result <- df[1, c(1, 2)]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[1:2, c(1, 2)]
 			`,
-			{ '2@result': { colnames: [[], ['id', 'name']], cols: [2, 2], rows: [2, 2] } }
+			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [2, 2] } }
 		);
 
 		testInferredDataFrameShape(
@@ -906,7 +908,7 @@ result <- df[1:2, c(1, 2)]
 df <- data.frame(id = 1:3, name = 4:6)
 result <- df[, 1:2]
 			`,
-			{ '2@result': { colnames: [[], ['id', 'name']], cols: [2, 2], rows: [3, 3] } }
+			{ '2@result': { colnames: [['id', 'name'], []], cols: [2, 2], rows: [3, 3] } }
 		);
 
 		testInferredDataFrameShape(
@@ -5346,7 +5348,7 @@ df <- df[2:3, 1:2]
 				'1@df': { colnames: [['id', 'age'], []], cols: [2, 2], rows: [3, 3] },
 				'2@df': { colnames: [['id', 'age'], []], cols: [2, 2], rows: [0, 3] },
 				'3@df': { colnames: [['id', 'age'], []], cols: [2, 2], rows: [2, 5] },
-				'4@df': { colnames: [[], ['id', 'age']], cols: [2, 2], rows: [2, 2] },
+				'4@df': { colnames: [['id', 'age'], []], cols: [2, 2], rows: [2, 2] },
 			},
 			{ minRVersion: MIN_VERSION_PIPE }
 		);

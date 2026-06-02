@@ -1,3 +1,4 @@
+
 import { guard } from '../../util/assert';
 import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 
@@ -7,37 +8,69 @@ import { type Lattice, Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 export const DEFAULT_INFERENCE_LIMIT = 50;
 
 /**
- * An abstract domain as complete lattice with a widening operator, narrowing operator, concretization function, and abstraction function.
+ * An abstract domain as complete lattice with a widening and narrowing operator.
  * All operations of value abstract domains should not modify the domain in-place but return new values using {@link create}.
- * @template Concrete - Type of an concrete element of the concrete domain for the abstract domain
- * @template Abstract - Type of an abstract element of the abstract domain representing possible elements (excludes `Top` and `Bot`)
- * @template Top      - Type of the Top element of the abstract domain representing all possible elements
- * @template Bot      - Type of the Bottom element of the abstract domain representing no possible elements
- * @template Value    - Type of the abstract elements of the abstract domain (defaults to `Abstract` or `Top` or `Bot`)
+ * @template Value - Type of an abstract element of the abstract domain representing possible elements (excludes `Top` and `Bot`)
+ * @template Top   - Type of the Top element of the abstract domain representing all possible elements
+ * @template Bot   - Type of the Bottom element of the abstract domain representing no possible elements
+ * @template Lift  - Type of the current abstract value in the abstract domain (defaults to `Value` or `Top` or `Bot`)
  */
-export abstract class AbstractDomain<Concrete, Abstract, Top, Bot, Value extends Abstract | Top | Bot = Abstract | Top | Bot>
-implements Lattice<Abstract, Top, Bot, Value> {
-	protected readonly _value: Value;
+export abstract class AbstractDomain<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot>
+implements Lattice<Value, Top, Bot, Lift> {
+	protected readonly _value: Lift;
 
-	constructor(value: Value) {
+	constructor(value: Lift) {
 		this._value = value;
 	}
 
-	public get value(): Value {
+	public get value(): Lift {
 		return this._value;
 	}
 
-	public abstract create(value: Abstract | Top | Bot): this;
+	public abstract create(value: Value | Top | Bot): this;
 
-	public abstract top(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Top>;
+	public abstract top(): this & AbstractDomain<Value, Top, Bot, Top>;
 
-	public abstract bottom(): this & AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
+	public abstract bottom(): this & AbstractDomain<Value, Top, Bot, Bot>;
 
-	public abstract equals(other: this): boolean;
+	public equals(other: this): boolean {
+		if(this.value === other.value || (this.isTop() && other.isTop()) || (this.isBottom() && other.isBottom())) {
+			return true;
+		} else if(!this.isValue() || !other.isValue()) {
+			return false;
+		}
+		return this.equalsValue(other);
+	}
 
-	public abstract leq(other: this): boolean;
+	protected abstract equalsValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): boolean;
 
-	public abstract join(other: this): this;
+	public leq(other: this): boolean {
+		if(this.isBottom() || other.isTop() || this.equals(other)) {
+			return true;
+		} else if(!this.isValue() || !other.isValue()) {
+			return false;
+		}
+		return this.leqValue(other);
+	}
+
+	protected abstract leqValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): boolean;
+
+	public join(other: this | Value | Top | Bot): this {
+		other = other instanceof AbstractDomain ? other : this.create(other);
+
+		if(this.isTop() || other.isTop()) {
+			return this.top();
+		} else if(this.isBottom()) {
+			return this.create(other.value);
+		} else if(other.isBottom()) {
+			return this.create(this.value);
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.bottom();
+		}
+		return this.joinValue(other);
+	}
+
+	protected abstract joinValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Joins the current abstract value with multiple other abstract values.
@@ -51,7 +84,22 @@ implements Lattice<Abstract, Top, Bot, Value> {
 		return result;
 	}
 
-	public abstract meet(other: this): this;
+	public meet(other: this | Value | Top | Bot): this {
+		other = other instanceof AbstractDomain ? other : this.create(other);
+
+		if(this.isTop()) {
+			return this.create(other.value);
+		} else if(other.isTop()) {
+			return this.create(this.value);
+		} else if(this.isBottom() || other.isBottom()) {
+			return this.bottom();
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.top();
+		}
+		return this.meetValue(other);
+	}
+
+	protected abstract meetValue(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Meets the current abstract value with multiple other abstract values.
@@ -68,33 +116,99 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	/**
 	 * Widens the current abstract value with another abstract value as a sound over-approximation of the join (least upper bound) for fixpoint iteration acceleration.
 	 */
-	public abstract widen(other: this): this;
+	public widen(other: this): this {
+		if(this.isTop() || other.isTop()) {
+			return this.top();
+		} else if(this.isBottom()) {
+			return this.create(other.value);
+		} else if(other.isBottom()) {
+			return this.create(this.value);
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.bottom();
+		}
+		return this.widenValue?.(other) ?? (other.leq(this) ? this.create(this.value) : this.top());
+	}
+
+	protected widenValue?(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
 	/**
 	 * Narrows the current abstract value with another abstract value as a sound over-approximation of the meet (greatest lower bound) to refine the value after widening.
 	 */
-	public abstract narrow(other: this): this;
+	public narrow(other: this): this {
+		if(this.isTop()) {
+			return this.create(other.value);
+		} else if(other.isTop()) {
+			return this.create(this.value);
+		} else if(this.isBottom() || other.isBottom()) {
+			return this.bottom();
+		} else if(!this.isValue() || !other.isValue()) {
+			return this.top();
+		}
+		return this.narrowValue?.(other) ?? (this.isTop() ? this.create(other.value) : this.create(this.value));
+	}
 
-	/**
-	 * Maps the current abstract value into a set of possible concrete values as concretization function of the abstract domain.
-	 * The result should be `Top` if the number of concrete values would reach the `limit` or the resulting set would have infinite many elements.
-	 */
-	public abstract concretize(limit: number): ReadonlySet<Concrete> | typeof Top;
+	protected narrowValue?(this: AbstractDomain<Value, Top, Bot, Value>, other: AbstractDomain<Value, Top, Bot, Value>): this;
 
-	/**
-	 * Maps a set of possible concrete values into an abstract value as abstraction function of the abstract domain (should additionally be provided as static function).
-	 */
-	public abstract abstract(concrete: ReadonlySet<Concrete> | typeof Top): this;
+	public transform(transform: (value: Value) => Value | Top | Bot, bottomDefault: Value | Top | Bot, topDefault: Value | Top | Bot): this;
+	public transform(transform: (value: Value | Top) => Value | Top | Bot, bottomDefault: Value | Top | Bot): this;
+	public transform(transform: (value: Value | Top | Bot) => Value | Top | Bot): this;
+	public transform(transform: (value: Value) => Value | Top | Bot, bottomDefault?: Value | Top | Bot, topDefault?: Value | Top | Bot): this {
+		if(bottomDefault !== undefined && this.isBottom()) {
+			return this.create(bottomDefault);
+		} else if(topDefault !== undefined && this.isTop()) {
+			return this.create(topDefault);
+		}
+		return this.create(transform(this.value as Value));
+	}
 
-	public abstract toJson(): unknown;
+	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault: (other: Value | Top | Bot) => Value | Top | Bot, topDefault: (other: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value | Top, second: Value | Top) => Value | Top | Bot, bottomDefault: (other: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value | Top | Bot, second: Value | Top | Bot) => Value | Top | Bot): this;
+	public merge(other: this, merge: (first: Value, second: Value) => Value | Top | Bot, bottomDefault?: (other: Value | Top | Bot) => Value | Top | Bot, topDefault?: (other: Value | Top | Bot) => Value | Top | Bot): this {
+		if(bottomDefault !== undefined) {
+			if(this.isBottom() ) {
+				return this.create(bottomDefault(other.value));
+			} else if(other.isBottom()) {
+				return this.create(bottomDefault(this.value));
+			}
+		}
+		if(topDefault !== undefined) {
+			if(this.isTop()) {
+				return this.create(topDefault(other.value));
+			} else if(other.isTop()) {
+				return this.create(topDefault(this.value));
+			}
+		}
+		return this.create(merge(this.value as Value, other.value as Value));
+	}
 
-	public abstract toString(): string;
+	public toJson(): unknown {
+		if(this.value === Top) {
+			return Top.description;
+		} else if(this.value === Bottom) {
+			return Bottom.description;
+		}
+		return (this as this & AbstractDomain<Value, Top, Bot, Exclude<Lift, typeof Top | typeof Bottom>>).jsonify();
+	}
 
-	public abstract isTop(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Top>;
+	protected abstract jsonify(this: AbstractDomain<Value, Top, Bot, Exclude<Value | Top | Bot, typeof Top | typeof Bottom>>): unknown;
 
-	public abstract isBottom(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Bot>;
+	public toString(): string {
+		if(this.value === Top) {
+			return TopSymbol;
+		} else if(this.value === Bottom) {
+			return BottomSymbol;
+		}
+		return (this as this & AbstractDomain<Value, Top, Bot, Exclude<Lift, typeof Top | typeof Bottom>>).stringify();
+	}
 
-	public abstract isValue(): this is AbstractDomain<Concrete, Abstract, Top, Bot, Abstract>;
+	protected abstract stringify(this: AbstractDomain<Value, Top, Bot, Exclude<Value | Top | Bot, typeof Top | typeof Bottom>>): string;
+
+	public abstract isTop(): this is this & AbstractDomain<Value, Top, Bot, Top>;
+
+	public abstract isBottom(): this is this & AbstractDomain<Value, Top, Bot, Bot>;
+
+	public abstract isValue(): this is this & AbstractDomain<Value, Top, Bot, Value>;
 
 	/**
 	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.
@@ -139,39 +253,32 @@ implements Lattice<Abstract, Top, Bot, Value> {
 /**
  * A type representing any abstract domain without additional information.
  */
-export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown, unknown>;
+export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown>;
 
 /**
  * The type of the abstract values of an abstract domain (including the Top and Bottom element).
  * @template Domain - The abstract domain to get the abstract value type for
  */
 export type AbstractValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
-
-/**
- * The type of the concrete domain of an abstract domain.
- * @template Domain - The abstract domain to get the concrete domain type for
- */
-export type ConcreteDomain<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
 
 /**
  * The type of an abstract domain holding an abstract value of the domain.
  * @template Domain - The abstract domain abstract domain value type for
  */
 export type AbstractDomainValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Value> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Value> : never;
 
 /**
  * The type an abstract domain holding the Top element (greatest element) of the domain.
  * @template Domain - The abstract domain to get the abstract domain top for
  */
 export type AbstractDomainTop<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Top> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Top> : never;
 
 /**
  * The type an abstract domain holding the Bottom element (least element) of the domain.
  * @template Domain - The abstract domain to get the abstract domain bottom for
  */
 export type AbstractDomainBottom<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Bot> : never;
+	Domain extends AbstractDomain<infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Value, Top, Bot, Bot> : never;

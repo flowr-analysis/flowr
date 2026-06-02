@@ -192,7 +192,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
 					let resolvedValue = value;
-					if(info.stringReplacements && resolvedValue !== undefined && resolvedValue in info.stringReplacements) {
+					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
 						resolvedValue = info.stringReplacements[resolvedValue];
 					}
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;

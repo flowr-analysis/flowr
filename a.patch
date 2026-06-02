@@ -1,0 +1,70 @@
+diff --git a/src/dataflow/environments/environment.ts b/src/dataflow/environments/environment.ts
+index cf3073db8..1e0650c2f 100644
+--- a/src/dataflow/environments/environment.ts
++++ b/src/dataflow/environments/environment.ts
+@@ -106,6 +106,7 @@ export class Environment implements IEnvironment {
+ 
+ 	/**
+ 	 * Define a new identifier definition within this environment.
++	 * Returns a potentially shallow copy of this environment!
+ 	 * @param definition  - The definition to add.
+ 	 */
+ 	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
+diff --git a/src/dataflow/internal/process/functions/call/built-in/built-in-assignment.ts b/src/dataflow/internal/process/functions/call/built-in/built-in-assignment.ts
+index c70b43090..56f57b529 100644
+--- a/src/dataflow/internal/process/functions/call/built-in/built-in-assignment.ts
++++ b/src/dataflow/internal/process/functions/call/built-in/built-in-assignment.ts
+@@ -447,14 +447,11 @@ function tryRouteDollarEnvAssign<OtherInfo>(
+ 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
+ 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
+ 		...envirResolution.envDef,
+-		definedAt: rootId,
+-		envState:  newEnvState
+-	};
+-	const strippedEnv = {
+-		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
+-		level:   normalResult.environment.level
++		definedAt: envirResolution.envDef.definedAt,
++		envState:  newEnvState,
++		cds:       data.cds ?? envirResolution.envDef.cds
+ 	};
+-	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
++	return { ...normalResult, environment: define(updatedEnvDef, false, normalResult.environment) };
+ }
+ 
+ /**
+diff --git a/test/functionality/dataflow/main/dependencies-by-side-effects/dataflow-custom-env.test.ts b/test/functionality/dataflow/main/dependencies-by-side-effects/dataflow-custom-env.test.ts
+index fb2b16217..5e4311525 100644
+--- a/test/functionality/dataflow/main/dependencies-by-side-effects/dataflow-custom-env.test.ts
++++ b/test/functionality/dataflow/main/dependencies-by-side-effects/dataflow-custom-env.test.ts
+@@ -288,6 +288,16 @@ describe('Custom Environment Tracking', withTreeSitter(shell => {
+ 				.reads('3@e', '1@e'),
+ 			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+ 		);
++
++		assertDataflow(label('e$a <- 42 then with(e, a): accessor assignment reads e, a resolves from envState', ['dynamic-environment-resolution', 'environment-with', 'environment-sharing']),
++			shell,
++			'e <- new.env()\ne$a <- 42\nwith(e, a)',
++			emptyGraph()
++				.defineVariable('1@e', 'e')
++				.reads('2@e', '1@e')
++				.use('3@e').reads('3@e', '1@e'),
++			{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
++		);
+ 	});
+ 
+ 	describe('dollar-sign read (e$x)', () => {
+diff --git a/test/functionality/linter/lint-unused-definition.test.ts b/test/functionality/linter/lint-unused-definition.test.ts
+index 95ffcc92f..fe891a415 100644
+--- a/test/functionality/linter/lint-unused-definition.test.ts
++++ b/test/functionality/linter/lint-unused-definition.test.ts
+@@ -20,6 +20,9 @@ describe('flowR linter', withTreeSitter(parser => {
+ 				'f <- function(v) { x <<- v * 2 }\nf(2)\nprint(x)',
+ 				'(function() { x <- 42; print(x) })()',
+ 				'f <- function() {\n function() { 42 } }\nprint(f()())',
++				'x <- list(a = 1)\nx$a <- 42\nprint(x)',
++				'x <- new.env()\nx$a <- 42\nwith(x, a)',
++				'x <- list(a = 1)\nx[[1]] <- 42\nprint(x)',
+ 			]) {
+ 				/* @ignore-in-wiki */
+ 				assertLinter(program, parser, program, 'unused-definitions', []);

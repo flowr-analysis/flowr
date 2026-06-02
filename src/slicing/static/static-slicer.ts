@@ -56,7 +56,7 @@ export function staticSlice(
 		for(const startId of ids) {
 			queue.add(startId, emptyEnv, basePrint, false);
 			// retrieve the minimum nesting of all nodes to only add control dependencies if they are "part" of the current execution
-			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nesting ?? minNesting);
+			minNesting = Math.min(minNesting, idMap.get(startId)?.info.nest ?? minNesting);
 			sliceSeedIds.add(startId);
 		}
 
@@ -88,7 +88,7 @@ export function staticSlice(
 		if(currentVertex.cds && currentVertex.cds.length > 0) {
 			const topLevel = graph.isRoot(id) || sliceSeedIds.has(id);
 			for(const cd of currentVertex.cds.filter(({ id }) => !queue.hasId(id))) {
-				if(!topLevel || (idMap.get(cd.id)?.info.nesting ?? 0) >= minNesting) {
+				if(!topLevel || (idMap.get(cd.id)?.info.nest ?? 0) >= minNesting) {
 					queue.add(cd.id, baseEnvironment, baseEnvFingerprint, false);
 				}
 			}

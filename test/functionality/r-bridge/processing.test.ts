@@ -20,11 +20,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 				lexeme:   undefined,
 				grouping: undefined,
 				info:     {
-					parent:  undefined,
-					id:      '1',
-					index:   0,
-					nesting: 0,
-					role:    RoleInParent.Root
+					parent: undefined,
+					id:     '1',
+					index:  0,
+					nest:   0,
+					role:   RoleInParent.Root
 				},
 				children,
 			});
@@ -38,11 +38,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 						quotes: '"',
 					},
 					info: {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0,
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0,
 					},
 				})
 			);
@@ -53,11 +53,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 					lexeme:   '42',
 					content:  numVal(42),
 					info:     {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);
@@ -68,11 +68,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 					lexeme:   'FALSE',
 					content:  false,
 					info:     {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);
@@ -83,11 +83,11 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 					lexeme:   'k',
 					content:  'k',
 					info:     {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);

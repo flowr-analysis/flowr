@@ -110,7 +110,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
+		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;

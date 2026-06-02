@@ -94,11 +94,11 @@ export const functionFinderUtil = {
 	},
 	requireArgumentValue(
 		element: FlowrSearchElement<ParentInformation>,
-		pool: readonly FunctionInfo[],
+		pool: ReadonlyMap<string, FunctionInfo>,
 		data: { normalize: NormalizedAst, dataflow: DataflowInformation, analyzer: ReadonlyFlowrAnalysisProvider },
 		requireValue: RegExp | string | undefined
 	): Ternary {
-		const info = pool.find(f => f.name === element.node.lexeme);
+		const info = pool.get(element.node.lexeme ?? '');
 		/* if we have no additional info, we assume they always access the network */
 		if(info === undefined) {
 			return Ternary.Always;
@@ -114,7 +114,7 @@ export const functionFinderUtil = {
 				info.resolveValue,
 				data.analyzer.inspectContext());
 			// we obtain all values, at least one of them has to trigger for the request
-			const argValues: string[] = args ? args.values().flatMap(v => [...v]).filter(isNotUndefined).toArray() : [];
+			const argValues: string[] = args ? args.values().flatMap(s => Array.from(s)).filter(isNotUndefined).toArray() : [];
 			if(argValues.length === 0){
 				return Ternary.Maybe;
 			} else if(argValues.some(v => requireValue instanceof RegExp ? requireValue.test(v) : v === requireValue)){

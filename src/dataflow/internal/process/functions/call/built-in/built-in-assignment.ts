@@ -433,16 +433,14 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	}
 	const fieldName = (fieldNode.type === RType.String ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
 
-	/* run normal $<- replacement to get correct graph structure (reads of e, x, source) */
-	const normalResult = tryReplacement(rootId, replacement, data, replacement.content,
-		[toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+	const normalResult = tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      ReferenceType.Variable,
 		name:      fieldName,
 		nodeId:    fieldNode.info.id,
 		definedAt: rootId,
-		cds:       data.cds
+		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
@@ -454,6 +452,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
 		level:   normalResult.environment.level
 	};
+	normalResult.graph.addEdge(rootId, target.accessed.info.id, EdgeType.Reads);
 	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
 }
 

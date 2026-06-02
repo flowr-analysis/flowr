@@ -20,6 +20,8 @@ describe('flowR linter', withTreeSitter(parser => {
 				'f <- function(v) { x <<- v * 2 }\nf(2)\nprint(x)',
 				'(function() { x <- 42; print(x) })()',
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
+				'x <- list()\nx$a <- 2\nprint(x)',
+				'x <- new.env()\nx$a <- 2\nprint(x)'
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);

@@ -452,7 +452,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
 		level:   normalResult.environment.level
 	};
-	normalResult.graph.addEdge(rootId, target.accessed.info.id, EdgeType.Reads);
+	normalResult.graph.addEdge(normalResult.entryPoint, target.accessed.info.id, EdgeType.Reads);
 	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
 }
 

@@ -8,7 +8,9 @@ import {
 	type EnrichmentElementContent,
 	type EnrichmentSearchArguments,
 	type EnrichmentSearchContent
-	, Enrichments } from './search-executor/search-enrichers';
+	, Enrichments,
+	LazyEnrichmentContent
+} from './search-executor/search-enrichers';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 
 /**
@@ -17,7 +19,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
  */
 export interface FlowrSearchElement<Info> {
 	readonly node:         RNode<Info>;
-	readonly enrichments?: { [E in Enrichment]?: EnrichmentElementContent<E> }
+	readonly enrichments?: { [E in Enrichment]?: LazyEnrichmentContent<EnrichmentElementContent<E>> }
 }
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
@@ -70,7 +72,7 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */
 export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	private elements:    Elements = [] as unknown as Elements;
-	private enrichments: { [E in Enrichment]?: EnrichmentSearchContent<E> } = {};
+	private enrichments: { [E in Enrichment]?: LazyEnrichmentContent<EnrichmentSearchContent<E>> } = {};
 
 	public constructor(elements?: Elements) {
 		if(elements) {
@@ -112,18 +114,21 @@ export class FlowrSearchElements<Info = NoInfo, Elements extends FlowrSearchElem
 	 *
 	 * Please note that this function does not also enrich individual elements, which is done through {@link enrichElement}. Both functions are called in a concise manner in {@link FlowrSearchBuilder.with}, which is the preferred way to add enrichments to a search.
 	 */
-	public async enrich<E extends Enrichment>(data: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): Promise<this> {
+	public enrich<E extends Enrichment>(data: ReadonlyFlowrAnalysisProvider, enrichment: E, args?: EnrichmentSearchArguments<E>): this {
 		const enrichmentData = Enrichments[enrichment] as unknown as EnrichmentData<EnrichmentElementContent<E>, EnrichmentElementArguments<E>, EnrichmentSearchContent<E>, EnrichmentSearchArguments<E>>;
-		if(enrichmentData.enrichSearch !== undefined) {
+		const enricher = enrichmentData.enrichSearch;
+		if(enricher !== undefined) {
+			const prevEnrichment = this.enrichments?.[enrichment];
 			this.enrichments = {
 				...this.enrichments ?? {},
-				[enrichment]: await enrichmentData.enrichSearch(this as FlowrSearchElements<ParentInformation>, data, args, this.enrichments?.[enrichment])
+				[enrichment]: new LazyEnrichmentContent<EnrichmentSearchContent<E>>(async() =>
+					await enricher(this as FlowrSearchElements<ParentInformation>, data, args, prevEnrichment && (() => prevEnrichment.get())))
 			};
 		}
 		return this;
 	}
 
-	public enrichmentContent<E extends Enrichment>(enrichment: E): EnrichmentSearchContent<E> {
-		return this.enrichments?.[enrichment] as EnrichmentSearchContent<E>;
+	public async enrichmentContent<E extends Enrichment>(enrichment: E): Promise<EnrichmentSearchContent<E>> {
+		return await (this.enrichments?.[enrichment] as LazyEnrichmentContent<EnrichmentSearchContent<E>>)?.get();
 	}
 }

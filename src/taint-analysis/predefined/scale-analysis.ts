@@ -9,7 +9,9 @@ export const UnitVariance = Symbol('Unit Variance');
 export const ZScore = Symbol('z-Score');
 export const Unscaled = Symbol('Unscaled');
 
-export const scaleDomain = new FiniteDomainBuilder()
+type ScaleLatticeElements = [typeof MinMax, typeof ZeroCentered, typeof UnitVariance, typeof ZScore, typeof Unscaled];
+
+export const scaleDomain = new FiniteDomainBuilder<Top, Bottom, [Top, Bottom, ...ScaleLatticeElements]>()
 	.addLeqOrder(Bottom, [MinMax, ZeroCentered, UnitVariance, Unscaled])
 	.addLeqOrder(ZeroCentered, ZScore)
 	.addLeqOrder(UnitVariance, ZScore)

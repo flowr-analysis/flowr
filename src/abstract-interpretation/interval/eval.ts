@@ -9,6 +9,7 @@ import path from 'path';
 import { NumericIntervalInferenceVisitor } from './numeric-interval-inference';
 import { spawn } from 'child_process';
 import { NumericPentagonInferenceVisitor } from '../pentagon/numeric-pentagon-inference';
+import { isNotUndefined } from '../../util/assert';
 
 interface InstrumentAnnotation {
 	range:  SourceRange;
@@ -24,9 +25,10 @@ interface InstrumentAnnotation {
  * @param folder - The source folder.
  * @param workingDir - The target folder for the instrumented files.
  * @param outputFolder - The folder where the csv files should be written to.
+ * @param csvFileName - File name with .csv ending where all instrumentation results are dumped to.
  * @returns A promise that resolves when the instrumentation is complete.
  */
-async function instrument(folder: string, workingDir: string, outputFolder: string) {
+async function instrument(folder: string, workingDir: string, outputFolder: string, csvFileName: string) {
 	// Empty the output folder
 	fs.rmSync(workingDir, { recursive: true, force: true });
 	// Copy all files recursively from folder to workingDir
@@ -80,33 +82,32 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 		}
 		if(RBinaryOp.is(resolved)) {
 			const lhs = RNode.lexeme(resolved.lhs) ?? '';
-			const rhs = RNode.lexeme(resolved.rhs) ?? '';
 
 			const lhsOrigins = visitor.getVariableOrigins(resolved.lhs.info.id);
 			const inferredValue = visitor.getAbstractValue(resolved.lhs.info.id);
 			const inferredPentagonValue = pentagonVisitor.getAbstractValue(resolved.lhs.info.id);
 
-			const outputCsvPath = (path.join(outputFolder, SourceLocation.getFile(loc)?.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
+			const outputCsvPath = path.join(outputFolder, csvFileName);
 
 			edits.get(SourceLocation.getFile(loc) ?? 'unknown').push({
 				range:  SourceLocation.getRange(loc),
 				before: '{ ',
 				after:  '; ' +
-							'cat(' +
-								`"${resolved.lhs.info.id}", ` +
-								`"[${lhsOrigins.join(', ')}]", ` +
-								`"${lhs}", ` +
-								`'"${SourceLocation.getRange(loc).slice(0, 4).toString()}"', ` +
-								`typeof(${lhs}), ` +
-								`tolower(as.character(is.numeric(${lhs}))), ` +
-								`tolower(as.character(is.vector(${lhs}))), ` +
-								`paste0(length(${lhs})), ` +
-								`paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), ` +
-								`'"${inferredValue?.toString() ?? 'undefined'}"', ` +
-								`'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
-								'"\\n", ' +
-								`sep=",", file="${outputCsvPath}", append=TRUE)` +
-						`; ${rhs} }`,
+					'cat(' +
+						`"${resolved.lhs.info.id}", ` +
+						`"[${lhsOrigins.join(', ')}]", ` +
+						`"${lhs}", ` +
+						`'"${SourceLocation.getRange(loc).slice(0, 4).toString()}"', ` +
+						`typeof(${lhs}), ` +
+						`tolower(as.character(is.numeric(${lhs}))), ` +
+						`tolower(as.character(is.vector(${lhs}))), ` +
+						`paste0(length(${lhs})), ` +
+						((isNotUndefined(inferredValue) || isNotUndefined(inferredPentagonValue)) ? `paste0('"', ifelse(length(${lhs}) == 1, paste0(${lhs}), ""), ` : `paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), `) +
+						`'"${inferredValue?.toString() ?? 'undefined'}"', ` +
+						`'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
+						'"\\n", ' +
+						`sep=",", file="${outputCsvPath}", append=TRUE)` +
+					' }',
 			});
 		}
 	}
@@ -132,7 +133,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 			insertedCharacters.push([startLineIndex, startLineColumn - 1, annotation.before.length]);
 		}
 
-		const outputCsvPath = (path.join(outputFolder, file.split(workingDir).slice(-1)[0].slice(0, -2) ?? 'unknown') + '.csv');
+		const outputCsvPath = path.join(outputFolder, csvFileName);
 
 		// Assure that the csv header is printed at the beginning of the file
 		fileLines[0] = `(function() {if (!dir.exists("${path.dirname(outputCsvPath)}")) {dir.create("${path.dirname(outputCsvPath)}")}; cat("id,origins,name,source_location,type,is_numeric,is_vector,length,value,inferredValue,inferredPentagon,\\n", file="${outputCsvPath}")})();` + fileLines[0];
@@ -169,8 +170,9 @@ if(process.argv.length < 5) {
 const folder = process.argv[2];
 const outputFolder = process.argv[3];
 const script = process.argv[4];
+const csvFileName = script.slice(0, -2) + '.csv';
 
-instrument(folder, path.join('/tmp', folder), outputFolder).then(() => execute(path.join('/tmp', folder), script)).catch(err => {
+instrument(folder, path.join('/tmp', folder), outputFolder, csvFileName).then(() => execute(path.join('/tmp', folder), script)).catch(err => {
 	console.error('Error during analysis:', err);
 	process.exit(1);
 });

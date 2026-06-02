@@ -43,7 +43,6 @@ const argumentTaintAnalysis = new TaintAnalysisDefinition('arguments-eval', latt
 	}]);
 
 function argumentTest(
-	baseDescription: string,
 	arg1Value: boolean | undefined,
 	arg2Value: boolean | undefined,
 	expectedTaint: symbol | undefined
@@ -51,22 +50,22 @@ function argumentTest(
 	const expectedResult = { '1@x': expectedTaint };
 
 	if(arg1Value === undefined && arg2Value === undefined) {
-		test(`${baseDescription} (default arguments)`, async() => {
+		test('default arguments', async() => {
 			await testTaintAnalysis('x <- myTestFunc(x)', argumentTaintAnalysis, expectedResult);
 		});
 	} else {
 		const arg1Str = arg1Value !== undefined ? String(arg1Value).toUpperCase() : '';
 		const arg2Str = arg2Value !== undefined ? String(arg2Value).toUpperCase() : '';
 
-		test(`${baseDescription} (positional)`, async() => {
+		test('positional', async() => {
 			await testTaintAnalysis(`x <- myTestFunc(x, ${arg1Str}, ${arg2Str})`, argumentTaintAnalysis, expectedResult);
 		});
 
-		test(`${baseDescription} (explicitly named, order 1)`, async() => {
+		test('explicitly named, order 1', async() => {
 			await testTaintAnalysis(`x <- myTestFunc(x, myArg1=${arg1Str}, myArg2=${arg2Str})`, argumentTaintAnalysis, expectedResult);
 		});
 
-		test(`${baseDescription} (explicitly named, order 2)`, async() => {
+		test('explicitly named, order 2', async() => {
 			await testTaintAnalysis(`x <- myTestFunc(x, myArg2=${arg2Str}, myArg1=${arg1Str})`, argumentTaintAnalysis, expectedResult);
 		});
 	}
@@ -74,10 +73,20 @@ function argumentTest(
 
 describe('Taint Analysis', () => {
 	describe('Argument Evaluation', () => {
-		argumentTest('default args', undefined, undefined, taint3);
-		argumentTest('both args true', true, true, taint3);
-		argumentTest('arg1 true and arg2 false', true, false, taint1);
-		argumentTest('arg1 false and arg2 true', false, true, taint2);
-		argumentTest('both args false', false, false, undefined);
+		describe('default arguments are true', () => {
+			argumentTest( undefined, undefined, taint3);
+		});
+		describe('both args true', () => {
+			argumentTest( true, true, taint3);
+		});
+		describe('arg1 true and arg2 false', () => {
+			argumentTest( true, false, taint1);
+		});
+		describe('arg1 false and arg2 true', () => {
+			argumentTest( false, true, taint2);
+		});
+		describe('both args false', () => {
+			argumentTest( false, false, undefined);
+		});
 	});
 });

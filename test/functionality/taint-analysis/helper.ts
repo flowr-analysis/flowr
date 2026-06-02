@@ -56,14 +56,14 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 		const visitor = result.get(name);
 		guard(visitor, 'Expected taint analysis scale results are missing');
 
-		for(const [criterion, expectation] of Record.entries(expected)) {
-			const actual = getInferredValueForCriterion(visitor, criterion);
-			if(actual && expectation) {
-				const inferred = def.domain.create(expectation);
-				assert.ok(actual.equals(inferred),
-					`Expected inferred taint for criterion "${criterion} to be ${expectation.toString()}, but got ${actual.toString()}`);
+		for(const [criterion, expectedValue] of Record.entries(expected)) {
+			const actualDomain = getInferredValueForCriterion(visitor, criterion);
+			const expectedDomain = def.domain.create(expectedValue);
+			if(expectedValue === undefined) {
+				assert.ok(actualDomain?.value === undefined, `Expected inferred taint for criterion "${criterion}" to be undefined`);
 			} else {
-				assert.ok(actual === undefined && expectation === undefined, `Expected inferred value for criterion "${criterion}" to be ${expectation === undefined ? 'undefined' : expectation.toString()}, but got ${actual?.toString()}`);
+				assert.ok(actualDomain?.equals(expectedDomain),
+					`Expected inferred taint for criterion "${criterion}" to be ${expectedValue.toString()}, but got ${actualDomain?.toString()}`);
 			}
 		}
 	}

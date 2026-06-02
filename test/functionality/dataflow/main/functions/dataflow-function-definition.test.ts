@@ -996,7 +996,7 @@ function() {
 		);
 		assertDataflow(label('Nested Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
 			shell, `function() { function() { function() { function() {
-	x <- 0; 
+	x <- 0;
 	f <- function() {
       x <<- x + 1
 	}
@@ -1007,6 +1007,22 @@ function() {
 				.reads('4:13', '2@x')
 				.reads('4:13', '4@x')
 				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		);
+		assertDataflow(label('Super assignment to outer definition', ['name-normal', ...OperatorDatabase['<<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())
+print(x)`,  emptyGraph()
+				.reads('4@x', '2@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

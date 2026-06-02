@@ -21,7 +21,17 @@ describe('flowR linter', withTreeSitter(parser => {
 				'(function() { x <- 42; print(x) })()',
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
 				'x <- list()\nx$a <- 2\nprint(x)',
-				'x <- new.env()\nx$a <- 2\nprint(x)'
+				'x <- new.env()\nx$a <- 2\nprint(x)',
+				/* the first `x <- 42` is *not* unused as it serves as an anchor for the global redefinition within the nested function! */
+				`f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())
+print(x)`
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
@@ -37,7 +47,15 @@ describe('flowR linter', withTreeSitter(parser => {
 				['f <- function(x) { x + 1 }\nprint(2)', '1@f', SourceRange.from(1, 1, 1, 26)], // ;1@function is included in f
 				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
 				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)]
+				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)],
+				[`f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {

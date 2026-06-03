@@ -1,9 +1,17 @@
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TaintAnalysisDefinition } from './taint-analysis-definition';
-import type { PredefinedTaintAnalysis } from '../predefined/predefined';
+import type { AnyPredefinedAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
 import { TaintInferenceVisitor } from '../taint-visitor';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
+
+export interface TaintInferenceResult {
+	visitor:  TaintInferenceVisitor<AnyAbstractDomain>
+	finding?: string
+}
+
+export type AllPredefinedTaintAnalyses = TaintAnalysis<[AnyPredefinedAnalysisName]>;
+export type AnyTaintAnalysis = TaintAnalysis<[string]>;
 
 /**
  * Fluent builder class for conducting taint analyses.
@@ -17,7 +25,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 		this.analyzer = analyzer;
 	}
 
-	public addPredefined<Name extends PredefinedTaintAnalysis>(name: Name): TaintAnalysis<readonly [...Defs, Name]> {
+	public addPredefined<Name extends AnyPredefinedAnalysisName>(name: Name): TaintAnalysis<readonly [...Defs, Name]> {
 		this.defs.push(predefinedTaintAnalyses[name]);
 		return this as unknown as TaintAnalysis<readonly [...Defs, Name]>;
 	}
@@ -31,8 +39,8 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add} or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<Defs[number], TaintInferenceVisitor<AnyAbstractDomain>>> {
-		const results: Map<Defs[number], TaintInferenceVisitor<AnyAbstractDomain>> = new Map();
+	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
+		const results: Map<Defs[number], TaintInferenceResult> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
 				controlFlow:   await this.analyzer.controlflow(),
@@ -41,7 +49,11 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 				normalizedAst: await this.analyzer.normalize()
 			});
 			visitor.start();
-			results.set(def.name, visitor);
+
+			const endState = visitor.getEndState();
+			const finding = endState.isBottom() ? def.msg : undefined;
+
+			results.set(def.name, { visitor, finding });
 		}
 		return results;
 	}

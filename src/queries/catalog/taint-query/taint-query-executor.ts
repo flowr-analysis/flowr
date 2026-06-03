@@ -1,6 +1,9 @@
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { TaintQuery, TaintQueryResult } from './taint-query-format';
+import type {
+	AllPredefinedTaintAnalyses,
+} from '../../../taint-analysis/builder/taint-analysis';
 
 /**
  * Executes the given taint queries using the provided analyzer.
@@ -13,14 +16,14 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 	}
 
 	const start = Date.now();
-	const analysis = analyzer.taint();
+	const analysis = analyzer.taint() as unknown as AllPredefinedTaintAnalyses;
 	for(const def of flattened) {
 		analysis.addPredefined(def);
 	}
 
 	const visitors = await analysis.run();
 	const results = new Map(
-		Array.from(visitors, ([k, v]) => [k, v.getEndState()])
+		Array.from(visitors, ([k, r]) => [k, r])
 	);
 
 	return {

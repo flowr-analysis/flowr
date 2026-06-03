@@ -11,7 +11,7 @@ export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbst
 	public mapper:          TaintMapper<Domain> = [];
 	public name:            Name;
 
-	private msg: string | undefined;
+	public msg: string | undefined;
 
 	constructor(name: Name, domain: Domain) {
 		this.name = name;

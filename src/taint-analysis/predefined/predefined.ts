@@ -5,7 +5,7 @@ export const predefinedTaintAnalyses = {
 	'scale': scaleAnalysis,
 } as const satisfies AnalysisMap<['scale']>;
 
-export type PredefinedTaintAnalysis = keyof typeof predefinedTaintAnalyses;
+export type AnyPredefinedAnalysisName = keyof typeof predefinedTaintAnalyses;
 
 type AnalysisMap<Defs extends readonly string[] = string[]> = {
 	[key in TaintAnalysisName<TaintAnalysisDefinition<Defs[number]>>]: TaintAnalysisDefinition<key>;

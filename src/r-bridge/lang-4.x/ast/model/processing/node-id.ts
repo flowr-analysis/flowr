@@ -4,6 +4,7 @@ import { VertexType } from '../../../../../dataflow/graph/vertex';
 import { removeRQuotes } from '../../../../retriever';
 import { Identifier } from '../../../../../dataflow/environments/identifier';
 import { RNode } from '../model';
+import type { BuiltInProcName } from '../../../../../dataflow/environments/built-in-proc-name';
 
 /** The type of the id assigned to each node. Branded to avoid problematic usages with other string or numeric types. */
 export type NodeId<T extends string | number = string | number> = T & { __brand?: 'node-id' };
@@ -54,6 +55,16 @@ export const NodeId = {
 	 */
 	toBuiltIn<T extends string>(this: void, name: T): BuiltIn<T> {
 		return `built-in:${name}`;
+	},
+	/**
+	 * Converts a built-in function or operator name or id to a built-in id by prefixing it with the built-in prefix if it is not already a built-in id.
+	 * This allows us to accept both built-in names and ids in contexts where we want to work with built-in ids.
+	 */
+	mapBuiltInProc<T extends BuiltInProcName>(this: void, proc: T): T extends `builtin:${infer S}` ? BuiltIn<S> : BuiltIn<T> {
+		const bi = 'builtin:';
+		return NodeId.toBuiltIn(
+			proc.startsWith(bi) ? proc.substring(bi.length) : proc
+		) as never;
 	},
 	/**
 	 * Recovers the built-in function or operator name from a built-in id by removing the built-in prefix.

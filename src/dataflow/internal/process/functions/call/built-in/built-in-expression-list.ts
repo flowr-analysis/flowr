@@ -26,6 +26,8 @@ import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
+import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
 
@@ -53,12 +55,21 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	}
 
 	const rid = read.nodeId;
+	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if(NodeId.isBuiltIn(target.definedAt) && (read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
+		if(NodeId.isBuiltIn(target.definedAt) && isFunc) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
+		}
+		if(target.type === ReferenceType.BuiltInConstant) {
+			nextGraph.addVertex({
+				tag:   VertexType.Value,
+				id:    tid,
+				cds:   undefined,
+				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+			}, environments, false);
 		}
 	}
 }
@@ -131,7 +142,7 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	let out: IdentifierReference[] = [];
+	const out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
@@ -158,13 +169,14 @@ export function processExpressionList<OtherInfo>(
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		out = out.concat(processed.out);
+		out.push(...processed.out);
 
 		// all inputs that have not been written until now are read!
-		for(const ls of [processed.in, processed.unknownReferences]) {
-			for(const read of ls) {
-				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
-			}
+		for(const read of processed.in) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		}
+		for(const read of processed.unknownReferences) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
@@ -204,7 +216,10 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing = remainingRead.values().toArray().flat();
+	const ingoing: IdentifierReference[] = [];
+	for(const refs of remainingRead.values()) {
+		ingoing.push(...refs);
+	}
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;

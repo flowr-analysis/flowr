@@ -16,9 +16,7 @@ import type { Writable } from 'ts-essentials';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { FlowrFilter, FlowrFilterCombinator } from '../../search/flowr-search-filters';
 
-export interface DeadCodeResult extends LintingResult {
-	readonly loc: SourceLocation
-}
+export type DeadCodeResult = LintingResult;
 
 export interface DeadCodeConfig extends MergeableRecord {
 	/**

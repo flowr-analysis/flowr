@@ -79,10 +79,19 @@ export const FlowrSearchGenerator = {
 	/**
 	 * Short form of {@link get} with only the
 	 * {@link FlowrSearchGetFilters#line|line} and {@link FlowrSearchGetFilters#column|column} filters:
-	 * `get({line, column})`.
+	 * `get({line, column})`. Please use {@link FlowrSearchGenerator#locFuzzy|locFuzzy} for a fuzzy location search.
 	 */
 	loc(line?: number, column?: number): FlowrSearchBuilder<'get'> {
 		return FlowrSearchGenerator.get({ line, column });
+	},
+	/**
+	 * Fuzzy variant of {@link loc} that matches any node whose source range contains the given position.
+	 * @param line - the line number to search in (required for fuzzy matching)
+	 * @param column - the column number to search in
+	 * @param innermostOnly - if true, return only the deepest (innermost) matching nodes in the AST
+	 */
+	locFuzzy(line: number, column: number, innermostOnly = false): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ line, column, fuzzy: true, innermostOnly });
 	},
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} and {@link FlowrSearchGetFilters#line|line} filters:

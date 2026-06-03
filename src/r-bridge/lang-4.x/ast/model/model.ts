@@ -25,13 +25,14 @@ import type { RUnaryOp } from './nodes/r-unary-op';
 import type { RBinaryOp } from './nodes/r-binary-op';
 import type { RPipe } from './nodes/r-pipe';
 import type { RDelimiter } from './nodes/info/r-delimiter';
-import type { ParentInformation } from './processing/decorate';
+import type { AstIdMap, ParentInformation } from './processing/decorate';
 import type { NodeId } from './processing/node-id';
 import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
-import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
 import { assertUnreachable } from '../../../../util/assert';
 import { getDocumentationOf } from '../../../roxygen2/documentation-provider';
+
+export type SingleOrArrayOrNothing<T> = T | readonly (T | null | undefined)[] | null | undefined;
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -273,7 +274,6 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
  * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
  * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
  * so you can check for that as well if needed.
- * @see {@link DefaultNormalizedAstFold} - for a more powerful way to traverse the normalized AST
  */
 export const RNode = {
 	name: 'RNode',
@@ -350,7 +350,7 @@ export const RNode = {
 	 * linear chain of parents leading to the root node.
 	 * @see {@link iterateParents} - to get all parents of a node
 	 */
-	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): RNode<OtherInfo & ParentInformation> | undefined {
+	directParent<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation>, idMap: AstIdMap<OtherInfo & ParentInformation>): RNode<OtherInfo & ParentInformation> | undefined {
 		const parentId = node.info.parent;
 		if(parentId === undefined) {
 			return undefined;
@@ -360,7 +360,7 @@ export const RNode = {
 	/**
 	 * Returns an iterable of all parents of a node, starting with the direct parent and ending with the root node.
 	 */
-	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: Map<NodeId, RNode<OtherInfo & ParentInformation>>): Generator<RNode<OtherInfo & ParentInformation>> {
+	*iterateParents<OtherInfo>(this: void, node: RNode<OtherInfo & ParentInformation> | undefined, idMap: AstIdMap<OtherInfo & ParentInformation>): Generator<RNode<OtherInfo & ParentInformation>> {
 		let currentNode: RNode<OtherInfo & ParentInformation> | undefined = node;
 		while(currentNode) {
 			currentNode = RNode.directParent(currentNode, idMap);
@@ -373,7 +373,7 @@ export const RNode = {
 	 * In contrast to the nesting stored in the {@link RNode} structure,
 	 * this function calculates the depth of a node by counting the number of parents until the root node is reached.
 	 */
-	depth(this: void, node: RNode<ParentInformation>, idMap: Map<NodeId, RNode<ParentInformation>>): number {
+	depth(this: void, node: RNode<ParentInformation>, idMap: AstIdMap<ParentInformation>): number {
 		let depth = 0;
 		let currentNode: RNode | undefined = node;
 		while(currentNode) {

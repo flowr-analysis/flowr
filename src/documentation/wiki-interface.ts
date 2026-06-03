@@ -21,6 +21,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { GeneralDocContext } from './wiki-mk/doc-context';
 import { explainWritingCode } from './data/interface/doc-writing-code';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
+import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
 async function explainServer(parser: KnownParser): Promise<string> {
 	documentAllServerMessages();
@@ -47,7 +48,7 @@ ${await printServerMessages(parser)}
 ### 📡 Ways of Connecting
 
 If you are interested in clients that communicate with _flowR_, please check out the [R adapter](${FlowrGithubBaseRef}/flowr-r-adapter)
-as well as the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr). 
+as well as the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr).
 
 <ol>
 
@@ -106,9 +107,9 @@ async function explainRepl(parser: KnownParser, ctx: GeneralDocContext): Promise
 > To execute arbitrary R commands with a repl request, _flowR_ has to be started explicitly with ${ctx.cliOption('flowr', 'r-session-access')}.
 > Please be aware that this introduces a security risk and note that this relies on the ${ctx.linkPage('wiki/Engines', '`r-shell` engine')} .
 
-Although primarily meant for users to explore, 
-there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error 
-for communication (although you can access the REPL using the server as well, 
+Although primarily meant for users to explore,
+there is nothing which forbids simply calling _flowR_ as a subprocess to use standard-in, -output, and -error
+for communication (although you can access the REPL using the server as well,
 with the [REPL Request](#message-request-repl-execution) message).
 
 The read-eval-print loop&nbsp;(REPL) works relatively simple.
@@ -118,7 +119,7 @@ The best command to get started with the REPL is ${ctx.replCmd('help')}.
 Besides, you can leave the REPL either with the command ${ctx.replCmd('quit')} or by pressing <kbd>Ctrl</kbd>+<kbd>C</kbd> twice.
 When writing a *command*, you may press <kbd>Tab</kbd> to get a list of completions, if available.
 Multiple commands can be entered in a single line by separating them with a semicolon (\`;\`), e.g. \`:parse "x<-2"; :df*\`.
-If a command is given without R code, the REPL will re-use R code given in a previous command. 
+If a command is given without R code, the REPL will re-use R code given in a previous command.
 The prior example will hence return first the parsed AST of the program and then the dataflow graph for \`"x <- 2"\`.
 
 > [!NOTE]
@@ -153,7 +154,7 @@ can be used to also modify the currently active configuration of _flowR_ within 
 
 ### Example: Retrieving the Dataflow Graph
 
-To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression, 
+To retrieve a URL to the [mermaid](https://mermaid.js.org/) diagram of the dataflow of a given expression,
 use ${ctx.replCmd('dataflow*')} (or ${ctx.replCmd('dataflow')} to get the mermaid code in the cli):
 
 ${await documentReplSession(parser, [{
@@ -172,8 +173,8 @@ For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magi
 
 ### Example: Interfacing with the File System
 
-Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) allow for a file as well 
-if the argument starts with \`${fileProtocol}\`. 
+Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) allow for a file as well
+if the argument starts with \`${fileProtocol}\`.
 If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${ctx.replCmd('parse')} command:
 
 ${await documentReplSession(parser, [{
@@ -188,7 +189,7 @@ ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
 </details>
 
-As _flowR_ directly transforms this AST the output focuses on being human-readable instead of being machine-readable. 
+As _flowR_ directly transforms this AST the output focuses on being human-readable instead of being machine-readable.
 		`
 }])}
 
@@ -213,8 +214,8 @@ For more information on the available queries, please check out the ${ctx.linkPa
 function explainConfigFile(ctx: GeneralDocContext): string {
 	return `
 
-When running _flowR_, you may want to specify some behaviors with a dedicated configuration file. 
-By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory). 
+When running _flowR_, you may want to specify some behaviors with a dedicated configuration file.
+By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory).
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
 To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` [Query](${FlowrWikiBaseRef}/Query%20API).
 Within the REPL this works by running the following:
@@ -226,13 +227,15 @@ ${ctx.linkO(FlowrConfig, 'amend')}.
 The following summarizes the configuration options:
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
-- \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
-  You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
+- \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`.
+  You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 - \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
 - \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
 - \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
+- \`defaultPlugins\`: allows to configure which plugins to load by default when creating a new ${ctx.link(FlowrAnalyzer)} instance.
+- \`repl.plugins\`: allows to configure which plugins to load in the _flowR_ REPL. Use \`flowr:default\` to reference the plugins specified by \`defaultPlugins\`.
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -252,18 +255,21 @@ ${codeBlock('json', JSON.stringify(
 					}
 				}
 			},
-			repl: {
+			defaultPlugins: ['file:description', 'versions:description'],
+			repl:           {
 				quickStats:      false,
-				dfProcessorHeat: false
+				dfProcessorHeat: false,
+				plugins:         ['flowr:default']
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
-				variables:     VariableResolve.Alias,
-				evalStrings:   true,
-				resolveSource: {
+				variables:         VariableResolve.Alias,
+				evalStrings:       true,
+				trackEnvironments: true,
+				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
@@ -290,9 +296,9 @@ ${codeBlock('json', JSON.stringify(
 
 </details>
 
-<details> 
+<details>
 <a id='configure-builtin-semantics'></a>
-<summary>Configure Built-In Semantics</summary> 
+<summary>Configure Built-In Semantics</summary>
 
 
 \`semantics/environment/overwriteBuiltins\` accepts two keys:
@@ -362,5 +368,3 @@ ${await explainServer(shell)}
 `;
 	}
 }
-
-

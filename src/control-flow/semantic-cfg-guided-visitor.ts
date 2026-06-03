@@ -239,23 +239,10 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
-			case BuiltInProcName.TableAssignment: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
-							if(source.length === 1) {
-								return this.onAssignmentCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onAssignmentCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.TableAssignment:
+				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.SpecialBinOp:
 				if(call.args.length !== 2) {
 					return this.onSpecialBinaryOpCall({ call });
@@ -274,22 +261,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
 			case BuiltInProcName.WhileLoop:
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
-			case BuiltInProcName.Replacement: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
-							if(source.length === 1) {
-								return this.onReplacementCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onReplacementCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.Replacement:
+				return this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.Library:
 				return this.onLibraryCall({ call });
 			case BuiltInProcName.Try:
@@ -320,6 +293,9 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRecallCall({ call });
 			case BuiltInProcName.PurrrFormula:
 				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.With:
+			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
@@ -733,4 +709,21 @@ export class SemanticCfgGuidedVisitor<
 	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
 	 */
 	protected onPurrFormulaCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {
+		const outgoing = this.config.dfg.outgoingEdges(call.id);
+		if(outgoing !== undefined) {
+			const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
+			if(target.length === 1) {
+				const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
+				if(targetOut !== undefined) {
+					const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
+					if(source.length === 1) {
+						return { target: target[0][0], source: source[0][0] };
+					}
+				}
+			}
+		}
+		return { target: undefined, source: undefined };
+	}
 }

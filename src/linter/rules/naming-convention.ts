@@ -22,8 +22,7 @@ export enum CasingConvention {
 
 export interface NamingConventionResult extends LintingResult {
 	name:           string,
-	detectedCasing: CasingConvention,
-	loc:            SourceLocation
+	detectedCasing: CasingConvention
 }
 
 /**

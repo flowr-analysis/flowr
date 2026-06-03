@@ -6,6 +6,8 @@ import { ReadFunctions } from '../../queries/catalog/dependencies-query/function
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Ternary } from '../../util/logic';
+import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
+import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
 	/** The list of function names that should be marked in the given context if their arguments match. */
@@ -14,6 +16,8 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 	onlyTriggerWithArgument?: RegExp | string
 }
 
+
+const FnPool = new Map(ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [f.name, f] as const));
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
 	processSearchResult: (e, c, d) => {
@@ -23,10 +27,10 @@ export const NETWORK_FUNCTIONS = {
 				for(const e of es) {
 					const val = await functionFinderUtil.requireArgumentValue(
 						e,
-						ReadFunctions,
+						FnPool,
 						d,
-						c.onlyTriggerWithArgument
-					);
+						c.onlyTriggerWithArgument);
+
 					if(val === Ternary.Never) {
 						continue;
 					}

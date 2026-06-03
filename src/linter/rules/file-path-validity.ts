@@ -11,8 +11,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
 
 export interface FilePathValidityResult extends LintingResult {
-	filePath: string,
-	loc:      SourceLocation
+	filePath: string
 }
 
 export interface FilePathValidityConfig extends MergeableRecord {

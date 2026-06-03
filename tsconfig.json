@@ -12,7 +12,8 @@
     "outDir": "./dist/",
     "strict": true,
     "alwaysStrict": true,
-    "noUncheckedSideEffectImports": true
+    "noUncheckedSideEffectImports": true,
+    "types": [ "node" ]
   },
   "lib": [ "esnext", "dom" ],
   "exclude": [

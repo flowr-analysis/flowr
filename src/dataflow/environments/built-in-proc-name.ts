@@ -3,35 +3,37 @@
  */
 export enum BuiltInProcName {
 	/** for subsetting operations, see {@link processAccess} */
-	Access = 'builtin:access',
+	Access = 'builtin:acc',
 	/** for the `*apply` family, see {@link processApply} */
-	Apply = 'builtin:apply',
+	Apply = 'builtin:app',
 	/** for assignments like `<-` and `=`, see {@link processAssignment} */
-	Assignment = 'builtin:assignment',
+	Assignment = 'builtin:assign',
 	/** for assignment like functions that may do additional work, see {@link processAssignmentLike} */
-	AssignmentLike = 'builtin:assignment-like',
+	AssignmentLike = 'builtin:assign-l',
+	/** for super-assignments like `<<-` and `->>`, see {@link processAssignment} */
+	SuperAssignment = 'builtin:s-assign',
 	/** for `break` calls */
 	Break = 'builtin:break',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
-	Default = 'builtin:default',
+	Default = 'builtin:d',
 	/** Just a more performant variant of the default processor for built-ins that need to read all their arguments, see {@link defaultBuiltInProcessor}, this will still produce the origin `BuiltIn.Default` */
-	DefaultReadAllArgs = 'builtin:default-read-all-args',
+	DefaultReadAllArgs = 'builtin:d-ra',
 	/** for `eval` calls, see {@link processEvalCall} */
 	Eval = 'builtin:eval',
 	/** for expression lists, see {@link processExpressionList} */
-	ExpressionList = 'builtin:expression-list',
+	ExpressionList = 'builtin:el',
 	/** for `for` loops, see {@link processForLoop} */
-	ForLoop = 'builtin:for-loop',
+	ForLoop = 'builtin:fl',
 	/** We resolved a function call, similar to {@link BuiltInProcName#Default} */
 	Function = 'function',
 	/** for function definitions, see {@link processFunctionDefinition} */
-	FunctionDefinition = 'builtin:function-definition',
+	FunctionDefinition = 'builtin:f-def',
 	/** for `get` calls, see {@link processGet} */
 	Get = 'builtin:get',
 	/** for `if-then-else` constructs, see {@link processIfThenElse} */
-	IfThenElse = 'builtin:if-then-else',
+	IfThenElse = 'builtin:ite',
 	/** for `library` and `require` calls, see {@link processLibrary} */
-	Library = 'builtin:library',
+	Library = 'builtin:lib',
 	/** for `list` calls, see {@link processList} */
 	List = 'builtin:list',
 	/** for `local` calls, see {@link processLocal} */
@@ -43,7 +45,7 @@ export enum BuiltInProcName {
 	 * for example, supports `map(g, ~ .x + 2)`
 	 * @see {@link processPurrrFormula}
 	 */
-	PurrrFormula = 'builtin:purrr-formula',
+	PurrrFormula = 'builtin:purrr-f',
 	/** for `quote`, and other substituting calls, see {@link processQuote} */
 	Quote = 'builtin:quote',
 	/**
@@ -51,19 +53,19 @@ export enum BuiltInProcName {
 	 */
 	Recall = 'builtin:recall',
 	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
-	RegisterHook = 'builtin:register-hook',
+	RegisterHook = 'builtin:r-hook',
 	/** for `repeat` loops, see {@link processRepeatLoop} */
-	RepeatLoop = 'builtin:repeat-loop',
+	RepeatLoop = 'builtin:rl',
 	/** for replacement functions like `names<-`, see {@link processReplacementFunction} */
-	Replacement = 'builtin:replacement',
+	Replacement = 'builtin:repl',
 	/** for `return` calls */
 	Return = 'builtin:return',
 	/** for `rm` calls, see {@link processRm} */
 	Rm = 'builtin:rm',
 	/** for `UseMethod` calls, see {@link processS3Dispatch} */
-	S3Dispatch = 'builtin:s3-dispatch',
+	S3Dispatch = 'builtin:s3-dp',
 	/** for `NextMethod` calls, see {@link processS3Dispatch} */
-	S3DispatchNext = 'builtin:s3-dispatch-next',
+	S3DispatchNext = 'builtin:s3-dp-next',
 	/** for `new.generic` calls, see {@link processS7NewGeneric} */
 	S7NewGeneric = 'builtin:s7-new-generic',
 	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
@@ -71,7 +73,7 @@ export enum BuiltInProcName {
 	/** for `source` calls, see {@link processSourceCall} */
 	Source = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
-	SpecialBinOp = 'builtin:special-bin-op',
+	SpecialBinOp = 'builtin:s-bop',
 	/** for `stop` calls */
 	Stop = 'builtin:stop',
 	/** for `stopifnot` calls, see {@link processStopIfNot} */
@@ -80,10 +82,16 @@ export enum BuiltInProcName {
 	TableAssignment = 'table:assign',
 	/** for `try` calls, see {@link processTryCatch} */
 	Try = 'builtin:try',
+	/** for `attach` calls that inject environment contents into the search path, see {@link processAttach} */
+	Attach = 'builtin:attach',
+	/** for `new.env` and related environment-creation calls, see {@link processNewEnv} */
+	NewEnv = 'builtin:nenv',
 	/** for unnamed directly-linked function calls */
 	Unnamed = 'unnamed',
 	/** for vector construction calls, see {@link processVector} */
 	Vector = 'builtin:vector',
 	/** for `while` loops, see {@link processWhileLoop} */
-	WhileLoop = 'builtin:while-loop',
+	WhileLoop = 'builtin:wl',
+	/** for `with` calls that evaluate an expression inside a named environment, see {@link processWithEnv} */
+	With = 'builtin:with',
 }

@@ -104,6 +104,10 @@ export interface LintingResult {
 	 * The node ID or IDs involved in this linting result, if applicable.
 	 */
 	readonly involvedId: NodeId | NodeId[] | undefined
+	/**
+	 * The source location where this linting result occurs
+	 */
+	readonly loc:        SourceLocation;
 }
 
 

@@ -11,7 +11,7 @@ import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Ternary } from '../../util/logic';
 import { type MergeableRecord } from '../../util/objects';
-import { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 
@@ -30,15 +30,13 @@ interface DataFrameAccess {
 
 export interface DataFrameAccessValidationResult extends LintingResult {
 	/** The type of the data frame access ("column" or "row") */
-	type:     'column' | 'row',
+	readonly type:     'column' | 'row',
 	/** The name or index of the column or row being accessed in the data frame */
-	accessed: string | number,
+	readonly accessed: string | number,
 	/** The name of the function/operation used for the access (e.g. `$`, `[`, `[[`, but also `filter`, `select`, ...) */
-	access:   string,
+	readonly access:   string,
 	/** The variable/symbol name of the accessed data frame operand (`undefined` if operand is no symbol) */
-	operand?: string,
-	/** The source range in the code where the access occurs */
-	range:    SourceRange
+	readonly operand?: string,
 }
 
 export interface DataFrameAccessValidationConfig extends MergeableRecord {
@@ -119,7 +117,7 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 				involvedId: node?.info.id,
 				access:     node?.lexeme ?? '???',
 				...(operand?.type === RType.Symbol ? { operand: Identifier.getName(operand.content) } : {}),
-				range:      SourceRange.fromNode(node) ?? SourceRange.invalid(),
+				loc:        SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 				certainty:  LintingResultCertainty.Certain
 			}));
 
@@ -128,10 +126,10 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Access of ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' ' +
-			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`,
+			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]: result => `Accessed ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' does not exist ' +
-			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`
+			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`
 	},
 	info: {
 		name:          'Dataframe Access Validation',

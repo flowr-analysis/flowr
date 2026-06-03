@@ -17,24 +17,24 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-					targets: /library/
-				}
+						targets: /library/
+					}
 				} })
 			);
 			benchmarkSearch('other', parser, "cat('hello')\nprint('world')",
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-					targets: /library/
-				}
+						targets: /library/
+					}
 				} })
 			);
 			benchmarkSearch('match', parser, "cat('hello')\nprint('world')",
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-					targets: /print/
-				}
+						targets: /print/
+					}
 				} })
 			);
 			const cfgArgs: CfgInformationArguments = {
@@ -45,34 +45,34 @@ describe('flowR search', withTreeSitter(parser => {
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       {
-					isReachable: true
-				}
+						isReachable: true
+					}
 				}
 			}));
 			benchmarkSearch('reachable never', parser, 'if(FALSE) 1 else 2', Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       {
-					isReachable: /true/
-				}
+						isReachable: /true/
+					}
 				}
 			}));
 			benchmarkSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       {
-					isReachable: false
-				}
+						isReachable: false
+					}
 				}
 			}));
 			benchmarkSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
 					test:       {
-					isReachable: /false/
+						isReachable: /false/
+					}
 				}
-			}
-		}));
+			}));
 		});
 
 		describe('complex', () => {

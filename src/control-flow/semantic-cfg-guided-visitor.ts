@@ -239,6 +239,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
 			case BuiltInProcName.TableAssignment:
 				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });

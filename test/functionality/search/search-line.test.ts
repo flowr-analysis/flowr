@@ -71,7 +71,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment, keepNonFunctionCalls: true } })
 			);
 			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assign/ } })
 			);
 			assertSearch('for loop', parser, "for (i in 1:10) { cat('hi') }", ['1@for'],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })

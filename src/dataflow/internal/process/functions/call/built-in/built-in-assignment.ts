@@ -93,9 +93,8 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 	}
 	if(current.type === RType.Symbol) {
 		return current;
-	} else {
-		return undefined;
 	}
+	return undefined;
 }
 
 function tryReplacement<OtherInfo>(
@@ -213,7 +212,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -238,7 +237,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       BuiltInProcName.Assignment
+						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -277,7 +276,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -299,7 +298,7 @@ export function processAssignment<OtherInfo>(
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Assignment
+		origin:    config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -361,7 +360,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       BuiltInProcName.Assignment
+		origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -601,14 +600,21 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
-	const readTargets: readonly IdentifierReference[] = [
+	const readTargets: IdentifierReference[] = [
 		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
-	].concat(
-		sourceArg.unknownReferences,
-		sourceArg.in,
-		targetName ? targetArg.in : targetArg.in.filter(i => i.nodeId !== targetId),
-		readFromSourceWritten
-	);
+	];
+	readTargets.push(...sourceArg.unknownReferences);
+	readTargets.push(...sourceArg.in);
+	if(targetName) {
+		readTargets.push(...targetArg.in);
+	} else {
+		for(const i of targetArg.in) {
+			if(i.nodeId !== targetId) {
+				readTargets.push(i);
+			}
+		}
+	}
+	readTargets.push(...readFromSourceWritten);
 
 	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 

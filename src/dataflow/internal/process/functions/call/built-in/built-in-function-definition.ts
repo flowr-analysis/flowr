@@ -292,6 +292,52 @@ function updateNestedFunctionClosures(
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
 		subflow.in = remainingIn;
+
+		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
+	}
+}
+
+function linkSuperAssignmentsToOuterDefinitions(
+	parentGraph: DataflowGraph,
+	nestedGraphNodeIds: Set<NodeId>,
+	parentEnvironment: REnvironmentInformation
+): void {
+	for(const nodeId of nestedGraphNodeIds) {
+		const vertex = parentGraph.getVertex(nodeId);
+		if(vertex?.tag !== VertexType.FunctionCall || !vertex.origin.includes(BuiltInProcName.SuperAssignment)) {
+			continue;
+		}
+
+		const outgoingReturns = parentGraph.outgoingEdges(nodeId);
+		if(!outgoingReturns) {
+			continue;
+		}
+
+		for(const [targetId, edge] of outgoingReturns) {
+			if(!DfEdge.includesType(edge, EdgeType.Returns)) {
+				continue;
+			}
+
+			const targetVertex = parentGraph.getVertex(targetId);
+			if(targetVertex?.tag !== VertexType.VariableDefinition) {
+				continue;
+			}
+
+			const targetNode = parentGraph.idMap?.get(targetId);
+			if(targetNode?.type !== RType.Symbol) {
+				continue;
+			}
+
+			const varName = targetNode.content;
+			const resolved = resolveByName(varName, parentEnvironment, ReferenceType.Variable);
+			if(resolved) {
+				for(const ref of resolved) {
+					if(ref.nodeId !== targetId && !NodeId.isBuiltIn(ref.nodeId)) {
+						parentGraph.addEdge(targetId, ref.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
 	}
 }
 

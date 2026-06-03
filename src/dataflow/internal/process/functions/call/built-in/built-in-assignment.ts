@@ -212,7 +212,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -237,7 +237,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       BuiltInProcName.Assignment
+						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -276,7 +276,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -298,7 +298,7 @@ export function processAssignment<OtherInfo>(
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Assignment
+		origin:    config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -360,7 +360,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       BuiltInProcName.Assignment
+		origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({

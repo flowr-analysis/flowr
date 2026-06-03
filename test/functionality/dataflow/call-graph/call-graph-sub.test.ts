@@ -67,11 +67,11 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', [11, '2@return'])
-			.calls(11, [10, NodeId.toBuiltIn('expression-list')])
+			.calls(11, [10, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('2@return', NodeId.toBuiltIn('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@+', NodeId.toBuiltIn('default'))
+			.calls('2@+', NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.calls(12, 8)
 	);
 }));

@@ -1,7 +1,7 @@
 import { IntervalDomain } from '../domains/interval-domain';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { isNotUndefined, isUndefined } from '../../util/assert';
-import type { DataflowGraph, NamedFunctionArgument, PositionalFunctionArgument } from '../../dataflow/graph/graph';
+import type { NamedFunctionArgument, PositionalFunctionArgument } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import type { IntervalInference } from './numeric-interval-inference';
 import { getMax, getMin, getMinMax } from '../../util/numbers';
@@ -12,7 +12,8 @@ import type { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { log } from '../../util/log';
 import { Bottom } from '../domains/lattice';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { RLogical } from '../../r-bridge/lang-4.x/ast/model/nodes/r-logical';
+import { resolveIdToValue, type ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { unliftRValue } from '../../util/r-value';
 
 type IntervalExpressionSemanticsVisitor<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = AbstractInterpretationVisitor<StateDomain> & IntervalInference<StateDomain>;
 
@@ -74,20 +75,20 @@ type BinaryOpSemantics = (left: IntervalDomain | undefined, right: IntervalDomai
  * @param arg - The raw argument of the function.
  * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
- * @param dfg - Is used to resolve constant values.
+ * @param info - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-type UnaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph) => IntervalDomain | undefined;
+type UnaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (arg: FunctionArgument, visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo) => IntervalDomain | undefined;
 
 /**
  * Semantics definition function n-ary functions/operators.
  * @param args - The raw arguments of the function/operator.
  * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
- * @param dfg - Is used to resolve constant values.
+ * @param info - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-type NaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph) => IntervalDomain | undefined;
+type NaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo) => IntervalDomain | undefined;
 
 /**
  * Applies the abstract expression semantics of the provided function with respect to the interval domain to the provided args.
@@ -95,10 +96,10 @@ type NaryFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>> = (a
  * @param args - The arguments of the function/operator.
  * @param visitor - Visitor that is used to retrieve the inferred interval.
  * @param significantFigures - The number of significant figures used to create new intervals.
- * @param dfg - Is used to resolve constant values.
+ * @param info - Is used to resolve constant values.
  * @returns The resulting interval after applying the semantics.
  */
-export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateAbstractDomain<IntervalDomain>>, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined {
+export function applyIntervalExpressionSemantics(functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateAbstractDomain<IntervalDomain>>, significantFigures: number | undefined, info: ResolveInfo): IntervalDomain | undefined {
 	const match = IntervalExpressionSemanticsMapper().find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
@@ -108,7 +109,7 @@ export function applyIntervalExpressionSemantics(functionIdentifier: Identifier,
 
 	const [_, semantics] = match;
 
-	return semantics(args, visitor, significantFigures, dfg);
+	return semantics(args, visitor, significantFigures, info);
 }
 
 /**
@@ -140,7 +141,7 @@ function unaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDoma
  * @returns A semantics function for n-ary functions that applies the correct provided operator based on the provided arguments.
  */
 function unaryBinaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(unaryOperatorSemantics: UnaryOpSemantics, binaryOperatorSemantics: BinaryOpSemantics): NaryFnSemantics<StateDomain> {
-	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo): IntervalDomain | undefined => {
 		// Usage as unary operator
 		if(args.length === 1) {
 			if(FunctionArgument.isEmpty(args[0])) {
@@ -152,7 +153,7 @@ function unaryBinaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstra
 			return unaryOperatorSemantics(arg, significantFigures);
 		}
 
-		return binaryExprOpSemantics(binaryOperatorSemantics)(args, visitor, significantFigures, dfg);
+		return binaryExprOpSemantics(binaryOperatorSemantics)(args, visitor, significantFigures, info);
 	};
 }
 
@@ -190,13 +191,13 @@ function binaryExprOpSemantics<StateDomain extends AnyStateDomain<AnyAbstractDom
  * @returns A semantics function for n-ary functions that applies the provided unary function semantics if the call has exactly 1 argument, and logs a warning and returns bottom otherwise.
  */
 function unaryExprFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(unaryFunctionSemantics: UnaryFnSemantics<StateDomain>): NaryFnSemantics<StateDomain> {
-	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph): IntervalDomain | undefined => {
+	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
 			return IntervalDomain.bottom(significantFigures);
 		}
 
-		return unaryFunctionSemantics(args[0], visitor, significantFigures, dfg);
+		return unaryFunctionSemantics(args[0], visitor, significantFigures, info);
 	};
 }
 
@@ -409,7 +410,21 @@ function intervalNrowNcolFn<StateDomain extends AnyStateDomain<AnyAbstractDomain
 	return new IntervalDomain([0, Infinity], significantFigures);
 }
 
-function intervalSumFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph) {
+function isRmNaFlagSet(args: readonly FunctionArgument[], info: ResolveInfo) {
+	const rmNaArg: NamedFunctionArgument | undefined = args.find(arg => FunctionArgument.isNamed(arg) && arg.name === 'na.rm') as NamedFunctionArgument | undefined;
+	if(isNotUndefined(rmNaArg)) {
+		if(isNotUndefined(rmNaArg.valueId)) {
+			// Resolve the value to "TRUE" or "FALSE"
+			const resolvedValue = unliftRValue(resolveIdToValue(rmNaArg.valueId, info));
+			if(resolvedValue === true) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+function intervalSumFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo) {
 	if(args.length === 0) {
 		return IntervalDomain.scalar(0, significantFigures);
 	}
@@ -417,17 +432,7 @@ function intervalSumFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(ar
 		return IntervalDomain.bottom(significantFigures);
 	}
 
-	const rmNaArg: NamedFunctionArgument | undefined = args.find(arg => FunctionArgument.isNamed(arg) && arg.name === 'na.rm') as NamedFunctionArgument | undefined;
-	let rmNa = false;
-	if(isNotUndefined(rmNaArg)) {
-		if(isNotUndefined(rmNaArg.valueId)) {
-			// Resolve the value to "TRUE" or "FALSE"
-			const valueNode = dfg.idMap?.get(rmNaArg.valueId);
-			if(RLogical.is(valueNode) && RLogical.isTrue(valueNode)) {
-				rmNa = true;
-			}
-		}
-	}
+	const rmNa = isRmNaFlagSet(args, info);
 
 	const allArgumentIntervals = args
 		.filter(arg => FunctionArgument.isNamed(arg) && arg.name !== 'na.rm' || FunctionArgument.isPositional(arg))
@@ -451,7 +456,7 @@ function intervalSumFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(ar
 	return allArgumentIntervals.reduce((acc, val) => intervalAddOp(acc, val), IntervalDomain.scalar(0));
 }
 
-function intervalMaxFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, dfg: DataflowGraph) {
+function intervalMaxFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo) {
 	if(args.length === 0) {
 		return IntervalDomain.scalar(Number.NEGATIVE_INFINITY, significantFigures);
 	}
@@ -459,17 +464,7 @@ function intervalMaxFn<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(ar
 		return IntervalDomain.bottom(significantFigures);
 	}
 
-	const rmNaArg: NamedFunctionArgument | undefined = args.find(arg => FunctionArgument.isNamed(arg) && arg.name === 'na.rm') as NamedFunctionArgument | undefined;
-	let rmNa = false;
-	if(isNotUndefined(rmNaArg)) {
-		if(isNotUndefined(rmNaArg.valueId)) {
-			// Resolve the value to "TRUE" or "FALSE"
-			const valueNode = dfg.idMap?.get(rmNaArg.valueId);
-			if(RLogical.is(valueNode) && RLogical.isTrue(valueNode)) {
-				rmNa = true;
-			}
-		}
-	}
+	const rmNa = isRmNaFlagSet(args, info);
 
 	const allArgumentIntervals = args
 		.filter(arg => FunctionArgument.isNamed(arg) && arg.name !== 'na.rm' || FunctionArgument.isPositional(arg))

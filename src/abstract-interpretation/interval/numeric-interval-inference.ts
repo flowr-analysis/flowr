@@ -12,6 +12,8 @@ import { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { getIntervalConditionSemantics } from './condition-semantics';
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
+import { VariableResolve } from '../../config';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 
 const numericInferenceLogger = log.getSubLogger({ name: 'numeric-interval-inference' });
 
@@ -64,7 +66,8 @@ export class NumericIntervalInferenceVisitor extends AbstractInterpretationVisit
 			return;
 		}
 
-		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, this.config.dfg);
+		const resolveInfo: ResolveInfo = { graph: this.config.dfg, idMap: this.config.dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: this.config.ctx };
+		const result = applyIntervalExpressionSemantics(call.name, call.args, this, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, resolveInfo);
 
 		if(isUndefined(result)) {
 			return;

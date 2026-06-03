@@ -16,6 +16,8 @@ import { getUpperBoundsConditionSemantics } from './upper-bounds/upper-bounds-co
 import type { AnyStateDomain } from '../domains/state-domain-like';
 import type { AnyAbstractDomain } from '../domains/abstract-domain';
 import { log } from '../../util/log';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
+import { VariableResolve } from '../../config';
 
 const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-inference' });
 
@@ -108,7 +110,8 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 			return;
 		}
 
-		const result = applyPentagonExpressionSemantics(call.id, call.name, call.args, this, this.currentState, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, this.config.dfg);
+		const resolveInfo: ResolveInfo = { graph: this.config.dfg, idMap: this.config.dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: this.config.ctx };
+		const result = applyPentagonExpressionSemantics(call.id, call.name, call.args, this, this.currentState, this.config.ctx.config.abstractInterpretation.numeric.significantFigures, resolveInfo);
 
 		if(isUndefined(result)) {
 			return;

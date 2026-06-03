@@ -1,4 +1,3 @@
-import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NumericPentagonInferenceVisitor } from './numeric-pentagon-inference';
@@ -15,6 +14,7 @@ import {
 } from '../interval/expression-semantics';
 import { UpperBoundsValueDomain } from './upper-bounds/upper-bounds-value-domain';
 import { log } from '../../util/log';
+import type { ResolveInfo } from '../../dataflow/eval/resolve/alias-tracking';
 
 const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-inference' });
 
@@ -43,10 +43,10 @@ type NaryFnSemantics = (target: NodeId, args: readonly FunctionArgument[], visit
  * @param visitor - The pentagon inference visitor performing the analysis used to resolve nodes.
  * @param currentState - The current state in the inference process, to update the upper bounds of other nodes.
  * @param significantFigures - The number of significant figures used to create new intervals.
- * @param dfg - Is used to resolve constant values.
+ * @param info - Is used to resolve constant values.
  * @returns The resulting pentagon after applying the semantics.
  */
-export function applyPentagonExpressionSemantics(target: NodeId, functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined, dfg: DataflowGraph): ClosedPentagonValueDomain | undefined {
+export function applyPentagonExpressionSemantics(target: NodeId, functionIdentifier: Identifier, args: readonly FunctionArgument[], visitor: NumericPentagonInferenceVisitor, currentState: ClosedPentagonDomain, significantFigures: number | undefined, info: ResolveInfo): ClosedPentagonValueDomain | undefined {
 	const match = PentagonExpressionSemanticsMapper.find(([id]) => Identifier.matches(id, functionIdentifier));
 
 	if(isUndefined(match)) {
@@ -59,7 +59,7 @@ export function applyPentagonExpressionSemantics(target: NodeId, functionIdentif
 		} else {
 			const [_, semantics] = intervalMatch;
 
-			const interval = semantics(args, visitor, significantFigures, dfg);
+			const interval = semantics(args, visitor, significantFigures, info);
 
 			if(isUndefined(interval)) {
 				return undefined;

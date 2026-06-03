@@ -121,6 +121,7 @@ export const PROBLEMATIC_INPUTS = {
 		);
 	},
 	processSearchResult: async(elements, config, data) => {
+		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
 		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
@@ -142,11 +143,11 @@ export const PROBLEMATIC_INPUTS = {
 			const loc = SourceLocation.fromNode(element.node) ?? SourceLocation.invalid();
 
 			if(pipeSpec !== undefined) {
-				const vertex    = data.dataflow.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
+				const vertex    = df.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
 				const fileArgId = resolveFileArgId(vertex, pipeSpec.argIdx, pipeSpec.argName);
 				if(fileArgId !== undefined) {
 					const criterion = SlicingCriterion.fromId(fileArgId);
-					const all       = await data.analyzer.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
+					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
 					const r         = checkPipeInjection(nid, loc, name, sources);
 					if(r !== undefined) {

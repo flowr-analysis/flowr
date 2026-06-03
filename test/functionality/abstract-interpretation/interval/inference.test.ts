@@ -1331,7 +1331,7 @@ describe('Interval Inference', () => {
 		});
 	});
 
-	describe('Fixpoint iteration for loop with function call with unknown side effect', { fails: true }, () => {
+	describe('Fixpoint iteration for loop with function call with unknown side effect', () => {
 		// Problem 1: Fixpoint iteration is not applied or at least only for the part after the call with unknown side effect.
 		// Problem 2: onVariableDefinition asserts that a variable has not been assigned before if it is not present in the current state.
 		//            However, as the assigned variable might be set to top in the current state (being undefined), we have to check the trace instead.
@@ -1346,18 +1346,34 @@ describe('Interval Inference', () => {
 		//                      contain all changed information of the predecessors
 		// Fix for 2: Simply replace "this.currentState.get(vertex.id) === undefined" with "this.trace.get(vertex.id) === undefined"
 
-		// Iterates only one time over the loop as load() clears the trace (unknown sideeffect),
-		// so the old and new state are the same (empty) after the first iteration
-		// Therefore, underapproximates to [1, 1] in l.3 when it should overapproximate to Top
-		// (or be [1, 4] if load does not override x).
-		testIntervalDomain(`
-			x <- 0
-			while (x <= 3) {
-				x <- x + 1
-				load("test.rda")
-			}
-		`, {
-			'3@x': { domain: IntervalTests.interval(1, 4), matching: DomainMatchingType.Overapproximation },
+		describe('Remaining issues', { fails: true }, () => {
+			// Iterates only one time over the loop as load() clears the trace (unknown sideeffect),
+			// so the old and new state are the same (empty) after the first iteration
+			// Therefore, underapproximates to [1, 1] in l.3 when it should overapproximate to Top
+			// (or be [1, 4] if load does not override x).
+			testIntervalDomain(`
+				x <- 0
+				while (x <= 3) {
+					x <- x + 1
+					load("test.rda")
+				}
+			`, {
+				'3@x': { domain: IntervalTests.interval(1, 4), matching: DomainMatchingType.Overapproximation },
+			});
+
+			// Due to the paste call in the assign, flowr cannot resolve that x is reassigned to -1.
+			// The absint framework does not label assign nor paste as function with unknown side effect.
+			// Consequently, the framework ignores this assignment and infers [1, 4] for l.3 when it should be [0, 1]:
+			// 1 from the first iteration where x <- 0 + 1 and 0 from the following iterations where x <- -1 + 1.
+			testIntervalDomain(`
+				x <- 0
+				while (x <= 3) {
+					x <- x + 1
+					assign(paste("x"), -1)
+				}
+			`, {
+				'3@x': { domain: IntervalTests.interval(0, 1) },
+			});
 		});
 
 		// Iterates two times over the loop as the y <- 1 assignment introduces new information after the load(),
@@ -1378,20 +1394,6 @@ describe('Interval Inference', () => {
 			}
 		`, {
 			'3@x': { domain: IntervalTests.interval(1, 4), matching: DomainMatchingType.Overapproximation },
-		});
-
-		// Due to the paste call in the assign, flowr cannot resolve that x is reassigned to -1.
-		// The absint framework does not label assign nor paste as function with unknown side effect.
-		// Consequently, the framework ignores this assignment and infers [1, 4] for l.3 when it should be [0, 1]:
-		// 1 from the first iteration where x <- 0 + 1 and 0 from the following iterations where x <- -1 + 1.
-		testIntervalDomain(`
-			x <- 0
-			while (x <= 3) {
-				x <- x + 1
-				assign(paste("x"), -1)
-			}
-		`, {
-			'3@x': { domain: IntervalTests.interval(0, 1) },
 		});
 	});
 });

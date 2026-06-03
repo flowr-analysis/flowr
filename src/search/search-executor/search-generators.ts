@@ -87,7 +87,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 			if(!range) {
 				return false;
 			}
-			return column === undefined ? range[0] === line : SourceRange.containsPosition(range, line, column);
+			return column === undefined ? (range[0] <= line && line <= range[2]) : SourceRange.containsPosition(range, line, column);
 		});
 		if(innermostOnly && potentials.length > 1) {
 			potentials = potentials.filter(node => {

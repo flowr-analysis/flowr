@@ -184,7 +184,16 @@ export const SourceRange = {
 	 * Checks if a given position (line, column) is contained within the range.
 	 */
 	containsPosition(this: void, [sl, sc, el, ec]: SourceRange, line: number, column: number): boolean {
-		return sl <= line && line <= el && sc <= column && column <= ec;
+		if(line < sl || line > el) {
+			return false;
+		} else if(sl === el) {
+			return sc <= column && column <= ec;
+		} else if(line === sl) {
+			return column >= sc;
+		} else if(line === el) {
+			return column <= ec;
+		}
+		return true;
 	},
 	/**
 	 * Checks if the first range is a subset of the second range.

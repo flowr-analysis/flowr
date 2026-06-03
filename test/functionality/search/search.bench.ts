@@ -8,6 +8,7 @@ import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-sim
 import { ReadFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../../src/queries/catalog/dependencies-query/function-info/write-functions';
 import { functionFinderUtil } from '../../../src/linter/rules/function-finder-util';
+import { Mapper } from '../../../src/search/search-executor/search-mappers';
 
 describe('flowR search', withTreeSitter(parser => {
 	describe('simple', () => {
@@ -73,6 +74,20 @@ describe('flowR search', withTreeSitter(parser => {
 					}
 				}
 			}));
+			benchmarkSearch('local multiple', parser, 'f1 <- function() {}\nf2 <- function() {}\n f1(); f2()',
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       {
+						targets: {
+							node: {
+								info: {
+									id: 4
+								}
+							}
+						}
+					}
+				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
+			);
 		});
 
 		describe('complex', () => {

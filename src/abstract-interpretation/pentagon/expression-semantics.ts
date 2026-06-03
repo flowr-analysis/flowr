@@ -20,7 +20,7 @@ const numericInferenceLogger = log.getSubLogger({ name: 'numeric-pentagon-infere
 /**
  * Maps function/operator names to the semantic functions.
  */
-const PentagonExpressionSemanticsMapper = [
+export const PentagonExpressionSemanticsMapper = [
 	[Identifier.make('+'), unaryBinaryExprOpSemantics(pentagonUnaryIdentityOp, pentagonAddOp)],
 	[Identifier.make('-'), unaryBinaryExprOpSemantics(pentagonNegativeOp, pentagonSubtractOp)]
 ] as const satisfies readonly PentagonSemanticsMapperInfo[];

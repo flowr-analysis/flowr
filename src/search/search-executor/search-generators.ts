@@ -6,6 +6,7 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
+import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -57,7 +58,7 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 }
 
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
@@ -79,7 +80,39 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 		line = maxLines + line + 1;
 	}
 
-	if(line && column) {
+	if(fuzzy) {
+		guard(line, 'Fuzzy location matching requires line to be provided');
+		const lineNum = line;
+		const colNum = column;
+		potentials = potentials.filter(node => {
+			const range = node.info.fullRange ?? node.location;
+			if(!range) {
+				return false;
+			}
+			const posMatch = colNum ? SourceRange.containsPosition(range, lineNum, colNum) : range[0] === lineNum;
+			return posMatch;
+		});
+		if(innermostOnly && potentials.length > 1) {
+			potentials = potentials.filter(node => {
+				const range = node.info.fullRange ?? node.location;
+				if(!range) {
+					return true;
+				}
+				return !potentials.some(other => {
+					if(other === node) {
+						return false;
+					}
+					const otherRange = other.info.fullRange ?? other.location;
+					if(!otherRange) {
+						return false;
+					}
+					const thisIsParent = other.info.parent === node.info.id;
+					const thisIsStrictSuperset = SourceRange.isSubsetOf(otherRange, range) && (otherRange[0] !== range[0] || otherRange[1] !== range[1] || otherRange[2] !== range[2] || otherRange[3] !== range[3]);
+					return thisIsParent || thisIsStrictSuperset;
+				});
+			});
+		}
+	} else if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
 	} else if(line) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line);

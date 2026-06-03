@@ -65,6 +65,15 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 * ```
 	 */
 	readonly filePathRegex?: string;
+	/**
+	 * If true, match any node whose source range contains the given line/column (fuzzy position match).
+	 * Requires `line` to be provided.
+	 */
+	readonly fuzzy?:         boolean;
+	/**
+	 * If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s).
+	 */
+	readonly innermostOnly?: boolean;
 }
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */

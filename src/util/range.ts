@@ -175,6 +175,22 @@ export const SourceRange = {
 		}
 	},
 	/**
+	 * Checks if a given position (line, column) is contained within the range using lexicographic ordering.
+	 * This treats multi-line ranges correctly (unlike rectangular overlap checks).
+	 */
+	containsPosition(this: void, [sl, sc, el, ec]: SourceRange, line: number, column: number): boolean {
+		if(line < sl || line > el) {
+			return false;
+		}
+		if(line === sl && column < sc) {
+			return false;
+		}
+		if(line === el && column > ec) {
+			return false;
+		}
+		return true;
+	},
+	/**
 	 * Checks if the first range is a subset of the second range.
 	 */
 	isSubsetOf(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {

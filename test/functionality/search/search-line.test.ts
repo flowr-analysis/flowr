@@ -82,6 +82,43 @@ describe('flowR search', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Fuzzy loc', () => {
+		assertSearch('variable at interior column', parser, 'x <- abcd', (result) => result.length >= 1 && result.some(r => r.node.lexeme === 'abcd'),
+			Q.locFuzzy(1, 6),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9)
+		);
+		assertSearch('string literal interior', parser, 'x <- "hello"', (result) => result.some(r => r.node.lexeme === '"hello"'),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('backtick identifier', parser, 'x <- `my var`', (result) => result.some(r => r.node.lexeme === '`my var`'),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('position outside range', parser, 'x <- abcd', [],
+			Q.locFuzzy(1, 15)
+		);
+		assertSearch('comment position (no nodes)', parser, '# comment amazing\nx <- 1', [],
+			Q.locFuzzy(1, 3),
+			Q.locFuzzy(1, 5)
+		);
+		assertSearch('multiline: if expression envelopes variable (default returns all)', parser, 'if(x) { abcd }',
+			(result) => result.length >= 2, // at least if and abcd or other enveloping nodes
+			Q.locFuzzy(1, 11)
+		);
+		assertSearch('multiline: if expression with innermostOnly', parser, 'if(x) { abcd }', (result) => result.some(r => r.node.lexeme === 'abcd') && result.length === 1,
+			Q.locFuzzy(1, 11, true)
+		);
+		assertSearch('complex nesting with innermostOnly', parser, 'if(x) { y <- func(z) }', (result) => result.some(r => r.node.lexeme === 'z') && result.length === 1,
+			Q.locFuzzy(1, 19, true)
+		);
+	});
+
 	describe('From Query', () => {
 		assertSearch('call-context', parser, 'if(x) { print <- function() {} }\nprint()', [12], Q.fromQuery({
 			type:        'call-context',

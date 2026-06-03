@@ -14,7 +14,7 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import * as util from 'node:util';
+import { format } from 'node:util';
 
 /**
  * Asserts the result of a search or a set of searches (all of which should return the same result)!
@@ -100,7 +100,7 @@ export function benchmarkSearch(
 
 		describe.each([true, false])('optimize %s', optimize => {
 			for(const search of searches) {
-				bench(util.format('%s', search), async() => {
+				bench(format('%s', search), async() => {
 					await analyzer.runSearch(getFlowrSearch(search, optimize));
 				}, { throws: true });
 			}

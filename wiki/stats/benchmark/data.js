@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1780482340282,
+  "lastUpdate": 1780482345840,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -29518,6 +29518,123 @@ window.BENCHMARK_DATA = {
             "extra": "median: 32.17"
           }
         ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "6841e85851aef6f2bdf52ace5cecbfd208c61a17",
+          "message": "[release:patch] 2.10.7 Constants resolution without environment, envir and linter fixes, fuzzy loc",
+          "timestamp": "2026-06-03T11:58:46+02:00",
+          "tree_id": "4679ff0c92a459f3aee86f6dada08973a3c679fd",
+          "url": "https://github.com/flowr-analysis/flowr/commit/6841e85851aef6f2bdf52ace5cecbfd208c61a17"
+        },
+        "date": 1780482342813,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 13.79099181818182,
+            "range": "14.50589305894938",
+            "unit": "ms",
+            "extra": "median: 11.48ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 13.505613204545453,
+            "range": "18.0939142617409",
+            "unit": "ms",
+            "extra": "median: 10.12ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 45.646556363636364,
+            "range": "77.02957081737962",
+            "unit": "ms",
+            "extra": "median: 26.96ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 387.83955938636365,
+            "range": "957.9928972850906",
+            "unit": "ms",
+            "extra": "median: 123.17ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 4.389810863636363,
+            "range": "7.748880489623709",
+            "unit": "ms",
+            "extra": "median: 2.54ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.526135795454546,
+            "range": "4.253574440403091",
+            "unit": "ms",
+            "extra": "median: 1.48ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 0.4206819732709146,
+            "range": "0.5495811858387092",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.23870979578751703,
+            "range": "0.19491356150767633",
+            "unit": "ms",
+            "extra": "median: 0.12ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 0.6823190234519397,
+            "range": "0.7368826835562168",
+            "unit": "ms",
+            "extra": "median: 0.33ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 7728 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.7801660063880064,
+            "unit": "#",
+            "extra": "std: 0.1261285782699485"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.7575735855163274,
+            "unit": "#",
+            "extra": "std: 0.12942676908005035"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 106.1075106534091,
+            "range": "269.4620795089819",
+            "unit": "KiB",
+            "extra": "median: 31.56"
+          }
+        ]
       }
     ],
     "\"social-science\" Benchmark Suite (tree-sitter)": [
@@ -37492,6 +37609,123 @@ window.BENCHMARK_DATA = {
             "range": "94.74916553100262",
             "unit": "KiB",
             "extra": "median: 57.66"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "EagleoutIce",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "6841e85851aef6f2bdf52ace5cecbfd208c61a17",
+          "message": "[release:patch] 2.10.7 Constants resolution without environment, envir and linter fixes, fuzzy loc",
+          "timestamp": "2026-06-03T11:58:46+02:00",
+          "tree_id": "4679ff0c92a459f3aee86f6dada08973a3c679fd",
+          "url": "https://github.com/flowr-analysis/flowr/commit/6841e85851aef6f2bdf52ace5cecbfd208c61a17"
+        },
+        "date": 1780482345833,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 18.43566019594595,
+            "range": "8.984140939818579",
+            "unit": "ms",
+            "extra": "median: 17.39ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 20.576405972972974,
+            "range": "13.116598204336599",
+            "unit": "ms",
+            "extra": "median: 15.89ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 59.564683337837835,
+            "range": "45.66085551653878",
+            "unit": "ms",
+            "extra": "median: 47.59ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1335.3077817702704,
+            "range": "3572.71205567889",
+            "unit": "ms",
+            "extra": "median: 279.76ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.611757216216215,
+            "range": "6.2106700058446815",
+            "unit": "ms",
+            "extra": "median: 6.54ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 3.3365009324324326,
+            "range": "3.2368535853744267",
+            "unit": "ms",
+            "extra": "median: 1.96ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.1610582427818814,
+            "range": "4.798502546655589",
+            "unit": "ms",
+            "extra": "median: 0.44ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.24495800459816514,
+            "range": "0.15680948915227752",
+            "unit": "ms",
+            "extra": "median: 0.16ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 2.4157831046033684,
+            "range": "4.83155827349268",
+            "unit": "ms",
+            "extra": "median: 0.76ms"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 0,
+            "unit": "#",
+            "extra": "out of 19678 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8848118013043365,
+            "unit": "#",
+            "extra": "std: 0.09167665770288042"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8453490802293895,
+            "unit": "#",
+            "extra": "std: 0.13156690062169096"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 93.05203494510135,
+            "range": "93.31153271956221",
+            "unit": "KiB",
+            "extra": "median: 56.44"
           }
         ]
       }

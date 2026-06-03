@@ -532,8 +532,7 @@ export class DataflowGraph<
 			}
 			const oldIds = this.types.get(oldTag);
 			if(oldIds) {
-				const idx = oldIds.lastIndexOf(vid);
-				if(idx >= 0) {
+				for(let idx = oldIds.lastIndexOf(vid); idx >= 0; idx = oldIds.lastIndexOf(vid)) {
 					oldIds.splice(idx, 1);
 				}
 			}
@@ -558,8 +557,7 @@ export class DataflowGraph<
 		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
 		const prevIds = this.types.get(previousTag);
 		if(prevIds) {
-			const idx = prevIds.lastIndexOf(infoId);
-			if(idx >= 0) {
+			for(let idx = prevIds.lastIndexOf(infoId); idx >= 0; idx = prevIds.lastIndexOf(infoId)) {
 				prevIds.splice(idx, 1);
 			}
 		}

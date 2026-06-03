@@ -41,6 +41,7 @@
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
     "test:coverage": "npm run test -- --coverage",
     "test:full": "npm run test-full",
+    "test:bench": "vitest bench --config test/vitest.config.mts",
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
     "test:performance": "npm run performance-test --",

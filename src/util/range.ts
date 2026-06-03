@@ -175,26 +175,28 @@ export const SourceRange = {
 		}
 	},
 	/**
-	 * Checks if a given position (line, column) is contained within the range using lexicographic ordering.
-	 * This treats multi-line ranges correctly (unlike rectangular overlap checks).
+	 * Checks if two ranges are equal (i.e., they start and end at the same position).
+	 */
+	equals(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
+		return r1sl === r2sl && r1sc === r2sc && r1el === r2el && r1ec === r2ec;
+	},
+	/**
+	 * Checks if a given position (line, column) is contained within the range.
 	 */
 	containsPosition(this: void, [sl, sc, el, ec]: SourceRange, line: number, column: number): boolean {
-		if(line < sl || line > el) {
-			return false;
-		}
-		if(line === sl && column < sc) {
-			return false;
-		}
-		if(line === el && column > ec) {
-			return false;
-		}
-		return true;
+		return sl <= line && line <= el && sc <= column && column <= ec;
 	},
 	/**
 	 * Checks if the first range is a subset of the second range.
 	 */
 	isSubsetOf(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): boolean {
-		return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1sl === r2sl && r1ec <= r2ec);
+		return (r1sl > r2sl || r1sl === r2sl && r1sc >= r2sc) && (r1el < r2el || r1el === r2el && r1ec <= r2ec);
+	},
+	/**
+	 * Checks if the first range is a strict subset of the second range (i.e., it is a subset but not equal).
+	 */
+	isStrictSubsetOf(this: void, r1: SourceRange, r2: SourceRange): boolean {
+		return SourceRange.isSubsetOf(r1, r2) && !SourceRange.equals(r1, r2);
 	},
 	/**
 	 * Combines overlapping or subset ranges into a minimal set of ranges.

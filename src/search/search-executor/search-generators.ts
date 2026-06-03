@@ -82,33 +82,24 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(fuzzy) {
 		guard(line, 'Fuzzy location matching requires line to be provided');
-		const lineNum = line;
-		const colNum = column;
 		potentials = potentials.filter(node => {
-			const range = node.info.fullRange ?? node.location;
+			const range = SourceRange.fromNode(node);
 			if(!range) {
 				return false;
 			}
-			const posMatch = colNum ? SourceRange.containsPosition(range, lineNum, colNum) : range[0] === lineNum;
-			return posMatch;
+			return column === undefined ? range[0] === line : SourceRange.containsPosition(range, line, column);
 		});
 		if(innermostOnly && potentials.length > 1) {
 			potentials = potentials.filter(node => {
-				const range = node.info.fullRange ?? node.location;
-				if(!range) {
-					return true;
-				}
-				return !potentials.some(other => {
+				const range = SourceRange.fromNode(node);
+				return range && !potentials.some(other => {
 					if(other === node) {
 						return false;
+					} else if(other.info.parent === node.info.id) {
+						return true;
 					}
-					const otherRange = other.info.fullRange ?? other.location;
-					if(!otherRange) {
-						return false;
-					}
-					const thisIsParent = other.info.parent === node.info.id;
-					const thisIsStrictSuperset = SourceRange.isSubsetOf(otherRange, range) && (otherRange[0] !== range[0] || otherRange[1] !== range[1] || otherRange[2] !== range[2] || otherRange[3] !== range[3]);
-					return thisIsParent || thisIsStrictSuperset;
+					const otherRange = SourceRange.fromNode(other);
+					return otherRange && SourceRange.isStrictSubsetOf(otherRange, range);
 				});
 			});
 		}
@@ -160,7 +151,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = nodearr.find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return await enrichElement(e, elements, input, Enrichment.QueryData, { query });
-	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+	})));
 }
 
 async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {

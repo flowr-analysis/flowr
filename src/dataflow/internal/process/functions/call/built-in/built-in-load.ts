@@ -20,7 +20,7 @@ import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/proc
 import { expensiveTrace } from '../../../../../../util/log';
 import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
-import { pushLocalEnvironment } from '../../../../../environments/scoping';
+import { EdgeType } from '../../../../../graph/edge';
 
 /**
  * Processes a built-in 'load' function call.
@@ -73,6 +73,7 @@ export function processLoadCall<OtherInfo>(
 				for(const variable of variables) {
 					if(variable.name) {
 						const syntheticId = `${rootId}:loaded:${variable.name.replaceAll('.', '_')}`;
+						const isClosure = variable.type === 3;
 
 						data.completeAst.idMap.set(syntheticId, {
 							type:      RType.Symbol,
@@ -90,17 +91,34 @@ export function processLoadCall<OtherInfo>(
 							}
 						} as unknown as RSymbol<OtherInfo & ParentInformation>);
 
-						const isClosure = variable.type === 3;
-						const cleanEnv = isClosure ? pushLocalEnvironment(data.ctx.env.makeCleanEnv()) : envir;
-
 						if(isClosure) {
+							const fdefId = `${syntheticId}:fdef`;
+							const cleanEnv = data.ctx.env.makeCleanEnv();
+
+							data.completeAst.idMap.set(fdefId, {
+								type:       RType.FunctionDefinition,
+								parameters: [],
+								content:    variable.name,
+								lexeme:     variable.name,
+								location:   loadLocation,
+								namespace:  undefined,
+								info:       {
+									id:      fdefId,
+									parent:  syntheticId,
+									depth:   0,
+									index:   0,
+									role:    RoleInParent.ExpressionListChild,
+									nesting: 0
+								}
+							} as unknown as RSymbol<OtherInfo & ParentInformation>);
+
 							fn.information.graph.addVertex({
 								tag:         VertexType.FunctionDefinition,
-								id:          syntheticId,
+								id:          fdefId,
 								cds:         loadCds,
 								environment: cleanEnv,
 								subflow:     {
-									entryPoint:        syntheticId,
+									entryPoint:        fdefId,
 									graph:             new Set(),
 									out:               [],
 									in:                [],
@@ -111,6 +129,14 @@ export function processLoadCall<OtherInfo>(
 								exitPoints: [],
 								params:     {},
 							}, cleanEnv);
+
+							fn.information.graph.addVertex({
+								tag: VertexType.VariableDefinition,
+								id:  syntheticId,
+								cds: loadCds,
+							}, envir);
+
+							fn.information.graph.addEdge(syntheticId, fdefId, EdgeType.DefinedBy);
 						} else {
 							fn.information.graph.addVertex({
 								tag: VertexType.VariableDefinition,

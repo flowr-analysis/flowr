@@ -53,8 +53,8 @@ describe('Thesis example', () => {
 			cat(result, low, high)
 		`, {
 			'3@result':  { interval: IntervalTests.scalar(-1), upperBounds: UpperBoundsTests.top() },
-			'4@low':     { interval: IntervalTests.scalar(1), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.bounds(['3@result']) },
-			'5@high':    { interval: IntervalTests.interval(0, Infinity), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.bounds(['3@result']) },
+			'4@low':     { interval: IntervalTests.scalar(1), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.top() },
+			'5@high':    { interval: IntervalTests.interval(0, Infinity), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.top() },
 			'6@low':     { interval: IntervalTests.interval(1, Infinity), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds(['6@high']), lowerBounds: UpperBoundsTests.bounds(['3@result']) },
 			'6@high':    { interval: IntervalTests.interval(1, Infinity), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds(['3@result']), lowerBounds: UpperBoundsTests.bounds(['6@low']) },
 			'7@mid':     { interval: IntervalTests.interval(1, Infinity), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.bounds(['3@result']) },

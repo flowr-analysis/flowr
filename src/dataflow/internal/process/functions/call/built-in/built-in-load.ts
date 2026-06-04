@@ -161,7 +161,8 @@ export function processLoadCall<OtherInfo>(
 				return { ...fn.information, environment: envir };
 			}
 		}
-		fn.information.graph.markIdForUnknownSideEffects(rootId);
+		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		return fn.information;
 	}
 
 	return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load }).information;

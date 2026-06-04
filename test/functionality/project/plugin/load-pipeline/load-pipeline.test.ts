@@ -72,10 +72,7 @@ describe('rda-files', () => {
 				// -----------------------------------------------------------------------------------------------------
 
 				const shortcutParser = new RDAParser();
-				const result2 = timed(
-					`run ${i} - shortcut`,
-					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
-				);
+				const result2 = shortcutParser.parseRDA(new FlowrTextFile(file), true);
 
 				expect(result2).toBeDefined();
 
@@ -101,10 +98,7 @@ describe('rda-files', () => {
 				}
 
 				// const parser = new RDAParser();
-				// const result = await timed(
-				// `${file} - no shortcut`,
-				// () => parser.parseRDA(new FlowrTextFile(file))
-				// );
+				// const result = parser.parseRDA(new FlowrTextFile(file));
 				//
 				// expect(result).toBeDefined();
 				//
@@ -112,10 +106,7 @@ describe('rda-files', () => {
 				// -----------------------------------------------------------------------------------------------------
 
 				const shortcutParser = new RDAParser();
-				const result2 = timed(
-					`run ${file} - shortcut`,
-					() => shortcutParser.parseRDA(new FlowrTextFile(file), true)
-				);
+				const result2 = shortcutParser.parseRDA(new FlowrTextFile(file), true);
 
 				expect(result2).toBeDefined();
 
@@ -155,15 +146,6 @@ export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
 	}
 
 	return result;
-}
-
-function timed<T>(label: string, fn: () => T): T {
-	const t0 = performance.now();
-	const res = fn();
-	const t1 = performance.now();
-
-	console.log(`${label}: ${t1 - t0} ms`);
-	return res;
 }
 
 function expectNames(result: RObjectData[], vars: Map<string, string>) {

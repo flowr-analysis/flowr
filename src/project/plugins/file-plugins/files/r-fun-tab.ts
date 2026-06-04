@@ -893,7 +893,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('compilerVersion', 'do_compilerVersion',0, 11, 0, 'PP_FUNCALL', 'PREC_FN', 0),
 ];
 
-export const R_FunTabOffsets: Record<string, string | number> = {
+export const RFunTabOffsets: Record<string, string | number> = {
 	'if':                     0,
 	'while':                  0,
 	'for':                    0,

@@ -18,6 +18,7 @@ export const validStringSymbols = [
 		'é','è','ê',
 		'í', 'ì', 'î',
 	],
+	// eslint-disable-next-line no-useless-escape
 	[ '\n','\t','\v','\b','\r','\f','\a','\\','\'','\"', ' ' ],
 	[ '😀', '💩' ]
 ];

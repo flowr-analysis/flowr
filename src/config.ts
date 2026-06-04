@@ -117,7 +117,7 @@ export interface FlowrConfigOptions extends MergeableRecord {
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
-		quickStats:   boolean
+		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
 	}

@@ -313,7 +313,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.FunctionDefinition:
 				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Load:
-				return this.onLoadCall({call});
+				return this.onLoadCall({ call });
 			default:
 				assertUnreachable(origin);
 		}

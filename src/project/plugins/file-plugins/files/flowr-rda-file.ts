@@ -1,10 +1,10 @@
 import type { FileRole , FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'node:fs';
-// @ts-ignores
+// @ts-expect-error no type information provided for package bzip2
 import * as bzip2 from 'bzip2';
 import * as zlib from 'node:zlib';
-import { R_FunTabOffsets } from './r-fun-tab';
+import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 import { decompress } from 'lzma1';
 
@@ -935,8 +935,8 @@ export class RDAParser{
 								throw new Error('invalid length');
 							}
 							const name = this.inString(len);
-							const index = R_FunTabOffsets[name] as number;
-							if(name in R_FunTabOffsets) {
+							const index = RFunTabOffsets[name] as number;
+							if(name in RFunTabOffsets) {
 								s = this.mkPrimSxp(index, SexpType.BuiltInSxp);
 							} else {
 								s.value = RValues.NilValue;
@@ -1547,15 +1547,11 @@ export class RDAParser{
 		w.type = SexpType.WeakRefSxp;
 
 		if(!key){ //|| key !== RValues.NilValue
-			// 	SET_WEAKREF_KEY(w, key);
 			w.key = key;
-			// 	SET_WEAKREF_VALUE(w, val);
 			w.value = val;
-			// 	SET_WEAKREF_FINALIZER(w, fin);
 			w.finalizer = fin;
-			// 	SET_WEAKREF_NEXT(w, RWeakRefs);
 			w.next = this.RWeakRefs;
-			// 	CLEAR_READY_TO_FINALIZE(w);
+			// CLEAR_READY_TO_FINALIZE(w);
 			if(w.gp) {
 				w.gp &= ~1;
 			}
@@ -1590,7 +1586,7 @@ export class RDAParser{
 		let primCache: RObject = RValues.NilValue;
 		let funTabSize = 0;
 		if(!primCache || primCache === RValues.NilValue){
-			funTabSize = Object.keys(R_FunTabOffsets).length;
+			funTabSize = Object.keys(RFunTabOffsets).length;
 
 			primCache = {};
 			primCache.type = SexpType.VecSxp;
@@ -1623,7 +1619,6 @@ export class RDAParser{
 	 * @param levs - GP levels bits from the `CharSxp` flags word.
 	 * @returns The decoded string, or `''` when the encoding is not yet handled.
 	 * TODO: Implement UTF-8 etc..
-	 *
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/serialize.c#L1689-L1759 | R source: ReadChar}
 	 */
 	readChar(len: number, levs: number): string{
@@ -1969,12 +1964,12 @@ export class RDAParser{
 	 * @throws Error if `x` is not a {@link SexpType.StrSxp} or `i` is out of bounds.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L4283-L4301 | R source: SET_STRING_ELT}
 	 */
-	SET_STRING_ELT(x: RObjectData, i: number, v: RObjectData): void {
+	SET_STRING_ELT(x: RObjectData, i: number, _v: RObjectData): void {
 		if(x.type !== SexpType.StrSxp) {
 			throw new Error(`SET_STRING_ELT() can only be applied to a 'character vector', not a '${x.type}'`);
 		}
 		// if(v.type !== SexpType.CharSxp) {
-		// 	throw new Error(`Value of SET_STRING_ELT() must be a 'CHARSXP' not a '${v.type}'`);
+		// throw new Error(`Value of SET_STRING_ELT() must be a 'CHARSXP' not a '${v.type}'`);
 		// }
 
 		const arr = x.value as [];
@@ -1984,7 +1979,7 @@ export class RDAParser{
 		}
 
 		// if(x.altRep){
-		// 	this.ALTSTRING_SET_ELT(x, i, v);
+		// this.ALTSTRING_SET_ELT(x, i, v);
 		// }
 
 		// arr[i] = v.name;
@@ -2081,7 +2076,6 @@ export class RDAParser{
 	/**
 	 * Registers a bytecode object after encoding.
 	 * TODO: implement
-	 *
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8820-L8885 | R source: R_registerBC}
 	 */
 	R_registerBC(_bytes: RObject, _s: RObject) {
@@ -2112,7 +2106,6 @@ export class RDAParser{
 	 * Encodes bytecode instructions.
 	 * @param _bytes - integer array
 	 * TODO: implement
-	 *
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/eval.c#L8723-L8771 | R source: R_bcEncode}
 	 */
 	_R_bcEncode(_bytes: Int32Array){
@@ -2366,7 +2359,7 @@ export class RDAParser{
 		//
 		// const rtype = ALTREP_CLASS_BASE_TYPE(clss);
 		// if(type !== rtype) {
-		// 	console.warn(`serialized class '${(cSym as RObjectData).name}' from package
+		// console.warn(`serialized class '${(cSym as RObjectData).name}' from package
 		// '${(pSym as RObjectData).name}' has type ${SexpType[type]} registered class has type ${SexpType[rtype]}`);
 		// }
 		//
@@ -2457,10 +2450,10 @@ export class RDAParser{
 		if(s.hashTab !== RValues.NilValue) {
 			const table = s.hashTab as RObjectData;
 			const size = (table.value as RObject[]).length;
-			let count = 0;
+			let _count = 0;
 			for(let i= 0; i < size; i++) {
 				if(this.VECTOR_ELT(table, i) !== RValues.NilValue) {
-					count++;
+					_count++;
 				}
 			}
 			// SET_HASHPRI(table, count);

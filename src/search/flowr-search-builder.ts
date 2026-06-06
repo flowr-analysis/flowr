@@ -63,7 +63,10 @@ export const FlowrSearchGenerator = {
 	syntax(source: TreeSitter.Query | string, ...captures: readonly string[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
-	all,
+	/**
+	 * Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).
+	 */
+	all: all,
 	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
 	 * You may pass a negative line number to count from the back.

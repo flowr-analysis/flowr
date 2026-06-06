@@ -53,7 +53,7 @@ also allow you to pass in a regex to only match files that fit your specified pa
 We offer the following generators:
 
 ${
-	Object.keys(Q).sort((a, b) => a.localeCompare(b)).map(
+	Object.keys(Q).filter(n => n !== 'name').sort((a, b) => a.localeCompare(b)).map(
 		key => `- ${ctx.linkO(FlowrSearchGenerator, key as never)}\\\n${ctx.docO(FlowrSearchGenerator, key as never)}`
 	).join('\n')
 }
@@ -63,8 +63,8 @@ Likewise, we have a palette of _transformers_ and _modifiers_:
 ${
 	/* let's iterate over all methods of FlowrSearchBuilder */
 	Object.getOwnPropertyNames(Object.getPrototypeOf(new FlowrSearchBuilder(undefined as unknown as FlowrSearchGeneratorNode)))
-		.filter(n => n !== 'constructor').sort().map(
-			key => `- ${ctx.link(`FlowrSearchBuilder::${key}`)}\\\n${ctx.doc(`FlowrSearchBuilder::${key}`)}`
+		.filter(n => n !== 'constructor' && n !== 'name').sort().map(
+			key => `- ${ctx.linkM(FlowrSearchBuilder, key as never)}\\\n${ctx.docM(FlowrSearchBuilder, key as never)}`
 		).join('\n')
 }
 

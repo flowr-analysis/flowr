@@ -2,16 +2,12 @@ import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../dataflow/environments/identifier';
-import type {
-	AbstractValue,
-	AnyAbstractDomain
-} from '../abstract-interpretation/domains/abstract-domain';
+import type { AbstractValue, AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import { VariableResolve } from '../config';
-import type {
-	FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
-import { getFunctionArgument
-	, getArgumentValue
-	,
+import type { FunctionParameterLocation } from '../abstract-interpretation/data-frame/mappers/arguments';
+import {
+	getArgumentValue,
+	getFunctionArgument,
 	getFunctionArguments
 } from '../abstract-interpretation/data-frame/mappers/arguments';
 import type { DataflowGraph } from '../dataflow/graph/graph';
@@ -46,7 +42,13 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	}
 
 	const functionName = Identifier.getName(node.functionName.content);
-	const mapping = mapper.find(m => Identifier.matches(m.identifier, functionName));
+	const mapping = mapper.find(m => {
+		if(Identifier.is(m.identifier)) {
+			return Identifier.matches(m.identifier, functionName);
+		} else {
+			return m.identifier.find(s => Identifier.matches(s, functionName));
+		}
+	});
 
 	if(mapping?.taint) {
 		return { taint: mapping.taint };
@@ -75,7 +77,7 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
 
 export type TaintMapping<Domain extends AnyAbstractDomain> = {
-	identifier: Identifier;
+	identifier: Identifier | Identifier[];
 } & (
 	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }
 	| { taint?: AbstractValue<Domain>; condition: TaintCondition<Domain> }

@@ -54,14 +54,19 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 */
 	readonly id?:            NodeId;
 	/**
-	 * The node must stem form a file with the given path matching the regex
+	 * The node must stem from a file with the given path matching the regex.
+	 * Inline code (code without a file path) is treated as having an empty path `""`.
 	 * Please note that you can address the full path!
 	 * @example
 	 * ```ts
 	 * // matches all files in any 'tests' folder
-	 * filePath: '.*\\tests\\.*'
+	 * filePathRegex: '.*\\tests\\.*'
 	 * // matches all files named 'myfile.R' in any folder
-	 * filePath: '.*\\/myfile\\.R$'
+	 * filePathRegex: '.*\\/myfile\\.R$'
+	 * // matches only inline code
+	 * filePathRegex: '^$'
+	 * // matches inline code or .R files
+	 * filePathRegex: '^$|.*\\.R$'
 	 * ```
 	 */
 	readonly filePathRegex?: string;

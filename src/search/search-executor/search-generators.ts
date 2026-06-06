@@ -66,7 +66,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 	);
 	if(filePathRegex) {
 		const filePathFilter = new RegExp(filePathRegex);
-		potentials = potentials.filter(({ info }: RNodeWithParent) => info.file && filePathFilter.test(info.file));
+		potentials = potentials.filter(({ info }: RNodeWithParent) => filePathFilter.test(info.file ?? ''));
 	}
 
 	if(line && line < 0) {

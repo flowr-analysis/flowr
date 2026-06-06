@@ -80,7 +80,7 @@ export const FlowrFilters = {
 	[FlowrFilter.FilePathFilter]: ((e: FlowrSearchElement<ParentInformation>, args: FilePathFilterArgs) => {
 		const file = e.node.info.file;
 		if(file === undefined) {
-			return false;
+			return true;
 		}
 		const rx = args.filePathRegex instanceof RegExp ? args.filePathRegex : new RegExp(args.filePathRegex);
 		return rx.test(file);

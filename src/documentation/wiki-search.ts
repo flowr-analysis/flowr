@@ -1,6 +1,6 @@
 import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { showSearch } from './doc-util/doc-search';
-import { FlowrSearchBuilder, Q } from '../search/flowr-search-builder';
+import { FlowrSearchBuilder, FlowrSearchGenerator, Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import type { FlowrSearchGeneratorNode } from '../search/search-executor/search-generators';
 import { runSearch } from '../search/flowr-search-executor';
@@ -39,11 +39,22 @@ and can be further refined with _transformers_ or _modifiers_.
 Such queries can be constructed starting from the ${ctx.link('Q')} object (backed by ${ctx.link('FlowrSearchGenerator')}) and
 are fully serializable so you can use them when communicating with the [Query API](${FlowrWikiBaseRef}/Query%20API).
 
+## File Path Filtering
+
+Many convenience functions and the \`get\` generator support filtering by file path using the \`filePathRegex\` parameter.
+This is useful when you want to search for nodes only in specific files.
+Additionally, inline code (code without a file path) is treated as having an empty path \`""\` for regex matching purposes.
+
+The ${ctx.link(FlowrSearchGenerator)} provides several convenience functions for searching variables with file path filtering.
+${ctx.linkO(FlowrSearchGenerator, 'var')} and other functions like ${ctx.linkO(FlowrSearchGenerator, 'get')}
+also allow you to pass in a regex to only match files that fit your specified pattern! 
+
+
 We offer the following generators:
 
 ${
-	Object.keys(Q).sort().map(
-		key => `- ${ctx.link(`FlowrSearchGenerator::${key}`)}\\\n${ctx.doc(`FlowrSearchGenerator::${key}`)}`
+	Object.keys(Q).sort((a, b) => a.localeCompare(b)).map(
+		key => `- ${ctx.linkO(FlowrSearchGenerator, key as never)}\\\n${ctx.docO(FlowrSearchGenerator, key as never)}`
 	).join('\n')
 }
 

@@ -30,7 +30,12 @@ export enum FlowrFilter {
 	 * Only returns search elements whose {@link FunctionOriginInformation} match a given pattern or value.
 	 * This filter accepts {@link OriginKindArgs}, which includes the {@link DataflowGraphVertexFunctionCall.origin} to match for, whether to match for every or some origins, and whether to include non-function-calls in the filtered query.
 	 */
-	OriginKind = 'origin-kind'
+	OriginKind = 'origin-kind',
+	/**
+	 * Only returns search elements whose file path matches the given regular expression.
+	 * This filter accepts {@link FilePathFilterArgs}, which includes the file path regex to test against.
+	 */
+	FilePathFilter = 'file-path-filter'
 }
 export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
@@ -71,7 +76,15 @@ export const FlowrFilters = {
 			(origin: string) => (args.origin as RegExp).test(origin);
 		const origins = Array.isArray(dfgNode.origin) ? dfgNode.origin : [dfgNode.origin];
 		return args.matchType === 'every' ? origins.every(match) : origins.some(match);
-	}) satisfies FlowrFilterFunction<OriginKindArgs>
+	}) satisfies FlowrFilterFunction<OriginKindArgs>,
+	[FlowrFilter.FilePathFilter]: ((e: FlowrSearchElement<ParentInformation>, args: FilePathFilterArgs) => {
+		const file = e.node.info.file;
+		if(file === undefined) {
+			return false;
+		}
+		const rx = args.filePathRegex instanceof RegExp ? args.filePathRegex : new RegExp(args.filePathRegex);
+		return rx.test(file);
+	}) satisfies FlowrFilterFunction<FilePathFilterArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
@@ -83,6 +96,9 @@ export interface OriginKindArgs {
 	origin:                BuiltInProcName | RegExp;
 	matchType?:            'some' | 'every';
 	keepNonFunctionCalls?: boolean
+}
+export interface FilePathFilterArgs {
+	filePathRegex: string | RegExp
 }
 
 /**

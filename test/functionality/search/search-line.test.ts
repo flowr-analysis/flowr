@@ -80,6 +80,32 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
 		});
+		describe('file path', () => {
+			assertSearch('filter by file path with RegExp', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => result.length > 0 && result.every(r => r.node.info.file?.endsWith('a.R')),
+				Q.all().filter({ name: FlowrFilter.FilePathFilter, args: { filePathRegex: /a\.R$/ } })
+			);
+			assertSearch('excludes non-matching file paths', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => !result.some(r => r.node.info.file?.endsWith('b.R')),
+				Q.all('a\\.R$')
+			);
+			assertSearch('non-matching file path returns empty', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				[],
+				Q.all('nonexistent\\.R$')
+			);
+		});
 	});
 
 	describe('Fuzzy loc', () => {

@@ -105,6 +105,11 @@ describe('flowR search', withTreeSitter(parser => {
 				[],
 				Q.all('nonexistent\\.R$')
 			);
+			assertSearch('inline code matches empty file path regex', parser,
+				'x <- 1',
+				(result) => result.length > 0,
+				Q.all('^$')
+			);
 		});
 	});
 

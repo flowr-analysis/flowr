@@ -79,11 +79,8 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<OriginKindArgs>,
 	[FlowrFilter.FilePathFilter]: ((e: FlowrSearchElement<ParentInformation>, args: FilePathFilterArgs) => {
 		const file = e.node.info.file;
-		if(file === undefined) {
-			return true;
-		}
 		const rx = args.filePathRegex instanceof RegExp ? args.filePathRegex : new RegExp(args.filePathRegex);
-		return rx.test(file);
+		return rx.test(file ?? '');
 	}) satisfies FlowrFilterFunction<FilePathFilterArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;

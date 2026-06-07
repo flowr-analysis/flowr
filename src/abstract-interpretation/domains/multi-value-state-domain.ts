@@ -1,12 +1,12 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom } from './lattice';
-import { type AbstractProduct, PartialProductDomain } from './partial-product-domain';
+import { type AbstractProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
 
 /**
  * A reduction function for abstract values of a product domain.
  */
-export type Reduction<Product extends AbstractProduct> = (value: Product) => Product;
+export type Reduction<Product extends AbstractProduct> = ProductReduction<Product>;
 
 /**
  * A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
@@ -54,11 +54,8 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 export class MultiValueDomain<Product extends AbstractProduct>
 	extends PartialProductDomain<Product> {
 
-	public readonly reductions: readonly Reduction<Product>[];
-
 	constructor(value: Product, domain: Required<Product>, reductions: readonly Reduction<Product>[] = []) {
-		super(value, domain);
-		this.reductions = reductions;
+		super(value, domain, reductions);
 	}
 
 	public create(value: Product): this;
@@ -68,9 +65,5 @@ export class MultiValueDomain<Product extends AbstractProduct>
 
 	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly Reduction<Product>[] = []): MultiValueDomain<Product> {
 		return new MultiValueDomain({} as Product, domain, reductions);
-	}
-
-	protected reduce(value: Product): Product {
-		return this.reductions.reduce((current, reduction) => reduction(current), value);
 	}
 }

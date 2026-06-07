@@ -2,8 +2,8 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { TaintMapper } from '../function-mapper';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
-import type { TaintReduction } from '../taint-product-domain';
-import type { TaintComponent } from '../composite-taint-visitor';
+import type { Reduction } from '../../abstract-interpretation/domains/multi-value-state-domain';
+import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
 import { CompositeTaintInferenceVisitor } from '../composite-taint-visitor';
 import { TaintInferenceVisitor } from '../taint-visitor';
 import { guard } from '../../util/assert';
@@ -34,7 +34,7 @@ export interface ComposeOptions {
 	 * Optional reductions turning the direct product into a reduced product.
 	 * Each reduction may refine the inferred taints of the component analyses based on each other.
 	 */
-	reductions?: readonly TaintReduction[];
+	reductions?: readonly Reduction<TaintProduct>[];
 	/** The optional message reported when the composite analysis produces a finding. */
 	report?:     string;
 }
@@ -104,7 +104,7 @@ implements RunnableTaintAnalysisDefinition<Name> {
 export class CompositeTaintAnalysisDefinition<Name extends string> implements RunnableTaintAnalysisDefinition<Name> {
 	public readonly name:        Name;
 	public readonly definitions: readonly TaintAnalysisDefinition<string>[];
-	public readonly reductions:  readonly TaintReduction[];
+	public readonly reductions:  readonly Reduction<TaintProduct>[];
 
 	public msg: string | undefined;
 

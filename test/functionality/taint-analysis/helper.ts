@@ -9,7 +9,8 @@ import type {
 } from '../../../src/taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
 import type { CompositeTaintAnalysisDefinition, TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
-import type { TaintProductDomain } from '../../../src/taint-analysis/taint-product-domain';
+import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
+import type { MultiValueDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
 
@@ -98,7 +99,7 @@ export async function testCompositeTaintAnalysis(
 	guard(result, 'Expected composite taint analysis results are missing');
 
 	for(const [criterion, expectedComponents] of Record.entries(expectation)) {
-		const product = getInferredValueForCriterion(result.visitor, criterion) as TaintProductDomain | undefined;
+		const product = getInferredValueForCriterion(result.visitor, criterion) as MultiValueDomain<TaintProduct> | undefined;
 
 		for(const [name, expectedValue] of Record.entries(expectedComponents)) {
 			const actualValue = product?.value[name]?.value;

@@ -4,9 +4,15 @@ import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
 import type { TaintMapper } from './function-mapper';
 import { mapFnCallToTaint, resolveTaint } from './function-mapper';
-import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
-import type { TaintProduct, TaintReduction } from './taint-product-domain';
-import { TaintProductDomain } from './taint-product-domain';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { AbstractProduct } from '../abstract-interpretation/domains/partial-product-domain';
+import { type MultiValueDomain, MultiValueStateDomain, type Reduction } from '../abstract-interpretation/domains/multi-value-state-domain';
+
+/**
+ * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
+ * Each property of the product holds the inferred taint of the respective component analysis.
+ */
+export type TaintProduct = AbstractProduct;
 
 /**
  * A single component of a composite taint analysis, i.e. one of the combined taint analyses.
@@ -28,26 +34,25 @@ export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDo
  *
  * In contrast to the single-domain {@link TaintInferenceVisitor}, this visitor evaluates multiple component taint
  * analyses simultaneously during a single control-flow traversal and combines their taints into a product of the
- * lattice values per each CFG node. The product is stored in a {@link StateAbstractDomain} of a
- * {@link TaintProductDomain}, so joins at CFG merge points (as well as widening, meet, and narrowing) are performed
- * component-wise. Optional reductions turn the otherwise direct product into a reduced product, allowing the
- * component analyses to refine each other.
+ * lattice values per each CFG node. The product is stored in a {@link MultiValueStateDomain}, so joins at CFG merge
+ * points (as well as widening, meet, and narrowing) are performed component-wise. Optional reductions turn the
+ * otherwise direct product into a reduced product, allowing the component analyses to refine each other.
  *
  * Please prefer using {@link TaintAnalysisDefinition.compose} together with the {@link FlowrAnalyzer.taint} method to
  * create a composite taint analysis.
  */
-export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<TaintProductDomain>> {
+export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisitor<MultiValueStateDomain<TaintProduct>> {
 	private readonly components: readonly TaintComponent[];
 
 	constructor(
 		components: readonly TaintComponent[],
-		reductions: readonly TaintReduction[],
+		reductions: readonly Reduction<TaintProduct>[],
 		visitorConfig: AbsintVisitorConfiguration
 	) {
 		const template = Object.fromEntries(components.map(component => [component.name, component.domain])) as Required<TaintProduct>;
 		super(
 			{ ...visitorConfig, ignoreUnsupportedFunctions: false },
-			StateAbstractDomain.top(TaintProductDomain.top(template, reductions))
+			new MultiValueStateDomain<TaintProduct>(new Map<NodeId, MultiValueDomain<TaintProduct>>(), template, reductions)
 		);
 		this.components = components;
 	}

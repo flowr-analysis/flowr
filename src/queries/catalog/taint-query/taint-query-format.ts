@@ -4,7 +4,9 @@ import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeTaintQuery } from './taint-query-executor';
-import type { AnyPredefinedAnalysisName } from '../../../taint-analysis/predefined/predefined';
+import type {
+	AnyPredefinedTaintAnalysisName
+} from '../../../taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
 import type { AnyAbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
@@ -14,14 +16,18 @@ import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { StateDomainLift } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
+import type {
+	TaintAnalysisDefinition } from '../../../taint-analysis/builder/taint-analysis-definition';
+
+
 
 export interface TaintQuery extends BaseQueryFormat {
 	readonly type: 'taint';
-	readonly defs: AnyPredefinedAnalysisName[]
+	readonly defs: AnyPredefinedTaintAnalysisName[]
 }
 
-export interface TaintQueryResult extends BaseQueryResult {
-	readonly results: Map<string, TaintInferenceResult>
+export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
+	readonly results: Map<Analyses[number], TaintInferenceResult<TaintAnalysisDefinition<Analyses[number]>>>
 }
 
 const prefix = 'definitions:';
@@ -57,21 +63,21 @@ function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _
 	return { completions: [] };
 }
 
-function defsInInput(defsPart: readonly string[]): { valid: (AnyPredefinedAnalysisName)[], invalid: string[] } {
+function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAnalysisName[], invalid: string[] } {
 	return defsPart
 		.reduce((acc, name) => {
 			name = name.trim();
 			if(name in predefinedTaintAnalyses) {
-				acc.valid.push(name as AnyPredefinedAnalysisName);
+				acc.valid.push(name as AnyPredefinedTaintAnalysisName);
 			} else {
 				acc.invalid.push(name);
 			}
 			return acc;
-		}, { valid: [] as (AnyPredefinedAnalysisName)[], invalid: [] as string[] });
+		}, { valid: [] as (AnyPredefinedTaintAnalysisName)[], invalid: [] as string[] });
 }
 
 function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
-	let defs: AnyPredefinedAnalysisName[] = [];
+	let defs: AnyPredefinedTaintAnalysisName[] = [];
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(prefix)) {
 		const defsPart = line[0].slice(prefix.length).split(',');
@@ -108,9 +114,8 @@ export const TaintQueryDefinition = {
 				return true;
 			}
 
-			resultStrings.push(...lift.entries().take(20).map(([key, domain]) => {
-				return `      ╰ ${key}: ${domain?.toString()}`;
-			}));
+			resultStrings.push(...lift.entries().take(20)
+				.map(([key, domain]) => `      ╰ ${key}: ${domain?.toString()}`));
 
 			if(resultStrings.length > 20) {
 				resultStrings.push('      ╰ ... (see JSON)');

@@ -4,9 +4,10 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { Record } from '../../../src/util/record';
 import { getInferredValueForCriterion } from '../abstract-interpretation/inference';
 import { guard } from '../../../src/util/assert';
-import type { AnyPredefinedAnalysisName } from '../../../src/taint-analysis/predefined/predefined';
+import type {
+	AnyPredefinedTaintAnalysisName
+} from '../../../src/taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
-import type { AnyTaintAnalysis } from '../../../src/taint-analysis/builder/taint-analysis';
 import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
@@ -27,7 +28,7 @@ export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDef
  * @param name - Taint analysis name
  * @param expectation - Expected taints
  */
-export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefinedAnalysisName, expectation: TaintAnalysisExpectation) {
+export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefinedTaintAnalysisName, expectation: TaintAnalysisExpectation) {
 	await testTaintAnalysis(code, predefinedTaintAnalyses[name], expectation);
 }
 
@@ -42,7 +43,7 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 		.build();
 
 	analyzer.addRequest(code.trim());
-	const analysis = analyzer.taint() as unknown as AnyTaintAnalysis;
+	const analysis = analyzer.taint<string[]>();
 
 	for(const [_name, def, _expectation] of analyses) {
 		analysis.add(def);

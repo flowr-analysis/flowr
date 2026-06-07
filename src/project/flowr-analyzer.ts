@@ -141,7 +141,7 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	/**
 	 * Access the taint analysis API for the request.
 	 */
-	taint(): TaintAnalysis;
+	taint<Names extends readonly string[] = []>(): TaintAnalysis<Names>;
 	/**
 	 * Run a search on the current analysis.
 	 */
@@ -318,7 +318,7 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		return runSearch(search, this);
 	}
 
-	public taint(): TaintAnalysis {
+	public taint<Names extends readonly string[] = []>(): TaintAnalysis<Names> {
 		return new TaintAnalysis(this);
 	}
 

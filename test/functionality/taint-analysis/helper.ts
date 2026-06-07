@@ -8,9 +8,13 @@ import type {
 	AnyPredefinedTaintAnalysisName
 } from '../../../src/taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
-import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
+import type { CompositeTaintAnalysisDefinition, TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
+import type { TaintProductDomain } from '../../../src/taint-analysis/taint-product-domain';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
+
+/** Expectation for a composite taint analysis mapping each criterion to the expected taint per component analysis. */
+export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, symbol | undefined>>;
 
 /**
  * Helper function for conducting a singular taint analysis and asserting the expected taints.
@@ -66,6 +70,40 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 				assert.ok(actualDomain?.equals(expectedDomain),
 					`Expected inferred taint for criterion "${criterion}" to be ${expectedValue.toString()}, but got ${actualDomain?.toString()}`);
 			}
+		}
+	}
+}
+
+/**
+ * Helper function for conducting a composite taint analysis and asserting the expected per-component taints.
+ * @param code - The code to analyse
+ * @param composite - The composite taint analysis definition (created via {@link TaintAnalysisDefinition.compose})
+ * @param expectation - Expected taints per component analysis for each criterion
+ */
+export async function testCompositeTaintAnalysis(
+	code: string,
+	composite: CompositeTaintAnalysisDefinition<string>,
+	expectation: CompositeTaintExpectation
+) {
+	const analyzer = await new FlowrAnalyzerBuilder()
+		.setEngine('tree-sitter')
+		.build();
+
+	analyzer.addRequest(code.trim());
+	const analysis = analyzer.taint() as unknown as AnyTaintAnalysis;
+	analysis.addComposite(composite);
+
+	const results = await analysis.run();
+	const result = results.get(composite.name);
+	guard(result, 'Expected composite taint analysis results are missing');
+
+	for(const [criterion, expectedComponents] of Record.entries(expectation)) {
+		const product = getInferredValueForCriterion(result.visitor, criterion) as TaintProductDomain | undefined;
+
+		for(const [name, expectedValue] of Record.entries(expectedComponents)) {
+			const actualValue = product?.value[name]?.value;
+			assert.equal(actualValue, expectedValue,
+				`Expected inferred taint for criterion "${criterion}" of component "${name}" to be ${String(expectedValue?.toString())}, but got ${String(actualValue?.toString())}`);
 		}
 	}
 }

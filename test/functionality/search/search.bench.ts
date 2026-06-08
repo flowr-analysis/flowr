@@ -45,9 +45,6 @@ describe('flowR search', withTreeSitter(parser => {
 			benchmarkSearch('reachable always', parser, 'if(TRUE) 1 else 2', Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       {
-						isReachable: true
-					}
 				}
 			}));
 			benchmarkSearch('reachable never', parser, 'if(FALSE) 1 else 2', Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({

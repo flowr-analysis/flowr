@@ -15,6 +15,9 @@ import { SourceRange } from '../util/range';
 import { NumericPentagonInferenceVisitor } from './pentagon/numeric-pentagon-inference';
 import path from 'path';
 import type { AbsintVisitorConfiguration } from './absint-visitor';
+import { superBigJsonStringify } from '../util/json';
+import { UnsupportedFunctions } from './unsupported-functions';
+import type { LintingResultsSuccess } from '../linter/linter-format';
 
 if(process.argv.length < 4) {
 	console.error('Usage: ts-node src/abstract-interpretation/benchmarking.ts <file-to-analyze> <output-folder>');
@@ -28,15 +31,24 @@ interface FileMetadata {
 	intervalResultFileName:                 string;
 	pentagonResultFileName:                 string;
 	loc:                                    number;
+	cloc:                                   number;
+	numOfDfgNodes:                          number;
+	numOfCfgNodes:                          number;
 	numOfConstants:                         number;
 	numOfRNumberConstants:                  number;
 	RNumberConstantNodeIds:                 NodeId[];
+	numOfFunctionDefinitions:               number;
 	numOfFunctionCalls:                     number;
 	numOfSupportedExpressionFunctionCalls:  number;
 	SupportedExpressionFunctionCallNodeIds: NodeId[];
 	numOfSupportedConditionFunctionCalls:   number;
 	SupportedConditionFunctionCalls:        NodeId[];
 	numOfConditions:                        number;
+	numOfIfThenElse:                        number;
+	numOfWhile:                             number;
+	numOfStopIfNot:                         number;
+	numOfFnWithUnknownSideEffect:           number;
+	linterDeadCodeIds:                      NodeId[];
 	metadataGatheringInMs:                  number;
 	baselineInMs:                           number;
 	astInMs:                                number;
@@ -61,9 +73,9 @@ void async function() {
 	fs.mkdirSync(outputDirectory, { recursive: true });
 	const fileName = path.basename(filePath);
 	const fileNameWithoutEnding = path.parse(fileName).name;
-	const metadataOutputFile = fileNameWithoutEnding + '.csv';
-	const intervalResultFile = fileNameWithoutEnding + '-interval.csv';
-	const pentagonResultFile = fileNameWithoutEnding + '-pentagon.csv';
+	const metadataOutputFile = fileNameWithoutEnding + '.json';
+	const intervalResultFile = fileNameWithoutEnding + '-interval.json';
+	const pentagonResultFile = fileNameWithoutEnding + '-pentagon.json';
 
 	const baselineStart = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -111,10 +123,7 @@ void async function() {
 	// Dump Interval Results
 	const intervalPath = path.join(outputDirectory, intervalResultFile);
 	fs.rmSync(intervalPath, { recursive: true, force: true });
-	fs.writeFileSync(intervalPath, ['nodeId', 'inferredValue', 'significantFigures', 'sourceLocation'].join(',') + '\n');
-	for(const result of intervalResults) {
-		fs.appendFileSync(intervalPath, Object.values(result).map(value => '"' + value + '"').join(',') + '\n');
-	}
+	superBigJsonStringify(intervalResults, '\n', (msg) => fs.appendFileSync(intervalPath, msg));
 
 	// Run Pentagon Analysis
 	const pentagonVisitor = new NumericPentagonInferenceVisitor(visitorContext);
@@ -145,10 +154,7 @@ void async function() {
 	// Dump Pentagon Results
 	const pentagonPath = path.join(outputDirectory, pentagonResultFile);
 	fs.rmSync(pentagonPath, { recursive: true, force: true });
-	fs.writeFileSync(pentagonPath, ['nodeId', 'inferredValue', 'significantFigures', 'sourceLocation'].join(',') + '\n');
-	for(const result of pentagonResults) {
-		fs.appendFileSync(pentagonPath, Object.values(result).map(value => '"' + value + '"').join(',') + '\n');
-	}
+	superBigJsonStringify(pentagonResults, '\n', (msg) => fs.appendFileSync(pentagonPath, msg));
 
 	// Create File and Runtime Metadata
 	const metadataStart = performance.now();
@@ -163,11 +169,21 @@ void async function() {
 	const supportedConditionFunctionCalls = functionCalls.filter(([_, dfgCall]) =>
 		IntervalSemanticsMaper().find(([id]) => Identifier.matches(id, dfgCall.name)) !== undefined ||
 		UpperBoundsSemanticsMapper().find(([id]) => Identifier.matches(id, dfgCall.name)) !== undefined ||
-		['&&', '!', '||'].some(id => Identifier.matches(id, dfgCall.name))
+		['&&', '!', '||', '&', '|'].some(id => Identifier.matches(id, dfgCall.name))
 	);
 	const conditions = functionCalls.filter(([_, dfgCall]) =>
-		dfgCall.origin.includes(BuiltInProcName.IfThenElse) || dfgCall.origin.includes(BuiltInProcName.WhileLoop)
-	);//.map(([node, _]) => cfg.graph.ingoingEdges(node)?.keys().toArray()[0]);
+		dfgCall.origin.includes(BuiltInProcName.IfThenElse) || dfgCall.origin.includes(BuiltInProcName.WhileLoop) || dfgCall.origin.includes(BuiltInProcName.StopIfNot)
+	);
+	const functionsWithUnknownSideEffects = functionCalls.filter(([_, dfgCall]) => UnsupportedFunctions.isUnsupportedCall(dfgCall));
+
+	const deadCodeQueryResult = await analyzer.query([{
+		type:  'linter',
+		rules: ['dead-code']
+	}]);
+	const deadCodeResult = deadCodeQueryResult.linter.results['dead-code'] as LintingResultsSuccess<'dead-code'>;
+	const linterDeadNodes = deadCodeResult.results.reduce((acc: NodeId[], val) => acc.concat(val.involvedId ?? []), []);
+
+
 	const metadataEnd = performance.now();
 
 	const fileMetadata: FileMetadata = {
@@ -175,15 +191,24 @@ void async function() {
 		intervalResultFileName:                 intervalResultFile,
 		pentagonResultFileName:                 pentagonResultFile,
 		loc:                                    analyzer.inspectContext().files.getAllFiles()[0].content().toString().split('\n').length,
+		cloc:                                   analyzer.inspectContext().files.getAllFiles()[0].content().toString().split('\n').filter(line => line.trim() !== '' && !line.trimStart().startsWith('#')).length,
+		numOfDfgNodes:                          dfg.vertices(true).toArray().length,
+		numOfCfgNodes:                          cfg.graph.vertices(false).size,
 		numOfConstants:                         constants.length,
 		numOfRNumberConstants:                  numberConstants.length,
 		RNumberConstantNodeIds:                 numberConstants.map(([node]) => node),
+		numOfFunctionDefinitions:               dfg.verticesOfType(VertexType.FunctionDefinition).toArray().length,
 		numOfFunctionCalls:                     functionCalls.length,
 		numOfSupportedExpressionFunctionCalls:  supportedExpressionFunctionCalls.length,
 		SupportedExpressionFunctionCallNodeIds: supportedExpressionFunctionCalls.map(([node]) => node),
 		numOfSupportedConditionFunctionCalls:   supportedConditionFunctionCalls.length,
 		SupportedConditionFunctionCalls:        supportedConditionFunctionCalls.map(([node]) => node),
 		numOfConditions:                        conditions.length,
+		numOfIfThenElse:                        functionCalls.filter(([_, dfgCall]) => dfgCall.origin.includes(BuiltInProcName.IfThenElse)).length,
+		numOfWhile:                             functionCalls.filter(([_, dfgCall]) => dfgCall.origin.includes(BuiltInProcName.WhileLoop)).length,
+		numOfStopIfNot:                         functionCalls.filter(([_, dfgCall]) => dfgCall.origin.includes(BuiltInProcName.StopIfNot)).length,
+		numOfFnWithUnknownSideEffect:           functionsWithUnknownSideEffects.length,
+		linterDeadCodeIds:                      linterDeadNodes,
 		metadataGatheringInMs:                  metadataEnd - metadataStart,
 		baselineInMs:                           baselineEnd - baselineStart,
 		astInMs:                                dfgStart - astStart,
@@ -198,6 +223,5 @@ void async function() {
 	// Dump File and Runtime Metadata
 	const fileMetadataPath = path.join(outputDirectory, metadataOutputFile);
 	fs.rmSync(fileMetadataPath, { recursive: true, force: true });
-	fs.writeFileSync(fileMetadataPath, Object.keys(fileMetadata).join(',') + '\n' +
-		Object.values(fileMetadata).map(value => '"' + value + '"').join(',') + '\n');
+	fs.writeFileSync(fileMetadataPath, JSON.stringify(fileMetadata, null, 2));
 }();

@@ -38,6 +38,11 @@ export enum FlowrFilter {
 	 * This filter accepts an object containing a `roleInParent` argument of type {@link RoleInParent}.
 	 */
 	RoleInParent = 'role-in-parent',
+	/**
+	 * Only returns search elements whose file path matches the given regular expression.
+	 * This filter accepts {@link FilePathFilterArgs}, which includes the file path regex to test against.
+	 */
+	FilePathFilter = 'file-path-filter'
 }
 export type FlowrFilterFunction <T> = (e: FlowrSearchElement<ParentInformation>, args: T, data: { dataflow: DataflowInformation }) => boolean;
 
@@ -114,6 +119,11 @@ export const FlowrFilters = {
 	[FlowrFilter.RoleInParent]: ((e: FlowrSearchElement<ParentInformation>, { roleInParent }) => {
 		return e.node.info.role === roleInParent;
 	}) satisfies FlowrFilterFunction<{ roleInParent: RoleInParent }>,
+	[FlowrFilter.FilePathFilter]: ((e: FlowrSearchElement<ParentInformation>, args: FilePathFilterArgs) => {
+		const file = e.node.info.file;
+		const rx = args.filePathRegex instanceof RegExp ? args.filePathRegex : new RegExp(args.filePathRegex);
+		return rx.test(file ?? '');
+	}) satisfies FlowrFilterFunction<FilePathFilterArgs>
 } as const;
 export type FlowrFilterArgs<F extends FlowrFilter> = typeof FlowrFilters[F] extends FlowrFilterFunction<infer Args> ? Args : never;
 
@@ -132,6 +142,9 @@ export interface OriginKindArgs {
 	origin:                BuiltInProcName | RegExp;
 	matchType?:            'some' | 'every';
 	keepNonFunctionCalls?: boolean
+}
+export interface FilePathFilterArgs {
+	filePathRegex: string | RegExp
 }
 
 /**

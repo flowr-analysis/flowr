@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.6, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.7, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -51,9 +51,9 @@ It offers a wide variety of features, for example:
        ╰ Naming Convention (naming-convention):
            ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Network Functions (network-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dead Code (dead-code):
            ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
@@ -117,11 +117,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+    _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _2.4 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -342,7 +342,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.6, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.7, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -390,7 +390,7 @@ It offers a wide variety of features, for example:
          
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">104.7 ms</span></i> (as of May 29, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">98.6 ms</span></i> (as of Jun 3, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph#perspectives-cg).
 
@@ -426,7 +426,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.6, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.7, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -734,7 +734,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _2.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

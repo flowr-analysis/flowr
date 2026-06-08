@@ -15,15 +15,15 @@ import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import * as util from 'node:util';
+import type { RParseRequest } from '../../../src/r-bridge/retriever';
 
 /**
- * Asserts the result of a search or a set of searches (all of which should return the same result)!
- * The `expected` items may be slicing criteria, which will be converted to node ids, or a function to test the results.
+ * Implementation of assertSearch that works with both string code and parse requests
  */
 export function assertSearch(
 	name: string | TestLabel,
 	parser: KnownParser,
-	code: string,
+	codeOrRequests: string | readonly RParseRequest[],
 	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
@@ -39,7 +39,7 @@ export function assertSearch(
 				})
 				.setParser(parser)
 				.build();
-			analyzer.addRequest(code);
+			analyzer.addRequest(codeOrRequests);
 			dataflow = await analyzer.dataflow();
 			ast = await analyzer.normalize();
 		});

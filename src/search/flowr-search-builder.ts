@@ -19,13 +19,27 @@ import type TreeSitter from 'web-tree-sitter';
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
 	[FlowrSearchElement<ParentInformation>] : FlowrSearchElement<ParentInformation>[]>;
 
-
-const AllGeneratorObj = { type: 'generator', name: 'all', args: undefined } as const;
+/**
+ * Returns all elements (nodes/dataflow vertices) from the given data without any filters.
+ */
+function all(): FlowrSearchBuilder<'all'>;
+/**
+ * Returns all elements (nodes/dataflow vertices) that match the given file path regex.
+ * This internally uses {@link get} to filter by file path.
+ */
+function all(filePathRegex: string): FlowrSearchBuilder<'get'>;
+function all(filePathRegex?: string): FlowrSearchBuilder<'all'> | FlowrSearchBuilder<'get'> {
+	if(!filePathRegex) {
+		return new FlowrSearchBuilder({ type: 'generator', name: 'all', args: undefined });
+	}
+	return FlowrSearchGenerator.get({ filePathRegex });
+}
 /**
  * This object holds all the methods to generate search queries.
  * For compatibility, please use the {@link Q} identifier object to access these methods.
  */
 export const FlowrSearchGenerator = {
+	name: 'FlowrSearchGenerator',
 	/**
 	 * Initialize a search query with the given elements.
 	 * <b>This is not intended to serialize well</b> wrt. the nodes,
@@ -50,11 +64,9 @@ export const FlowrSearchGenerator = {
 		return new FlowrSearchBuilder({ type: 'generator', name: 'syntax', args: { source, captures } });
 	},
 	/**
-	 * Returns all elements (nodes/dataflow vertices) from the given data.
+	 * Returns all elements (nodes/dataflow vertices) from the given data without any (or with a filename filter).
 	 */
-	all(): FlowrSearchBuilder<'all'> {
-		return new FlowrSearchBuilder(AllGeneratorObj);
-	},
+	all: all,
 	/**
 	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
 	 * You may pass a negative line number to count from the back.
@@ -80,39 +92,50 @@ export const FlowrSearchGenerator = {
 	 * Short form of {@link get} with only the
 	 * {@link FlowrSearchGetFilters#line|line} and {@link FlowrSearchGetFilters#column|column} filters:
 	 * `get({line, column})`. Please use {@link FlowrSearchGenerator#locFuzzy|locFuzzy} for a fuzzy location search.
+	 * @param line - the line number to search in
+	 * @param column - the column number to search in
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	loc(line?: number, column?: number): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ line, column });
+	loc(line?: number, column?: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ line, column, filePathRegex });
 	},
 	/**
 	 * Fuzzy variant of {@link loc} that matches any node whose source range contains the given position.
 	 * @param line - the line number to search in (required for fuzzy matching)
 	 * @param column - the column number to search in
 	 * @param innermostOnly - if true, return only the deepest (innermost) matching nodes in the AST
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	locFuzzy(line: number, column: number, innermostOnly = false): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ line, column, fuzzy: true, innermostOnly });
+	locFuzzy(line: number, column?: number, innermostOnly?: boolean, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ line, column, fuzzy: true, innermostOnly: innermostOnly ?? false, filePathRegex });
 	},
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} and {@link FlowrSearchGetFilters#line|line} filters:
 	 * `get({name, line})`.
+	 * @param name - the variable name to search for
+	 * @param line - the line number to search in
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	varInLine(name: string, line: number): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ name, line });
+	varInLine(name: string, line: number, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ name, line, filePathRegex });
 	},
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#name|name} filter:
 	 * `get({name})`.
+	 * @param name - the variable name to search for
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	var(name: string): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ name });
+	var(name: string, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ name, filePathRegex });
 	},
 	/**
 	 * Short form of {@link get} with only the {@link FlowrSearchGetFilters#id|id} filter:
 	 * `get({id})`.
+	 * @param id - the node id to search for
+	 * @param filePathRegex - optional regex to filter by file path
 	 */
-	id(id: NodeId): FlowrSearchBuilder<'get'> {
-		return FlowrSearchGenerator.get({ id });
+	id(id: NodeId, filePathRegex?: string): FlowrSearchBuilder<'get'> {
+		return FlowrSearchGenerator.get({ id, filePathRegex });
 	}
 } as const;
 

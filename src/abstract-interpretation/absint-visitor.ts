@@ -273,7 +273,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
-		if(this.currentState.get(vertex.id) === undefined) {
+		if(this.trace.get(vertex.id) === undefined) {
 			this.unassigned.add(vertex.id);
 		}
 	}

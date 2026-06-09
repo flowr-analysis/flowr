@@ -19,11 +19,11 @@ describe('Thesis example', () => {
 			print(result)
 		`, {
 			'5@x':       { domain: IntervalTests.interval(-Infinity, Infinity) },
-			'5@a':       { domain: IntervalTests.interval(3.5, 4.5), matching: DomainMatchingType.Overapproximation },
-			'6@b':       { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), matching: DomainMatchingType.Overapproximation },
-			'9@result':  { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation },
-			'11@result': { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), matching: DomainMatchingType.Overapproximation },
-			'13@result': { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), matching: DomainMatchingType.Overapproximation }
+			'5@a':       { domain: IntervalTests.interval(3.5, 4.5) },
+			'6@b':       { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)) },
+			'9@result':  { domain: IntervalTests.bottom() },
+			'11@result': { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)) },
+			'13@result': { domain: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)) }
 		});
 	});
 

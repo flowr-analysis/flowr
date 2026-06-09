@@ -20,11 +20,11 @@ describe('Thesis example', () => {
 			print(result)
 		`, {
 			'5@x':       { interval: IntervalTests.interval(-Infinity, Infinity), upperBounds: UpperBoundsTests.top() },
-			'5@a':       { interval: IntervalTests.interval(3.5, 4.5), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.top() },
-			'6@b':       { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds(['5@a']) },
-			'9@result':  { interval: IntervalTests.bottom(), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds(['8@b']) },
-			'11@result': { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds(['8@a']) },
-			'13@result': { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), intervalMatching: DomainMatchingType.Overapproximation, upperBounds: UpperBoundsTests.bounds([], ['8@a', '8@b']) },
+			'5@a':       { interval: IntervalTests.interval(3.5, 4.5), upperBounds: UpperBoundsTests.top() },
+			'6@b':       { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), upperBounds: UpperBoundsTests.top() },
+			'9@result':  { interval: IntervalTests.bottom(), upperBounds: UpperBoundsTests.bounds(['8@b']) },
+			'11@result': { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), upperBounds: UpperBoundsTests.bounds(['8@a', '8@b']) },
+			'13@result': { interval: IntervalTests.interval(2 * Math.log(3.5), 2 * Math.log(4.5)), upperBounds: UpperBoundsTests.bounds(['8@a', '8@b']), lowerBounds: UpperBoundsTests.bounds(['8@b'], ['8@a']) },
 		});
 	});
 

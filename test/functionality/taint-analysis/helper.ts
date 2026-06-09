@@ -8,7 +8,8 @@ import type {
 	AnyPredefinedTaintAnalysisName
 } from '../../../src/taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
-import type { CompositeTaintAnalysisDefinition, TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
+import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
+import { CompositeTaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 import type { MultiValueDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
 
@@ -20,10 +21,13 @@ export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, 
 /**
  * Helper function for conducting a singular taint analysis and asserting the expected taints.
  * @param code - The code to analyse
- * @param analysis - Taint analysis definition
+ * @param analysis - Taint analysis definition (single or composite)
  * @param expectation - Expected taints
  */
-export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
+export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition<string> | CompositeTaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
+	if(analysis instanceof CompositeTaintAnalysisDefinition) {
+		throw new Error('testTaintAnalysis does not support composite analyses. Use testCompositeTaintAnalysis instead.');
+	}
 	await testTaintAnalyses(code, new Set([[analysis.name, analysis, expectation]]));
 }
 

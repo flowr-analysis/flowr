@@ -59,8 +59,7 @@ export const IntervalTests = {
 
 export enum DomainMatchingType {
 	Equal = 'equal',
-	Overapproximation = 'overapproximation',
-	Underapproximation = 'underapproximation'
+	Overapproximation = 'overapproximation'
 }
 
 export type IntervalSlicingCriterionExpected = { domain: IntervalDomain | undefined, matching?: DomainMatchingType };
@@ -119,10 +118,6 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 				} else if(criterionExpected.matching === DomainMatchingType.Overapproximation) {
 					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result differs: ' + errorContext).toBe(true);
 					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result is not an overapproximation but an exact match.').toBe(false);
-				} else if(criterionExpected.matching === DomainMatchingType.Underapproximation) {
-					expect(inferredIntervalDomain.leq(criterionExpected.domain), 'Result differs: ' + errorContext).toBe(true);
-					expect(criterionExpected.domain.equals(inferredIntervalDomain), 'Result is not an underapproximation but an exact match.').toBe(false);
-					expect(criterionExpected.domain.leq(inferredIntervalDomain), 'Result is not an underapproximation but an overapproximation.').toBe(false);
 				} else {
 					assertUnreachable(criterionExpected.matching);
 				}
@@ -135,10 +130,6 @@ export function testIntervalDomain(code: string, expected: IntervalTestExpected)
 					// At least one domain is undefined (Top), so the inferred domain has to be undefined (Top) to be an overapproximation of the expected domain.
 					expect(inferredIntervalDomain, 'Result differs: ' + errorContext).toBeUndefined();
 					expect(inferredIntervalDomain?.value, 'Result is not an overapproximation but an exact match.').not.toBe(criterionExpected.domain?.value);
-				} else if(criterionExpected.matching === DomainMatchingType.Underapproximation) {
-					// At elas one domain is undefined (Top), so the expected domain has to be undefined (Top) to be an underapproximation of the expected domain.
-					expect(criterionExpected.domain, 'Result differs: ' + errorContext).toBeUndefined();
-					expect(inferredIntervalDomain, 'Result is not an underapproximation but an overapproximation or exact match.').not.toBeUndefined();
 				} else {
 					assertUnreachable(criterionExpected.matching);
 				}

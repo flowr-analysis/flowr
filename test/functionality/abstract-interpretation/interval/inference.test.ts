@@ -670,7 +670,6 @@ describe('Interval Inference', () => {
 		describe('nrow', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['Hallo'], { domain: IntervalTests.top(), matching: DomainMatchingType.Underapproximation }],
 				[['2, 3'], { domain: IntervalTests.bottom() }],
 				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
 				[['2'], { domain: IntervalTests.top() }],
@@ -678,7 +677,19 @@ describe('Interval Inference', () => {
 				[['data.frame(c(1), c(2,3), c(1,2,3,4))'], { domain: IntervalTests.scalar(4), matching: DomainMatchingType.Overapproximation }],
 			];
 
+			const casesWhereWeCurrentlyUnderapproximate: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[['Hallo'], { domain: IntervalTests.top() }],
+			];
+
 			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
+				testIntervalDomain(`
+					x <- nrow(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+
+			describe.each(casesWhereWeCurrentlyUnderapproximate)('nrow should not underapproximate for non-supported argument %s that produce NULL', { fails: true }, (args, expected) => {
 				testIntervalDomain(`
 					x <- nrow(${args.join(', ')})
 				`, {
@@ -711,7 +722,6 @@ describe('Interval Inference', () => {
 		describe('ncol', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['Hallo'], { domain: IntervalTests.top(), matching: DomainMatchingType.Underapproximation }],
 				[['2, 3'], { domain: IntervalTests.bottom() }],
 				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
 				[['2'], { domain: IntervalTests.top() }],
@@ -719,9 +729,21 @@ describe('Interval Inference', () => {
 				[['data.frame(c(1), c(2,3), c(1,2,3,4))'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
 			];
 
+			const casesWhereWeCurrentlyUnderapproximate: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
+				[['Hallo'], { domain: IntervalTests.top() }],
+			];
+
 			describe.each(testCases)('args: %s, result: %s', (args, expected) => {
 				testIntervalDomain(`
 					x <- ncol(${args.join(', ')})
+				`, {
+					'1@x': expected
+				});
+			});
+
+			describe.each(casesWhereWeCurrentlyUnderapproximate)('ncol should not underapproximate for non-supported argument %s that produce NULL', { fails: true }, (args, expected) => {
+				testIntervalDomain(`
+					x <- nrow(${args.join(', ')})
 				`, {
 					'1@x': expected
 				});

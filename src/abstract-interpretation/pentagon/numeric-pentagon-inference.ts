@@ -77,11 +77,21 @@ export class NumericPentagonInferenceVisitor extends AbstractInterpretationVisit
 				this.currentState.set(target, targetPentagon);
 			}
 
-			// Remove information of all constants on the right hand side
+			// Remove information of all constants/expression results on the right hand side
 			this.currentState = this.removeConstantAndExpressionInfo(source);
 		}
 	}
 
+	/**
+	 * Removes all inferred information for expressions and constants in the state, that are part of the provided nodeId.
+	 * This is used for assignments, to remove any information on constants or expressions that are part of the source
+	 * part of the assignment to reduce the number of inferred values for the following inference steps
+	 * (as these information will not be referenced/required anymore, and will still be present in the traces of the
+	 * respective node if queried).
+	 * @param nodeId - The root node that contains the constant/expression infos to remove (should be source part of assignment).
+	 * @param state - Optional state to modify, defaults to this.currentState.
+	 * @private
+	 */
 	private removeConstantAndExpressionInfo(nodeId: NodeId, state?: ClosedPentagonDomain): ClosedPentagonDomain {
 		state ??= this.currentState;
 		const minifiedDomain = state.create(state.value);

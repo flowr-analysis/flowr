@@ -4,11 +4,6 @@ import { type AbstractProduct, type ProductReduction, PartialProductDomain } fro
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
 
 /**
- * A reduction function for abstract values of a product domain.
- */
-export type Reduction<Product extends AbstractProduct> = ProductReduction<Product>;
-
-/**
  * A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
  * @template Product - Type of the abstract product of the multi-value domain combining multiple abstract values
  * @see {@link NodeId} for the node IDs of the AST nodes
@@ -16,7 +11,7 @@ export type Reduction<Product extends AbstractProduct> = ProductReduction<Produc
 export class MultiValueStateDomain<Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
 	extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
 
-	constructor(value: Value, domain: Required<Product>, reductions: readonly Reduction<Product>[] = []) {
+	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
 		super(value, new MultiValueDomain(domain, domain, reductions));
 	}
 
@@ -54,7 +49,7 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 export class MultiValueDomain<Product extends AbstractProduct>
 	extends PartialProductDomain<Product> {
 
-	constructor(value: Product, domain: Required<Product>, reductions: readonly Reduction<Product>[] = []) {
+	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
 		super(value, domain, reductions);
 	}
 
@@ -63,7 +58,7 @@ export class MultiValueDomain<Product extends AbstractProduct>
 		return new MultiValueDomain(value, this.domain, this.reductions);
 	}
 
-	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly Reduction<Product>[] = []): MultiValueDomain<Product> {
+	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []): MultiValueDomain<Product> {
 		return new MultiValueDomain({} as Product, domain, reductions);
 	}
 }

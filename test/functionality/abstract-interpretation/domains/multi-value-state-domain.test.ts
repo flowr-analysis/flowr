@@ -1,15 +1,15 @@
 import { assert, describe, test } from 'vitest';
-import { MultiValueDomain, MultiValueStateDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
-import type { Reduction } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
-import { IntervalDomain, IntervalTop } from '../../../src/abstract-interpretation/domains/interval-domain';
-import { Bottom } from '../../../src/abstract-interpretation/domains/lattice';
+import { MultiValueDomain, MultiValueStateDomain } from '../../../../src/abstract-interpretation/domains/multi-value-state-domain';
+import { IntervalDomain, IntervalTop } from '../../../../src/abstract-interpretation/domains/interval-domain';
+import { Bottom } from '../../../../src/abstract-interpretation/domains/lattice';
+import type { ProductReduction } from '../../../../src/abstract-interpretation/domains/partial-product-domain';
 
 type Shape = { a: IntervalDomain, b: IntervalDomain };
 
 const template = (): Shape => ({ a: new IntervalDomain(IntervalTop), b: new IntervalDomain(IntervalTop) });
 
 /** Reduction that collapses both components to Bottom as soon as one of them is Bottom. */
-const collapseToBottom: Reduction<Shape> = ({ a, b }) =>
+const collapseToBottom: ProductReduction<Shape> = ({ a, b }) =>
 	(a?.isBottom() || b?.isBottom()) ? { a: new IntervalDomain(Bottom), b: new IntervalDomain(Bottom) } : { a, b };
 
 describe('MultiValueDomain', () => {

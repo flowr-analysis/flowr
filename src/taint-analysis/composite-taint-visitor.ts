@@ -5,8 +5,8 @@ import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstr
 import type { TaintMapper } from './function-mapper';
 import { mapFnCallToTaint, resolveTaint } from './function-mapper';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { AbstractProduct } from '../abstract-interpretation/domains/partial-product-domain';
-import { type MultiValueDomain, MultiValueStateDomain, type Reduction } from '../abstract-interpretation/domains/multi-value-state-domain';
+import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
+import { type MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
 
 /**
  * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
@@ -46,7 +46,7 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 
 	constructor(
 		components: readonly TaintComponent[],
-		reductions: readonly Reduction<TaintProduct>[],
+		reductions: readonly ProductReduction<TaintProduct>[],
 		visitorConfig: AbsintVisitorConfiguration
 	) {
 		const template = Object.fromEntries(components.map(component => [component.name, component.domain])) as Required<TaintProduct>;

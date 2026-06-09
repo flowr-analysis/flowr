@@ -7,7 +7,7 @@ import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattic
 import { scaleAnalysis, Unscaled, ZScore } from '../../../src/taint-analysis/predefined/scale-analysis';
 import { Deterministic, randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
-import type { Reduction } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
+import type { ProductReduction } from '../../../src/abstract-interpretation/domains/partial-product-domain';
 
 describe('Composite Taint Analysis', () => {
 	describe('direct product of two custom analyses', () => {
@@ -59,7 +59,7 @@ describe('Composite Taint Analysis', () => {
 
 	describe('reduced product of predefined scale and randomness analyses', () => {
 		// reduction: once a value is z-score scaled, treat the randomness component as Bottom (a contrived interaction)
-		const collapseRandomnessOnZScore: Reduction<TaintProduct> = value => {
+		const collapseRandomnessOnZScore: ProductReduction<TaintProduct> = value => {
 			if(value['scale']?.value === ZScore && value['randomness'] !== undefined) {
 				return { ...value, randomness: value['randomness'].bottom() };
 			}

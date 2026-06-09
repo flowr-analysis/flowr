@@ -2,11 +2,11 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { TaintMapper } from '../function-mapper';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
-import type { Reduction } from '../../abstract-interpretation/domains/multi-value-state-domain';
 import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
 import { CompositeTaintInferenceVisitor } from '../composite-taint-visitor';
 import { TaintInferenceVisitor } from '../taint-visitor';
 import { guard } from '../../util/assert';
+import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
@@ -32,7 +32,7 @@ export interface ComposeOptions {
 	 * Optional reductions turning the direct product into a reduced product.
 	 * Each reduction may refine the inferred taints of the component analyses based on each other.
 	 */
-	reductions?: readonly Reduction<TaintProduct>[];
+	reductions?: readonly ProductReduction<TaintProduct>[];
 	/** The optional message reported when the composite analysis produces a finding. */
 	report?:     string;
 }
@@ -101,12 +101,12 @@ implements RunnableTaintAnalysisDefinition<Name> {
  */
 export class CompositeTaintAnalysisDefinition<Name extends string> implements RunnableTaintAnalysisDefinition<Name> {
 	public readonly name:        Name;
-	public readonly definitions: readonly TaintAnalysisDefinition<string>[];
-	public readonly reductions:  readonly Reduction<TaintProduct>[];
+	public readonly definitions: readonly TaintAnalysisDefinition[];
+	public readonly reductions:  readonly ProductReduction<TaintProduct>[];
 
 	public msg: string | undefined;
 
-	constructor(name: Name, definitions: readonly TaintAnalysisDefinition<string>[], options?: ComposeOptions) {
+	constructor(name: Name, definitions: readonly TaintAnalysisDefinition[], options?: ComposeOptions) {
 		guard(definitions.length >= 2, 'A composite taint analysis must combine at least two taint analysis definitions');
 		const names = definitions.map(def => def.name);
 		guard(new Set(names).size === names.length, 'A composite taint analysis requires unique component analysis names');

@@ -202,6 +202,6 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	 * Subclasses may override this to implement a fixed reduction instead of (or in addition to) the configurable reductions.
 	 */
 	protected reduce(value: Product): Product {
-		return (this.reductions ?? []).reduce((current, reduction) => reduction(current), value);
+		return this.reductions.reduce((current, reduction) => reduction(current), value);
 	}
 }

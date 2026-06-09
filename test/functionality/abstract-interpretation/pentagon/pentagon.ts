@@ -183,7 +183,7 @@ export function testPentagonDomain(code: string, expected: PentagonTestExpected)
 
 			if(isNotUndefined(criterionExpected.lowerBounds)) {
 				// Check whether targetId is included in the upper bounds of all lower bounds (or excluded respectively)
-				const targetNodeOrigins = visitor.getVariableOrigins(targetId);
+				const targetNodeOrigins = visitor.getVariableOrigins(targetId).filter(nodeId => !visitor.getAbstractValue(nodeId)?.isBottom());
 				if(targetNodeOrigins.length > 1) {
 					throw new Error(`Element cannot have lower bound - the element has multiple origins: {${targetNodeOrigins.join(', ')}}`);
 				}

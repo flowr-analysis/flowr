@@ -55,8 +55,8 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		return new IntervalDomain(value, significantFigures ?? this.significantFigures);
 	}
 
-	public scalar(value: number): this {
-		return this.create([value, value]);
+	public scalar(value: number, significantFigures?: number): this {
+		return this.create([value, value], significantFigures);
 	}
 
 	public static scalar(value: number, significantFigures?: number): IntervalDomain {

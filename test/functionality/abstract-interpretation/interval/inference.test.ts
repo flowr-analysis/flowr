@@ -866,4 +866,19 @@ describe('Interval Inference', () => {
 			'3@x': { domain: IntervalTests.interval(0, 1) },
 		});
 	});
+
+	describe('Joining two states where a variable is known in both states but undefined in only one leads to underapproximation', { fails: true }, () => {
+		testIntervalDomain(`
+			x <- "UNDEFINED" # Simply anything produces undefined
+			
+			if(x == 1) {
+				x # Applying the condition updates the origin of x to be [1, 1]
+			} else {
+				x # Applying the condition updates the origin of x to remain undefined
+			}
+			x # Joining both branches should result in undefined
+		`, {
+			'8@x': { domain: IntervalTests.top() },
+		});
+	});
 });

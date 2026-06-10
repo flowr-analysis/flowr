@@ -13,6 +13,8 @@ import {
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { guard } from '../util/assert';
 
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =
@@ -72,6 +74,36 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 			condition: mapping.condition.condition,
 		};
 	}
+}
+
+/**
+ * Resolves a {@link ResolvedTaint} into the concrete abstract value of the given (value) abstract domain.
+ *
+ * This contains the shared logic used by both the single-analysis {@link TaintInferenceVisitor} and the
+ * composite (product) taint visitor: a resolved taint is either a fixed taint, a conditional taint that
+ * combines the (projected) taints of its argument nodes, or absent (which maps to the Top element).
+ * @param taint      - The resolved taint to map into an abstract value (e.g. obtained via {@link mapFnCallToTaint})
+ * @param domain     - The (value) abstract domain the resulting abstract value belongs to
+ * @param projectArg - Resolves the abstract value of an argument node within `domain` (e.g. the projection of a
+ *                     product state onto the component of the analysis); may return `undefined` if no value is known
+ * @returns The abstract value to store for the function call within the given domain
+ */
+export function resolveTaint<Domain extends AnyAbstractDomain>(
+	taint: ResolvedTaint<Domain>,
+	domain: Domain,
+	projectArg: (id: NodeId) => Domain | undefined
+): Domain {
+	if(!taint) {
+		return domain.top() as Domain;
+	} else if('taint' in taint) {
+		return domain.create(taint.taint);
+	}
+	const taints = taint.taintArgs
+		.map(arg => (arg === EmptyArgument || !arg.value?.info) ? undefined : projectArg(arg.value.info.id))
+		.filter((value): value is Domain => value !== undefined)
+		.map(value => value.value as AbstractValue<Domain>);
+
+	return domain.create(taint.condition(taint.valArgs, taints));
 }
 
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];

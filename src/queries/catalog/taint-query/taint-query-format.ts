@@ -16,8 +16,7 @@ import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import type { StateDomainLift } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
-import type {
-	TaintAnalysisDefinition } from '../../../taint-analysis/builder/taint-analysis-definition';
+
 
 
 
@@ -27,7 +26,7 @@ export interface TaintQuery extends BaseQueryFormat {
 }
 
 export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
-	readonly results: Map<Analyses[number], TaintInferenceResult<TaintAnalysisDefinition<Analyses[number]>>>
+	readonly results: Map<Analyses[number], TaintInferenceResult>
 }
 
 const prefix = 'definitions:';

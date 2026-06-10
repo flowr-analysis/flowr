@@ -10,8 +10,6 @@ import { guard } from '../../util/assert';
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
-
-export type TaintAnalysisName<Definition> = Definition extends TaintAnalysisDefinition<infer Name, infer _Domain, infer _Config> ? Name : never;
 export type TaintAnalysisDomain<Definition> = Definition extends TaintAnalysisDefinition<infer _Name, infer Domain> ? Domain : never;
 
 /**

@@ -26,7 +26,7 @@ export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, 
  */
 export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition<string> | CompositeTaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
 	if(analysis instanceof CompositeTaintAnalysisDefinition) {
-		throw new Error('testTaintAnalysis does not support composite analyses. Use testCompositeTaintAnalysis instead.');
+		throw new TypeError('testTaintAnalysis does not support composite analyses. Use testCompositeTaintAnalysis instead.');
 	}
 	await testTaintAnalyses(code, new Set([[analysis.name, analysis, expectation]]));
 }
@@ -95,7 +95,7 @@ export async function testCompositeTaintAnalysis(
 		.build();
 
 	analyzer.addRequest(code.trim());
-	const analysis = analyzer.taint() as unknown as AnyTaintAnalysis;
+	const analysis = analyzer.taint<string[]>();
 	analysis.addComposite(composite);
 
 	const results = await analysis.run();

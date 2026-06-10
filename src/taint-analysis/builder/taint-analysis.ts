@@ -1,15 +1,12 @@
 import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
-import type { TaintAnalysisDefinition, TaintAnalysisDomain } from './taint-analysis-definition';
+import type { TaintAnalysisDefinition, CompositeTaintAnalysisDefinition, RunnableTaintAnalysisDefinition } from './taint-analysis-definition';
 import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
-import type { CompositeTaintAnalysisDefinition, RunnableTaintAnalysisDefinition, TaintAnalysisDefinition } from './taint-analysis-definition';
-import type { AnyPredefinedAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
-import { TaintInferenceVisitor } from '../taint-visitor';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 
-export interface TaintInferenceResult<Analysis extends TaintAnalysisDefinition> {
-	visitor:  AbstractInterpretationVisitor<TaintAnalysisDomain<Analysis>>
+export interface TaintInferenceResult {
+	visitor:  AbstractInterpretationVisitor<AnyStateDomain>
 	finding?: string
 }
 
@@ -48,8 +45,8 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 * Run one or multiple taint analyses.
 	 * Note: Requires a prior call to {@link TaintAnalysis.add}, {@link TaintAnalysis.addComposite}, or {@link TaintAnalysis.addPredefined} to add at least one taint analysis.
 	 */
-	public async run(): Promise<Map<Defs[number], TaintInferenceResult<TaintAnalysisDefinition<Defs[number]>>>> {
-		const results: Map<Defs[number], TaintInferenceResult<TaintAnalysisDefinition<Defs[number]>>> = new Map();
+	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
+		const results: Map<Defs[number], TaintInferenceResult> = new Map();
 		const baseConfig: AbsintVisitorConfiguration = {
 			controlFlow:   await this.analyzer.controlflow(),
 			ctx:           this.analyzer.inspectContext(),

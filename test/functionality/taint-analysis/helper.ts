@@ -4,9 +4,10 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import { Record } from '../../../src/util/record';
 import { getInferredValueForCriterion } from '../abstract-interpretation/inference';
 import { guard } from '../../../src/util/assert';
-import type { PredefinedTaintAnalysis } from '../../../src/taint-analysis/predefined/predefined';
+import type {
+	AnyPredefinedTaintAnalysisName
+} from '../../../src/taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
-import type { TaintAnalysis } from '../../../src/taint-analysis/builder/taint-analysis';
 import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
@@ -27,7 +28,7 @@ export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDef
  * @param name - Taint analysis name
  * @param expectation - Expected taints
  */
-export async function testPredefinedTaintAnalysis(code: string, name: PredefinedTaintAnalysis, expectation: TaintAnalysisExpectation) {
+export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefinedTaintAnalysisName, expectation: TaintAnalysisExpectation) {
 	await testTaintAnalysis(code, predefinedTaintAnalyses[name], expectation);
 }
 
@@ -42,22 +43,22 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 		.build();
 
 	analyzer.addRequest(code.trim());
-	const analysis = analyzer.taint() as unknown as TaintAnalysis<[string]>;
+	const analysis = analyzer.taint<string[]>();
 
 	for(const [_name, def, _expectation] of analyses) {
 		analysis.add(def);
 	}
 
-	const result = await analysis.run();
+	const results = await analysis.run();
 
-	assert.equal(result.size, analyses.size);
+	assert.equal(results.size, analyses.size);
 
 	for(const [name, def, expected] of analyses) {
-		const visitor = result.get(name);
-		guard(visitor, 'Expected taint analysis scale results are missing');
+		const result = results.get(name);
+		guard(result, 'Expected taint analysis scale results are missing');
 
 		for(const [criterion, expectedValue] of Record.entries(expected)) {
-			const actualDomain = getInferredValueForCriterion(visitor, criterion);
+			const actualDomain = getInferredValueForCriterion(result.visitor, criterion);
 			const expectedDomain = def.domain.create(expectedValue);
 			if(expectedValue === undefined) {
 				assert.ok(actualDomain?.value === undefined, `Expected inferred taint for criterion "${criterion}" to be undefined`);

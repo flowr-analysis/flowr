@@ -4,7 +4,9 @@ import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import Joi from 'joi';
 import { executeTaintQuery } from './taint-query-executor';
-import type { PredefinedTaintAnalysis } from '../../../taint-analysis/predefined/predefined';
+import type {
+	AnyPredefinedTaintAnalysisName
+} from '../../../taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
 import type { AnyAbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
@@ -12,16 +14,20 @@ import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
-import type { AnyStateDomain } from '../../../abstract-interpretation/domains/state-domain-like';
 import type { StateDomainLift } from '../../../abstract-interpretation/domains/state-abstract-domain';
+import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
+import type {
+	TaintAnalysisDefinition } from '../../../taint-analysis/builder/taint-analysis-definition';
+
+
 
 export interface TaintQuery extends BaseQueryFormat {
 	readonly type: 'taint';
-	readonly defs: PredefinedTaintAnalysis[]
+	readonly defs: AnyPredefinedTaintAnalysisName[]
 }
 
-export interface TaintQueryResult extends BaseQueryResult {
-	readonly results: Map<string, AnyStateDomain>
+export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
+	readonly results: Map<Analyses[number], TaintInferenceResult<TaintAnalysisDefinition<Analyses[number]>>>
 }
 
 const prefix = 'definitions:';
@@ -57,21 +63,21 @@ function taintQueryCompleter(line: readonly string[], startingNewArg: boolean, _
 	return { completions: [] };
 }
 
-function defsInInput(defsPart: readonly string[]): { valid: (PredefinedTaintAnalysis)[], invalid: string[] } {
+function defsInInput(defsPart: readonly string[]): { valid: AnyPredefinedTaintAnalysisName[], invalid: string[] } {
 	return defsPart
 		.reduce((acc, name) => {
 			name = name.trim();
 			if(name in predefinedTaintAnalyses) {
-				acc.valid.push(name as PredefinedTaintAnalysis);
+				acc.valid.push(name as AnyPredefinedTaintAnalysisName);
 			} else {
 				acc.invalid.push(name);
 			}
 			return acc;
-		}, { valid: [] as (PredefinedTaintAnalysis)[], invalid: [] as string[] });
+		}, { valid: [] as (AnyPredefinedTaintAnalysisName)[], invalid: [] as string[] });
 }
 
 function taintQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'taint'> {
-	let defs: PredefinedTaintAnalysis[] = [];
+	let defs: AnyPredefinedTaintAnalysisName[] = [];
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(prefix)) {
 		const defsPart = line[0].slice(prefix.length).split(',');
@@ -90,25 +96,29 @@ function taintQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 
 export const TaintQueryDefinition = {
 	executor:        executeTaintQuery,
-	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
+	asciiSummarizer: (formatter, _analyzer, queryResults, resultStrings) => {
 		const out = queryResults as QueryResults<'taint'>['taint'];
 		const state = out.results.entries().toArray();
-		result.push(`Query: ${bold('taint', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
+		resultStrings.push(`Query: ${bold('taint', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 
-		for(const [name, domains] of state) {
-			result.push(`   ╰ **${name}**:`);
-			const lift = domains.value as StateDomainLift<AnyAbstractDomain>;
+		for(const [name, result] of state) {
+			resultStrings.push(`   ╰ **${name}**:`);
+			const lift = result.visitor.getEndState().value as StateDomainLift<AnyAbstractDomain>;
+
+			if(result.finding) {
+				resultStrings.push(`      ╰ finding: ${result.finding}`);
+			}
+
 			if(lift === Bottom) {
-				result.push(`      ╰ state: ${BottomSymbol}`);
+				resultStrings.push(`      ╰ state: ${BottomSymbol}`);
 				return true;
 			}
 
-			result.push(...lift.entries().take(20).map(([key, domain]) => {
-				return `      ╰ ${key}: ${domain?.toString()}`;
-			}));
+			resultStrings.push(...lift.entries().take(20)
+				.map(([key, domain]) => `      ╰ ${key}: ${domain?.toString()}`));
 
-			if(result.length > 20) {
-				result.push('      ╰ ... (see JSON)');
+			if(resultStrings.length > 20) {
+				resultStrings.push('      ╰ ... (see JSON)');
 			}
 		}
 

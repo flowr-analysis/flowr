@@ -2,16 +2,21 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 import type { TaintMapper } from '../function-mapper';
 
 export type TaintAnalysisName<Definition> = Definition extends TaintAnalysisDefinition<infer Name, infer _Domain> ? Name : never;
+export type TaintAnalysisDomain<Definition> = Definition extends TaintAnalysisDefinition<infer _Name, infer Domain> ? Domain : never;
 
 /**
  * Fluent builder class for defining new taint analyses.
  */
-export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
+export class TaintAnalysisDefinition<Name extends string = string, Domain extends AnyAbstractDomain = AnyAbstractDomain> {
 	public readonly domain: Domain;
 	public mapper:          TaintMapper<Domain> = [];
 	public name:            Name;
 
-	private msg: string | undefined;
+	private _msg: string | undefined;
+
+	get msg(): string | undefined {
+		return this._msg;
+	}
 
 	constructor(name: Name, domain: Domain) {
 		this.name = name;
@@ -29,7 +34,7 @@ export class TaintAnalysisDefinition<Name extends string, Domain extends AnyAbst
 	}
 
 	public report(msg: string): this {
-		this.msg = msg;
+		this._msg = msg;
 		return this;
 	}
 }

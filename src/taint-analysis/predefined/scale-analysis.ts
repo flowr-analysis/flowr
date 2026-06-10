@@ -49,4 +49,4 @@ export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
 			}
 		}
 	}])
-	.report('Warning: Mean of scaled value is always zero');
+	.report('Mean of scaled value is always zero');

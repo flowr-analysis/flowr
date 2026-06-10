@@ -18,7 +18,7 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 	private readonly fnCallMapper: TaintMapper<Domain>;
 
 	constructor(domain: Domain, fnCallMapper: TaintMapper<Domain>, visitorConfig: AbsintVisitorConfiguration) {
-		super(visitorConfig, StateAbstractDomain.top(domain.top()));
+		super({ ...visitorConfig, ignoreUnsupportedFunctions: false }, StateAbstractDomain.top(domain.top()));
 		this.domain = domain;
 		this.fnCallMapper = fnCallMapper;
 	}

@@ -1,4 +1,4 @@
-import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { TaintAnalysisDefinition, TaintAnalysisDomain } from './taint-analysis-definition';
 import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
@@ -39,6 +39,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 		const results: Map<Defs[number], TaintInferenceResult<TaintAnalysisDefinition<Defs[number]>>> = new Map();
 		for(const def of this.defs) {
 			const visitor = new TaintInferenceVisitor(def.domain, def.mapper, {
+				...def.config,
 				controlFlow:   await this.analyzer.controlflow(),
 				ctx:           this.analyzer.inspectContext(),
 				dfg:           (await this.analyzer.dataflow()).graph,

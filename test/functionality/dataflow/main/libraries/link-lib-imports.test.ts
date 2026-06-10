@@ -2,8 +2,13 @@ import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
-import { FlowrNamespaceFile } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
+
+const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
+const randomPlaceholder1Callable = ['test1', 'test2'];
+const randomPlaceholder2Callable = ['test1', 'test2', 'test3'];
+const randomPlaceholder3Callable = ['a', 'b'];
 
 describe('Linked library imports libraries', withTreeSitter(ts => {
 	test('Linked library loads circular imports 1', async() => {
@@ -12,7 +17,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -40,31 +45,29 @@ import(grid)
 import(rlang)
 importFrom(scales,alpha)
 importFrom(stats,setNames)
-import(random_placeholder)`)).content().current
+import(random_placeholder)`)).content().current, ggplot2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current, randomPlaceholder1Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current, randomPlaceholder2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder3',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current, randomPlaceholder3Callable)
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 
 		const df = await analyzer.dataflow();
-		//should be global env
 		let env = df.environment.current;
-		env = env.parent;
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rPSsymbols = ['test1', 'test2'];
-		//globalEnv -> package:ggplot2 -> imports:ggplot2 -> ...
-		//ggplot2 package
-		expect(env.n === 'ggplot2' && env.t === 'package' && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
+		//ggplot2 namespace
+		expect(env.n === 'ggplot2' && env.t === 'namespace' && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		//ggplot2 imports
 		env = env.parent;
 		const imported = rPSsymbols.map(v => 'random_placeholder:' + v).concat(ggplotSymbols.map(v => 'ggplot2:' + v)).concat(['random_placeholder3:a']);
@@ -77,7 +80,7 @@ import(random_placeholder)`)).content().current
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -105,43 +108,41 @@ import(grid)
 import(rlang)
 importFrom(scales,alpha)
 importFrom(stats,setNames)
-import(random_placeholder)`)).content().current
+import(random_placeholder)`)).content().current, ggplot2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nimport(ggplot2)\nimportFrom(random_placeholder3, a)')).content().current, randomPlaceholder1Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)\nexport(test3)\nimport(random_placeholder)')).content().current, randomPlaceholder2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder3',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(a)\nexport(b)\nimportFrom(random_placeholder2, test3)')).content().current, randomPlaceholder3Callable)
 		}));
 		analyzer.addRequest('library(ggplot2)\nlibrary(random_placeholder2)\nlibrary(random_placeholder3)\nggplot()');
 
 		const df = await analyzer.dataflow();
-		//should be global env
 		let env = df.environment.current;
-		env = env.parent;
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rP1symbols = ['test1', 'test2'];
 		const rP2Symbols = ['test1', 'test2', 'test3'];
 		const rP3Symbols = ['a', 'b'];
-		//global environment -> random_placeholder3 package -> random_placeholder3 imports -> random_placeholder2 package -> random_placeholder2 imports -> ggplot2 package -> ggplot2 imports
+		// random_placeholder3 namespace -> random_placeholder3 imports -> random_placeholder2 namespace -> random_placeholder2 imports -> ggplot2 namespace -> ggplot2 imports -> global environment
 		const imp3 = ['random_placeholder2:test3'];
 		const imp2 = ['random_placeholder3:a'].concat(ggplotSymbols.map(v => 'ggplot2:' + v)).concat(rP1symbols.map(v => 'random_placeholder:' + v));
 		const impggplot = rP1symbols.map(v => 'random_placeholder:' + v).concat(ggplotSymbols.map(v => 'ggplot2:' + v)).concat(['random_placeholder3:a']);
-		expect(env.n === 'random_placeholder3' && env.t === 'package' && compare(new Set(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'random_placeholder3' && env.t === 'namespace' && compare(new Set(rP3Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'random_placeholder3' && env.t === 'imports' && compare(new Set(imp3), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'random_placeholder2' && env.t === 'package' && compare(new Set(rP2Symbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'random_placeholder2' && env.t === 'namespace' && compare(new Set(rP2Symbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'random_placeholder2' && env.t === 'imports' && compare(new Set(imp2), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === 'package' && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === 'namespace' && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === 'imports' && compare(new Set(impggplot), new Set(env.memory.keys()))).toBeTruthy();
 	});
@@ -152,7 +153,7 @@ import(random_placeholder)`)).content().current
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -180,21 +181,19 @@ import(grid)
 import(rlang)
 importFrom(scales,alpha)
 importFrom(stats,setNames)
-importFrom(random_placeholder, test1)`)).content().current
+importFrom(random_placeholder, test1)`)).content().current, ggplot2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, randomPlaceholder1Callable)
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		//should be globalEnv
 		let env = df.environment.current;
-		env = env.parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-		//globalEnv -> package:ggplot2 -> imports: ggplot2...
-		//ggplot package
-		expect(env.n === 'ggplot2' && env.t === 'package' && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		//namespace:ggplot2 -> imports: ggplot2 -> globalEnv -> ...
+		//ggplot namespace
+		expect(env.n === 'ggplot2' && env.t === 'namespace' && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		//ggplot imports
 		env = env.parent;
 		const imported = ['random_placeholder:test1'];
@@ -207,7 +206,7 @@ importFrom(random_placeholder, test1)`)).content().current
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 	S3method(fortify,lm)
 	S3method(fortify,default)
 	S3method(fortify,map)
@@ -235,21 +234,19 @@ importFrom(random_placeholder, test1)`)).content().current
 	import(rlang)
 	importFrom(scales,alpha)
 	importFrom(stats,setNames)
-	import(random_placeholder)`)).content().current
+	import(random_placeholder)`)).content().current, ggplot2Callable)
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random_placeholder',
-			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, randomPlaceholder1Callable)
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		//should be globalEnv
 		let env = df.environment.current;
-		env = env.parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-		//namespace:ggplot -> imports:ggplot -> globalEnv -> package:ggplot -> ...
+		//namespace:ggplot -> imports:ggplot -> globalEnv
 		//ggplot package
-		expect(env.n === 'ggplot2' && env.t === 'package' && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === 'namespace' && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		//ggplot imports
 		env = env.parent;
 		const imported = ['random_placeholder:test1', 'random_placeholder:test2'];

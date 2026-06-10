@@ -34,8 +34,6 @@ export function processLibrary<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	/* we do not really know what loading the library does and what side effects it causes, hence we mark it as an unknown side effect */
-	//const characterOnlyArg = args.map(v => v as RArgument).find(v => v.lexeme === 'character.only');
-	//const characterOnly = characterOnlyArg?.value?.type === 'RLogical' && characterOnlyArg?.value?.content === true;
 	if(args.length === 0){
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
@@ -51,7 +49,6 @@ export function processLibrary<OtherInfo>(
 	const nameToLoad = RArgument.getValue<OtherInfo & ParentInformation>(args, packageId[0]);
 
 	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String){
-	//if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && !characterOnly || characterOnly && nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String) {
 		dataflowLogger.warn('No library name provided, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
@@ -85,9 +82,7 @@ export function processLibrary<OtherInfo>(
 				packetName =  values.elements[0].value.str;
 			}
 		}
-		//else fälle?
 	}
-	// TODO: check whether we know something about the library and if so, do **not** mark it as an unkown side effect
 	const info = processKnownFunctionCall({
 		name,
 		args:                 wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap), rootId, data,
@@ -103,7 +98,7 @@ export function processLibrary<OtherInfo>(
 	return info;
 }
 
-function getGlobalEnv(info: DataflowInformation){
+/*function getGlobalEnv(info: DataflowInformation){
 	if(info.environment.level < 0){
 		return undefined;
 	}
@@ -112,15 +107,15 @@ function getGlobalEnv(info: DataflowInformation){
 		env = env.parent;
 	}
 	return env;
-}
+}*/
 
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
-	const globalEnv = getGlobalEnv(info);
-	if(isUndefined(globalEnv) || isUndefined(dependency.namespaceInfo)){
+	if(info.environment.level < 0|| isUndefined(dependency.namespaceInfo)){
 		return;
 	}
+	const currentEnv = info.environment.current;
 	const pack = dependency.name;
-	const functions = dependency.namespaceInfo.exportedSymbols;
+	const functions = dependency.namespaceInfo.callable;
 	/*
 	//add namespace environment
 	let namespaceEnv = new Environment(globalEnv);
@@ -140,12 +135,11 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	*/
 	//add package environment
-	const oldGlobParent = globalEnv.parent;
-	let packageEnv = new Environment(oldGlobParent);
-	packageEnv.n = pack;
-	packageEnv.t = 'package';
+	let namespaceEnv = new Environment(currentEnv);
+	namespaceEnv.n = pack;
+	namespaceEnv.t = 'namespace';
 	for(const func of functions){
-		packageEnv = packageEnv.define({
+		namespaceEnv = namespaceEnv.define({
 			name:      Identifier.make(func, pack),
 			type:      ReferenceType.Function,
 			nodeId:    NodeId.toBuiltIn(func),
@@ -171,23 +165,21 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 		//info.graph.addVertex(NodeId.toBuiltIn(func) as string, info.environment);
 		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
-	globalEnv.parent = packageEnv;
-	//info environment shouldn't change if we always return globalEnv as current
-	/*info.environment = {
+	info.environment = {
 		level:   info.environment.level + 1,
-		current: info.environment.current
-	};*/
+		current: namespaceEnv
+	};
 	//add imports environment
-	let importsEnv: Environment = new Environment(oldGlobParent);
+	let importsEnv: Environment = new Environment(currentEnv);
 	importsEnv.n = pack;
 	importsEnv.t = 'imports';
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
-	//info environment shouldn't change if we always return globalEnv as current
-	/*info.environment = {
+
+	info.environment = {
 		level:   info.environment.level + 1,
 		current: info.environment.current
-	};*/
-	packageEnv.parent = importsEnv;
+	};
+	namespaceEnv.parent = importsEnv;
 }
 
 function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: NamespaceInfo, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, alreadyImportedAll: Set<string>){
@@ -196,7 +188,7 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 		if(isUndefined(importedDependency)){
 			continue;
 		}
-		const funcToImport: string[] | undefined = imp[1] === 'all' ? importedDependency?.namespaceInfo?.exportedSymbols : importedDependency?.namespaceInfo?.exportedSymbols.filter(v => (imp[1] as string[]).includes(v));
+		const funcToImport: string[] | undefined = imp[1] === 'all' ? importedDependency?.namespaceInfo?.callable : importedDependency?.namespaceInfo?.callable.filter(v => (imp[1] as string[]).includes(v));
 		if(isUndefined(funcToImport)){
 			continue;
 		}

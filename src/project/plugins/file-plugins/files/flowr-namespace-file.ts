@@ -28,6 +28,7 @@ export interface NamespaceInfo {
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
+	callable:             string[];
 	/**
 	 * This will only be present in complex parsed NAMESPACE files and tell you
 	 * about which parts are only active with given conditions!
@@ -232,6 +233,17 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 	});
 }
 
+/** Sets the given list of strings as callable functions */
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
+	const all = new Set(info.exportedSymbols.concat(info.exportedFunctions));
+	for(const f of func){
+		if(all.has(f)){
+			info.callable.push(f);
+		}
+	}
+	return info;
+}
+
 function handleConditionCall(idMap: AstIdMap, cond: RNode<ParentInformation>, thenBranch: NamespaceFormat, elseBranch: NamespaceFormat | undefined): NamespaceFormat {
 	const g = getEmptyNamespaceFormat();
 	const condMap = g.current.conditional ?? new Map<RNode<ParentInformation>, NamespaceInfo>();
@@ -340,6 +352,7 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 			exportS3Generics:     new Map<string, string[]>(),
 			exportedPatterns:     [],
 			importedPackages:     new Map<string, string[] | 'all'>(),
+			callable:             [],
 			loadsWithSideEffects: false,
 		};
 	}
@@ -364,6 +377,7 @@ function getEmptyNamespaceFormat(): NamespaceFormat {
 			exportS3Generics:     new Map<string, string[]>(),
 			exportedPatterns:     [] as string[],
 			importedPackages:     new Map<string, string[] | 'all'>(),
+			callable:             [] as string[],
 			loadsWithSideEffects: false,
 		},
 	};
@@ -427,6 +441,7 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 	}
 
 	return {
+		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
 		exportS3Generics:     mergedS3Generics,
@@ -489,6 +504,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 						exportS3Generics:     new Map<string, string[]>(),
 						exportedPatterns:     [],
 						importedPackages:     new Map<string, string[] | 'all'>(),
+						callable:             [],
 						loadsWithSideEffects: false,
 					};
 				}

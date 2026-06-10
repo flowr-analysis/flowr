@@ -2,11 +2,13 @@ import { describe } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
-import { FlowrNamespaceFile } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
+
+const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 
 describe('Link libraries with character.only', withTreeSitter(ts => {
 	assertDataflow(label('Link with variable'), ts, 'x <- "ggplot2"\nlibrary(x, character.only = TRUE)\nggplot()\nggplot()',
@@ -22,7 +24,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
 					name:          'ggplot2',
-					namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -49,7 +51,7 @@ exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current
+importFrom(stats,setNames)`)).content().current, ggplot2Callable)
 				}));
 			},
 			expectIsSubgraph:      true,
@@ -69,7 +71,7 @@ importFrom(stats,setNames)`)).content().current
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
 					name:          'ggplot2',
-					namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -96,7 +98,7 @@ exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current
+importFrom(stats,setNames)`)).content().current, ggplot2Callable)
 				}));
 			},
 			expectIsSubgraph:      true,
@@ -116,7 +118,7 @@ importFrom(stats,setNames)`)).content().current
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
 					name:          'ggplot2',
-					namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
 S3method(fortify,lm)
 S3method(fortify,default)
 S3method(fortify,map)
@@ -143,7 +145,7 @@ exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current
+importFrom(stats,setNames)`)).content().current, ggplot2Callable)
 				}));
 			},
 			expectIsSubgraph:      true,

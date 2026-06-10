@@ -194,6 +194,10 @@ function unaryExprFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDoma
 	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
+			if(args.length > 1) {
+				numericInferenceLogger.warn('Currently, calling unary methods in apply or tapply provides two arguments to the unary function (dfg has two reads edges) although only one is used, therefore overapproximate to top (undefined) to not underapproximate in these cases.');
+				return undefined;
+			}
 			return IntervalDomain.bottom(significantFigures);
 		}
 

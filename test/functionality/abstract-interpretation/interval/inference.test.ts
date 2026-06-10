@@ -343,7 +343,7 @@ export const lengthTestCases: [value: string, expected: IntervalSlicingCriterion
 	['"Hallo"', { domain: IntervalTests.interval(0, Infinity) }],
 	['TRUE', { domain: IntervalTests.interval(0, Infinity) }],
 	['NULL', { domain: IntervalTests.interval(0, Infinity) }],
-	['1, 2', { domain: IntervalTests.bottom() }]
+	['1, 2', { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }]
 ] as const;
 
 describe('Interval Inference', () => {
@@ -390,6 +390,16 @@ describe('Interval Inference', () => {
 				'1@x': { domain: IntervalTests.bottom() },
 				'2@y': { domain: IntervalTests.bottom() }
 			});
+
+			testIntervalDomain(`
+				data <- data.frame (a = c (1, 3, 7, 12, 9),
+                   b = c (4, 4, 6, 7, 8),
+                   c = c (14, 15, 11, 10, 6))
+				x <- apply(data, 1, length)
+			`, {
+				'1@data': { domain: IntervalTests.top() },
+				'4@x':    { domain: IntervalTests.top() }
+			});
 		});
 
 		describe('sum semantics', () => {
@@ -433,7 +443,7 @@ describe('Interval Inference', () => {
 			const testCases: [arguments: string[], expected: IntervalSlicingCriterionExpected][] = [
 				// Copy the test cases from below
 				[[], { domain: IntervalTests.bottom() }],
-				[['1', '2'], { domain: IntervalTests.bottom() }],
+				[['1', '2'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['1'], { domain: IntervalTests.scalar(1) }],
 				[['-1'], { domain: IntervalTests.scalar(1) }],
 				[['ifelse(c, -5, 2)'], { domain: IntervalTests.interval(2, 5) }],
@@ -499,7 +509,7 @@ describe('Interval Inference', () => {
 		describe('sign', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['0.2851', '2'], { domain: IntervalTests.bottom() }],
+				[['0.2851', '2'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['0'], { domain: IntervalTests.scalar(0) }],
 				[['-1'], { domain: IntervalTests.scalar(-1) }],
 				[['4'], { domain: IntervalTests.scalar(1) }],
@@ -522,7 +532,7 @@ describe('Interval Inference', () => {
 		describe('sqrt', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['0.2851', '2'], { domain: IntervalTests.bottom() }],
+				[['0.2851', '2'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['0'], { domain: IntervalTests.scalar(0) }],
 				[['-1'], { domain: IntervalTests.top() }],
 				[['4'], { domain: IntervalTests.scalar(2) }],
@@ -626,7 +636,7 @@ describe('Interval Inference', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
 				[['Hallo'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.scalar(Math.sin(2)), matching: DomainMatchingType.Overapproximation }],
 				[['0'], { domain: IntervalTests.scalar(Math.sin(0)), matching: DomainMatchingType.Overapproximation }],
 				[['-1.5'], { domain: IntervalTests.scalar(Math.sin(-1)), matching: DomainMatchingType.Overapproximation }],
@@ -648,7 +658,7 @@ describe('Interval Inference', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
 				[['Hallo'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.scalar(Math.cos(2)), matching: DomainMatchingType.Overapproximation }],
 				[['0'], { domain: IntervalTests.scalar(Math.cos(0)), matching: DomainMatchingType.Overapproximation }],
 				[['-1.5'], { domain: IntervalTests.scalar(Math.cos(-1)), matching: DomainMatchingType.Overapproximation }],
@@ -670,8 +680,8 @@ describe('Interval Inference', () => {
 		describe('nrow', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
-				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.top() }],
 				[['data.frame(c(1,2,3), c(1,2))'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
 				[['data.frame(c(1), c(2,3), c(1,2,3,4))'], { domain: IntervalTests.scalar(4), matching: DomainMatchingType.Overapproximation }],
@@ -702,8 +712,8 @@ describe('Interval Inference', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
 				[['Hallo'], { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
-				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.scalar(1) }],
 				[['c(1,2,3)'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
 				[['data.frame(c(1,2,3), c(1,2))'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
@@ -722,8 +732,8 @@ describe('Interval Inference', () => {
 		describe('ncol', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
-				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.top() }],
 				[['data.frame(c(1,2,3), c(1,2))'], { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation }],
 				[['data.frame(c(1), c(2,3), c(1,2,3,4))'], { domain: IntervalTests.scalar(3), matching: DomainMatchingType.Overapproximation }],
@@ -754,8 +764,8 @@ describe('Interval Inference', () => {
 			const testCases: [argument: string[], expected: IntervalSlicingCriterionExpected][] = [
 				[[], { domain: IntervalTests.bottom() }],
 				[['Hallo'], { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }],
-				[['2, 3'], { domain: IntervalTests.bottom() }],
-				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom() }],
+				[['2, 3'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
+				[['data.frame(), data.frame()'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['2'], { domain: IntervalTests.scalar(1) }],
 				[['c(1,2,3)'], { domain: IntervalTests.scalar(1), matching: DomainMatchingType.Overapproximation }],
 				[['data.frame(c(1,2,3), c(1,2))'], { domain: IntervalTests.scalar(2), matching: DomainMatchingType.Overapproximation }],
@@ -1431,6 +1441,20 @@ describe('Interval Inference', () => {
 			x # Joining both branches should result in undefined
 		`, {
 			'8@x': { domain: IntervalTests.top() },
+		});
+	});
+
+	describe('Fails to resolve correct origin when for loop overrides variable from before for-loop', { fails: true }, () => {
+		testIntervalDomain(`
+			i <- 111
+			for (i in 1:20) {
+				if (i %% 10 == 0) {
+					i # should be reachable for i = 10 and i = 20, but currently always resolves i to 111 and therefore asserts unreachable
+				}
+			}
+			i
+		`, {
+			'4@i': { domain: IntervalTests.interval(10, 20), matching: DomainMatchingType.Overapproximation },
 		});
 	});
 });

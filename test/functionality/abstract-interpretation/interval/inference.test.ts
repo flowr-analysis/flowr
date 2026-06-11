@@ -112,7 +112,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(0) }],
 		['/', { domain: IntervalTests.scalar(0) }],
 		['^', { domain: IntervalTests.scalar(Number.POSITIVE_INFINITY) }],
-		['%%', { domain: IntervalTests.scalar(0%(-5)) }],
+		['%%', { domain: IntervalTests.scalar(0) }],
 	])],
 	[['2', '5'], new Map([
 		['+', { domain: IntervalTests.scalar(2+5) }],
@@ -120,7 +120,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(2*5) }],
 		['/', { domain: IntervalTests.scalar(2/5) }],
 		['^', { domain: IntervalTests.scalar(2**5) }],
-		['%%', { domain: IntervalTests.scalar(2%5) }]
+		['%%', { domain: IntervalTests.scalar(2) }]
 	])],
 	[['384', '92'], new Map([
 		['+', { domain: IntervalTests.scalar(384+92) }],
@@ -128,7 +128,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(384*92) }],
 		['/', { domain: IntervalTests.scalar(384/92) }],
 		['^', { domain: IntervalTests.scalar(384**92) }],
-		['%%', { domain: IntervalTests.scalar(384%92) }]
+		['%%', { domain: IntervalTests.scalar(16) }]
 	])],
 	[['(-5)', '18'], new Map([
 		['+', { domain: IntervalTests.scalar((-5)+18) }],
@@ -136,7 +136,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar((-5)*18) }],
 		['/', { domain: IntervalTests.scalar((-5)/18) }],
 		['^', { domain: IntervalTests.scalar((-5)**18) }],
-		['%%', { domain: IntervalTests.scalar((-5)%18) }]
+		['%%', { domain: IntervalTests.scalar(13) }]
 	])],
 	[['(-15)', '-2'], new Map([
 		['+', { domain: IntervalTests.scalar((-15)+(-2)) }],
@@ -144,7 +144,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar((-15)*(-2)) }],
 		['/', { domain: IntervalTests.scalar((-15)/(-2)) }],
 		['^', { domain: IntervalTests.scalar((-15)**(-2)) }],
-		['%%', { domain: IntervalTests.scalar((-15)%(-2)) }]
+		['%%', { domain: IntervalTests.scalar(-1) }]
 	])],
 	[['2.7', '1.3'], new Map([
 		['+', { domain: IntervalTests.scalar(2.7+1.3) }],
@@ -152,7 +152,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(2.7*1.3) }],
 		['/', { domain: IntervalTests.scalar(2.7/1.3) }],
 		['^', { domain: IntervalTests.scalar(2.7**1.3), matching: DomainMatchingType.Overapproximation }],
-		['%%', { domain: IntervalTests.scalar(2.7%1.3) }]
+		['%%', { domain: IntervalTests.scalar(0.1, 15) }]
 	])],
 	[['2', '1.3'], new Map([
 		['+', { domain: IntervalTests.scalar(2+1.3) }],
@@ -160,7 +160,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(2*1.3) }],
 		['/', { domain: IntervalTests.scalar(2/1.3) }],
 		['^', { domain: IntervalTests.scalar(2**1.3), matching: DomainMatchingType.Overapproximation }],
-		['%%', { domain: IntervalTests.scalar(2%1.3) }]
+		['%%', { domain: IntervalTests.scalar(0.7) }]
 	])],
 	[['5', '-3'], new Map([
 		['+', { domain: IntervalTests.scalar(5+(-3)) }],
@@ -168,7 +168,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(5*(-3)) }],
 		['/', { domain: IntervalTests.scalar(5/(-3), 16) }],
 		['^', { domain: IntervalTests.scalar(5**(-3)) }],
-		['%%', { domain: IntervalTests.scalar(5%(-3)) }]
+		['%%', { domain: IntervalTests.scalar(-1) }]
 	])],
 	[['(-2)', '4'], new Map([
 		['+', { domain: IntervalTests.scalar((-2)+4) }],
@@ -176,7 +176,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar((-2)*4) }],
 		['/', { domain: IntervalTests.scalar((-2)/4) }],
 		['^', { domain: IntervalTests.scalar((-2)**4) }],
-		['%%', { domain: IntervalTests.scalar((-2)%4) }]
+		['%%', { domain: IntervalTests.scalar(2) }]
 	])],
 	[['(-3)', '-6'], new Map([
 		['+', { domain: IntervalTests.scalar((-3)+(-6)) }],
@@ -184,7 +184,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar((-3)*(-6)) }],
 		['/', { domain: IntervalTests.scalar((-3)/(-6)) }],
 		['^', { domain: IntervalTests.scalar((-3)**(-6)) }],
-		['%%', { domain: IntervalTests.scalar((-3)%(-6)) }]
+		['%%', { domain: IntervalTests.scalar(-3) }]
 	])],
 	[['1e10', '1e-5'], new Map([
 		['+', { domain: IntervalTests.scalar(1e10+1e-5) }],
@@ -192,7 +192,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.scalar(1e10*1e-5) }],
 		['/', { domain: IntervalTests.scalar(1e10/1e-5) }],
 		['^', { domain: IntervalTests.scalar(1e10**1e-5), matching: DomainMatchingType.Overapproximation }],
-		['%%', { domain: IntervalTests.scalar(1e10%1e-5) }]
+		['%%', { domain: IntervalTests.scalar(9.181909e-06, 5) }]
 	])],
 	[['Inf', '0'], new Map([
 		['+', { domain: IntervalTests.scalar(Infinity) }],
@@ -312,7 +312,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.interval(-10, 20) }],
 		['/', { domain: IntervalTests.interval((-2)/5, 4/5) }],
 		['^', { domain: IntervalTests.interval((-2)**5, 4**5) }],
-		['%%', { domain: IntervalTests.interval(0, 4) }]
+		['%%', { domain: IntervalTests.interval(3, 4), matching: DomainMatchingType.Overapproximation }]
 	])],
 	[['ifelse(c, 1, 4)', '5'], new Map([
 		['+', { domain: IntervalTests.interval(6, 9) }],
@@ -320,7 +320,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.interval(5, 20) }],
 		['/', { domain: IntervalTests.interval(1/5, 4/5) }],
 		['^', { domain: IntervalTests.interval(1, 4**5) }],
-		['%%', { domain: IntervalTests.interval(0, 4) }]
+		['%%', { domain: IntervalTests.interval(1, 4), matching: DomainMatchingType.Overapproximation }]
 	])],
 	[['ifelse(c, -1, -4)', '5'], new Map([
 		['+', { domain: IntervalTests.interval(1, 4) }],
@@ -328,7 +328,7 @@ export const binaryOperatorSuccessTestCases: IntervalInferenceOperatorTestCase =
 		['*', { domain: IntervalTests.interval(-20, -5) }],
 		['/', { domain: IntervalTests.interval((-4)/5, (-1)/5) }],
 		['^', { domain: IntervalTests.interval((-4)**5, (-1)**5) }],
-		['%%', { domain: IntervalTests.interval(0, 4) }]
+		['%%', { domain: IntervalTests.interval(1, 4), matching: DomainMatchingType.Overapproximation }]
 	])]
 ] as const;
 
@@ -446,7 +446,8 @@ describe('Interval Inference', () => {
 				[['1', '2'], { domain: IntervalTests.bottom(), matching: DomainMatchingType.Overapproximation }],
 				[['1'], { domain: IntervalTests.scalar(1) }],
 				[['-1'], { domain: IntervalTests.scalar(1) }],
-				[['ifelse(c, -5, 2)'], { domain: IntervalTests.interval(2, 5) }],
+				[['ifelse(c, -5, 2)'], { domain: IntervalTests.interval(2, 5), matching: DomainMatchingType.Overapproximation }],
+				[['ifelse(c, -5, ifelse(c, 1, 2))'], { domain: IntervalTests.interval(1, 5), matching: DomainMatchingType.Overapproximation }],
 				[['c(1,2,3)'], { domain: IntervalTests.top() }]
 			];
 

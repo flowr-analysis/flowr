@@ -1,4 +1,4 @@
-import {describe, it} from 'vitest';
+import { describe, it } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';

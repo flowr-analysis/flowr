@@ -55,17 +55,6 @@ export function processLibrary<OtherInfo>(
 	if(Identifier.getNamespace(nameToLoad.type === RType.String ? nameToLoad.content.str : nameToLoad.content) !== undefined) {
 		dataflowLogger.warn('Namespaced library names are not supported, ignoring namespace');
 	}
-	// treat as a function call but convert the first argument to a string
-	const newArg: RString<OtherInfo & ParentInformation> = nameToLoad.type === RType.String ? nameToLoad : {
-		type:     RType.String,
-		info:     nameToLoad.info,
-		lexeme:   nameToLoad.lexeme,
-		location: nameToLoad.location,
-		content:  {
-			quotes: 'none',
-			str:    Identifier.getName(nameToLoad.content)
-		}
-	};
 
 	let packetName = nameToLoad?.lexeme;
 	let isCharacterOnly: Lift<TernaryLogical> = false;
@@ -82,10 +71,23 @@ export function processLibrary<OtherInfo>(
 				packetName =  values.elements[0].value.str;
 			}
 		}
+	} else {
+		// treat as a function call but convert the first argument to a string
+		const newArg: RString<OtherInfo & ParentInformation> = nameToLoad.type === RType.String ? nameToLoad : {
+			type:     RType.String,
+			info:     nameToLoad.info,
+			lexeme:   nameToLoad.lexeme,
+			location: nameToLoad.location,
+			content:  {
+				quotes: 'none',
+				str:    Identifier.getName(nameToLoad.content)
+			}
+		};
+		args =  wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap);
 	}
 	const info = processKnownFunctionCall({
 		name,
-		args:                 wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap), rootId, data,
+		args, rootId, data,
 		hasUnknownSideEffect: false,
 		origin:               BuiltInProcName.Library
 	}).information;

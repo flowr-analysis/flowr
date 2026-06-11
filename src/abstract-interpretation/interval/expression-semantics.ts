@@ -194,6 +194,10 @@ function unaryExprFnSemantics<StateDomain extends AnyStateDomain<AnyAbstractDoma
 	return (args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined, info: ResolveInfo): IntervalDomain | undefined => {
 		if(args.length !== 1) {
 			numericInferenceLogger.warn('Called unary function with more/less than 1 argument, which is not supported.');
+			if(args.length > 1) {
+				numericInferenceLogger.warn('Currently, calling unary methods in apply or tapply provides two arguments to the unary function (dfg has two reads edges) although only one is used, therefore overapproximate to top (undefined) to not underapproximate in these cases.');
+				return undefined;
+			}
 			return IntervalDomain.bottom(significantFigures);
 		}
 
@@ -509,11 +513,16 @@ function intervalAbs(arg: IntervalDomain | undefined): IntervalDomain | undefine
 	}
 
 	const [a, b] = arg.value;
-	const minMax = getMinMax([Math.abs(a), Math.abs(b)]);
-	if(isNotUndefined(minMax)) {
-		return arg.create([minMax.min, minMax.max]);
+	if(a >= 0) {
+		return arg.create(arg.value);
+	} else if(b <= 0) {
+		return arg.create([-b, -a]);
 	}
-	return arg.top();
+	// interval is positive and negative, so get the bigger of both absolute values as upper and 0 as lower bound
+	if(b > -a) {
+		return arg.create([0, b]);
+	}
+	return arg.create([0, -a]);
 }
 
 function intervalModulo(left: IntervalDomain | undefined, right: IntervalDomain | undefined): IntervalDomain | undefined {
@@ -532,19 +541,20 @@ function intervalModulo(left: IntervalDomain | undefined, right: IntervalDomain 
 		return undefined;
 	}
 	if(a === b && c == d) {
-		return left.scalar(a % c, significantFigures);
+		let rResult = a % c;
+		// right decides the sign
+		if(c > 0 && rResult < 0 || c < 0 && rResult > 0) {
+			rResult += c;
+		}
+		return left.scalar(rResult, significantFigures);
 	}
 	// right decides the sign
-	// result is at most max of right value
-	const maxLeft = getMax([Math.abs(a), Math.abs(b)]) ?? 0;
-	const maxRight = getMax([Math.abs(c), Math.abs(d)]) ?? 0;
-	const maxModulo = maxLeft < maxRight ? maxLeft : maxRight;
 	if(c > 0) {
 		// result is positive
-		return left.create([0, maxModulo], significantFigures);
+		return left.create([0, d], significantFigures);
 	}
 	// result is negative
-	return left.create([-maxModulo, 0], significantFigures);
+	return left.create([c, 0], significantFigures);
 }
 
 function intervalLog<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(args: readonly FunctionArgument[], visitor: IntervalExpressionSemanticsVisitor<StateDomain>, significantFigures: number | undefined): IntervalDomain | undefined {

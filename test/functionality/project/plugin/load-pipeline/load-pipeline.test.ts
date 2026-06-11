@@ -85,9 +85,8 @@ describe('rda-files', () => {
 
 	describe('load-pipeline real-world', () => {
 		const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-
-		if(!fs.existsSync(dir) || fs.readdirSync(dir).length === 0) {
-			console.warn('RDA test files not found, skipping tests. Run setup.sh to download them.');
+		if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
+			it.skip('skipped - no RDA files found', () => {});
 			return;
 		}
 

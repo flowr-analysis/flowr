@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import {describe, it} from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
@@ -12,9 +12,8 @@ import { defaultConfigOptions } from '../../../../../src/config';
 
 describe('load', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
-
-	if(!fs.existsSync(dir) || fs.readdirSync(dir).length === 0) {
-		console.warn('RDA test files not found, skipping tests. Run setup.sh to download them.');
+	if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
+		it.skip('skipped - no RDA files found', () => {});
 		return;
 	}
 

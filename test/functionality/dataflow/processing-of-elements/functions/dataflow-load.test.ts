@@ -11,7 +11,13 @@ import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { defaultConfigOptions } from '../../../../../src/config';
 
 describe('load', withTreeSitter(parser => {
-	const dir = 'test/testfiles/project/plugins/rda-files/zenodo';
+	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
+
+	if(!fs.existsSync(dir) || fs.readdirSync(dir).length === 0) {
+		console.warn('RDA test files not found, skipping tests. Run setup.sh to download them.');
+		return;
+	}
+
 	const files = fs.readdirSync(dir)
 		.filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda'))
 		.map(file => path.join(dir, file));

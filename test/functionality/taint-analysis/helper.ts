@@ -2,7 +2,9 @@ import { assert } from 'vitest';
 import type { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { Record } from '../../../src/util/record';
-import { getInferredValueForCriterion } from '../abstract-interpretation/inference';
+import {
+	getInferredValueForCriterionFromStateDomain
+} from '../abstract-interpretation/inference';
 import { guard } from '../../../src/util/assert';
 import type {
 	AnyPredefinedTaintAnalysisName
@@ -10,8 +12,8 @@ import type {
 import { predefinedTaintAnalyses } from '../../../src/taint-analysis/predefined/predefined';
 import type { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
 import { CompositeTaintAnalysisDefinition } from '../../../src/taint-analysis/builder/taint-analysis-definition';
-import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 import type { MultiValueDomain } from '../../../src/abstract-interpretation/domains/multi-value-state-domain';
+import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 
 export type TaintAnalysisExpectation = Record<SlicingCriterion, symbol | undefined>;
 
@@ -24,7 +26,7 @@ export type CompositeTaintExpectation = Record<SlicingCriterion, Record<string, 
  * @param analysis - Taint analysis definition (single or composite)
  * @param expectation - Expected taints
  */
-export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition<string> | CompositeTaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
+export async function testTaintAnalysis(code: string, analysis: TaintAnalysisDefinition | CompositeTaintAnalysisDefinition<string>, expectation: TaintAnalysisExpectation) {
 	if(analysis instanceof CompositeTaintAnalysisDefinition) {
 		throw new TypeError('testTaintAnalysis does not support composite analyses. Use testCompositeTaintAnalysis instead.');
 	}
@@ -46,7 +48,7 @@ export async function testPredefinedTaintAnalysis(code: string, name: AnyPredefi
  * @param code - The code to analyse
  * @param analyses - Map of analyses and their corresponding expectations
  */
-export async function testTaintAnalyses(code: string, analyses: Set<[string, TaintAnalysisDefinition<string>, TaintAnalysisExpectation]>) {
+export async function testTaintAnalyses(code: string, analyses: Set<[string, TaintAnalysisDefinition, TaintAnalysisExpectation]>) {
 	const analyzer = await new FlowrAnalyzerBuilder()
 		.setEngine('tree-sitter')
 		.build();
@@ -67,7 +69,7 @@ export async function testTaintAnalyses(code: string, analyses: Set<[string, Tai
 		guard(result, 'Expected taint analysis scale results are missing');
 
 		for(const [criterion, expectedValue] of Record.entries(expected)) {
-			const actualDomain = getInferredValueForCriterion(result.visitor, criterion);
+			const actualDomain = getInferredValueForCriterionFromStateDomain((await analyzer.normalize()).idMap, result.domains, criterion);
 			const expectedDomain = def.domain.create(expectedValue);
 			if(expectedValue === undefined) {
 				assert.ok(actualDomain?.value === undefined, `Expected inferred taint for criterion "${criterion}" to be undefined`);
@@ -103,7 +105,7 @@ export async function testCompositeTaintAnalysis(
 	guard(result, 'Expected composite taint analysis results are missing');
 
 	for(const [criterion, expectedComponents] of Record.entries(expectation)) {
-		const product = getInferredValueForCriterion(result.visitor, criterion) as MultiValueDomain<TaintProduct> | undefined;
+		const product = getInferredValueForCriterionFromStateDomain((await analyzer.normalize()).idMap, result.domains, criterion) as MultiValueDomain<TaintProduct>;
 
 		for(const [name, expectedValue] of Record.entries(expectedComponents)) {
 			const actualValue = product?.value[name]?.value;

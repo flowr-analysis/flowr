@@ -2,11 +2,13 @@ import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project
 import type { TaintAnalysisDefinition, CompositeTaintAnalysisDefinition, RunnableTaintAnalysisDefinition } from './taint-analysis-definition';
 import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
-import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
+import type { AbsintVisitorConfiguration } from '../../abstract-interpretation/absint-visitor';
+import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
+import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 
 export interface TaintInferenceResult {
-	visitor:  AbstractInterpretationVisitor<AnyStateDomain>
+	domains:  StateAbstractDomain<AnyAbstractDomain>
 	finding?: string
 }
 
@@ -60,7 +62,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 			const endState = visitor.getEndState();
 			const finding = endState.isBottom() ? def.msg : undefined;
 
-			results.set(def.name, { visitor, finding });
+			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding });
 		}
 		return results;
 	}

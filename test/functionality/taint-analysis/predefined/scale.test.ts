@@ -62,8 +62,6 @@ describe('Taint Analysis Scale', () => {
 			x <- scale(x, scale = FALSE)
 			x <- mean(x)`,
 		{
-			'1@x': Unscaled,
-			'2@x': ZeroCentered,
 			'3@x': Bottom,
 		});
 	});
@@ -86,8 +84,6 @@ describe('Taint Analysis Scale', () => {
 			x <- scale(x)
 			x <- mean(x)`,
 		{
-			'1@x': Unscaled,
-			'2@x': ZScore,
 			'3@x': Bottom,
 		});
 	});

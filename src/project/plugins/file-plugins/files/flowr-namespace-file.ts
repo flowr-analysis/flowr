@@ -235,7 +235,13 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 
 /** Sets the given list of strings as callable functions */
 export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
-	const all = new Set(info.exportedSymbols.concat(info.exportedFunctions));
+	const exGen = [];
+	for(const [g, f] of info.exportS3Generics.entries()){
+		for(const fi of f){
+			exGen.push(g+'.'+fi);
+		}
+	}
+	const all = new Set(info.exportedSymbols.concat(info.exportedFunctions).concat(info.exportedPatterns).concat(exGen));
 	for(const f of func){
 		if(all.has(f)){
 			info.callable.push(f);

@@ -240,13 +240,13 @@ exportPattern("^[^\\\\.]\\\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current, ['ggplot', 'aes', 'geom_point'])
+importFrom(stats,setNames)`)).content().current, ['ggplot', 'aes', 'geom_point', 'print.rel'])
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = df.environment.current;
 		expect(env.n === 'ggplot2' && env.t === 'namespace').toBeTruthy();
-		const exportedSymbols = ['ggplot', 'aes', 'geom_point'];
+		const exportedSymbols = ['ggplot', 'aes', 'geom_point', 'print.rel'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
 		expect(env.n === 'ggplot2' && env.t === 'imports').toBeTruthy();

@@ -1,26 +1,33 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile } from '../../../context/flowr-file';
+import { FileRole, FlowrFile, FlowrInlineTextFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node, Parser } from 'commonmark';
 import type { GrayMatterFile } from 'gray-matter';
 import matter from 'gray-matter';
 import { log } from '../../../../util/log';
+import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
+import { RmdPattern } from '../notebooks/flowr-analyzer-rmd-file-plugin';
+import { platformBasename, platformDirname } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
  * Finally, it provides access to the single cells, and all cells fused together as one R file.
  */
 export class FlowrRMarkdownFile extends FlowrFile<string> {
-	private data?:            RmdInfo;
+	private data?:       RmdInfo;
+	private mergedCode?: string;
+
 	private readonly wrapped: FlowrFileProvider<string>;
+	private readonly context: FlowrAnalyzerContext;
 
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
 	 * @param file - the file to load as R Markdown
 	 */
-	constructor(file: FlowrFileProvider<string>) {
+	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
 		this.wrapped = file;
+		this.context = ctx;
 	}
 
 	/**
@@ -30,7 +37,7 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		if(!this.data) {
 			this.loadContent();
 		}
-		guard(this.data);
+		guard(this.data !== undefined);
 		return this.data;
 	}
 
@@ -39,28 +46,52 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 	 * @returns RmdInfo
 	 */
 	protected loadContent(): string {
-		this.data = parseRMarkdownFile(this.wrapped.content());
-		return this.data.content;
+		const raw = this.wrapped.content();
+		this.data = parseRMarkdownFile(raw);
+		this.postProcessCodeBlocks();
+		this.mergedCode = restoreBlocksWithoutMd(this.data.blocks, countNewlines(raw));
+		guard(this.mergedCode !== undefined);
+		return this.mergedCode;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile): FlowrRMarkdownFile {
-		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file);
+	/**
+ 	* Postprocess blocks with options like child='other.Rmd'
+  */
+	private postProcessCodeBlocks() {
+		guard(this.data !== undefined);
+
+		for(const block of this.data.blocks) {
+			const childOpt = block.options.get('child');
+			if(childOpt === undefined || !RmdPattern.test(platformBasename(childOpt))) {
+				continue;
+			}
+
+			const childPath = `${platformDirname(this.path())}/${childOpt}`;
+
+			const childFile = this.context.files.resolveRequest({
+				request: 'file',
+				content: childPath
+			});
+			const rmdChild = FlowrRMarkdownFile.from(new FlowrInlineTextFile(childPath, childFile.r.content), this.context);
+
+			block.code = rmdChild.content();
+		}
+	}
+
+	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext): FlowrRMarkdownFile {
+		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file, ctx);
 	}
 }
 
 export type CodeBlockOptions = Map<string, string>;
 
 export interface CodeBlock {
-	options: CodeBlockOptions,
-	code:    string,
+	options:  CodeBlockOptions,
+	code:     string,
+	startpos: { line: number, col: number }
 }
 
-export type CodeBlockEx = CodeBlock & {
-	startpos: { line: number, col: number }
-};
-
 export interface RmdInfo {
-	content: string
 	blocks:  CodeBlock[]
 	options: object
 }
@@ -87,7 +118,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 
 	// Parse Codeblocks
 	const walker = ast.walker();
-	const blocks: CodeBlockEx[] = [];
+	const blocks: CodeBlock[] = [];
 	let e;
 	while((e = walker.next())) {
 		const node = e.node;
@@ -109,9 +140,8 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 	}
 
 	return {
-		content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
-		// eslint-disable-next-line unused-imports/no-unused-vars
-		blocks:  blocks.map(({ startpos, ...block }) => block),
+		// content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
+		blocks:  blocks,
 		options: frontmatter?.data ?? {}
 	};
 }
@@ -134,7 +164,7 @@ function countNewlines(str: string): number {
 /**
  * Restores an Rmd file from code blocks, filling non-code lines with empty lines
  */
-export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number): string {
+export function restoreBlocksWithoutMd(blocks: CodeBlock[], totalLines: number): string {
 	let line = 1;
 	let output = '';
 

@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
@@ -11,6 +11,7 @@ import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { defaultConfigOptions } from '../../../../../src/config';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
+import os from 'os';
 
 describe('load real-world', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
@@ -167,17 +168,11 @@ describe('load random', withTreeSitter(parser => {
 	const rng = seedrandom(seed.toString());
 	const rnd = new SeededRandom(rng);
 	const rcg = new RandomRCodeGenerator(rnd);
-	const tmpDir = '/tmp/flowr-load-test';
-
-	if(!fs.existsSync(tmpDir)) {
-		fs.mkdirSync(tmpDir, { recursive: true });
-	}
-
-	afterAll(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+	const tempFolder = fs.mkdtempSync(path.resolve(os.tmpdir(), '/tmp/flowr-load-test'));
 
 	const createRda = (types: RObjectType[], filename: string): { file: string, vars: string[] } => {
 		const { rCode, vars } = rcg.generateRCodeWithTypes(types);
-		const file = path.join(tmpDir, filename);
+		const file = path.join(tempFolder, filename);
 		const rShell = new RShellExecutor();
 		rShell.run(`${rCode}\nsave(${vars.join(', ')}, file="${file}")`);
 		rShell.close();
@@ -348,6 +343,14 @@ describe('load random', withTreeSitter(parser => {
 					mustNotHaveVertices: new Set([`3:loaded:${escapedFirstVar}`])
 				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
 			);
+		}
+	});
+
+	process.on('exit', () => {
+		try {
+			fs.rmSync(tempFolder, { recursive: true, force: true });
+		} catch(e) {
+			console.error('Error during cleanup:', e);
 		}
 	});
 }));

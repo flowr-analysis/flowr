@@ -779,8 +779,6 @@ export class RDAParser{
 
 		if(result === '<environment: R_GlobalEnv>') {
 			val.value = RValues.GlobalEnv;
-		} else {
-			console.log(result);
 		}
 
 		return val;
@@ -806,8 +804,6 @@ export class RDAParser{
 		val.type = SexpType.EnvSxp;
 		if(result == '<environment: R_GlobalEnv>') {
 			val.value = RValues.GlobalEnv;
-		} else {
-			console.log(result);
 		}
 		return val;
 	}

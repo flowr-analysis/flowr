@@ -23,6 +23,27 @@ export const validStringSymbols = [
 	[ '😀', '💩' ]
 ];
 
+export enum RObjectType {
+	Literal         = 'literal',
+	Vector          = 'vector',
+	List            = 'list',
+	Map             = 'map',
+	Matrix          = 'matrix',
+	DataFrame       = 'dataframe',
+	Environment     = 'environment',
+	Function        = 'function',
+	PairList        = 'pairlist',
+	Call            = 'call',
+	Symbol          = 'symbol',
+	Language        = 'language',
+	Expression      = 'expression',
+	AnonymousFunction = 'anonymous-function',
+	Primitive       = 'primitive',
+	Promise         = 'promise',
+	Factor          = 'factor',
+	S4              = 's4',
+}
+
 const typesWithoutAttributes = new Set(['symbol', 'promise']);
 
 export class RandomRCodeGenerator {
@@ -72,6 +93,46 @@ export class RandomRCodeGenerator {
 		};
 	}
 
+	generateObjectOfType(type: RObjectType, nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+		switch(type) {
+			case RObjectType.Literal:           return this.generateLiteral();
+			case RObjectType.Vector:            return this.generateVector(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.List:              return this.generateList(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.Map:               return this.generateMap(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.Matrix:            return this.generateMatrix(maxNestingLevel);
+			case RObjectType.DataFrame:         return this.generateDataFrame();
+			case RObjectType.Environment:       return this.generateEnvironmentExpr();
+			case RObjectType.Function:          return this.generateFunction(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.PairList:          return this.generatePairList(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.Call:              return this.generateCall();
+			case RObjectType.Symbol:            return this.generateSymbol();
+			case RObjectType.Language:          return this.generateLanguage();
+			case RObjectType.Expression:        return this.generateExpression();
+			case RObjectType.AnonymousFunction: return this.generateAnonymousFunction();
+			case RObjectType.Primitive:         return this.generatePrimitive();
+			case RObjectType.Promise:           return this.generatePromise();
+			case RObjectType.Factor:            return this.generateFactor(nestingLevel + 1, maxNestingLevel);
+			case RObjectType.S4:                return { value: this.generateS4(`tmp_${Date.now()}`), type: 's4', len: 1 };
+		}
+	}
+
+	generateRCodeWithTypes(types: RObjectType[], maxNestingLevel = 1) {
+		const codeMap = new Map<string, string>();
+		const vars: string[] = [];
+
+		for(let i = 0; i < types.length; i++) {
+			const name = `var_${i}`;
+			const { value } = this.generateObjectOfType(types[i], 0, maxNestingLevel);
+			codeMap.set(name, `${name} <- ${value}`);
+			vars.push(name);
+		}
+
+		return {
+			rCode: Array.from(codeMap.values()).join('\n'),
+			vars
+		};
+	}
+
 	generateS4(name: string){
 		return `setClass("Employee", slots=list(name="character",
                                 age="numeric",
@@ -86,25 +147,9 @@ export class RandomRCodeGenerator {
 			return this.generateLiteral();
 		}
 
-		return this.rnd.pick([
-			() => this.generateLiteral(),
-			() => this.generateVector(nestingLevel + 1, maxNestingLevel),
-			() => this.generateList(nestingLevel + 1, maxNestingLevel),
-			() => this.generateMap(nestingLevel + 1, maxNestingLevel),
-			() => this.generateMatrix(maxNestingLevel),
-			() => this.generateDataFrame(),
-			() => this.generateEnvironmentExpr(),
-			() => this.generateFunction(nestingLevel + 1, maxNestingLevel),
-			() => this.generatePairList(nestingLevel + 1, maxNestingLevel),
-			() => this.generateCall(),
-			() => this.generateSymbol(),
-			() => this.generateLanguage(),
-			() => this.generateExpression(),
-			() => this.generateAnonymousFunction(),
-			() => this.generatePrimitive(),
-			() => this.generatePromise(),
-			() => this.generateFactor(nestingLevel + 1, maxNestingLevel),
-		])();
+		const values = Object.values(RObjectType) as RObjectType[];
+		const type = this.rnd.pick(values);
+		return this.generateObjectOfType(type, nestingLevel, maxNestingLevel);
 	}
 
 	generateFactor(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number }  {

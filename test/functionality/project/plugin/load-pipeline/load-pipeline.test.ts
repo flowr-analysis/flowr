@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
@@ -31,8 +31,16 @@ describe('rda-files', () => {
 			'none'
 		];
 
+		const tmpDir = '/tmp/flowr-load-pipeline-test';
+
+		if(!fs.existsSync(tmpDir)) {
+			fs.mkdirSync(tmpDir, { recursive: true });
+		}
+
+		afterAll(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
 		for(let i = 0; i < runs; i++) {
-			const file = `/tmp/test_${i}.rda`;
+			const file = `${tmpDir}/test_${i}.rda`;
 			const rng = seedrandom((seed + i).toString());
 			const rnd = new SeededRandom(rng);
 

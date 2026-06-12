@@ -1,4 +1,4 @@
-import { describe, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
@@ -9,9 +9,11 @@ import { getVarsAndTypesFromShell } from '../../../project/plugin/load-pipeline/
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import { defaultConfigOptions } from '../../../../../src/config';
+import seedrandom from 'seedrandom';
+import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 
-describe('load', withTreeSitter(parser => {
-	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
+describe('load real-world', withTreeSitter(parser => {
+	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
 	if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
 		it.skip('skipped - no RDA files found', () => {});
 		return;
@@ -158,17 +160,207 @@ describe('load', withTreeSitter(parser => {
 			);
 		}
 	});
+}));
 
-	describe('file not found', () => {
+describe('load random', withTreeSitter(parser => {
+	const seed = 0;
+	const rng = seedrandom(seed.toString());
+	const rnd = new SeededRandom(rng);
+	const rcg = new RandomRCodeGenerator(rnd);
+	const tmpDir = '/tmp/flowr-load-test';
+
+	if(!fs.existsSync(tmpDir)) {
+		fs.mkdirSync(tmpDir, { recursive: true });
+	}
+
+	afterAll(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+	const createRda = (types: RObjectType[], filename: string): { file: string, vars: string[] } => {
+		const { rCode, vars } = rcg.generateRCodeWithTypes(types);
+		const file = path.join(tmpDir, filename);
+		const rShell = new RShellExecutor();
+		rShell.run(`${rCode}\nsave(${vars.join(', ')}, file="${file}")`);
+		rShell.close();
+		return { file, vars };
+	};
+
+	describe('defines variables', () => {
+		const { file, vars } = createRda([
+			RObjectType.Literal,
+			RObjectType.Vector,
+			RObjectType.Function,
+			RObjectType.List,
+		], 'defines_variables.rda');
+
+		const rShell = new RShellExecutor();
+		const varsAndTypes = getVarsAndTypesFromShell(file, rShell);
+		rShell.close();
+
+		it('generated rda contains expected variable names', () => {
+			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
+		});
+
+		let graph = emptyGraph();
+		for(const [varName, varType] of varsAndTypes) {
+			const syntheticId = `3:loaded:${varName.replaceAll('.', '_')}`;
+			const cds = [{ id: '3', when: true }];
+			if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
+				const fdefId = `${syntheticId}:fdef`;
+				graph = graph.defineFunction(fdefId, [], {
+					entryPoint: fdefId, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
+				}, { cds });
+				graph = graph.defineVariable(syntheticId, undefined, { cds });
+				graph = graph.definedBy(syntheticId, fdefId);
+			} else {
+				graph = graph.defineVariable(syntheticId, undefined, { cds });
+			}
+		}
+
 		assertDataflow(
-			label('load with nonexistent file is unknown side effect', ['name-normal']),
+			label('load defines variables from generated rda', ['name-normal']),
 			parser,
-			'load("nonexistent.rda")',
-			emptyGraph()
-				.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [builtInId('load')] })
-				.argument('3', '1')
-				.calls('3', builtInId('load')),
+			`load("${file}")`,
+			graph,
 			{ expectIsSubgraph: true }
 		);
 	});
+
+	describe('overwrite behavior', () => {
+		const { file: fileNoClosure, vars: varsNoClosure } = createRda([RObjectType.Literal], 'overwrite_no_closure.rda');
+		const { file: fileClosure, vars: varsClosure } = createRda([RObjectType.Function], 'overwrite_closure.rda');
+
+		const rShell = new RShellExecutor();
+		const varsNoClosureFromShell = getVarsAndTypesFromShell(fileNoClosure, rShell);
+		const varsClosureFromShell = getVarsAndTypesFromShell(fileClosure, rShell);
+		rShell.close();
+
+		it('generated rda contains expected variable names', () => {
+			expect([...varsNoClosureFromShell.keys()].sort()).toEqual(varsNoClosure.sort());
+			expect([...varsClosureFromShell.keys()].sort()).toEqual(varsClosure.sort());
+		});
+
+		const firstNoClosureEntry = [...varsNoClosureFromShell.entries()][0];
+		const firstClosureEntry = [...varsClosureFromShell.entries()][0];
+
+		if(firstNoClosureEntry) {
+			const [firstVar] = firstNoClosureEntry;
+			const escapedFirstVar = firstVar.replaceAll('.', '_');
+
+			assertDataflow(
+				label('load overwrites existing variable (no closure)', ['name-normal']),
+				parser,
+				`${firstVar} <- 42\nload("${fileNoClosure}")\nprint(${firstVar})`,
+				emptyGraph()
+					.use(`3@${firstVar}`, firstVar)
+					.reads(`3@${firstVar}`, `6:loaded:${escapedFirstVar}`),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+
+			assertDataflow(
+				label('assignment overwrites loaded variable (no closure)', ['name-normal']),
+				parser,
+				`load("${fileNoClosure}")\n${firstVar} <- 42\nprint(${firstVar})`,
+				emptyGraph()
+					.use(`3@${firstVar}`, firstVar)
+					.reads(`3@${firstVar}`, `2@${firstVar}`),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+		}
+
+		if(firstClosureEntry) {
+			const [firstVar] = firstClosureEntry;
+			const escapedFirstVar = firstVar.replaceAll('.', '_');
+
+			assertDataflow(
+				label('load overwrites existing closure variable', ['name-normal']),
+				parser,
+				`${firstVar} <- 42\nload("${fileClosure}")\nprint(${firstVar})`,
+				emptyGraph()
+					.use(`3@${firstVar}`, firstVar)
+					.reads(`3@${firstVar}`, `6:loaded:${escapedFirstVar}`),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+
+			assertDataflow(
+				label('assignment overwrites loaded closure variable', ['name-normal']),
+				parser,
+				`load("${fileClosure}")\n${firstVar} <- 42\nprint(${firstVar})`,
+				emptyGraph()
+					.use(`3@${firstVar}`, firstVar)
+					.reads(`3@${firstVar}`, `2@${firstVar}`),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+		}
+	});
+
+	describe('function call', () => {
+		const { file, vars } = createRda([RObjectType.Function], 'function_call.rda');
+		const rShell = new RShellExecutor();
+		const varsAndTypes = getVarsAndTypesFromShell(file, rShell);
+		rShell.close();
+
+		it('generated rda contains expected variable names', () => {
+			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
+		});
+
+		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === 'closure');
+		if(firstClosure) {
+			const [closureName] = firstClosure;
+			const escapedName = closureName.replaceAll('.', '_');
+
+			assertDataflow(
+				label('function from generated load is callable', ['name-normal']),
+				parser,
+				`load("${file}")\n${closureName}()`,
+				emptyGraph()
+					.defineVariable(`3:loaded:${escapedName}`, undefined, { cds: [{ id: 3, when: true }] })
+					.defineFunction(`3:loaded:${escapedName}:fdef`, [], {
+						entryPoint: `3:loaded:${escapedName}:fdef`, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
+					}, { cds: [{ id: 3, when: true }] })
+					.definedBy(`3:loaded:${escapedName}`, `3:loaded:${escapedName}:fdef`)
+					.reads(`2@${closureName}`, `3:loaded:${escapedName}`),
+				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
+			);
+		}
+	});
+
+	describe('ignore load calls config', () => {
+		const { file, vars } = createRda([RObjectType.Literal], 'ignore_config.rda');
+		const rShell = new RShellExecutor();
+		const varsAndTypes = getVarsAndTypesFromShell(file, rShell);
+		rShell.close();
+
+		it('generated rda contains expected variable names', () => {
+			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
+		});
+
+		const firstEntry = [...varsAndTypes.entries()][0];
+		if(firstEntry) {
+			const [firstVar] = firstEntry;
+			const escapedFirstVar = firstVar.replaceAll('.', '_');
+			assertDataflow(
+				label('load is ignored when ignoreLoadCalls is true (generated)', ['name-normal']),
+				parser,
+				`load("${file}")`,
+				emptyGraph(),
+				{
+					expectIsSubgraph:    true,
+					mustNotHaveVertices: new Set([`3:loaded:${escapedFirstVar}`])
+				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
+			);
+		}
+	});
+}));
+
+describe('file not found', withTreeSitter(parser => {
+	assertDataflow(
+		label('load with nonexistent file is unknown side effect', ['name-normal']),
+		parser,
+		'load("nonexistent.rda")',
+		emptyGraph()
+			.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [builtInId('load')] })
+			.argument('3', '1')
+			.calls('3', builtInId('load')),
+		{ expectIsSubgraph: true }
+	);
 }));

@@ -407,6 +407,7 @@ export class RDAParser{
 			serializationType === 'R_MAGIC_XDR_V1'   ||
 			serializationType === 'R_MAGIC_BINARY_V1'
 		){
+			// https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/saveload.c#L2157-L2196
 			console.warn('Version one rda files are not supported yet');
 		}
 		return RValues.NilValue;

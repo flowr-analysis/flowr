@@ -2,7 +2,7 @@ import { codeBlock } from './doc-util/doc-code';
 import { RemoteFlowrFilePathBaseRef, getFilePathMd } from './doc-util/doc-files';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import {details} from "./doc-util/doc-structure";
+import { details } from './doc-util/doc-structure';
 
 export class WikiCreateLintingRules extends DocMaker<'wiki/Create Linting Rules.md'> {
 	constructor() {

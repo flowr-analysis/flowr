@@ -8,6 +8,7 @@ import { log } from '../../../../util/log';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
 import { RmdPattern } from '../notebooks/flowr-analyzer-rmd-file-plugin';
 import { platformBasename, platformDirname } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import path from 'path';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
@@ -66,8 +67,7 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 				continue;
 			}
 
-			const childPath = `${platformDirname(this.path())}/${childOpt}`;
-
+			const childPath = path.join(platformDirname(this.path()), childOpt);
 			const childFile = this.context.files.resolveRequest({
 				request: 'file',
 				content: childPath

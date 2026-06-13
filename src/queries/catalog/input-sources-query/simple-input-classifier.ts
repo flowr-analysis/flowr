@@ -399,6 +399,8 @@ export interface InputSource extends MergeableRecord {
 	trace:  InputTraceType,
 	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
 	cds?:   InputType[],
+	/** argument name when this source originates from a named argument of the criterion function call */
+	name?:  string,
 	/** the concrete scalar value when the source is a constant or a pure alias of one */
 	value?: ConstantValue
 }
@@ -467,7 +469,9 @@ export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClass
 			if(argVtx === undefined) {
 				continue;
 			}
-			ret.push(c.classifyEntry(argVtx));
+			const entry = c.classifyEntry(argVtx);
+			const argName = FunctionArgument.getName(arg);
+			ret.push(argName !== undefined ? { ...entry, name: argName } : entry);
 		}
 		return ret;
 	} else {

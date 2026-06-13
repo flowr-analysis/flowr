@@ -14,6 +14,7 @@ import { guard } from '../util/assert';
 import type { Enrichment, EnrichmentElementArguments } from './search-executor/search-enrichers';
 import { type MapperArguments, Mapper } from './search-executor/search-mappers';
 import type { Query } from '../queries/query';
+import type { LintingResultCertainty } from '../linter/linter-format';
 import type TreeSitter from 'web-tree-sitter';
 
 type FlowrCriteriaReturn<C extends SlicingCriteria> = FlowrSearchElements<ParentInformation, C extends [] ? never : C extends [infer _] ?
@@ -53,8 +54,9 @@ export const FlowrSearchGenerator = {
 	 * Internally, the {@link SupportedQuery#flattenInvolvedNodes} function is used to flatten the resulting nodes of the query.
 	 * Please note that, due to the fact that not every query involves dataflow nodes, the search may not contain any elements at all for certain queries.
 	 */
-	fromQuery(...from: readonly Query[]): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
-		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from } });
+	fromQuery(from: Query | readonly Query[], certainty?: LintingResultCertainty): FlowrSearchBuilder<'from-query', [], ParentInformation, FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {
+		const queries = Array.isArray(from) ? from as readonly Query[] : [from as Query];
+		return new FlowrSearchBuilder({ type: 'generator', name: 'from-query', args: { from: queries, certainty } });
 	},
 	/**
 	 * Initializes a new search query based on the results of the given tree-sitter syntax query.

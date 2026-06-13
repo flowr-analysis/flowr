@@ -12,8 +12,9 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
+import { LintingResultCertainty } from '../../../linter/linter-format';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, UserFunctions } from './input-source-functions';
+import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -35,7 +36,8 @@ export interface InputSourcesQuery extends BaseQueryFormat {
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputTraceType.Pure]: PureFunctions,
 	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
-	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	[InputType.TempFile]:  TempFileFunctions,
+	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
 	[InputType.System]:    SystemFunctions,
 	[InputType.Ffi]:       FfiFunctions,
@@ -90,6 +92,7 @@ export const InputSourcesDefinition = {
 		config:    Joi.object({
 			[InputTraceType.Pure]: Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
 			[InputType.File]:      Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
+			[InputType.TempFile]:  Joi.array().items(Joi.string()).optional().description('Functions that produce temporary file paths (sub-type of File; e.g., tempfile, tempdir).'),
 			[InputType.Network]:   Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
 			[InputType.Random]:    Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
 			[InputType.System]:    Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),

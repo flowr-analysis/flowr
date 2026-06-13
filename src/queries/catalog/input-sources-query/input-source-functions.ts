@@ -325,3 +325,11 @@ export const UserFunctions: Identifier[] = [
 	Identifier.make('tk_choose.files', 'tcltk'),
 	Identifier.make('tk_choose.dir',   'tcltk'),
 ];
+
+/** R functions that produce temporary file/directory paths (sub-type of {@link InputType.File}). */
+export const TempFileFunctions: Identifier[] = [
+	Identifier.make('tempfile', 'base'),        Identifier.make('tempdir',        'base'),
+	Identifier.make('file_temp', 'fs'),         Identifier.make('dir_temp',        'fs'),
+	Identifier.make('local_tempfile', 'withr'), Identifier.make('with_tempfile', 'withr'),
+	Identifier.make('local_tempdir',  'withr'), Identifier.make('with_tempdir',  'withr'),
+];

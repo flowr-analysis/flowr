@@ -205,5 +205,33 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 0 }]
 		});
 	});
+
+	describe('Batched Criteria (issue #5)', () => {
+		testQuery('Two criteria in one query', 'x <- read.csv("a.csv")\ny <- runif(1)\nfoo(x)\nbar(y)', [{ type: 'input-sources', criterion: ['3@foo', '4@bar'] }], {
+			'3@foo': [{ id: '3@x', types: [InputType.File], trace: InputTraceType.Alias }],
+			'4@bar': [{ id: '4@y', types: [InputType.Random], trace: InputTraceType.Alias }]
+		});
+		testQuery('Single-element array same as scalar', 'x <- read.csv("a.csv")\nfoo(x)', [{ type: 'input-sources', criterion: ['2@foo'] }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
+		});
+	});
+
+	describe('Argument names (issue #2)', () => {
+		testQuery('Named arg carries its name', 'foo(x=1, y=read.csv("a.csv"))', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [
+				{ id: '1@1',        types: [InputType.Constant], trace: InputTraceType.Unknown, name: 'x', value: 1 },
+				{ id: '1@read.csv', types: [InputType.File],     trace: InputTraceType.Unknown, name: 'y' }
+			]
+		});
+		testQuery('Positional arg has no name', 'foo(1, read.csv("a.csv"))', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [
+				{ id: '1@1',        types: [InputType.Constant], trace: InputTraceType.Unknown, value: 1 },
+				{ id: '1@read.csv', types: [InputType.File],     trace: InputTraceType.Unknown }
+			]
+		});
+		testQuery('NULL named arg carries name and null value', 'foo(connection=NULL)', [{ type: 'input-sources', criterion: '1@foo' }], {
+			'1@foo': [{ id: '1@NULL', types: [InputType.Constant], trace: InputTraceType.Unknown, name: 'connection', value: null }]
+		});
+	});
 }));
 

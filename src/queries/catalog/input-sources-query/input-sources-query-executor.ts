@@ -23,22 +23,26 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 	const defaultConfig = await resolveSearches(analyzer, DefaultInputClassifierConfig);
 
 	for(const query of queries) {
-		const key = query.criterion;
-		if(results[key]) {
-			log.warn(`Duplicate key for input-sources query: ${key}, skipping...`);
+		const criteria: readonly SlicingCriterion[] = Array.isArray(query.criterion)
+			? (query.criterion as readonly SlicingCriterion[])
+			: [(query.criterion as SlicingCriterion)];
+		const config = { ...defaultConfig, ...(await resolveSearches(analyzer, query.config ?? {})) };
+
+		for(const criterion of criteria) {
+			if(results[criterion]) {
+				log.warn(`Duplicate key for input-sources query: ${criterion}, skipping...`);
+				continue;
+			}
+			const criterionId = SlicingCriterion.tryParse(criterion, nast.idMap) ?? criterion;
+			const provenanceNode = nast.idMap.get(criterionId);
+			const fdef = RFunctionDefinition.rootFunctionDefinition(provenanceNode, nast.idMap);
+			const provenance = Dataflow.provenanceGraph(
+				criterionId,
+				df.graph,
+				fdef ? RNode.collectAllIds(fdef) : undefined
+			);
+			results[criterion] = classifyInput(criterionId, provenance, config, df.graph);
 		}
-		const criterionId = SlicingCriterion.tryParse(key, nast.idMap) ?? key;
-		const provenanceNode = nast.idMap.get(criterionId);
-
-		const fdef = RFunctionDefinition.rootFunctionDefinition(provenanceNode, nast.idMap);
-		const provenance = Dataflow.provenanceGraph(
-			criterionId,
-			df.graph,
-			fdef ? RNode.collectAllIds(fdef) : undefined
-		);
-
-		const config = { ...defaultConfig, ...(await resolveSearches(analyzer, query?.config ?? {})) };
-		results[key] = classifyInput(criterionId, provenance, config, df.graph);
 	}
 
 	return ({

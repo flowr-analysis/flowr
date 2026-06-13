@@ -23,10 +23,12 @@ export type InputSourcesQueryConfig = InputClassifierConfig;
 export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly type:      'input-sources';
 	/**
-	 * This takes a criterion (or a numerical id works too)
+	 * One or more slicing criteria to analyze; each is resolved independently and keyed by its
+	 * criterion string in the result map.  Supplying an array allows batching multiple lookups
+	 * into a single round-trip.
 	 * {@link SlicingCriterion.fromId}
 	 */
-	readonly criterion: SlicingCriterion,
+	readonly criterion: SlicingCriterion | readonly SlicingCriterion[],
 	readonly config?:   InputSourcesQueryConfig
 }
 
@@ -69,12 +71,13 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, types, value } of sources) {
+			for(const { id, trace, types, name, value } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
+				const nameStr  = name  !== undefined ? `, name: ${name}` : '';
 				const valueStr = value !== undefined ? `, value: ${JSON.stringify(value)}` : '';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${valueStr}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${nameStr}${valueStr}`
 				);
 			}
 		}
@@ -83,7 +86,7 @@ export const InputSourcesDefinition = {
 	fromLine: inputSourcesQueryLineParser,
 	schema:   Joi.object({
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
-		criterion: Joi.string().required().description('The slicing criterion to use.'),
+		criterion: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('The slicing criterion or array of criteria to use.'),
 		config:    Joi.object({
 			[InputTraceType.Pure]: Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
 			[InputType.File]:      Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),

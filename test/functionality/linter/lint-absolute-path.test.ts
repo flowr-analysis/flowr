@@ -1,7 +1,7 @@
 import { assert, describe, test } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import { isAbsolutePath } from '../../../src/util/text/strings';
+import { isAbsolutePath, isUrl, fileUrlToPath } from '../../../src/util/text/strings';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import path from 'path';
@@ -16,6 +16,25 @@ describe('flowR linter', withTreeSitter(parser => {
 				});
 				test.each(['relative/path', 'home/user/file.txt', '../../a/../b/../c.txt'])('%s', p => {
 					assert.isFalse(isAbsolutePath(p, undefined));
+				});
+			});
+			describe('is url', () => {
+				test.each([
+					'http://example.com', 'https://example.com/path', 'ftp://files.example.org', 'ftps://secure.ftp.example.org/file.csv',
+					's3://my-bucket/data.csv', 'gs://my-bucket/data.csv'
+				])('%s', u => {
+					assert.isTrue(isUrl(u));
+				});
+				test.each(['/absolute/path', 'C:\\Windows\\file.txt', 'file.csv', '//network-share/path', 'file:///path/to/file.csv'])('%s', u => {
+					assert.isFalse(isUrl(u));
+				});
+			});
+			describe('fileUrlToPath', () => {
+				test.each([['file:///path/to/file.csv', '/path/to/file.csv']] as const)('%s', (url, expected) => {
+					assert.strictEqual(fileUrlToPath(url), expected);
+				});
+				test.each(['http://example.com', '/absolute/path', 's3://bucket/key'])('%s', s => {
+					assert.isUndefined(fileUrlToPath(s));
 				});
 			});
 		});
@@ -210,6 +229,79 @@ describe('flowR linter', withTreeSitter(parser => {
 						}
 					], { totalConsidered: 1, totalUnknown: 0 });
 				});
+			});
+		});
+
+		describe('url handling', () => {
+			const remoteUrls = [
+				'https://raw.githubusercontent.com/user/repo/main/data.csv',
+				'http://example.com/data.csv',
+				'ftp://files.example.org/data.csv',
+				'ftps://secure.ftp.example.org/data.csv',
+				's3://my-bucket/data.csv',
+				'gs://my-bucket/data.csv'
+			];
+			/* s3:// has a digit before the colon so isAbsolutePath never matches it; exclude from ignoreUrls=false tests */
+			const urlsMatchingAbsPath = remoteUrls.filter(u => !u.startsWith('s3://'));
+
+			describe('ignoreUrls=true (default)', () => {
+				describe('path functions', () => {
+					for(const url of remoteUrls) {
+						/* @ignore-in-wiki */
+						assertLinter(url, parser, `read.csv("${url}")`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 });
+					}
+				});
+				describe('all strings', () => {
+					for(const url of remoteUrls) {
+						/* @ignore-in-wiki */
+						assertLinter(url, parser, `x <- "${url}"`, 'absolute-file-paths', [], { totalConsidered: 1, totalUnknown: 0 }, {
+							include: { allStrings: true }
+						});
+					}
+				});
+			});
+
+			describe('ignoreUrls=false', () => {
+				describe('path functions', () => {
+					for(const url of urlsMatchingAbsPath) {
+						/* @ignore-in-wiki */
+						assertLinter(url, parser, `read.csv("${url}")`, 'absolute-file-paths', [
+							{
+								certainty: LintingResultCertainty.Certain,
+								filePath:  url,
+								loc:       [1, 1, 1, url.length + 2 + 'read.csv'.length + 2]
+							}
+						], { totalConsidered: 1, totalUnknown: 0 }, { ignoreUrls: false });
+					}
+				});
+				describe('all strings', () => {
+					for(const url of urlsMatchingAbsPath) {
+						/* @ignore-in-wiki */
+						assertLinter(url, parser, `x <- "${url}"`, 'absolute-file-paths', [
+							{
+								certainty: LintingResultCertainty.Uncertain,
+								filePath:  url,
+								loc:       [1, 6, 1, url.length + 2 + 3 + 2]
+							}
+						], { totalConsidered: 1, totalUnknown: 0 }, {
+							include:    { allStrings: true },
+							ignoreUrls: false
+						});
+					}
+				});
+			});
+
+			describe('file:// urls (always checked, ignoreUrls has no effect)', () => {
+				for(const ignoreUrls of [false, true]) {
+					/* @ignore-in-wiki */
+					assertLinter(`file:///absolute/path/file.csv (ignoreUrls=${ignoreUrls})`, parser, 'read.csv("file:///absolute/path/file.csv")', 'absolute-file-paths', [
+						{
+							certainty: LintingResultCertainty.Certain,
+							filePath:  '/absolute/path/file.csv',
+							loc:       [1, 1, 1, 'read.csv("file:///absolute/path/file.csv")'.length]
+						}
+					], { totalConsidered: 1, totalUnknown: 0 }, { ignoreUrls });
+				}
 			});
 		});
 	});

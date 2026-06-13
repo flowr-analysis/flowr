@@ -5,6 +5,7 @@ import { isAbsolutePath, isUrl, fileUrlToPath } from '../../../src/util/text/str
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import path from 'path';
+import { getPlatform } from '../../../src/util/os';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('absolute path linter', () => {
@@ -29,7 +30,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					assert.isFalse(isUrl(u));
 				});
 			});
-			describe('fileUrlToPath', () => {
+			describe.skipIf(getPlatform() === 'windows')('fileUrlToPath', () => {
 				test.each([['file:///path/to/file.csv', '/path/to/file.csv']] as const)('%s', (url, expected) => {
 					assert.strictEqual(fileUrlToPath(url), expected);
 				});
@@ -291,7 +292,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				});
 			});
 
-			describe('file:// urls (always checked, ignoreUrls has no effect)', () => {
+			describe.skipIf(getPlatform() === 'windows')('file:// urls (always checked, ignoreUrls has no effect)', () => {
 				for(const ignoreUrls of [false, true]) {
 					/* @ignore-in-wiki */
 					assertLinter(`file:///absolute/path/file.csv (ignoreUrls=${ignoreUrls})`, parser, 'read.csv("file:///absolute/path/file.csv")', 'absolute-file-paths', [

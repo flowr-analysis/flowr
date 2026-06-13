@@ -4,6 +4,7 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { getPlatform } from '../../../src/util/os';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('file path validity', () => {
@@ -73,7 +74,7 @@ describe('flowR linter', withTreeSitter(parser => {
 					{ totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles });
 			});
 
-			describe('file:// urls (checked as local paths, ignores checkUrls)', () => {
+			describe.skipIf(getPlatform() === 'windows')('file:// urls (checked as local paths, ignores checkUrls)', () => {
 				assertLinter('file:// missing', parser, 'read.csv("file:///missing/file.csv")', 'file-path-validity', [
 					{ certainty: LintingResultCertainty.Certain, filePath: '/missing/file.csv', loc: [1, 1, 1, 36] }
 				], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });

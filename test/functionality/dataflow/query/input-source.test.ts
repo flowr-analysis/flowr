@@ -88,7 +88,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 
 		testQuery('Read a file with unknown filename variable', 'x <- read.csv(y)\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias }]
+			'2@foo': [{ id: '2@x', types: [InputType.File], trace: InputTraceType.Alias }]
 		});
 	});
 
@@ -100,7 +100,7 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 	describe('Combined Options', () => {
 		testQuery('Read and Random', 'x <- read.csv(y)\ny <- runif(1)\nfoo(x, y)', [{ type: 'input-sources', criterion: '3@foo' }], {
 			'3@foo': [
-				{ id: '3@x', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias },
+				{ id: '3@x', types: [InputType.File], trace: InputTraceType.Alias },
 				{ id: '3@y', types: [InputType.Random], trace: InputTraceType.Alias }
 			]
 		});
@@ -156,8 +156,8 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 			'2@foo': [{ id: '2@x', types: [InputType.User], trace: InputTraceType.Alias }]
 		});
 
-		testQuery('scan also classified as File and Network', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network, InputType.User], trace: InputTraceType.Alias }]
+		testQuery('scan with no file arg classified as File and User only', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.User], trace: InputTraceType.Alias }]
 		});
 	});
 
@@ -183,11 +183,17 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 				{ id: '3@y', types: [InputType.TempFile], trace: InputTraceType.Alias }
 			]
 		});
-		testQuery('read.csv from tempfile path includes TempFile', 'path <- tempfile()\nx <- read.csv(path)\nfoo(x)', [{ type: 'input-sources', criterion: '3@foo' }], {
-			'3@foo': [{ id: '3@x', types: [InputType.File, InputType.Network, InputType.TempFile], trace: InputTraceType.Alias }]
+		testQuery('read.csv from tempfile path is only TempFile', 'path <- tempfile()\nx <- read.csv(path)\nfoo(x)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@x', types: [InputType.TempFile], trace: InputTraceType.Alias }]
 		});
-		testQuery('read.csv(tempfile()) direct includes TempFile', 'x <- read.csv(tempfile())\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
-			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network, InputType.TempFile], trace: InputTraceType.Alias }]
+		testQuery('read.csv(tempfile()) direct is only TempFile', 'x <- read.csv(tempfile())\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+		testQuery('tempfile and network both tagged when combined', 'x <- read.csv(tempfile())\ny <- read.csv("https://example.com/data.csv")\nfoo(x, y)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [
+				{ id: '3@x', types: [InputType.TempFile], trace: InputTraceType.Alias },
+				{ id: '3@y', types: [InputType.File, InputType.Network], trace: InputTraceType.Alias }
+			]
 		});
 	});
 

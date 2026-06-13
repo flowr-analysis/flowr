@@ -12,6 +12,7 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
+import { LintingResultCertainty } from '../../../linter/linter-format';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
 import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
 
@@ -36,7 +37,7 @@ export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputTraceType.Pure]: PureFunctions,
 	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
 	[InputType.TempFile]:  TempFileFunctions,
-	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
 	[InputType.System]:    SystemFunctions,
 	[InputType.Ffi]:       FfiFunctions,

@@ -184,7 +184,7 @@ class InputClassifier {
 					types.push(type as InputType);
 				}
 			}
-			// propagate TempFile from path arguments into File-type calls
+			// if a File-typed call reads from a temp path, replace File with TempFile
 			if(types.includes(InputType.File) && !types.includes(InputType.TempFile)) {
 				for(const arg of call.args) {
 					if(FunctionArgument.isEmpty(arg)) {
@@ -196,6 +196,7 @@ class InputClassifier {
 					}
 					const argVtx = this.dfg.getVertex(ref);
 					if(argVtx && this.classifyEntry(argVtx).types.includes(InputType.TempFile)) {
+						types.splice(types.indexOf(InputType.File), 1);
 						types.push(InputType.TempFile);
 						break;
 					}

@@ -185,7 +185,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@vitest/coverage-v8": "^4.1.8",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.2",
     "license-checker-rseidelsohn": "^4.4.2",
     "npm-run-all": "^4.1.5",

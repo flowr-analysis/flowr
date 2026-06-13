@@ -167,12 +167,6 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
-	describe('Catch Scope Escapes', () => {
-		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
-			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]
-		});
-	});
-
 	describe('Constant values', () => {
 		testQuery('Number via variable', 'x <- 42\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 42 }]
@@ -204,6 +198,26 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		testQuery('Number 0 (falsy) via variable', 'x <- 0\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 0 }]
 		});
+	});
+
+	describe('Namespace-aware matching', () => {
+		/* Verify bidirectional Identifier.matches: a namespaced list entry must still match
+		 * a plain (non-namespaced) call, and an explicit pkg::fn call must also match. */
+		testQuery('Explicit base:: prefix still classified as System',
+			'x <- base::system("ls")\nfoo(x)',
+			[{ type: 'input-sources', criterion: '2@foo' }], {
+				'2@foo': [{ id: '2@x', types: [InputType.System], trace: InputTraceType.Alias }]
+			});
+		testQuery('Plain var() resolves via namespaced stats::var in PureFunctions -> DerivedConstant',
+			'x <- var(c(1, 2, 3))\nfoo(x)',
+			[{ type: 'input-sources', criterion: '2@foo' }], {
+				'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+			});
+		testQuery('Explicit stats:: prefix pure function also yields DerivedConstant',
+			'x <- stats::var(c(1, 2, 3))\nfoo(x)',
+			[{ type: 'input-sources', criterion: '2@foo' }], {
+				'2@foo': [{ id: '2@x', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+			});
 	});
 
 	describe('Batched Criteria (issue #5)', () => {

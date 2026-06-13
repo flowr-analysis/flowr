@@ -1,0 +1,52 @@
+import { FlowrConfig } from '../../../src/config';
+import type { CommandCompletions } from '../../../src/cli/repl/core';
+import { assert, expect, test } from 'vitest';
+import { type ReplOutput, standardReplOutput } from '../../../src/cli/repl/commands/repl-main';
+import type { ParsedQueryLine } from '../../../src/queries/query';
+import type { BaseQueryFormat } from '../../../src/queries/base-query-format';
+
+// A ReplOutput that discards all output
+const discardingReplOutput: ReplOutput = {
+	formatter: standardReplOutput.formatter,
+	stdout:    () => {},
+	stderr:    () => {}
+};
+
+export interface ReplParserTestCase<QueryType extends BaseQueryFormat['type']> {
+	parser:        (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>,
+	label:         string,
+	line:          readonly string[],
+	config?:       object,
+	expectedParse: ParsedQueryLine<QueryType>
+}
+
+
+/**
+ *
+ */
+export function assertReplParser<QueryType extends BaseQueryFormat['type']>({ label, parser, line, config = FlowrConfig.default(), expectedParse }: ReplParserTestCase<QueryType>) {
+	test(label, () => {
+		const result = parser(discardingReplOutput, line, config as FlowrConfig);
+		assert.deepEqual(result, expectedParse);
+	});
+}
+
+export interface ReplCompletionTestCase {
+	completer:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions,
+	label:               string,
+	startingNewArg:      boolean,
+	config?:             object,
+	splitLine:           readonly string[],
+	expectedCompletions: readonly string[]
+}
+
+
+/**
+ *
+ */
+export function assertReplCompletions({ completer, label, startingNewArg, splitLine, config = FlowrConfig.default(), expectedCompletions }: ReplCompletionTestCase) {
+	test(label, () => {
+		const result = completer(splitLine, startingNewArg, config as FlowrConfig);
+		expect(result.completions).toEqual(expectedCompletions);
+	});
+}

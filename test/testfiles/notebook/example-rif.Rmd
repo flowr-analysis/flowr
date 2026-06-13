@@ -1,0 +1,44 @@
+---
+title: "Sample Document"
+output: pdf_document
+params:
+  EVAL: !r identical(Sys.getenv("NOT_CRAN"), "true")
+---
+
+# Hello World
+This is a test 
+
+Simple Code R Chunk:
+```{r}
+test <- 42
+cat(test)
+```
+
+With Label `r test`
+```{r abc}
+x <- "Hello World"
+```
+
+With Options
+```{r ops, echo=FALSE}
+  cat("Hi")
+```
+
+
+With Body Opts
+```{r, echo=FALSE}
+#| cache=FALSE
+cat(test)
+```
+
+
+Unrelated Block `right here with unrelated code`
+```c
+printf("Hello World");
+```
+
+```{r, test}
+v <- c(1,2,3)
+```
+
+

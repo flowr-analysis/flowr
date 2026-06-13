@@ -1,0 +1,47 @@
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
+import type { LintingResults, LintingRule } from './linter-format';
+import { runSearch } from '../search/flowr-search-executor';
+import type { DeepPartial } from 'ts-essentials';
+import { deepMergeObject } from '../util/objects';
+import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+
+/**
+ * Executes a specific linting rule on the given analysis provider input.
+ */
+export async function executeLintingRule<Name extends LintingRuleNames>(ruleName: Name, input: ReadonlyFlowrAnalysisProvider, lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>>): Promise<LintingResults<Name>> {
+	try {
+		const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
+		const fullConfig = deepMergeObject<LintingRuleConfig<Name>>(rule.info.defaultConfig, lintingRuleConfig);
+
+		const ruleSearch = rule.createSearch(fullConfig);
+
+		const searchStart = Date.now();
+		const searchResult = await runSearch(ruleSearch, input);
+		const searchTime = Date.now() - searchStart;
+
+		const processStart = Date.now();
+		const result = await rule.processSearchResult(searchResult, fullConfig,
+			{
+				/* we currently await them here for simplicity (no redundant awaits in the linting rules), but they could be passed as promises too */
+				dataflow:  await input.dataflow(),
+				normalize: await input.normalize(),
+				cfg:       await input.controlflow(),
+				analyzer:  input
+			}
+		);
+		const processTime = Date.now() - processStart;
+
+		return {
+			...result,
+			'.meta': {
+				...result['.meta'],
+				searchTimeMs:  searchTime,
+				processTimeMs: processTime
+			}
+		};
+	} catch(e) {
+		return {
+			error: e
+		};
+	}
+}

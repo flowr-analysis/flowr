@@ -1,4 +1,5 @@
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Check if the given string starts and ends with the given letter
@@ -51,6 +52,28 @@ export function joinWithLast(strs: readonly string[], { join = ', ', last = ', a
 		return strs.join(joinTwo);
 	}
 	return strs.slice(0, -1).join(join) + last + strs[strs.length - 1];
+}
+
+const UrlPattern = /^(https?|ftps?|s3|gs):\/\//i;
+
+/** Check if the given string looks like a remote URL (http/https/ftp/ftps/s3/gs). */
+export function isUrl(p: string): boolean {
+	return UrlPattern.test(p);
+}
+
+/**
+ * If `s` is a `file://` URI, return the local filesystem path it refers to.
+ * Returns `undefined` for any other string.
+ */
+export function fileUrlToPath(s: string): string | undefined {
+	if(!s.startsWith('file://')) {
+		return undefined;
+	}
+	try {
+		return fileURLToPath(s);
+	} catch{
+		return undefined;
+	}
 }
 
 /**

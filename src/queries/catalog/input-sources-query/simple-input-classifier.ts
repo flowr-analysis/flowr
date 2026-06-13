@@ -422,7 +422,7 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierF
 		return false;
 	}
 	for(const id of list) {
-		if(fn.id === id || (Identifier.is(id) && Identifier.matches(id, fn.name))) {
+		if(fn.id === id || (Identifier.is(id) && (Identifier.matches(id, fn.name) || (Identifier.getNamespace(fn.name) === undefined && Identifier.matches(fn.name, id))))) {
 			return true;
 		}
 	}

@@ -184,6 +184,23 @@ class InputClassifier {
 					types.push(type as InputType);
 				}
 			}
+			// propagate TempFile from path arguments into File-type calls
+			if(types.includes(InputType.File) && !types.includes(InputType.TempFile)) {
+				for(const arg of call.args) {
+					if(FunctionArgument.isEmpty(arg)) {
+						continue;
+					}
+					const ref = FunctionArgument.getReference(arg);
+					if(ref === undefined) {
+						continue;
+					}
+					const argVtx = this.dfg.getVertex(ref);
+					if(argVtx && this.classifyEntry(argVtx).types.includes(InputType.TempFile)) {
+						types.push(InputType.TempFile);
+						break;
+					}
+				}
+			}
 			if(types.length === 0) {
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
 				types.push(InputType.Unknown);
@@ -338,19 +355,24 @@ class InputClassifier {
  * joining differing lattice elements.
  *
  *```
- *              [ Unknown ]
- *                   |
- * [Param] [File] [Net] [User], ...
- *                   |
+ *                  [ Unknown ]
+ *                       |
+ *  [Param]  [File]  [Net]  [User], ...
+ *     |         |      |      |
+ *     |    [TempFile]  |      |
+ *     +---------+------+------+- ...
+ *                    |
  *            [ DerivedConstant ]
- *                   |
- *              [ Constant ]
+ *                    |
+ *               [ Constant ]
  *```
  *
  */
 export enum InputType {
 	Parameter = 'param',
 	File = 'file',
+	/** Temporary file paths produced by tempfile()/tempdir() and equivalents; a sub-type of {@link File} */
+	TempFile = 'tempfile',
 	Network = 'net',
 	Random = 'rand',
 	/** Calls to system/system2 and similar */

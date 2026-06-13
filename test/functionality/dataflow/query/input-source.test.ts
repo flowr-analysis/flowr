@@ -167,6 +167,30 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	describe('Temporary files', () => {
+		testQuery('tempfile()', 'x <- tempfile()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+		testQuery('tempdir()', 'x <- tempdir()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+		testQuery('tempfile with arguments', 'x <- tempfile("prefix", tempdir())\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+		testQuery('tempfile alongside random', 'x <- runif(1)\ny <- tempfile()\nfoo(x, y)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [
+				{ id: '3@x', types: [InputType.Random], trace: InputTraceType.Alias },
+				{ id: '3@y', types: [InputType.TempFile], trace: InputTraceType.Alias }
+			]
+		});
+		testQuery('read.csv from tempfile path includes TempFile', 'path <- tempfile()\nx <- read.csv(path)\nfoo(x)', [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@x', types: [InputType.File, InputType.Network, InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+		testQuery('read.csv(tempfile()) direct includes TempFile', 'x <- read.csv(tempfile())\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network, InputType.TempFile], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Constant values', () => {
 		testQuery('Number via variable', 'x <- 42\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
 			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 42 }]

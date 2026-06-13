@@ -6,6 +6,7 @@ import type {
 } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { SlicingCriterion, type SlicingCriteria } from '../../slicing/criterion/parse';
 import { guard, isNotUndefined } from '../../util/assert';
+import { SourceRange } from '../../util/range';
 import { type Query, type SupportedQuery, executeQueries, SupportedQueries } from '../../queries/query';
 import type { BaseQueryResult } from '../../queries/base-query-format';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
@@ -57,7 +58,7 @@ async function getAllNodes(data: ReadonlyFlowrAnalysisProvider): Promise<RNodeWi
 }
 
 
-async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
+async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { line, column, id, name, nameIsRegex, filePathRegex, fuzzy, innermostOnly } }: { filter: FlowrSearchGetFilter }): Promise<FlowrSearchElements<ParentInformation>> {
 	const normalize = await input.normalize();
 	let potentials = (id ?
 		[normalize.idMap.get(id)].filter(isNotUndefined) :
@@ -65,7 +66,7 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 	);
 	if(filePathRegex) {
 		const filePathFilter = new RegExp(filePathRegex);
-		potentials = potentials.filter(({ info }: RNodeWithParent) => info.file && filePathFilter.test(info.file));
+		potentials = potentials.filter(({ info }: RNodeWithParent) => filePathFilter.test(info.file ?? ''));
 	}
 
 	if(line && line < 0) {
@@ -79,7 +80,30 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 		line = maxLines + line + 1;
 	}
 
-	if(line && column) {
+	if(fuzzy) {
+		guard(line, 'Fuzzy location matching requires line to be provided');
+		potentials = potentials.filter(node => {
+			const range = SourceRange.fromNode(node);
+			if(!range) {
+				return false;
+			}
+			return column === undefined ? (range[0] <= line && line <= range[2]) : SourceRange.containsPosition(range, line, column);
+		});
+		if(innermostOnly && potentials.length > 1) {
+			potentials = potentials.filter(node => {
+				const range = SourceRange.fromNode(node);
+				return range && !potentials.some(other => {
+					if(other === node) {
+						return false;
+					} else if(other.info.parent === node.info.id) {
+						return true;
+					}
+					const otherRange = SourceRange.fromNode(other);
+					return otherRange && SourceRange.isStrictSubsetOf(otherRange, range);
+				});
+			});
+		}
+	} else if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
 	} else if(line) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line);
@@ -127,7 +151,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	return elements.mutate(s => Promise.all(s.map(async e => {
 		const [query, _] = nodearr.find(([_, nodes]) => nodes.has(e)) as [Query['type'], Set<FlowrSearchElement<ParentInformation>>];
 		return await enrichElement(e, elements, input, Enrichment.QueryData, { query });
-	}))) as unknown as FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>;
+	})));
 }
 
 async function generateSyntax(input: ReadonlyFlowrAnalysisProvider, args: { source: TreeSitter.Query | string, captures: readonly string[] } ): Promise<FlowrSearchElements<ParentInformation, FlowrSearchElement<ParentInformation>[]>> {

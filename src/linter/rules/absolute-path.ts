@@ -31,7 +31,6 @@ import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
-	loc:      SourceLocation
 }
 
 type SupportedWd = '@script' | '@home' | string;

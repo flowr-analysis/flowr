@@ -32,7 +32,6 @@ import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name'
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
-	loc:      SourceLocation
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {

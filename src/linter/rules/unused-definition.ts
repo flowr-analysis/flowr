@@ -14,8 +14,7 @@ import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/a
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 
 export interface UnusedDefinitionResult extends LintingResult {
-	variableName?: string,
-	loc:           SourceLocation
+	variableName?: string
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {

@@ -8,6 +8,11 @@ import { MIN_VERSION_LAMBDA } from '../../../../../src/r-bridge/lang-4.x/ast/mod
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+
+function getAssignOrigin(assign: string): { origin: BuiltInProcName[] } | object {
+	return assign === '<<-' || assign === '->' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
+}
 
 describe.sequential('Lists with if-then constructs', withShell(shell => {
 	for(const assign of ['<-', '<<-', '=']) {
@@ -22,7 +27,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 						const baseGraph = emptyGraph()
 							.use('3', 'x')
 							.reads('3', '0')
-							.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true })
+							.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true, ...getAssignOrigin(assign) })
 							.calls('2', NodeId.toBuiltIn(assign))
 							.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [NodeId.toBuiltIn('{')], cds: cd, environment: defaultEnv().defineVariable('x', '0', '2') })
 							.calls('7', NodeId.toBuiltIn('{'));
@@ -52,7 +57,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 						const previousGraph = emptyGraph()
 							.use('6', 'x')
 							.reads('6', '0')
-							.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true })
+							.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true, ...getAssignOrigin(assign) })
 							.calls('2', NodeId.toBuiltIn(assign))
 							.call('7', '{', [argumentInCall('6')], { returns: ['6'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '0', '2') })
 							.calls('7', NodeId.toBuiltIn('{'))
@@ -74,7 +79,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 					`x ${assign} 2\nif(FALSE) { 42 } else { x }`,  emptyGraph()
 						.use('10', 'x')
 						.reads('10', '0')
-						.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true })
+						.call('2', assign, [argumentInCall('0'), argumentInCall('1')], { returns: ['0'], reads: [NodeId.toBuiltIn(assign), 1], onlyBuiltIn: true, ...getAssignOrigin(assign) })
 						.calls('2', NodeId.toBuiltIn(assign))
 						.call('11', '{', [argumentInCall('10')], { returns: ['10'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().defineVariable('x', '0', '2') })
 						.calls('11', NodeId.toBuiltIn('{'))
@@ -91,7 +96,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 					`if(TRUE) { x ${assign} 2 }\nx`, emptyGraph()
 						.use('8', 'x')
 						.reads('8', '3')
-						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn(assign), 4], onlyBuiltIn: true })
+						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn(assign), 4], onlyBuiltIn: true, ...getAssignOrigin(assign) })
 						.calls('5', NodeId.toBuiltIn(assign))
 						.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [NodeId.toBuiltIn('{')] })
 						.calls('6', NodeId.toBuiltIn('{'))
@@ -106,7 +111,7 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 					`if(FALSE) { 42 } else { x ${assign} 5 }\nx`,  emptyGraph()
 						.use('12', 'x')
 						.reads('12', '7')
-						.call('9', assign, [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [NodeId.toBuiltIn(assign), 8], onlyBuiltIn: true })
+						.call('9', assign, [argumentInCall('7'), argumentInCall('8')], { returns: ['7'], reads: [NodeId.toBuiltIn(assign), 8], onlyBuiltIn: true, ...getAssignOrigin(assign) })
 						.calls('9', NodeId.toBuiltIn(assign))
 						.call('10', '{', [argumentInCall('9')], { returns: ['9'], reads: [NodeId.toBuiltIn('{')] })
 						.calls('10', NodeId.toBuiltIn('{'))
@@ -123,11 +128,11 @@ describe.sequential('Lists with if-then constructs', withShell(shell => {
 						.use('0', 'z')
 						.use('14', 'x')
 						.reads('14', ['3', '9'])
-						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn(assign), 4], onlyBuiltIn: true, cds: [{ id: '13', when: true }] })
+						.call('5', assign, [argumentInCall('3'), argumentInCall('4')], { returns: ['3'], reads: [NodeId.toBuiltIn(assign), 4], onlyBuiltIn: true, cds: [{ id: '13', when: true }], ...getAssignOrigin(assign) })
 						.calls('5', NodeId.toBuiltIn(assign))
 						.call('6', '{', [argumentInCall('5')], { returns: ['5'], reads: [NodeId.toBuiltIn('{')], cds: [{ id: '13', when: true }] })
 						.calls('6', NodeId.toBuiltIn('{'))
-						.call('11', assign, [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [NodeId.toBuiltIn(assign), 10], onlyBuiltIn: true, cds: [{ id: '13', when: false }] })
+						.call('11', assign, [argumentInCall('9'), argumentInCall('10')], { returns: ['9'], reads: [NodeId.toBuiltIn(assign), 10], onlyBuiltIn: true, cds: [{ id: '13', when: false }], ...getAssignOrigin(assign) })
 						.calls('11', NodeId.toBuiltIn(assign))
 						.call('12', '{', [argumentInCall('11')], { returns: ['11'], reads: [NodeId.toBuiltIn('{')], cds: [{ id: '13', when: false }] })
 						.calls('12', NodeId.toBuiltIn('{'))

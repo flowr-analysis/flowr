@@ -3,6 +3,7 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { AbstractInterpretationVisitor, type AbsintVisitorConfiguration } from '../absint-visitor';
+import { StateAbstractDomain } from '../domains/state-abstract-domain';
 import { DataFrameDomain } from './dataframe-domain';
 import { mapDataFrameAccess } from './mappers/access-mapper';
 import { mapDataFrameFunctionCall } from './mappers/function-mapper';
@@ -46,14 +47,14 @@ interface DataFrameShapeInferenceConfiguration extends AbsintVisitorConfiguratio
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration> {
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<DataFrameDomain>, DataFrameShapeInferenceConfiguration> {
 	/**
 	 * The abstract data frame operations the function call nodes are mapped to.
 	 */
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super(config, DataFrameDomain.top());
+		super(config, StateAbstractDomain.top(DataFrameDomain.top()));
 
 		if(trackOperations) {
 			this.operations = new Map();
@@ -123,13 +124,13 @@ export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisito
 			const constraintType = type ?? getConstraintType(operation);
 
 			if(operand !== undefined && constraintType === ConstraintType.OperandModification) {
-				this.updateState(operand, value);
+				this.currentState.set(operand, value);
 
 				for(const origin of this.getVariableOrigins(operand)) {
-					this.updateState(origin, value);
+					this.currentState.set(origin, value);
 				}
 			} else if(constraintType === ConstraintType.ResultPostcondition) {
-				this.updateState(node.info.id, value);
+				this.currentState.set(node.info.id, value);
 			}
 		}
 	}

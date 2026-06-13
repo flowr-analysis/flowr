@@ -1,7 +1,10 @@
 import { assert, test } from 'vitest';
-import { DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
-import { Top, TopSymbol } from '../../../../src/abstract-interpretation/domains/lattice';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, type AnyAbstractDomain, type ConcreteDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import { Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
+/**
+ * The type of an object containing the expected results for the operations on abstract values of an abstract domain.
+ */
 export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
 	readonly equal:     boolean,
 	readonly leq:       boolean,
@@ -13,9 +16,14 @@ export interface DomainTestExpectation<AbstractValue, ConcreteValue>{
 	readonly abstract?: AbstractValue
 }
 
-
 /**
- *
+ * Asserts that an abstract domain implementation satisfies the expected properties for the given abstract values.
+ * @param create  - A function to create an instance of the abstract domain from an abstract value
+ * @param value1  - The first abstract value to test
+ * @param value2  - The second abstract value to test
+ * @param expected - An object containing the expected results for the operations on the abstract values
+ * @template AbstractValue - The type of the abstract values provided
+ * @template Domain        - The type of the abstract domain being tested
  */
 export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDomain>(
 	create: (value: AbstractValue) => Domain,
@@ -33,54 +41,43 @@ export function assertAbstractDomain<AbstractValue, Domain extends AnyAbstractDo
 	const abstract = create(expected.abstract ?? value1);
 
 	test(`${domain1.toString()} = ${domain2.toString()}`, () => {
-		assert.strictEqual(domain1.equals(domain2), expected.equal, `expected ${domain1.toString()} to ${expected.equal ? '' : 'not '}equal ${domain2.toString()}`);
-		assert.strictEqual(domain2.equals(domain1), expected.equal, `expected ${domain2.toString()} to ${expected.equal ? '' : 'not '}equal ${domain1.toString()}`);
+		assert.strictEqual(domain1.equals(domain2), expected.equal, `Expected ${domain1.toString()} to ${expected.equal ? '' : 'not '}equal ${domain2.toString()}`);
+		assert.strictEqual(domain2.equals(domain1), expected.equal, `Expected ${domain2.toString()} to ${expected.equal ? '' : 'not '}equal ${domain1.toString()}`);
 	});
 	test(`${domain1.toString()} ⊑ ${domain2.toString()}`, () => {
-		assert.strictEqual(domain1.leq(domain2), expected.leq, `expected ${domain1.toString()} to ${expected.leq ? '' : 'not '}less than or equal to ${domain2.toString()}`);
-		assert.isTrue(!expected.leq || domain1.equals(domain2) || !domain2.leq(domain1), `expected ${domain2.toString()} to be greater than or equal to ${domain1.toString()}`);
+		assert.strictEqual(domain1.leq(domain2), expected.leq, `Expected ${domain1.toString()} to ${expected.leq ? '' : 'not '}less than or equal to ${domain2.toString()}`);
+		assert.isTrue(!expected.leq || domain1.equals(domain2) || !domain2.leq(domain1), `Expected ${domain2.toString()} to be greater than or equal to ${domain1.toString()}`);
 	});
 	test(`${domain1.toString()} ⊔ ${domain2.toString()}`, () => {
-		assert.isTrue(domain1.join(domain2).equals(join), `expected ${join.toString()} but was ${domain1.join(domain2).toString()}`);
-		assert.isTrue(domain2.join(domain1).equals(join), `expected ${join.toString()} but was ${domain2.join(domain1).toString()}`);
-		assert.isTrue(domain1.leq(domain1.join(domain2)), `expected ${domain1.toString()} to be less than or equal to join ${domain1.join(domain2).toString()}`);
-		assert.isTrue(domain2.leq(domain1.join(domain2)), `expected ${domain2.toString()} to be less than or equal to join ${domain1.join(domain2).toString()}`);
+		assert.isTrue(domain1.join(domain2).equals(join), `Expected ${join.toString()} but was ${domain1.join(domain2).toString()}`);
+		assert.isTrue(domain2.join(domain1).equals(join), `Expected ${join.toString()} but was ${domain2.join(domain1).toString()}`);
+		assert.isTrue(domain1.leq(domain1.join(domain2)), `Expected ${domain1.toString()} to be less than or equal to join ${domain1.join(domain2).toString()}`);
+		assert.isTrue(domain2.leq(domain1.join(domain2)), `Expected ${domain2.toString()} to be less than or equal to join ${domain1.join(domain2).toString()}`);
 	});
 	test(`${domain1.toString()} ⊓ ${domain2.toString()}`, () => {
-		assert.isTrue(domain1.meet(domain2).equals(meet), `expected ${meet.toString()} but was ${domain1.meet(domain2).toString()}`);
-		assert.isTrue(domain2.meet(domain1).equals(meet), `expected ${meet.toString()} but was ${domain2.meet(domain1).toString()}`);
-		assert.isTrue(domain1.meet(domain2).leq(domain1), `expected meet ${domain1.meet(domain2).toString()} to be less than or equal to ${domain1.toString()}`);
-		assert.isTrue(domain1.meet(domain2).leq(domain2), `expected meet ${domain1.meet(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
+		assert.isTrue(domain1.meet(domain2).equals(meet), `Expected ${meet.toString()} but was ${domain1.meet(domain2).toString()}`);
+		assert.isTrue(domain2.meet(domain1).equals(meet), `Expected ${meet.toString()} but was ${domain2.meet(domain1).toString()}`);
+		assert.isTrue(domain1.meet(domain2).leq(domain1), `Expected meet ${domain1.meet(domain2).toString()} to be less than or equal to ${domain1.toString()}`);
+		assert.isTrue(domain1.meet(domain2).leq(domain2), `Expected meet ${domain1.meet(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
 	});
 	test(`${domain1.toString()} ▽ ${domain2.toString()}`, () => {
-		assert.isTrue(domain1.widen(domain2).equals(widen), `expected ${widen.toString()} but was ${domain1.widen(domain2).toString()}`);
-		assert.isTrue(domain1.join(domain2).leq(domain1.widen(domain2)), `expected join ${domain1.join(domain2).toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
-		assert.isTrue(domain1.leq(domain1.widen(domain2)), `expected ${domain1.toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
-		assert.isTrue(domain2.leq(domain1.widen(domain2)), `expected ${domain2.toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
+		assert.isTrue(domain1.widen(domain2).equals(widen), `Expected ${widen.toString()} but was ${domain1.widen(domain2).toString()}`);
+		assert.isTrue(domain1.join(domain2).leq(domain1.widen(domain2)), `Expected join ${domain1.join(domain2).toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
+		assert.isTrue(domain1.leq(domain1.widen(domain2)), `Expected ${domain1.toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
+		assert.isTrue(domain2.leq(domain1.widen(domain2)), `Expected ${domain2.toString()} to be less than or equal to widening ${domain1.widen(domain2).toString()}`);
 	});
 	test(`${domain1.toString()} △ ${domain2.toString()}`, () => {
-		assert.isTrue(domain1.narrow(domain2).equals(narrow), `expected ${narrow.toString()} but was ${domain1.narrow(domain2).toString()}`);
-		assert.isTrue(domain1.meet(domain2).leq(domain1.narrow(domain2)), `expected meet ${domain1.meet(domain2).toString()} to be less than or equal to narrowing ${domain1.narrow(domain2).toString()}`);
-		assert.isTrue(domain1.narrow(domain2).leq(domain1), `expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain1.toString()}`);
-		assert.isTrue(domain2.narrow(domain2).leq(domain2), `expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
+		assert.isTrue(domain1.narrow(domain2).equals(narrow), `Expected ${narrow.toString()} but was ${domain1.narrow(domain2).toString()}`);
+		assert.isTrue(domain1.meet(domain2).leq(domain1.narrow(domain2)), `Expected meet ${domain1.meet(domain2).toString()} to be less than or equal to narrowing ${domain1.narrow(domain2).toString()}`);
+		assert.isTrue(domain1.narrow(domain2).leq(domain1), `Expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain1.toString()}`);
+		assert.isTrue(domain2.narrow(domain2).leq(domain2), `Expected narrowing ${domain1.narrow(domain2).toString()} to be less than or equal to ${domain2.toString()}`);
 	});
 	if(expected.concrete) {
 		test(`γ(${domain1.toString()})`, () => {
-			assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `expected ${toString(concrete)} but was ${toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
+			assert.deepStrictEqual(domain1.concretize(DEFAULT_INFERENCE_LIMIT), concrete, `Expected ${AbstractDomain.toString(concrete)} but was ${AbstractDomain.toString(domain1.concretize(DEFAULT_INFERENCE_LIMIT))}`);
 		});
 	}
 	test(`α(γ(${domain1.toString()}))`, () => {
-		assert.isTrue(domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).equals(abstract), `expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).toString()}`);
+		assert.isTrue(domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).equals(abstract), `Expected ${abstract.toString()} but was ${domain1.abstract(domain1.concretize(DEFAULT_INFERENCE_LIMIT)).toString()}`);
 	});
-}
-
-function toString(value: ReadonlySet<unknown> | typeof Top | unknown): string {
-	if(value instanceof Map) {
-		return `{${value.entries().map(([key, value]) => `${toString(key)} -> ${toString(value)}`).toArray().join(', ')}}`;
-	} else if(value instanceof Set) {
-		return `{${value.values().map(value => toString(value)).toArray().join(', ')}}`;
-	} else if(value === Top) {
-		return TopSymbol;
-	}
-	return JSON.stringify(value);
 }

@@ -15,9 +15,7 @@ import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '.
 import type { Writable } from 'ts-essentials';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 
-export interface DeadCodeResult extends LintingResult {
-	readonly loc: SourceLocation
-}
+export type DeadCodeResult = LintingResult;
 
 export interface DeadCodeConfig extends MergeableRecord {
 	/**

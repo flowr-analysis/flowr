@@ -151,6 +151,16 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 		});
 	});
 
+	describe('User input', () => {
+		testQuery('file.choose', 'x <- file.choose()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.User], trace: InputTraceType.Alias }]
+		});
+
+		testQuery('scan also classified as File and Network', 'x <- scan()\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.File, InputType.Network, InputType.User], trace: InputTraceType.Alias }]
+		});
+	});
+
 	describe('Catch Scope Escapes', () => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]
@@ -160,6 +170,39 @@ describe.sequential('Input Source Test', withTreeSitter(parser => {
 	describe('Catch Scope Escapes', () => {
 		testQuery('Reading from the closure with call', 'x <- 1\nf <- function() { eval(x) }\nf()', [{ type: 'input-sources', criterion: '2@eval' }], {
 			'2@eval': [{ id: '2@x', types: [InputType.Scope], trace: InputTraceType.Unknown }]
+		});
+	});
+
+	describe('Constant values', () => {
+		testQuery('Number via variable', 'x <- 42\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 42 }]
+		});
+		testQuery('String via variable', "x <- 'hello'\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 'hello' }]
+		});
+		testQuery('Boolean TRUE via variable', 'x <- TRUE\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: true }]
+		});
+		testQuery('Boolean FALSE via variable', 'x <- FALSE\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: false }]
+		});
+		testQuery('NULL via variable', 'x <- NULL\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: null }]
+		});
+		testQuery('Double alias propagates value', "x <- 'hello'\ny <- x\nfoo(y)", [{ type: 'input-sources', criterion: '3@foo' }], {
+			'3@foo': [{ id: '3@y', types: [InputType.Constant], trace: InputTraceType.Alias, value: 'hello' }]
+		});
+		testQuery('No value for derived constant (arithmetic)', 'y <- 1 + 2\nfoo(y)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@y', types: [InputType.DerivedConstant], trace: InputTraceType.Pure }]
+		});
+		testQuery('No value when two different constants', "if(runif(1) > 0.5) x <- 'a' else x <- 'b'\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, cds: [InputType.Random, InputType.Constant, InputType.DerivedConstant] }]
+		});
+		testQuery('Same value in both branches propagates', "if(runif(1) > 0.5) x <- 'a' else x <- 'a'\nfoo(x)", [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 'a', cds: [InputType.Random, InputType.Constant, InputType.DerivedConstant] }]
+		});
+		testQuery('Number 0 (falsy) via variable', 'x <- 0\nfoo(x)', [{ type: 'input-sources', criterion: '2@foo' }], {
+			'2@foo': [{ id: '2@x', types: [InputType.Constant], trace: InputTraceType.Alias, value: 0 }]
 		});
 	});
 }));

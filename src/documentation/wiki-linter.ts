@@ -255,7 +255,7 @@ function linkToRule(name: LintingRuleNames): string {
 	return `[${name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name).replaceAll(' ', '-'))})`;
 }
 
-async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {
+async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, ctx: DocMakerArgs['ctx']): Promise<string> {
 	const rules = registerRules(knownParser, tagTypes.info);
 
 	return `
@@ -278,6 +278,8 @@ ${res}
 })()}
 
 ${section('Linting Rules', 2, 'linting-rules')}
+
+If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 
 The following linting rules are available:
 
@@ -341,14 +343,14 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 }
 
 /** Maps file-names to their content, the 'main' file is named 'main' */
-async function getTexts(parser: KnownParser): Promise<Record<string, string> & { main: string }> {
+async function getTexts(parser: KnownParser, ctx: DocMakerArgs['ctx']): Promise<Record<string, string> & { main: string }> {
 	const tagTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/linter/'),
 		inlineTypes: mermaidHide
 	});
 
 	return {
-		'main': await getTextMainPage(parser, tagTypes),
+		'main': await getTextMainPage(parser, tagTypes, ctx),
 		...await getRulesPages(parser, tagTypes)
 	};
 }
@@ -361,8 +363,8 @@ export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 		super('wiki/Linter.md', module.filename, 'linter');
 	}
 
-	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
-		const texts = await getTexts(treeSitter);
+	protected async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
+		const texts = await getTexts(treeSitter, ctx);
 		for(const [file, content] of Object.entries(texts)) {
 			if(file === 'main') {
 				continue; // main is printed below

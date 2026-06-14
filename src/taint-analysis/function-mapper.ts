@@ -15,16 +15,8 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-anal
 import type { PotentiallyEmptyRArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { guard } from '../util/assert';
-
-export type ResolvedTaint<Domain extends AnyAbstractDomain> =
-	{
-		condition: TaintConditionFunction<Domain>,
-		valArgs:   unknown[], // TODO Support for other types apart from booleans
-		taintArgs: PotentiallyEmptyRArgument<ParentInformation>[]
-	}
-	| { taint: AbstractValue<Domain> }
-	| undefined;
+import { log } from '../util/log';
+import { Top } from '../abstract-interpretation/domains/lattice';
 
 /**
  * Determine the resulting taint of a function call
@@ -64,7 +56,9 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 
 		const taintArgs = mapping.condition.argTaints ? mapping.condition.argTaints.map(location => {
 			const arg = getFunctionArgument(allArgs, location, resolveInfo);
-			guard(arg, `Could not determine function argument for requested taint at position ${location.pos} with name ${location.name}`);
+			if(!arg) {
+				log.warn(`Could not determine function argument for requested taint at position ${location.pos} with name ${location.name}`);
+			}
 			return arg;
 		}) : [];
 
@@ -98,13 +92,30 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 	} else if('taint' in taint) {
 		return domain.create(taint.taint);
 	}
-	const taints = taint.taintArgs
-		.map(arg => (arg === EmptyArgument || !arg.value?.info) ? undefined : projectArg(arg.value.info.id))
+
+	const incomingTaints = taint.taintArgs
+		.map(arg => (arg === EmptyArgument || !arg?.value?.info) ? domain.create(Top) : projectArg(arg.value.info.id))
 		.filter((value): value is Domain => value !== undefined)
 		.map(value => value.value as AbstractValue<Domain>);
 
-	return domain.create(taint.condition(taint.valArgs, taints));
+	const resultingTaint = taint.condition(taint.valArgs, incomingTaints);
+
+	if(!resultingTaint) {
+		log.warn('Argument is undefined'); // TODO Investigate in more detail
+	}
+
+	return domain.create(resultingTaint);
 }
+
+export type ResolvedTaint<Domain extends AnyAbstractDomain> =
+	{
+		condition: TaintConditionFunction<Domain>,
+		valArgs:   unknown[], // TODO Support for other types apart from booleans
+		taintArgs: (PotentiallyEmptyRArgument<ParentInformation> | undefined)[]
+	}
+	| { taint: AbstractValue<Domain> }
+	| undefined;
+
 
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
 

@@ -7,6 +7,8 @@ import { mapFnCallToTaint, resolveTaint } from './function-mapper';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { AbstractProduct, ProductReduction } from '../abstract-interpretation/domains/partial-product-domain';
 import { type MultiValueDomain, MultiValueStateDomain } from '../abstract-interpretation/domains/multi-value-state-domain';
+import type { InstrumentableTaintInferenceVisitor } from './taint-visitor';
+import type { Instrumentation } from './instrumentation';
 
 /**
  * The abstract product mapping the name of a (component) taint analysis to its (value) abstract domain.
@@ -41,8 +43,13 @@ export interface TaintComponent<Domain extends AnyAbstractDomain = AnyAbstractDo
  * Please prefer using {@link TaintAnalysisDefinition.compose} together with the {@link FlowrAnalyzer.taint} method to
  * create a composite taint analysis.
  */
-export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisitor<MultiValueStateDomain<TaintProduct>> {
+export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisitor<MultiValueStateDomain<TaintProduct>>
+	implements InstrumentableTaintInferenceVisitor {
 	private readonly components: readonly TaintComponent[];
+
+	getInstrumentation(): Instrumentation | undefined {
+		return undefined;
+	}
 
 	constructor(
 		components: readonly TaintComponent[],

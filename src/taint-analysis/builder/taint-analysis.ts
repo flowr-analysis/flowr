@@ -2,14 +2,16 @@ import type { FlowrAnalyzer, ReadonlyFlowrAnalysisProvider } from '../../project
 import type { TaintAnalysisDefinition, CompositeTaintAnalysisDefinition, RunnableTaintAnalysisDefinition } from './taint-analysis-definition';
 import type { AnyPredefinedTaintAnalysisName } from '../predefined/predefined';
 import { predefinedTaintAnalyses } from '../predefined/predefined';
-import type { AbsintVisitorConfiguration } from '../../abstract-interpretation/absint-visitor';
 import type { StateAbstractDomain } from '../../abstract-interpretation/domains/state-abstract-domain';
 import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
+import type { TaintVisitorConfiguration } from '../taint-visitor';
+import type { Instrumentation } from '../instrumentation';
 
 export interface TaintInferenceResult {
-	domains:  StateAbstractDomain<AnyAbstractDomain>
-	finding?: string
+	domains:          StateAbstractDomain<AnyAbstractDomain>
+	finding?:         string
+	instrumentation?: Instrumentation
 }
 
 /**
@@ -19,9 +21,15 @@ export interface TaintInferenceResult {
 export class TaintAnalysis<Defs extends readonly string[] = []> {
 	private readonly analyzer: ReadonlyFlowrAnalysisProvider;
 	private readonly defs:     RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
+	private _instrument:       boolean = true;
 
 	constructor(analyzer: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
+	}
+
+	public instrument(): this {
+		this._instrument = true;
+		return this;
 	}
 
 	public addPredefined<Name extends AnyPredefinedTaintAnalysisName>(name: Name): TaintAnalysis<readonly [...Defs, Name]> {
@@ -49,11 +57,12 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 */
 	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
 		const results: Map<Defs[number], TaintInferenceResult> = new Map();
-		const baseConfig: AbsintVisitorConfiguration = {
+		const baseConfig: TaintVisitorConfiguration = {
 			controlFlow:   await this.analyzer.controlflow(),
 			ctx:           this.analyzer.inspectContext(),
 			dfg:           (await this.analyzer.dataflow()).graph,
-			normalizedAst: await this.analyzer.normalize()
+			normalizedAst: await this.analyzer.normalize(),
+			instrument:    this._instrument
 		};
 		for(const def of this.defs) {
 			const visitor = def.createVisitor(baseConfig);
@@ -63,7 +72,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 
 			const finding = endState.isBottom() ? def.msg : undefined;
 
-			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding });
+			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding, instrumentation: visitor.getInstrumentation() });
 		}
 		return results;
 	}

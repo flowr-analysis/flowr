@@ -2,13 +2,13 @@ import { FaqStore } from './wiki-faq-store';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
-import type { DocMakerArgs } from '../../wiki-mk/doc-maker';
+import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 
 
 /**
  *
  */
-export function registerFaqs(ctx: DocMakerArgs['ctx']): FaqStore {
+export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
 
 	wikiFaq.withTopic('flowr.development')

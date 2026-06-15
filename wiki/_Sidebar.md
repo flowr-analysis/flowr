@@ -6,7 +6,6 @@
   * [Analyzer (FlowrAnalyzer, Projects, ...)](https://github.com/flowr-analysis/flowr/wiki/Analyzer)
   * [Engines](https://github.com/flowr-analysis/flowr/wiki/Engines)
   * [Linting R](https://github.com/flowr-analysis/flowr/wiki/Linter)
-    * [Create Linting Rules](https://github.com/flowr-analysis/flowr/wiki/Create-Linting-Rules)
   * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)
   * [Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
   * [Abstract Interpretation](https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation)

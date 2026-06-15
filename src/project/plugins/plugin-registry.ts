@@ -19,6 +19,7 @@ import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
+import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discovery/flowr-analyzer-gitignore-project-discovery-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -36,7 +37,8 @@ export const BuiltInPlugins = [
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
-	['file:license', FlowrAnalyzerLicenseFilePlugin]
+	['file:license', FlowrAnalyzerLicenseFilePlugin],
+	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

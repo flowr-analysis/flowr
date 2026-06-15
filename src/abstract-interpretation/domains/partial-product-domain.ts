@@ -13,6 +13,9 @@ export type ConcreteProductOf<Product extends AbstractProduct> = {
 	[Key in keyof Product]: Product[Key] extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 };
 
+/** A reduction function of a reduced product domain refining the abstract value based on the values of its sub abstract domains. */
+export type ProductReduction<Product extends AbstractProduct> = (value: Product) => Product;
+
 /**
  * A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
  * The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
@@ -22,10 +25,13 @@ export type ConcreteProductOf<Product extends AbstractProduct> = {
 export abstract class PartialProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<ConcreteProductOf<Product>, Product, Product, Product> {
 
-	public readonly domain: Required<Product>;
+	public readonly domain:     Required<Product>;
+	public readonly reductions: readonly ProductReduction<Product>[];
 
-	constructor(value: Product, domain: Required<Product>) {
+	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
+		// must be assigned before reduce is called, as the (overridable) reduce may depend on the reductions
+		this.reductions = reductions;
 		(this._value as Writable<Product>) = this.reduce(this.value);
 		this.domain = domain;
 	}
@@ -192,9 +198,10 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	}
 
 	/**
-	 * Optional reduction function for a reduced product domain.
+	 * Applies the {@link reductions} of the (reduced) product domain to refine the abstract value based on its components.
+	 * Subclasses may override this to implement a fixed reduction instead of (or in addition to) the configurable reductions.
 	 */
 	protected reduce(value: Product): Product {
-		return value;
+		return this.reductions.reduce((current, reduction) => reduction(current), value);
 	}
 }

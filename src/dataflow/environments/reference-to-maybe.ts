@@ -7,17 +7,41 @@ import { resolveByName } from './resolve-by-name';
 import { VertexType } from '../graph/vertex';
 
 function appToCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void{
-	if(toAdd) {
-		target.push(...toAdd.filter(c => !target.some(tc => tc.id === c.id && tc.when === c.when)));
+	if(!toAdd) {
+		return;
+	}
+	for(const c of toAdd) {
+		let found = false;
+		for(const tc of target) {
+			if(tc.id === c.id && tc.when === c.when) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			target.push(c);
+		}
 	}
 }
 
 function concatCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
-	if(toAdd) {
-		return target.concat(toAdd.filter(c => !target.some(tc => tc.id === c.id && tc.when === c.when)));
-	} else {
+	if(!toAdd) {
 		return target;
 	}
+	const result = Array.from(target);
+	for(const c of toAdd) {
+		let found = false;
+		for(const tc of target) {
+			if(tc.id === c.id && tc.when === c.when) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			result.push(c);
+		}
+	}
+	return result;
 }
 
 /**
@@ -92,6 +116,9 @@ export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, reference
  * apply the given cds to all given references, but not to the graph. This is useful if we want to mark the references as maybe without marking all other nodes in the graph as maybe.
  */
 export function applyCdToReferences(references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
+	if(cds.length === 0) {
+		return;
+	}
 	for(const ref of references) {
 		if(ref.cds) {
 			appToCdsUnique(ref.cds, cds);

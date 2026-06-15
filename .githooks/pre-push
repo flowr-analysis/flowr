@@ -41,6 +41,15 @@ if git log -1 --pretty=%B | grep -q "\[release"; then
 else
   echo "Linting project (local mode)..."
   $NPM_CMD run lint-local -- --fix
+  if [ -n "$(git status --porcelain)" ]; then
+    echo ""
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║  lint --fix changed files --- please review, stage, and      ║"
+    echo "║  recommit before pushing.                                    ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo ""
+    exit 1
+  fi
 fi
 
 

@@ -71,7 +71,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment, keepNonFunctionCalls: true } })
 			);
 			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assign/ } })
 			);
 			assertSearch('for loop', parser, "for (i in 1:10) { cat('hi') }", ['1@for'],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
@@ -80,6 +80,74 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
 		});
+		describe('file path', () => {
+			assertSearch('filter by file path with RegExp', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => result.length > 0 && result.every(r => r.node.info.file?.endsWith('a.R')),
+				Q.all().filter({ name: FlowrFilter.FilePathFilter, args: { filePathRegex: /a\.R$/ } })
+			);
+			assertSearch('excludes non-matching file paths', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => !result.some(r => r.node.info.file?.endsWith('b.R')),
+				Q.all('a\\.R$')
+			);
+			assertSearch('non-matching file path returns empty', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				[],
+				Q.all('nonexistent\\.R$')
+			);
+			assertSearch('inline code matches empty file path regex', parser,
+				'x <- 1',
+				(result) => result.length > 0,
+				Q.all('^$')
+			);
+		});
+	});
+
+	describe('Fuzzy loc', () => {
+		assertSearch('variable at interior column', parser, 'x <- abcd', (result) => result.length >= 1 && result.some(r => r.node.lexeme === 'abcd'),
+			Q.locFuzzy(1, 6),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9)
+		);
+		assertSearch('string literal interior', parser, 'x <- "hello"', (result) => result.some(r => r.node.lexeme === '"hello"'),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('backtick identifier', parser, 'x <- `my var`', (result) => result.some(r => r.node.lexeme === '`my var`'),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('position outside range', parser, 'x <- abcd', [],
+			Q.locFuzzy(1, 15)
+		);
+		assertSearch('comment position (no nodes)', parser, '# comment amazing\nx <- 1', [],
+			Q.locFuzzy(1, 3),
+			Q.locFuzzy(1, 5)
+		);
+		assertSearch('multiline: if expression envelopes variable (default returns all)', parser, 'if(x) { abcd }',
+			(result) => result.length >= 2, // at least if and abcd or other enveloping nodes
+			Q.locFuzzy(1, 11)
+		);
+		assertSearch('multiline: if expression with innermostOnly', parser, 'if(x) { abcd }', (result) => result.some(r => r.node.lexeme === 'abcd') && result.length === 1,
+			Q.locFuzzy(1, 11, true)
+		);
+		assertSearch('complex nesting with innermostOnly', parser, 'if(x) { y <- func(z) }', (result) => result.some(r => r.node.lexeme === 'z') && result.length === 1,
+			Q.locFuzzy(1, 19, true)
+		);
 	});
 
 	describe('From Query', () => {

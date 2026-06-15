@@ -4,7 +4,7 @@ import type {
 	PrintHierarchyArguments,
 	TypeElementKind
 } from '../doc-util/doc-types';
-import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder } from '../doc-util/doc-types';
+import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder, printCodeOfFile } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
@@ -162,13 +162,33 @@ export interface GeneralDocContext {
 	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
-	 * Returns the code snippet for a code element as markdown string.
+	 * Returns the documentation for a member of a class as Markdown string.
+	 * This is a convenience method around {@link GeneralDocContext#doc|doc}.
+	 * @example
+	 * ```ts
+	 * docM(MyClass, 'myMethod')
+	 * ```
+	 *
+	 * Creates the documentation for the `myMethod` member of the `MyClass` class in the code base.
+	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
+	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
+	 */
+	docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the documentation for a type/element definition which is retrieved from an object reference.
+	 * This is similar to {@link GeneralDocContext#doc}, but it uses an object reference to identify the element.
+	 */
+	docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the code snippet for a code element as Markdown string.
 	 * @param element - The element to create a code snippet for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the code snippet (see {@link FnElementInfo})
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
 	 * @example
 	 * ```ts
-	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2  })
+	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2 })
 	 * ```
 	 *
 	 * Creates a code snippet for the `exampleFn` function in the code base,
@@ -192,6 +212,20 @@ export interface GeneralDocContext {
 	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 */
 	code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
+
+	/**
+	 * Returns the code snippet for a code file as markdown string.
+	 * @param path - The path to the file to create a code snippet for.
+	 * @param fmt  - Formatting options for the code snippet (see {@link FnElementInfo})
+	 * @example
+	 * ```ts
+	 * code('src/path/to/file.ts', { skipImports: true })
+	 * ```
+	 *
+	 * Creates a code snippet for the source file `src/path/to/file.ts`,
+	 * dropping the lines with import statements of the source code.
+	 */
+	codeFile(path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string;
 
 	/**
 	 * Returns the hierarchy (e.g., class inheritance) for a code element as markdown string,
@@ -302,6 +336,15 @@ export function makeDocContextForTypes(
 		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
 		},
+		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
+			const className = cls.prototype.constructor.name;
+			const fullName = `${className}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
+		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
 			return shortLink(getNameFromElementIdOrRef(element), info, fmt?.codeFont, fmt?.realNameWrapper, filter?.fuzzy, filter?.type);
@@ -333,6 +376,12 @@ export function makeDocContextForTypes(
 				program, info,
 				...fmt,
 			}, getNameFromElementIdOrRef(element));
+		},
+		codeFile(this: void, path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string {
+			return printCodeOfFile({
+				program, info,
+				...fmt,
+			}, path);
 		},
 		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();

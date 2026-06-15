@@ -27,7 +27,7 @@ export class BasicCfgGuidedVisitor<
 	Config extends BasicCfgGuidedVisitorConfiguration<ControlFlow> = BasicCfgGuidedVisitorConfiguration<ControlFlow>
 > {
 
-	protected readonly config:  Config;
+	public readonly config:     Config;
 	protected readonly visited: Map<NodeId, number>;
 
 	constructor(config: Config) {

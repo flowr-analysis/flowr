@@ -107,7 +107,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		content: 'fun',
 		info:    {
 			id:        argNameId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.ArgumentName,
 			fullRange: r,
 			adToks:    undefined,
@@ -124,7 +124,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		lexeme: 'S7_dispatch',
 		info:   {
 			id:        funcNameId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionCallName,
 			fullRange: r,
 			adToks:    undefined,
@@ -144,7 +144,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		arguments:    [],
 		info:         {
 			id:        rootId + '-s7-new-generic-fun-body',
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionDefinitionBody,
 			fullRange: r,
 			adToks:    undefined,
@@ -159,7 +159,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		info: {
 			file:      name.info.file,
 			id:        fdefId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.ArgumentValue,
 			parent:    rootId,
 			index:     args + 1,
@@ -177,7 +177,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 				content: n,
 				info:    {
 					id:        paramNameId,
-					nesting:   name.info.nesting,
+					nest:      name.info.nest,
 					role:      RoleInParent.ParameterName,
 					fullRange: r,
 					adToks:    undefined,
@@ -196,7 +196,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 				special:      n === '...',
 				info:         {
 					id:        paramId,
-					nesting:   name.info.nesting,
+					nest:      name.info.nest,
 					role:      RoleInParent.FunctionDefinitionParameter,
 					parent:    fdefId,
 					index:     i,
@@ -221,7 +221,7 @@ function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: 
 		location: r,
 		info:     {
 			id:        argId,
-			nesting:   name.info.nesting,
+			nest:      name.info.nest,
 			role:      RoleInParent.FunctionCallArgument,
 			fullRange: r,
 			adToks:    undefined,

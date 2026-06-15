@@ -45,7 +45,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
 					test:       {
-						targets: /library/
+						targets: /print/
 					}
 				} })
 			);

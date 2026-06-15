@@ -30,15 +30,23 @@ export const DEAD_CODE = {
 	createSearch: (config) => Q.all().with(Enrichment.CfgInformation, {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
-	}).filter(FlowrFilterCombinator.is({
-		name: FlowrFilter.MatchesEnrichment,
-		args: {
-			enrichment: Enrichment.CfgInformation,
-			test:       {
-				isReachable: true
+	}).filter(FlowrFilterCombinator.not(FlowrFilterCombinator.or(
+		{
+			name: FlowrFilter.MatchesEnrichment,
+			args: {
+				enrichment: Enrichment.CfgInformation,
+				test:       {
+					isReachable: true
+				}
+			}
+		},
+		{
+			name: FlowrFilter.RoleInParent,
+			args: {
+				roleInParent: RoleInParent.ExpressionListGrouping
 			}
 		}
-	}).or(FlowrFilterCombinator.is({ name: FlowrFilter.RoleInParent, args: { roleInParent: RoleInParent.ExpressionListGrouping } })).not()),
+	))),
 	processSearchResult: (elements, _config, _data) => {
 		return {
 			results: combineResults(

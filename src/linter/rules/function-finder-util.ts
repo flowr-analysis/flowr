@@ -53,6 +53,7 @@ export const functionFinderUtil = {
 		);
 	},
 	async processSearchResult<T extends FlowrSearchElement<ParentInformation>[]>(
+		this: void,
 		elements: FlowrSearchElements<ParentInformation, T>,
 		_config: unknown,
 		_data: unknown,

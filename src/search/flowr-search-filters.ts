@@ -215,6 +215,22 @@ export class FlowrFilterCombinator {
 		}
 	}
 
+	public static and<FLeft extends FlowrFilter = FlowrFilter, FRight extends FlowrFilter = FlowrFilter>(left: BooleanNodeOrCombinator | ValidFilterTypes<FLeft>, right: BooleanNodeOrCombinator | ValidFilterTypes<FRight>): FlowrFilterCombinator {
+		return FlowrFilterCombinator.is(left).and(right);
+	}
+
+	public static or<FLeft extends FlowrFilter = FlowrFilter, FRight extends FlowrFilter = FlowrFilter>(left: BooleanNodeOrCombinator | ValidFilterTypes<FLeft>, right: BooleanNodeOrCombinator | ValidFilterTypes<FRight>): FlowrFilterCombinator {
+		return FlowrFilterCombinator.is(left).or(right);
+	}
+
+	public static xor<FLeft extends FlowrFilter = FlowrFilter, FRight extends FlowrFilter = FlowrFilter>(left: BooleanNodeOrCombinator | ValidFilterTypes<FLeft>, right: BooleanNodeOrCombinator | ValidFilterTypes<FRight>): FlowrFilterCombinator {
+		return FlowrFilterCombinator.is(left).xor(right);
+	}
+
+	public static not<F extends FlowrFilter = FlowrFilter>(value: BooleanNodeOrCombinator | ValidFilterTypes<F>): FlowrFilterCombinator {
+		return FlowrFilterCombinator.is(value).not();
+	}
+
 	public and<F extends FlowrFilter = FlowrFilter>(right: BooleanNodeOrCombinator | ValidFilterTypes<F>): this {
 		return this.binaryRight('and', right);
 	}

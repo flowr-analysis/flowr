@@ -459,7 +459,7 @@ export class DataflowGraph<
 	 *                            in the context of function definitions
 	 */
 	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true): this {
-		if(otherGraph === undefined) {
+		if(otherGraph === undefined || otherGraph === this) {
 			return this;
 		}
 
@@ -467,7 +467,11 @@ export class DataflowGraph<
 		for(const [type, ids] of otherGraph.types) {
 			const existing = this.types.get(type);
 			if(existing) {
-				existing.push(...ids);
+				if(existing !== ids) {
+					for(const id of ids) {
+						existing.push(id);
+					}
+				}
 			} else {
 				this.types.set(type, ids.slice());
 			}

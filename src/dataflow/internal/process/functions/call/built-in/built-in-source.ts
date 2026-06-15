@@ -24,6 +24,7 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { getHeapStatistics } from 'v8';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -245,6 +246,25 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 			return information;
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
+		}
+		if(textRequest.path) {
+			const dotIdx = textRequest.path.lastIndexOf('.');
+			const ext = dotIdx >= 0 ? textRequest.path.slice(dotIdx).toLowerCase() : '';
+			if(ext !== '' && ext !== '.r') {
+				expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
+		}
+		const resolveSource = data.ctx.config.solver.resolveSource;
+		if(resolveSource?.checkMemoryOnSource) {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			const { used_heap_size, heap_size_limit } = getHeapStatistics();
+			if(heap_size_limit > 0 && used_heap_size / heap_size_limit > (resolveSource.memoryThreshold ?? .9)) {
+				dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to memory pressure (${Math.round(used_heap_size / 1048576)}/${Math.round(heap_size_limit / 1048576)} MB used)`);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
 		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		const normalized = (typeof parsed !== 'string' ?

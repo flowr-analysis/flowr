@@ -671,9 +671,15 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 			}
 		}
 		result.graph.mergeWith(expression.graph);
-		result.breaks.push(...expression.breaks);
-		result.nexts.push(...expression.nexts);
-		result.returns.push(...expression.returns);
+		for(const b of expression.breaks) {
+			result.breaks.push(b);
+		}
+		for(const n of expression.nexts) {
+			result.nexts.push(n);
+		}
+		for(const r of expression.returns) {
+			result.returns.push(r);
+		}
 		result.exitPoints = expression.exitPoints;
 	}
 

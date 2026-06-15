@@ -3,7 +3,7 @@ import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
 import { CompositeTaintInferenceVisitor } from '../composite-taint-visitor';
-import type { InstrumentableTaintInferenceVisitor, TaintVisitorConfiguration } from '../taint-visitor';
+import type { TaintVisitorConfiguration } from '../taint-visitor';
 import { TaintInferenceVisitor } from '../taint-visitor';
 import { guard } from '../../util/assert';
 import type { ProductReduction } from '../../abstract-interpretation/domains/partial-product-domain';
@@ -24,7 +24,7 @@ export interface RunnableTaintAnalysisDefinition<Name extends string = string> {
 	/** The optional message reported when the analysis produces a finding. */
 	readonly msg?: string;
 	/** Creates the abstract interpretation visitor that conducts the taint analysis for the given visitor configuration. */
-	createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> & InstrumentableTaintInferenceVisitor;
+	createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain>;
 }
 
 /** Options for composing multiple taint analyses into a {@link CompositeTaintAnalysisDefinition}. */
@@ -75,7 +75,7 @@ implements RunnableTaintAnalysisDefinition<Name> {
 		return this;
 	}
 
-	public createVisitor(config: TaintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> & InstrumentableTaintInferenceVisitor {
+	public createVisitor(config: TaintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> {
 		return new TaintInferenceVisitor(this.domain, this.mapper, { ...this.config, ...config });
 	}
 
@@ -123,7 +123,7 @@ export class CompositeTaintAnalysisDefinition<Name extends string> implements Ru
 		return this;
 	}
 
-	public createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> & InstrumentableTaintInferenceVisitor {
+	public createVisitor(config: AbsintVisitorConfiguration): AbstractInterpretationVisitor<AnyStateDomain> {
 		const components: TaintComponent[] = this.definitions.map(def => ({
 			name:   def.name,
 			domain: def.domain,

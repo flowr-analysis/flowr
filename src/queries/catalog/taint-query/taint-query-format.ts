@@ -24,7 +24,8 @@ export interface TaintQuery extends BaseQueryFormat {
 }
 
 export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
-	readonly results: Map<Analyses[number], TaintInferenceResult>
+	readonly results: Map<Analyses[number], TaintInferenceResult>,
+	readonly log?:    unknown
 }
 
 const prefix = 'definitions:';
@@ -122,15 +123,15 @@ export const TaintQueryDefinition = {
 		return true;
 	},
 	jsonFormatter: (queryResults: BaseQueryResult) => {
-		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
+		const { results, log, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
-			Array.from(results, ([name, { domains, finding, instrumentation }]) => [name, {
-				domains:         domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJson() ?? null])),
-				finding:         finding,
-				instrumentation: instrumentation
+			Array.from(results, ([name, { domains, finding }]) => [name, {
+				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJson() ?? null])),
+				finding: finding,
+				log
 			}])
 		);
-		const result = { results: json, ...out } as object;
+		const result = { results: json, log, ...out } as object;
 		return result;
 	},
 	completer: taintQueryCompleter,

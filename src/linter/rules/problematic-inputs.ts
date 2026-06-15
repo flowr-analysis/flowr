@@ -115,10 +115,10 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 export const PROBLEMATIC_INPUTS = {
 	createSearch: config => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
-		return Q.fromQuery(
+		return Q.fromQuery([
 			...normalizePatternList(config?.consider, defaultConsider).map((n, i) => toQ(n, `fn-${i}`)),
 			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
-		);
+		]);
 	},
 	processSearchResult: async(elements, config, data) => {
 		const df = await data.dataflow();

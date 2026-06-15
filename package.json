@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.10.7",
+  "version": "2.10.8",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -46,7 +46,7 @@
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
     "test:performance": "npm run performance-test --",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
-    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run gen:readme && npm-run-all wiki:*"
+    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run wiki"
   },
   "keywords": [
     "static code analysis",
@@ -185,7 +185,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@vitest/coverage-v8": "^4.1.8",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.2",
     "license-checker-rseidelsohn": "^4.4.2",
     "npm-run-all": "^4.1.5",

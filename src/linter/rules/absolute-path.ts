@@ -11,7 +11,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { isAbsolutePath } from '../../util/text/strings';
+import { isAbsolutePath, isUrl, fileUrlToPath } from '../../util/text/strings';
 import { isNotUndefined, isUndefined } from '../../util/assert';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
@@ -55,6 +55,8 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 	 * This is only relevant with quickfixes. In the future we may be sensitive to setwd etc.
 	 */
 	useAsWd:                 SupportedWd
+	/** Automatically ignore URLs (http/https/ftp) so they are not reported as absolute paths. */
+	ignoreUrls:              boolean
 }
 
 export interface AbsoluteFilePathMetadata extends MergeableRecord {
@@ -115,6 +117,20 @@ const PathFunctions: ReadonlyMap<Identifier, PathFunction> = new Map([
 	}]
 ]);
 
+/**
+ * Resolve a raw string value to the path that should be checked for absoluteness.
+ * - `file://` URIs: extract the local path (always checked, ignoreUrls has no effect)
+ * - remote URLs (http/s3/...): `undefined` when ignoreUrls is true (skip)
+ * - everything else: the value itself
+ */
+function resolvePathForAbsoluteCheck(value: string, ignoreUrls: boolean): string | undefined {
+	const local = fileUrlToPath(value);
+	if(local !== undefined) {
+		return local;
+	}
+	return ignoreUrls && isUrl(value) ? undefined : value;
+}
+
 export const ABSOLUTE_PATH = {
 	/* this can be done better once we have types */
 	createSearch: (config) => {
@@ -150,26 +166,34 @@ export const ABSOLUTE_PATH = {
 				const node = element.node;
 				const wd = inferWd(node.info.file, config.useAsWd);
 				if(RString.is(node)) {
-					if(node.content.str.length >= 3 && isAbsolutePath(node.content.str, regex)) {
+					const resolved = resolvePathForAbsoluteCheck(node.content.str, config.ignoreUrls);
+					if(resolved !== undefined && resolved.length >= 3 && isAbsolutePath(resolved, regex)) {
 						return [{
 							certainty: LintingResultCertainty.Uncertain,
-							filePath:  node.content.str,
+							filePath:  resolved,
 							loc:       SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
-							quickFix:  buildQuickFix(node, node.content.str, wd)
+							quickFix:  buildQuickFix(node, resolved, wd)
 						}];
 					} else {
 						return [];
 					}
 				} else if(enrichmentContent(element, Enrichment.QueryData)) {
 					const result = queryResults[enrichmentContent(element, Enrichment.QueryData).query] as QueryResults<'dependencies'>['dependencies'];
-					const mappedStrings = result.read.filter(r => r.value !== undefined && r.value !== Unknown && isAbsolutePath(r.value, regex)).map(r => {
+					const mappedStrings = result.read.flatMap(r => {
+						if(r.value === undefined || r.value === Unknown) {
+							return [];
+						}
+						const resolved = resolvePathForAbsoluteCheck(r.value, config.ignoreUrls);
+						if(resolved === undefined || !isAbsolutePath(resolved, regex)) {
+							return [];
+						}
 						const elem = normalize.idMap.get(r.nodeId);
-						return {
+						return [{
 							certainty: LintingResultCertainty.Certain,
-							filePath:  r.value,
+							filePath:  resolved,
 							loc:       elem ? SourceLocation.fromNode(elem) ?? SourceLocation.invalid() : SourceLocation.invalid(),
-							quickFix:  buildQuickFix(elem, r.value as string, wd)
-						};
+							quickFix:  buildQuickFix(elem, resolved, wd)
+						}];
 					});
 					if(mappedStrings.length > 0) {
 						return mappedStrings;
@@ -183,7 +207,10 @@ export const ABSOLUTE_PATH = {
 						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
 						const strings = handler ? handler(dataflow.graph, dfNode, data.inspectContext()) : [];
 						if(strings) {
-							return strings.filter(s => isAbsolutePath(s, regex)).map(str => ({
+							return strings.flatMap(s => {
+								const resolved = resolvePathForAbsoluteCheck(s, config.ignoreUrls);
+								return resolved !== undefined && isAbsolutePath(resolved, regex) ? [resolved] : [];
+							}).map(str => ({
 								certainty: LintingResultCertainty.Uncertain,
 								filePath:  str,
 								loc:       SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
@@ -217,7 +244,8 @@ export const ABSOLUTE_PATH = {
 			},
 			additionalPathFunctions: [],
 			absolutePathRegex:       undefined,
-			useAsWd:                 '@script'
+			useAsWd:                 '@script',
+			ignoreUrls:              true
 		}
 	}
 } as const satisfies LintingRule<AbsoluteFilePathResult, AbsoluteFilePathMetadata, AbsoluteFilePathConfig>;

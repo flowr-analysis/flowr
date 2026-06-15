@@ -12,8 +12,9 @@ import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
+import { LintingResultCertainty } from '../../../linter/linter-format';
 import { ReadFunctions } from '../dependencies-query/function-info/read-functions';
-import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, UserFunctions } from './input-source-functions';
+import { FfiFunctions, LangFunctions, OptionsFunctions, PureFunctions, SystemFunctions, TempFileFunctions, UserFunctions } from './input-source-functions';
 
 export type InputSourcesQueryConfig = InputClassifierConfig;
 /**
@@ -23,17 +24,20 @@ export type InputSourcesQueryConfig = InputClassifierConfig;
 export interface InputSourcesQuery extends BaseQueryFormat {
 	readonly type:      'input-sources';
 	/**
-	 * This takes a criterion (or a numerical id works too)
+	 * One or more slicing criteria to analyze; each is resolved independently and keyed by its
+	 * criterion string in the result map.  Supplying an array allows batching multiple lookups
+	 * into a single round-trip.
 	 * {@link SlicingCriterion.fromId}
 	 */
-	readonly criterion: SlicingCriterion,
+	readonly criterion: SlicingCriterion | readonly SlicingCriterion[],
 	readonly config?:   InputSourcesQueryConfig
 }
 
 export const DefaultInputClassifierConfig: InputClassifierConfig = {
 	[InputTraceType.Pure]: PureFunctions,
 	[InputType.File]:      ReadFunctions.map(readFunction => readFunction.name),
-	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }),
+	[InputType.TempFile]:  TempFileFunctions,
+	[InputType.Network]:   Q.fromQuery({ type: 'linter', rules: ['network-functions'] }, LintingResultCertainty.Certain),
 	[InputType.Random]:    Q.fromQuery({ type: 'linter', rules: ['seeded-randomness'] }),
 	[InputType.System]:    SystemFunctions,
 	[InputType.Ffi]:       FfiFunctions,
@@ -69,12 +73,13 @@ export const InputSourcesDefinition = {
 		const nast = (await analyzer.normalize()).idMap;
 		for(const [key, sources] of Object.entries(out.results)) {
 			result.push(`   ╰ Input Sources for ${key}`);
-			for(const { id, trace, types, value } of sources) {
+			for(const { id, trace, types, name, value } of sources) {
 				const kNode = nast.get(id);
 				const kLoc = kNode ? SourceLocation.format(SourceLocation.fromNode(kNode)) : 'unknown location';
+				const nameStr  = name  !== undefined ? `, name: ${name}` : '';
 				const valueStr = value !== undefined ? `, value: ${JSON.stringify(value)}` : '';
 				result.push(
-					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${valueStr}`
+					`           ╰ ${kLoc} (id: ${id}), type: ${JSON.stringify(types)}, trace: ${trace}${nameStr}${valueStr}`
 				);
 			}
 		}
@@ -83,10 +88,11 @@ export const InputSourcesDefinition = {
 	fromLine: inputSourcesQueryLineParser,
 	schema:   Joi.object({
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
-		criterion: Joi.string().required().description('The slicing criterion to use.'),
+		criterion: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('The slicing criterion or array of criteria to use.'),
 		config:    Joi.object({
 			[InputTraceType.Pure]: Joi.array().items(Joi.string()).optional().description('Deterministic/pure functions: functions that preserve constantness of their inputs (e.g., arithmetic, parse).'),
 			[InputType.File]:      Joi.array().items(Joi.string()).optional().description('Functions that read from the filesystem and produce data (e.g., read.csv, readRDS).'),
+			[InputType.TempFile]:  Joi.array().items(Joi.string()).optional().description('Functions that produce temporary file paths (sub-type of File; e.g., tempfile, tempdir).'),
 			[InputType.Network]:   Joi.array().items(Joi.string()).optional().description('Functions that fetch data from the network (e.g., download.file, url connections).'),
 			[InputType.Random]:    Joi.array().items(Joi.string()).optional().description('Functions that produce randomness (e.g., runif, rnorm).'),
 			[InputType.System]:    Joi.array().items(Joi.string()).optional().description('Functions that execute system commands (e.g., system, system2, shell, pipe).'),

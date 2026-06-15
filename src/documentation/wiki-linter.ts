@@ -174,6 +174,18 @@ function(x) {
 }
 `, tagTypes);
 
+	rule(knownParser,
+		'software-has-license', 'SoftwareHasLicenseConfig', 'SOFTWARE_HAS_LICENSE', 'lint-software-has-license',
+		'cat("a project without a license")', tagTypes);
+
+	rule(knownParser,
+		'software-has-tests', 'SoftwareHasTestsConfig', 'SOFTWARE_HAS_TESTS', 'lint-software-has-tests',
+		'cat("hello")', tagTypes);
+
+	rule(knownParser,
+		'no-leaked-credentials', 'NoLeakedCredentialsConfig', 'NO_LEAKED_CREDENTIALS', 'lint-no-leaked-credentials',
+		'password <- "s3cr3t"', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

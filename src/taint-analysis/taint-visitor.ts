@@ -10,10 +10,19 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
+/**
+ * Callback hook invoked when a function call is visited during taint inference.
+ * @param taint - The resolved taint information for the function call
+ * @param node - The AST node representing the function call
+ * @param value - The abstract domain value at this point in the analysis
+ */
 export type TaintVisitorHook = (taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => void;
 
+/**
+ * Configuration for the taint inference visitor.
+ */
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
-	/** Called for TODO */
+	/** Callbacks invoked when each function call is visited during taint inference */
 	fnCallHooks: TaintVisitorHook[];
 };
 

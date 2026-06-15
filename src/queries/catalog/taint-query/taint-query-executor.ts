@@ -22,8 +22,7 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 
 	// TODO Add to flowR config
 	const instrumentation = new TaintAnalysisInstrumentation();
-	analysis.withHook((name, taint, node, value) =>
-		instrumentation.fnCallHook(name, taint, node, value));
+	analysis.withHook(instrumentation.fnCallHook);
 
 	for(const def of flattened) {
 		analysis.addPredefined(def);

@@ -34,7 +34,7 @@ export class TaintAnalysisInstrumentation {
 		return this._trace;
 	}
 
-	public fnCallHook(name: string, taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) {
+	fnCallHook = (name: string, taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => {
 		const existent = this._trace.get(name);
 		if(!existent) {
 			this._trace.set(name, { mappedCalls: [], unmappedCalls: [] });
@@ -52,5 +52,5 @@ export class TaintAnalysisInstrumentation {
 		} else {
 			existent?.unmappedCalls.push(call);
 		}
-	}
+	};
 }

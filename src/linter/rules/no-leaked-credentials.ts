@@ -1,4 +1,10 @@
-import { LintingResultCertainty, type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingRuleCertainty } from '../linter-format';
+import {
+	LintingPrettyPrintContext,
+	type LintingResult,
+	LintingResultCertainty,
+	type LintingRule,
+	LintingRuleCertainty
+} from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
@@ -85,8 +91,8 @@ export const NO_LEAKED_CREDENTIALS = {
 	info: {
 		name:          'No Leaked Credentials',
 		description:   'Detects hardcoded credentials assigned to variables whose names suggest they hold passwords, tokens, or API keys, or whose values match known credential formats (AWS, GitHub, Slack, Stripe, SSH).',
-		tags:          [LintingRuleTag.Security, LintingRuleTag.Smell],
-		certainty:     LintingRuleCertainty.OverApproximative,
+		tags:          [LintingRuleTag.Security, LintingRuleTag.Experimental, LintingRuleTag.Smell],
+		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
 			credentialNamePattern:  defaultCredentialNamePattern,
 			credentialValuePattern: defaultCredentialValuePattern

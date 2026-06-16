@@ -2,12 +2,13 @@ import { FaqStore } from './wiki-faq-store';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from '../../doc-util/doc-files';
 import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
+import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 
 
 /**
  *
  */
-export function registerFaqs(): FaqStore {
+export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 	const wikiFaq = new FaqStore();
 
 	wikiFaq.withTopic('flowr.development')
@@ -47,6 +48,10 @@ ${codeBlock('shell', 'npm run flowR -- --help')}
 `)
 		.addFaq('How to do *logging* in flowR?', `
 Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWikiBaseRef}/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
+`)
+
+		.addFaq('How to add a *linting rule*?', `
+To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 `)
 	;
 

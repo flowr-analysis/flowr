@@ -6,7 +6,7 @@ import { showQuery } from './doc-util/doc-query';
 import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
 import { documentReplSession } from './doc-util/doc-repl';
-import { section } from './doc-util/doc-structure';
+import { block, section } from './doc-util/doc-structure';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { textWithTooltip } from '../util/html-hover-over';
 import { joinWithLast } from '../util/text/strings';
@@ -15,6 +15,7 @@ import { getFunctionsFromFolder } from './doc-util/doc-functions';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { KnownParser } from '../r-bridge/parser';
 
 const SpecialTagColors: Record<string, string> = {
@@ -267,7 +268,7 @@ function linkToRule(name: LintingRuleNames): string {
 	return `[${name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name).replaceAll(' ', '-'))})`;
 }
 
-async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {
+async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, ctx: GeneralDocContext): Promise<string> {
 	const rules = registerRules(knownParser, tagTypes.info);
 
 	return `
@@ -290,6 +291,11 @@ ${res}
 })()}
 
 ${section('Linting Rules', 2, 'linting-rules')}
+
+${block({
+	type:    'NOTE',
+	content: `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`
+})}
 
 The following linting rules are available:
 
@@ -353,14 +359,14 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 }
 
 /** Maps file-names to their content, the 'main' file is named 'main' */
-async function getTexts(parser: KnownParser): Promise<Record<string, string> & { main: string }> {
+async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Record<string, string> & { main: string }> {
 	const tagTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/linter/'),
 		inlineTypes: mermaidHide
 	});
 
 	return {
-		'main': await getTextMainPage(parser, tagTypes),
+		'main': await getTextMainPage(parser, tagTypes, ctx),
 		...await getRulesPages(parser, tagTypes)
 	};
 }
@@ -373,8 +379,8 @@ export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 		super('wiki/Linter.md', module.filename, 'linter');
 	}
 
-	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
-		const texts = await getTexts(treeSitter);
+	protected async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
+		const texts = await getTexts(treeSitter, ctx);
 		for(const [file, content] of Object.entries(texts)) {
 			if(file === 'main') {
 				continue; // main is printed below

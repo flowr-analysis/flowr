@@ -23,7 +23,7 @@ export type TaintVisitorHook = (taint: ResolvedTaint<AnyAbstractDomain>, node: R
  */
 export type TaintVisitorConfiguration = AbsintVisitorConfiguration & {
 	/** Callbacks invoked when each function call is visited during taint inference */
-	fnCallHooks: TaintVisitorHook[];
+	fnCallHook: TaintVisitorHook;
 };
 
 /**
@@ -53,8 +53,6 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		const value = resolveTaint(taint, this.domain, argId => this.getAbstractValue(argId));
 		this.currentState.set(node.info.id, value);
 
-		for(const hook of this.config.fnCallHooks) {
-			hook(taint, node, value);
-		}
+		this.config.fnCallHook(taint, node, value);
 	}
 }

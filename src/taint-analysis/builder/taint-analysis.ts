@@ -34,9 +34,9 @@ export interface TaintInferenceResult {
  * Please prefer using the {@link FlowrAnalyzer.taint} method to create a taint analysis.
  */
 export class TaintAnalysis<Defs extends readonly string[] = []> {
-	private readonly analyzer:    ReadonlyFlowrAnalysisProvider;
-	private readonly defs:        RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
-	private readonly fnCallHooks: FnCallHook[] = [];
+	private readonly analyzer: ReadonlyFlowrAnalysisProvider;
+	private readonly defs:     RunnableTaintAnalysisDefinition<Defs[number]>[] = [];
+	private fnCallHook:        FnCallHook | undefined;
 
 	constructor(analyzer: ReadonlyFlowrAnalysisProvider) {
 		this.analyzer = analyzer;
@@ -46,7 +46,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 * Add a callback hook that is invoked for each function call mapping during taint analysis.
 	 */
 	public withHook(fnCallHook: FnCallHook): this {
-		this.fnCallHooks.push(fnCallHook);
+		this.fnCallHook = fnCallHook;
 		return this;
 	}
 
@@ -87,10 +87,7 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 				ctx:           this.analyzer.inspectContext(),
 				dfg:           (await this.analyzer.dataflow()).graph,
 				normalizedAst: await this.analyzer.normalize(),
-				fnCallHooks:   this.fnCallHooks.map(h => {
-					return (taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) =>
-						h(def.name, taint, node, value);
-				})
+				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name),
 			};
 
 			const visitor = def.createVisitor(baseConfig);
@@ -102,5 +99,11 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 			results.set(def.name, { domains: endState as StateAbstractDomain<AnyStateDomain>, finding });
 		}
 		return results;
+	}
+
+	private wrapFnCallHook(fn: FnCallHook | undefined, name: string) {
+		return fn
+			? (taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => fn(name, taint, node, value)
+			: () => {};
 	}
 }

@@ -151,13 +151,15 @@ export const ABSOLUTE_PATH = {
 		}
 		return q.unique();
 	},
-	processSearchResult: (elements, config, data): { results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata } => {
+	processSearchResult: async(elements, config, data): Promise<{ results: AbsoluteFilePathResult[], '.meta': AbsoluteFilePathMetadata }> => {
 		const metadata: AbsoluteFilePathMetadata = {
 			totalConsidered: 0,
 			totalUnknown:    0
 		};
 		const queryResults = elements.enrichmentContent(Enrichment.QueryData)?.queries;
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
 		return {
 			results: elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
@@ -185,7 +187,7 @@ export const ABSOLUTE_PATH = {
 						if(resolved === undefined || !isAbsolutePath(resolved, regex)) {
 							return [];
 						}
-						const elem = data.normalize.idMap.get(r.nodeId);
+						const elem = normalize.idMap.get(r.nodeId);
 						return [{
 							certainty: LintingResultCertainty.Certain,
 							filePath:  resolved,
@@ -200,10 +202,10 @@ export const ABSOLUTE_PATH = {
 						return [];
 					}
 				} else {
-					const dfNode = data.dataflow.graph.getVertex(node.info.id);
+					const dfNode = dataflow.graph.getVertex(node.info.id);
 					if(isFunctionCallVertex(dfNode)) {
 						const handler = dfNode.name ? PathFunctions.get(dfNode.name) : undefined;
-						const strings = handler ? handler(data.dataflow.graph, dfNode, data.analyzer.inspectContext()) : [];
+						const strings = handler ? handler(dataflow.graph, dfNode, data.inspectContext()) : [];
 						if(strings) {
 							return strings.flatMap(s => {
 								const resolved = resolvePathForAbsoluteCheck(s, config.ignoreUrls);

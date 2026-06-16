@@ -20,27 +20,30 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 const FnPool = new Map(ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [f.name, f] as const));
 export const NETWORK_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: (e, c, d) => functionFinderUtil.processSearchResult(e, c, d,
-		es => {
-			const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
-			for(const e of es) {
-				const val = functionFinderUtil.requireArgumentValue(
-					e,
-					FnPool,
-					d,
-					c.onlyTriggerWithArgument
-				);
+	processSearchResult: (e, c, d) => {
+		return functionFinderUtil.processSearchResult(e, c, d,
+			async(es) => {
+				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
+				for(const e of es) {
+					const val = await functionFinderUtil.requireArgumentValue(
+						e,
+						FnPool,
+						d,
+						c.onlyTriggerWithArgument);
 
-				if(val === Ternary.Never) {
-					continue;
+					if(val === Ternary.Never) {
+						continue;
+					}
+					const x = e as unknown as FlowrSearchElement<ParentInformation> & {
+						certainty: LintingResultCertainty
+					};
+					x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
+					res.push(x);
 				}
-				const x = e as unknown as FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty };
-				x.certainty = val === Ternary.Always ? LintingResultCertainty.Certain : LintingResultCertainty.Uncertain;
-				res.push(x);
+				return res;
 			}
-			return res;
-		}
-	),
+		);
+	},
 	prettyPrint: functionFinderUtil.prettyPrint('network operations'),
 	info:        {
 		name:          'Network Functions',

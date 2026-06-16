@@ -205,7 +205,8 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 
 export const NAMING_CONVENTION = {
 	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
-	processSearchResult: (elements, config, data) =>  {
+	processSearchResult: async(elements, config, data) =>  {
+		const dataflow = await data.dataflow();
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingResultCertainty.Certain,
@@ -222,7 +223,7 @@ export const NAMING_CONVENTION = {
 				return {
 					...m,
 					involvedId: id,
-					quickFix:   fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
+					quickFix:   fix ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
 				} as NamingConventionResult;
 			});
 		return {

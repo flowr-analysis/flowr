@@ -6,9 +6,9 @@ import type { Enrichment } from './search-executor/search-enrichers';
 import { enrichmentContent, EnrichmentElementContent } from './search-executor/search-enrichers';
 import type { DataflowInformation } from '../dataflow/info';
 import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
-import { expensiveTrace } from '../util/log';
-import { searchLogger } from './search-executor/search-generators';
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
+import { looselyCompareObjects } from '../util/objects';
+import { searchLogger } from './search-executor/search-generators';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {
@@ -55,55 +55,7 @@ export const FlowrFilters = {
 	}) satisfies FlowrFilterFunction<never>,
 	[FlowrFilter.MatchesEnrichment]: ((e: FlowrSearchElement<ParentInformation>, args: MatchesEnrichmentArgs<Enrichment>) => {
 		const content = enrichmentContent(e, args.enrichment);
-		return content && testRecursive(content, args.test);
-
-		function testRecursive(realChild: Record<string, unknown>, expectedChild: Record<string, unknown>): boolean {
-			expensiveTrace(searchLogger, () => `Comparing ${JSON.stringify(realChild)} against ${JSON.stringify(expectedChild)}`);
-
-			for(const [expectedKey, expectedValue] of Object.entries(expectedChild)) {
-				const realValue = realChild[expectedKey];
-				if(!realValue) {
-					expensiveTrace(searchLogger, () => `Real value ${JSON.stringify(realValue)} does not exist for expected key ${expectedKey}`);
-					return false;
-				}
-
-				if(Array.isArray(realValue)) {
-					const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
-						// if we expect a regular expression but an array is supplied, test each value
-						(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
-						// if we expect an object that is not a regular expression, match against our expected structure
-						(value: unknown) => testRecursive(value as Record<string, unknown>, expectedValue as Record<string, unknown>) :
-						// in any other case (primitives!), match against the exact value
-						(value: unknown) => expectedValue === value;
-					if(!(args.arrayMatch === 'every' ? realValue.every(match) : realValue.some(match))) {
-						expensiveTrace(searchLogger, () => `Array ${JSON.stringify(realValue)} does not match expected value ${JSON.stringify(expectedValue)} (array match ${args.arrayMatch})`);
-						return false;
-					}
-				} else if(typeof realValue === 'object') {
-					// for objects, we recursively match
-					if(!testRecursive(realValue as Record<string, unknown>, expectedValue as Record<string, unknown>)) {
-						expensiveTrace(searchLogger, () => `Object ${JSON.stringify(realValue)} does not match expected object ${JSON.stringify(expectedValue)}`);
-						return false;
-					}
-				}
-
-				// for anything else, we match with our regular expression or string
-				if(expectedValue instanceof RegExp) {
-					if(!expectedValue.test(typeof realValue === 'string' ? realValue : String(realValue as unknown))) {
-						expensiveTrace(searchLogger, () => `Value ${JSON.stringify(realValue)} does not match expected regular expression ${expectedValue}`);
-						return false;
-					}
-				} else if(typeof expectedValue !== 'object') {
-					if(expectedValue !== realValue) {
-						expensiveTrace(searchLogger, () => `Value ${JSON.stringify(realValue)} does not match expected string ${JSON.stringify(expectedValue)}`);
-						return false;
-					}
-				}
-			}
-
-			expensiveTrace(searchLogger, () => `Object ${JSON.stringify(realChild)} matches ${JSON.stringify(expectedChild)}`);
-			return true;
-		}
+		return content && looselyCompareObjects(content, args.test, args.arrayMatch, searchLogger);
 	}) satisfies FlowrFilterFunction<MatchesEnrichmentArgs<Enrichment>>,
 	[FlowrFilter.OriginKind]: ((e: FlowrSearchElement<ParentInformation>, args: OriginKindArgs, data: { dataflow: DataflowInformation }) => {
 		const dfgNode = data.dataflow.graph.getVertex(e.node.info.id);

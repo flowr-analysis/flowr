@@ -86,7 +86,7 @@ ${lintingRuleInfoFields(ctx)}
 
 The following example shows the basic structure of a linting rule:
 
-${ctx.code(defineRule, { dropLinesStart: 6, dropLinesEnd: 2 })}
+${ctx.code(defineRule, { dropLinesStart: 8, dropLinesEnd: 2 })}
 
 
 ## Step 4: Register the rule

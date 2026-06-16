@@ -22,9 +22,9 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, ...rest }) => ({
+		out[key] = value.map(({ nodeId, linkedIds, ...rest }) => ({
 			nodeId:    typeof nodeId === 'number' ? nodeId : SlicingCriterion.parse(String(nodeId) as SlicingCriterion, idMap),
-			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
+			linkedIds: linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
 			...rest
 		}));
 	}
@@ -457,11 +457,28 @@ describe('Dependencies Query', withTreeSitter(parser => {
   expect_equal(tan(pi / 4), 1)
 })`, {
 			test: [
-				/* { nodeId: '2@expect_equal', functionName: 'expect_equal' },
-				{ nodeId: '3@expect_equal', functionName: 'expect_equal' },
-				{ nodeId: '4@expect_equal', functionName: 'expect_equal' }, */
 				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47, 36, 20] }
 			]
 		});
+
+		testQuery('standalone expect_equal is not detected', 'expect_equal(1 + 1, 2)', {});
+
+		testQuery('expect_equal nested links to test_that via linkedIds', `test_that("basic", {
+  expect_equal(1, 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'basic', linkedIds: ['2@expect_equal'] }
+			]
+		});
+
+		testQuery('checkmate assertion nested links to test_that via linkedIds', `test_that("checks", {
+  assert_true(1 == 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'checks', linkedIds: ['2@assert_true'] }
+			]
+		});
+
+		testQuery('standalone checkmate assert_true is not detected', 'assert_true(x > 0)', {});
 	});
 }));

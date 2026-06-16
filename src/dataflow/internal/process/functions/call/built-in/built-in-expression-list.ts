@@ -218,7 +218,9 @@ export function processExpressionList<OtherInfo>(
 
 	const ingoing: IdentifierReference[] = [];
 	for(const refs of remainingRead.values()) {
-		ingoing.push(...refs);
+		for(const ref of refs) {
+			ingoing.push(ref);
+		}
 	}
 
 	const rootNode = data.completeAst.idMap.get(rootId);

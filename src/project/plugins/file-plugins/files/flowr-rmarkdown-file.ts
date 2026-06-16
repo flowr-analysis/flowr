@@ -1,5 +1,5 @@
 import type { FlowrFileProvider } from '../../../context/flowr-file';
-import { FileRole, FlowrFile, FlowrInlineTextFile } from '../../../context/flowr-file';
+import { FileRole, FlowrFile } from '../../../context/flowr-file';
 import { guard } from '../../../../util/assert';
 import { type Node, Parser } from 'commonmark';
 import type { GrayMatterFile } from 'gray-matter';
@@ -68,13 +68,16 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 			}
 
 			const childPath = path.join(platformDirname(this.path()), childOpt);
-			const childFile = this.context.files.resolveRequest({
+			this.context.files.resolveRequest({
 				request: 'file',
 				content: childPath
 			});
-			const rmdChild = FlowrRMarkdownFile.from(new FlowrInlineTextFile(childPath, childFile.r.content), this.context);
-
-			block.code = rmdChild.content();
+			const rawChildFile = this.context.files.getFileByPath(childPath) as FlowrFileProvider<string>;
+			if(rawChildFile !== undefined) {
+				block.code = FlowrRMarkdownFile.from(rawChildFile, this.context).content();
+			} else {
+				log.warn(`Child file '${childPath}' of '${this.path()}' did not load as RMD.`);
+			}
 		}
 	}
 
@@ -164,13 +167,12 @@ function countNewlines(str: string): number {
 /**
  * Restores an Rmd file from code blocks, filling non-code lines with empty lines
  */
-export function restoreBlocksWithoutMd(blocks: CodeBlock[], totalLines: number): string {
+export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines: number): string {
 	let line = 1;
 	let output = '';
 
 	const goToLine = (n: number) => {
-		const diff = n - line;
-		guard(diff >= 0);
+		const diff = Math.max(n - line, 0);
 		line += diff;
 		output += '\n'.repeat(diff);
 	};

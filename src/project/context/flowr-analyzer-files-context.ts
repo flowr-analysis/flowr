@@ -354,4 +354,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	public getAllFiles(): FlowrFileProvider[] {
 		return [...this.files.values(), ...this.inlineFiles];
 	}
+
+	public getFileByPath(path: string): FlowrFileProvider | undefined {
+		return this.files.get(path);
+	}
 }

@@ -117,6 +117,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files.addFiles(f);
 	}
 
+	public getFileByPath(path: string): FlowrFileProvider | undefined {
+		return this.files.getFileByPath(path);
+	}
+
+
 	/**
 	 * Get a read-only version of this context.
 	 * This is useful if you want to pass the context to a place where you do not want it to be modified or just to reduce

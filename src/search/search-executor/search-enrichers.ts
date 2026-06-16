@@ -23,6 +23,7 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
 import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
+import { FlowrSearchBuilder } from '../flowr-search-builder';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {

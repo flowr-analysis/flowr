@@ -14,7 +14,7 @@ import { isNotUndefined } from '../../util/assert';
 import { type CfgSimplificationPassName, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
 import type { Writable } from 'ts-essentials';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
-import { FlowrFilter, FlowrFilterCombinator } from '../../search/flowr-search-filters';
+import { F, FlowrFilter } from '../../search/flowr-search-filters';
 
 export type DeadCodeResult = LintingResult;
 
@@ -30,7 +30,7 @@ export const DEAD_CODE = {
 	createSearch: (config) => Q.all().with(Enrichment.CfgInformation, {
 		checkReachable:       true,
 		simplificationPasses: config.simplificationPasses ?? [...DefaultCfgSimplificationOrder, 'analyze-dead-code']
-	}).filter(FlowrFilterCombinator.not(FlowrFilterCombinator.or(
+	}).filter(F.not(F.or(
 		{
 			name: FlowrFilter.MatchesEnrichment,
 			args: {

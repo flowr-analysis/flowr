@@ -224,6 +224,7 @@ export class FlowrFilterCombinator {
 		return this.tree;
 	}
 }
+export const F = FlowrFilterCombinator;
 
 /**
  * Converts the given binary tree to a string representation.

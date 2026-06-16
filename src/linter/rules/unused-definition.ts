@@ -6,7 +6,7 @@ import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { FlowrFilterCombinator } from '../../search/flowr-search-filters';
+import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
@@ -91,7 +91,7 @@ function onlyKeepSupersetOfUnused(
 export const UNUSED_DEFINITION = {
 	/* this can be done better once we have types */
 	createSearch: config => Q.all().filter(
-		config.includeFunctionDefinitions ? FlowrFilterCombinator.is(VertexType.VariableDefinition).or(VertexType.FunctionDefinition) : VertexType.VariableDefinition),
+		config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
 	processSearchResult: async(elements, config, data): Promise<{ results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata }> => {
 		const normalize = await data.normalize();
 		const dataflow = await data.dataflow();

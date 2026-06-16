@@ -206,7 +206,15 @@ export function decorateAst<OtherInfo = NoInfo>(
 		...project,
 		files: project.files.map(file => {
 			info.file = file.filePath;
-			const decoratedAst = foldAstStateful(file.root, 0, folds);
+			let decoratedAst;
+			try {
+				decoratedAst = foldAstStateful(file.root, 0, folds);
+			} catch(e) {
+				if(e instanceof RangeError) {
+					throw new Error(`AST decoration exceeded the call stack for '${file.filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+				}
+				throw e;
+			}
 			decoratedAst.info.role = RoleInParent.Root;
 			decoratedAst.info.index = 0;
 			return {

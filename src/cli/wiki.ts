@@ -30,6 +30,7 @@ import os from 'os';
 import { WikiSetup } from '../documentation/wiki-setup';
 import { WikiOverview } from '../documentation/wiki-overview';
 import { WikiAbsint } from '../documentation/wiki-absint';
+import { WikiCreateLintingRules } from '../documentation/wiki-create-linting-rules';
 
 export const AllWikiDocuments = [
 	new WikiFaq(),
@@ -48,6 +49,7 @@ export const AllWikiDocuments = [
 	new WikiLintingAndTesting(),
 	new WikiLinter(),
 	new WikiAbsint(),
+	new WikiCreateLintingRules(),
 	new IssueLintingRule(),
 	new DocReadme(),
 	new DocCapabilities()

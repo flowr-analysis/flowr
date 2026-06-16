@@ -97,7 +97,9 @@ export function deepMergeObjectInPlace(base?: Mergeable, addon?: Mergeable): Mer
 	if(!baseIsArray && !addonIsArray) {
 		deepMergeObjectWithResult(addon, base, base);
 	} else if(baseIsArray && addonIsArray) {
-		(base).push(...addon);
+		for(const item of addon) {
+			(base as unknown[]).push(item);
+		}
 	} else {
 		throw new Error('cannot merge object with array!');
 	}

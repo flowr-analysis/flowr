@@ -27,7 +27,7 @@ export const SOFTWARE_HAS_TESTS = {
 		...(config.additionalTestFunctions.length > 0 ? { testFunctions: config.additionalTestFunctions } : {})
 	}),
 	processSearchResult: (elements, _config, data) => {
-		const ctx = data.analyzer.inspectContext();
+		const ctx = data.inspectContext();
 		const testFiles = ctx.files.getFilesByRole(FileRole.Test);
 		const testCalls = elements.getElements().length;
 		const hasTests = testFiles.length > 0 || testCalls > 0;

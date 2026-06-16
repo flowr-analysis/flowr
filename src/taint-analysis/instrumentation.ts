@@ -13,7 +13,6 @@ interface LoggedFnCallInfo {
 interface CallInfo {
 	functionName: Identifier,
 	nodeId:       NodeId,
-	file:         string | undefined,
 	line:         string | undefined,
 }
 
@@ -22,35 +21,47 @@ interface MappedCallInfo extends CallInfo {
 }
 
 /**
+ * Trace mapping: Analysis Name -\> File Name -\> FnCall Info
+ */
+type Trace = Map<string, Map<string | undefined, LoggedFnCallInfo>>;
+
+/**
  * Collects internal information from the taint analysis using its hook system.
  * To collect all function call mappings during taint analysis,
  * pass the {@link TaintAnalysisInstrumentation.fnCallHook} to {@link TaintAnalysis.withHook}.
  * Get all mappings after running the taint analysis from {@link TaintAnalysisInstrumentation.trace}
  */
 export class TaintAnalysisInstrumentation {
-	private readonly _trace: Map<string, LoggedFnCallInfo> = new Map();
+	private readonly _trace: Trace = new Map();
 
-	get trace() {
+	get trace(): Trace {
 		return this._trace;
 	}
 
 	fnCallHook = (name: string, taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => {
-		const existent = this._trace.get(name);
-		if(!existent) {
-			this._trace.set(name, { mappedCalls: [], unmappedCalls: [] });
+		let byFile = this._trace.get(name);
+		if(!byFile) {
+			byFile = new Map();
+			this._trace.set(name, byFile);
+		}
+
+		const file = node.info.file;
+		let fnCallInfo = byFile.get(file);
+		if(!fnCallInfo) {
+			fnCallInfo = { mappedCalls: [], unmappedCalls: [] };
+			byFile.set(file, fnCallInfo);
 		}
 
 		const call = {
-			file:         node.info.file,
 			line:         node.info.fullRange?.[0].toString(),
 			nodeId:       node.info.id,
 			functionName: node.functionName.content,
 		};
 
 		if(taint) {
-			existent?.mappedCalls.push({ ...call, taint: value.toString() });
+			fnCallInfo.mappedCalls.push({ ...call, taint: value.toString() });
 		} else {
-			existent?.unmappedCalls.push(call);
+			fnCallInfo.unmappedCalls.push(call);
 		}
 	};
 }

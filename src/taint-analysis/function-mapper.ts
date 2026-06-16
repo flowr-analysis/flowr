@@ -101,10 +101,10 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 	const resultingTaint = taint.condition(taint.valArgs, incomingTaints);
 
 	if(!resultingTaint) {
-		log.warn('Argument is undefined'); // TODO Investigate in more detail
+		log.warn('Argument is undefined'); // TODO Investigate cases in eval data set
 	}
 
-	return domain.create(resultingTaint);
+	return domain.create(resultingTaint ?? Top);
 }
 
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =

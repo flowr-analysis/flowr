@@ -2,7 +2,6 @@ import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { TaintQuery, TaintQueryResult } from './taint-query-format';
 import type { AllPredefinedTaintAnalysisNames } from '../../../taint-analysis/predefined/predefined';
-import { TaintAnalysisInstrumentation } from '../../../taint-analysis/instrumentation';
 
 
 
@@ -20,17 +19,12 @@ export async function executeTaintQuery({ analyzer }: BasicQueryData, queries: r
 
 	const analysis = analyzer.taint<AllPredefinedTaintAnalysisNames>();
 
-	// TODO Add to flowR config
-	const instrumentation = new TaintAnalysisInstrumentation();
-	analysis.withHook(instrumentation.fnCallHook);
-
 	for(const def of flattened) {
 		analysis.addPredefined(def);
 	}
 
 	return {
 		results: await analysis.run(),
-		log:     instrumentation.trace,
 		'.meta': {
 			timing: Date.now() - start
 		},

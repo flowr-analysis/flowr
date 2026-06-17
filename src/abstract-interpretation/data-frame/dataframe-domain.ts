@@ -4,9 +4,9 @@ import { SetRangeDomain } from '../domains/set-range-domain';
 
 /** The type of the abstract product representing the shape of data frames */
 export type AbstractDataFrameShape = {
-	colnames: SetRangeDomain<string>;
-	cols:     PosIntervalDomain;
-	rows:     PosIntervalDomain;
+	readonly colnames: SetRangeDomain<string>;
+	readonly cols:     PosIntervalDomain;
+	readonly rows:     PosIntervalDomain;
 };
 
 /**

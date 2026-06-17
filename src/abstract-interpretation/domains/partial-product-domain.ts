@@ -5,7 +5,7 @@ import { type AnyAbstractDomain, AbstractDomain } from './abstract-domain';
 
 /** The type of an abstract product of a product domain mapping named properties of the product to abstract domains */
 export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain> = {
-	[key in string]?: Domain
+	readonly [key in string]?: Domain
 };
 
 /**

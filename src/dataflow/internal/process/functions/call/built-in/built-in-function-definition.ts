@@ -25,12 +25,14 @@ import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
 import {
 	Identifier,
+	type InGraphIdentifierDefinition,
 	type IdentifierReference,
 	isReferenceType,
 	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
@@ -167,6 +169,26 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	let returnEnvState: REnvironmentInformation | undefined;
+	if(data.ctx.config.solver.trackEnvironments) {
+		for(const ep of afterHookExitPoints) {
+			const epVertex = subgraph.getVertex(ep.nodeId);
+			if(isFunctionCallVertex(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
+				break;
+			}
+			const epNode = subgraph.idMap?.get(ep.nodeId);
+			if(epNode?.type === RType.Symbol) {
+				const defs = resolveByName(epNode.content, outEnvironment, ReferenceType.Variable);
+				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				if(def?.envState) {
+					returnEnvState = def.envState;
+					break;
+				}
+			}
+		}
+	}
+
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
@@ -175,7 +197,8 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
-		exitPoints:  afterHookExitPoints
+		exitPoints:  afterHookExitPoints,
+		returnEnvState
 	}, data.ctx.env.makeCleanEnv());
 
 	return {
@@ -269,6 +292,52 @@ function updateNestedFunctionClosures(
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
 		subflow.in = remainingIn;
+
+		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
+	}
+}
+
+function linkSuperAssignmentsToOuterDefinitions(
+	parentGraph: DataflowGraph,
+	nestedGraphNodeIds: Set<NodeId>,
+	parentEnvironment: REnvironmentInformation
+): void {
+	for(const nodeId of nestedGraphNodeIds) {
+		const vertex = parentGraph.getVertex(nodeId);
+		if(vertex?.tag !== VertexType.FunctionCall || !vertex.origin.includes(BuiltInProcName.SuperAssignment)) {
+			continue;
+		}
+
+		const outgoingReturns = parentGraph.outgoingEdges(nodeId);
+		if(!outgoingReturns) {
+			continue;
+		}
+
+		for(const [targetId, edge] of outgoingReturns) {
+			if(!DfEdge.includesType(edge, EdgeType.Returns)) {
+				continue;
+			}
+
+			const targetVertex = parentGraph.getVertex(targetId);
+			if(targetVertex?.tag !== VertexType.VariableDefinition) {
+				continue;
+			}
+
+			const targetNode = parentGraph.idMap?.get(targetId);
+			if(targetNode?.type !== RType.Symbol) {
+				continue;
+			}
+
+			const varName = targetNode.content;
+			const resolved = resolveByName(varName, parentEnvironment, ReferenceType.Variable);
+			if(resolved) {
+				for(const ref of resolved) {
+					if(ref.nodeId !== targetId && !NodeId.isBuiltIn(ref.nodeId)) {
+						parentGraph.addEdge(targetId, ref.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
 	}
 }
 

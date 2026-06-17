@@ -191,13 +191,17 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			}
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
-					const dep = value ? d.getDependency(value) ?? undefined : undefined;
+					let resolvedValue = value;
+					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
+						resolvedValue = info.stringReplacements[resolvedValue];
+					}
+					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName:       vertex.name,
 						lexemeOfArgument:   getLexeme(value, arg),
 						linkedIds:          linked?.length ? linked : undefined,
-						value:              value ?? info.defaultValue ?? defaultValue,
+						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
 						derivedVersion:     dep?.derivedVersion,
 						namespaceInfo:      dep?.namespaceInfo

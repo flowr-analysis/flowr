@@ -184,6 +184,24 @@ class InputClassifier {
 					types.push(type as InputType);
 				}
 			}
+			// if a File-typed call reads from a temp path, replace File with TempFile
+			if(types.includes(InputType.File) && !types.includes(InputType.TempFile)) {
+				for(const arg of call.args) {
+					if(FunctionArgument.isEmpty(arg)) {
+						continue;
+					}
+					const ref = FunctionArgument.getReference(arg);
+					if(ref === undefined) {
+						continue;
+					}
+					const argVtx = this.dfg.getVertex(ref);
+					if(argVtx && this.classifyEntry(argVtx).types.includes(InputType.TempFile)) {
+						types.splice(types.indexOf(InputType.File), 1);
+						types.push(InputType.TempFile);
+						break;
+					}
+				}
+			}
 			if(types.length === 0) {
 				// if it is not pure, we cannot classify based on the inputs, in that case we do not know!
 				types.push(InputType.Unknown);
@@ -338,19 +356,24 @@ class InputClassifier {
  * joining differing lattice elements.
  *
  *```
- *              [ Unknown ]
- *                   |
- * [Param] [File] [Net], ...
- *                   |
+ *                  [ Unknown ]
+ *                       |
+ *  [Param]  [File]  [Net]  [User], ...
+ *     |         |      |      |
+ *     |    [TempFile]  |      |
+ *     +---------+------+------+- ...
+ *                    |
  *            [ DerivedConstant ]
- *                   |
- *              [ Constant ]
+ *                    |
+ *               [ Constant ]
  *```
  *
  */
 export enum InputType {
 	Parameter = 'param',
 	File = 'file',
+	/** Temporary file paths produced by tempfile()/tempdir() and equivalents; a sub-type of {@link File} */
+	TempFile = 'tempfile',
 	Network = 'net',
 	Random = 'rand',
 	/** Calls to system/system2 and similar */
@@ -361,6 +384,8 @@ export enum InputType {
 	Lang = 'lang',
 	/** Global options / option accessors (options, getOption) */
 	Options = 'options',
+	/** Interactive user input (file choosers, prompts, dialogs, menu selections) */
+	User = 'user',
 	Constant = 'const',
 	/** Read from environment/call scope */
 	Scope = 'scope',
@@ -397,6 +422,8 @@ export interface InputSource extends MergeableRecord {
 	trace:  InputTraceType,
 	/** if the trace is affected by control dependencies, they are classified too, this is a duplicate free array */
 	cds?:   InputType[],
+	/** argument name when this source originates from a named argument of the criterion function call */
+	name?:  string,
 	/** the concrete scalar value when the source is a constant or a pure alias of one */
 	value?: ConstantValue
 }
@@ -418,7 +445,7 @@ function matchesList(fn: DataflowGraphVertexFunctionCall, list: InputClassifierF
 		return false;
 	}
 	for(const id of list) {
-		if(fn.id === id || (Identifier.is(id) && Identifier.matches(id, fn.name))) {
+		if(fn.id === id || (Identifier.is(id) && (Identifier.matches(id, fn.name) || (Identifier.getNamespace(fn.name) === undefined && Identifier.matches(fn.name, id))))) {
 			return true;
 		}
 	}
@@ -465,7 +492,9 @@ export function classifyInput(id: NodeId, dfg: DataflowGraph, config: InputClass
 			if(argVtx === undefined) {
 				continue;
 			}
-			ret.push(c.classifyEntry(argVtx));
+			const entry = c.classifyEntry(argVtx);
+			const argName = FunctionArgument.getName(arg);
+			ret.push(argName !== undefined ? { ...entry, name: argName } : entry);
 		}
 		return ret;
 	} else {

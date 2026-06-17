@@ -8,6 +8,9 @@ export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain
 	readonly [key in string]?: Domain
 };
 
+/** A reduction function of a reduced product domain refining the abstract value based on the values of its sub abstract domains. */
+export type ProductReduction<Product extends AbstractProduct> = (value: Product) => Product;
+
 /**
  * A partial product abstract domain as named Cartesian product of (optional) sub abstract domains.
  * The sub abstract domains are represented by a (partial) record mapping property names to abstract domains.
@@ -17,13 +20,16 @@ export type AbstractProduct<Domain extends AnyAbstractDomain = AnyAbstractDomain
 export abstract class PartialProductDomain<Product extends AbstractProduct>
 	extends AbstractDomain<Product, Product, Product> {
 
-	public readonly domain: Required<Product>;
+	public readonly domain:     Required<Product>;
+	public readonly reductions: readonly ProductReduction<Product>[];
 
-	constructor(value: Product, domain: Required<Product>, reduce = true) {
+	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = [], reduce = true) {
 		super(Record.mapProperties(value, entry => entry?.create(entry.value)) as Product);
+
+		this.reductions = reductions;
 		this.domain = domain;
 
-		if(reduce && this.reduce) {
+		if(reduce) {
 			(this._value as Writable<Product>) = this.reduce(this.value);
 		}
 	}
@@ -150,7 +156,10 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	}
 
 	/**
-	 * Optional reduction function for a reduced product domain.
+	 * Applies the {@link reductions} of the (reduced) product domain to refine the abstract value based on its components.
+	 * Subclasses may override this to implement a fixed reduction instead of (or in addition to) the configurable reductions.
 	 */
-	protected reduce?(value: Product): Product;
+	protected reduce(value: Product): Product {
+		return this.reductions.reduce((current, reduction) => reduction(current), value);
+	}
 }

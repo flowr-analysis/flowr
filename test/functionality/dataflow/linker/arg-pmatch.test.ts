@@ -49,19 +49,19 @@ describe('Dataflow Linker - Argument Matching', () => {
 					lexeme:   name,
 					location: SourceRange.from(0, 0, 0, 0),
 					info:     {
-						id:      'param-' + idx,
-						role:    RoleInParent.ParameterName,
-						parent:  'param-' + idx,
-						nesting: 1,
-						index:   0
+						id:     'param-' + idx,
+						role:   RoleInParent.ParameterName,
+						parent: 'param-' + idx,
+						nest:   1,
+						index:  0
 					}
 				},
 				info: {
-					id:      'param-wrap-' + idx,
-					role:    RoleInParent.FunctionDefinitionParameter,
-					parent:  'func-def',
-					nesting: 1,
-					index:   idx
+					id:     'param-wrap-' + idx,
+					role:   RoleInParent.FunctionDefinitionParameter,
+					parent: 'func-def',
+					nest:   1,
+					index:  idx
 				},
 				location:     SourceRange.from(0, 0, 0, 0),
 				lexeme:       name,

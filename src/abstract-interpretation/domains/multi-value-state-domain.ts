@@ -1,12 +1,7 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Bottom } from './lattice';
-import { type AbstractProduct, PartialProductDomain } from './partial-product-domain';
+import { type AbstractProduct, type ProductReduction, PartialProductDomain } from './partial-product-domain';
 import { type StateDomainLift, StateAbstractDomain } from './state-abstract-domain';
-
-/**
- * A reduction function for abstract values of a product domain.
- */
-export type Reduction<Product extends AbstractProduct> = (value: Product) => Product;
 
 /**
  * A multi-value state abstract domain that maps AST node IDs to multiple abstract values from different abstract domains.
@@ -16,7 +11,7 @@ export type Reduction<Product extends AbstractProduct> = (value: Product) => Pro
 export class MultiValueStateDomain<Product extends AbstractProduct, Value extends StateDomainLift<MultiValueDomain<Product>> = StateDomainLift<MultiValueDomain<Product>>>
 	extends StateAbstractDomain<MultiValueDomain<Product>, Value> {
 
-	constructor(value: Value, domain: Required<Product>, reductions: readonly Reduction<Product>[] = []) {
+	constructor(value: Value, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
 		super(value, new MultiValueDomain(domain, domain, reductions));
 	}
 
@@ -53,22 +48,15 @@ export class MultiValueStateDomain<Product extends AbstractProduct, Value extend
 export class MultiValueDomain<Product extends AbstractProduct>
 	extends PartialProductDomain<Product> {
 
-	public readonly reductions: readonly Reduction<Product>[];
-
-	constructor(value: Product, domain: Required<Product>, reductions: readonly Reduction<Product>[] = []) {
-		super(value, domain);
-		this.reductions = reductions;
+	constructor(value: Product, domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []) {
+		super(value, domain, reductions);
 	}
 
 	public create(value: Product): this {
 		return new MultiValueDomain(value, this.domain, this.reductions) as this;
 	}
 
-	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly Reduction<Product>[] = []): MultiValueDomain<Product> {
+	public static top<Product extends AbstractProduct>(domain: Required<Product>, reductions: readonly ProductReduction<Product>[] = []): MultiValueDomain<Product> {
 		return new MultiValueDomain({} as Product, domain, reductions);
-	}
-
-	protected reduce(value: Product): Product {
-		return this.reductions.reduce((current, reduction) => reduction(current), value);
 	}
 }

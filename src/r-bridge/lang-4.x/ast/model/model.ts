@@ -29,9 +29,10 @@ import type { AstIdMap, ParentInformation } from './processing/decorate';
 import type { NodeId } from './processing/node-id';
 import type { OnEnter, OnExit } from './processing/visitor';
 import { NodeVisitor } from './processing/visitor';
-import type { SingleOrArrayOrNothing } from '../../../../abstract-interpretation/normalized-ast-fold';
 import { assertUnreachable } from '../../../../util/assert';
 import { getDocumentationOf } from '../../../roxygen2/documentation-provider';
+
+export type SingleOrArrayOrNothing<T> = T | readonly (T | null | undefined)[] | null | undefined;
 
 /** Simply an empty type constraint used to say that there are additional decorations (see {@link RAstNodeBase}). */
 export type NoInfo = object;
@@ -273,7 +274,6 @@ export type RNode<Info = NoInfo>  = RExpressionList<Info> | RFunctions<Info>
  * For the individual type checks, please consult the individual vertices, e.g. {@link RPipe.is}.
  * Some vertices also have a {@link RPipe.availableFromRVersion} property that indicates from which R version they are available,
  * so you can check for that as well if needed.
- * @see {@link DefaultNormalizedAstFold} - for a more powerful way to traverse the normalized AST
  */
 export const RNode = {
 	name: 'RNode',

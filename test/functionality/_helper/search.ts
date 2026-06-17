@@ -1,5 +1,5 @@
 import { type TestLabel, decorateLabelContext } from './label';
-import { assert, beforeAll, describe, test } from 'vitest';
+import { assert, beforeAll, bench, describe, test } from 'vitest';
 import { type NormalizedAst, type ParentInformation, deterministicCountingIdGenerator } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type FlowrSearchLike, getFlowrSearch } from '../../../src/search/flowr-search-builder';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -14,20 +14,20 @@ import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builde
 import type { FlowrAnalyzer } from '../../../src/project/flowr-analyzer';
 import type { DataflowInformation } from '../../../src/dataflow/info';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import { format } from 'node:util';
+import type { RParseRequest } from '../../../src/r-bridge/retriever';
 
 /**
- * Asserts the result of a search or a set of searches (all of which should return the same result)!
- * The `expected` items may be slicing criteria, which will be converted to node ids, or a function to test the results.
+ * Implementation of assertSearch that works with both string code and parse requests
  */
 export function assertSearch(
 	name: string | TestLabel,
 	parser: KnownParser,
-	code: string,
+	codeOrRequests: string | readonly RParseRequest[],
 	expected: readonly (NodeId | SlicingCriterion)[] | ((result: FlowrSearchElement<ParentInformation>[]) => boolean),
 	...searches: FlowrSearchLike[]
 ) {
-	const effectiveName = decorateLabelContext(name, ['search']);
-	describe(effectiveName, () => {
+	describe(decorateLabelContext(name, ['search']), () => {
 		let analyzer: FlowrAnalyzer | undefined;
 		let dataflow: DataflowInformation | undefined;
 		let ast: NormalizedAst | undefined;
@@ -39,7 +39,7 @@ export function assertSearch(
 				})
 				.setParser(parser)
 				.build();
-			analyzer.addRequest(code);
+			analyzer.addRequest(codeOrRequests);
 			dataflow = await analyzer.dataflow();
 			ast = await analyzer.normalize();
 		});
@@ -77,6 +77,33 @@ export function assertSearch(
 					throw e;
 				}
 			});
+		});
+	});
+}
+
+/**
+ * Modified version of {@link assertSearch} that benchmarks instead of comparing to an expected result.
+ */
+export function benchmarkSearch(
+	name: string | TestLabel,
+	parser: KnownParser,
+	code: string,
+	...searches: FlowrSearchLike[]
+) {
+	describe(decorateLabelContext(name, ['search']), async() => {
+		// beforeAll is not supported when using bench atm :(
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setInput({ getId: deterministicCountingIdGenerator(0) })
+			.setParser(parser)
+			.build();
+		analyzer.addRequest(code);
+
+		describe.each([true, false])('optimize %s', optimize => {
+			for(const search of searches) {
+				bench(format('%s', search), async() => {
+					await analyzer.runSearch(getFlowrSearch(search, optimize));
+				}, { throws: true });
+			}
 		});
 	});
 }

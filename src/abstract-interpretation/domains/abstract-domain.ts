@@ -206,9 +206,21 @@ implements Lattice<Value, Top, Bot, Lift> {
 
 	public abstract isTop(): this is this & AbstractDomain<Value, Top, Bot, Top>;
 
+	public isNotTop(): this is this & AbstractDomain<Value, Top, Bot, Value | Bot> {
+		return !this.isTop();
+	}
+
 	public abstract isBottom(): this is this & AbstractDomain<Value, Top, Bot, Bot>;
 
+	public isNotBottom(): this is this & AbstractDomain<Value, Top, Bot, Value | Top> {
+		return !this.isBottom();
+	}
+
 	public abstract isValue(): this is this & AbstractDomain<Value, Top, Bot, Value>;
+
+	public isNotValue(): this is this & AbstractDomain<Value, Top, Bot, Top | Bot> {
+		return !this.isValue();
+	}
 
 	/**
 	 * Joins an array of abstract values by joining the first abstract value with the other values in the array.

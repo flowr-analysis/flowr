@@ -45,7 +45,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg, envirArg } = getArguments(args);
+	const { fileArg } = getArguments(args);
 
 	if(!fileArg) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;

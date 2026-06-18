@@ -1,3 +1,4 @@
+import { exitSafe } from '../util/proc';
 import { makeDocContextForTypes } from '../documentation/wiki-mk/doc-context';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -179,7 +180,7 @@ if(require.main === module) {
 	}
 	void makeAllWikis(options.force, options.filter).catch(err => {
 		console.error('Error while generating wikis:', err);
-		process.exit(1);
+		exitSafe(1);
 	}).then(() => {
 		if(options['keep-alive']) {
 			console.log('Wiki generator running in keep-alive mode...');

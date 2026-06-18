@@ -49,10 +49,11 @@ export interface NoLeakedCredentialsMetadata extends MergeableRecord {
 
 export const NO_LEAKED_CREDENTIALS = {
 	createSearch:        () => Q.all().filter(VertexType.VariableDefinition),
-	processSearchResult: (elements, config, data): { results: NoLeakedCredentialsResult[], '.meta': NoLeakedCredentialsMetadata } => {
+	processSearchResult: async(elements, config, data): Promise<{ results: NoLeakedCredentialsResult[], '.meta': NoLeakedCredentialsMetadata }> => {
 		const namePattern  = new RegExp(config.credentialNamePattern, 'i');
 		const valuePattern = new RegExp(config.credentialValuePattern);
-		const dfg = data.dataflow.graph;
+		const normalize = await data.normalize();
+		const dfg = (await data.dataflow()).graph;
 		let totalChecked = 0;
 
 		const results = elements.getElements().flatMap(element => {
@@ -67,7 +68,7 @@ export const NO_LEAKED_CREDENTIALS = {
 				if(!DfEdge.includesType(edge, EdgeType.DefinedBy)) {
 					continue;
 				}
-				const targetNode = data.normalize.idMap.get(targetId);
+				const targetNode = normalize.idMap.get(targetId);
 				if(targetNode && RString.is(targetNode) && (nameMatches || valuePattern.test(targetNode.content.str))) {
 					return [{
 						certainty:    LintingResultCertainty.Uncertain,

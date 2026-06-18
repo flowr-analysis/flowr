@@ -20,7 +20,7 @@ export type SoftwareHasLicenseMetadata = MergeableRecord;
 export const SOFTWARE_HAS_LICENSE = {
 	createSearch:        () => Q.fromQuery({ type: 'dependencies', enabledCategories: [] }),
 	processSearchResult: (_elements, config, data) => {
-		const ctx = data.analyzer.inspectContext();
+		const ctx = data.inspectContext();
 		const licenseFiles = ctx.files.getFilesByRole(FileRole.License);
 		let hasLicense = licenseFiles.length > 0;
 		if(!hasLicense && config.checkDescriptionFile) {

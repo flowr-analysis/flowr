@@ -15,6 +15,7 @@ tmp*log*
 temp*log*
 # benchmark results
 benchmark-*.json
+*.bench.json
 
 ### VisualStudioCode template
 .vscode/*

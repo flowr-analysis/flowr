@@ -28,7 +28,8 @@ export interface StopWithCallMetadata extends MergeableRecord {
 
 export const STOP_WITH_CALL_ARG = {
 	createSearch:        () => Q.var('stop').filter(VertexType.FunctionCall),
-	processSearchResult: (elements, _config, { dataflow, analyzer }) => {
+	processSearchResult: async(elements, _config, data) => {
+		const dataflow = await data.dataflow();
 		const meta: StopWithCallMetadata = {
 			consideredNodes: 0
 		};
@@ -56,7 +57,7 @@ export const STOP_WITH_CALL_ARG = {
 						const mapping = pMatch(fCall.args, stopParamMap);
 						const mappedToStop = mapping.get('call.') ?? [];
 						for(const argId of mappedToStop) {
-							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: analyzer.inspectContext() });
+							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
 							const values = valueSetGuard(res);
 							if(values?.type === 'set' && values.elements.length !== 0){
 								if(values.elements[0].type === 'logical'){

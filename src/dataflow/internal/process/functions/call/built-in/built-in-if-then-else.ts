@@ -162,11 +162,20 @@ export function processIfThenElse<OtherInfo>(
 		origin:                BuiltInProcName.IfThenElse
 	});
 
-	// as an if always evaluates its condition, we add a 'reads'-edge
-	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads);
+	// as an if always evaluates its condition, we add a 'reads'-edge and 'flow-dependency'-edge
+	nextGraph.addEdge(rootId, cond.entryPoint, EdgeType.Reads | EdgeType.FlowDependency);
 
 	const exitPoints = (then?.exitPoints ?? []).map(e => ({ ...e, cds: makeThenMaybe ? [...data.cds ?? [], { id: rootId, when: true }] : e.cds }))
 		.concat((otherwise?.exitPoints ?? []).map(e => ({ ...e, cds: makeOtherwiseMaybe ? [...data.cds ?? [], { id: rootId, when: false }] : e.cds })));
+
+	if(then !== undefined) {
+		console.log(`then exits: ${JSON.stringify(then.exitPoints)}`);
+		nextGraph.addEdge(cond.entryPoint, then.entryPoint, EdgeType.ControlDependency, { condition: cond.entryPoint, when: true });
+	}
+
+	if(otherwise !== undefined) {
+		nextGraph.addEdge(cond.entryPoint, otherwise.entryPoint, EdgeType.ControlDependency, { condition: cond.entryPoint, when: false });
+	}
 
 	return {
 		unknownReferences: [],

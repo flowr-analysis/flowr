@@ -138,6 +138,29 @@ export function processKnownFunctionCall<OtherInfo>(
 		}
 	}
 
+	// Connects Args in control flow
+	const firstArg = processedArguments[0];
+	if(firstArg) {
+		finalGraph.addEdge(rootId, firstArg.entryPoint, EdgeType.FlowDependency);
+	}
+
+	for(let i = 0; i < processedArguments.length - 1; i++) {
+		const current = processedArguments[i];
+		const next = processedArguments[i + 1];
+
+		if(current === undefined || next === undefined) {
+			continue;
+		}
+
+		for(const exit of current.exitPoints) {
+			console.log(`KC Edge ${exit.nodeId} -> ${next.entryPoint}`);
+			finalGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
+		}
+	}
+
+	console.log(`INF: ${rootId}, exit points: ${JSON.stringify(exitPoints)}`);
+	console.log(`INF EXT: ${rootId}, ${JSON.stringify(processedArguments[processArgs.length - 1]?.exitPoints)}`);
+
 	return {
 		information: {
 			unknownReferences: [],
@@ -147,7 +170,7 @@ export function processKnownFunctionCall<OtherInfo>(
 			graph:             finalGraph,
 			environment:       finalEnv,
 			entryPoint:        rootId,
-			exitPoints:        exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
+			exitPoints:        exitPoints ?? processedArguments[processArgs.length-1]?.exitPoints ?? [{ nodeId: rootId, type: ExitPointType.Default, cds: data.cds }],
 			hooks:             functionName.hooks
 		},
 		callArgs,

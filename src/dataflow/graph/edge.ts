@@ -1,3 +1,5 @@
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+
 /**
  * An edge consist of only of the type (source and target are encoded with the Dataflow Graph).
  * Multiple edges are encoded by joining the respective type bits.
@@ -6,6 +8,16 @@
  */
 export interface DfEdge {
 	types: EdgeTypeBits
+}
+
+/**
+ * Control Flow edges additionally encode which node encodes the condition {@link DFControlFlowEdge.condition}, and
+ * when the condition {@link DFControlFlowEdge.condition} is met.
+ */
+export interface DFControlFlowEdge extends DfEdge {
+	types:     EdgeType.ControlDependency,
+	when?:     boolean,
+	condition: NodeId
 }
 
 /**
@@ -36,7 +48,11 @@ export enum EdgeType {
 	/** The edge determines that the source is a side effect that happens when the target is called */
 	SideEffectOnCall = 128,
 	/** The Edge determines that the reference is affected by a non-standard evaluation (e.g., a for-loop body or a quotation) */
-	NonStandardEvaluation = 256
+	NonStandardEvaluation = 256,
+	/** This edge determines that the source is evaluated before the target */
+	FlowDependency = 4096,
+	/** This edge determines that the target is evaluated based on a condition (e.g. branches of an if-else-statement) */
+	ControlDependency = 8192,
 }
 
 /**
@@ -51,7 +67,9 @@ export const enum EdgeTypeName {
 	DefinedByOnCall       = 'defined-by-on-call',
 	Argument              = 'argument',
 	SideEffectOnCall      = 'side-effect-on-call',
-	NonStandardEvaluation = 'non-standard-evaluation'
+	NonStandardEvaluation = 'non-standard-evaluation',
+	FlowDependency        = 'flow-dependency',
+	ControlDependency     = 'control-dependency'
 }
 
 export type EdgeTypeBits = number;
@@ -65,7 +83,9 @@ const edgeTypeToHumanReadableName: ReadonlyMap<EdgeType, EdgeTypeName> = new Map
 	[EdgeType.DefinedByOnCall,       EdgeTypeName.DefinedByOnCall      ],
 	[EdgeType.Argument,              EdgeTypeName.Argument             ],
 	[EdgeType.SideEffectOnCall,      EdgeTypeName.SideEffectOnCall     ],
-	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation]
+	[EdgeType.NonStandardEvaluation, EdgeTypeName.NonStandardEvaluation],
+	[EdgeType.FlowDependency,        EdgeTypeName.FlowDependency],
+	[EdgeType.ControlDependency,     EdgeTypeName.ControlDependency]
 ]);
 
 type DfEdgeLike = { types: number };

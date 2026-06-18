@@ -231,6 +231,27 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
+
+	const firstArg = processedExpressions[0];
+	if(firstArg) {
+		nextGraph.addEdge(rootId, firstArg.entryPoint, EdgeType.FlowDependency);
+	}
+
+	for(let i = 0; i < processedExpressions.length - 1; i++) {
+		const current = processedExpressions[i];
+		const next = processedExpressions[i + 1];
+
+		if(current === undefined || next === undefined) {
+			continue;
+		}
+
+		console.log(`processing: ${current.entryPoint}`);
+		for(const exit of current.exitPoints) {
+			console.log(`EL Edge ${exit.nodeId} -> ${next.entryPoint}`);
+			nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
+		}
+	}
+
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */
 		unknownReferences: [],

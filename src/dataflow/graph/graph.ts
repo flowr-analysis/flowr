@@ -1,5 +1,5 @@
 import { guard } from '../../util/assert';
-import type { DfEdge, EdgeType } from './edge';
+import type { DFControlFlowEdge, DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
@@ -432,7 +432,9 @@ export class DataflowGraph<
 		return this;
 	}
 
-	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType.ControlDependency, data: Omit<DFControlFlowEdge, 'types'>): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: Exclude<EdgeType, EdgeType.ControlDependency> | number): this;
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number, data?: Omit<DFControlFlowEdge, 'types'>): this {
 		if(fromId === toId) {
 			return this;
 		}
@@ -441,7 +443,7 @@ export class DataflowGraph<
 		const edgeInFrom = existingFrom?.get(toId);
 
 		if(edgeInFrom === undefined) {
-			const edge = { types: type } as unknown as Edge;
+			const edge = { types: type, ...data } as unknown as Edge;
 
 			if(existingFrom === undefined) {
 				this.edgeInformation.set(fromId, new Map([[toId, edge]]));
@@ -451,6 +453,7 @@ export class DataflowGraph<
 		} else {
 			// adding the type
 			edgeInFrom.types |= type;
+			Object.assign(edgeInFrom, data);
 		}
 		return this;
 	}
@@ -500,6 +503,7 @@ export class DataflowGraph<
 				if(existing === undefined) {
 					this.edgeInformation.set(id, new Map([[target, edge]]));
 				} else {
+					// TODO: Merge Attributes
 					const get = existing.get(target);
 					if(get === undefined) {
 						existing.set(target, edge);

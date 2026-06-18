@@ -132,4 +132,3 @@ function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflo
 	}
 	return candidate?.info.id;
 }
-

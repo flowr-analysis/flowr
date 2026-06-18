@@ -8,7 +8,8 @@ import {
 	ReferenceTypeReverseMapping
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
+import type { DFControlFlowEdge } from '../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -213,7 +214,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		if(!mermaid.presentEdges.has(edgeId)) {
 			mermaid.presentEdges.add(edgeId);
 			const style = NodeId.isBuiltIn(target) ? '-.->' : '-->';
-			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
+			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${edgeTypes.has(EdgeType.ControlDependency) ? ((edge as DFControlFlowEdge).when ? ' (when: true) ' : ' (when: false) ') : ''}${
 				'file' in edge && edge.file ? `, from: ${edge.file}` : ''
 			}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
@@ -222,6 +223,15 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			}
 			if(edgeTypes.has('CD-True') || edgeTypes.has('CD-False')) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray,color:gray;`);
+			}
+			if(edgeTypes.has(EdgeType.FlowDependency)) {
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:red,color:red;`);
+			}
+			if(edgeTypes.has(EdgeType.ControlDependency) && (edge as DFControlFlowEdge).when) {
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:blue,color:blue;`);
+			}
+			if(edgeTypes.has(EdgeType.ControlDependency) && !(edge as DFControlFlowEdge).when) {
+				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:cyan,color:cyan;`);
 			}
 			if(NodeId.isBuiltIn(target)) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);

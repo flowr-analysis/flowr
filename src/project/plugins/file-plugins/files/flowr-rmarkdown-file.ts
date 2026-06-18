@@ -74,6 +74,10 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 				continue;
 			}
 
+			if(childPath.length > 1) {
+				log.warn(`Found more than one path for child '${childOpt}' in rmd file '${this.path()}'. Only using the first path: '${childPath[0]}'`);
+			}
+
 			this.context.files.resolveRequest({
 				request: 'file',
 				content: childPath[0]

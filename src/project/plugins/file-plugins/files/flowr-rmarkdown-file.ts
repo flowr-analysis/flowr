@@ -6,9 +6,7 @@ import type { GrayMatterFile } from 'gray-matter';
 import matter from 'gray-matter';
 import { log } from '../../../../util/log';
 import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
-import { RmdPattern } from '../notebooks/flowr-analyzer-rmd-file-plugin';
-import { platformBasename, platformDirname } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
-import path from 'path';
+import { findSource } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
@@ -63,20 +61,29 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 
 		for(const block of this.data.blocks) {
 			const childOpt = block.options.get('child');
-			if(childOpt === undefined || !RmdPattern.test(platformBasename(childOpt))) {
+			if(childOpt === undefined) {
 				continue;
 			}
 
-			const childPath = path.join(platformDirname(this.path()), childOpt);
+			const childPath = findSource(this.context.config.solver.resolveSource, childOpt, {
+				ctx:            this.context,
+				referenceChain: [this.path()]
+			});
+
+			if(childPath === undefined) {
+				continue;
+			}
+
 			this.context.files.resolveRequest({
 				request: 'file',
-				content: childPath
+				content: childPath[0]
 			});
-			const rawChildFile = this.context.files.getFileByPath(childPath) as FlowrFileProvider<string>;
+
+			const rawChildFile = this.context.files.getFileByPath(childPath[0]) as FlowrFileProvider<string>;
 			if(rawChildFile !== undefined) {
 				block.code = FlowrRMarkdownFile.from(rawChildFile, this.context).content();
 			} else {
-				log.warn(`Child file '${childPath}' of '${this.path()}' did not load as RMD.`);
+				log.warn(`Child file '${childPath[0]}' of '${this.path()}' did not load as RMD.`);
 			}
 		}
 	}
@@ -143,7 +150,6 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 	}
 
 	return {
-		// content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
 		blocks:  blocks,
 		options: frontmatter?.data ?? {}
 	};

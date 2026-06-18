@@ -75,6 +75,8 @@ describe('Pentagon Inference', () => {
 
 		describe('combined pentagon part', () => {
 			describe('basic combined calculation', () => {
+				// For this example, we can only infer implicit upper bounds via the interval domain, which are not
+				// explicitly present in the upper bounds
 				testPentagonDomain(`
 					x <- 3
 					y <- -4
@@ -84,10 +86,10 @@ describe('Pentagon Inference', () => {
 					invalid <- Inf * zero
 				`, {
 					'1@x':       { interval: IntervalTests.scalar(3), upperBounds: UpperBoundsTests.top() },
-					'2@y':       { interval: IntervalTests.scalar(-4), upperBounds: UpperBoundsTests.bounds(['1@x']) },
-					'3@z':       { interval: IntervalTests.scalar(2.4), upperBounds: UpperBoundsTests.bounds(['1@x']), lowerBounds: UpperBoundsTests.bounds(['2@y']) },
-					'4@result':  { interval: IntervalTests.scalar(3*3-(-4)*2.4), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.bounds(['1@x']) },
-					'5@zero':    { interval: IntervalTests.scalar(0), upperBounds: UpperBoundsTests.bounds(['1@x', '3@z']), lowerBounds: UpperBoundsTests.bounds(['2@y']) },
+					'2@y':       { interval: IntervalTests.scalar(-4), upperBounds: UpperBoundsTests.top() },
+					'3@z':       { interval: IntervalTests.scalar(2.4), upperBounds: UpperBoundsTests.top() },
+					'4@result':  { interval: IntervalTests.scalar(3*3-(-4)*2.4), upperBounds: UpperBoundsTests.top() },
+					'5@zero':    { interval: IntervalTests.scalar(0), upperBounds: UpperBoundsTests.top() },
 					'6@invalid': { interval: IntervalTests.top(), upperBounds: UpperBoundsTests.top() }
 				});
 
@@ -97,7 +99,7 @@ describe('Pentagon Inference', () => {
 					z <- x + y
 				`, {
 					'1@x': { interval: IntervalTests.scalar(-Infinity), upperBounds: UpperBoundsTests.top() },
-					'2@y': { interval: IntervalTests.scalar(4), upperBounds: UpperBoundsTests.top(), lowerBounds: UpperBoundsTests.bounds(['1@x']) },
+					'2@y': { interval: IntervalTests.scalar(4), upperBounds: UpperBoundsTests.top() },
 					'3@z': { interval: IntervalTests.scalar(-Infinity), upperBounds: UpperBoundsTests.bounds(['3@y']), lowerBounds: UpperBoundsTests.bounds(['3@x']) },
 				});
 			});

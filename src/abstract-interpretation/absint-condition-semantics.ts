@@ -108,6 +108,8 @@ export function createConditionApplier<StateDomain extends AnyStateDomain<AnyAbs
 		[Identifier.make('('), unaryConditionSemanticsGuard(applyConditionSemantics), unaryConditionSemanticsGuard(applyNegatedConditionSemantics)],
 		[Identifier.make('||'), binaryConditionSemanticsGuard(orConditionSemantics), binaryConditionSemanticsGuard(negatedOrConditionSemantics)],
 		[Identifier.make('&&'), binaryConditionSemanticsGuard(andConditionSemantics), binaryConditionSemanticsGuard(negatedAndConditionSemantics)],
+		[Identifier.make('|'), binaryConditionSemanticsGuard(orConditionSemantics), binaryConditionSemanticsGuard(negatedOrConditionSemantics)],
+		[Identifier.make('&'), binaryConditionSemanticsGuard(andConditionSemantics), binaryConditionSemanticsGuard(negatedAndConditionSemantics)],
 	] as const satisfies ConditionSemanticsMapperInfo<StateDomain, Visitor>[];
 
 	function orConditionSemantics(leftNodeId: NodeId, rightNodeId: NodeId, state: StateDomain, visitor: Visitor, dfg: DataflowGraph): StateDomain {

@@ -36,7 +36,7 @@ describe('load real-world', withTreeSitter(parser => {
 
 			let graph = emptyGraph();
 			for(const [varName, varType] of varsAndTypesFromShell) {
-				const syntheticId = `3:loaded:${varName.replaceAll('.', '_')}`;
+				const syntheticId = `3:loaded:${varName}`;
 				const cds = [{ id: '3', when: true }];
 
 				if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
@@ -82,7 +82,6 @@ describe('load real-world', withTreeSitter(parser => {
 				continue;
 			}
 			const [firstVar] = firstEntry;
-			const escapedFirstVar = firstVar.replaceAll('.', '_');
 
 			assertDataflow(
 				label(`loading ${path.basename(file)} overwrites an existing variable`, ['name-normal']),
@@ -90,7 +89,7 @@ describe('load real-world', withTreeSitter(parser => {
 				`${firstVar} <- 42\nload("${file}")\nprint(${firstVar})`,
 				emptyGraph()
 					.use(`3@${firstVar}`, firstVar)
-					.reads(`3@${firstVar}`, `6:loaded:${escapedFirstVar}`),
+					.reads(`3@${firstVar}`, `6:loaded:${firstVar}`),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 
@@ -117,16 +116,15 @@ describe('load real-world', withTreeSitter(parser => {
 				continue;
 			}
 			const [closureName] = firstClosure;
-			const escapedName = closureName.replaceAll('.', '_');
 
 			assertDataflow(
 				label(`function from load is callable in ${path.basename(file)}`, ['name-normal']),
 				parser,
 				`load("${file}")\n${closureName}()`,
 				emptyGraph()
-					.defineVariable(`3:loaded:${escapedName}`, undefined, { cds: [{ id: 3, when: true }] })
-					.defineFunction(`3:loaded:${escapedName}:fdef`, [], {
-						entryPoint:        `3:loaded:${escapedName}:fdef`,
+					.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
+					.defineFunction(`3:loaded:${closureName}:fdef`, [], {
+						entryPoint:        `3:loaded:${closureName}:fdef`,
 						graph:             new Set(),
 						out:               [],
 						in:                [],
@@ -134,8 +132,8 @@ describe('load real-world', withTreeSitter(parser => {
 						hooks:             [],
 						environment:       defaultEnv()
 					}, { cds: [{ id: 3, when: true }] })
-					.definedBy(`3:loaded:${escapedName}`, `3:loaded:${escapedName}:fdef`)
-					.reads(`2@${closureName}`, `3:loaded:${escapedName}`),
+					.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
+					.reads(`2@${closureName}`, `3:loaded:${closureName}`),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 		}
@@ -148,7 +146,6 @@ describe('load real-world', withTreeSitter(parser => {
 		const firstEntry = [...varsAndTypesFromShell.entries()][0];
 		if(firstEntry) {
 			const [firstVar] = firstEntry;
-			const escapedFirstVar = firstVar.replaceAll('.', '_');
 			assertDataflow(
 				label('load is ignored when ignoreLoadCalls is true', ['name-normal']),
 				parser,
@@ -156,7 +153,7 @@ describe('load real-world', withTreeSitter(parser => {
 				emptyGraph(),
 				{
 					expectIsSubgraph:    true,
-					mustNotHaveVertices: new Set([`3:loaded:${escapedFirstVar}`])
+					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`])
 				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
 			);
 		}
@@ -197,7 +194,7 @@ describe('load random', withTreeSitter(parser => {
 
 		let graph = emptyGraph();
 		for(const [varName, varType] of varsAndTypes) {
-			const syntheticId = `3:loaded:${varName.replaceAll('.', '_')}`;
+			const syntheticId = `3:loaded:${varName}`;
 			const cds = [{ id: '3', when: true }];
 			if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
 				const fdefId = `${syntheticId}:fdef`;
@@ -239,7 +236,6 @@ describe('load random', withTreeSitter(parser => {
 
 		if(firstNoClosureEntry) {
 			const [firstVar] = firstNoClosureEntry;
-			const escapedFirstVar = firstVar.replaceAll('.', '_');
 
 			assertDataflow(
 				label('load overwrites existing variable (no closure)', ['name-normal']),
@@ -247,7 +243,7 @@ describe('load random', withTreeSitter(parser => {
 				`${firstVar} <- 42\nload("${fileNoClosure}")\nprint(${firstVar})`,
 				emptyGraph()
 					.use(`3@${firstVar}`, firstVar)
-					.reads(`3@${firstVar}`, `6:loaded:${escapedFirstVar}`),
+					.reads(`3@${firstVar}`, `6:loaded:${firstVar}`),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 
@@ -264,7 +260,6 @@ describe('load random', withTreeSitter(parser => {
 
 		if(firstClosureEntry) {
 			const [firstVar] = firstClosureEntry;
-			const escapedFirstVar = firstVar.replaceAll('.', '_');
 
 			assertDataflow(
 				label('load overwrites existing closure variable', ['name-normal']),
@@ -272,7 +267,7 @@ describe('load random', withTreeSitter(parser => {
 				`${firstVar} <- 42\nload("${fileClosure}")\nprint(${firstVar})`,
 				emptyGraph()
 					.use(`3@${firstVar}`, firstVar)
-					.reads(`3@${firstVar}`, `6:loaded:${escapedFirstVar}`),
+					.reads(`3@${firstVar}`, `6:loaded:${firstVar}`),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 
@@ -301,19 +296,18 @@ describe('load random', withTreeSitter(parser => {
 		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === 'closure');
 		if(firstClosure) {
 			const [closureName] = firstClosure;
-			const escapedName = closureName.replaceAll('.', '_');
 
 			assertDataflow(
 				label('function from generated load is callable', ['name-normal']),
 				parser,
 				`load("${file}")\n${closureName}()`,
 				emptyGraph()
-					.defineVariable(`3:loaded:${escapedName}`, undefined, { cds: [{ id: 3, when: true }] })
-					.defineFunction(`3:loaded:${escapedName}:fdef`, [], {
-						entryPoint: `3:loaded:${escapedName}:fdef`, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
+					.defineVariable(`3:loaded:${closureName}`, undefined, { cds: [{ id: 3, when: true }] })
+					.defineFunction(`3:loaded:${closureName}:fdef`, [], {
+						entryPoint: `3:loaded:${closureName}:fdef`, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
 					}, { cds: [{ id: 3, when: true }] })
-					.definedBy(`3:loaded:${escapedName}`, `3:loaded:${escapedName}:fdef`)
-					.reads(`2@${closureName}`, `3:loaded:${escapedName}`),
+					.definedBy(`3:loaded:${closureName}`, `3:loaded:${closureName}:fdef`)
+					.reads(`2@${closureName}`, `3:loaded:${closureName}`),
 				{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 			);
 		}
@@ -332,15 +326,18 @@ describe('load random', withTreeSitter(parser => {
 		const firstEntry = [...varsAndTypes.entries()][0];
 		if(firstEntry) {
 			const [firstVar] = firstEntry;
-			const escapedFirstVar = firstVar.replaceAll('.', '_');
 			assertDataflow(
 				label('load is ignored when ignoreLoadCalls is true (generated)', ['name-normal']),
 				parser,
 				`load("${file}")`,
-				emptyGraph(),
+				emptyGraph()
+					.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [builtInId('load')] })
+					.argument('3', '1')
+					.calls('3', builtInId('load'))
+					.markIdForUnknownSideEffects('3'),
 				{
 					expectIsSubgraph:    true,
-					mustNotHaveVertices: new Set([`3:loaded:${escapedFirstVar}`])
+					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`])
 				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
 			);
 		}

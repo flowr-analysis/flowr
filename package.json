@@ -35,7 +35,7 @@
     "build:copy-wasm": "mkdir -p dist/node_modules/@eagleoutice/tree-sitter-r/ && mkdir -p dist/node_modules/web-tree-sitter && cp node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm dist/node_modules/@eagleoutice/tree-sitter-r/  && cp node_modules/web-tree-sitter/tree-sitter.wasm dist/node_modules/web-tree-sitter/",
     "lint-local": "npx eslint --version && npx eslint src/ test/ --rule \"no-warning-comments: off\"",
     "lint": "npm run license-compat -- --summary && npx eslint --version && npx eslint src/ test/",
-    "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD' --excludePackages 'bzip2'",
+    "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD' --clarificationsFile license-clarifications.json",
     "doc": "typedoc",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
@@ -210,7 +210,6 @@
     "gray-matter": "^4.0.3",
     "joi": "^18.0.1",
     "lz-string": "^1.5.0",
-    "lzma-native": "^8.0.6",
     "lzma1": "^0.3.0",
     "n-readlines": "^1.0.1",
     "n3": "^1.23.1",
@@ -226,9 +225,5 @@
     "web-tree-sitter": "^0.24.7",
     "ws": "^8.18.0",
     "xpath-ts2": "^1.4.2"
-  },
-  "main": "vitest.config.js",
-  "directories": {
-    "test": "test"
   }
 }

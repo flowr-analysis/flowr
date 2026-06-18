@@ -60,28 +60,11 @@ describe('rda-files', () => {
 				expect([...varsAndTypesFromShell.keys()].sort())
 					.toEqual(vars.sort());
 
-				// const parser = new RDAParser();
-				// const result = timed(
-				// `run ${i} - no shortcut`,
-				// () => parser.parseRDA(new FlowrTextFile(file))
-				// );
-				//
-				// expect(result).toBeDefined();
-				//
-				// expectNames(result as RObjectData[], varsAndTypesFromShell);
-
-				// expectTypes(result as RObjectData[], varsAndTypesFromShell);
-
-				// -----------------------------------------------------------------------------------------------------
-
-				const shortcutParser = new RDAParser();
-				const result2 = shortcutParser.parseRDA(new FlowrTextFile(file), true);
+				const result2 = new RDAParser(new FlowrTextFile(file), true).parseRDA();
 
 				expect(result2).toBeDefined();
 
 				expectNames(result2 as RObjectData[], varsAndTypesFromShell);
-
-				// expectTypes(result2 as RObjectData[], varsAndTypesFromShell);
 			});
 		}
 
@@ -113,22 +96,11 @@ describe('rda-files', () => {
 					return;
 				}
 
-				// const parser = new RDAParser();
-				// const result = parser.parseRDA(new FlowrTextFile(file));
-				//
-				// expect(result).toBeDefined();
-				//
-				// expectNames(result as RObjectData[], varsAndTypesFromShell);
-				// -----------------------------------------------------------------------------------------------------
-
-				const shortcutParser = new RDAParser();
-				const result2 = shortcutParser.parseRDA(new FlowrTextFile(file), true);
+				const result2 = new RDAParser(new FlowrTextFile(file), true).parseRDA();
 
 				expect(result2).toBeDefined();
 
 				expectNames(result2 as RObjectData[], varsAndTypesFromShell);
-
-				// expectTypes(result2 as RObjectData[], varsAndTypesFromShell);
 			});
 		}
 	});
@@ -164,11 +136,11 @@ export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
 	return result;
 }
 
-function expectNames(result: RObjectData[], vars: Map<string, string>) {
+function expectNames(result: RObjectData[], vars: ReadonlyMap<string, string>) {
 	expect(result?.flatMap(x => x.name).sort()).toEqual([...vars.keys()].sort());
 }
 
-const SexpToRType: Record<number, string> = {
+const SexpToRType = {
 	0:  'NULL',
 	1:  'symbol',
 	2:  'pairlist',
@@ -189,9 +161,9 @@ const SexpToRType: Record<number, string> = {
 	20: 'expression',
 	24: 'raw',
 	25: 'S4',
-};
+} as const;
 
-function _expectTypes(result: RObjectData[], types: Map<string, string>) {
+function _expectTypes(result: RObjectData[], types: ReadonlyMap<string, string>) {
 	for(const obj of result) {
 		const expected = types.get(obj.name as string);
 
@@ -200,7 +172,7 @@ function _expectTypes(result: RObjectData[], types: Map<string, string>) {
 			continue;
 		}
 
-		const actualType = SexpToRType[obj.type as number];
+		const actualType = (SexpToRType as Record<number, string>)[obj.type as number];
 
 		if(actualType !== expected) {
 			console.log(obj);

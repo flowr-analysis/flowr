@@ -33,10 +33,10 @@ grep -oP "https://zenodo\.org/record/[0-9]+/files/[^\s'\"]+\.(?i:rda|rdata)[^\s'
 
     content_length=$(wget --server-response --spider "${url}" 2>&1 | grep -i "Content-Length" | tail -1 | grep -oP "[0-9]+" || echo "0")
 
-#    if [ "${content_length}" -gt "${MAX_SIZE}" ]; then
-#        echo "  SKIPPING ${filename} (${content_length} bytes > 1GB)"
-#        continue
-#    fi
+    if [ "${content_length}" -gt "${MAX_SIZE}" ]; then
+        echo "  SKIPPING ${filename} (${content_length} bytes > 1GB)"
+        continue
+    fi
 
     echo "  Downloading ${record_id}_${filename} (${content_length} bytes)..."
     wget -q --tries=3 --waitretry=5 -O "${output}" "${url}" || { echo "  WARNING: Failed to download ${url}"; rm -f "${output}"; }

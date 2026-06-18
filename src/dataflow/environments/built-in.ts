@@ -226,7 +226,7 @@ export enum BuiltInProcName {
 	/** for `list` calls, see {@link processList} */
 	List                = 'builtin:list',
 	/** for 'load' calls see {@link processLoadCall} */
-	Load = 'builtin:load',
+	Load                = 'builtin:load',
 	/** for `local` calls, see {@link processLocal} */
 	Local               = 'builtin:local',
 	/** for the pipe operators, see {@link processPipe} */

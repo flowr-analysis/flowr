@@ -72,8 +72,12 @@ const entry = (
 	rightAssoc: 0 | 1
 ): FunTabEntry => ({ name, cEntry, offset, eval: evalFlag, arity, ppKind, precedence, rightAssoc });
 
+/**
+ * Used for information about built-in functions. Currently wip.
+ * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/names.c#L83-L1017 | R source: names.c}
+ */
 export const RFunTab: FunTabEntry[] = [
-	/* ── Language Related Constructs ── */
+	/* -- Language Related Constructs -- */
 	entry('if',              'do_if',           0,           200,  -1, 'PP_IF',       'PREC_FN',      1),
 	entry('while',           'do_while',        0,           100,   2, 'PP_WHILE',    'PREC_FN',      0),
 	entry('for',             'do_for',          0,           100,   3, 'PP_FOR',      'PREC_FN',      0),
@@ -111,7 +115,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('forceAndCall',    'do_forceAndCall', 0,             0,  -1, 'PP_FUNCALL',  'PREC_FN',      0),
 	entry('declare',         'do_declare',      0,           100,  -1, 'PP_FUNCALL',  'PREC_FN',      0),
 
-	/* ── .Internals ── */
+	/* -- .Internals -- */
 	entry('stop',                    'do_stop',              0,    11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('warning',                 'do_warning',           0,   111,  4, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('gettext',                 'do_gettext',           0,    11,  3, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -143,7 +147,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('C_tryCatchHelper',        'do_tryCatchHelper',    0,    11, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('getNamespaceValue',       'do_getNSValue',        0,   211,  3, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Binary Operators ── */
+	/* -- Binary Operators -- */
 	entry('+',   'do_arith',   'PLUSOP',  1, -1, 'PP_BINARY',  'PREC_SUM',     0),
 	entry('-',   'do_arith',   'MINUSOP', 1, -1, 'PP_BINARY',  'PREC_SUM',     0),
 	entry('*',   'do_arith',   'TIMESOP', 1,  2, 'PP_BINARY',  'PREC_PROD',    0),
@@ -170,11 +174,11 @@ export const RFunTab: FunTabEntry[] = [
 	entry('::', 'do_colon2',0,200, 2, 'PP_BINARY2','PREC_NS',  0),
 	entry(':::','do_colon3',0,200, 2, 'PP_BINARY2','PREC_NS',  0),
 
-	/* ── Logic ── */
+	/* -- Logic -- */
 	entry('all', 'do_logic3', 1, 1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('any', 'do_logic3', 2, 1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Vectors / Matrices / Arrays ── */
+	/* -- Vectors / Matrices / Arrays -- */
 	entry('...elt',       'do_dotsElt',      0, 201,  1, 'PP_FUNCALL', 'PREC_FN',   0),
 	entry('...length',    'do_dotsLength',   0,   1,  0, 'PP_FUNCALL', 'PREC_FN',   0),
 	entry('...names',     'do_dotsNames',    0,   1,  0, 'PP_FUNCALL', 'PREC_FN',   0),
@@ -248,7 +252,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('search',       'do_search',       0,  11,  0, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('setFileTime',  'do_setFileTime',  0, 111,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Math (primitives) ── */
+	/* -- Math (primitives) -- */
 	entry('round',   'do_Math2',   10001, 0, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('signif',  'do_Math2',   10004, 0, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('log',     'do_log',     10003, 0, -1, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -283,7 +287,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('sinpi',   'do_math1',      48, 1,  1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('tanpi',   'do_math1',      49, 1,  1, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Math 2 ── */
+	/* -- Math 2 -- */
 	entry('atan2',      'do_math2',  0,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('lbeta',      'do_math2',  2,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('beta',       'do_math2',  3,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -311,14 +315,14 @@ export const RFunTab: FunTabEntry[] = [
 	entry('besselY',    'do_math2', 25,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('psigamma',   'do_math2', 26,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Complex math ── */
+	/* -- Complex math -- */
 	entry('Re',   'do_cmathfuns', 1, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('Im',   'do_cmathfuns', 2, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('Mod',  'do_cmathfuns', 3, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('Arg',  'do_cmathfuns', 4, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('Conj', 'do_cmathfuns', 5, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Math 3 ── */
+	/* -- Math 3 -- */
 	entry('dbeta',      'do_math3',  1, 11,  4, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('pbeta',      'do_math3',  2, 11,  5, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('qbeta',      'do_math3',  3, 11,  5, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -367,7 +371,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('pnbinom_mu', 'do_math3', 46, 11,  5, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('qnbinom_mu', 'do_math3', 47, 11,  5, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Math 4 ── */
+	/* -- Math 4 -- */
 	entry('dhyper',  'do_math4',  1, 11,  5, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('phyper',  'do_math4',  2, 11,  6, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('qhyper',  'do_math4',  3, 11,  6, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -381,7 +385,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('ptukey',  'do_math4', 11, 11,  6, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('qtukey',  'do_math4', 12, 11,  6, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Random Numbers ── */
+	/* -- Random Numbers -- */
 	entry('rchisq',    'do_random1',  0, 11, 2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('rexp',      'do_random1',  1, 11, 2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('rgeom',     'do_random1',  2, 11, 2, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -408,7 +412,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('RNGkind',   'do_RNGkind',  0, 11, 3, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('set.seed',  'do_setseed',  0,111, 4, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Data Summaries ── */
+	/* -- Data Summaries -- */
 	entry('sum',     'do_summary',  0,  1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('min',     'do_summary',  2,  1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('max',     'do_summary',  3,  1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -420,7 +424,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('cummax',  'do_cum',      3,  1,  1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('cummin',  'do_cum',      4,  1,  1, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Type Coercion ── */
+	/* -- Type Coercion -- */
 	entry('as.character',      'do_asatomic',        0,  1, -1, 'PP_FUNCALL', 'PREC_FN',   0),
 	entry('as.integer',        'do_asatomic',        1,  1, -1, 'PP_FUNCALL', 'PREC_FN',   0),
 	entry('as.double',         'do_asatomic',        2,  1, -1, 'PP_FUNCALL', 'PREC_FN',   0),
@@ -443,7 +447,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('str2lang',          'do_str2lang',        0, 11,  1, 'PP_FUNCALL', 'PREC_FN',   0),
 	entry('str2expression',    'do_str2lang',        1, 11,  1, 'PP_FUNCALL', 'PREC_FN',   0),
 
-	/* ── String Manipulation ── */
+	/* -- String Manipulation -- */
 	entry('nchar',         'do_nchar',       1,  11,  4, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('nzchar',        'do_nzchar',      1,   1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('substr',        'do_substr',      1,  11,  3, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -489,7 +493,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('strtoi',        'do_strtoi',      0,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('strrep',        'do_strrep',      0,  11,  2, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Type Checking ── */
+	/* -- Type Checking -- */
 	entry('is.null',       'do_is', 'NILSXP',  1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('is.logical',    'do_is', 'LGLSXP',  1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('is.integer',    'do_is', 'INTSXP',  1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -520,7 +524,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('is.infinite',   'do_isinfinite', 0, 1, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('is.vector',     'do_isvector',   0,11, 2, 'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── Miscellaneous (primitives) ── */
+	/* -- Miscellaneous (primitives) -- */
 	entry('proc.time',   'do_proctime',   0,  1,  0, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('gc.time',     'do_gctime',     0,  1, -1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('withVisible', 'do_withVisible',1, 10,  1, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -666,7 +670,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('tryWrap',      'do_tryWrap',   0, 11, 1, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('altrep_class', 'do_altrep_class',0,11, 1,'PP_FUNCALL', 'PREC_FN', 0),
 
-	/* ── OS interaction ── */
+	/* -- OS interaction -- */
 	entry('file.show',    'do_fileshow',   0,111, 5, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('file.create',  'do_filecreate', 0, 11, 2, 'PP_FUNCALL', 'PREC_FN', 0),
 	entry('file.remove',  'do_fileremove', 0, 11, 1, 'PP_FUNCALL', 'PREC_FN', 0),
@@ -893,7 +897,7 @@ export const RFunTab: FunTabEntry[] = [
 	entry('compilerVersion', 'do_compilerVersion',0, 11, 0, 'PP_FUNCALL', 'PREC_FN', 0),
 ];
 
-export const RFunTabOffsets: Record<string, string | number> = {
+export const RFunTabOffsets = {
 	'if':                     0,
 	'while':                  0,
 	'for':                    0,
@@ -1648,4 +1652,4 @@ export const RFunTabOffsets: Record<string, string | number> = {
 	'curlGetHeaders':         0,
 	'curlDownload':           0,
 	'compilerVersion':        0,
-};
+} as const;

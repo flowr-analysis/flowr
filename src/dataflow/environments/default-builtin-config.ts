@@ -220,8 +220,8 @@ export const DefaultBuiltinConfig = [
 			}
 		}, assumePrimitive: true },
 	{ type: 'function', names: ['('],                                          processor: BuiltInProcName.Default,             config: { returnsNthArgument: 0 },                                                     assumePrimitive: true  },
-	{ type: 'function', names: ['load'],      processor: BuiltInProcName.Load,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
-	{ type: 'function', names: ['load_all', 'setwd', 'set.seed'],      processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
+	{ type: 'function', names: ['load'],                                       processor: BuiltInProcName.Load,                config: {},                                                                            assumePrimitive: false },
+	{ type: 'function', names: ['load_all', 'setwd', 'set.seed'],              processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: false },
 	{ type: 'function', names: ['body', 'formals', 'environment'],             processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true, forceArgs: [true] },                            assumePrimitive: true },
 	{ type:      'function',
 		names:     ['.Call', '.External', '.C', '.Fortran'],

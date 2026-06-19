@@ -1,45 +1,50 @@
 import { Identifier } from '../dataflow/environments/identifier';
 import type { DataflowGraph } from '../dataflow/graph/graph';
 import { type DataflowGraphVertexArgument, type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../dataflow/graph/vertex';
+import { Record } from '../util/record';
 
-/**
- * Function info for unsupported functions that may change the environment unresolvable/implicitly.
- */
 interface UnsupportedFunctionInfo {
-	package:    string;
-	condition?: (vertex: DataflowGraphVertexFunctionCall, dfg: DataflowGraph) => boolean;
+	readonly condition?: (vertex: DataflowGraphVertexFunctionCall, dfg: DataflowGraph) => boolean;
+}
+
+interface UnsupportedFunctionEntry extends UnsupportedFunctionInfo {
+	readonly identifier: Identifier;
+}
+
+function unsupportedFunctions(functions: Record<`${string}::${string}`, UnsupportedFunctionInfo>): readonly UnsupportedFunctionEntry[] {
+	return Record.entries(functions).map(([identifier, info]) => ({ identifier: Identifier.parse(identifier), ...info }));
 }
 
 /**
  * List of known function calls that may change the environment unresolvable/implicitly.
  */
-const UnsupportedFunctionsList: Record<string, UnsupportedFunctionInfo> = {
-	'.Primitive':          { package: 'base' },
-	'.Internal':           { package: 'base' },
-	'.External':           { package: 'base' },
-	'.Call':               { package: 'base' },
-	'.C':                  { package: 'base' },
-	'.Fortran':            { package: 'base' },
-	'.dyn.load':           { package: 'base' },
-	'eval':                { package: 'base' },
-	'evalq':               { package: 'base' },
-	'eval.parent':         { package: 'base' },
-	'eval_tidy':           { package: 'rlang' },
-	'eval_bare':           { package: 'rlang' },
-	'body<-':              { package: 'base' },
-	'formals<-':           { package: 'base' },
-	'environment<-':       { package: 'base' },
-	'load':                { package: 'base' },
-	'attach':              { package: 'base' },
-	'detach':              { package: 'base' },
-	'rm':                  { package: 'base' },
-	'remove':              { package: 'base' },
-	'list2env':            { package: 'base' },
-	'assign':              { package: 'base', condition: (vertex, dfg) => dfg.unknownSideEffects.has(vertex.id) },
-	'delayedAssign':       { package: 'base', condition: (vertex, dfg) => dfg.unknownSideEffects.has(vertex.id) },
-	'assignInNamespace':   { package: 'utils' },
-	'assignInMyNamespace': { package: 'utils' },
-};
+const UnsupportedFunctionsList = unsupportedFunctions({
+	'base::.Primitive':           {},
+	'base::.Internal':            {},
+	'base::.External':            {},
+	'base::.Call':                {},
+	'base::.C':                   {},
+	'base::.Fortran':             {},
+	'base::.dyn.load':            {},
+	'base::eval':                 {},
+	'base::evalq':                {},
+	'base::eval.parent':          {},
+	'rlang::eval_tidy':           {},
+	'rlang::eval_bare':           {},
+	'base::body<-':               {},
+	'base::formals<-':            {},
+	'base::environment<-':        {},
+	'base::load':                 {},
+	'base::attach':               {},
+	'base::detach':               {},
+	'base::rm':                   {},
+	'base::remove':               {},
+	'base::list2env':             {},
+	'base::assign':               { condition: (vertex, dfg) => dfg.unknownSideEffects.has(vertex.id) },
+	'base::delayedAssign':        { condition: (vertex, dfg) => dfg.unknownSideEffects.has(vertex.id) },
+	'utils::assignInNamespace':   {},
+	'utils::assignInMyNamespace': {},
+});
 
 /**
  * Helper for unsupported functions that may change the environment.
@@ -52,8 +57,8 @@ export const UnsupportedFunctions = {
 		if(!isFunctionCallVertex(vertex)) {
 			return false;
 		}
-		const identifier = Identifier.getName(vertex.name);
+		const entry = UnsupportedFunctionsList.find(entry => Identifier.matches(vertex.name, entry.identifier));
 
-		return Object.hasOwn(UnsupportedFunctionsList, identifier) && (UnsupportedFunctionsList[identifier].condition?.(vertex, dfg) ?? true);
+		return entry !== undefined && (entry.condition?.(vertex, dfg) ?? true);
 	}
 };

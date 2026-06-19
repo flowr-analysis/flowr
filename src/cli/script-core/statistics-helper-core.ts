@@ -17,6 +17,7 @@ import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { create } from 'tar';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
 import { FlowrConfig } from '../../config';
+import { exitSafe } from '../../util/proc';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 
 function compressFolder(folder: string, target: string) {
@@ -50,7 +51,7 @@ export async function getStatsForSingleFile(options: StatsHelperCliOptions, conf
 		target = retrieveArchiveName(options['output-dir']);
 		if(fs.existsSync(target)) {
 			console.log(`Archive ${target} exists. Skip.`);
-			process.exit(0);
+			return exitSafe(0);
 		}
 	}
 

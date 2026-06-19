@@ -31,6 +31,7 @@ import { type ScriptInformation, scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
+import { exitSafe } from '../util/proc';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
@@ -152,7 +153,7 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 			console.log(`\n${italic('Exiting...')}`);
 		}
 		Object.values(engines.engines).forEach(e => e?.close());
-		process.exit(0);
+		exitSafe(0);
 	};
 
 	process.on('SIGINT', end);
@@ -179,12 +180,12 @@ async function mainRepl() {
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
-		process.exit(0);
+		return exitSafe(0);
 	}
 
 	if(options.help) {
 		console.log(commandLineUsage(optionHelp));
-		process.exit(0);
+		return exitSafe(0);
 	}
 
 	const engines = await retrieveEngineInstances(config);
@@ -195,7 +196,7 @@ async function mainRepl() {
 			await printVersionInformation(standardReplOutput, engine);
 			engine?.close();
 		}
-		process.exit(0);
+		return exitSafe(0);
 	}
 	hookSignalHandlers(engines);
 
@@ -214,7 +215,7 @@ async function mainRepl() {
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
 		await repl({ analyzer, allowRSessionAccess });
 	}
-	process.exit(0);
+	exitSafe(0);
 }
 
 async function mainServer(backend: Server = new NetServer()) {

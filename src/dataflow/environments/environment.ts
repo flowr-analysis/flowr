@@ -32,6 +32,11 @@ export interface IEnvironment {
 	builtInEnv?: true | undefined
 }
 
+export enum EnvType{
+	Namespace = 'ns',
+	Imports = 'imp'
+}
+
 type Jsonified = { id: NodeId, parent: Jsonified | undefined, builtInEnv?: true, memory: BuiltInMemory };
 
 /**
@@ -50,7 +55,7 @@ export class Environment implements IEnvironment {
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
 	n?:          string;
 	/** to keep track if/whether environment was added as package/namespace/imports environment */
-	t?:          'package' |'namespace' |'imports';
+	t?:          EnvType;
 	/** if created by a closure, the node id of that closure */
 	private c?:  NodeId;
 	parent:      Environment;

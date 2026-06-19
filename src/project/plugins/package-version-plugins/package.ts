@@ -108,4 +108,8 @@ export class Package {
 			return undefined;
 		}
 	}
+
+	public static createImpFunc(dependency: string, func: string): string{
+		return `${dependency}:${func}`;
+	}
 }

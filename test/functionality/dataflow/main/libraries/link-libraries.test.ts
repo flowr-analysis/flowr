@@ -8,20 +8,10 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
+import { EnvType } from '../../../../../src/dataflow/environments/environment';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
-
-describe('Link libraries', withTreeSitter(ts => {
-	assertDataflow(label('ggplot links to ggplot2'), ts, 'library(ggplot2)\nggplot()\nggplot()',
-		emptyGraph()
-			.addEdge(5, NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(7, NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), 3, EdgeType.Reads | EdgeType.Calls),
-		{
-			modifyAnalyzer: a => {
-				a.context().deps.addDependency(new Package({
-					name:          'ggplot2',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
+const namespaceContent = `S3method(fortify,data.frame)
 	S3method(fortify,lm)
 	S3method(fortify,default)
 	S3method(fortify,map)
@@ -48,7 +38,21 @@ describe('Link libraries', withTreeSitter(ts => {
 	import(grid)
 	import(rlang)
 	importFrom(scales,alpha)
-	importFrom(stats,setNames)`)).content().current, ggplot2Callable)
+	importFrom(stats,setNames)`;
+
+const namespaceInfo = setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent)).content().current, ggplot2Callable);
+
+describe('Link libraries', withTreeSitter(ts => {
+	assertDataflow(label('ggplot links to ggplot2'), ts, 'library(ggplot2)\nggplot()\nggplot()',
+		emptyGraph()
+			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn('ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls),
+		{
+			modifyAnalyzer: a => {
+				a.context().deps.addDependency(new Package({
+					name:          'ggplot2',
+					namespaceInfo: namespaceInfo
 				}));
 			},
 			expectIsSubgraph:      true,
@@ -58,7 +62,7 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('No dependencies set'), ts, 'library(ggplot2)\nggplot()',
 		emptyGraph()
-			.addEdge(5, NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls),
+			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,
@@ -67,42 +71,15 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Several methods of same library'), ts, 'library(ggplot2)\nggplot(data = NULL, mapping = aes())',
 		emptyGraph()
-			.addEdge(12, NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), 3, EdgeType.Reads |EdgeType.Calls)
-			.addEdge(10, NodeId.toBuiltIn('aes'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('aes'), 3, EdgeType.Reads | EdgeType.Calls),
+			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn('ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls)
+			.addEdge('2@aes', NodeId.toBuiltIn('aes'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn('aes'), '1@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
 					name:          'ggplot2',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
-	S3method(fortify,lm)
-	S3method(fortify,default)
-	S3method(fortify,map)
-	S3method(scale_type,Date)
-	S3method(scale_type,POSIXt)
-	S3method(scale_type,character)
-	S3method(scale_type,numeric)
-	S3method(scale_type,factor)
-	S3method(scale_type,default)
-	S3method(ggplot,default)
-	S3method(print,ggproto)
-	S3method(print,rel)
-	export("+")
-	export(ggplot)
-	export(aes)
-	export(geom_point)
-	export(geom_line)
-	export(theme_bw)
-	export(coord_cartesian)
-	export(ggsave)
-	export(fortify)
-	export(scale_type)
-	exportPattern("^[^\\\\.]\\\\.*$")
-	import(grid)
-	import(rlang)
-	importFrom(scales,alpha)
-	importFrom(stats,setNames)`)).content().current, ggplot2Callable)
+					namespaceInfo: namespaceInfo
 				}));
 			},
 			expectIsSubgraph:      true,
@@ -112,44 +89,17 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('Links to several libraries'), ts, 'library(ggplot2)\nlibrary(dplyr)\nggplot(data = NULL, mapping = aes())\nacross()',
 		emptyGraph()
-			.addEdge(16, NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), 3, EdgeType.Reads |EdgeType.Calls)
-			.addEdge(3, 1, EdgeType.Argument)
-			.addEdge(18, NodeId.toBuiltIn('across'), EdgeType.Reads |EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('across'), 7, EdgeType.Reads | EdgeType.Calls)
-			.addEdge(7, 5, EdgeType.Argument),
+			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn('ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls)
+			.addEdge('1@library', '1@ggplot2', EdgeType.Argument)
+			.addEdge('4@across', NodeId.toBuiltIn('across'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn('across'), '2@library', EdgeType.Reads | EdgeType.Calls)
+			.addEdge('2@library', '2@dplyr', EdgeType.Argument),
 		{
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
 					name:          'ggplot2',
-					namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
-	S3method(fortify,lm)
-	S3method(fortify,default)
-	S3method(fortify,map)
-	S3method(scale_type,Date)
-	S3method(scale_type,POSIXt)
-	S3method(scale_type,character)
-	S3method(scale_type,numeric)
-	S3method(scale_type,factor)
-	S3method(scale_type,default)
-	S3method(ggplot,default)
-	S3method(print,ggproto)
-	S3method(print,rel)
-	export("+")
-	export(ggplot)
-	export(aes)
-	export(geom_point)
-	export(geom_line)
-	export(theme_bw)
-	export(coord_cartesian)
-	export(ggsave)
-	export(fortify)
-	export(scale_type)
-	exportPattern("^[^\\\\.]\\\\.*$")
-	import(grid)
-	import(rlang)
-	importFrom(scales,alpha)
-	importFrom(stats,setNames)`)).content().current, ggplot2Callable)
+					namespaceInfo: namespaceInfo
 				}));
 				a.context().deps.addDependency(new Package({
 					name:          'dplyr',
@@ -167,43 +117,16 @@ describe('Link libraries', withTreeSitter(ts => {
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
-S3method(fortify,lm)
-S3method(fortify,default)
-S3method(fortify,map)
-S3method(scale_type,Date)
-S3method(scale_type,POSIXt)
-S3method(scale_type,character)
-S3method(scale_type,numeric)
-S3method(scale_type,factor)
-S3method(scale_type,default)
-S3method(ggplot,default)
-S3method(print,ggproto)
-S3method(print,rel)
-export("+")
-export(ggplot)
-export(aes)
-export(geom_point)
-export(geom_line)
-export(theme_bw)
-export(coord_cartesian)
-export(ggsave)
-export(fortify)
-export(scale_type)
-exportPattern("^[^\\\\.]\\\\.*$")
-import(grid)
-import(rlang)
-importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current, ggplot2Callable)
+			namespaceInfo: namespaceInfo
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = df.environment.current;
-		expect(env.n === 'ggplot2' && env.t === 'namespace').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === 'imports').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 	});
 
@@ -213,43 +136,16 @@ importFrom(stats,setNames)`)).content().current, ggplot2Callable)
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
-S3method(fortify,lm)
-S3method(fortify,default)
-S3method(fortify,map)
-S3method(scale_type,Date)
-S3method(scale_type,POSIXt)
-S3method(scale_type,character)
-S3method(scale_type,numeric)
-S3method(scale_type,factor)
-S3method(scale_type,default)
-S3method(ggplot,default)
-S3method(print,ggproto)
-S3method(print,rel)
-export("+")
-export(ggplot)
-export(aes)
-export(geom_point)
-export(geom_line)
-export(theme_bw)
-export(coord_cartesian)
-export(ggsave)
-export(fortify)
-export(scale_type)
-exportPattern("^[^\\\\.]\\\\.*$")
-import(grid)
-import(rlang)
-importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current, ['ggplot', 'aes', 'geom_point', 'print.rel'])
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent)).content().current, ['ggplot', 'aes', 'geom_point', 'print.rel'])
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
 		let env = df.environment.current;
-		expect(env.n === 'ggplot2' && env.t === 'namespace').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['ggplot', 'aes', 'geom_point', 'print.rel'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === 'imports').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 	});
 
@@ -259,34 +155,7 @@ importFrom(stats,setNames)`)).content().current, ['ggplot', 'aes', 'geom_point',
 			.build();
 		analyzer.context().deps.addDependency(new Package({
 			name:          'ggplot2',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
-S3method(fortify,lm)
-S3method(fortify,default)
-S3method(fortify,map)
-S3method(scale_type,Date)
-S3method(scale_type,POSIXt)
-S3method(scale_type,character)
-S3method(scale_type,numeric)
-S3method(scale_type,factor)
-S3method(scale_type,default)
-S3method(ggplot,default)
-S3method(print,ggproto)
-S3method(print,rel)
-export("+")
-export(ggplot)
-export(aes)
-export(geom_point)
-export(geom_line)
-export(theme_bw)
-export(coord_cartesian)
-export(ggsave)
-export(fortify)
-export(scale_type)
-exportPattern("^[^\\\\.]\\\\.*$")
-import(grid)
-import(rlang)
-importFrom(scales,alpha)
-importFrom(stats,setNames)`)).content().current, ggplot2Callable)
+			namespaceInfo: namespaceInfo
 		}));
 		analyzer.context().deps.addDependency(new Package({
 			name:          'random1',
@@ -295,17 +164,17 @@ importFrom(stats,setNames)`)).content().current, ggplot2Callable)
 		analyzer.addRequest('library(ggplot2)\nlibrary(random1)');
 		const df = await analyzer.dataflow();
 		let env = df.environment.current;
-		expect(env.n === 'random1' && env.t === 'namespace').toBeTruthy();
+		expect(env.n === 'random1' && env.t === EnvType.Namespace).toBeTruthy();
 		expect(compare(new Set(['test1', 'test2']), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'random1' && env.t === 'imports').toBeTruthy();
+		expect(env.n === 'random1' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === 'namespace').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
-		expect(env.n === 'ggplot2' && env.t === 'imports').toBeTruthy();
+		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 	});
 }));

@@ -11,13 +11,13 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Environment } from '../../../../../environments/environment';
+import { Environment, EnvType } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
 import { isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
-import type { Package } from '../../../../../../project/plugins/package-version-plugins/package';
+import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
 import type { NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
@@ -100,17 +100,6 @@ export function processLibrary<OtherInfo>(
 	return info;
 }
 
-/*function getGlobalEnv(info: DataflowInformation){
-	if(info.environment.level < 0){
-		return undefined;
-	}
-	let env = info.environment.current;
-	for(let i = 0; i < info.environment.level; i++){
-		env = env.parent;
-	}
-	return env;
-}*/
-
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	if(info.environment.level < 0|| isUndefined(dependency.namespaceInfo)){
 		return;
@@ -118,28 +107,11 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	const currentEnv = info.environment.current;
 	const pack = dependency.name;
 	const functions = dependency.namespaceInfo.callable;
-	/*
-	//add namespace environment
-	let namespaceEnv = new Environment(globalEnv);
-	namespaceEnv.n = pack;
-	namespaceEnv.t = 'namespace';
-	for(const func of functions){
-		namespaceEnv = namespaceEnv.define({
-			name:      Identifier.make(func, pack),
-			type:      ReferenceType.Function,
-			nodeId:    NodeId.toBuiltIn(func),
-			definedAt: NodeId.toBuiltIn(pack),
-		});
-		info.environment = {
-			level:   info.environment.level + 1,
-			current: namespaceEnv
-		};
-	}
-	*/
+
 	//add package environment
 	let namespaceEnv = new Environment(currentEnv);
 	namespaceEnv.n = pack;
-	namespaceEnv.t = 'namespace';
+	namespaceEnv.t = EnvType.Namespace;
 	for(const func of functions){
 		namespaceEnv = namespaceEnv.define({
 			name:      Identifier.make(func, pack),
@@ -164,7 +136,6 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 			},
 			exitPoints: [],
 		}, data.ctx.env.makeCleanEnv());
-		//info.graph.addVertex(NodeId.toBuiltIn(func) as string, info.environment);
 		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
 	info.environment = {
@@ -174,7 +145,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	//add imports environment
 	let importsEnv: Environment = new Environment(currentEnv);
 	importsEnv.n = pack;
-	importsEnv.t = 'imports';
+	importsEnv.t = EnvType.Imports;
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
 
 	info.environment = {
@@ -198,11 +169,11 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 			continue;
 		}
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(importedDependency.name + ':' + func)){
+			if(importsEnv.memory.has(Package.createImpFunc(importedDependency.name, func))){
 				continue;
 			}
 			importsEnv = importsEnv.define({
-				name:      Identifier.make(importedDependency.name + ':' + func, importsEnv.n),
+				name:      Identifier.make(Package.createImpFunc(importedDependency.name, func), importsEnv.n),
 				type:      ReferenceType.Function,
 				nodeId:    NodeId.toBuiltIn(func),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)

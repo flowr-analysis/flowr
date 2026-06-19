@@ -67,6 +67,19 @@ print(df6)
 		testInferredDataFrameShape(
 			shell,
 			`
+df1 <- data.frame(id = 1:5)
+assign(paste0("df1"), 42)
+print(df1)
+			`,
+			{
+				'1@df1': { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] },
+				'3@df1': undefined
+			}
+		);
+
+		testInferredDataFrameShape(
+			shell,
+			`
 \`df1\` <- data.frame(id = 1:5)
 'df2' <- data.frame(id = 1:5)
 "df3" <- data.frame(id = 1:5)
@@ -369,6 +382,20 @@ if (2 < 1) {
 print(df)
 				`,
 				['4@df']
+			);
+
+			testInferredDataFrameShape(
+				shell,
+				`
+df <- data.frame(id = 1:5)
+for (i in 1:2) {
+	df[2] <- 42
+	print(df)
+	eval(parse(text = paste("df", "<-", "1:2")))
+}
+print(df)
+				`,
+				['1@df', '4@df', '7@df']
 			);
 		});
 	});

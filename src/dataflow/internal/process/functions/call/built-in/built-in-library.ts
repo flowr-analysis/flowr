@@ -182,7 +182,6 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 		if(imp[1] === 'all'){
 			alreadyImportedAll.add(importedDependency.name);
 		}
-		//info.graph.addEdge(rootId, NodeId.toBuiltIn((importedDependency as Package).name), EdgeType.Reads | EdgeType.Calls);
 		//if only importFrom() we don't have to recursively import
 		if(imp[1] === 'all' && importedDependency?.namespaceInfo){
 			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, data, alreadyImportedAll);

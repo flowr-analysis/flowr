@@ -42,8 +42,8 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 	assertDataflow(label('Link with variable'), ts, 'x <- "ggplot2"\nlibrary(x, character.only = TRUE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
-			.addEdge('2@library', '2@character.only', EdgeType.Argument)
-			.addEdge('2@character.only', '2@TRUE', EdgeType.Reads)
+			.addEdge('2@library', 8, EdgeType.Argument)
+			.addEdge(8, '2@TRUE', EdgeType.Reads)
 		//ggplot links to library
 			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
 			.addEdge('4@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
@@ -59,11 +59,11 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		}
 	);
-	/*assertDataflow(label('Link usually'), ts, 'library(ggplot2, character.only = FALSE)\nggplot()\nggplot()',
+	assertDataflow(label('Link usually'), ts, 'library(ggplot2, character.only = FALSE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
-			.addEdge('1@library', '1@character.only', EdgeType.Argument)
-			.addEdge('1@character.only', '1@FALSE', EdgeType.Reads)
+			.addEdge('1@library', 5, EdgeType.Argument)
+			.addEdge(5, '1@FALSE', EdgeType.Reads)
 		//correctly links
 			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
 			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
@@ -82,8 +82,8 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 	assertDataflow(label('link with string value'), ts, 'library("ggplot2", character.only = TRUE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
-			.addEdge('1@library', '1@character.only', EdgeType.Argument)
-			.addEdge('1@character.only', '1@TRUE', EdgeType.Reads)
+			.addEdge('1@library', 5, EdgeType.Argument)
+			.addEdge(5, '1@TRUE', EdgeType.Reads)
 		//correctly links
 			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
 			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
@@ -98,5 +98,5 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true
 		}
-	);*/
+	);
 }));

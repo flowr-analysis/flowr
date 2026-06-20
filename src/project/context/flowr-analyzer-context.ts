@@ -31,6 +31,11 @@ import { FlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-co
 import type { ReadOnlyFlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import { FlowrAnalyzerMetaContext } from './flowr-analyzer-meta-context';
 import type { FlowrAnalyzer } from '../flowr-analyzer';
+import {
+	FlowrAnalyzerGasContext,
+	type ReadOnlyFlowrAnalyzerGasContext
+} from './flowr-analyzer-gas-context';
+import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -38,26 +43,23 @@ import type { FlowrAnalyzer } from '../flowr-analyzer';
  * If you are a {@link FlowrAnalyzerPlugin} and want to modify the context, you can use the {@link FlowrAnalyzerContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerContext {
-	/**
-	 * The meta context provides access to the project metadata such as name, version, and namespace.
-	 */
+	/** Project metadata such as name, version, and namespace. */
 	readonly meta:   ReadOnlyFlowrAnalyzerMetaContext;
-	/**
-	 * The files context provides access to the files to be analyzed and their loading order.
-	 */
+	/** Files to be analyzed and their loading order. */
 	readonly files:  ReadOnlyFlowrAnalyzerFilesContext;
-	/**
-	 * The dependencies context provides access to the identified dependencies and their versions.
-	 */
+	/** Identified dependencies and their versions. */
 	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
-	/**
-	 * The environment context provides access to the environment information used during analysis.
-	 */
+	/** Environment information used during analysis. */
 	readonly env:    ReadOnlyFlowrAnalyzerEnvironmentContext;
-	/**
-	 * The configuration options used by the analyzer.
-	 */
+	/** The configuration options used by the analyzer. */
 	readonly config: FlowrConfig;
+	/**
+	 * Resource-usage guard (gas).
+	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
+	 * Returns `GasLevel.Normal` with zero overhead when gas is disabled for `key`.
+	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
+	 */
+	readonly gas:    ReadOnlyFlowrAnalyzerGasContext;
 }
 
 /**
@@ -76,6 +78,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
 
 	public readonly config: FlowrConfig;
@@ -89,6 +92,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
 		this.meta = new FlowrAnalyzerMetaContext();
+		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
 	/**
@@ -133,6 +137,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.files.reset();
 		this.deps.reset();
 		this.meta.reset();
+		this.gas.reset();
 	}
 }
 

@@ -85,4 +85,22 @@ describe('Resolve for Namespaces', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		} as const
 	);
+	assertDataflow(label(':: as function call resolves namespace-qualified definition', ['namespaces', 'lexicographic-scope']), ts,
+		'base::x <- 42\nprint(`::`(base, x))',
+		emptyGraph()
+			.reads('2@`::`', '1@x'),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		} as const
+	);
+	assertDataflow(label(':: as function call does not read local variable of different namespace', ['namespaces', 'lexicographic-scope']), ts,
+		'x <- 42\nprint(`::`(base, x))',
+		emptyGraph(),
+		{
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true,
+			mustNotHaveEdges:      [['2@`::`', '1@x']]
+		} as const
+	);
 }));

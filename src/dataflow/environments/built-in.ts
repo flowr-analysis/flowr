@@ -67,6 +67,7 @@ import { processPurrrFormula } from '../internal/process/functions/call/built-in
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
+import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -219,6 +220,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
 	[BuiltInProcName.Local]:              processLocal,
+	[BuiltInProcName.NamespaceAccess]:    processNamespaceAccess,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.PurrrFormula]:       processPurrrFormula,
 	[BuiltInProcName.Quote]:              processQuote,

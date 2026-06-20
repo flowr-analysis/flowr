@@ -1,5 +1,5 @@
 import { RShell } from '../r-bridge/shell';
-import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
 import { documentAllServerMessages } from './data/server/doc-data-server-messages';
@@ -23,11 +23,11 @@ import { explainWritingCode } from './data/interface/doc-writing-code';
 import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 
-async function explainServer(parser: KnownParser): Promise<string> {
-	documentAllServerMessages();
+async function explainServer(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
+	documentAllServerMessages(ctx);
 
 	return `
-As explained in the [Overview](${FlowrWikiBaseRef}/Overview), you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
+As explained in the ${ctx.linkPage('wiki/Overview', 'Overview')}, you can simply run the [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)&nbsp;server by adding the ${getCliLongOptionOf('flowr', 'server', true)} flag (and, due to the interactive mode, exit with the conventional <kbd>CTRL</kbd>+<kbd>C</kbd>).
 Currently, every connection is handled by the same underlying \`${RShell.name}\` - so the server is not designed to handle many clients at a time.
 Additionally, the server is not well guarded against attacks (e.g., you can theoretically spawn an arbitrary number of&nbsp;${RShell.name} sessions on the target machine).
 
@@ -217,7 +217,7 @@ function explainConfigFile(ctx: GeneralDocContext): string {
 When running _flowR_, you may want to specify some behaviors with a dedicated configuration file.
 By default, flowR looks for a file named \`${defaultConfigFile}\` in the current working directory (or any higher directory).
 You can also specify a different file with ${getCliLongOptionOf('flowr', 'config-file')} or pass the configuration inline using ${getCliLongOptionOf('flowr', 'config-json')}.
-To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` [Query](${FlowrWikiBaseRef}/Query%20API).
+To inspect the current configuration, you can run flowr with the ${getCliLongOptionOf('flowr', 'verbose')} flag, or use the \`config\` ${ctx.linkPage('wiki/Query API', 'Query')}.
 Within the REPL this works by running the following:
 
 ${codeBlock('shell', ':query @config')}
@@ -231,7 +231,7 @@ The following summarizes the configuration options:
   You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
-- \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the [Engines wiki page](${FlowrWikiBaseRef}/Engines) for more information.
+- \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')} for more information.
 - \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
 - \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
 - \`defaultPlugins\`: allows to configure which plugins to load by default when creating a new ${ctx.link(FlowrAnalyzer)} instance.
@@ -364,7 +364,7 @@ ${explainWritingCode(shell, ctx)}
 <a id='communicating-with-the-server'></a>
 ## 💬 Communicating with the Server
 
-${await explainServer(shell)}
+${await explainServer(shell, ctx)}
 `;
 	}
 }

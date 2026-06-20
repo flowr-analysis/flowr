@@ -2,7 +2,6 @@ import { FlowrLogger } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import {
 	FlowrCodecovRef,
-	FlowrDockerRef,
 	FlowrGithubBaseRef,
 	FlowrSiteBaseRef,
 	FlowrWikiBaseRef,
@@ -112,7 +111,7 @@ The set of currently supported capabilities and their IDs can be found in ${getF
 
 The resulting labels are used in the test report that is generated as part of the test output. 
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
-The report can be found on the wiki's [capabilities page](${FlowrWikiBaseRef}/Capabilities).
+The report can be found on the wiki's ${ctx.linkPage('wiki/Capabilities', 'capabilities page')}.
 
 To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 
@@ -222,7 +221,7 @@ We explain the most important workflows in the following:
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
-- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
+- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
 - [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
  
 <a id='linting'></a>

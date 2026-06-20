@@ -23,11 +23,13 @@ export const dataflowCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid code', result));
-		} catch{ /* do nothing this is a service thing */
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid code', result));
+			} catch{ /* do nothing this is a service thing */
+			}
 		}
 	}
 };
@@ -43,11 +45,13 @@ export const dataflowStarCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -105,11 +109,13 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid code', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid code', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -124,10 +130,12 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };

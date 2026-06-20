@@ -23,11 +23,13 @@ export const normalizeCommand: ReplCodeCommand = {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -42,11 +44,13 @@ export const normalizeStarCommand: ReplCodeCommand = {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 

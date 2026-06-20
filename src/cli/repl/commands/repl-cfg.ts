@@ -17,11 +17,12 @@ async function produceAndPrintCfg(analyzer: ReadonlyFlowrAnalysisProvider, outpu
 	const normalizedAst = await analyzer.normalize();
 	const mermaid = cfgConverter(cfg, normalizedAst);
 	output.stdout(mermaid);
-	try {
-		const clipboard = await import('clipboardy');
-		clipboard.default.writeSync(mermaid);
-		output.stdout(formatInfo(output, 'mermaid code'));
-	} catch{ /* do nothing this is a service thing */
+	if(output.allowClipboard !== false) {
+		try {
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid code'));
+		} catch{ /* do nothing this is a service thing */ }
 	}
 }
 

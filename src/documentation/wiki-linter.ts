@@ -272,7 +272,7 @@ async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, c
 	const rules = registerRules(knownParser, tagTypes.info);
 
 	return `
-This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter [query](${FlowrWikiBaseRef}/Query%20API).
+This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter ${ctx.linkPage('wiki/Query API', 'query')}.
 For example:
 
 ${await(async() => {

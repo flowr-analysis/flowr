@@ -20,6 +20,7 @@ export interface ShowQueryOptions {
 	readonly collapseResult?: boolean;
 	readonly collapseQuery?:  boolean;
 	readonly shorthand?:      string;
+	readonly ctx?:            GeneralDocContext;
 }
 
 /**
@@ -31,7 +32,7 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, shorthand, ctx }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
@@ -69,7 +70,7 @@ ${
 ${metaInfo}
 
 In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
-Please consult the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to get those.
+Please consult the ${ctx ? ctx.linkPage('wiki/Interface', 'Interface') : `[Interface](${FlowrWikiBaseRef}/Interface)`} wiki page for more information on how to get those.
 
 ${jsonWithLimit(results)}
 

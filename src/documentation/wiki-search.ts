@@ -1,4 +1,3 @@
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { showSearch } from './doc-util/doc-search';
 import { FlowrSearchBuilder, FlowrSearchGenerator, Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
@@ -18,9 +17,9 @@ export class WikiSearch extends DocMaker<'wiki/Search API.md'> {
 
 	public async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
-This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow-Graph) and the 
-[Normalized AST](${FlowrWikiBaseRef}/Normalized-AST) of a given R code (the search will always consider both, with respect to your search query).
-Please see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on how to access this API.
+This page briefly summarizes flowR's search API which provides a set of functions to search for nodes in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')} and the
+${ctx.linkPage('wiki/Normalized AST', 'Normalized AST')} of a given R code (the search will always consider both, with respect to your search query).
+Please see the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information on how to access this API.
 Within code, you can execute a search using the ${ctx.link(runSearch)} function.
 
 For an initial motivation, let's have a look at the following example:
@@ -37,7 +36,7 @@ ${await showSearch(shell, 'x <- x * x\nprint(x)\nx <- y <- 3\nprint(x)\nx <- 2',
 In summary, every search has two parts. It is initialized with a _generator_ (such as \`Q.var('x')\`)
 and can be further refined with _transformers_ or _modifiers_.
 Such queries can be constructed starting from the ${ctx.link('Q')} object (backed by ${ctx.link('FlowrSearchGenerator')}) and
-are fully serializable so you can use them when communicating with the [Query API](${FlowrWikiBaseRef}/Query%20API).
+are fully serializable so you can use them when communicating with the ${ctx.linkPage('wiki/Query API', 'Query API')}.
 
 ## File Path Filtering
 

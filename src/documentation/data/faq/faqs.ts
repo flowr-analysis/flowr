@@ -49,6 +49,13 @@ ${codeBlock('shell', 'npm run flowR -- --help')}
 		.addFaq('How to do *logging* in flowR?', `
 Check out the [Logging Section in the Linting and Testing wiki page](${FlowrWikiBaseRef}/Linting-and-Testing#logging) for more information on how to do logging in *flowR*.
 `)
+		.addFaq('How to run *tests* with *verbose* logging?', `
+Use the dedicated npm script to run all tests with trace-level log output:
+${codeBlock('shell', 'npm run test:verbose')}
+Alternatively, set the \`FLOWR_VERBOSE\` environment variable directly:
+${codeBlock('shell', 'FLOWR_VERBOSE=true npm run test')}
+Both forms accept the usual vitest filters (e.g. \`npm run test:verbose -- cli/server\`).
+`)
 
 		.addFaq('How to add a *linting rule*?', `
 To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.

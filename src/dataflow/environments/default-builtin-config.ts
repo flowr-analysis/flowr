@@ -106,22 +106,28 @@ function toRegex(n: readonly Identifier[]): RegExp {
 export const DefaultBuiltinConfig = [
 	{ type:  'constant', names: [
 		Identifier.from(['NULL', PkgName.Base]),        Identifier.from(['NA', PkgName.Base]),
-		Identifier.from(['NaN', PkgName.Base]),         Identifier.from(['NA_integer_', PkgName.Base]),
+		Identifier.from(['NA_integer_', PkgName.Base]),
 		Identifier.from(['NA_real_', PkgName.Base]),    Identifier.from(['NA_complex_', PkgName.Base]),
 		Identifier.from(['NA_character_', PkgName.Base])
 	], value: null, assumePrimitive: true },
+	{ type: 'constant', names: [Identifier.from(['NaN', PkgName.Base])], value: NaN, assumePrimitive: true },
 	{ type:  'constant', names: [
 		Identifier.from(['.GlobalEnv', PkgName.Base]), Identifier.from(['.BaseNamespaceEnv', PkgName.Base]),
 		Identifier.from(['.BaseEnv', PkgName.Base])
 	], value: null, assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['TRUE', PkgName.Base]),  Identifier.from(['T', PkgName.Base])],  value: true,  assumePrimitive: true },
 	{ type: 'constant', names: [Identifier.from(['FALSE', PkgName.Base]), Identifier.from(['F', PkgName.Base])],  value: false, assumePrimitive: true },
-	{ type: 'constant', names: [Identifier.from(['Inf', PkgName.Base])],  value: Infinity, assumePrimitive: true },
-	{ type: 'constant', names: [Identifier.from(['pi', PkgName.Base])],   value: Math.PI,  assumePrimitive: true },
-	{ type:  'constant', names: [
-		Identifier.from(['LETTERS', PkgName.Base]), Identifier.from(['letters', PkgName.Base]),
-		Identifier.from(['month.abb', PkgName.Base]), Identifier.from(['month.name', PkgName.Base]),
-	], value: null, assumePrimitive: true },
+	{ type: 'constant', names: [Identifier.from(['Inf', PkgName.Base])],  value: Infinity,  assumePrimitive: true },
+	{ type: 'constant', names: [Identifier.from(['-Inf', PkgName.Base])], value: -Infinity, assumePrimitive: true },
+	{ type: 'constant', names: [Identifier.from(['pi', PkgName.Base])],   value: Math.PI,   assumePrimitive: true },
+	{ type:            'constant', names:           [Identifier.from(['LETTERS', PkgName.Base])],
+		value:           Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i)), assumePrimitive: true },
+	{ type:            'constant', names:           [Identifier.from(['letters', PkgName.Base])],
+		value:           Array.from({ length: 26 }, (_, i) => String.fromCharCode(97 + i)), assumePrimitive: true },
+	{ type:            'constant', names:           [Identifier.from(['month.abb', PkgName.Base])],
+		value:           ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], assumePrimitive: true },
+	{ type:            'constant', names:           [Identifier.from(['month.name', PkgName.Base])],
+		value:           ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], assumePrimitive: true },
 	{
 		type:  'function',
 		names: [

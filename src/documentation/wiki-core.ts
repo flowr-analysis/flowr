@@ -37,6 +37,9 @@ import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
 import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
 import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
+import { GasFeatureKey, GasLevel } from '../gas';
+import { SemVer } from 'semver';
+import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { processValue } from '../dataflow/internal/process/process-value';
@@ -84,6 +87,32 @@ export function inspectContextExample(analyzer: FlowrAnalyzer) {
 	const ctx = analyzer.inspectContext();
 	console.log('dplyr version', ctx.deps.getDependency('dplyr'));
 	console.log('loading order', ctx.files.loadingOrder.getLoadingOrder());
+}
+
+async function gasPluginExample() {
+	class MyGasPlugin extends FlowrAnalyzerGasPlugin {
+		readonly name        = 'my-gas-plugin';
+		readonly description = 'Returns Critical for source when RSS exceeds 1 GB.';
+		readonly version     = new SemVer('1.0.0');
+
+		protected process(_ctx: FlowrAnalyzerContext, key: string): GasLevel | undefined {
+			if(key === GasFeatureKey.Source) {
+				const { rss } = process.memoryUsage();
+				if(rss > 1024 * 1024 * 1024) {
+					return GasLevel.Critical;
+				}
+				if(rss > 512  * 1024 * 1024) {
+					return GasLevel.Problematic;
+				}
+			}
+			return undefined;
+		}
+	}
+
+	return await new FlowrAnalyzerBuilder()
+		.registerPlugins(new MyGasPlugin())
+		.setEngine('tree-sitter')
+		.build();
 }
 
 /**
@@ -514,28 +543,7 @@ You can search for \`ctx.gas.checkGas(\` in the source to locate every active ch
 
 ${ctx.doc(FlowrAnalyzerGasPlugin)}
 
-\`\`\`typescript
-class MyGasPlugin extends FlowrAnalyzerGasPlugin {
-  readonly name        = 'my-gas-plugin';
-  readonly description = 'Custom resource check.';
-  readonly version     = new SemVer('1.0.0');
-
-  protected process(_ctx: FlowrAnalyzerContext, key: string): GasLevel | undefined {
-    if(key === 'source' && myCustomCheck()) {
-      return GasLevel.Critical;
-    }
-    return undefined; // defer to built-in checks
-  }
-}
-\`\`\`
-
-Register it via ${ctx.link(FlowrAnalyzerBuilder)}:
-
-\`\`\`typescript
-const analyzer = await new FlowrAnalyzerBuilder()
-  .registerPlugins(new MyGasPlugin())
-  .build();
-\`\`\`
+${ctx.code(gasPluginExample, { dropLinesStart: 1, dropLinesEnd: 1, hideDefinedAt: true })}
 
 ## Helpful Things
 

@@ -49,6 +49,10 @@ export class FlowrAnalyzerGasContext implements ReadOnlyFlowrAnalyzerGasContext 
 		return GasLevel.Normal;
 	}
 
+	private static maxLevel(a: GasLevel, b: GasLevel): GasLevel {
+		return a >= b ? a : b;
+	}
+
 	private timeLevel(factor: number, t: FlowrGasThresholds): GasLevel {
 		const elapsed = (Date.now() - this.startTime) * factor;
 		if(elapsed >= t.timeMs.critical)    {
@@ -69,16 +73,10 @@ export class FlowrAnalyzerGasContext implements ReadOnlyFlowrAnalyzerGasContext 
 		let level = GasLevel.Normal;
 
 		if(factor) {
-			const t      = this.config.thresholds;
-			const memLvl = this.memoryLevel(factor, t);
-			if(memLvl > level) {
-				level = memLvl;
-			}
+			const t = this.config.thresholds;
+			level = FlowrAnalyzerGasContext.maxLevel(level, this.memoryLevel(factor, t));
 			if(level < GasLevel.Critical) {
-				const timeLvl = this.timeLevel(factor, t);
-				if(timeLvl > level) {
-					level = timeLvl;
-				}
+				level = FlowrAnalyzerGasContext.maxLevel(level, this.timeLevel(factor, t));
 			}
 		}
 
@@ -87,8 +85,8 @@ export class FlowrAnalyzerGasContext implements ReadOnlyFlowrAnalyzerGasContext 
 				break;
 			}
 			const override = plugin.processor(this.ctx, key);
-			if(override !== undefined && override > level) {
-				level = override;
+			if(override !== undefined) {
+				level = FlowrAnalyzerGasContext.maxLevel(level, override);
 			}
 		}
 

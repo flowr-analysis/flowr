@@ -116,12 +116,12 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 		namespaceEnv = namespaceEnv.define({
 			name:      Identifier.make(func, pack),
 			type:      ReferenceType.Function,
-			nodeId:    NodeId.toBuiltIn(func),
+			nodeId:    NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
 			definedAt: NodeId.toBuiltIn(pack),
 		});
 		info.graph.addVertex({
 			tag:         VertexType.FunctionDefinition,
-			id:          NodeId.toBuiltIn(func),
+			id:          NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
 			environment: info.environment,
 			cds:         data.cds,
 			params:      {},
@@ -131,12 +131,12 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 				in:                [],
 				out:               [],
 				environment:       info.environment,
-				entryPoint:        NodeId.toBuiltIn(func),
+				entryPoint:        NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
 				hooks:             []
 			},
 			exitPoints: [],
 		}, data.ctx.env.makeCleanEnv());
-		info.graph.addEdge(NodeId.toBuiltIn(func), rootId, EdgeType.Reads | EdgeType.Calls);
+		info.graph.addEdge(NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)), rootId, EdgeType.Reads | EdgeType.Calls);
 	}
 	info.environment = {
 		level:   info.environment.level + 1,
@@ -169,13 +169,13 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 			continue;
 		}
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(Package.createImpFunc(importedDependency.name, func))){
+			if(importsEnv.memory.has(Package.funcIdentif(importedDependency.name, func))){
 				continue;
 			}
 			importsEnv = importsEnv.define({
-				name:      Identifier.make(Package.createImpFunc(importedDependency.name, func), importsEnv.n),
+				name:      Identifier.make(Package.funcIdentif(importedDependency.name, func), importsEnv.n),
 				type:      ReferenceType.Function,
-				nodeId:    NodeId.toBuiltIn(func),
+				nodeId:    NodeId.toBuiltIn(Package.funcIdentif(importedDependency.name, func)),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)
 			});
 		}

@@ -45,9 +45,9 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			.addEdge('2@library', 8, EdgeType.Argument)
 			.addEdge(8, '2@TRUE', EdgeType.Reads)
 		//ggplot links to library
-			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge('4@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), '2@library', EdgeType.Reads | EdgeType.Calls),
+			.addEdge('3@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('4@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), '2@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
@@ -65,9 +65,9 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			.addEdge('1@library', 5, EdgeType.Argument)
 			.addEdge(5, '1@FALSE', EdgeType.Reads)
 		//correctly links
-			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls),
+			.addEdge('2@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('3@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), '1@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({
@@ -85,9 +85,9 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			.addEdge('1@library', 5, EdgeType.Argument)
 			.addEdge(5, '1@TRUE', EdgeType.Reads)
 		//correctly links
-			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge('3@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls)
-			.addEdge(NodeId.toBuiltIn('ggplot'), '1@library', EdgeType.Reads | EdgeType.Calls),
+			.addEdge('2@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('3@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
+			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), '1@library', EdgeType.Reads | EdgeType.Calls),
 		{
 			modifyAnalyzer: a => {
 				a.context().deps.addDependency(new Package({

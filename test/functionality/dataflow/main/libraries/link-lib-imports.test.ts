@@ -141,7 +141,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
 		//ggplot imports
 		env = env.parent;
-		const imported = [Package.createImpFunc('random_placeholder', 'test1')];
+		const imported = [Package.funcIdentif('random_placeholder', 'test1')];
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
 	});
 
@@ -174,7 +174,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 function createImportedFunctions(a: [string, string[]][]): string[]{
 	let res: string[] = [];
 	for(const [dependency, functions] of a){
-		res = res.concat(functions.map(f => Package.createImpFunc(dependency, f)));
+		res = res.concat(functions.map(f => Package.funcIdentif(dependency, f)));
 	}
 	return res;
 }

@@ -109,7 +109,7 @@ export class Package {
 		}
 	}
 
-	public static createImpFunc(dependency: string, func: string): string{
+	public static funcIdentif(dependency: string, func: string): string{
 		return `${dependency}:${func}`;
 	}
 }

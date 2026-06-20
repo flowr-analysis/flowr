@@ -58,6 +58,9 @@ describe('Linked Function Definitions', withTreeSitter(ts => {
 	expectLinkedFns('multiple defs', 'x <- function(a) { a + 1 }\nk <- function() function() 2\ny <- function() { if(u) { x } else { k() } } \nh <- y()', {
 		'4@h': { fns: ['1@function', '2@function'] }
 	});
+	expectLinkedFns('double alias chain', 'f <- function() 1\ng <- f\nh <- g', {
+		'3@h': { fns: ['1@function'] }
+	});
 	expectLinkedFns('indirected to no def', 'x <- function(a) { a + 1 }\ny <- x()', {
 		'2@y': { fns: [] }
 	});

@@ -35,6 +35,8 @@ import { staticSlice } from '../slicing/static/static-slicer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { FlowrAnalyzerGasContext } from '../project/context/flowr-analyzer-gas-context';
+import { FlowrAnalyzerGasPlugin } from '../project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { processValue } from '../dataflow/internal/process/process-value';
@@ -129,6 +131,7 @@ See the [Getting flowR to Talk](#getting-flowr-to-talk) section below for more i
   * [Dataflow Graph Generation](#dataflow-graph-generation)
 * [Beyond the Dataflow Graph](#beyond-the-dataflow-graph)
   * [Static Backward Slicing](#static-backward-slicing)
+* [Gas (Resource Guard)](#gas-resource-guard)
 * [Getting flowR to Talk](#getting-flowr-to-talk)
 
 ## Creating and Using a flowR Analyzer Instance
@@ -457,6 +460,82 @@ ${await documentReplSession(treeSitter, [{
 	command:     ':query @static-slice (12@product) file://test/testfiles/example.R',
 	description: 'Slice for the example file for the variable "prod" in line 12.'
 }], { openOutput: true })}
+
+## Gas (Resource Guard)
+
+During a large analysis, flowR may run into memory or time pressure.
+The _gas_ system provides per-feature resource guards that check the current heap usage and elapsed analysis time.
+
+Any analysis site queries the level with ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas')}, where \`key\` is a feature name.
+The call is a no-op when gas is disabled for that key.
+
+| Level                    | Value | Description                         |
+|:-------------------------|------:|:------------------------------------|
+| \`GasLevel.Normal\`      |     0 | ${ctx.doc('GasLevel::Normal')}      |
+| \`GasLevel.Problematic\` |     1 | ${ctx.doc('GasLevel::Problematic')} |
+| \`GasLevel.Critical\`    |     2 | ${ctx.doc('GasLevel::Critical')}    |
+
+### Enabling Gas for a Feature
+
+Gas is **disabled by default** for every feature (see ${ctx.link('GasFeatureKey')} for all recognized keys).
+Enable it by setting a positive factor in \`config.gas.features\`:
+
+\`\`\`json
+{
+  "gas": {
+    "thresholds": {
+      "memory": { "problematic": 0.7, "critical": 0.9 },
+      "timeMs":  { "problematic": 100000, "critical": 120000 }
+    },
+    "features": {
+      "source": 1
+    }
+  }
+}
+\`\`\`
+
+The factor scales both dimensions before comparing against the thresholds:
+
+\`\`\`
+scaled_ratio   = (used_heap / heap_limit) * factor
+scaled_elapsed = elapsed_ms              * factor
+\`\`\`
+
+A factor of \`2\` makes the check twice as sensitive: it triggers \`Problematic\` when the heap
+is at 35% (= 0.7 / 2) instead of 70%.
+
+### Known Feature Keys
+
+${ctx.doc('GasFeatureKey')}
+
+You can search for \`ctx.gas.checkGas(\` in the source to locate every active check site.
+
+### Gas Plugins
+
+${ctx.doc(FlowrAnalyzerGasPlugin)}
+
+\`\`\`typescript
+class MyGasPlugin extends FlowrAnalyzerGasPlugin {
+  readonly name        = 'my-gas-plugin';
+  readonly description = 'Custom resource check.';
+  readonly version     = new SemVer('1.0.0');
+
+  protected process(_ctx: FlowrAnalyzerContext, key: string): GasLevel | undefined {
+    if(key === 'source' && myCustomCheck()) {
+      return GasLevel.Critical;
+    }
+    return undefined; // defer to built-in checks
+  }
+}
+\`\`\`
+
+Register it via ${ctx.link(FlowrAnalyzerBuilder)}:
+
+\`\`\`typescript
+const analyzer = await new FlowrAnalyzerBuilder()
+  .registerPlugins(new MyGasPlugin())
+  .build();
+\`\`\`
 
 ## Helpful Things
 

@@ -289,6 +289,13 @@ ${codeBlock('json', JSON.stringify(
 						maxReadLines:      1_000_000
 					}
 				}
+			},
+			gas: {
+				thresholds: {
+					memory: { problematic: 0.7,     critical: 0.9 },
+					timeMs: { problematic: 100_000, critical: 120_000 }
+				},
+				features: {}
 			}
 		} satisfies FlowrConfig,
 		null, 2))

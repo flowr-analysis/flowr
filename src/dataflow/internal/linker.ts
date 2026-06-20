@@ -474,23 +474,28 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
+		const outgoing = dataflowGraph.outgoingEdges(cid);
+		if(!outgoing) {
+			continue;
+		}
+
+		const isSkipType = vertex.tag === VertexType.FunctionCall || (vertex.tag === VertexType.VariableDefinition && vertex.par);
 		let hasReturnEdge = false;
-		const outgoing = dataflowGraph.outgoingEdges(cid) ?? [];
+		let followTargets: NodeId[] | undefined;
+
 		for(const [target, e] of outgoing) {
 			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				hasReturnEdge = true;
 				if(!visited.has(target)) {
 					potential.push(target);
 				}
+			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
+				(followTargets ??= []).push(target);
 			}
 		}
 
-		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge || (vertex.tag === VertexType.VariableDefinition && vertex.par)) {
-			continue;
-		}
-
-		for(const [target, e] of outgoing) {
-			if(DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
+		if(!hasReturnEdge && followTargets) {
+			for(const target of followTargets) {
 				potential.push(target);
 			}
 		}

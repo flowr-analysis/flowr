@@ -1,9 +1,9 @@
-import type { Identifier } from '../dataflow/environments/identifier';
-import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { ResolvedTaint } from './function-mapper';
-import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { Identifier } from '../../dataflow/environments/identifier';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { ResolvedTaint } from '../function-mapper';
+import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/abstract-domain';
+import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],

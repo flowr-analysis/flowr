@@ -11,6 +11,7 @@ export const predefinedTaintAnalyses = {
 	'determinism': determinism
 } as const satisfies AnalysisMap<['scale', 'security', 'randomness', 'determinism']>;
 
+export const allPredefinedTaintAnalysisNames = Object.keys(predefinedTaintAnalyses) as AnyPredefinedTaintAnalysisName[];
 export type AnyPredefinedTaintAnalysisName = keyof typeof predefinedTaintAnalyses;
 export type AllPredefinedTaintAnalysisNames = [AnyPredefinedTaintAnalysisName];
 

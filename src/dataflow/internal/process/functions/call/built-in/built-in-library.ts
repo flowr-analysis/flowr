@@ -49,13 +49,13 @@ export function processLibrary<OtherInfo>(
 
 	let namesToLoad = packageId.map(v => RArgument.getValue<OtherInfo & ParentInformation>(args, v)) as RNode<OtherInfo & ParentInformation>[];
 	//check if library name provided
-	namesToLoad = namesToLoad.filter(v => v !== undefined && (v.type === RType.Symbol || v.type === RType.String)) ;
+	namesToLoad = namesToLoad.filter(v => v !== undefined && (v.type === RType.Symbol ||v.type === RType.String)) ;
 	if(namesToLoad.length === 0){
 		dataflowLogger.warn('No library name provided, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
 	for(const nameToLoad of namesToLoad){
-		if(nameToLoad !== undefined && (nameToLoad.type === RType.Symbol || nameToLoad.type === RType.String) && Identifier.getNamespace(nameToLoad.type === RType.String ? nameToLoad.content.str : nameToLoad.content) !== undefined) {
+		if(nameToLoad !== undefined && (nameToLoad.type === RType.Symbol ||nameToLoad.type === RType.String) && Identifier.getNamespace(nameToLoad.type === RType.String ? nameToLoad.content.str : nameToLoad.content) !== undefined) {
 			dataflowLogger.warn('Namespaced library names are not supported, ignoring namespace of library: ', nameToLoad);
 		}
 	}
@@ -114,11 +114,11 @@ export function processLibrary<OtherInfo>(
 			}
 		}
 	}
-	if(!isCharacterOnly || isCharacterOnly === 'maybe') {
+	if(!isCharacterOnly ||isCharacterOnly === 'maybe') {
 		// treat as a function call but convert the first argument to a string
 		const newArgs = [];
 		for(const nameToLoad of namesToLoad){
-			if(!(nameToLoad.type === RType.Symbol || nameToLoad.type === RType.String)){
+			if(!(nameToLoad.type === RType.Symbol ||nameToLoad.type === RType.String)){
 				continue;
 			}
 			const newArg: RString<OtherInfo & ParentInformation> = nameToLoad.type === RType.String ? nameToLoad : {

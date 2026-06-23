@@ -203,6 +203,42 @@ describe('Link libraries', withTreeSitter(ts => {
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports).toBeTruthy();
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 	});
+
+	/*test('Multiple options for library', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setParser(ts)
+			.build();
+		analyzer.context().deps.addDependency(new Package({
+			name:          'a',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.context().deps.addDependency(new Package({
+			name:          'b',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.addRequest(`
+			if(u){
+				library(a)
+			} else {
+				library(b)
+			}
+			`);
+		const df = await analyzer.dataflow();
+		let env = df.environment.current;
+		const environments = [[env.n, env.t]];
+		for(let i = 0; i < 3; i++){
+			env = env.parent;
+			environments.push([env.n, env.t]);
+		}
+		const expected = [['b', EnvType.Namespace], ['b', EnvType.Imports], ['a', EnvType.Namespace], ['a', EnvType.Imports]];
+		environments.sort();
+		expected.sort();
+		let match = environments.length === expected.length;
+		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
+			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
+		}
+		expect(match).toBeTruthy();
+	});*/
 }));
 
 function compare<T>(s1: Set<T>, s2: Set<T>){

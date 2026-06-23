@@ -1,4 +1,4 @@
-import { describe } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { EdgeType } from '../../../../../src/dataflow/graph/edge';
@@ -7,6 +7,8 @@ import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-fi
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
+import { EnvType } from '../../../../../src/dataflow/environments/environment';
+import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const namespaceInfo = setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', `S3method(fortify,data.frame)
@@ -99,4 +101,82 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		}
 	);
+	test('Variable can resolve to multiple options', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setParser(ts)
+			.build();
+		analyzer.context().deps.addDependency(new Package({
+			name:          'a',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.context().deps.addDependency(new Package({
+			name:          'b',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.addRequest(`
+			if(t) {
+  				u <- TRUE
+			} else {
+  				u <- FALSE
+			}
+			if(u) {
+  				x <- "a"
+			} else {
+  				x <- "b"
+			}
+			library(x, character.only=TRUE)
+			`);
+		const df = await analyzer.dataflow();
+		let env = df.environment.current;
+		const environments = [[env.n, env.t]];
+		for(let i = 0; i < 3; i++){
+			env = env.parent;
+			environments.push([env.n, env.t]);
+		}
+		const expected = [['b', EnvType.Namespace], ['b', EnvType.Imports], ['a', EnvType.Namespace], ['a', EnvType.Imports]];
+		environments.sort();
+		expected.sort();
+		let match = environments.length === expected.length;
+		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
+			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
+		}
+		expect(match).toBeTruthy();
+	});
+	test('Variable', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder()
+			.setParser(ts)
+			.build();
+		analyzer.context().deps.addDependency(new Package({
+			name:          'x',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.context().deps.addDependency(new Package({
+			name:          'foo',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
+		}));
+		analyzer.addRequest(`
+			if(t){
+				u <- TRUE
+			} else {
+				u <- FALSE
+			}
+			x <- "foo"
+			library(x, character.only=u)
+			`);
+		const df = await analyzer.dataflow();
+		let env = df.environment.current;
+		const environments = [[env.n, env.t]];
+		for(let i = 0; i < 3; i++){
+			env = env.parent;
+			environments.push([env.n, env.t]);
+		}
+		const expected = [['x', EnvType.Namespace], ['x', EnvType.Imports], ['foo', EnvType.Namespace], ['foo', EnvType.Imports]];
+		environments.sort();
+		expected.sort();
+		let match = environments.length === expected.length;
+		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
+			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
+		}
+		expect(match).toBeTruthy();
+	});
 }));

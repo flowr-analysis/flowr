@@ -13,7 +13,7 @@ import { Identifier, ReferenceType } from '../../../../../environments/identifie
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType } from '../../../../../environments/environment';
 import { EdgeType } from '../../../../../graph/edge';
-import { isUndefined } from '../../../../../../util/assert';
+import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
@@ -23,6 +23,7 @@ import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * Process a library call like `library` or `require`
@@ -46,44 +47,94 @@ export function processLibrary<OtherInfo>(
 	const packageId = Array.from(new Set(argMaps.get('pkg')));
 	const charId = Array.from(new Set(argMaps.get('char')));
 
-	const nameToLoad = RArgument.getValue<OtherInfo & ParentInformation>(args, packageId[0]);
-
-	if(nameToLoad === undefined || nameToLoad.type !== RType.Symbol && nameToLoad.type !== RType.String){
+	let namesToLoad = packageId.map(v => RArgument.getValue<OtherInfo & ParentInformation>(args, v)) as RNode<OtherInfo & ParentInformation>[];
+	//check if library name provided
+	namesToLoad = namesToLoad.filter(v => v !== undefined && (v.type === RType.Symbol || v.type === RType.String)) ;
+	if(namesToLoad.length === 0){
 		dataflowLogger.warn('No library name provided, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
-	if(Identifier.getNamespace(nameToLoad.type === RType.String ? nameToLoad.content.str : nameToLoad.content) !== undefined) {
-		dataflowLogger.warn('Namespaced library names are not supported, ignoring namespace');
+	for(const nameToLoad of namesToLoad){
+		if(nameToLoad !== undefined && (nameToLoad.type === RType.Symbol || nameToLoad.type === RType.String) && Identifier.getNamespace(nameToLoad.type === RType.String ? nameToLoad.content.str : nameToLoad.content) !== undefined) {
+			dataflowLogger.warn('Namespaced library names are not supported, ignoring namespace of library: ', nameToLoad);
+		}
 	}
-
-	let packetName = nameToLoad?.lexeme;
 	let isCharacterOnly: Lift<TernaryLogical> = false;
 	if(charId.length >= 1){
 		const values = valueSetGuard(resolveIdToValue(charId[0], resolveArgs));
-		if(values?.type === 'set' && values.elements.length === 1 && values.elements[0].type === 'logical') {
-			isCharacterOnly = values.elements[0].value;
+		if(values?.type === 'set' && values?.elements.length > 0) {
+			let hasTrue = 0;
+			let hasFalse = 0;
+			let hasMaybe = 0;
+			for(const elem of values.elements){
+				if(elem.type === 'logical'){
+					switch(elem.value) {
+						case true:
+							hasTrue++;
+							break;
+						case false:
+							hasFalse++;
+							break;
+						default:
+							hasMaybe++;
+							break;
+					}
+				}
+			}
+			if(hasMaybe > 0){
+				isCharacterOnly = 'maybe';
+			} else if(hasTrue === 0 && hasFalse > 0){
+				isCharacterOnly = false;
+			} else if(hasTrue > 0 && hasFalse === 0){
+				isCharacterOnly = true;
+			} else {
+				isCharacterOnly = 'maybe';
+			}
 		}
 	}
-	if(isCharacterOnly !== false){
-		const values = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
-		if(values?.type === 'set' && values.elements.length !== 0){
-			if(values.elements[0].type === 'string' && 'str' in values.elements[0].value){
-				packetName =  values.elements[0].value.str;
+	const packetName: string[] = [];
+	//case: true or maybe
+	if(isCharacterOnly){
+		for(const nameToLoad of namesToLoad){
+			const values = valueSetGuard(resolveIdToValue(nameToLoad.info.id, resolveArgs));
+			if(values?.type === 'set' && values.elements.length !== 0){
+				for(const elem of values.elements){
+					if(elem.type === 'string' && 'str' in elem.value){
+						packetName.push(elem.value.str);
+					}
+				}
 			}
 		}
-	} else {
-		// treat as a function call but convert the first argument to a string
-		const newArg: RString<OtherInfo & ParentInformation> = nameToLoad.type === RType.String ? nameToLoad : {
-			type:     RType.String,
-			info:     nameToLoad.info,
-			lexeme:   nameToLoad.lexeme,
-			location: nameToLoad.location,
-			content:  {
-				quotes: 'none',
-				str:    Identifier.getName(nameToLoad.content)
+
+	}
+	if(!isCharacterOnly || isCharacterOnly === 'maybe'){
+		for(const nameToLoad of namesToLoad){
+			if(isNotUndefined(nameToLoad.lexeme)){
+				packetName.push(nameToLoad.lexeme);
 			}
-		};
-		args =  wrapArgumentsUnnamed([newArg, ...args.slice(1)], data.completeAst.idMap);
+		}
+	}
+	if(!isCharacterOnly || isCharacterOnly === 'maybe') {
+		// treat as a function call but convert the first argument to a string
+		const newArgs = [];
+		for(const nameToLoad of namesToLoad){
+			if(!(nameToLoad.type === RType.Symbol || nameToLoad.type === RType.String)){
+				continue;
+			}
+			const newArg: RString<OtherInfo & ParentInformation> = nameToLoad.type === RType.String ? nameToLoad : {
+				type:     RType.String,
+				info:     nameToLoad.info,
+				lexeme:   nameToLoad.lexeme,
+				location: nameToLoad.location,
+				content:  {
+					quotes: 'none',
+					str:    Identifier.getName(nameToLoad.content)
+				}
+			};
+			newArgs.push(newArg);
+		}
+		args =  wrapArgumentsUnnamed([...newArgs, ...args.slice(1)], data.completeAst.idMap);
+
 	}
 	const info = processKnownFunctionCall({
 		name,
@@ -91,10 +142,16 @@ export function processLibrary<OtherInfo>(
 		hasUnknownSideEffect: false,
 		origin:               BuiltInProcName.Library
 	}).information;
-	const dependency = data.ctx.deps.getDependency(packetName);
-	if(dependency){
-		linkLibrary(dependency, info, rootId, data);
-	} else {
+
+	for(const p of packetName){
+		const dependency = data.ctx.deps.getDependency(p);
+		if(dependency){
+			linkLibrary(dependency, info, rootId, data);
+		} else {
+			info.graph.markIdForUnknownSideEffects(rootId);
+		}
+	}
+	if(packetName.length === 0){
 		info.graph.markIdForUnknownSideEffects(rootId);
 	}
 	return info;

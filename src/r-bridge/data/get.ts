@@ -3,7 +3,7 @@ import type { FlowrCapability } from './types';
 import { flowrCapabilities } from './data';
 
 
-type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never
+type CapabilityIdFilter<T extends FlowrCapability, Filter> = T extends Filter ? T['id'] : never;
 
 /** Recursively extract all valid identifiers (which have the given support predicate) */
 type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
@@ -11,13 +11,13 @@ type ExtractAllIds<T extends FlowrCapability, Filter = FlowrCapability> =
 		? U extends readonly FlowrCapability[]
 			? (CapabilityIdFilter<T, Filter> | ExtractAllIds<U[number]>)
 			: CapabilityIdFilter<T, Filter>
-		: CapabilityIdFilter<T, Filter>
+		: CapabilityIdFilter<T, Filter>;
 
-type Capabilities = (typeof flowrCapabilities)['capabilities'][number]
-export type FlowrCapabilityId = ExtractAllIds<Capabilities>
-export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly supported: 'partially' | 'fully' }>
+type Capabilities = (typeof flowrCapabilities)['capabilities'][number];
+export type FlowrCapabilityId = ExtractAllIds<Capabilities>;
+export type SupportedFlowrCapabilityId = ExtractAllIds<Capabilities, { readonly supported: 'partially' | 'fully' }>;
 
-type PathToCapability = readonly number[]
+type PathToCapability = readonly number[];
 
 export interface FlowrCapabilityWithPath extends FlowrCapability{
 	path: PathToCapability

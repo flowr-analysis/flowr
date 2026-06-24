@@ -10,9 +10,9 @@ import { deterministicCountingIdGenerator } from '../../../r-bridge/lang-4.x/ast
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { StatisticsOutputFormat } from '../../output/statistics-file';
 
-export type ContextsWithCount = DefaultMap<NodeId, number>
-export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>
-export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>
+export type ContextsWithCount = DefaultMap<NodeId, number>;
+export type ClusterContextIdMap = DefaultMap<string | undefined, NodeId>;
+export type ClusterValueInfoMap = DefaultMap<string, ContextsWithCount>;
 
 /** Produced by {@link clusterStatisticsOutput} */
 export interface ClusterReport extends MergeableRecord {

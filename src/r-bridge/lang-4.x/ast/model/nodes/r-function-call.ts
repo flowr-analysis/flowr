@@ -1,11 +1,12 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
-import type { RType } from '../type';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
+import { RType } from '../type';
 import type { RSymbol } from './r-symbol';
 import type { RArgument } from './r-argument';
 
 export const EmptyArgument = '<>';
 
-export type RFunctionArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument
+export type PotentiallyEmptyRArgument<Info = NoInfo> = RArgument<Info> | typeof EmptyArgument;
 
 /**
  * Calls of functions like `a()` and `foo(42, "hello")`.
@@ -16,7 +17,7 @@ export interface RNamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>, L
 	readonly named:     true;
 	functionName:       RSymbol<Info>;
 	/** arguments can be empty, for example when calling as `a(1, ,3)` */
-	readonly arguments: readonly RFunctionArgument<Info>[];
+	readonly arguments: readonly PotentiallyEmptyRArgument<Info>[];
 }
 
 
@@ -31,7 +32,33 @@ export interface RUnnamedFunctionCall<Info = NoInfo> extends RAstNodeBase<Info>,
 	/** marks function calls like `3 %xx% 4` which have been written in special infix notation; deprecated in v2 */
 	infixSpecial?:      boolean;
 	/** arguments can be undefined, for example when calling as `a(1, ,3)` */
-	readonly arguments: readonly RFunctionArgument<Info>[];
+	readonly arguments: readonly PotentiallyEmptyRArgument<Info>[];
 }
 
 export type RFunctionCall<Info = NoInfo> = RNamedFunctionCall<Info> | RUnnamedFunctionCall<Info>;
+
+/**
+ * Helper for working with {@link RFunctionCall} AST nodes.
+ */
+export const RFunctionCall = {
+	...RNode,
+	name: 'RFunctionCall',
+	/**
+	 * Type guard for {@link RFunctionCall} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RFunctionCall<Info> {
+		return node?.type === RType.FunctionCall;
+	},
+	/**
+	 * Type guard for {@link RNamedFunctionCall} nodes.
+	 */
+	isNamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNamedFunctionCall<Info> {
+		return RFunctionCall.is(node) && node.named === true;
+	},
+	/**
+	 * Type guard for {@link RUnnamedFunctionCall} nodes.
+	 */
+	isUnnamed<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RUnnamedFunctionCall<Info> {
+		return RFunctionCall.is(node) && !node.named;
+	}
+} as const;

@@ -23,7 +23,7 @@ export interface Pipeline<T extends IPipelineStep = IPipelineStep> {
  * Returns the types of all step names in the given pipeline.
  * @see Pipeline for details
  */
-export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
+export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name'];
 /**
  * Returns the steps included in the given pipeline.
  * @example
@@ -34,7 +34,7 @@ export type PipelineStepNames<P extends Pipeline> = PipelineStep<P>['name']
  * // Steps is now just step1 | step2 | ...
  * ```
  */
-export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never
+export type PipelineStep<P extends Pipeline> = P extends Pipeline<infer U> ? U : never;
 
 /**
  * Meta-information attached to every step result
@@ -57,17 +57,17 @@ export interface PipelinePerStepMetaInformation {
  * // Foo is now only the "parse" step from the DEFAULT_DATAFLOW_PIPELINE
  * ```
  */
-export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never
+export type PipelineStepWithName<P extends Pipeline, Name extends PipelineStepName> = P extends Pipeline<infer U> ? U extends IPipelineStep<Name> ? U : never : never;
 /**
  * Returns the processor function of the step with the given name from the given pipeline.
  * @see {@link PipelineStepWithName}
  */
-export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor']
+export type PipelineStepProcessorWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['processor'];
 /**
  * Returns the printer function of the step with the given name from the given pipeline.
  * @see {@link PipelineStepWithName}
  */
-export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer']
+export type PipelineStepPrintersWithName<P extends Pipeline, Name extends PipelineStepName> = PipelineStepWithName<P, Name>['printer'];
 /**
  * Returns the output type of the step with the given name from the given pipeline.
  * @example
@@ -77,7 +77,7 @@ export type PipelineStepPrintersWithName<P extends Pipeline, Name extends Pipeli
  * @see {@link PipelineStepWithName}
  * ```
  */
-export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation
+export type PipelineStepOutputWithName<P extends Pipeline, Name extends PipelineStepName> = Awaited<ReturnType<PipelineStepProcessorWithName<P, Name>>> & PipelinePerStepMetaInformation;
 /**
  * Returns a union type that represents the required inputs to be passed to the given pipeline.
  * @example
@@ -90,7 +90,7 @@ export type PipelineStepOutputWithName<P extends Pipeline, Name extends Pipeline
  * pipeline needs to run through (i.e., the union of all inputs required by the individual steps).
  * @see {@link PipelineOutput}
  */
-export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>
+export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep<P>['requiredInput']>;
 
 /**
  * Only gets the union of 'requiredInput' of those PipelineSteps which have a 'execute' field of type 'OncePerRequest'.
@@ -98,7 +98,7 @@ export type PipelineInput<P extends Pipeline> = UnionToIntersection<PipelineStep
  */
 export type PipelinePerRequestInput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepWithName<P, K>['executed'] extends PipelineStepStage.OncePerFile ? never : PipelineStepWithName<P, K>['requiredInput']
-}[PipelineStepNames<P>]
+}[PipelineStepNames<P>];
 
 
 /**
@@ -115,7 +115,7 @@ export type PipelinePerRequestInput<P extends Pipeline> = {
  */
 export type PipelineOutput<P extends Pipeline> = {
 	[K in PipelineStepNames<P>]: PipelineStepOutputWithName<P, K>
-}
+};
 
 /**
  * Creates a {@link Pipeline|pipeline} from a given collection of {@link IPipelineStep|steps}.

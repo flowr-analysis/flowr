@@ -14,9 +14,9 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:         Parser<KnownParserType>
-    /**
-     * Initial and frozen ast-information
-     */
+	/**
+	 * Initial and frozen ast-information
+	 */
 	readonly completeAst:    NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
@@ -42,16 +42,16 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	readonly ctx:            FlowrAnalyzerContext
 }
 
-export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation
+export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;
 
-type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key }
+type NodeWithKey<OtherInfo, Key> = RNode<OtherInfo & ParentInformation> & { type: Key };
 
 /**
  * This way, a processor mapped to a {@link RType#Symbol} require a {@link RSymbol} as first parameter and so on.
  */
 export type DataflowProcessors<OtherInfo> = {
 	[key in RNode['type']]: DataflowProcessor<OtherInfo, NodeWithKey<OtherInfo, key>>
-}
+};
 
 /**
  * Originally, dataflow processor was written as a two-way fold, but this produced problems when trying to resolve function calls

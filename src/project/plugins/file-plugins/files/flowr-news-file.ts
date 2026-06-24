@@ -1,4 +1,4 @@
-import { type FlowrFileProvider, type FileRole , FlowrFile } from '../../../context/flowr-file';
+import { type FlowrFileProvider, type FileRole, FlowrFile, FlowrTextFile } from '../../../context/flowr-file';
 import { RPunctuationChars, RStandardRegexp } from '../../../../util/r-regex';
 import { compactRecord } from '../../../../util/objects';
 
@@ -41,6 +41,15 @@ export class FlowrNewsFile extends FlowrFile<NewsChunk[]> {
 			file.assignRole(role);
 		}
 		return file instanceof FlowrNewsFile ? file : new FlowrNewsFile(file);
+	}
+
+	/**
+	 * Creates a FlowrNewsFile from given news chunks, path and optional roles. This is useful if you already have the news content parsed and want to create a news file instance without re-parsing.
+	 */
+	public static fromNewsChunks(chunks: NewsChunk[], path: string, roles?: FileRole[]): FlowrNewsFile {
+		const file = new FlowrNewsFile(new FlowrTextFile(path, roles));
+		file.setContent(chunks);
+		return file;
 	}
 }
 

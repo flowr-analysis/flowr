@@ -1,10 +1,10 @@
 import type { SlicingCriteriaFilter } from '../collect-all';
 import { isNotNull } from '../../../util/assert';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type FoldFunctions , foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
+import { type FoldFunctions, foldAst } from '../../../r-bridge/lang-4.x/ast/model/processing/fold';
 import type { ParentInformation, RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type RSymbol , isSpecialSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type RFunctionCall , EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const DefaultAllVariablesFilter: SlicingCriteriaFilter = {
 	minimumSize: 1,
@@ -18,14 +18,14 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 	foldNumber:   onLeaf,
 	foldString:   onLeaf,
 	foldLogical:  onLeaf,
-	foldSymbol:   (symbol: RSymbol<ParentInformation>) => isSpecialSymbol(symbol) ? [] : [symbol.info.id],
+	foldSymbol:   (symbol: RSymbol<ParentInformation>) => RSymbol.isSpecial(symbol) ? [] : [symbol.info.id],
 	foldAccess:   (_: unknown, name: NodeId[], access: readonly (typeof EmptyArgument | NodeId[])[]) => [...name, ...access.filter(isNotNull).flat()],
 	foldBinaryOp: onBinary,
 	foldPipe:     onBinary,
 	foldUnaryOp:  (_: unknown, operator: NodeId[]) => operator,
 	loop:         {
-		foldFor:    (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[]) => [...a,...b,...c],
-		foldWhile:  (_: unknown, a: NodeId[], b: NodeId[]) => [...a,...b],
+		foldFor:    (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[]) => [...a, ...b, ...c],
+		foldWhile:  (_: unknown, a: NodeId[], b: NodeId[]) => [...a, ...b],
 		foldRepeat: (_: unknown, a: NodeId[]) => a,
 		foldNext:   onLeaf,
 		foldBreak:  onLeaf
@@ -34,10 +34,10 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldComment:       onLeaf,
 		foldLineDirective: onLeaf
 	},
-	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a,...b,...(c??[])],
+	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a, ...b, ...(c??[])],
 	foldExprList:   (_: unknown, _grouping: unknown, a: NodeId[][]) => a.flat(),
 	functions:      {
-		foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(),...b],
+		foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(), ...b],
 		foldFunctionCall:       (c: RFunctionCall, a: NodeId[], b: (NodeId[] | typeof EmptyArgument)[]) => {
 			const args = b.flatMap(b => b !== EmptyArgument ? b.flat() : []);
 			if(c.named) {

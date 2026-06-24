@@ -1,5 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
@@ -8,21 +8,21 @@ import { executeResolveValueQuery } from './origin-query-executor';
 import type { Origin } from '../../../dataflow/origin/dfg-get-origin';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { sliceCriterionParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
 export interface OriginQuery extends BaseQueryFormat {
 	readonly type:      'origin';
 	/** The slicing criteria to use */
-	readonly criterion: SingleSlicingCriterion,
+	readonly criterion: SlicingCriterion,
 }
 
 export interface OriginQueryResult extends BaseQueryResult {
-	results: Record<SingleSlicingCriterion, Origin[] | undefined>
+	results: Record<SlicingCriterion, Origin[] | undefined>
 }
 
-function originQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'origin'> {
+function originQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'origin'> {
 	const criterion = sliceCriterionParser(line[0]);
 
 	if(!criterion) {

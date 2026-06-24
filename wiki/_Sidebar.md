@@ -8,7 +8,7 @@
   * [Linting R](https://github.com/flowr-analysis/flowr/wiki/Linter)
   * [Query API](https://github.com/flowr-analysis/flowr/wiki/Query-API)
   * [Search API](https://github.com/flowr-analysis/flowr/wiki/Search-API)
-  * [Abstract Interpretation Framework](https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation)
+  * [Abstract Interpretation](https://github.com/flowr-analysis/flowr/wiki/Abstract-Interpretation)
 * [🌋 Core](https://github.com/flowr-analysis/flowr/wiki/Core)
   * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
   * [Control Flow Graph (CFG)](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)

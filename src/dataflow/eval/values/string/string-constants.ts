@@ -1,6 +1,6 @@
 import type { RStringValue } from '../../../../r-bridge/lang-4.x/convert-values';
 import { bottomTopGuard } from '../general';
-import { type Lift, type Value, type ValueString , Bottom, isValue, Top } from '../r-value';
+import { type Lift, type Value, type ValueString, Bottom, isValue, Top } from '../r-value';
 
 /**
  * Lift a raw string or R string value into a ValueString.

@@ -8,7 +8,7 @@ import type { FlowrSearch } from '../../../search/flowr-search-builder';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { executeSearch } from './search-query-executor';
 import { flowrSearchToMermaid } from '../../../search/flowr-search-printer';
-import { mermaidCodeToUrl } from '../../../util/mermaid/mermaid';
+import { Mermaid } from '../../../util/mermaid/mermaid';
 
 export interface SearchQuery extends BaseQueryFormat {
 	readonly type:   'search';
@@ -25,7 +25,7 @@ export const SearchQueryDefinition = {
 		const out = queryResults as QueryResults<'search'>['search'];
 		result.push(`Query: ${bold('search', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [, { ids, search }] of out.results.entries()) {
-			result.push(`   ╰ [query](${mermaidCodeToUrl(flowrSearchToMermaid(search))}): {${summarizeIdsIfTooLong(formatter, ids)}}`);
+			result.push(`   ╰ [query](${Mermaid.codeToUrl(flowrSearchToMermaid(search))}): {${summarizeIdsIfTooLong(formatter, ids)}}`);
 		}
 		return true;
 	},

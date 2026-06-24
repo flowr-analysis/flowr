@@ -1,4 +1,5 @@
 import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 
 /**
@@ -11,8 +12,15 @@ export interface RComment<Info = NoInfo> extends Location, Leaf<Info> {
 }
 
 /**
- * Checks whether the given node is an R comment.
+ * Helper for working with {@link RComment} AST nodes.
  */
-export function isRComment<Info = NoInfo>(node: unknown): node is RComment<Info> {
-	return typeof node === 'object' && node !== null && (node as RComment<Info>).type === RType.Comment;
-}
+export const RComment = {
+	...RNode,
+	name: 'RComment',
+	/**
+	 * Type guard for {@link RComment} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: unknown): node is RComment<Info> {
+		return typeof node === 'object' && node !== null && (node as RComment<Info>).type === RType.Comment;
+	}
+} as const;

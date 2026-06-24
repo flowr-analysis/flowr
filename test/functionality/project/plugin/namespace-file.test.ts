@@ -8,12 +8,13 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { defaultConfigOptions } from '../../../../src/config';
+import { isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrConfig } from '../../../../src/config';
 
 
 describe('NAMESPACE-file', function() {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerNamespaceFilesPlugin(),
 			new FlowrAnalyzerPackageVersionsNamespaceFilePlugin()
@@ -34,6 +35,7 @@ S3method(scale_type,default)
 S3method(ggplot,default)
 S3method(print,ggproto)
 S3method(print,rel)
+export("+")
 export(ggplot)
 export(aes)
 export(geom_point)
@@ -43,7 +45,7 @@ export(coord_cartesian)
 export(ggsave)
 export(fortify)
 export(scale_type)
-exportPattern("^[^\\.].*")
+exportPattern("^[^\\.]\\.*$")
 import(grid)
 import(rlang)
 importFrom(scales,alpha)
@@ -51,7 +53,6 @@ importFrom(stats,setNames)`));
 
 	ctx.addFile(new FlowrInlineTextFile('test.R', 'x <- 1'));
 	ctx.addRequests([{ request: 'file', content: 'test.R' }]);
-	ctx.resolvePreAnalysis();
 
 	describe('Basic exports', function() {
 		test('Functions are exported', () => {
@@ -65,12 +66,14 @@ importFrom(stats,setNames)`));
 		test('Correct total number of exports', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
-			assert.strictEqual(deps.namespaceInfo?.exportedSymbols.length, 9);
+			assert.strictEqual(deps.namespaceInfo?.exportedSymbols.length, 10);
 		});
 
 		test('All export names present', () => {
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
+			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('+'));
+			assert.isFalse(deps.namespaceInfo?.exportedSymbols.includes('"+"'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('ggplot'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('coord_cartesian'));
 			assert.isTrue(deps.namespaceInfo?.exportedSymbols.includes('ggsave'));
@@ -80,7 +83,14 @@ importFrom(stats,setNames)`));
 			const deps = ctx.deps.getDependency('current');
 			assert.isDefined(deps);
 			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.length, 1);
-			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.].*');
+			assert.strictEqual(deps.namespaceInfo?.exportedPatterns?.[0], '^[^\\.]\\.*$');
+		});
+
+		test('isExported', () => {
+			const deps = ctx.deps.getDependency('current');
+			assert.isDefined(deps?.namespaceInfo);
+			assert.isFalse(isExportedInInfo('ggplot2', deps?.namespaceInfo));
+			assert.isTrue(isExportedInInfo('ggplot', deps?.namespaceInfo));
 		});
 	});
 

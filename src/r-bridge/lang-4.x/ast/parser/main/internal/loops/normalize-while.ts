@@ -1,4 +1,4 @@
-import { type NormalizerData , ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, retrieveMetaStructure } from '../../normalize-meta';
 import { RawRType, RType } from '../../../../model/type';
@@ -56,9 +56,9 @@ export function tryNormalizeWhile(
 		lexeme:    content,
 		location,
 		info:      {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

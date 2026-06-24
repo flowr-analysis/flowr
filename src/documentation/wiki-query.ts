@@ -34,12 +34,11 @@ import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
 import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
-import { SliceDirection } from '../core/steps/all/static-slicing/00-slice';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
 } from '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import { escapeNewline } from './doc-util/doc-escape';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
@@ -49,6 +48,9 @@ import { executeCallGraphQuery } from '../queries/catalog/call-graph-query/call-
 import { executeRecursionQuery } from '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor';
 import { executeDoesCallQuery } from '../queries/catalog/does-call-query/does-call-query-executor';
 import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor';
+import { SliceDirection } from '../util/slice-direction';
+import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
+import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
 
 
 registerQueryDocumentation('call-context', {
@@ -69,8 +71,7 @@ Besides this, we provide the following ways to automatically categorize and link
 
 1. **Kind**         (\`kind\`): This is a general category that can be used to group calls together. For example, you may want to link all calls to \`plot\` to \`visualize\`.
 2. **Subkind**      (\`subkind\`): This is used to uniquely identify the respective call type when grouping the output. For example, you may want to link all calls to \`ggplot\` to \`plot\`.
-3. **Linked Calls** (\`linkTo\`): This links the current call to the last call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
-   For now, we _only_ offer support for linking to the last call, as the current flow dependency over-approximation is not stable.
+3. **Linked Calls** (\`linkTo\`): This links the current call to the last/nested/.. call of the given kind. This way, you can link a call like \`points\` to the latest graphics plot etc.
 4. **Aliases**      (\`includeAliases\`): Consider a case like \`f <- function_of_interest\`, do you want calls to \`f\` to be included in the results? There is probably no need to combine this with a global call target!
 
 It's also possible to filter the results based on the following properties:
@@ -546,7 +547,7 @@ registerQueryDocumentation('df-shape', {
 	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
-		const criterion = '2@x' as SingleSlicingCriterion;
+		const criterion = '2@x' as SlicingCriterion;
 		return `
 This query infers all shapes of dataframes within the code. For example, you can use:
 ${
@@ -635,7 +636,7 @@ registerQueryDocumentation('static-slice', {
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
 	buildExplanation: async(shell: RShell) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
-		const criteria = ['3@z','4@x'] as SlicingCriteria;
+		const criteria = ['3@z', '4@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
@@ -644,7 +645,7 @@ To specify a variable of interest, you have to present flowR with a [slicing cri
 
 To exemplify the capabilities, consider the following code:
 ${codeBlock('r', exampleCode)}
-If you are interested in the parts required for the use of \`x\` in the last line, you can use the following query:
+If you are interested in the parts required for the use of \`x\` in the last line and \`z\`, you can use the following query:
 
 ${
 	await showQuery(shell, exampleCode, [{
@@ -679,6 +680,64 @@ ${
 You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
 This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
 		`;
+	}
+});
+
+registerQueryDocumentation('provenance', {
+	name:             'Provenance Query',
+	type:             'active',
+	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
+	functionName:     executeProvenanceQuery.name,
+	functionFile:     '../queries/catalog/provenance-query/provenance-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
+		const criterion: SlicingCriterion = '4@x';
+		return `
+Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion), flowR will return the provenance
+of the given program element (i.e., all related vertices in a non-interprocedural and non-context sensitive backward slice).
+
+To exemplify the capabilities, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the provenance of the \`x\` in the last line you can use:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'provenance',
+		criterion
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+}
+`;
+	}
+});
+
+registerQueryDocumentation('input-sources', {
+	name:             'Input Sources Query',
+	type:             'active',
+	shortDescription: 'Classify the input sources of function calls',
+	functionName:     executeInputSourcesQuery.name,
+	functionFile:     '../queries/catalog/input-sources-query/input-sources-query-executor.ts',
+	buildExplanation: async(shell: RShell) => {
+		const exampleCode = `
+f <- function(x) {
+	x <- x * 2
+	print(x)
+}`.trim();
+		const criterion: SlicingCriterion = '3@print';
+		return `
+Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) to
+something like a function call, flowR classifies the types of all input sources (e.g., arguments).
+
+To exemplify the query, consider the following code:
+${codeBlock('r', exampleCode)}
+If you are interested in the input-sources of the \`print\` call, you can use:
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'input-sources',
+		criterion
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+}
+`;
 	}
 });
 
@@ -851,7 +910,7 @@ registerQueryDocumentation('location-map', {
 	functionFile:     '../queries/catalog/location-map-query/location-map-query-executor.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1\nx * 2';
-		const criteria = ['1@x','2@x'] as SlicingCriteria;
+		const criteria = ['1@x', '2@x'] as SlicingCriteria;
 		return `
 A query like the ${linkToQueryOfName('id-map')} query can return a huge result, especially for larger scripts.
 If you are not interested in all of the information contained within the full map, you can use the location map query to get a simple mapping of ids to their location in the source file.   
@@ -931,7 +990,7 @@ ${tocForQueryType('virtual')}
 
 <summary>Detailed Query Format (Automatically Generated)</summary>
 
-Although it is probably better to consult the detailed explanations below, if you want to have a look at the schema, here is its description:
+Although it is probably better to consult the detailed explanations, if you want to have a look at the schema, here is its description:
 
 ${describeSchema(QueriesSchema(), markdownFormatter)}
 
@@ -968,9 +1027,9 @@ Just as an example, the following ${linkToQueryOfName('call-context')} finds all
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
 
-${await explainQueries(shell, ctx,'active')}
+${await explainQueries(shell, ctx, 'active')}
 
-${await explainQueries(shell, ctx,'virtual')}
+${await explainQueries(shell, ctx, 'virtual')}
 `;
 	}
 }

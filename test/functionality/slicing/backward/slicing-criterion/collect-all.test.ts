@@ -1,26 +1,26 @@
 import { retrieveNormalizedAst, withShell } from '../../../_helper/shell';
-import { normalizeIdToNumberIfPossible } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type TestLabel , label , decorateLabelContext } from '../../../_helper/label';
+import { type TestLabel, label, decorateLabelContext } from '../../../_helper/label';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { decorateAst } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type SlicingCriteriaFilter , collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
-import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../../../../../src/slicing/criterion/parse';
+import { type SlicingCriteriaFilter, collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/collect-all';
+import { SlicingCriteria } from '../../../../../src/slicing/criterion/parse';
 import type { SupportedFlowrCapabilityId } from '../../../../../src/r-bridge/data/get';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { describe, assert, test } from 'vitest';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 function assertRetrievedIdsWith(shell: RShell, name: string | TestLabel, input: string, filter: SlicingCriteriaFilter, ...expected: SlicingCriteria[]) {
 	return test(decorateLabelContext(name, ['slice']), async() => {
 		const ast = await retrieveNormalizedAst(shell, input);
 		const decorated = decorateAst(ast.ast, {});
 		const got = [...collectAllSlicingCriteria(decorated.ast, filter)]
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap))
-			.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme }));
+			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap))
+			.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme }));
 		const expectedMapped = expected
-			.flatMap(criteria => convertAllSlicingCriteriaToIds(criteria, decorated.idMap));
+			.flatMap(criteria => SlicingCriteria.decodeAll(criteria, decorated.idMap));
 
-		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: normalizeIdToNumberIfPossible(m.id), name: decorated.idMap.get(normalizeIdToNumberIfPossible(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
+		assert.deepStrictEqual(got, expectedMapped.map(m => ({ id: NodeId.normalize(m.id), name: decorated.idMap.get(NodeId.normalize(m.id))?.lexeme })), `mapped: ${JSON.stringify(expectedMapped)}`);
 	});
 }
 
@@ -50,7 +50,7 @@ u <<- function(a = NULL, b = NA, c, d=7, e=x, f=TRUE, g=FALSE, ...) {
   g <- 12 * NaN - Inf
   h <- function(x) { x + 1 }
   return(h(a + b))
-}`,[...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
+}`, [...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
 		[ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4:22' ], [ '5@a' ], [ '5@b' ]);
 	});
 }));

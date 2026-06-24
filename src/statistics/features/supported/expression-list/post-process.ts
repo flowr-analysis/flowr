@@ -16,7 +16,7 @@ import {
 	summarizeMeasurement
 } from '../../../../util/summarizer';
 
-type UsedExpressionListPostProcessing = ReplaceKeysForSummary<ExpressionListInfo, SummarizedWithProject>
+type UsedExpressionListPostProcessing = ReplaceKeysForSummary<ExpressionListInfo, SummarizedWithProject>;
 
 
 /**

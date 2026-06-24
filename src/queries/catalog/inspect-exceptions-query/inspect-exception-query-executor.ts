@@ -2,7 +2,7 @@ import type {
 	InspectExceptionQuery, InspectExceptionQueryResult
 } from './inspect-exception-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
@@ -13,11 +13,11 @@ import { calculateExceptionsOfFunction } from '../../../dataflow/fn/exceptions-o
  * Get the functions to consider in the call graph based on the given queries.
  */
 export async function getFunctionsToConsiderInCallGraph(
-	queries: readonly { filter?: readonly SingleSlicingCriterion[] }[],
+	queries: readonly { filter?: readonly SlicingCriterion[] }[],
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	onlyDefinitions = true
 ) {
-	let filters: SingleSlicingCriterion[] | undefined = undefined;
+	let filters: SlicingCriterion[] | undefined = undefined;
 	// filter will remain undefined if at least one of the queries wants all functions
 	for(const q of queries) {
 		if(q.filter === undefined) {
@@ -34,7 +34,7 @@ export async function getFunctionsToConsiderInCallGraph(
 	const filterFor = new Set<NodeId>();
 	if(filters) {
 		for(const f of filters) {
-			const i = tryResolveSliceCriterionToId(f, ast.idMap);
+			const i = SlicingCriterion.tryParse(f, ast.idMap);
 			if(i !== undefined) {
 				filterFor.add(i);
 			}
@@ -43,8 +43,10 @@ export async function getFunctionsToConsiderInCallGraph(
 
 	const cg = await analyzer.callGraph();
 
-	const fns = (onlyDefinitions || filterFor.size === 0 ? cg.verticesOfType(VertexType.FunctionDefinition) : cg.vertices(true))
-		.filter(([, v]) => filterFor.size === 0 || filterFor.has(v.id));
+	let fns = (onlyDefinitions || filterFor.size === 0 ? cg.verticesOfType(VertexType.FunctionDefinition) : cg.vertices(true));
+	if(filterFor.size > 0) {
+		fns = fns.filter(([id]) => filterFor.has(id));
+	}
 	return { cg, fns };
 }
 
@@ -56,8 +58,16 @@ export async function executeExceptionQuery({ analyzer }: BasicQueryData, querie
 	const { cg, fns } = await getFunctionsToConsiderInCallGraph(queries, analyzer);
 	const result: Record<NodeId, ExceptionPoint[]> = {};
 
-	for(const [id,] of fns) {
-		result[id] = calculateExceptionsOfFunction(id, cg);
+	for(const [id] of fns) {
+		if(result[id]) {
+			continue;
+		}
+		const res = calculateExceptionsOfFunction(id, cg, result);
+		for(const [k, v] of Object.entries(res) as [NodeId, ExceptionPoint[]][]) {
+			if(!result[k]) {
+				result[k] = v;
+			}
+		}
 	}
 
 	return {

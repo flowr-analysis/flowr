@@ -25,7 +25,7 @@ export enum ColorEffect {
 	Background = 40,
 }
 
-export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions
+export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions;
 
 export interface ColorFormatOptions {
 	color:  Colors

@@ -5,14 +5,18 @@
  */
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
-import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition } from './identifier';
+import type {
+	BrandedNamespace,
+	IdentifierDefinition,
+	InGraphIdentifierDefinition
+} from './identifier';
+import { Identifier } from './identifier';
 import { guard } from '../../util/assert';
 import type { ControlDependency } from '../info';
 import { happensInEveryBranch } from '../info';
-import type { FlowrConfigOptions } from '../../config';
-import { mergeDefinitionsForPointer } from './define';
 import { uniqueMergeValuesInDefinitions } from './append';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { log } from '../../util/log';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
@@ -42,10 +46,14 @@ let environmentIdCounter = 1; // Zero is reserved for built-in environment
 
 /** @see REnvironmentInformation */
 export class Environment implements IEnvironment {
-	readonly id;
+	readonly id: number;
+	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
+	n?:          string;
+	/** if created by a closure, the node id of that closure */
+	private c?:  NodeId;
 	parent:      Environment;
 	memory:      BuiltInMemory;
-	cache?:      BuiltInMemory;
+	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
@@ -56,6 +64,19 @@ export class Environment implements IEnvironment {
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
 		}
+	}
+
+	/** please only use if you know what you are doing */
+	public setClosureNodeId(nodeId: NodeId) {
+		this.c = nodeId;
+	}
+
+	/**
+	 * Provides the closure linked to this environment.
+	 * This is of importance if, for example, if you want to know the function definition associated with this environment.
+	 */
+	public get closure(): NodeId | undefined {
+		return this.c;
 	}
 
 	/**
@@ -69,6 +90,8 @@ export class Environment implements IEnvironment {
 
 		const parent = recurseParents ? this.parent.clone(recurseParents) : this.parent;
 		const clone = new Environment(parent, this.builtInEnv);
+		clone.c = this.c;
+		clone.n = this.n;
 		clone.memory = new Map(
 			this.memory.entries()
 				.map(([k, v]) => [k,
@@ -84,29 +107,24 @@ export class Environment implements IEnvironment {
 	/**
 	 * Define a new identifier definition within this environment.
 	 * @param definition  - The definition to add.
-	 * @param config      - The flowr configuration options.
 	 */
-	public define(definition: IdentifierDefinition & { name: Identifier }, { solver: { pointerTracking } }: FlowrConfigOptions): Environment {
-		const { name } = definition;
+	public define(definition: IdentifierDefinition & { name: Identifier }): Environment {
+		const [name, ns] = Identifier.toArray(definition.name);
+		if(ns !== undefined && this.n !== ns) {
+			return this.defineInNamespace(definition, ns);
+		}
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
-		if(definition.cds === undefined && !pointerTracking) {
+		if(definition.cds === undefined) {
 			newEnvironment.memory.set(name, [definition]);
 		} else {
 			const existing = newEnvironment.memory.get(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
 			if(
-				pointerTracking &&
-                existing !== undefined &&
+				existing !== undefined &&
                 inGraphDefinition.cds === undefined
 			) {
-				if(inGraphDefinition.indicesCollection !== undefined) {
-					const defs = mergeDefinitionsForPointer(existing, inGraphDefinition);
-					newEnvironment.memory.set(name, defs);
-				} else if((existing as InGraphIdentifierDefinition[])?.flatMap(i => i.indicesCollection ?? []).length > 0) {
-					// When indices couldn't be resolved, but indices where defined before, just add the definition
-					existing.push(definition);
-				}
+				newEnvironment.memory.set(name, [inGraphDefinition]);
 			} else if(existing === undefined || definition.cds === undefined) {
 				newEnvironment.memory.set(name, [definition]);
 			} else {
@@ -116,9 +134,40 @@ export class Environment implements IEnvironment {
 		return newEnvironment;
 	}
 
+	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {
+		if(this.n === ns) {
+			return this.define(definition);
+		}
+		// navigate to parent until either before built-in or matching namespace
+		const newEnvironment = this.clone(false);
+		let current = newEnvironment;
+		do{
+			if(current.n === ns) {
+				current.define(definition);
+				return newEnvironment;
+			} else if(current.parent && !current.parent.builtInEnv) {
+				// clone parent
+				current.parent = current.parent.clone(false);
+				current = current.parent;
+			} else {
+				break;
+			}
+		} while(current.n !== ns);
+		// we did not find the namespace, so we inject a new environment here
+		log.warn(`Defining ${Identifier.getName(definition.name)} in namespace ${ns}, which did not exist yet in the environment chain => create (r should fail or we miss attachment).`);
+		const env = new Environment(current.parent);
+		env.n = ns;
+		current.parent = env.define(definition);
+		return newEnvironment;
+	}
+
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
-		const { name } = definition;
-		const newEnvironment = this.clone(true);
+		const [name, ns] = Identifier.toArray(definition.name);
+		const newEnvironment = this.clone(false);
+		if(ns !== undefined && this.n !== ns) {
+			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);
+			return newEnvironment;
+		}
 		let current = newEnvironment;
 		let last = undefined;
 		let found = false;
@@ -129,6 +178,7 @@ export class Environment implements IEnvironment {
 				break;
 			}
 			last = current;
+			current.parent = current.parent.clone(false);
 			current = current.parent;
 		} while(!current.builtInEnv);
 		if(!found) {
@@ -144,7 +194,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
-		if(!other || this.builtInEnv) {
+		if(this.builtInEnv || this === other || !other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -152,30 +202,36 @@ export class Environment implements IEnvironment {
 			const hasMaybe = applyCds === undefined ? values.length === 0 || values.some(v => v.cds !== undefined) : true;
 			if(hasMaybe) {
 				const old = map.get(key);
+				if(!old && applyCds === undefined) {
+					map.set(key, values);
+					continue;
+				}
 				// we need to make a copy to avoid side effects for old reference in other environments
-				const updatedOld: IdentifierDefinition[] = old?.slice() ?? [];
+				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
 					const { nodeId, definedAt } = v;
-					const index = updatedOld.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
+					const index = updated.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
 					if(index) {
 						continue;
 					}
 					if(applyCds === undefined) {
-						updatedOld.push(v);
+						updated.push(v);
 					} else {
-						updatedOld.push({
+						updated.push({
 							...v,
 							cds: v.cds ? applyCds.concat(v.cds) : applyCds.slice()
 						});
 					}
 				}
-				map.set(key, updatedOld);
+				map.set(key, updated);
 			} else {
 				map.set(key, values);
 			}
 		}
 
 		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
+		out.c = this.c;
+		out.n = this.n;
 		out.memory = map;
 		return out;
 	}
@@ -185,7 +241,7 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
-		if(!other || this.builtInEnv) {
+		if(!other || this.builtInEnv || this === other || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -203,8 +259,13 @@ export class Environment implements IEnvironment {
 		return out;
 	}
 
-	public remove(name: Identifier) {
+	public remove(id: Identifier) {
 		if(this.builtInEnv) {
+			return this;
+		}
+		const [name, ns] = Identifier.toArray(id);
+		if(ns !== undefined && this.n !== ns) {
+			this.parent.remove(id);
 			return this;
 		}
 		const definition = this.memory.get(name);

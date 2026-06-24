@@ -1,4 +1,4 @@
-import { type RShellExecutionOptions , getDefaultRShellOptions } from './shell';
+import { type RShellExecutionOptions, getDefaultRShellOptions } from './shell';
 import { deepMergeObject } from '../util/objects';
 import { spawnSync } from 'child_process';
 import type { SemVer } from 'semver';
@@ -35,7 +35,7 @@ export class RShellExecutor implements SyncParser<string> {
 	 * Adds commands that should be executed for every {@link RShellExecutor#run|run}.
 	 */
 	public addPrerequisites(commands: string | string[]): this {
-		this.prerequisites.push(...(typeof commands == 'string' ? [commands] : commands));
+		this.prerequisites.push(...(typeof commands === 'string' ? [commands] : commands));
 		return this;
 	}
 

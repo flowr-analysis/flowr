@@ -54,9 +54,9 @@ export function tryNormalizeFunctionDefinition(data: NormalizerData, mappedWithN
 		parameters: parameters as RParameter[],
 		body:       ensureExpressionList(body[0]),
 		info:       {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

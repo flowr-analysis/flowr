@@ -1,4 +1,5 @@
-import type { Leaf, Location, NoInfo, RNode } from '../model';
+import type { Leaf, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RNumberValue } from '../../../convert-values';
 
@@ -13,8 +14,15 @@ export interface RNumber<Info = NoInfo> extends Leaf<Info>, Location {
 }
 
 /**
- * Checks whether the given node is an RNumber.
+ * Helper for working with {@link RNumber} AST nodes.
  */
-export function isRNumber(node: RNode | undefined): node is RNumber {
-	return node?.type === RType.Number;
-}
+export const RNumber = {
+	...RNode,
+	name: 'RNumber',
+	/**
+	 * Type guard for {@link RNumber} nodes.
+	 */
+	is<Info = NoInfo>(this: void, node: RNode<Info> | undefined): node is RNumber<Info> {
+		return node?.type === RType.Number;
+	}
+} as const;

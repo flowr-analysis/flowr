@@ -1,13 +1,13 @@
 import { assertUnreachable } from '../../util/assert';
 
 export const enum CacheInvalidationEventType {
-    Full = 'full'
+	Full = 'full'
 }
 export type CacheInvalidationEvent =
-    { type: CacheInvalidationEventType.Full }
+	{ type: CacheInvalidationEventType.Full };
 
 export interface CacheInvalidationEventReceiver {
-    receive(event: CacheInvalidationEvent): void
+	receive(event: CacheInvalidationEvent): void
 }
 
 /**

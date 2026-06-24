@@ -4,19 +4,44 @@ import type { DataflowGraph } from '../graph/graph';
 import type { ControlDependency } from '../info';
 import type { REnvironmentInformation } from './environment';
 import { resolveByName } from './resolve-by-name';
+import { VertexType } from '../graph/vertex';
 
 function appToCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): void{
-	if(toAdd) {
-		target.push(...toAdd.filter(c => !target.find(tc => tc.id === c.id && tc.when === c.when)));
+	if(!toAdd) {
+		return;
+	}
+	for(const c of toAdd) {
+		let found = false;
+		for(const tc of target) {
+			if(tc.id === c.id && tc.when === c.when) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			target.push(c);
+		}
 	}
 }
 
 function concatCdsUnique(target: ControlDependency[], toAdd: readonly ControlDependency[] | undefined): ControlDependency[] {
-	if(toAdd) {
-		return target.concat(toAdd.filter(c => !target.find(tc => tc.id === c.id && tc.when === c.when)));
-	} else {
+	if(!toAdd) {
 		return target;
 	}
+	const result = Array.from(target);
+	for(const c of toAdd) {
+		let found = false;
+		for(const tc of target) {
+			if(tc.id === c.id && tc.when === c.when) {
+				found = true;
+				break;
+			}
+		}
+		if(!found) {
+			result.push(c);
+		}
+	}
+	return result;
 }
 
 /**
@@ -35,7 +60,7 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
 			}
 		}
 	}
-	const node = graph.getVertex(ref.nodeId, true);
+	const node = graph.getVertex(ref.nodeId);
 	if(node) {
 		if(node.cds) {
 			appToCdsUnique(node.cds, defaultCd);
@@ -58,5 +83,47 @@ export function makeReferenceMaybe(ref: IdentifierReference, graph: DataflowGrap
  * @see {@link makeReferenceMaybe}
  */
 export function makeAllMaybe(references: readonly IdentifierReference[] | undefined, graph: DataflowGraph, environments: REnvironmentInformation, includeDefs: boolean, applyCds: ControlDependency[] | undefined = undefined): IdentifierReference[] {
-	return references?.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds)) ?? [];
+	if(references === undefined || references.length === 0) {
+		return [];
+	}
+	return references.map(ref => makeReferenceMaybe(ref, graph, environments, includeDefs, applyCds));
+}
+
+/**
+ * apply the given cds to all elements in the graph and also transform the given references similar to {@link makeAllMaybe}.
+ */
+export function applyCdsToAllInGraphButConstants(graph: DataflowGraph, references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
+	for(const [,v] of graph.vertices(true)) {
+		if(v.tag === VertexType.Value) {
+			continue;
+		}
+		if(v.cds) {
+			appToCdsUnique(v.cds, cds);
+		} else {
+			v.cds = Array.from(cds);
+		}
+	}
+	for(const ref of references) {
+		if(ref.cds) {
+			appToCdsUnique(ref.cds, cds);
+		} else {
+			ref.cds = Array.from(cds);
+		}
+	}
+}
+
+/**
+ * apply the given cds to all given references, but not to the graph. This is useful if we want to mark the references as maybe without marking all other nodes in the graph as maybe.
+ */
+export function applyCdToReferences(references: readonly IdentifierReference[], cds: readonly ControlDependency[]): void {
+	if(cds.length === 0) {
+		return;
+	}
+	for(const ref of references) {
+		if(ref.cds) {
+			appToCdsUnique(ref.cds, cds);
+		} else {
+			ref.cds = Array.from(cds);
+		}
+	}
 }

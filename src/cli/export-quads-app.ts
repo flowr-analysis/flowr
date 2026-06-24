@@ -4,8 +4,8 @@ import { log } from '../util/log';
 import { allRFilesFrom } from '../util/files';
 import { processCommandLineArgs } from './common/script';
 import { RShell } from '../r-bridge/shell';
-import { type RParseRequestFromFile , retrieveNormalizedAstFromRCode } from '../r-bridge/retriever';
-import { getConfig, getEngineConfig } from '../config';
+import { type RParseRequestFromFile, retrieveNormalizedAstFromRCode } from '../r-bridge/retriever';
+import { FlowrConfig } from '../config';
 
 export interface QuadsCliOptions {
 	verbose: boolean
@@ -15,7 +15,7 @@ export interface QuadsCliOptions {
 	output:  string | undefined
 }
 
-const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
+const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [], {
 	subtitle: 'Generate RDF N-Quads from the AST of a given R script',
 	examples: [
 		'{bold -i} {italic example.R} {bold --output} {italic "example.quads"}',
@@ -23,7 +23,7 @@ const options = processCommandLineArgs<QuadsCliOptions>('export-quads', [],{
 	]
 });
 
-const shell = new RShell(getEngineConfig(getConfig(), 'r-shell'));
+const shell = new RShell(FlowrConfig.getForEngine(FlowrConfig.fromFile(), 'r-shell'));
 
 async function writeQuadForSingleFile(request: RParseRequestFromFile, output: string) {
 	const normalized = await retrieveNormalizedAstFromRCode(request, shell);

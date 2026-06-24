@@ -46,7 +46,7 @@ The analysis required _${printAsMs(duration)}_ (including parsing and normalizat
 	const str = JSON.stringify(queries, jsonReplacer, collapseQuery ? ' ' : 2);
 	return `
 
-${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g,'$1 ').replace(/\s{2,}([\]}])/g,' $1') : str)}
+${codeBlock('json', collapseQuery ? str.split('\n').join(' ').replace(/([{[])\s{2,}/g, '$1 ').replace(/\s{2,}([\]}])/g, ' $1') : str)}
 
 ${(function() {
 	if((queries.length === 1 && Object.keys(queries[0]).length === 1) || shorthand) {

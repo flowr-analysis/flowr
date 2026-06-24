@@ -1,11 +1,11 @@
 import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsResult } from './does-call-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import { log } from '../../../util/log';
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../../../dataflow/graph/call-graph';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
-import { dropBuiltInPrefix, isBuiltIn } from '../../../dataflow/environments/built-in';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import type { CallGraph } from '../../../dataflow/graph/call-graph';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -21,7 +21,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 			log.warn(`Duplicate query id '${id}' in does-call queries, SKIP.`);
 			continue;
 		}
-		const nodeId = tryResolveSliceCriterionToId(query.call, idMap);
+		const nodeId = SlicingCriterion.tryParse(query.call, idMap);
 		if(!nodeId) {
 			results[id] = false;
 			continue;
@@ -37,7 +37,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 	};
 }
 
-type CheckCallMatch = (vtx: { id: NodeId, name?: string }, cg: CallGraph) => boolean
+type CheckCallMatch = (vtx: { id: NodeId, name?: Identifier }, cg: CallGraph) => boolean;
 
 function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 	switch(constraint.type) {
@@ -48,7 +48,7 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 				return (vtx) => vtx.name === constraint.name;
 			} else {
 				const regex = new RegExp(constraint.name);
-				return (vtx) => 'name' in vtx && vtx.name ? regex.test(vtx.name) : false;
+				return (vtx) => 'name' in vtx && vtx.name ? regex.test(Identifier.getName(vtx.name)) : false;
 			}
 		case 'and': {
 			let matchersAndRemain = constraint.calls.map(makeCallMatcher);
@@ -82,8 +82,8 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 			continue;
 		}
 		visited.add(cur);
-		if(isBuiltIn(cur)) {
-			const name = dropBuiltInPrefix(cur);
+		if(NodeId.isBuiltIn(cur)) {
+			const name = NodeId.fromBuiltIn(cur);
 			if(constraints({ id: cur, name } as Required<DataflowGraphVertexFunctionCall>, cg)) {
 				return { call: start };
 			}

@@ -1,4 +1,4 @@
-import { type DataflowGraph, getReferenceOfArgument } from '../../graph/graph';
+import { type DataflowGraph, FunctionArgument } from '../../graph/graph';
 import type { DataflowGraphVertexFunctionCall } from '../../graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -40,7 +40,7 @@ export function getArgumentStringValue(
 	}
 	if(argumentIndex === 'unnamed') {
 		// return all unnamed arguments
-		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument).filter(isNotUndefined);
+		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference).filter(isNotUndefined);
 
 		const map = new Map<NodeId, Set<string|undefined>>();
 		for(const ref of references) {
@@ -57,7 +57,7 @@ export function getArgumentStringValue(
 		return map;
 	}
 	if(argumentIndex < vertex.args.length) {
-		const arg = getReferenceOfArgument(vertex.args[argumentIndex]);
+		const arg = FunctionArgument.getReference(vertex.args[argumentIndex]);
 		if(!arg) {
 			return undefined;
 		}
@@ -124,7 +124,6 @@ function resolveBasedOnConfig(variableResolve: VariableResolve, graph: DataflowG
 					return undefined;
 				}
 				values.push(...elements);
-
 			} else {
 				return undefined;
 			}

@@ -20,9 +20,9 @@ export function normalizeNext(data: NormalizerData, obj: JsonEntry): RNext {
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

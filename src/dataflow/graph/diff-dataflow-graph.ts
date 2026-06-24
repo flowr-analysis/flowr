@@ -1,32 +1,24 @@
-import { type FunctionArgument, type OutgoingEdges , isNamedArgument } from './graph';
-import { type GenericDiffConfiguration, type GenericDifferenceInformation , setDifference } from '../../util/diff';
+import { FunctionArgument, type OutgoingEdges } from './graph';
+import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
 import { VertexType } from './vertex';
-import { type DataflowGraphEdge , edgeTypesToNames, splitEdgeTypes } from './edge';
-import { type NodeId , recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { DfEdge } from './edge';
+import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import { Identifier } from '../environments/identifier';
 import { diffEnvironmentInformation, diffIdentifierReferences } from '../environments/diff';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { diffControlDependencies } from '../info';
-import { type GraphDiffContext, type NamedGraph , initDiffContext, GraphDifferenceReport } from '../../util/diff-graph';
+import type { GraphDifferenceReport, GraphDiffContext } from '../../util/diff-graph';
 import type { HookInformation } from '../hooks';
 
-/**
- * Compare two dataflow graphs and return a report on the differences.
- * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- * @see {@link diffOfControlFlowGraphs} - for control flow graphs
- */
-export function diffOfDataflowGraphs(left: NamedGraph, right: NamedGraph, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
-	if(left.graph === right.graph) {
-		return new GraphDifferenceReport();
-	}
-	const ctx = initDiffContext(left, right, config);
-	diffDataflowGraph(ctx);
-	return ctx.report;
-}
 
-function diffDataflowGraph(ctx: GraphDiffContext): void {
+/**
+ * This is the underlying function to calculate the difference based on a given context.
+ * Use {@link Dataflow.diff} to calculate the diff of two graphs.
+ */
+export function diffDataflowGraph(ctx: GraphDiffContext): void {
 	diffRootVertices(ctx);
 	diffVertices(ctx);
 	diffOutgoingEdges(ctx);
@@ -89,21 +81,6 @@ function diffFunctionArgumentsReferences(fn: NodeId, a: IdentifierReference | '<
 }
 
 /**
- * Checks whether two function argument lists are equal.
- */
-export function equalFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[]): boolean {
-	const ctx: GenericDifferenceInformation<GraphDifferenceReport> = {
-		report:    new GraphDifferenceReport(),
-		leftname:  'left',
-		rightname: 'right',
-		position:  '',
-		config:    {}
-	};
-	diffFunctionArguments(fn, a, b, ctx);
-	return ctx.report.isEqual();
-}
-
-/**
  * Compares two function argument lists and reports differences.
  */
 export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionArgument[], b: false | readonly FunctionArgument[], ctx: GenericDifferenceInformation<GraphDifferenceReport>): void {
@@ -123,10 +100,10 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
 			if(aArg !== bArg) {
 				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, empty) the argument differs: ${JSON.stringify(aArg)} vs ${JSON.stringify(bArg)}.`);
 			}
-		} else if(isNamedArgument(aArg) && isNamedArgument(bArg)) {
+		} else if(FunctionArgument.isNamed(aArg) && FunctionArgument.isNamed(bArg)) {
 			// must have the same name
 			if(aArg.name !== bArg.name) {
-				ctx.report.addComment(`${ctx.position }In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg.name} vs ${bArg.name}.`);
+				ctx.report.addComment(`${ctx.position}In argument #${i} (of ${ctx.leftname}, named) the name differs: ${aArg.name} vs ${bArg.name}.`);
 				continue;
 			}
 			diffFunctionArgumentsReferences(fn, aArg, bArg, {
@@ -252,6 +229,10 @@ export function diffVertices(ctx: GraphDiffContext): void {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow in-read-parameters. `
 				});
+				setDifference(new Set(rInfo.mode ?? []), new Set(lInfo.mode ?? []), {
+					...ctx,
+					position: `${ctx.position}Vertex ${id} differs in function definition mode. `
+				});
 				setDifference(lInfo.subflow.graph, rInfo.subflow.graph, {
 					...ctx,
 					position: `${ctx.position}Vertex ${id} differs in subflow graph. `
@@ -321,9 +302,10 @@ function diffReferenceLists(fn: NodeId, a: readonly IdentifierReference[] | read
 	const aSorted = [...a].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	const bSorted = [...b].sort((x, y) => x.nodeId.toString().localeCompare(y.nodeId.toString()));
 	for(let i = 0; i < aSorted.length; ++i) {
+		const inam = aSorted[i].name;
 		diffIdentifierReferences(aSorted[i], bSorted[i], {
 			...ctx,
-			position: `${ctx.position}In reference #${i} ("${aSorted[i].name ?? '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
+			position: `${ctx.position}In reference #${i} ("${inam ? Identifier.toString(inam) : '?'}", id: ${aSorted[i].nodeId ?? '?'}) `,
 		});
 	}
 }
@@ -354,9 +336,9 @@ function diffHooks(left: HookInformation[], right: HookInformation[], ctx: Graph
 	}
 }
 
-function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: GraphDiffContext, id: NodeId, target: NodeId) {
-	const edgeTypes = splitEdgeTypes(edge.types);
-	const otherEdgeTypes = splitEdgeTypes(otherEdge.types);
+function diffEdge(edge: DfEdge, otherEdge: DfEdge, ctx: GraphDiffContext, id: NodeId, target: NodeId) {
+	const edgeTypes = DfEdge.splitTypes(edge);
+	const otherEdgeTypes = DfEdge.splitTypes(otherEdge);
 	if((edgeTypes.length < otherEdgeTypes.length && !ctx.config.leftIsSubgraph) || (edgeTypes.length > otherEdgeTypes.length && !ctx.config.rightIsSubgraph)) {
 		ctx.report.addComment(
 			`Target of ${id}->${target} in ${ctx.leftname} differs in number of edge types: ${JSON.stringify([...edgeTypes])} vs ${JSON.stringify([...otherEdgeTypes])}`,
@@ -365,7 +347,7 @@ function diffEdge(edge: DataflowGraphEdge, otherEdge: DataflowGraphEdge, ctx: Gr
 	}
 	if(edge.types !== otherEdge.types) {
 		ctx.report.addComment(
-			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...edgeTypesToNames(edge.types)])} vs ${JSON.stringify([...edgeTypesToNames(otherEdge.types)])}`,
+			`Target of ${id}->${target} in ${ctx.leftname} differs in edge types: ${JSON.stringify([...DfEdge.typesToNames(edge)])} vs ${JSON.stringify([...DfEdge.typesToNames(otherEdge)])}`,
 			{ tag: 'edge', from: id, to: target }
 		);
 	}

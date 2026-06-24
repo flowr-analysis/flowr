@@ -26,11 +26,11 @@ describe.sequential('Defined Functions', withShell(shell => {
 				['usedParameterNames', [['x']]],
 				['allLambdas', [['\\(x) x']]],
 				['all-definitions', [ [{
-					location:           [1,1],
+					location:           [1, 1],
 					callsites:          [],
 					numberOfParameters: 1,
 					returns:            [
-						{ location: [1,6] }
+						{ location: [1, 6] }
 					],
 					length: {
 						lines:                   1,

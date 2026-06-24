@@ -1,4 +1,4 @@
-import { type NormalizerData , ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureChildrenAreLhsAndRhsOrdered, retrieveMetaStructure, retrieveOpName } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
@@ -57,12 +57,11 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			lexeme:       data.currentLexeme ?? content,
 			location,
 			functionName: {
-				type:      RType.Symbol,
+				type:   RType.Symbol,
 				location,
-				lexeme:    content,
+				lexeme: content,
 				content,
-				namespace: undefined,
-				info:      {}
+				info:   {}
 			},
 			arguments: [
 				{
@@ -101,9 +100,9 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			rhs:    parsedRhs,
 			lexeme: content,
 			info:   {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: data.currentLexeme
 			}
 		};
 	} else {
@@ -115,9 +114,9 @@ function parseBinaryOp(data: NormalizerData, lhs: NamedJsonEntry, operator: Name
 			operator: operationName,
 			lexeme:   content,
 			info:     {
-				fullRange:        data.currentRange,
-				additionalTokens: [],
-				fullLexeme:       data.currentLexeme
+				fullRange:  data.currentRange,
+				adToks:     [],
+				fullLexeme: data.currentLexeme
 			}
 		};
 	}

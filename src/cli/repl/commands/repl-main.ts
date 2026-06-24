@@ -1,4 +1,4 @@
-import { type OutputFormatter , formatter } from '../../../util/text/ansi';
+import { type OutputFormatter, formatter } from '../../../util/text/ansi';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 
 /**

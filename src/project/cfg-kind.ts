@@ -11,6 +11,10 @@ export enum CfgKind {
 	 */
 	NoDataflow,
 	/**
+	 * CFG without function definition vertices and without dataflow information.
+	 */
+	NoFunctionDefs,
+	/**
 	 * A CFG version that is much quicker and does not apply any simplifications or dataflow information.
 	 */
 	Quick

@@ -35,7 +35,7 @@ export interface HelperScriptInformation extends BaseScriptInformation {
 	masterScripts: string[]
 }
 
-export type ScriptInformation = MasterScriptInformation | HelperScriptInformation
+export type ScriptInformation = MasterScriptInformation | HelperScriptInformation;
 
 /**
  * We hold `_scripts` internally, as the modifiable variant and export the readonly scripts

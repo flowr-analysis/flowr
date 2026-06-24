@@ -3,9 +3,9 @@ import type { Writable } from 'ts-essentials';
 import { emptyCommonSyntaxTypeCounts, updateCommonSyntaxTypeCounts } from '../../common-syntax-probability';
 import { postProcess } from './post-process';
 import type { RNodeWithParent } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { visitAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { OperatorDatabase, Operators } from '../../../../r-bridge/lang-4.x/ast/model/operators';
+import { RNode } from '../../../../r-bridge/lang-4.x/ast/model/model';
 
 
 const initialAssignmentInfo = {
@@ -17,14 +17,14 @@ const initialAssignmentInfo = {
 	nestedOperatorAssignment: 0
 };
 
-export type AssignmentInfo = Writable<typeof initialAssignmentInfo>
+export type AssignmentInfo = Writable<typeof initialAssignmentInfo>;
 
 export const AssignmentOperators: ReadonlySet<string> = new Set(Operators.filter(op => OperatorDatabase[op].usedAs === 'assignment'));
 
 function visitAssignment(info: AssignmentInfo, input: FeatureProcessorInput): void {
 	const assignmentStack: RNodeWithParent[] = [];
 
-	visitAst(input.normalizedRAst.ast.files.map(r => r.root),
+	RNode.visitAst(input.normalizedRAst.ast.files.map(r => r.root),
 		node => {
 			if(node.type !== RType.BinaryOp || !AssignmentOperators.has(node.operator)) {
 				return;

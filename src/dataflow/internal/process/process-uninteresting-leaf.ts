@@ -1,4 +1,4 @@
-import { initializeCleanDataflowInformation, type DataflowInformation } from '../../info';
+import { DataflowInformation } from '../../info';
 import type { DataflowProcessorInformation } from '../../processor';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 
@@ -9,5 +9,5 @@ import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/proce
  * This can be used to ignore nodes that do not affect dataflow analysis.
  */
 export function processUninterestingLeaf<OtherInfo>(leaf: RNodeWithParent, info: DataflowProcessorInformation<OtherInfo>): DataflowInformation {
-	return initializeCleanDataflowInformation(leaf.info.id, info);
+	return DataflowInformation.initialize(leaf.info.id, info);
 }

@@ -121,6 +121,12 @@ Control flow extraction:              ${print(stats.commonMeasurements, 'extract
 Control flow extraction per token:    ${formatNanoseconds(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatNanoseconds(stats.controlFlowTimePerToken.raw)}`;
 	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${print(stats.commonMeasurements, 'extract call graph')}
+Call graph extraction per token:      ${formatNanoseconds(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatNanoseconds(stats.callGraphTimePerToken.raw)}`;
+	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
 Dataframe shape inference:            ${print(stats.commonMeasurements, 'infer data frame shapes')}
@@ -177,9 +183,6 @@ Dataflow:
   Number of edges:               ${pad(stats.dataflow.numberOfEdges)}
   Number of calls:               ${pad(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${pad(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${pad(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${pad(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${pad(stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${convertNumberToNiceBytes(stats.dataflow.sizeOfObject)}`;
 
 	if(stats.dataFrameShape !== undefined) {
@@ -236,6 +239,12 @@ Control flow extraction:              ${formatSummarizedTimeMeasure(stats.common
 Control flow extraction per token:    ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.normalized)}
 Control flow extraction per R token:  ${formatSummarizedTimeMeasure(stats.controlFlowTimePerToken.raw)}`;
 	}
+	if(stats.commonMeasurements.has('extract call graph') && stats.callGraphTimePerToken !== undefined) {
+		result += `
+Call graph extraction:                ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('extract call graph'))}
+Call graph extraction per token:      ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.normalized)}
+Call graph extraction per R token:    ${formatSummarizedTimeMeasure(stats.callGraphTimePerToken.raw)}`;
+	}
 	if(stats.commonMeasurements.has('infer data frame shapes') && stats.dataFrameShapeTimePerToken !== undefined) {
 		result += `
 Dataframe shape inference:            ${formatSummarizedTimeMeasure(stats.commonMeasurements.get('infer data frame shapes'))}
@@ -285,9 +294,6 @@ Dataflow:
   Number of edges:               ${formatSummarizedMeasure(stats.dataflow.numberOfEdges)}
   Number of calls:               ${formatSummarizedMeasure(stats.dataflow.numberOfCalls)}
   Number of function defs:       ${formatSummarizedMeasure(stats.dataflow.numberOfFunctionDefinitions)}
-  Number of stored Vtx indices:  ${formatSummarizedMeasure(stats.dataflow.storedVertexIndices)}
-  Number of stored Env indices:  ${formatSummarizedMeasure(stats.dataflow.storedEnvIndices)}
-  Number of overwritten indices: ${formatSummarizedMeasure (stats.dataflow.overwrittenIndices)}
   Size of graph:                 ${formatSummarizedMeasure(stats.dataflow.sizeOfObject, convertNumberToNiceBytes)}`;
 
 	if(stats.dataFrameShape !== undefined) {
@@ -299,6 +305,7 @@ Dataframe shape inference:
   Number of abstract value nodes: ${formatSummarizedMeasure(stats.dataFrameShape.numberOfValueNodes)}
   Number of entries per node:     ${formatSummarizedMeasure(stats.dataFrameShape.numberOfEntriesPerNode)}
   Number of operations:           ${formatSummarizedMeasure(stats.dataFrameShape.numberOfOperations)}
+  Number of total exact:          ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalExact)}
   Number of total values:         ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalValues)}
   Number of total top:            ${formatSummarizedMeasure(stats.dataFrameShape.numberOfTotalTop)}
   Inferred column names per node: ${formatSummarizedMeasure(stats.dataFrameShape.inferredColNames)}

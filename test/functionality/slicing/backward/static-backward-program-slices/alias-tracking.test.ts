@@ -1,16 +1,16 @@
 import { withShell } from '../../../_helper/shell';
 import { describe, expect, test } from 'vitest';
-import type { Identifier } from '../../../../../src/dataflow/environments/identifier';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 import type { RShell } from '../../../../../src/r-bridge/shell';
 import { PipelineExecutor } from '../../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../../src/core/steps/pipeline/default-pipelines';
-import { defaultConfigOptions } from '../../../../../src/config';
 import { setFrom } from '../../../../../src/dataflow/eval/values/sets/set-constants';
 import { valueFromTsValue } from '../../../../../src/dataflow/eval/values/general';
 import { Top } from '../../../../../src/dataflow/eval/values/r-value';
 import { trackAliasInEnvironments } from '../../../../../src/dataflow/eval/resolve/alias-tracking';
 import type { FlowrAnalyzerContext } from '../../../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../../src/config';
 
 async function runPipeline(code: string, shell: RShell, ctx: FlowrAnalyzerContext) {
 	return await new PipelineExecutor(DEFAULT_DATAFLOW_PIPELINE, {
@@ -34,12 +34,14 @@ describe.sequential('Alias Tracking', withShell(shell => {
 		const ctx = contextFromInput(code);
 		const result = await runPipeline(code, shell, ctx);
 		const values = trackAliasInEnvironments(
-			defaultConfigOptions.solver.variables,
-			identifier as Identifier,
+			Identifier.make(identifier),
 			result.dataflow.environment,
-			ctx,
-			result.dataflow.graph,
-			result.dataflow.graph.idMap
+			{
+				resolve: FlowrConfig.default().solver.variables,
+				ctx,
+				graph:   result.dataflow.graph,
+				idMap:   result.dataflow.graph.idMap
+			}
 		);
 		expect(values).toEqual(expectedValues);
 	});

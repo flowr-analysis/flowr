@@ -33,9 +33,9 @@ export function tryNormalizeRepeat(data: NormalizerData, [repeatToken, bodyToken
 		lexeme: content,
 		body:   ensureExpressionList(parseBody),
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

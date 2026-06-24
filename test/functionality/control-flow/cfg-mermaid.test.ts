@@ -1,7 +1,6 @@
 import { withTreeSitter } from '../_helper/shell';
 import { assert, describe, test } from 'vitest';
-import type { SingleSlicingCriterion } from '../../../src/slicing/criterion/parse';
-import { tryResolveSliceCriterionToId } from '../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import type { CfgSimplificationPassName } from '../../../src/control-flow/cfg-simplification';
@@ -15,7 +14,7 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 		{ simplifications, compact, selectedVertices }: {
 			simplifications?:  CfgSimplificationPassName[],
 			compact?:          boolean,
-			selectedVertices?: readonly SingleSlicingCriterion[]
+			selectedVertices?: readonly SlicingCriterion[]
 		} = {}
 	): void {
 		test(`Mermaid visualization for:\n${code}`, async() => {
@@ -24,7 +23,7 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 			const cfg = await analyzer.controlflow(simplifications);
 			const norm = await analyzer.normalize();
 			const translateIds = selectedVertices?.map(v =>
-				tryResolveSliceCriterionToId(v, norm.idMap)
+				SlicingCriterion.tryParse(v, norm.idMap)
 			).filter(isNotUndefined) ?? [];
 			const mermaid = cfgToMermaid(cfg, norm, {
 				prefix:         '',
@@ -51,9 +50,9 @@ describe('CFG Mermaid Visualization', withTreeSitter(parser => {
 		/RExpressionList/,
 		/RSymbol/,
 		/.*/,
-		/n1-exit/,
+		/n1-e/,
 		/n0.*n1/,
-		/n1-exit.*n0/,
+		/n1-e.*n0/,
 		/style n1.*/
 	]);
 	assertMermaidVisualization(`x <- true
@@ -67,7 +66,7 @@ if(x) {
 		/.*/,
 		/RBinaryOp/,
 		/.*/,
-		/n2-exit/,
+		/n2-e/,
 		/RIfThenElse/
 	]);
 	assertMermaidVisualization(`x <- true
@@ -78,17 +77,17 @@ if(x) {
 		/.*/,
 		/RFunctionCall/,
 		/.*/,
-		/n9-exit/,
+		/n9-e/,
 		/RArgument/,
 		/.*/,
 		/RSymbol/,
 		/.*/,
-		/n8-exit/,
+		/n8-e/,
 		/n6.*n9/,
 		/n7.*n8/,
-		/n8-exit.*n7/,
+		/n8-e.*n7/,
 		/n8.*n6/,
-		/n9-exit.*n8-exit/
+		/n9-e.*n8-e/
 	], {
 		selectedVertices: ['3@print', '3@x']
 	});

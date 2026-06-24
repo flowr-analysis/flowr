@@ -1,14 +1,14 @@
 import { type DataflowInformation, happensInEveryBranch } from '../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../processor';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
+import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
 import {
 	type IdentifierReference,
-	type InGraphIdentifierDefinition,
 	isReferenceType,
 	ReferenceType
 } from '../../../../environments/identifier';
@@ -16,7 +16,6 @@ import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import {
-	type ContainerIndicesCollection,
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
 	type FunctionOriginInformation,
@@ -24,6 +23,7 @@ import {
 } from '../../../../graph/vertex';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { EdgeType } from '../../../../graph/edge';
+import { RArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 
 export interface ForceArguments {
 	/** which of the arguments should be forced? this may be all, e.g., if the function itself is unknown on encounter */
@@ -32,7 +32,7 @@ export interface ForceArguments {
 
 export interface ProcessAllArgumentInput<OtherInfo> extends ForceArguments {
 	readonly functionName:   DataflowInformation
-	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
 	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
 	readonly finalGraph:     DataflowGraph
 	readonly functionRootId: NodeId
@@ -55,27 +55,27 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
 		return;
 	}
 	// link read if it is function definition directly and reference the exit point
-	if(valueVertex.tag !== VertexType.Value) {
-		if(valueVertex.tag === VertexType.FunctionDefinition) {
-			for(const exit of valueVertex.exitPoints) {
-				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
-			}
-		} else {
-			for(const exit of value.exitPoints) {
-				graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
-			}
+	if(valueVertex.tag === VertexType.FunctionDefinition) {
+		for(const exit of valueVertex.exitPoints) {
+			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
+		}
+	} else if(valueVertex.tag !== VertexType.Value) {
+		for(const exit of value.exitPoints) {
+			graph.addEdge(rootId, exit.nodeId, EdgeType.Reads);
 		}
 	}
-	const containedSubflowIn: IdentifierReference[] = graph.verticesOfType(VertexType.FunctionDefinition)
-		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in)
-		.toArray();
+	const containedSubflowIn = graph.verticesOfType(VertexType.FunctionDefinition)
+		.flatMap(([, info]) => (info as DataflowGraphVertexFunctionDefinition).subflow.in);
 
 	// try to resolve them against the current environment
-	for(const ref of value.in.concat(containedSubflowIn)) {
-		if(ref.name) {
-			const resolved = ref.name ? resolveByName(ref.name, env, ref.type) ?? [] : [];
-			for(const resolve of resolved) {
-				graph.addEdge(ref.nodeId, resolve.nodeId, EdgeType.Reads);
+	for(const l of [value.in, containedSubflowIn]) {
+		for(const ref of l) {
+			if(ref.name) {
+				const refId = ref.nodeId;
+				const resolved = resolveByName(ref.name, env, ref.type) ?? [];
+				for(const resolve of resolved) {
+					graph.addEdge(refId, resolve.nodeId, EdgeType.Reads);
+				}
 			}
 		}
 	}
@@ -88,24 +88,25 @@ function forceVertexArgumentValueReferences(rootId: NodeId, value: DataflowInfor
  * @see convertFnArgument
  */
 export function convertFnArguments<OtherInfo>(args: readonly (typeof EmptyArgument | RNode<OtherInfo & ParentInformation>)[]): FunctionArgument[] {
-	return args.map(arg => convertFnArgument(arg));
+	return args.map(convertFnArgument);
 }
 
 /**
  * Transforms a function argument into a function argument reference for a function call vertex.
  * Please be aware, that the ids here are those inferred from the AST, not from the dataflow graph!
  */
-export function convertFnArgument<OtherInfo>(arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
+export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgument | RNode<OtherInfo & ParentInformation>): FunctionArgument {
 	if(arg === EmptyArgument) {
 		return EmptyArgument;
 	} else if(!arg.name || arg.type !== RType.Argument) {
 		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
 	} else {
 		return {
-			nodeId: arg.info.id,
-			name:   arg.name.content,
-			cds:    undefined,
-			type:   ReferenceType.Argument
+			nodeId:  arg.info.id,
+			valueId: arg.value?.info.id,
+			name:    arg.name.content,
+			cds:     undefined,
+			type:    ReferenceType.Argument
 		};
 	}
 }
@@ -125,6 +126,7 @@ export function processAllArguments<OtherInfo>(
 	let i = -1;
 	for(const arg of args) {
 		i++;
+		data = { ...data, environment: argEnv };
 		data = patchData?.(data, i) ?? data;
 		if(arg === EmptyArgument) {
 			callArgs.push(EmptyArgument);
@@ -132,9 +134,9 @@ export function processAllArguments<OtherInfo>(
 			continue;
 		}
 
-		const processed = processDataflowFor(arg, { ...data, environment: argEnv });
-		if(arg.type === RType.Argument && arg.value && (forceArgs === 'all' || forceArgs[i]) && arg.value.type !== RType.Number && arg.value.type !== RType.String && arg.value.type !== RType.Logical) {
-			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, argEnv);
+		const processed = processDataflowFor(arg, data);
+		if(RArgument.isWithValue(arg) && (forceArgs === 'all' || forceArgs[i]) && !RConstant.is(arg.value)) {
+			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
 		}
 		processedArguments.push(processed);
 
@@ -142,29 +144,29 @@ export function processAllArguments<OtherInfo>(
 		finalGraph.mergeWith(processed.graph);
 
 		// resolve reads within argument, we resolve before adding the `processed.environment` to avoid cyclic dependencies
-		for(const ingoing of processed.in.concat(processed.unknownReferences)) {
-			// check if it is called directly
-			const vtx = finalGraph.getVertex(ingoing.nodeId);
+		for(const l of [processed.in, processed.unknownReferences]) {
+			for(const ingoing of l) {
+				// check if it is called directly
+				const inId = ingoing.nodeId;
+				const refType = finalGraph.getVertex(inId)?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown;
 
-			const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, vtx?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown) : undefined;
-			if(tryToResolve === undefined) {
-				remainingReadInArgs.push(ingoing);
-			} else {
-				/* maybe all targets are not definitely of the current scope and should be still kept */
-				let assumeItMayHaveAHigherTarget = true;
-				for(const resolved of tryToResolve) {
-					if(happensInEveryBranch(resolved.cds) && !isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
-						assumeItMayHaveAHigherTarget = false;
-					}
-					// When only a single index is referenced, we don't need to reference the whole object
-					const resolvedInGraphDef = resolved as InGraphIdentifierDefinition;
-					const isContainer = checkForContainer(resolvedInGraphDef?.indicesCollection);
-					if(isContainer !== false) {
-						finalGraph.addEdge(ingoing.nodeId, resolved.nodeId, EdgeType.Reads);
-					}
-				}
-				if(assumeItMayHaveAHigherTarget) {
+				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
+				if(tryToResolve === undefined) {
 					remainingReadInArgs.push(ingoing);
+				} else {
+					/* maybe all targets are not definitely of the current scope and should be still kept */
+					let assumeItMayHaveAHigherTarget = true;
+					for(const resolved of tryToResolve) {
+						if(isReferenceType(resolved.type, ReferenceType.BuiltInFunction | ReferenceType.BuiltInConstant)) {
+							continue;
+						} else if(happensInEveryBranch(resolved.cds)) {
+							assumeItMayHaveAHigherTarget = false;
+						}
+						finalGraph.addEdge(inId, resolved.nodeId, EdgeType.Reads);
+					}
+					if(assumeItMayHaveAHigherTarget) {
+						remainingReadInArgs.push(ingoing);
+					}
 				}
 			}
 		}
@@ -174,7 +176,7 @@ export function processAllArguments<OtherInfo>(
 		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);
@@ -194,7 +196,9 @@ export interface PatchFunctionCallInput<OtherInfo> {
 
 
 /**
- *
+ * Patches a function call vertex into the given dataflow graph.
+ * This is mostly useful for built-in processors that have custom argument processing.
+ * Otherwise, rely on {@link processKnownFunctionCall} instead.
  */
 export function patchFunctionCall<OtherInfo>(
 	{ nextGraph, rootId, name, data, argumentProcessResult, origin, link }: PatchFunctionCallInput<OtherInfo>
@@ -216,14 +220,4 @@ export function patchFunctionCall<OtherInfo>(
 			nextGraph.addEdge(rootId, arg.entryPoint, EdgeType.Argument);
 		}
 	}
-}
-
-/**
- * Check whether passed {@link indices} are containers or whether their sub-indices are containers.
- */
-function checkForContainer(indices: ContainerIndicesCollection): boolean | undefined {
-	return indices?.every((indices) => {
-		const areSubIndicesContainers = indices.indices.every(index => 'subIndices' in index && checkForContainer(index.subIndices));
-		return indices.isContainer || areSubIndicesContainers;
-	});
 }

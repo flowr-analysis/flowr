@@ -30,22 +30,22 @@ export enum PluginType {
 	 * Plugins that are applied right after the builder has been created and before any analysis is done.
 	 * @see {@link FlowrAnalyzerPackageVersionsPlugin} - for the base class to implement such a plugin.
 	 */
-    DependencyIdentification = 'package-versions',
+	DependencyIdentification = 'package-versions',
 	/**
 	 * Plugins that are used to determine the order in which files are loaded and analyzed.
 	 * @see {@link FlowrAnalyzerLoadingOrderPlugin} - for the base class to implement such a plugin.
 	 */
-    LoadingOrder             = 'loading-order',
+	LoadingOrder             = 'loading-order',
 	/**
 	 * Plugins that are applied to discover the project structure, files, and folders to analyze.
 	 * @see {@link FlowrAnalyzerProjectDiscoveryPlugin} - for the base class to implement such a plugin.
 	 */
-    ProjectDiscovery         = 'project-discovery',
+	ProjectDiscovery         = 'project-discovery',
 	/**
 	 * Plugins that are applied to load and parse files.
 	 * @see {@link FlowrAnalyzerFilePlugin} - for the base class to implement such a plugin.
 	 */
-    FileLoad                 = 'file-load'
+	FileLoad                 = 'file-load'
 }
 
 /**
@@ -82,7 +82,7 @@ const generalPluginLog = log.getSubLogger({ name: 'plugins' });
  * For example, if you want to create a plugin that determines the loading order of files, extend {@link FlowrAnalyzerLoadingOrderPlugin} instead.
  * These classes also provide sensible overrides of {@link FlowrAnalyzerPlugin.defaultPlugin} to be used when no plugin of this type is registered or triggered.
  *
- * For a collection of default plugins, see {@link FlowrAnalyzerPluginDefaults}.
+ * For a collection of default plugins, see {@link FlowrDefaultPlugins}.
  */
 export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<unknown> = In> implements FlowrAnalyzerPluginInterface<In, Out> {
 	public abstract readonly name:        string;

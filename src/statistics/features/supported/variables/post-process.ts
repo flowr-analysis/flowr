@@ -18,7 +18,7 @@ import {
 } from '../../../../util/summarizer';
 import { readLineByLineSync } from '../../../../util/files';
 
-type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWithProject>
+type VariablesPostProcessing = ReplaceKeysForSummary<VariableInfo, SummarizedWithProject>;
 
 function collectUsedVariables(featureRoot: string, info: Map<string, FeatureStatisticsWithMeta>, config: StatisticsSummarizerConfiguration, outputPath: string) {
 	const used = collectVariableInfoFor(path.join(featureRoot, 'usedVariables.txt'), info, config);
@@ -92,7 +92,7 @@ export function postProcess(featureRoot: string, info: Map<string, FeatureStatis
 	collectRedefinedVariables(featureRoot, info, config, outputPath);
 }
 
-type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>
+type VariableInfoMap = Map<string, SummarizedWithProject & { linePercentageInFile: number[][] }>;
 
 
 /**

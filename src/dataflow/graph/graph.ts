@@ -1,23 +1,21 @@
 import { guard } from '../../util/assert';
-import type { DataflowGraphEdge , EdgeType } from './edge';
+import type { DfEdge, EdgeType } from './edge';
 import type { DataflowInformation } from '../info';
 import {
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexInfo,
-	type DataflowGraphVertices,
-	VertexType
+	type DataflowGraphVertexVariableDefinition,
+	type DataflowGraphVertices, VertexType
 } from './vertex';
 import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { Identifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
-import { type NodeId, normalizeIdToNumberIfPossible } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
-import { jsonReplacer } from '../../util/json';
-import { dataflowLogger } from '../logger';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
 import type { Writable } from 'ts-essentials';
 import type { BuiltInMemory } from '../environments/built-in';
@@ -26,7 +24,7 @@ import type { BuiltInMemory } from '../environments/built-in';
  * Describes the information we store per function body.
  * The {@link DataflowFunctionFlowInformation#exitPoints} are stored within the enclosing {@link DataflowGraphVertexFunctionDefinition} vertex.
  */
-export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> }
+export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' | 'exitPoints'>  & { graph: Set<NodeId> };
 
 /**
  * A reference with a name, e.g. `a` and `b` in the following function call:
@@ -38,7 +36,8 @@ export type DataflowFunctionFlowInformation = Omit<DataflowInformation, 'graph' 
  * @see PositionalFunctionArgument
  */
 export interface NamedFunctionArgument extends IdentifierReference {
-	readonly name: string
+	readonly name:    string
+	readonly valueId: NodeId | undefined
 }
 
 /**
@@ -47,49 +46,143 @@ export interface NamedFunctionArgument extends IdentifierReference {
  * ```r
  * foo(3, 2)
  * ```
- * @see #isPositionalArgument
  * @see NamedFunctionArgument
  */
 export interface PositionalFunctionArgument extends Omit<IdentifierReference, 'name'> {
 	readonly name?: undefined
 }
 
-/** Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function. */
-export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument
+/**
+ * Summarizes either named (`foo(a = 3, b = 2)`), unnamed (`foo(3, 2)`), or empty (`foo(,)`) arguments within a function.
+ * See the {@link FunctionArgument} helper functions to check for the specific types.
+ * @see {@link FunctionArgument.isNamed|`FunctionArgument.isNamed`} - to check for named arguments
+ * @see {@link FunctionArgument.isPositional|`FunctionArgument.isPositional`} - to check for positional arguments
+ * @see {@link FunctionArgument.isEmpty|`FunctionArgument.isEmpty`} - to check for empty arguments
+ */
+export type FunctionArgument = NamedFunctionArgument | PositionalFunctionArgument | typeof EmptyArgument;
 
 /**
- * Check if the given argument is a {@link PositionalFunctionArgument}.
+ * Helper functions to work with {@link FunctionArgument}s.
+ * @see {@link EmptyArgument} - the marker for empty arguments
  */
-export function isPositionalArgument(arg: FunctionArgument): arg is PositionalFunctionArgument {
-	return arg !== EmptyArgument && arg.name === undefined;
-}
-
-/**
- * Check if the given argument is a {@link NamedFunctionArgument}.
- */
-export function isNamedArgument(arg: FunctionArgument): arg is NamedFunctionArgument {
-	return arg !== EmptyArgument && arg.name !== undefined;
-}
-
-/**
- * Returns the reference of a non-empty argument.
- */
-export function getReferenceOfArgument(arg: FunctionArgument): NodeId | undefined {
-	if(arg !== EmptyArgument) {
-		return arg?.nodeId;
+export const FunctionArgument = {
+	name: 'FunctionArgument',
+	/**
+	 * Checks whether the given argument is a positional argument.
+	 * @example
+	 * ```r
+	 * foo(b=3, 2) # the second argument is positional
+	 * ```
+	 */
+	isPositional(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument {
+		return arg !== EmptyArgument && arg.name === undefined;
+	},
+	/**
+	 * Checks whether the given argument is a named argument.
+	 * @example
+	 * ```r
+	 * foo(b=3, 2) # the first argument is named
+	 * ```
+	 * @see {@link isPositional}
+	 * @see {@link isEmpty}
+	 * @see {@link hasName}
+	 */
+	isNamed(this: void, arg: FunctionArgument): arg is NamedFunctionArgument {
+		return arg !== EmptyArgument && arg.name !== undefined;
+	},
+	/**
+	 * Checks whether the given argument is an unnamed argument (either positional or empty).
+	 * @example
+	 * ```r
+	 * foo(, 2)   # the first argument is unnamed (empty)
+	 * foo(3, 2)  # both arguments are unnamed (positional)
+	 * ```
+	 * @see {@link isNamed}
+	 */
+	isUnnamed(this: void, arg: FunctionArgument): arg is PositionalFunctionArgument | typeof EmptyArgument {
+		return arg === EmptyArgument || arg.name === undefined;
+	},
+	/**
+	 * Checks whether the given argument is an empty argument.
+	 * @example
+	 * ```r
+	 * foo(, 2) # the first argument is empty
+	 * ```
+	 * @see {@link isNotEmpty}
+	 */
+	isEmpty(this: void, arg: unknown): arg is typeof EmptyArgument {
+		return arg === EmptyArgument;
+	},
+	/**
+	 * Checks whether the given argument is not an empty argument.
+	 * @see {@link FunctionArgument.isEmpty}
+	 */
+	isNotEmpty<T>(this: void, arg: T): arg is Exclude<T, typeof EmptyArgument> {
+		return arg !== EmptyArgument;
+	},
+	/**
+	 * Returns the id of a non-empty argument.
+	 * @example
+	 * ```r
+	 * foo(a=3, 2) # returns the node id of either `a` or `2`
+	 * ```
+	 * @see {@link FunctionArgument.getReference}
+	 * @see {@link FunctionArgument.getName}
+	 */
+	getId(this: void, arg: FunctionArgument): NodeId | undefined {
+		if(arg !== EmptyArgument) {
+			return arg?.nodeId;
+		}
+		return undefined;
+	},
+	/**
+	 * Returns the name of a named argument.
+	 * @example
+	 * ```r
+	 * foo(a = 3, 2) # returns 'a' or undefined
+	 * ```
+	 * @see {@link FunctionArgument.getId}
+	 */
+	getName(this: void, arg: FunctionArgument): string | undefined {
+		return FunctionArgument.isNamed(arg) ? arg.name : undefined;
+	},
+	/**
+	 * Returns the reference of a non-empty argument.
+	 * @example
+	 * ```r
+	 * foo(a=3, 2) # returns the node id of either `3` or `2`, but skips a
+	 * ```
+	 * @see {@link FunctionArgument.getId}
+	 */
+	getReference(this: void, arg: FunctionArgument): NodeId | undefined {
+		if(arg === EmptyArgument) {
+			return undefined;
+		} else if(arg.name === undefined) {
+			return arg.nodeId;
+		}
+		return arg.valueId;
+	},
+	/**
+	 * Checks whether the given argument is a named argument with the specified name.
+	 * Please note that this only checks whether the name is exactly identical and not whether
+	 * R's argument matching resolves to the correct argument.
+	 * For this, please refer to the {@link pMatch} function!
+	 * @see {@link isNamed}
+	 */
+	hasName(this: void, arg: FunctionArgument, name: string | undefined): arg is NamedFunctionArgument {
+		return FunctionArgument.isNamed(arg) && arg.name === name;
 	}
-	return undefined;
-}
+} as const;
 
 /**
  * Maps the edges target to the edge information
  */
-export type OutgoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type OutgoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 /**
  * Similar to {@link OutgoingEdges}, but inverted regarding the edge direction.
  * In other words, it maps the source to the edge information.
  */
-export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = Map<NodeId, Edge>
+export type IngoingEdges<Edge extends DfEdge = DfEdge> = Map<NodeId, Edge>;
 
 /**
  * The structure of the serialized {@link DataflowGraph}.
@@ -97,7 +190,7 @@ export type IngoingEdges<Edge extends DataflowGraphEdge = DataflowGraphEdge> = M
 export interface DataflowGraphJson {
 	readonly rootVertices:        NodeId[],
 	readonly vertexInformation:   [NodeId, DataflowGraphVertexInfo][],
-	readonly edgeInformation:     [NodeId, [NodeId, DataflowGraphEdge][]][]
+	readonly edgeInformation:     [NodeId, [NodeId, DfEdge][]][]
 	readonly _unknownSideEffects: UnknownSideEffect[]
 }
 
@@ -107,11 +200,12 @@ export interface DataflowGraphJson {
  * Linked side effects are used whenever we know that a call may be affected by another one in a way that we cannot
  * grasp from the dataflow perspective (e.g., an indirect dependency based on the currently active graphic device).
  */
-export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
+export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
 
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
- * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}
+ * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}.
+ * The helper object associated with the DFG is {@link Dataflow}.
  *
  * The vertices of the graph are organized in a hierarchical fashion, with a function-definition node containing the node ids of its subgraph.
  * However, all *edges* are hoisted at the top level in the form of an (attributed) adjacency list.
@@ -126,7 +220,7 @@ export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> }
  */
 export class DataflowGraph<
 	Vertex extends DataflowGraphVertexInfo = DataflowGraphVertexInfo,
-	Edge   extends DataflowGraphEdge       = DataflowGraphEdge
+	Edge   extends DfEdge       = DfEdge
 > {
 	private _idMap: AstIdMap | undefined;
 
@@ -169,19 +263,33 @@ export class DataflowGraph<
 	 */
 	public get(id: NodeId, includeDefinedFunctions = true): [Vertex, OutgoingEdges] | undefined {
 		// if we do not want to include function definitions, only retrieve the value if the id is part of the root vertices
-		const vertex: Vertex | undefined = this.getVertex(id, includeDefinedFunctions);
+		const vertex: Vertex | undefined = includeDefinedFunctions ? this.getVertex(id) : this.getRootVertex(id);
 		return vertex === undefined ? undefined : [vertex, this.outgoingEdges(id) ?? new Map()];
 	}
 
 	/**
 	 * Get the {@link DataflowGraphVertexInfo} attached to a vertex.
 	 * @param id                      - The id of the node to get
-	 * @param includeDefinedFunctions - If true this will search function definitions as well and not just the toplevel
 	 * @returns the node info for the given id (if it exists)
 	 * @see #get
+	 * @see #getRootVertex
 	 */
-	public getVertex(id: NodeId, includeDefinedFunctions = true): Vertex | undefined {
-		return includeDefinedFunctions || this.rootVertices.has(id) ? this.vertexInformation.get(id) : undefined;
+	public getVertex(id: NodeId): Vertex | undefined {
+		return this.vertexInformation.get(id);
+	}
+
+	/**
+	 * Get the {@link DataflowGraphVertexInfo} attached to a root-level vertex.
+	 * @param id - The id of the node to get
+	 * @returns the node info for the given id (if it exists)
+	 * @see #get
+	 * @see #getVertex
+	 */
+	public getRootVertex(id: NodeId): Vertex | undefined {
+		if(!this.rootVertices.has(id)) {
+			return undefined;
+		}
+		return this.vertexInformation.get(id);
 	}
 
 	public outgoingEdges(id: NodeId): OutgoingEdges | undefined {
@@ -191,8 +299,9 @@ export class DataflowGraph<
 	public ingoingEdges(id: NodeId): IngoingEdges | undefined {
 		const edges = new Map<NodeId, Edge>();
 		for(const [source, outgoing] of this.edgeInformation.entries()) {
-			if(outgoing.has(id)) {
-				edges.set(source, outgoing.get(id) as Edge);
+			const o = outgoing.get(id);
+			if(o) {
+				edges.set(source, o);
 			}
 		}
 		return edges;
@@ -301,59 +410,44 @@ export class DataflowGraph<
 	 * @see DataflowGraphVertexArgument
 	 */
 	public addVertex(vertex: DataflowGraphVertexArgument & Omit<Vertex, keyof DataflowGraphVertexArgument>, fallbackEnv: REnvironmentInformation, asRoot = true, overwrite = false): this {
-		const oldVertex = this.vertexInformation.get(vertex.id);
-		if(oldVertex !== undefined && !overwrite) {
+		const vid = vertex.id;
+		if(this.vertexInformation.has(vid) && !overwrite) {
 			return this;
 		}
+		const vtag = vertex.tag;
 
-		const fallback = vertex.tag === VertexType.FunctionDefinition || (vertex.tag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined;
-
-		this.vertexInformation.set(vertex.id, {
-			...vertex,
-			// keep a clone of the original environment
-			environment: vertex.environment ? cloneEnvironmentInformation(vertex.environment) : fallback
-		} as unknown as Vertex);
-		const has =  this.types.get(vertex.tag);
-		if(has) {
-			has.push(vertex.id);
+		// keep a clone of the original environment
+		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
+		this.vertexInformation.set(vid, vertex as Vertex);
+		const typeIds = this.types.get(vtag);
+		if(typeIds) {
+			typeIds.push(vid);
 		} else {
-			this.types.set(vertex.tag, [vertex.id]);
+			this.types.set(vtag, [vid]);
 		}
 
 		if(asRoot) {
-			this.rootVertices.add(vertex.id);
+			this.rootVertices.add(vid);
 		}
 		return this;
 	}
 
-	/** {@inheritDoc} */
-	public addEdge(from: NodeId, to: NodeId, type: EdgeType | number): this
-	/** {@inheritDoc} */
-	public addEdge(from: { nodeId: NodeId }, to: { nodeId: NodeId }, type: EdgeType | number): this
-	/** {@inheritDoc} */
-	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this
-	public addEdge(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }, type: EdgeType | number): this {
-		const [fromId, toId] = extractEdgeIds(from, to);
-
+	public addEdge(fromId: NodeId, toId: NodeId, type: EdgeType | number): this {
 		if(fromId === toId) {
 			return this;
 		}
 
-		/* we now that we pass all required arguments */
-		const edge = { types: type } as unknown as Edge;
-
-		const existingFrom = this.edgeInformation.get(fromId);
-		const edgeInFrom = existingFrom?.get(toId);
-
-		if(edgeInFrom === undefined) {
-			if(existingFrom === undefined) {
-				this.edgeInformation.set(fromId, new Map([[toId, edge]]));
-			} else {
-				existingFrom.set(toId, edge);
-			}
+		let fromEdges = this.edgeInformation.get(fromId);
+		if(fromEdges === undefined) {
+			fromEdges = new Map([[toId, { types: type } as Edge]]);
+			this.edgeInformation.set(fromId, fromEdges);
 		} else {
-			// adding the type
-			edgeInFrom.types |= type;
+			const existing = fromEdges.get(toId);
+			if(existing === undefined) {
+				fromEdges.set(toId, { types: type } as Edge);
+			} else {
+				existing.types |= type;
+			}
 		}
 		return this;
 	}
@@ -365,10 +459,29 @@ export class DataflowGraph<
 	 *                            in the context of function definitions
 	 */
 	public mergeWith(otherGraph: DataflowGraph<Vertex, Edge> | undefined, mergeRootVertices = true): this {
-		if(otherGraph === undefined) {
+		if(otherGraph === undefined || otherGraph === this) {
 			return this;
 		}
 
+		this.mergeVertices(otherGraph, mergeRootVertices);
+		for(const [type, ids] of otherGraph.types) {
+			const existing = this.types.get(type);
+			if(existing) {
+				if(existing !== ids) {
+					for(const id of ids) {
+						existing.push(id);
+					}
+				}
+			} else {
+				this.types.set(type, ids.slice());
+			}
+		}
+
+		this.mergeEdges(otherGraph);
+		return this;
+	}
+
+	public mergeVertices(otherGraph: DataflowGraph<Vertex, Edge>, mergeRootVertices = true) {
 		// merge root ids
 		if(mergeRootVertices) {
 			for(const root of otherGraph.rootVertices) {
@@ -379,27 +492,20 @@ export class DataflowGraph<
 		for(const unknown of otherGraph.unknownSideEffects) {
 			this._unknownSideEffects.add(unknown);
 		}
-
 		for(const [id, info] of otherGraph.vertexInformation) {
 			const currentInfo = this.vertexInformation.get(id);
 			this.vertexInformation.set(id, currentInfo === undefined ? info : mergeNodeInfos(currentInfo, info));
 		}
-		for(const [type, ids] of otherGraph.types) {
-			const existing = this.types.get(type);
-			this.types.set(type, existing ? existing.concat(ids) : ids.slice());
-		}
-
-		this.mergeEdges(otherGraph);
-		return this;
 	}
 
 	private mergeEdges(otherGraph: DataflowGraph<Vertex, Edge>) {
 		for(const [id, edges] of otherGraph.edgeInformation.entries()) {
-			for(const [target, edge] of edges) {
-				const existing = this.edgeInformation.get(id);
-				if(existing === undefined) {
-					this.edgeInformation.set(id, new Map([[target, edge]]));
-				} else {
+			let existing = this.edgeInformation.get(id);
+			if(existing === undefined) {
+				existing = new Map(edges);
+				this.edgeInformation.set(id, existing);
+			} else {
+				for(const [target, edge] of edges) {
 					const get = existing.get(target);
 					if(get === undefined) {
 						existing.set(target, edge);
@@ -414,16 +520,32 @@ export class DataflowGraph<
 	/**
 	 * Marks a vertex in the graph to be a definition
 	 * @param reference - The reference to the vertex to mark as definition
+	 * @param sourceIds - The id of the source vertex of the def, if available
 	 */
-	public setDefinitionOfVertex(reference: IdentifierReference): void {
-		const vertex = this.getVertex(reference.nodeId, true);
+	public setDefinitionOfVertex(reference: IdentifierReference, sourceIds: readonly NodeId[] | undefined): void {
+		const vertex = this.getVertex(reference.nodeId);
 		guard(vertex !== undefined, () => `node must be defined for ${JSON.stringify(reference)} to set reference`);
 		if(vertex.tag === VertexType.FunctionDefinition || vertex.tag === VertexType.VariableDefinition) {
 			vertex.cds = reference.cds;
 		} else {
-			this.vertexInformation.set(reference.nodeId, { ...vertex, tag: VertexType.VariableDefinition });
-			this.types.set(vertex.tag, (this.types.get(vertex.tag) ?? []).filter(id => id !== reference.nodeId));
-			this.types.set(VertexType.VariableDefinition, (this.types.get(VertexType.VariableDefinition) ?? []).concat([reference.nodeId]));
+			const oldTag = vertex.tag;
+			const vid = reference.nodeId;
+			(vertex as unknown as Writable<DataflowGraphVertexVariableDefinition>).tag = VertexType.VariableDefinition;
+			if(sourceIds) {
+				(vertex as unknown as Writable<DataflowGraphVertexVariableDefinition>).source = sourceIds;
+			}
+			const oldIds = this.types.get(oldTag);
+			if(oldIds) {
+				for(let idx = oldIds.lastIndexOf(vid); idx >= 0; idx = oldIds.lastIndexOf(vid)) {
+					oldIds.splice(idx, 1);
+				}
+			}
+			const newIds = this.types.get(VertexType.VariableDefinition);
+			if(newIds) {
+				newIds.push(vid);
+			} else {
+				this.types.set(VertexType.VariableDefinition, [vid]);
+			}
 		}
 	}
 
@@ -432,32 +554,40 @@ export class DataflowGraph<
 	 * @param info - The information about the new function call node
 	 */
 	public updateToFunctionCall(info: DataflowGraphVertexFunctionCall): void {
-		const vertex = this.getVertex(info.id, true);
+		const infoId = info.id;
+		const vertex = this.getVertex(infoId);
 		guard(vertex !== undefined && (vertex.tag === VertexType.Use || vertex.tag === VertexType.Value), () => `node must be a use or value node for ${JSON.stringify(info.id)} to update it to a function call but is ${vertex?.tag}`);
 		const previousTag = vertex.tag;
-		this.vertexInformation.set(info.id, { ...vertex, ...info, tag: VertexType.FunctionCall });
-		this.types.set(previousTag, (this.types.get(previousTag) ?? []).filter(id => id !== info.id));
-		this.types.set(VertexType.FunctionCall, (this.types.get(VertexType.FunctionCall) ?? []).concat([info.id]));
+		this.vertexInformation.set(infoId, { ...vertex, ...info, tag: VertexType.FunctionCall });
+		const prevIds = this.types.get(previousTag);
+		if(prevIds) {
+			for(let idx = prevIds.lastIndexOf(infoId); idx >= 0; idx = prevIds.lastIndexOf(infoId)) {
+				prevIds.splice(idx, 1);
+			}
+		}
+		const callIds = this.types.get(VertexType.FunctionCall);
+		if(callIds) {
+			callIds.push(infoId);
+		} else {
+			this.types.set(VertexType.FunctionCall, [infoId]);
+		}
 	}
 
 	/** If you do not pass the `to` node, this will just mark the node as maybe */
-	public addControlDependency(from: NodeId, to?: NodeId, when?: boolean): this {
-		to = to ? normalizeIdToNumberIfPossible(to) : undefined;
-		const vertex = this.getVertex(from, true);
+	public addControlDependency(from: NodeId, to: NodeId, when?: boolean): this {
+		to = NodeId.normalize(to);
+		const vertex = this.getVertex(from);
 		guard(vertex !== undefined, () => `node must be defined for ${from} to add control dependency`);
-		vertex.cds ??= [];
-		if(to) {
-			let hasControlDependency = false;
+		if(vertex.cds) {
 			for(const { id, when: cond } of vertex.cds) {
 				if(id === to && when !== cond) {
-					hasControlDependency = true;
-					break;
+					return this;
 				}
 			}
-			if(!hasControlDependency) {
-				vertex.cds.push({ id: to, when });
-			}
+		} else {
+			vertex.cds = [];
 		}
+		vertex.cds.push({ id: to, when });
 		return this;
 	}
 
@@ -465,12 +595,12 @@ export class DataflowGraph<
 	public markIdForUnknownSideEffects(id: NodeId, target?: LinkTo<RegExp | string>): this {
 		if(target) {
 			this._unknownSideEffects.add({
-				id:     normalizeIdToNumberIfPossible(id),
+				id:     NodeId.normalize(id),
 				linkTo: typeof target.callName === 'string' ? { ...target, callName: new RegExp(target.callName) } : target as LinkTo<RegExp>
 			});
 			return this;
 		}
-		this._unknownSideEffects.add(normalizeIdToNumberIfPossible(id));
+		this._unknownSideEffects.add(NodeId.normalize(id));
 		return this;
 	}
 
@@ -488,7 +618,7 @@ export class DataflowGraph<
 				(vertex.environment as Writable<REnvironmentInformation>) = renvFromJson(vertex.environment as unknown as REnvironmentInformationJson);
 			}
 		}
-		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DataflowGraphEdge>(edges)]));
+		graph.edgeInformation = new Map<NodeId, OutgoingEdges>(data.edgeInformation.map(([id, edges]) => [id, new Map<NodeId, DfEdge>(edges)]));
 		for(const unknown of data._unknownSideEffects) {
 			graph._unknownSideEffects.add(unknown);
 		}
@@ -498,34 +628,28 @@ export class DataflowGraph<
 
 function mergeNodeInfos<Vertex extends DataflowGraphVertexInfo>(current: Vertex, next: Vertex): Vertex {
 	if(current.tag !== next.tag) {
-		dataflowLogger.warn(() => `nodes to be joined for the same id should have the same tag, but ${JSON.stringify(current, jsonReplacer)} vs. ${JSON.stringify(next, jsonReplacer)} -- we are currently not handling cases in which vertices may be either! Keeping current.`);
 		return current;
-	}
-
-	if(current.tag === VertexType.VariableDefinition) {
-		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
 	} else if(current.tag === VertexType.FunctionDefinition) {
-		guard(current.scope === next.scope, 'nodes to be joined for the same id must have the same scope');
-		current.exitPoints = uniqueArrayMerge(current.exitPoints, (next as DataflowGraphVertexFunctionDefinition).exitPoints);
+		const n = next as DataflowGraphVertexFunctionDefinition;
+		current.exitPoints = uniqueArrayMerge(current.exitPoints, n.exitPoints);
+		if(n.mode && n.mode.length > 0) {
+			current.mode ??= [];
+			for(const m of n.mode) {
+				if(!current.mode.includes(m)) {
+					current.mode.push(m);
+				}
+			}
+		}
 	}
 
 	return current;
 }
 
-/**
- * Returns the ids of the dataflow vertices referenced.
- */
-function extractEdgeIds(from: NodeId | { nodeId: NodeId }, to: NodeId | { nodeId: NodeId }): [fromId: NodeId, toId: NodeId] {
-	const fromId = typeof from === 'object' ? from.nodeId : from;
-	const toId = typeof to === 'object' ? to.nodeId : to;
-	return [fromId, toId];
-}
-
 export interface IEnvironmentJson {
-    readonly id: number;
-    parent:      IEnvironmentJson;
-    memory:      Record<Identifier, IdentifierDefinition[]>;
-    builtInEnv:  true | undefined;
+	readonly id: number;
+	parent:      IEnvironmentJson;
+	memory:      Record<BrandedIdentifier, IdentifierDefinition[]>;
+	builtInEnv:  true | undefined;
 }
 
 interface REnvironmentInformationJson {
@@ -537,10 +661,10 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	const parent = json.parent ? envFromJson(json.parent) : undefined;
 	const memory: BuiltInMemory = new Map();
 	for(const [key, value] of Object.entries(json.memory)) {
-		memory.set(key as Identifier, value);
+		memory.set(key as BrandedIdentifier, value);
 	}
 	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
-	obj.id = json.id;
+	(obj as { id: NodeId }).id = json.id;
 	obj.memory = memory;
 	return obj as Environment;
 }

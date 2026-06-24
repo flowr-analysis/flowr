@@ -9,6 +9,8 @@ import { tryNormalizeFunctionDefinition } from '../functions/normalize-definitio
 import { RType } from '../../../../model/type';
 import { normalizeComment } from '../other/normalize-comment';
 import type { JsonEntry } from '../../../json/format';
+import { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
+import { RComment } from '../../../../model/nodes/r-comment';
 
 /**
  * Returns an expression list if there are multiple children, otherwise returns the single child directly with no expr wrapper
@@ -28,30 +30,30 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 
 	const maybeFunctionCall = tryNormalizeFunctionCall(childData, others);
 	if(maybeFunctionCall !== undefined) {
-		maybeFunctionCall.info.additionalTokens = [...maybeFunctionCall.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))];
+		maybeFunctionCall.info.adToks = [...maybeFunctionCall.info.adToks ?? [], ...comments.map(x => normalizeComment(data, x.content))];
 		return maybeFunctionCall;
 	}
 
 	const maybeAccess = tryNormalizeAccess(childData, others);
 	if(maybeAccess !== undefined) {
-		maybeAccess.info.additionalTokens = [...maybeAccess.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))];
+		maybeAccess.info.adToks = [...maybeAccess.info.adToks ?? [], ...comments.map(x => normalizeComment(data, x.content))];
 		return maybeAccess;
 	}
 
 	const maybeFunctionDefinition = tryNormalizeFunctionDefinition(childData, others);
 	if(maybeFunctionDefinition !== undefined) {
-		maybeFunctionDefinition.info.additionalTokens = [...maybeFunctionDefinition.info.additionalTokens ?? [], ...comments.map(x => normalizeComment(data, x.content))];
+		maybeFunctionDefinition.info.adToks = [...maybeFunctionDefinition.info.adToks ?? [], ...comments.map(x => normalizeComment(data, x.content))];
 		return maybeFunctionDefinition;
 	}
 
 
 	const children = normalizeExpressions(childData, childrenSource);
 
-	const [delimiters, nodes] = partition(children, x => x.type === RType.Delimiter || x.type === RType.Comment);
+	const [delimiters, nodes] = partition(children, x => RDelimiter.is(x) || RComment.is(x));
 
 	if(nodes.length === 1) {
 		const result = nodes[0] as RNode;
-		result.info.additionalTokens = [...result.info.additionalTokens ?? [], ...delimiters];
+		result.info.adToks = result.info.adToks ? result.info.adToks.concat(delimiters) : delimiters.slice();
 		return result;
 	} else {
 		return {
@@ -61,9 +63,9 @@ export function normalizeExpression(data: NormalizerData, entry: JsonEntry): RNo
 			children: nodes as RNode[],
 			lexeme:   content,
 			info:     {
-				fullRange:        childData.currentRange,
-				additionalTokens: delimiters,
-				fullLexeme:       childData.currentLexeme
+				fullRange:  childData.currentRange,
+				adToks:     delimiters,
+				fullLexeme: childData.currentLexeme
 			}
 		};
 	}

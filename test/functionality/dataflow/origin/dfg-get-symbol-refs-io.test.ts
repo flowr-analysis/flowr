@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withShell } from '../../_helper/shell';
-import { slicingCriterionToId, type SingleSlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { getAllRefsToSymbol } from '../../../../src/dataflow/origin/dfg-get-symbol-refs';
 import { decorateLabelContext } from '../../_helper/label';
@@ -9,11 +9,11 @@ import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/process
 import type { RShell } from '../../../../src/r-bridge/shell';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 
-function testRename(shell: RShell, name: string, input: string, symbol: SingleSlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
+function testRename(shell: RShell, name: string, input: string, symbol: SlicingCriterion, expectedRefs: SlicingCriteria | undefined) {
 	test(decorateLabelContext(name, ['other']), async() => {
 		const { dataflow, normalize } = await createDataflowPipeline(shell, { context: contextFromInput(input.trim()) }).allRemainingSteps();
 
-		const symbolId = slicingCriterionToId(symbol, normalize.idMap);
+		const symbolId = SlicingCriterion.parse(symbol, normalize.idMap);
 		const refs = getAllRefsToSymbol(dataflow.graph, symbolId);
 
 		// If we don't expect any renames make sure there are none
@@ -23,7 +23,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 		}
 
 		// Otherwise check renames and output
-		const expectedRenameIds = expectedRefs.map(c => slicingCriterionToId(c, normalize.idMap));
+		const expectedRenameIds = expectedRefs.map(c => SlicingCriterion.parse(c, normalize.idMap));
 		assert.deepEqual(refs, expectedRenameIds);
 
 		// Apply Renames
@@ -39,7 +39,7 @@ function testRename(shell: RShell, name: string, input: string, symbol: SingleSl
 				range[3] = range[1] + (node.lexeme as string).length - 1;
 				return range;
 			})
-			.sort((a, b) => a[0] == b[0] ? b[1] - a[1] : b[0] - a[0]);
+			.sort((a, b) => a[0] === b[0] ? b[1] - a[1] : b[0] - a[0]);
 
 		for(const range of replacements) {
 			const line = newInput[range[0] - 1];
@@ -65,7 +65,7 @@ describe.sequential('Get Symbol Refs IO Tests (1)', withShell(shell => {
 
 describe.sequential('Get Symbol Refs IO Tests (2)', withShell(shell => {
 	testRename(shell, 'Inside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '2@y',    ['2@y', '3@y']);
-	testRename(shell, 'Outside Scope','y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
+	testRename(shell, 'Outside Scope', 'y <- 2 \n f <- function() { y <- 5\nprint(y) }',   '1@y',    ['1@y']);
 }));
 
 describe.sequential('Get Symbol Refs IO Tests (3)', withShell(shell => {
@@ -80,9 +80,8 @@ print(x)`;
 
 	//         Shell   Name             Code     to rename  expected renames
 	testRename(shell, 'Super assign 1', testCode, '1@f',    ['1@f', '5@f']);
-	testRename(shell, 'Super assign 2', testCode, '2@x',    ['2@x']);
-	// We accept this limitation for now, see #1792
-	testRename(shell, 'Super assign 3', testCode, '3@x',    [/*'2@x',*/ '3@x']);
+	testRename(shell, 'Super assign 2', testCode, '2@x',    ['2@x', '3@x']);
+	testRename(shell, 'Super assign 3', testCode, '3@x',    ['3@x', '2@x']);
 	testRename(shell, 'Super assign 4', testCode, '5@g',    ['5@g', '6@g', '7@g']);
 	testRename(shell, 'Super assign 5', testCode, '7@x',    ['7@x', '8@x']);
 }));

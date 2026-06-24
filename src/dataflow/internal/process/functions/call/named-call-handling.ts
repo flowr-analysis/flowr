@@ -1,9 +1,9 @@
 import type { DataflowProcessorInformation } from '../../../../processor';
-import { type DataflowInformation , initializeCleanDataflowInformation } from '../../../../info';
+import { DataflowInformation } from '../../../../info';
 import { processKnownFunctionCall } from './known-call-handling';
 import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
@@ -32,7 +32,7 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 function processDefaultFunctionProcessor<OtherInfo>(
 	information: DataflowInformation | undefined,
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ) {
@@ -45,7 +45,7 @@ function processDefaultFunctionProcessor<OtherInfo>(
 /**
  * Marks the given function call node as only calling built-in functions.
  */
-export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
+export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId): void {
 	const v = graph.getVertex(rootId);
 	if(v?.tag === VertexType.FunctionCall) {
 		v.onlyBuiltin = true;
@@ -55,10 +55,11 @@ export function markAsOnlyBuiltIn(graph: DataflowGraph, rootId: NodeId) {
 
 /**
  * Processes a named function call within the dataflow analysis.
+ * For example, `myFunction(arg1, arg2)`, resolves against the environment.
  */
 export function processNamedCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -83,5 +84,5 @@ export function processNamedCall<OtherInfo>(
 		markAsOnlyBuiltIn(information.graph, rootId);
 	}
 
-	return information ?? initializeCleanDataflowInformation(rootId, data);
+	return information ?? DataflowInformation.initialize(rootId, data);
 }

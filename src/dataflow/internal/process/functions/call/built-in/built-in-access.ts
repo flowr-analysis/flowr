@@ -4,25 +4,21 @@ import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '.
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { builtInId, BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
-import { ReferenceType } from '../../../../../environments/identifier';
-import {
-	type ContainerIndicesCollection,
-	type ContainerParentIndex,
-	isParentContainerIndex
-} from '../../../../../graph/vertex';
+import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { filterIndices, getAccessOperands, resolveSingleIndex } from '../../../../../../util/containers';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { unpackArg } from '../argument/unpack-argument';
+import { resolveSymbolToEnvir } from './built-in-envir-utils';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -30,7 +26,7 @@ interface TableAssignmentProcessorMarker {
 
 function tableAssignmentProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	outInfo: TableAssignmentProcessorMarker
@@ -52,13 +48,13 @@ function tableAssignmentProcessor<OtherInfo>(
  */
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ): DataflowInformation {
 	if(args.length < 1) {
-		dataflowLogger.warn(`Access ${name.content} has less than 1 argument, skipping`);
+		dataflowLogger.warn(`Access ${Identifier.getName(name.content)} has less than 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const head = args[0];
@@ -87,6 +83,21 @@ export function processAccess<OtherInfo>(
 			info.graph.addEdge(name.info.id, arg.entryPoint, EdgeType.Reads);
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
+	}
+
+	/* for $ access on a tracked env variable, add Reads edges to the field definition in envState */
+	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$'
+			&& head !== EmptyArgument && head.value?.type === RType.Symbol
+			&& args.length >= 2 && args[1] !== EmptyArgument) {
+		const envirResolution = resolveSymbolToEnvir(head.value.content, head.value.info.id, data);
+		if(envirResolution) {
+			const fieldNode = unpackArg(args[1]);
+			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
+			const fieldDefs = fieldName ? envirResolution.envDef.envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
+			for(const fd of fieldDefs ?? []) {
+				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
+			}
+		}
 	}
 
 	return {
@@ -126,15 +137,15 @@ export function processAccess<OtherInfo>(
  */
 function processNumberBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	config: ForceArguments,
 	head: RArgument<OtherInfo & ParentInformation>,
 ) {
 	const existing = data.environment.current.memory.get(':=');
 	const outInfo = { definitionRootNodes: [] };
-	const tableAssignId = builtInId(':=-table');
+	const tableAssignId = NodeId.toBuiltIn(':=-table');
 	data.environment.current.memory.set(':=', [{
 		type:      ReferenceType.BuiltInFunction,
 		definedAt: tableAssignId,
@@ -157,10 +168,6 @@ function processNumberBasedAccess<OtherInfo>(
 		);
 	}
 
-	if(data.ctx.config.solver.pointerTracking) {
-		referenceAccessedIndices(args, data, fnCall, rootId, true);
-	}
-
 	return fnCall;
 }
 
@@ -168,7 +175,7 @@ function processNumberBasedAccess<OtherInfo>(
 /**
  * Converts symbol arguments to string arguments within the specified range.
  */
-export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
+export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = args.slice();
 	// if the argument is a symbol, we convert it to a string for this perspective
 	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
@@ -202,94 +209,18 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgu
  * ```
  */
 function processStringBasedAccess<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: RSymbol<OtherInfo & ParentInformation, string>,
+	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,
 	config: { treatIndicesAsString: boolean } & ForceArguments
 ) {
-	const newArgs = symbolArgumentsToStrings(args);
-
-	const fnCall = processKnownFunctionCall({
+	return processKnownFunctionCall({
 		name,
-		args:      newArgs,
+		args:      symbolArgumentsToStrings(args),
 		rootId,
 		data,
 		forceArgs: config.forceArgs,
 		origin:    BuiltInProcName.Access
 	});
-
-	if(data.ctx.config.solver.pointerTracking) {
-		referenceAccessedIndices(newArgs, data, fnCall, rootId, false);
-	}
-
-	return fnCall;
-}
-
-function referenceAccessedIndices<OtherInfo>(
-	newArgs: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	fnCall: ProcessKnownFunctionCallResult,
-	rootId: NodeId,
-	isIndexBasedAccess: boolean,
-) {
-	// Resolve access on the way up the fold
-	const { accessedArg, accessArg } = getAccessOperands(newArgs);
-
-	if(accessedArg === undefined || accessArg === undefined) {
-		return;
-	}
-
-	let accessedIndicesCollection: ContainerIndicesCollection;
-	// If the accessedArg is a symbol, it's either a simple access or the base case of a nested access
-	if(accessedArg.value?.type === RType.Symbol) {
-		accessedIndicesCollection = resolveSingleIndex(accessedArg, accessArg, data.environment, isIndexBasedAccess);
-	} else {
-		// Higher access call
-		const underlyingAccessId = accessedArg.value?.info.id ?? -1;
-		const vertex = fnCall.information.graph.getVertex(underlyingAccessId);
-		const subIndices = vertex?.indicesCollection
-			?.flatMap(indices => indices.indices)
-			?.flatMap(index => (index as ContainerParentIndex)?.subIndices ?? []);
-		if(subIndices) {
-			accessedIndicesCollection = filterIndices(subIndices, accessArg, isIndexBasedAccess);
-		}
-	}
-
-	// Add indices to vertex afterward
-	if(accessedIndicesCollection) {
-		const vertex = fnCall.information.graph.getVertex(rootId);
-		if(vertex) {
-			vertex.indicesCollection = accessedIndicesCollection;
-		}
-
-		// When access has no access as parent, it's the top most
-		const rootNode = data.completeAst.idMap.get(rootId);
-		const parentNode = data.completeAst.idMap.get(rootNode?.info.parent ?? -1);
-		if(parentNode?.type !== RType.Access) {
-			// Only reference indices in top most access
-			referenceIndices(accessedIndicesCollection, fnCall, rootId);
-		}
-	}
-}
-
-/**
- * Creates edges of type {@link EdgeType.Reads} to the accessed Indices and their sub-indices starting from
- * the node with {@link parentNodeId}.
- * @param accessedIndicesCollection - All indices that were accessed by the access operation
- * @param fnCall                    - The {@link ProcessKnownFunctionCallResult} of the access operation
- * @param parentNodeId              - {@link NodeId} of the parent from which the edge starts
- */
-function referenceIndices(
-	accessedIndicesCollection: ContainerIndicesCollection,
-	fnCall: ProcessKnownFunctionCallResult,
-	parentNodeId: NodeId,
-) {
-	const accessedIndices = accessedIndicesCollection?.flatMap(indices => indices.indices);
-
-	for(const accessedIndex of accessedIndices ?? []) {
-		fnCall.information.graph.addEdge(parentNodeId, accessedIndex.nodeId, EdgeType.Reads);
-		const accessedSubIndices = isParentContainerIndex(accessedIndex) ? accessedIndex.subIndices : undefined;
-		referenceIndices(accessedSubIndices, fnCall, accessedIndex.nodeId);
-	}
 }

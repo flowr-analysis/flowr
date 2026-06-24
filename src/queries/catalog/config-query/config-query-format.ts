@@ -3,7 +3,7 @@ import { executeConfigQuery } from './config-query-executor';
 import { bold, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
@@ -11,15 +11,15 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
 export interface ConfigQuery extends BaseQueryFormat {
-    readonly type:    'config';
-    readonly update?: DeepPartial<FlowrConfigOptions>
+	readonly type:    'config';
+	readonly update?: DeepPartial<FlowrConfig>
 }
 
 export interface ConfigQueryResult extends BaseQueryResult {
-	readonly config: FlowrConfigOptions;
+	readonly config: FlowrConfig;
 }
 
-function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfigOptions): CommandCompletions {
+function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	if(partialLine.length === 0) {
 		// update specific fields
 		return { completions: ['+'] };
@@ -35,20 +35,20 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 		if(subConfig && !((subConfig as Record<string, unknown>)[lastPath] !== undefined && typeof (subConfig as Record<string, unknown>)[lastPath] !== 'object')) {
 			const have = Object.keys(subConfig)
 				.filter(k => k.startsWith(lastPath) && k !== lastPath)
-				.map(k => `${partialLine[0].slice(0,1)}${[...path, k].join('.')}`);
+				.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
 				return { completions: have };
 			} else if(lastPath.length > 0) {
-				return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}.`] };
+				return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}.`] };
 			}
 		}
-		return { completions: [`${partialLine[0].slice(0,1)}${fullPath.join('.')}=`] };
+		return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}=`] };
 	}
 
 	return { completions: [] };
 }
 
-function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'config'> {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'config'> {
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object
@@ -56,7 +56,7 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		if(path.length === 0 || valueParts.length !== 1) {
 			output.stdout(`Invalid config update syntax, must be of the form ${bold('+path.to.field=value', output.formatter)}`);
 		} else {
-			const update: DeepPartial<FlowrConfigOptions> = {};
+			const update: DeepPartial<FlowrConfig> = {};
 			const value = valueParts[0];
 			let current: Record<string, unknown> = update;
 			for(let i = 0; i < path.length; i++) {
@@ -83,13 +83,13 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	};
 }
 
-function collectKeysFromUpdate(update: DeepPartial<FlowrConfigOptions>, prefix: string = ''): string[] {
+function collectKeysFromUpdate(update: DeepPartial<FlowrConfig>, prefix: string = ''): string[] {
 	// only collect leaf keys
 	const keys: string[] = [];
 	for(const [key, value] of Object.entries(update)) {
 		const fullKey = prefix ? `${prefix}.${key}` : key;
 		if(value && typeof value === 'object' && !Array.isArray(value)) {
-			keys.push(...collectKeysFromUpdate(value as DeepPartial<FlowrConfigOptions>, fullKey));
+			keys.push(...collectKeysFromUpdate(value as DeepPartial<FlowrConfig>, fullKey));
 		} else {
 			keys.push(fullKey);
 		}

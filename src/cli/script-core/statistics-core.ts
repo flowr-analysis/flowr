@@ -1,5 +1,5 @@
 import path from 'path';
-import { type Arguments , LimitedThreadPool } from '../../util/parallel';
+import { type Arguments, LimitedThreadPool } from '../../util/parallel';
 import { allRFilesFrom } from '../../util/files';
 import { retrieveArchiveName, validateFeatures } from '../common/features';
 import fs from 'fs';
@@ -12,7 +12,7 @@ import commandLineArgs from 'command-line-args';
 import { scripts } from '../common/scripts-info';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
-import type { FlowrConfigOptions } from '../../config';
+import type { FlowrConfig } from '../../config';
 
 const testRegex = /[^/]*\/test/i;
 const exampleRegex = /[^/]*\/example/i;
@@ -45,7 +45,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 			skipped++;
 			continue;
 		}
-		files.push(['--input', f.content, '--output-dir', outputDir,'--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson]);
+		files.push(['--input', f.content, '--output-dir', outputDir, '--compress', '--root-dir', options.input.length === 1 ? options.input[0] : '""', ...verboseAdd, ...features, ...dumpJson]);
 		if(++counter % presentSteps === 0) {
 			console.log(`Collected ${counter} files`);
 			if(counter >= 10 * presentSteps) {
@@ -60,7 +60,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 /**
  * The core function for the 'flowr stats' script.
  */
-export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfigOptions) {
+export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfig) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
 		process.exit(0);

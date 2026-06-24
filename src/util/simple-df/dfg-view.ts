@@ -16,7 +16,7 @@ export interface ReduceVertexOptions extends MergeableRecord {
 }
 
 export interface ReduceOptions extends MergeableRecord {
-    vertices: ReduceVertexOptions
+	vertices: ReduceVertexOptions
 }
 
 const defaultReduceOptions: Required<ReduceOptions> = {

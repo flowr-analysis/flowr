@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { findByPrefixIfUnique } from '../../../src/util/prefix';
 
 describe('Partial Matching', () => {
-	const testSets: {key: string, keys: string[], expected: string | undefined}[] = [
+	const testSets: { key: string, keys: string[], expected: string | undefined }[] = [
 		{ key: '', keys: ['a', 'b'], expected: undefined },
 		{ key: 'xylo', keys: ['...', 'xylo'], expected: 'xylo' },
 		{ key: 'xylo', keys: ['...', 'xylophone'], expected: undefined },

@@ -19,9 +19,10 @@ const testFileSourceWithoutMd = '\n\n\n\n\n\n\n\n\n\n' +
       '\n\n\n';
 
 describe('RMarkdown-file', async() => {
-	await testFileLoadPlugin(FlowrAnalyzerRmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example.Rmd', testFileSourceWithoutMd);
+	await testFileLoadPlugin(FlowrAnalyzerRmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example.Rmd', testFileSourceWithoutMd, ['file:rmd']);
+	await testFileLoadPlugin(FlowrAnalyzerRmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example-rif.Rmd', '\n\n' + testFileSourceWithoutMd, ['file:rmd']);
 });
 
 describe('Quarto RMarkdown-file', async() => {
-	await testFileLoadPlugin(FlowrAnalyzerQmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example.Rmd', testFileSourceWithoutMd);
+	await testFileLoadPlugin(FlowrAnalyzerQmdFilePlugin, FlowrRMarkdownFile, 'test/testfiles/notebook/example.Rmd', testFileSourceWithoutMd, ['file:qmd']);
 });

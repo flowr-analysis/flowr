@@ -36,10 +36,10 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 	}
 
 
-	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[setFrom(intervalFrom(1,1))]]);
-	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1,1))]]);
+	testQuery('Single dataflow', 'x <- 1', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
+	testQuery('Intermediary', 'x <- 1\ny <- x\nprint(y)', ['3@y'], [[setFrom(intervalFrom(1, 1))]]);
 	testQuery('Mystic Intermediary', 'x <- 1\ny <- f(x)\nprint(y)', ['3@y'], [[Top]]);
-	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[setFrom(intervalFrom(2,2), intervalFrom(1,1))]]);
+	testQuery('Either or', 'if(u) { x <- 1 } else { x <- 2 }\nprint(x)', ['2@x'], [[setFrom(intervalFrom(2, 2), intervalFrom(1, 1))]]);
 	testQuery('Big vector', `results <- c("A", "B", "C", "D", "E")
 		col <- vector()
 		
@@ -49,6 +49,16 @@ describe('Resolve Value Query', withTreeSitter( parser => {
 		
 		f1 <- data.frame(col)
 		print(col)`, ['8@col'], [[Top]]);
+
+	describe('Resolve Parameters and Calls', () => {
+		testQuery('No call-sites', 'function() { x <- 1 }', ['1@x'], [[setFrom(intervalFrom(1, 1))]]);
+		testQuery('No call-sites with inner use', 'function() { x <- 42\n x }', ['2@x'], [[setFrom(intervalFrom(42, 42))]]);
+		testQuery('No call-sites with global assignment', 'f <- function() { x <<- 42 }\nf()\nprint(x)', ['3@x'], [[setFrom(intervalFrom(42, 42))]]);
+		testQuery('No call-sites with parameter', 'f <- function(x=42) { \nprint(x)}', ['2@x'], [[Top]]);
+		testQuery('No call-sites with calculated parameter', 'f <- function(x=42+1) { \nprint(x)}', ['2@x'], [[Top]]);
+		testQuery('No call-sites with maybe parameter', 'f <- function(x=42) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
+		testQuery('No call-sites with maybe parameter and calc', 'f <- function(x=42+1) { if(u) x <- 2\nprint(x)}', ['2@x'], [[Top]]);
+	});
 
 	describe('For now suboptimal', () =>  {
 		testQuery('Unknown df', `

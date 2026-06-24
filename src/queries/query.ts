@@ -52,7 +52,7 @@ import {
 } from './catalog/control-flow-query/control-flow-query-format';
 import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
-import type { FlowrConfigOptions } from '../config';
+import type { FlowrConfig } from '../config';
 import {
 	type InspectHigherOrderQuery,
 	InspectHigherOrderQueryDefinition
@@ -77,6 +77,15 @@ import type {
 import {
 	InspectExceptionQueryDefinition
 } from './catalog/inspect-exceptions-query/inspect-exception-query-format';
+import type {
+	InputSourcesQuery,
+} from './catalog/input-sources-query/input-sources-query-format';
+import {
+	InputSourcesDefinition
+} from './catalog/input-sources-query/input-sources-query-format';
+import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
+import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
+import type { LintingResultCertainty } from '../linter/linter-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -105,6 +114,8 @@ export type Query = CallContextQuery
 	| ProjectQuery
 	| OriginQuery
 	| LinterQuery
+	| ProvenanceQuery
+	| InputSourcesQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -114,7 +125,7 @@ export type QueryExecutor<Query extends BaseQueryFormat, Result extends Promise<
 
 type SupportedQueriesType = {
 	[QueryType in Query['type']]: SupportedQuery<QueryType>
-}
+};
 
 /**
  * The result of parsing a query line from, e.g., the repl.
@@ -128,10 +139,10 @@ export interface ParsedQueryLine<QueryType extends BaseQueryFormat['type']> {
 
 export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = BaseQueryFormat['type']> {
 	executor:             QueryExecutor<QueryArgumentsWithType<QueryType>, Promise<BaseQueryResult>>
-    /** optional completion in, e.g., the repl */
-	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfigOptions) => CommandCompletions;
-    /** optional query construction from an, e.g., repl line */
-	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfigOptions) => ParsedQueryLine<QueryType>
+	/** optional completion in, e.g., the repl */
+	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
+	/** optional query construction from an, e.g., repl line */
+	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
@@ -143,7 +154,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
 	 * If this query does not involve any nodes, an empty array can be returned.
 	 */
-	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[]) => NodeId[]
+	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[], certainty?: LintingResultCertainty) => NodeId[]
 }
 
 export const SupportedQueries = {
@@ -160,6 +171,8 @@ export const SupportedQueries = {
 	'normalized-ast':       NormalizedAstQueryDefinition,
 	'dataflow-cluster':     ClusterQueryDefinition,
 	'static-slice':         StaticSliceQueryDefinition,
+	'provenance':           ProvenanceQueryDefinition,
+	'input-sources':        InputSourcesDefinition,
 	'dependencies':         DependenciesQueryDefinition,
 	'location-map':         LocationMapQueryDefinition,
 	'search':               SearchQueryDefinition,
@@ -183,10 +196,11 @@ export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof 
  */
 export async function executeQueriesOfSameType<SpecificQuery extends Query>(data: BasicQueryData, queries: readonly SpecificQuery[]): QueryResult<SpecificQuery['type']> {
 	guard(queries.length > 0, 'At least one query must be provided');
+	const qzt = queries[0].type;
 	/* every query must have the same type */
-	guard(queries.every(q => q.type === queries[0].type), 'All queries must have the same type');
-	const query = SupportedQueries[queries[0].type];
-	guard(query !== undefined, `Unsupported query type: ${queries[0].type}`);
+	guard(queries.every(q => q.type === qzt), 'All queries must have the same type');
+	const query = SupportedQueries[qzt];
+	guard(query !== undefined, `Unsupported query type: ${qzt}`);
 	return query.executor(data, queries as never) as QueryResult<SpecificQuery['type']>;
 }
 
@@ -223,12 +237,12 @@ function groupQueriesByType<
 /* a record mapping the query type present to its respective result */
 export type QueryResults<Base extends SupportedQueryTypes = SupportedQueryTypes> = {
 	readonly [QueryType in Base]: Awaited<QueryResult<QueryType>>
-} & BaseQueryResult
+} & BaseQueryResult;
 
 
 type OmitFromValues<T, K extends string | number | symbol> = {
 	[P in keyof T]?: Omit<T[P], K>
-}
+};
 
 export type QueryResultsWithoutMeta<Queries extends Query> = OmitFromValues<Omit<QueryResults<Queries['type']>, '.meta'>, '.meta'>;
 
@@ -300,7 +314,7 @@ export function AnyQuerySchema() {
 	return Joi.alternatives(
 		SupportedQueriesSchema(),
 		VirtualQuerySchema()
-	).description('Any query');
+	).description('A virtual or an active query!');
 }
 
 /**

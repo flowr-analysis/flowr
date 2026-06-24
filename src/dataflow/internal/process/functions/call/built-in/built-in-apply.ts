@@ -3,7 +3,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -14,14 +14,20 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { VertexType } from '../../../../../graph/vertex';
 import type { FunctionArgument } from '../../../../../graph/graph';
 import { EdgeType } from '../../../../../graph/edge';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import {
+	type Identifier,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { UnnamedFunctionCallPrefix } from '../unnamed-call-handling';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -42,7 +48,7 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
  */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
@@ -93,21 +99,18 @@ export function processApply<OtherInfo>(
 	}
 
 	let functionId: NodeId | undefined = undefined;
-	let functionName: string | undefined = undefined;
+	let functionName: Identifier | undefined = undefined;
 	let anonymous: boolean = false;
 
 	const val = arg.value;
-	if(unquoteFunction && val.type === RType.String) {
+	if(unquoteFunction && RString.is(val)) {
 		functionId = val.info.id;
 		functionName = val.content.str;
-		information = {
-			...information,
-			in: [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }]
-		};
+		information.in = [...information.in, { type: ReferenceType.Function, name: functionName, cds: data.cds, nodeId: functionId }];
 	} else if(val.type === RType.Symbol) {
 		functionId = val.info.id;
 		if(resolveValue) {
-			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap , resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+			const resolved = valueSetGuard(resolveIdToValue(val.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 			if(resolved?.elements.length === 1 && resolved.elements[0].type === 'string') {
 				const r = resolved.elements[0];
 				functionName = isValue(r.value) ? r.value.str : undefined;
@@ -130,10 +133,11 @@ export function processApply<OtherInfo>(
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:   counterpart.name?.content,
-				cds:    data.cds,
-				type:   ReferenceType.Argument,
-				nodeId: arg.entryPoint
+				name:    counterpart.name?.content,
+				valueId: counterpart.value?.info.id,
+				cds:     data.cds,
+				type:    ReferenceType.Argument,
+				nodeId:  arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;
@@ -176,10 +180,11 @@ export function processApply<OtherInfo>(
 				}
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${ingoing.nodeId} in closure of function definition ${rootId}`);
 				let allBuiltIn = true;
-				for(const ref of resolved) {
-					information.graph.addEdge(ingoing, ref, EdgeType.Reads);
-					information.graph.addEdge(rootId, ref, EdgeType.Reads); // because the def. is the anonymous call
-					if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
+				const inId = ingoing.nodeId;
+				for(const { nodeId, type } of resolved) {
+					information.graph.addEdge(inId, nodeId, EdgeType.Reads);
+					information.graph.addEdge(rootId, nodeId, EdgeType.Reads); // because the def. is the anonymous call
+					if(!isReferenceType(type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 						allBuiltIn = false;
 					}
 				}

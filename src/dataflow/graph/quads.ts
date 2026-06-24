@@ -1,6 +1,6 @@
-import { type QuadSerializationConfiguration , graph2quads } from '../../util/quads';
+import { type QuadSerializationConfiguration, graph2quads } from '../../util/quads';
 import type { DataflowGraph } from './graph';
-import { edgeTypesToNames } from './edge';
+import { DfEdge } from './edge';
 
 /**
  * @see cfg2quads
@@ -9,17 +9,14 @@ import { edgeTypesToNames } from './edge';
  */
 export function df2quads(graph: DataflowGraph, config: QuadSerializationConfiguration): string {
 	return graph2quads({
-		rootIds:  [...graph.rootIds()],
-		vertices: graph.vertices(true)
-			.map(([id, v]) => ({
-				...v,
-				id
-			})).toArray(),
+		rootIds:  Array.from(graph.rootIds()),
+		vertices: Array.from(graph.vertices(true)
+			.map(([, v]) => v)),
 		edges: graph.edges().flatMap(([fromId, targets]) =>
-			[...targets].map(([toId, info]) => ({
+			Array.from(targets).map(([toId, info]) => ({
 				from: fromId,
 				to:   toId,
-				type: [...edgeTypesToNames(info.types)],
+				type: Array.from(DfEdge.typesToNames(info)),
 			}))
 		).toArray()
 	},

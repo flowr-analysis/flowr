@@ -21,15 +21,15 @@ export interface FlowrSearchElement<Info> {
 }
 
 export interface FlowrSearchNodeBase<Type extends string, Name extends string, Args extends Record<string, unknown> | undefined> {
-    readonly type: Type;
-    readonly name: Name;
-    readonly args: Args;
+	readonly type: Type;
+	readonly name: Name;
+	readonly args: Args;
 }
 
 export type FlowrSearchGeneratorNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'generator', Name, Args>;
+	FlowrSearchNodeBase<'generator', Name, Args>;
 export type FlowrSearchTransformerNodeBase<Name extends string, Args extends Record<string, unknown> | undefined> =
-		FlowrSearchNodeBase<'transformer', Name, Args>;
+	FlowrSearchNodeBase<'transformer', Name, Args>;
 
 export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	/**
@@ -54,17 +54,31 @@ export interface FlowrSearchGetFilter extends Record<string, unknown> {
 	 */
 	readonly id?:            NodeId;
 	/**
-	 * The node must stem form a file with the given path matching the regex
+	 * The node must stem from a file with the given path matching the regex.
+	 * Inline code (code without a file path) is treated as having an empty path `""`.
 	 * Please note that you can address the full path!
 	 * @example
 	 * ```ts
 	 * // matches all files in any 'tests' folder
-	 * filePath: '.*\\tests\\.*'
+	 * filePathRegex: '.*\\tests\\.*'
 	 * // matches all files named 'myfile.R' in any folder
-	 * filePath: '.*\\/myfile\\.R$'
+	 * filePathRegex: '.*\\/myfile\\.R$'
+	 * // matches only inline code
+	 * filePathRegex: '^$'
+	 * // matches inline code or .R files
+	 * filePathRegex: '^$|.*\\.R$'
 	 * ```
 	 */
 	readonly filePathRegex?: string;
+	/**
+	 * If true, match any node whose source range contains the given line/column (fuzzy position match).
+	 * Requires `line` to be provided.
+	 */
+	readonly fuzzy?:         boolean;
+	/**
+	 * If true (and `fuzzy` is true), return only the innermost (deepest in the AST) matching node(s).
+	 */
+	readonly innermostOnly?: boolean;
 }
 
 /** Intentionally, we abstract away from an array to avoid the use of conventional typescript operations */

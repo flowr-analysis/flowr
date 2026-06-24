@@ -1,13 +1,13 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
 import fs from 'fs';
 import path from 'path';
-import { escapeMarkdown } from '../../util/mermaid/mermaid';
 import { codeBlock } from './doc-code';
 import { details } from './doc-structure';
 import { textWithTooltip } from '../../util/html-hover-over';
 import { prefixLines } from './doc-general';
+import { Mermaid } from '../../util/mermaid/mermaid';
 
 /**
  * Kinds of TypeScript type elements we can encounter.
@@ -61,8 +61,10 @@ const options: ts.CompilerOptions = {
  */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, options);
-		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
+		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
+		const normalizedFileNames = fileNames.map(toPosixPath);
+		const program = ts.createProgram(normalizedFileNames, options);
+		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);
 		return { files: [], program: undefined as unknown as ts.Program };
@@ -164,7 +166,7 @@ function formatNode(node: NamedDeclaration, sourceFile: SourceFile, typeChecker:
 	const type = getType(node, typeChecker);
 	const typeAnnotation = type.includes('=>') ? type.replaceAll(/\s+=>\s+/g, ' ') : ': ' + type;
 
-	return `${prefix}${escapeMarkdown(name + typeAnnotation)}${suffix}`;
+	return `${prefix}${Mermaid.escape(name + typeAnnotation)}${suffix}`;
 }
 
 function getType(node: ts.Node, typeChecker: ts.TypeChecker): string {
@@ -355,9 +357,9 @@ function getTypePathForTypeScript({ filePath }: Pick<TypeElementInSource, 'fileP
  * Return the link to the type in the source code.
  * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
  */
-export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, prefix = RemoteFlowrFilePathBaseRef): string {
+export function getTypePathLink(elem: Pick<TypeElementInSource, 'filePath' | 'lineNumber' >, relative = false): string {
 	const fromSource = getTypePathForTypeScript(elem);
-	return `${prefix}/${fromSource}#L${elem.lineNumber}`;
+	return `${relative ? '' : RemoteFlowrFilePathBaseRef}${fromSource}#L${elem.lineNumber}`;
 }
 
 export interface MermaidClassDiagramArguments {
@@ -394,7 +396,7 @@ function generateMermaidClassDiagram(hierarchyList: readonly TypeElementInSource
 	if(node.kind === 'type') {
 		collect.nodeLines.push(`style ${node.name} opacity:.35,fill:#FAFAFA`);
 	}
-	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${escapeMarkdown(node.comments?.join('; ').replace(/\n/g,' ') ?? '' )}"`);
+	collect.nodeLines.push(`click ${node.name} href "${getTypePathLink(node)}" "${Mermaid.escape(node.comments?.join('; ').replace(/\n/g, ' ') ?? '' )}"`);
 	const inline = [...options.inlineTypes ?? [], ...defaultSkip];
 
 	let baseTypes = node.extends;
@@ -481,9 +483,9 @@ export interface TypeReport {
 	program: ts.Program
 }
 
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined })
-export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid: string }): (TypeReport & { mermaid: string });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption & { typeNameForMermaid?: undefined }): (TypeReport & { mermaid: undefined });
+export function getTypesFromFolder(options: GetTypesAsMermaidOption): TypeReport;
 /**
  * Inspect typescript source code for types and return a report.
  */
@@ -523,12 +525,12 @@ function implSnippet(node: TypeElementInSource | undefined, program: ts.Program,
 	}
 	if(showImplSnippet) {
 		const code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName));
-		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
+		text += `\n<details${open ? ' open' : ''}><summary style="color:gray">Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a></summary>\n\n${codeBlock('ts', code)}\n\n</details>\n`;
 	} else {
-		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a>)</i>\n`;
+		text += `\n<br/><i>(Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, true)}</a>)</i>\n`;
 	}
 	const init = showName ? `* ${bold}[${node.name}](${getTypePathLink(node)})${bold} ${sep}${indent}` : '';
-	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t','    ').split(/\n/g).join(`\n${indent}   `)}`;
+	return ` ${indent}${showName ? init : ''} ${text.replaceAll('\t', '    ').split(/\n/g).join(`\n${indent}   `)}`;
 }
 
 export interface PrintHierarchyArguments {
@@ -577,7 +579,7 @@ export function printHierarchy({ program, info, root, ignoredTypes, collapseFrom
 		if(mermaidHide.includes(baseType) || ignoredTypes?.includes(baseType)) {
 			continue;
 		}
-		const res = printHierarchy({ program, info, root: baseType, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });
+		const res = printHierarchy({ program, info, root: baseType, ignoredTypes, collapseFromNesting, initialNesting: initialNesting + 1, maxDepth, skipNesting, showImplSnippet, reverse });
 		result.push(res);
 	}
 
@@ -606,6 +608,8 @@ export interface FnElementInfo {
 	doNotAutoGobble?: boolean,
 	/** Whether to hide the "Defined at ..." line */
 	hideDefinedAt?:   boolean
+	/** Whether lines with import statements in the code should be skipped */
+	skipImports?:     boolean;
 }
 
 /**
@@ -614,19 +618,43 @@ export interface FnElementInfo {
  *
  * This is great to show examples that are directly taken from the source code.
  */
-export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble, hideDefinedAt }: FnElementInfo, name: string): string {
-	const node = info.find(e => e.name === name);
+export function printCodeOfElement(info: FnElementInfo, name: string): string {
+	const node = info.info.find(e => e.name === name);
 	if(!node) {
 		console.error(`Could not find node ${name} when resolving function!`);
 		return '';
 	}
-	let code = node.node.getFullText(program.getSourceFile(node.node.getSourceFile().fileName)).trim();
+	const code = node.node.getFullText(info.program.getSourceFile(node.node.getSourceFile().fileName)).trim();
+
+	return printCode(info, code, getTypePathLink(node, true));
+}
+
+/**
+ * Print a source file as code block.
+ * If you create a wiki, please refer to the functions provided by the {@link GeneralWikiContext}.
+ *
+ * This is great to show examples that are directly taken from the source code.
+ */
+export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
+	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
+	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
+	if(!code) {
+		console.error(`Could not find source file ${relativePath}!`);
+		return '';
+	}
+	return printCode(info, code, relativePath);
+}
+
+function printCode({ dropLinesEnd = 0, dropLinesStart = 0, doNotAutoGobble, hideDefinedAt, skipImports }: FnElementInfo, code: string, definedAt?: string): string {
 	if(dropLinesStart > 0 || dropLinesEnd > 0) {
 		const lines = code.split(/\n/g);
 		if(dropLinesStart + dropLinesEnd >= lines.length) {
 			return '';
 		}
 		code = lines.slice(dropLinesStart, lines.length - dropLinesEnd).join('\n');
+	}
+	if(skipImports) {
+		code = code.replaceAll(/^import\s.*\n/gm, '').trim();
 	}
 	if(!doNotAutoGobble) {
 		// gobble leading spaces
@@ -642,10 +670,10 @@ export function printCodeOfElement({ program, info, dropLinesEnd = 0, dropLinesS
 			code = lines.map(line => line.startsWith(' '.repeat(gobble)) ? line.slice(gobble) : line).join('\n');
 		}
 	}
-	if(hideDefinedAt) {
+	if(hideDefinedAt || !definedAt) {
 		return codeBlock('ts', code);
 	} else {
-		return `${codeBlock('ts', code)}\n<i>Defined at <a href="${getTypePathLink(node)}">${getTypePathLink(node, '.')}</a></i>\n`;
+		return `${codeBlock('ts', code)}\n<i>Defined at <a href="${RemoteFlowrFilePathBaseRef}${definedAt}">${definedAt}</a></i>\n`;
 	}
 }
 
@@ -686,9 +714,11 @@ function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], f
  * @param hierarchy - The hierarchy of types to search in
  * @param codeStyle - Whether to use code style for the link
  * @param realNameWrapper - How to highlight the function in name in the `x::y` format?
+ * @param fuzzy     - Whether to use fuzzy matching when searching for the type
+ * @param type      - Optionally restrict to a certain type of element
  */
-export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b'): string {
-	const res = retrieveNode(name, hierarchy);
+export function shortLink(name: string, hierarchy: readonly TypeElementInSource[], codeStyle = true, realNameWrapper = 'b', fuzzy?: boolean, type?: TypeElementKind): string {
+	const res = retrieveNode(name, hierarchy, fuzzy, type);
 	if(!res) {
 		console.error(`Could not find node ${name} when resolving short link!`);
 		return '';
@@ -725,8 +755,8 @@ export function shortLinkFile(name: string, hierarchy: readonly TypeElementInSou
 }
 
 export interface GetDocumentationForTypeFilters {
-    fuzzy?: boolean;
-    type?:  TypeElementKind;
+	fuzzy?: boolean;
+	type?:  TypeElementKind;
 }
 
 

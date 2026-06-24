@@ -4,26 +4,20 @@ import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import { EmptyArgument, type RFunctionArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
-import { resolveIdToArgValue, resolveIdToArgValueSymbolName, unquoteArgument } from '../resolve-args';
+import { resolveIdToArgValue, resolveIdToArgValueSymbolName } from '../resolve-args';
 import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../shape-inference';
 import { getArgumentValue, isDataFrameArgument } from './arguments';
 
 /**
- * Special named arguments of index-based access operators
- */
-const SpecialAccessArgumentsMapper: Record<RIndexAccess['operator'], string[]> = {
-	'[':  ['drop'],
-	'[[': ['exact']
-};
-
-/**
  * Maps a concrete data frame access operation to abstract data frame operations.
- * @param node - The R node of the access
- * @param dfg  - The data flow graph for resolving the arguments
- * @param ctx  - The current flowR analyzer context
+ * @param node      - The R node of the access
+ * @param inference - The data frame shape inference visitor
+ * @param dfg       - The data flow graph for resolving the arguments
+ * @param ctx       - The current flowR analyzer context
  * @returns The mapped abstract data frame operations for the access operation, or `undefined` if the node does not represent a data frame access operation
  */
 export function mapDataFrameAccess(
@@ -71,7 +65,7 @@ function mapDataFrameIndexColRowAccess(
 	const dataFrame = access.accessed;
 	const drop = getArgumentValue(access.access, 'drop', info);
 	const exact = getArgumentValue(access.access, 'exact', info);
-	const args = getAccessArgs(access.operator, access.access);
+	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
 
 	if(!isDataFrameArgument(dataFrame, inference)) {
 		return;
@@ -168,18 +162,6 @@ function mapDataFrameIndexColRowAccess(
 		}
 	}
 	return result;
-}
-
-/**
- * Removes all special named arguments from the arguments of an access operator (i.e. arguments like "drop" and "exact").
- */
-function getAccessArgs(
-	operator: RIndexAccess['operator'],
-	args: readonly RFunctionArgument<ParentInformation>[]
-): readonly RFunctionArgument<ParentInformation>[] {
-	const specialArgs = SpecialAccessArgumentsMapper[operator];
-
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !specialArgs.includes(unquoteArgument(arg.name.content)));
 }
 
 /**

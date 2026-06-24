@@ -31,7 +31,7 @@ export class FlowrAnalyzerNamespaceFilesPlugin extends FlowrAnalyzerFilePlugin {
 		return this.pattern.test(platformBasename(file.toString()));
 	}
 
-	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrNamespaceFile {
-		return FlowrNamespaceFile.from(file, FileRole.Namespace);
+	public process(ctx: FlowrAnalyzerContext, file: FlowrFileProvider): FlowrNamespaceFile {
+		return FlowrNamespaceFile.from(file, ctx, FileRole.Namespace);
 	}
 }

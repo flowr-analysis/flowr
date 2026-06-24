@@ -1,4 +1,4 @@
-import { type IPipelineStep, type PipelineStepName , PipelineStepStage } from '../pipeline-step';
+import { type IPipelineStep, type PipelineStepName, PipelineStepStage } from '../pipeline-step';
 import { InvalidPipelineError } from './invalid-pipeline-error';
 import type { Pipeline } from './pipeline';
 import { jsonReplacer } from '../../../util/json';

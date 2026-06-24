@@ -18,7 +18,7 @@ export const initialUsedPackageInfos = {
 	'<loadedByVariable>': 0
 };
 
-export type UsedPackageInfo = Writable<typeof initialUsedPackageInfos>
+export type UsedPackageInfo = Writable<typeof initialUsedPackageInfos>;
 
 // based on the extraction routine of lintr search for function calls which are not character-loads (we can not trace those...)
 const withinApply: Query = xpath.parse(`

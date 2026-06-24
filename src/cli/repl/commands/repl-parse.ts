@@ -1,13 +1,13 @@
 import type { ReplCodeCommand } from './repl-main';
-import { type OutputFormatter , FontStyles } from '../../../util/text/ansi';
-import { type JsonEntry , convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
-import { extractLocation, getTokenType, } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
+import { type OutputFormatter, FontStyles } from '../../../util/text/ansi';
+import { type JsonEntry, convertPreparedParsedData, prepareParsedData } from '../../../r-bridge/lang-4.x/ast/parser/json/format';
+import { extractLocation, getTokenType } from '../../../r-bridge/lang-4.x/ast/parser/main/normalize-meta';
 import { fileProtocol, removeRQuotes } from '../../../r-bridge/retriever';
 import type Parser from 'web-tree-sitter';
 import type { ParseStepOutputSingleFile } from '../../../r-bridge/parser';
 import { FlowrFile } from '../../../project/context/flowr-file';
 
-type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[]
+type DepthList =  { depth: number, node: JsonEntry, leaf: boolean }[];
 
 function toDepthMap(entry: JsonEntry): DepthList {
 	const visit: { depth: number, node: JsonEntry }[] = [ { depth: 0, node: entry } ];

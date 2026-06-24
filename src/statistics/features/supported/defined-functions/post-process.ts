@@ -7,9 +7,9 @@ import {
 	,
 	AllDefinitionsFileBase
 } from './defined-functions';
-import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject, emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
-import { type SummarizedMeasurement , summarizedMeasurement2CsvHeader , summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer';
+import { type SummarizedMeasurement, summarizedMeasurement2CsvHeader, summarizedMeasurement2Csv, summarizeMeasurement } from '../../../../util/summarizer';
 import type { MergeableRecord } from '../../../../util/objects';
 import { readLineByLineSync } from '../../../../util/files';
 import { date2string } from '../../../../util/text/time';

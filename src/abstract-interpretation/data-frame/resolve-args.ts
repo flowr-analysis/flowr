@@ -6,6 +6,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { isNotUndefined } from '../../util/assert';
 import { unliftRValue, unwrapRValue, unwrapRValueToString, unwrapRVector } from '../../util/r-value';
 import { startAndEndsWith } from '../../util/text/strings';
+import { Identifier } from '../../dataflow/environments/identifier';
 
 /**
  * Returns the argument name of a function argument
@@ -63,7 +64,7 @@ export function resolveIdToArgValueSymbolName(id: NodeId | RArgument<ParentInfor
 	const node = resolveIdToArgument(id, info);
 
 	if(node?.value?.type === RType.Symbol) {
-		return unquoteArgument(node.value.content);
+		return unquoteArgument(Identifier.toString(node.value.content));
 	} else if(node?.value?.type === RType.String) {
 		return node.value.content.str;
 	}

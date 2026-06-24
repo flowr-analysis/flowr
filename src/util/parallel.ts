@@ -8,8 +8,8 @@ import { log } from './log';
 import { guard } from './assert';
 import { jsonReplacer } from './json';
 
-export type Arguments = string[]
-type WorkingQueue = Arguments[]
+export type Arguments = string[];
+type WorkingQueue = Arguments[];
 
 /**
  * This is not really generic but written especially for the benchmarking script.
@@ -52,7 +52,7 @@ export class LimitedThreadPool {
 		clearInterval(this.reportingInterval as NodeJS.Timeout);
 	}
 
-	public getStats(): { counter: number, skipped: Arguments[]} {
+	public getStats(): { counter: number, skipped: Arguments[] } {
 		return { counter: this.counter, skipped: this.skipped };
 	}
 

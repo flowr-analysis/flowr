@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { SetComparator } from './satisfiable-domain';
@@ -86,7 +86,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	public upper(): Value extends SetRangeFinite<T> ? ReadonlySet<T> : Value extends SetRangeValue<T> ? ReadonlySet<T> | typeof Top : ReadonlySet<T> | typeof Top | typeof Bottom {
 		if(this.value === Bottom) {
 			return Bottom as Value extends SetRangeFinite<T> ? ReadonlySet<T> : Value extends SetRangeValue<T> ? ReadonlySet<T> | typeof Top : ReadonlySet<T> | typeof Top | typeof Bottom;
-		} else if(this.value.range == Top) {
+		} else if(this.value.range === Top) {
 			return Top as Value extends SetRangeFinite<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Top;
 		}
 		return this.value.min.union(this.value.range) as ReadonlySet<T> as Value extends SetRangeFinite<T> ? ReadonlySet<T> : ReadonlySet<T> | typeof Top;
@@ -433,12 +433,12 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		} else if(this.value.range === Top) {
-			const minString = this.value.min.values().map(domainElementToString).toArray().join(', ');
+			const minString = this.value.min.values().map(AbstractDomain.toString).toArray().join(', ');
 
 			return `[{${minString}}, ${TopSymbol}]`;
 		}
-		const minString = this.value.min.values().map(domainElementToString).toArray().join(', ');
-		const rangeString = this.value.range.values().map(domainElementToString).toArray().join(', ');
+		const minString = this.value.min.values().map(AbstractDomain.toString).toArray().join(', ');
+		const rangeString = this.value.range.values().map(AbstractDomain.toString).toArray().join(', ');
 
 		return `[{${minString}}, {${rangeString}}]`;
 	}

@@ -6,7 +6,7 @@ import { flowrScriptSummarizer } from '../../../src/cli/script-core/summarizer-c
 import { SummarizerType } from '../../../src/util/summarizer';
 import { getPlatform } from '../../../src/util/os';
 import { describe, test, vi } from 'vitest';
-import { defaultConfigOptions } from '../../../src/config';
+import { FlowrConfig } from '../../../src/config';
 
 
 describe('Post-Processing', () => {
@@ -29,7 +29,7 @@ describe('Post-Processing', () => {
 			features:     ['all'],
 			limit:        undefined,
 			'no-ansi':    false
-		}, defaultConfigOptions);
+		}, FlowrConfig.default());
 		/* now run the summarizer :D */
 		await flowrScriptSummarizer({
 			verbose:         false,

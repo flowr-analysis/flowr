@@ -1,6 +1,7 @@
 import type { DataFrameDomain } from '../../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor } from '../../../abstract-interpretation/data-frame/shape-inference';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../slicing/criterion/parse';
+import { CfgKind } from '../../../project/cfg-kind';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { log } from '../../../util/log';
 import type { BasicQueryData } from '../../base-query-format';
 import type { DfShapeQuery, DfShapeQueryResult } from './df-shape-query-format';
@@ -16,7 +17,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 
 	const ast = await analyzer.normalize();
 	const dfg = (await analyzer.dataflow()).graph;
-	const cfg = await analyzer.controlflow();
+	const cfg = await analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
 
 	const start = Date.now();
 	const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg, normalizedAst: ast, ctx: analyzer.inspectContext() });
@@ -31,7 +32,7 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 			domains: domains
 		};
 	}
-	const result = new Map<SingleSlicingCriterion, DataFrameDomain | undefined>();
+	const result = new Map<SlicingCriterion, DataFrameDomain | undefined>();
 
 	for(const query of queries) {
 		if(query.criterion === undefined) {
@@ -41,10 +42,14 @@ export async function executeDfShapeQuery({ analyzer }: BasicQueryData, queries:
 			log.warn('Duplicate criterion in dataframe shape query:', query.criterion);
 			continue;
 		}
-		const nodeId = slicingCriterionToId(query.criterion, ast.idMap);
-		const node = ast.idMap.get(nodeId);
-		const value = inference.getAbstractValue(node?.info.id);
-		result.set(query.criterion, value);
+		try {
+			const nodeId = SlicingCriterion.parse(query.criterion, ast.idMap);
+			const node = ast.idMap.get(nodeId);
+			const value = inference.getAbstractValue(node?.info.id);
+			result.set(query.criterion, value);
+		} catch(e) {
+			console.error(e instanceof Error ? e.message : e);
+		}
 	}
 
 	return {

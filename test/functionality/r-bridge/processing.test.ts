@@ -1,12 +1,12 @@
 import { assertDecoratedAst, retrieveNormalizedAst, withShell } from '../_helper/shell';
 import { numVal } from '../_helper/ast-builder';
-import { rangeFrom } from '../../../src/util/range';
-import { type RNodeWithParent , decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import { type RNodeWithParent, decorateAst } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
-import { collectAllIds } from '../../../src/r-bridge/lang-4.x/ast/model/collect';
 import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { describe, assert, test } from 'vitest';
+import { SourceRange } from '../../../src/util/range';
+import { RProject } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-project';
 
 describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 	describe('Testing Deterministic Counting of Id Assignment', () => {
@@ -20,75 +20,74 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 				lexeme:   undefined,
 				grouping: undefined,
 				info:     {
-					parent:  undefined,
-					id:      '1',
-					index:   0,
-					nesting: 0,
-					role:    RoleInParent.Root
+					parent: undefined,
+					id:     '1',
+					index:  0,
+					nest:   0,
+					role:   RoleInParent.Root
 				},
 				children,
 			});
 			assertDecorated('String', '"hello"',
 				exprList({
 					type:     RType.String,
-					location: rangeFrom(1, 1, 1, 7),
+					location: SourceRange.from(1, 1, 1, 7),
 					lexeme:   '"hello"',
 					content:  {
 						str:    'hello',
 						quotes: '"',
 					},
 					info: {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0,
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0,
 					},
 				})
 			);
 			assertDecorated('Number', '42',
 				exprList({
 					type:     RType.Number,
-					location: rangeFrom(1, 1, 1, 2),
+					location: SourceRange.from(1, 1, 1, 2),
 					lexeme:   '42',
 					content:  numVal(42),
 					info:     {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);
 			assertDecorated('Logical', 'FALSE',
 				exprList({
 					type:     RType.Logical,
-					location: rangeFrom(1, 1, 1, 5),
+					location: SourceRange.from(1, 1, 1, 5),
 					lexeme:   'FALSE',
 					content:  false,
 					info:     {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);
 			assertDecorated('Symbol', 'k',
 				exprList({
-					type:      RType.Symbol,
-					location:  rangeFrom(1, 1, 1, 1),
-					namespace: undefined,
-					lexeme:    'k',
-					content:   'k',
-					info:      {
-						parent:  '1',
-						id:      '0',
-						nesting: 0,
-						role:    RoleInParent.ExpressionListChild,
-						index:   0
+					type:     RType.Symbol,
+					location: SourceRange.from(1, 1, 1, 1),
+					lexeme:   'k',
+					content:  'k',
+					info:     {
+						parent: '1',
+						id:     '0',
+						nest:   0,
+						role:   RoleInParent.ExpressionListChild,
+						index:  0
 					},
 				})
 			);
@@ -99,7 +98,7 @@ describe.sequential('Assign unique Ids and Parents', withShell(shell => {
 			test(name, async() => {
 				const baseAst = await retrieveNormalizedAst(shell, input);
 				const ast = decorateAst(baseAst.ast, {});
-				const ids = collectAllIds(ast.ast, stop);
+				const ids = stop ? RProject.collectAllIdsWithStop(ast.ast, stop) : RProject.collectAllIds(ast.ast);
 				assert.deepStrictEqual(ids, expected, `Ids do not match for input ${input}`);
 			});
 		}

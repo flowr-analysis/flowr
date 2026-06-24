@@ -1,7 +1,7 @@
 import type { JsonEntry, NamedJsonEntry } from '../json/format';
 import { ParseError } from './normalizer-data';
-import { type SourceRange , rangeStartsCompletelyBefore , rangeFrom } from '../../../../../util/range';
-import { type RawRType , RType } from '../../model/type';
+import { SourceRange } from '../../../../../util/range';
+import { type RawRType, RType } from '../../model/type';
 import type { RNode } from '../../model/model';
 import type { RExpressionList } from '../../model/nodes/r-expression-list';
 
@@ -9,7 +9,7 @@ import type { RExpressionList } from '../../model/nodes/r-expression-list';
  * Given a JSON element, extract the source location of the corresponding element in the R-ast
  */
 export function extractLocation(ast: JsonEntry): SourceRange {
-	return rangeFrom(ast.line1, ast.col1, ast.line2, ast.col2);
+	return SourceRange.from(ast.line1, ast.col1, ast.line2, ast.col2);
 }
 
 /**
@@ -72,7 +72,7 @@ export function retrieveOpName(operator: NamedJsonEntry): string {
 export function ensureChildrenAreLhsAndRhsOrdered(first: JsonEntry, second: JsonEntry): void {
 	const firstOtherLoc = extractLocation(first);
 	const secondOtherLoc = extractLocation(second);
-	if(!rangeStartsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
+	if(!SourceRange.startsCompletelyBefore(firstOtherLoc, secondOtherLoc)) {
 		throw new ParseError(`expected the first child to be the lhs, yet received ${JSON.stringify(first)} & ${JSON.stringify(second)}`);
 	}
 }

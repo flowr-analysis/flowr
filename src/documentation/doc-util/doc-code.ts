@@ -39,7 +39,7 @@ export function jsonWithLimit(object: object, maxLength: number = 5_000, tooLong
 ${prettyPrinted.length > maxLength ? tooLongText : ''}
 ${codeBlock(prettyPrinted.length > maxLength ? 'text' : 'json', prettyPrinted.length > 5_000 ? JSON.stringify(object,
 	(k, v) => {
-		if(typeof v === 'object' && v !== null && 'id' in v && (v as {id: number})['id'] === 0 && 'memory' in v && (v as {memory: undefined | null | object})['memory']) {
+		if(typeof v === 'object' && v !== null && 'id' in v && (v as { id: number })['id'] === 0 && 'memory' in v && (v as { memory: undefined | null | object })['memory']) {
 			return '<BuiltInEnvironment>';
 		} else {
 			return builtInEnvJsonReplacer(k, v);

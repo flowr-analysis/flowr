@@ -1,12 +1,12 @@
-import { type DataflowInformation , ExitPointType } from '../../../info';
-import { type DataflowProcessorInformation , processDataflowFor } from '../../../processor';
+import { type DataflowInformation, ExitPointType } from '../../../info';
+import { type DataflowProcessorInformation, processDataflowFor } from '../../../processor';
 import { expensiveTrace, log } from '../../../../util/log';
 import type { RParameter } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-parameter';
 import type { ParentInformation } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type IdentifierDefinition , ReferenceType } from '../../../environments/identifier';
+import { type IdentifierDefinition, ReferenceType } from '../../../environments/identifier';
 import { define } from '../../../environments/define';
-import { RType } from '../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../graph/edge';
+import { RFunctionDefinition } from '../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 
 /**
@@ -25,17 +25,18 @@ export function processFunctionParameter<OtherInfo>(parameter: RParameter<OtherI
 
 	let environment = name.environment;
 	for(const writtenNode of writtenNodes) {
-		expensiveTrace(log, () => `parameter ${writtenNode.name} (${writtenNode.nodeId}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
-		graph.setDefinitionOfVertex(writtenNode);
-		environment = define(writtenNode, false, environment, data.ctx.config);
+		const wid = writtenNode.nodeId;
+		expensiveTrace(log, () => `parameter ${writtenNode.name} (${wid}) is defined at id ${writtenNode.definedAt} with ${defaultValue === undefined ? 'no default value' : ' a default value'}`);
+		graph.setDefinitionOfVertex(writtenNode, defaultValue?.entryPoint ? [defaultValue?.entryPoint] : []);
+		environment = define(writtenNode, false, environment);
 
 		if(defaultValue !== undefined) {
-			if(parameter.defaultValue?.type === RType.FunctionDefinition) {
-				graph.addEdge(writtenNode, parameter.defaultValue.info.id, EdgeType.DefinedBy);
+			if(RFunctionDefinition.is(parameter.defaultValue)) {
+				graph.addEdge(wid, parameter.defaultValue.info.id, EdgeType.DefinedBy);
 			} else {
 				const definedBy = defaultValue.in.concat(defaultValue.unknownReferences);
 				for(const node of definedBy) {
-					graph.addEdge(writtenNode, node, EdgeType.DefinedBy);
+					graph.addEdge(wid, node.nodeId, EdgeType.DefinedBy);
 				}
 			}
 		}

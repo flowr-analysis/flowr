@@ -4,8 +4,8 @@ import readline from 'readline';
 import { guard } from '../../util/assert';
 import { log } from '../../util/log';
 
-type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined]
-export type StdioProcessor = (stdio: Stdio) => void
+type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined];
+export type StdioProcessor = (stdio: Stdio) => void;
 
 /**
  * Simply captures the output of the script executed by {@link waitOnScript}.

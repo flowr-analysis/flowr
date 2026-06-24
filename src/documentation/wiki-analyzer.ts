@@ -31,13 +31,14 @@ import { FlowrAnalyzerLoadingOrderContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import { FlowrAnalyzerPluginDefaults } from '../project/plugins/flowr-analyzer-plugin-defaults';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerPlugin } from '../project/plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerEnvironmentContext } from '../project/context/flowr-analyzer-environment-context';
 import { FlowrAnalyzerFunctionsContext } from '../project/context/flowr-analyzer-functions-context';
+import { FlowrAnalyzerMetaContext } from '../project/context/flowr-analyzer-meta-context';
+import { FlowrConfig } from '../config';
 
 async function analyzerQuickExample() {
 	const analyzer = await new FlowrAnalyzerBuilder()
@@ -100,7 +101,8 @@ ${
 			'Files Context':         undefined,
 			'Loading Order Context': undefined,
 			'Dependencies Context':  undefined,
-			'Environment Context':   undefined
+			'Environment Context':   undefined,
+			'Meta Context':          undefined,
 		},
 		'Caching': undefined
 	})
@@ -190,23 +192,24 @@ The following sections highlight some of the most important configuration option
 ${section('Configuring flowR', 3)}
 
 You can fundamentally change the behavior of flowR using the [config file](${FlowrWikiBaseRef}/Interface#configuring-flowr),
-embedded in the interface ${ctx.link('FlowrConfigOptions')}.
+embedded in the interface ${ctx.link(FlowrConfig)}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'setConfig')} to set a complete configuration
+* ${ctx.linkM(FlowrAnalyzerBuilder, 'configure')} to set the value of a specific key in the config
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'amendConfig')} to amend the default configuration
 
-By default, the builder uses flowR's standard configuration obtained with ${ctx.link('defaultConfigOptions')}.
+By default, the builder uses flowR's standard configuration obtained with ${ctx.linkO(FlowrConfig, 'default')}.
 
 ${block({
 	type:    'NOTE',
-	content: `During the analysis with the ${ctx.link(FlowrAnalyzer.name)}, you can also access the configuration with
+	content: `During the analysis with the ${ctx.link(FlowrAnalyzer)}, you can also access the configuration with
 		 the ${ctx.link(FlowrAnalyzerContext)}.`
 })}
 
 ${section('Configuring the Engine', 3)}
 
-FlowR supports multiple [engines](${FlowrWikiBaseRef}/Engines) for parsing and analyzing R code.
+FlowR supports multiple ${ctx.linkPage('wiki/Engines', 'engines')} for parsing and analyzing R code.
 With the builder, you can select the engine to use with:
 
 * ${ctx.linkM(FlowrAnalyzerBuilder, 'setEngine')} to set the desired engine.
@@ -235,7 +238,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., \`['file:rmd', [/.*.rmd/i]]\` for the ${ctx.link(FlowrAnalyzerRmdFilePlugin)}).\\
    This will also use the ${ctx.link(makePlugin)} function under the hood to create the plugin instance.
 
-Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrAnalyzerPluginDefaults)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link('FlowrDefaultPlugins')}) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
@@ -277,7 +280,7 @@ Plugins allow you to extend the capabilities of the analyzer in many different w
 For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
 All plugins have to extend the ${ctx.link(FlowrAnalyzerPlugin)} base class and specify their ${ctx.link('PluginType')}.
 During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
-If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described 
+If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described
 in the [Builder Configuration](#builder-configuration) section above.
 However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
 
@@ -286,7 +289,7 @@ Currently, flowR supports the following plugin types built-in:
 | Name | Class | Type | Description |
 |------|-------|------|-------------|
 ${
-	BuiltInPlugins.sort(([a,], [b]) => a.localeCompare(b)).map(
+	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(
 		([key, value]) => `| ${codeInline(key)} | ${ctx.link( `${value.name}`)} |  ${new value().type} | ${ctx.doc(`${value.name}`).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
 	).join('\n')
 }
@@ -315,7 +318,7 @@ ${section('Project Discovery', 4)}
 
 These plugins trigger when confronted with a project analysis request (see, ${ctx.link('RProjectAnalysisRequest')}).
 Their job is to identify the files that belong to the project and add them to the analysis.
-flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a 
+flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a
 ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that simply collects all R source files in the given folder.
 
 Please note that all project discovery plugins should conform to the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} base class.
@@ -324,7 +327,7 @@ ${section('File Loading', 4)}
 
 These plugins register for every file encountered by the [files context](#Files_Context) and determine whether and _how_ they can process the file.
 They are responsible for transforming the raw file content into a representation that flowR can work with during the analysis.
-For example, the ${ctx.link(FlowrAnalyzerDescriptionFilePlugin.name)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
+For example, the ${ctx.link(FlowrAnalyzerDescriptionFilePlugin)} adds support for R \`DESCRIPTION\` files by parsing their content into key-value pairs.
 These can then be used by other plugins, e.g. the ${ctx.link(FlowrAnalyzerPackageVersionsDescriptionFilePlugin)} that extracts package version information from these files.
 
 If multiple file plugins could apply (${ctx.link('DefaultFlowrAnalyzerFilePlugin::' + FlowrAnalyzerFilePlugin.defaultPlugin().applies.name)}) to the same file,
@@ -387,8 +390,6 @@ ${ctx.link(contextFromSources)} to create a context from source files (e.g., if 
 
 If for whatever reason you need to reset the context during an analysis, you can use
 ${ctx.linkM(FlowrAnalyzerContext, 'reset')}.
-To pre-compute all possible information in the context before starting the main analysis, you can use
-${ctx.linkM(FlowrAnalyzerContext, 'resolvePreAnalysis')}.
 
 ${section('Files Context', 3)}
 
@@ -460,6 +461,19 @@ The environment context provides access to the built-in environment via
 ${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnv', { codeFont: true, realNameWrapper: 'i' })}.
 It also provides the empty built-in environment, which only contains primitives, via
 ${ctx.linkM(FlowrAnalyzerEnvironmentContext, 'makeCleanEnvWithEmptyBuiltIns', { codeFont: true, realNameWrapper: 'i' })}.
+
+${section('Meta Context', 3)}
+
+This ${ctx.link(FlowrAnalyzerMetaContext)} provides access to the project metadata such as name, version, and namespace:
+${ctx.hierarchy(FlowrAnalyzerMetaContext, { showImplSnippet: false })}
+
+You can access the project name via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectName', { codeFont: true, realNameWrapper: 'i' })},
+the project version via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getProjectVersion', { codeFont: true, realNameWrapper: 'i' })},
+and the project namespace via
+${ctx.linkM(FlowrAnalyzerMetaContext, 'getNamespace', { codeFont: true, realNameWrapper: 'i' })}.
+
 
 ${section('Caching', 2)}
 

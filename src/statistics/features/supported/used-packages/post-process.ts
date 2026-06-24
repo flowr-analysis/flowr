@@ -6,7 +6,7 @@ import {
 	emptySummarizedWithProject,
 	recordFilePath
 } from '../../post-processing';
-import { type UsedPackageInfo , initialUsedPackageInfos } from './used-packages';
+import { type UsedPackageInfo, initialUsedPackageInfos } from './used-packages';
 import fs from 'fs';
 import path from 'path';
 import type { StatisticsSummarizerConfiguration } from '../../../summarizer/summarizer';
@@ -19,7 +19,7 @@ import { readLineByLineSync } from '../../../../util/files';
 import { startAndEndsWith } from '../../../../util/text/strings';
 import { array2bag } from '../../../../util/collections/arrays';
 
-type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>
+type UsedPackagesPostProcessing = ReplaceKeysForSummary<UsedPackageInfo, SummarizedWithProject>;
 
 
 

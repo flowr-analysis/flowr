@@ -9,8 +9,8 @@ import { assertUnreachable, isNotUndefined } from '../../../../src/util/assert';
 import { DefaultMap } from '../../../../src/util/collections/defaultmap';
 import { EnvironmentBuilderPrinter } from './environment-builder-printer';
 import { wrap, wrapControlDependencies, wrapExitPoint, wrapReference } from './printer';
-import { EdgeType, splitEdgeTypes } from '../../../../src/dataflow/graph/edge';
-import { type DataflowGraph, type FunctionArgument, isPositionalArgument } from '../../../../src/dataflow/graph/graph';
+import { DfEdge, EdgeType } from '../../../../src/dataflow/graph/edge';
+import { type DataflowGraph, FunctionArgument } from '../../../../src/dataflow/graph/graph';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import {
 	type DataflowGraphVertexFunctionCall,
@@ -19,13 +19,12 @@ import {
 	type DataflowGraphVertexUse,
 	VertexType
 } from '../../../../src/dataflow/graph/vertex';
-import { EmptyArgument } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ControlDependency } from '../../../../src/dataflow/info';
 import type { REnvironmentInformation } from '../../../../src/dataflow/environments/environment';
 
 
 /** we add the node id to allow convenience sorting if we want that in the future (or grouping or, ...) */
-type Lines = [NodeId, string][]
+type Lines = [NodeId, string][];
 
 
 
@@ -88,7 +87,7 @@ class DataflowBuilderPrinter {
 		const map: DefaultMap<EdgeType, NodeId[]> = new DefaultMap<EdgeType, NodeId[]>(() => []);
 		if(outgoing) {
 			for(const [target, edge] of outgoing) {
-				for(const type of splitEdgeTypes(edge.types)) {
+				for(const type of DfEdge.splitTypes(edge)) {
 					map.get(type).push(target);
 				}
 			}
@@ -113,7 +112,7 @@ class DataflowBuilderPrinter {
 		if(reads.length > 1 && vertex.onlyBuiltin) {
 			readSuffix = ', onlyBuiltIn: true';
 		}
-		this.recordFnCall(id,'call', [
+		this.recordFnCall(id, 'call', [
 			wrap(id),
 			`[${vertex.args.map(a => this.processArgumentInCall(vertex.id, a)).join(', ')}]`,
 			`{ returns: [${returns?.map(wrap).join(', ') ?? ''}], reads: [${reads?.map(wrap).join(', ') ?? ''}]${readSuffix}${this.getControlDependencySuffix(vertex.cds, ', ', '') ?? ''}${this.getEnvironmentSuffix(vertex.environment, ', ', '') ?? ''} }`,
@@ -126,9 +125,9 @@ class DataflowBuilderPrinter {
 	}
 
 	private processArgumentInCall(fn: NodeId, arg: FunctionArgument | undefined): string {
-		if(arg === undefined || arg === EmptyArgument) {
+		if(arg === undefined || FunctionArgument.isEmpty(arg)) {
 			return 'EmptyArgument';
-		} else if(isPositionalArgument(arg)) {
+		} else if(FunctionArgument.isPositional(arg)) {
 			const suffix = this.getControlDependencySuffix(this.controlDependenciesForArgument(arg.nodeId), ', { ') ?? '';
 			this.handleArgumentArgLinkage(fn, arg.nodeId);
 			return `argumentInCall('${arg.nodeId}'${suffix})`;
@@ -158,7 +157,7 @@ class DataflowBuilderPrinter {
 	private controlDependenciesForArgument(id: NodeId): ControlDependency[] | undefined {
 		// we ignore the control dependency of the argument in the call as it is usually separate, and the auto creation
 		// will respect the corresponding node!
-		return this.graph.getVertex(id, true)?.cds;
+		return this.graph.getVertex(id)?.cds;
 	}
 
 	private processVertex(id: NodeId, vertex: DataflowGraphVertexInfo): void {
@@ -218,7 +217,7 @@ class DataflowBuilderPrinter {
 	private processFunctionDefinition(id: NodeId, vertex: DataflowGraphVertexFunctionDefinition) {
 		const root = this.asRootArg(id);
 		const suffix = this.getEnvironmentSuffix(vertex.environment, '{ ', ' }') ?? (root ? 'undefined' : undefined);
-		this.recordFnCall(id,'defineFunction', [
+		this.recordFnCall(id, 'defineFunction', [
 			wrap(id),
 			`[${vertex.exitPoints.map(wrapExitPoint).join(', ')}]`,
 			`{
@@ -240,7 +239,7 @@ class DataflowBuilderPrinter {
 			this.coveredEdges.add(edgeId(id, target, EdgeType.DefinedBy));
 		}
 
-		this.recordFnCall(id,'defineVariable', [
+		this.recordFnCall(id, 'defineVariable', [
 			wrap(id),
 			'{ definedBy: [' + (definedBy?.map(wrap).join(', ') ?? '') + ']' + (this.getControlDependencySuffix(vertex.cds, ', ', '') ?? '') + ' }',
 			this.asRootArg(id)

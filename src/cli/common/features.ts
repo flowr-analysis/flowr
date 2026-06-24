@@ -1,5 +1,5 @@
 import path from 'path';
-import { type FeatureKey , allFeatureNames } from '../../statistics/features/feature';
+import { type FeatureKey, allFeatureNames } from '../../statistics/features/feature';
 
 /**
  * Validate that the given features are known by flowR.

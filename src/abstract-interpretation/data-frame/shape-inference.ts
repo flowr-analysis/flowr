@@ -40,21 +40,21 @@ export type DataFrameOperationType<OperationName extends DataFrameOperationName 
  */
 export type DataFrameOperations<OperationName extends DataFrameOperationName = DataFrameOperationName> = DataFrameOperation<OperationName>[] | undefined;
 
-interface DataFrameShapeInferenceConfiguration extends Omit<AbsintVisitorConfiguration<DataFrameDomain>, 'domain'> {
+interface DataFrameShapeInferenceConfiguration extends AbsintVisitorConfiguration {
 	readonly trackOperations?: boolean;
 }
 
 /**
  * The control flow graph visitor to infer the shape of data frames using abstract interpretation
  */
-export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<DataFrameDomain, DataFrameShapeInferenceConfiguration & { domain: StateAbstractDomain<DataFrameDomain> }> {
+export class DataFrameShapeInferenceVisitor extends AbstractInterpretationVisitor<StateAbstractDomain<DataFrameDomain>, DataFrameShapeInferenceConfiguration> {
 	/**
 	 * The abstract data frame operations the function call nodes are mapped to.
 	 */
 	private readonly operations?: Map<NodeId, DataFrameOperation[]>;
 
 	constructor({ trackOperations = true, ...config }: DataFrameShapeInferenceConfiguration) {
-		super({ ...config, domain: StateAbstractDomain.bottom() });
+		super(config, StateAbstractDomain.top(DataFrameDomain.top()));
 
 		if(trackOperations) {
 			this.operations = new Map();

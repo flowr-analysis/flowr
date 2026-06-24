@@ -9,18 +9,17 @@ import {
 	type LintingRuleResult,
 	LintingRules
 } from '../../../linter/linter-rules';
-import {
+import { type LintingResultsError,
 	type ConfiguredLintingRule,
-	isLintingResultsError,
 	LintingPrettyPrintContext,
 	LintingResultCertainty,
-	type LintingResults,
+	LintingResults,
 	type LintingRule
 } from '../../../linter/linter-format';
 import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import { codeInline } from '../../../documentation/doc-util/doc-code';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
@@ -39,10 +38,10 @@ export interface LinterQueryResult extends BaseQueryResult {
 	/**
 	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
 	 */
-	readonly results: { [L in LintingRuleNames]?: LintingResults<L>}
+	readonly results: { [L in LintingRuleNames]?: LintingResults<L> }
 }
 
-function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[]} {
+function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): { valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[] } {
 	return rulesPart
 		.reduce((acc, ruleName) => {
 			ruleName = ruleName.trim();
@@ -57,7 +56,7 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): {vali
 
 const rulesPrefix = 'rules:';
 
-function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'linter'> {
+function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'linter'> {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
 	let input: string | undefined = undefined;
 	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {
@@ -75,7 +74,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	return { query: [{ type: 'linter', rules: rules }], rCode: input } ;
 }
 
-function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfigOptions): CommandCompletions {
+function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
 	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
 	const endOfRules = line.length == 1 && startingNewArg || line.length == 2;
@@ -111,7 +110,7 @@ export const LinterQueryDefinition = {
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		const allDidFail = Object.values(out.results).every(r => isLintingResultsError(r));
+		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
 			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
@@ -121,7 +120,17 @@ export const LinterQueryDefinition = {
 				result.push(
 					'If you consider this an error, please report a bug: ' + getGuardIssueUrl('analyzer found no requests to lint for')
 				);
+			} else if(Object.values(out.results).length === 1) {
+				const fst = Object.values(out.results)[0] as LintingResultsError;
+				result.push('Error: ' + LintingResults.stringifyError(fst));
+				if(fst.error instanceof Error) {
+					// print stack
+					result.push('Stack Trace:\n' + fst.error.stack);
+				}
 			}
+			result.push(
+				'If you consider this an error that should be fixed, please report a bug: ' + getGuardIssueUrl('linting rule threw an error')
+			);
 			return true;
 		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
@@ -139,15 +148,16 @@ export const LinterQueryDefinition = {
 				name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
 				config: Joi.object()
 			})
-		).description('The rules to lint for. If unset, all rules will be included.')
+		).description('The rules to lint for. If unset, all rules will be included.'),
 	}).description('The linter query lints for the given set of rules and returns the result.'),
-	flattenInvolvedNodes: (queryResults) => {
+	flattenInvolvedNodes: (queryResults, _queries, certainty) => {
 		const out = queryResults as LinterQueryResult;
 		return Object.values(out.results).flatMap(v => {
-			if(isLintingResultsError(v)) {
+			if(LintingResults.isError(v)) {
 				return [];
 			}
-			return v.results.map(v => v.involvedId);
+			const rows = certainty !== undefined ? v.results.filter(r => r.certainty === certainty) : v.results;
+			return rows.flatMap(r => r.involvedId);
 		}).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;
@@ -156,8 +166,8 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
 	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
 
-	if(isLintingResultsError(results)) {
-		const error = results.error.includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + results.error;
+	if(LintingResults.isError(results)) {
+		const error = LintingResults.stringifyError(results).includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + LintingResults.stringifyError(results);
 		result.push(`       ╰ ${error}`);
 		return;
 	}

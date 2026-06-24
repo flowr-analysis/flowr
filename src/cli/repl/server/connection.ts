@@ -5,7 +5,7 @@ import {
 	type FileAnalysisResponseMessageCompact,
 	type FileAnalysisResponseMessageNQuads
 	, requestAnalysisMessage } from './messages/message-analysis';
-import { type SliceRequestMessage, type SliceResponseMessage , requestSliceMessage } from './messages/message-slice';
+import { type SliceRequestMessage, type SliceResponseMessage, requestSliceMessage } from './messages/message-slice';
 import type { FlowrErrorMessage } from './messages/message-error';
 import type { Socket } from './net';
 import { serverLog } from './server';
@@ -18,31 +18,31 @@ import {
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
 import { cfg2quads } from '../../../control-flow/extract-cfg';
-import { type QuadSerializationConfiguration , defaultQuadIdGenerator } from '../../../util/quads';
+import { type QuadSerializationConfiguration, defaultQuadIdGenerator } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import { type TREE_SITTER_DATAFLOW_PIPELINE , DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import { type TREE_SITTER_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';
 import * as tmp from 'tmp';
 import fs from 'fs';
 import type { RParseRequests } from '../../../r-bridge/retriever';
-import { type QueryRequestMessage, type QueryResponseMessage , requestQueryMessage } from './messages/message-query';
+import { type QueryRequestMessage, type QueryResponseMessage, requestQueryMessage } from './messages/message-query';
 import type { KnownParser, ParseStepOutput } from '../../../r-bridge/parser';
 import { compact } from './compact';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
-import type { FlowrConfigOptions } from '../../../config';
-import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
+import type { FlowrConfig } from '../../../config';
 import { FlowrAnalyzerBuilder } from '../../../project/flowr-analyzer-builder';
 import type { FlowrAnalyzer } from '../../../project/flowr-analyzer';
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { DataflowInformation } from '../../../dataflow/info';
 import { PipelineStepStage } from '../../../core/steps/pipeline-step';
 import type { Tree } from 'web-tree-sitter';
+import { SliceDirection } from '../../../util/slice-direction';
 
 /**
  * Each connection handles a single client, answering to its requests.
@@ -54,7 +54,7 @@ export class FlowRServerConnection {
 	private readonly name:                string;
 	private readonly logger:              Logger<ILogObj>;
 	private readonly allowRSessionAccess: boolean;
-	private readonly config:              FlowrConfigOptions;
+	private readonly config:              FlowrConfig;
 
 	// maps token to information
 	private readonly fileMap = new Map<string, {
@@ -63,7 +63,7 @@ export class FlowRServerConnection {
 	}>();
 
 	// we do not have to ensure synchronized shell-access as we are always running synchronized
-	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfigOptions) {
+	constructor(socket: Socket, name: string, parser: KnownParser, allowRSessionAccess: boolean, config: FlowrConfig) {
 		this.config = config;
 		this.socket = socket;
 		this.parser = parser;
@@ -256,7 +256,7 @@ export class FlowRServerConnection {
 				id:      request.id,
 				results: Object.fromEntries(
 					Object.entries(result)
-						.filter(([k,]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
+						.filter(([k]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
 				) as SliceResponseMessage['results']
 			});
 		}).catch(e => {

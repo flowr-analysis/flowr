@@ -6,7 +6,7 @@ import { RShellExecutor } from './shell-executor';
 import { normalize } from './lang-4.x/ast/parser/json/parser';
 import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
-import { type NormalizedAst , deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
+import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
 import fs from 'fs';
 import path from 'path';
@@ -47,11 +47,11 @@ export interface RParseRequestProvider {
 	createRequest(path: string):                      RParseRequest
 }
 
-export type RParseRequest = RParseRequestFromFile | RParseRequestFromText
+export type RParseRequest = RParseRequestFromFile | RParseRequestFromText;
 /**
  * Several requests that can be passed along to {@link retrieveParseDataFromRCode}.
  */
-export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>
+export type RParseRequests = RParseRequest | ReadonlyArray<RParseRequest>;
 
 /**
  * Type guard for {@link RParseRequest}
@@ -63,10 +63,10 @@ export function isParseRequest(request: unknown): request is RParseRequest {
 	return 'request' in request;
 }
 
-export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile
-export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[]
-export function requestFromInput(input: string): RParseRequestFromText
-export function requestFromInput(input: readonly string[] | string): RParseRequests
+export function requestFromInput(input: `${typeof fileProtocol}${string}`): RParseRequestFromFile;
+export function requestFromInput(input: `${typeof fileProtocol}${string}`[]): RParseRequestFromFile[];
+export function requestFromInput(input: string): RParseRequestFromText;
+export function requestFromInput(input: readonly string[] | string): RParseRequests;
 /**
  * Creates a {@link RParseRequests} from a given input.
  * If your input starts with {@link fileProtocol}, it is assumed to be a file path and will be processed as such.
@@ -129,7 +129,7 @@ export function requestProviderFromFile(): RParseRequestProvider {
  * Creates a {@link RParseRequestProvider} that reads from the given text map.
  * @see {@link requestProviderFromFile} for a provider that reads from the file system.
  */
-export function requestProviderFromText(text: Readonly<{[path: string]: string}>): RParseRequestProvider {
+export function requestProviderFromText(text: Readonly<{ [path: string]: string }>): RParseRequestProvider {
 	return {
 		exists(path: string, ignoreCase: boolean): string | undefined {
 			if(ignoreCase) {
@@ -154,9 +154,9 @@ export function isEmptyRequest(request: RParseRequest): boolean {
 }
 
 
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string
-export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string>
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell): Promise<string>;
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShellExecutor): string;
+export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell | RShellExecutor): AsyncOrSync<string>;
 /**
  * Provides the capability to parse R files/R code using the R parser.
  * Depends on {@link RShell} to provide a connection to R.

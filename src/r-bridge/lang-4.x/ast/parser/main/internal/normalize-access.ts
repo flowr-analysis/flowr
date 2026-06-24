@@ -30,9 +30,9 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
 			name:     undefined,
 			value:    node,
 			info:     {
-				fullRange:        node.location,
-				fullLexeme:       node.lexeme,
-				additionalTokens: []
+				fullRange:  node.location,
+				fullLexeme: node.lexeme,
+				adToks:     []
 			}
 		};
 	}
@@ -107,9 +107,9 @@ export function tryNormalizeAccess(data: NormalizerData, mappedWithName: NamedJs
 		operator,
 		access:   parsedAccess,
 		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	} as RAccess;
 }

@@ -37,6 +37,19 @@ are exposed with some command line options (e.g., when using the docker image of
 - ${ctx.cliOption('flowr', 'engine.tree-sitter.tree-sitter-wasm-path', false)} pass the path to the wasm of tree-sitter (see [below](#tree-sitter))
 - ${ctx.cliOption('flowr', 'default-engine', false)} to set the default engine to use
 
+<a id="r-shell"></a>
+## Dealing with the R Shell Engine
+
+The ${ctx.link(RShell)} engine is the original engine of flowR and is still available today.
+It provides a powerful interface to the R interpreter, allowing for complex interactions and the execution of R code.
+There are two interfaces available: 
+
+* The ${ctx.link(RShell)} which is asynchronous and allows for non-blocking interactions with the R interpreter. This is the default engine.
+* The ${ctx.link(RShellExecutor)} which is synchronous and blocks the execution until the R code is executed. This can be useful for certain use cases where you want to ensure that the R code is executed before proceeding with the analysis.
+
+Please note, that these classes are available to you even if you do not use/enable the R shell engine.
+The selection and preparation of the engine just reflects what the flowR analysis will use. 
+
 <a id="tree-sitter"></a>
 ## Dealing with the Tree-Sitter Engine
 
@@ -61,6 +74,12 @@ you first must build the new wasm file. For this you have to:
 3. Pass the \`tree-sitter-r.wasm\` to flowR. 
 
 For tree-sitter, please rely on the [releases](https://github.com/tree-sitter/tree-sitter/releases).
+
+${
+	block({
+		type:    'NOTE',
+		content: 'The tree-sitter grammar may not be able to parse all valid R code due to some bugs in the parser grammar. In that case, please report these to the [tree-sitter-r repository](https://github.com/r-lib/tree-sitter-r).'
+	})}
 `;
 	}
 }

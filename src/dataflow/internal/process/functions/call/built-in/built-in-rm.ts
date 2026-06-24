@@ -4,20 +4,21 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import type { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process an `rm` call.
  */
 export function processRm<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
@@ -27,7 +28,7 @@ export function processRm<OtherInfo>(
 	}
 	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Rm }).information;
 
-	const names: string[] = [];
+	const names: Identifier[] = [];
 
 	for(const arg of args) {
 		if(arg === EmptyArgument) {

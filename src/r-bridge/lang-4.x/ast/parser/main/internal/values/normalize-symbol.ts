@@ -1,49 +1,49 @@
 import type { NormalizerData } from '../../normalizer-data';
 import { guard } from '../../../../../../../util/assert';
 import { retrieveMetaStructure } from '../../normalize-meta';
-import { startAndEndsWith } from '../../../../../../../util/text/strings';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { isSymbol, RType } from '../../../../model/type';
 import type { NamedJsonEntry } from '../../../json/format';
+import { Identifier } from '../../../../../../../dataflow/environments/identifier';
+import type { SourceRange } from '../../../../../../../util/range';
 
 /**
  * Normalize the given object as an R symbol (incorporating namespace information).
- * <p>
- * The special symbols `T` and `F` are parsed as logic values.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param objs - The JSON object to extract the meta-information from
  * @returns The parsed symbol (with populated namespace information) or `undefined` if the given object is not a symbol.
+ * @see {@link RSymbol} for more information about R symbols.
  */
 export function tryNormalizeSymbol(data: NormalizerData, objs: readonly NamedJsonEntry[]): RSymbol | undefined {
 	guard(objs.length > 0, 'to parse symbols we need at least one object to work on!');
+	let content: Identifier, location: SourceRange;
 
-	let location, content, namespace;
+	let meta: { location: SourceRange, content: string };
 
 	if(objs.length === 1 && isSymbol(objs[0].name)) {
-		const meta  = retrieveMetaStructure(objs[0].content);
+		meta  = retrieveMetaStructure(objs[0].content);
 		location    = meta.location;
-		content     = meta.content;
-		namespace   = undefined;
+		content     = Identifier.make(meta.content);
 	} else if(objs.length === 3 && isSymbol(objs[2].name)) {
-		const meta  = retrieveMetaStructure(objs[2].content);
+		meta  = retrieveMetaStructure(objs[2].content);
 		location    = meta.location;
-		content     = meta.content;
-		namespace   = retrieveMetaStructure(objs[0].content).content;
+		const namespace   = objs[0].content.text;
+		const internal =  objs[1].content.text === ':::';
+		content     = Identifier.make(meta.content, namespace, internal);
 	} else {
 		return undefined;
 	}
 
 	return {
-		type:    RType.Symbol,
-		namespace,
+		type:   RType.Symbol,
 		location,
 		// remove backticks from symbol
-		content: startAndEndsWith(content, '`') ? content.substring(1, content.length - 1) : content,
-		lexeme:  content,
-		info:    {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+		content,
+		lexeme: meta.content,
+		info:   {
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
-	};
+	} satisfies RSymbol;
 }

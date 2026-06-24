@@ -2,7 +2,7 @@ import objectHash from 'object-hash';
 import { isDefaultBuiltInEnvironment, type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
-export type Fingerprint = string
+export type Fingerprint = string;
 
 /**
  * Calculate a fingerprint for the given R environment information

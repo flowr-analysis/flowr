@@ -3,7 +3,7 @@ import type { ControlDependency, DataflowInformation, ExitPoint } from '../../..
 import { ExitPointType } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -13,7 +13,8 @@ import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isNotUndefined } from '../../../../../../util/assert';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Processes a built-in 'stopifnot' function call.
@@ -31,19 +32,19 @@ import { BuiltInProcName } from '../../../../../environments/built-in';
  */
 export function processStopIfNot<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
 	const res = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.StopIfNot }).information;
 	if(args.length === 0) {
-		dataflowLogger.warn(`stopifnot (${name.content}) has no argument, assuming trivially true and skipping`);
+		dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) has no argument, assuming trivially true and skipping`);
 		return res;
 	}
 
 	// R only allows ... or exprs or exprObject, not all, but we over-approximate and collect all, given that they are after '...'
 	// we can safely extract named args by full name
-	const argMap = new DefaultMap<string, RFunctionArgument<OtherInfo & ParentInformation>[]>(() => []);
+	const argMap = new DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>(() => []);
 	for(const arg of args) {
 		const name = (arg === EmptyArgument ? undefined : arg.name)?.content;
 		if(name === 'exprObject' || name === 'exprs' || name === 'local') {
@@ -62,7 +63,7 @@ export function processStopIfNot<OtherInfo>(
 		const localVal = resolveIdToValue(localArg?.value?.info.id, resolveArgs);
 		const alwaysTrue = valueSetGuard(localVal)?.elements.every(d => d.type === 'logical' && d.value === true) ?? false;
 		if(!alwaysTrue) {
-			dataflowLogger.warn(`stopifnot (${name.content}) with non-true 'local' argument is not yet supported, over-approximate`);
+			dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) with non-true 'local' argument is not yet supported, over-approximate`);
 			const cds = (data.cds ?? []).concat(Array.from(ids).map(r => ({
 				id:   r,
 				when: false
@@ -102,7 +103,7 @@ export function processStopIfNot<OtherInfo>(
 	}
 
 	if(cds.length === 0) {
-		dataflowLogger.warn(`stopifnot (${name.content}) has no unknown expressions to evaluate, assuming trivially true and skipping`);
+		dataflowLogger.warn(`stopifnot (${Identifier.toString(name.content)}) has no unknown expressions to evaluate, assuming trivially true and skipping`);
 		return res;
 	}
 
@@ -115,7 +116,7 @@ export function processStopIfNot<OtherInfo>(
 }
 
 /** Generator so we can early exit on first always-false */
-function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, RFunctionArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function* collectIdsForControl<OtherInfo>(argMap: DefaultMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
 	yield* argMap.get('...')
 		.map(a => a === EmptyArgument ? undefined : a.value?.info.id)
 		.filter(isNotUndefined)

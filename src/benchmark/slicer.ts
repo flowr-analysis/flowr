@@ -24,7 +24,7 @@ import type {
 	SlicerStatsDfShape
 } from './stats/stats';
 import type { NormalizedAst } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { SlicingCriteria } from '../slicing/criterion/parse';
+import { SlicingCriteria } from '../slicing/criterion/parse';
 import {
 	createSlicePipeline,
 	type DEFAULT_SLICING_PIPELINE,
@@ -37,8 +37,6 @@ import {
 } from '../r-bridge/retriever';
 import type { PipelineStepNames, PipelineStepOutputWithName } from '../core/steps/pipeline/pipeline';
 import { collectAllSlicingCriteria, type SlicingCriteriaFilter } from '../slicing/criterion/collect-all';
-import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import { visitAst } from '../r-bridge/lang-4.x/ast/model/processing/visitor';
 import { getSizeOfDfGraph, safeSizeOf } from './stats/size-of';
 import type { AutoSelectPredicate } from '../reconstruct/auto-select/auto-select-defaults';
 import type { KnownParser, KnownParserName, KnownParserType } from '../r-bridge/parser';
@@ -46,20 +44,20 @@ import type { SyntaxNode, Tree } from 'web-tree-sitter';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterType } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-types';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
-import type { InGraphIdentifierDefinition } from '../dataflow/environments/identifier';
-import { type ContainerIndicesCollection, isParentContainerIndex, VertexType } from '../dataflow/graph/vertex';
+import { VertexType } from '../dataflow/graph/vertex';
 import { equidistantSampling } from '../util/collections/arrays';
-import { type FlowrConfigOptions, getEngineConfig } from '../config';
+import { FlowrConfig } from '../config';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import { extractCfg } from '../control-flow/extract-cfg';
-import type { DataFrameDomain } from '../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-frame/shape-inference';
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
-import { Top } from '../abstract-interpretation/domains/lattice';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
+import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
+import { CallGraph } from '../dataflow/graph/call-graph';
 
 /**
  * The logger to be used for benchmarking as a global object.
@@ -110,20 +108,20 @@ export type SamplingStrategy = 'random' | 'equidistant';
  * After slicing, call {@link finish} to close the R session and retrieve the stats.
  * @note Under the hood, the benchmark slicer maintains a {@link PipelineExecutor} using the {@link DEFAULT_SLICING_PIPELINE} or the {@link TREE_SITTER_SLICING_PIPELINE}.
  */
-type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE
+type SupportedPipelines = typeof DEFAULT_SLICING_PIPELINE | typeof TREE_SITTER_SLICING_PIPELINE;
 export class BenchmarkSlicer {
 	/** Measures all data recorded *once* per slicer (complete setup up to the dataflow graph creation) */
 	private readonly commonMeasurements   = new Measurements<CommonSlicerMeasurements>();
 	private readonly perSliceMeasurements = new Map<SlicingCriteria, PerSliceStats>();
 	private readonly deltas               = new Map<CommonSlicerMeasurements, BenchmarkMemoryMeasurement>();
 	private readonly parserName: KnownParserName;
-	private config:              FlowrConfigOptions | undefined;
 	private context:             FlowrAnalyzerContext | undefined;
 	private stats:               SlicerStats | undefined;
-	private loadedXml:           KnownParserType[] | undefined;
+	private loadedXml:           string | KnownParserType[] | undefined;
 	private dataflow:            DataflowInformation | undefined;
 	private normalizedAst:       NormalizedAst | undefined;
 	private controlFlow:         ControlFlowInformation | undefined;
+	private callGraph:           CallGraph | undefined;
 	private totalStopwatch:      IStoppableStopwatch;
 	private finished = false;
 	// Yes, this is unclean, but we know that we assign the executor during the initialization and this saves us from having to check for nullability every time
@@ -139,18 +137,17 @@ export class BenchmarkSlicer {
 	 * Initialize the slicer on the given request.
 	 * Can only be called once for each instance.
 	 */
-	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfigOptions,
+	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
 		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
-		this.config = config;
 
 		// we know these are in sync so we just cast to one of them
 		this.parser = await this.commonMeasurements.measure(
 			'initialize R session', async() => {
 				if(this.parserName === 'r-shell') {
-					return new RShell(getEngineConfig(config, 'r-shell'));
+					return new RShell(FlowrConfig.getForEngine(config, 'r-shell'));
 				} else {
-					await TreeSitterExecutor.initTreeSitter(getEngineConfig(config, 'tree-sitter'));
+					await TreeSitterExecutor.initTreeSitter(FlowrConfig.getForEngine(config, 'tree-sitter'));
 					return new TreeSitterExecutor();
 				}
 			}
@@ -216,9 +213,9 @@ export class BenchmarkSlicer {
 		let nodesNoComments = 0;
 		let commentChars = 0;
 		let commentCharsNoWhitespace = 0;
-		visitAst(this.normalizedAst.ast.files.map(f => f.root), t => {
+		RProject.visitAst(this.normalizedAst.ast, t => {
 			nodes++;
-			const comments = t.info.additionalTokens?.filter(t => t.type === RType.Comment);
+			const comments = t.info.adToks?.filter(RComment.is);
 			if(comments && comments.length > 0) {
 				const content = comments.map(c => c.lexeme ?? '').join('');
 				commentChars += content.length;
@@ -228,10 +225,6 @@ export class BenchmarkSlicer {
 			}
 			return false;
 		});
-
-		const storedVertexIndices = this.countStoredVertexIndices();
-		const storedEnvIndices = this.countStoredEnvIndices();
-		const overwrittenIndices = storedVertexIndices - storedEnvIndices;
 
 		const split = loadedContent.split('\n');
 		const nonWhitespace = withoutWhitespace(loadedContent).length;
@@ -257,9 +250,6 @@ export class BenchmarkSlicer {
 				numberOfCalls:               numberOfCalls,
 				numberOfFunctionDefinitions: numberOfDefinitions,
 				sizeOfObject:                getSizeOfDfGraph(this.dataflow.graph),
-				storedVertexIndices:         storedVertexIndices,
-				storedEnvIndices:            storedEnvIndices,
-				overwrittenIndices:          overwrittenIndices,
 			},
 
 			// these are all properly initialized in finish()
@@ -269,53 +259,6 @@ export class BenchmarkSlicer {
 			dataflowTimePerToken:    { raw: 0, normalized: 0 },
 			totalCommonTimePerToken: { raw: 0, normalized: 0 }
 		};
-	}
-
-	/**
-	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
-	 */
-	private countStoredVertexIndices(): number {
-		return this.countStoredIndices(this.dataflow?.out.map(ref => ref as InGraphIdentifierDefinition) ?? []);
-	}
-
-	/**
-	 * Counts the number of stored indices in the dataflow graph created by the pointer analysis.
-	 */
-	private countStoredEnvIndices(): number {
-		return this.countStoredIndices(
-			this.dataflow?.environment.current.memory.values()
-				?.flatMap(def => def)
-				.map(def => def as InGraphIdentifierDefinition) ?? []
-		);
-	}
-
-	/**
-	 * Counts the number of stored indices in the passed definitions.
-	 */
-	private countStoredIndices(definitions: Iterable<InGraphIdentifierDefinition>): number {
-		let numberOfIndices = 0;
-		for(const reference of definitions) {
-			if(reference.indicesCollection) {
-				numberOfIndices += this.countIndices(reference.indicesCollection);
-			}
-		}
-		return numberOfIndices;
-	}
-
-	/**
-	 * Recursively counts the number of indices and sub-indices in the given collection.
-	 */
-	private countIndices(collection: ContainerIndicesCollection): number {
-		let numberOfIndices = 0;
-		for(const indices of collection ?? []) {
-			for(const index of indices.indices) {
-				numberOfIndices++;
-				if(isParentContainerIndex(index)) {
-					numberOfIndices += this.countIndices(index.subIndices);
-				}
-			}
-		}
-		return numberOfIndices;
 	}
 
 	/**
@@ -348,7 +291,8 @@ export class BenchmarkSlicer {
 
 
 		const slicedOutput = await this.measureSliceStep('slice', measurements, 'static slicing');
-		stats.slicingCriteria = [...slicedOutput.decodedCriteria];
+		const decodedCriteria = SlicingCriteria.decodeAll(slicingCriteria, (this.normalizedAst as NormalizedAst).idMap);
+		stats.slicingCriteria = Array.from(decodedCriteria);
 
 		stats.reconstructedCode = await this.measureSliceStep('reconstruct', measurements, 'reconstruct code');
 
@@ -358,9 +302,9 @@ export class BenchmarkSlicer {
 		const results = this.executor.getResults(false);
 
 		if(benchmarkLogger.settings.minLevel >= LogLevel.Info) {
-			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.decodedCriteria.map(c => {
-				const node = results.normalize.idMap.get(c.id);
-				return `\n-   id: ${c.id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
+			benchmarkLogger.info(`mapped slicing criteria: ${slicedOutput.slicedFor.map(id => {
+				const node = results.normalize.idMap.get(id);
+				return `\n-   id: ${id}, location: ${JSON.stringify(node?.location)}, lexeme: ${JSON.stringify(node?.lexeme)}`;
 			}).join('')}`);
 		}
 
@@ -384,13 +328,19 @@ export class BenchmarkSlicer {
 
 		this.guardActive();
 		guard(this.normalizedAst !== undefined, 'normalizedAst should be defined for control flow extraction');
-		guard(this.dataflow !== undefined, 'dataflow should be defined for control flow extraction');
-		guard(this.config !== undefined, 'config should be defined for control flow extraction');
 
 		const ast = this.normalizedAst;
-		const dfg = this.dataflow.graph;
 
-		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, dfg));
+		this.controlFlow = this.measureSimpleStep('extract control flow graph', () => extractCfg(ast, this.context as FlowrAnalyzerContext, undefined, undefined, true));
+	}
+
+	public extractCG(): void {
+		benchmarkLogger.trace('try to extract the call graph');
+		this.guardActive();
+		const g = this.dataflow?.graph;
+		guard(g !== undefined, 'dataflow should be defined for call graph extraction');
+
+		this.callGraph = this.measureSimpleStep('extract call graph', () => CallGraph.compute(g));
 	}
 
 	/**
@@ -427,19 +377,21 @@ export class BenchmarkSlicer {
 		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfinfo, dfg, normalizedAst: ast, ctx: this.context });
 		this.measureSimpleStep('infer data frame shapes', () => inference.start());
 		const result = inference.getEndState();
-		stats.numberOfResultConstraints = result.value.size;
 
-		for(const value of result.value.values()) {
+		stats.numberOfResultConstraints = result.isValue() ? result.value.size : 0;
+		stats.sizeOfInfo = safeSizeOf(inference.getAbstractTrace().entries().toArray());
+
+		for(const value of result.isValue() ? result.value.values() : []) {
 			if(value.isTop()) {
 				stats.numberOfResultingTop++;
-			} else if((value as DataFrameDomain).isBottom()) {
+			} else if(value.isBottom()) {
 				stats.numberOfResultingBottom++;
 			} else {
 				stats.numberOfResultingValues++;
 			}
 		}
 
-		visitAst(this.normalizedAst.ast.files.map(file => file.root), node => {
+		RProject.visitAst(this.normalizedAst.ast, node => {
 			const operations = inference.getAbstractOperations(node.info.id);
 			const value = inference.getAbstractValue(node.info.id);
 
@@ -449,10 +401,9 @@ export class BenchmarkSlicer {
 				return;
 			}
 			const state = inference.getAbstractState(node.info.id);
-			stats.sizeOfInfo += safeSizeOf([state]);
 
 			const nodeStats: PerNodeStatsDfShape = {
-				numberOfEntries: state?.value.size ?? 0
+				numberOfEntries: state?.isValue() ? state.value.size : 0
 			};
 
 			if(operations !== undefined) {
@@ -486,7 +437,7 @@ export class BenchmarkSlicer {
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.value.range === Top ? Infinity : value.value.range.size;
+				return value.isFinite() ? value.value.range.size : Infinity;
 			} else {
 				return value.value[1] - value.value[0];
 			}
@@ -498,15 +449,11 @@ export class BenchmarkSlicer {
 		if(value.isTop()) {
 			return 'top';
 		} else if(value.isValue()) {
-			if(value instanceof SetRangeDomain) {
-				if(value.value.range === Top) {
-					return 'infinite';
-				}
+			if(!value.isFinite()) {
+				return 'infinite';
+			} else if(value instanceof SetRangeDomain) {
 				return Math.floor(value.value.min.size + (value.value.range.size / 2));
 			} else {
-				if(!isFinite(value.value[1])) {
-					return 'infinite';
-				}
 				return Math.floor((value.value[0] + value.value[1]) / 2);
 			}
 		}
@@ -631,6 +578,7 @@ export class BenchmarkSlicer {
 		const normalizeTime = Number(this.stats.commonMeasurements.get('normalize R AST'));
 		const dataflowTime = Number(this.stats.commonMeasurements.get('produce dataflow information'));
 		const controlFlowTime = Number(this.stats.commonMeasurements.get('extract control flow graph'));
+		const callGraphTime = Number(this.stats.commonMeasurements.get('extract call graph'));
 		const dataFrameShapeTime = Number(this.stats.commonMeasurements.get('infer data frame shapes'));
 
 		this.stats.retrieveTimePerToken = {
@@ -649,14 +597,18 @@ export class BenchmarkSlicer {
 			raw:        (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfRTokens,
 			normalized: (retrieveTime + normalizeTime + dataflowTime) / this.stats.input.numberOfNormalizedTokens
 		};
-		this.stats.controlFlowTimePerToken = !isNaN(controlFlowTime) ? {
+		this.stats.controlFlowTimePerToken = Number.isNaN(controlFlowTime) ? undefined : {
 			raw:        controlFlowTime / this.stats.input.numberOfRTokens,
 			normalized: controlFlowTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
-		this.stats.dataFrameShapeTimePerToken = !isNaN(dataFrameShapeTime) ? {
+		};
+		this.stats.callGraphTimePerToken = Number.isNaN(callGraphTime) ? undefined : {
+			raw:        callGraphTime / this.stats.input.numberOfRTokens,
+			normalized: callGraphTime / this.stats.input.numberOfNormalizedTokens,
+		};
+		this.stats.dataFrameShapeTimePerToken = Number.isNaN(dataFrameShapeTime) ? undefined : {
 			raw:        dataFrameShapeTime / this.stats.input.numberOfRTokens,
 			normalized: dataFrameShapeTime / this.stats.input.numberOfNormalizedTokens,
-		} : undefined;
+		};
 
 		return {
 			stats:     this.stats,

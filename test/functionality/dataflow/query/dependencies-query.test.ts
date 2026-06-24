@@ -1,6 +1,6 @@
 import { assertQuery } from '../../_helper/query';
 import { label } from '../../_helper/label';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
@@ -10,6 +10,7 @@ import {
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
+import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -21,7 +22,11 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, ...rest }) => ({ nodeId: typeof nodeId === 'number' ? nodeId : slicingCriterionToId(String(nodeId) as SingleSlicingCriterion, idMap), ...rest }));
+		out[key] = value.map(({ nodeId, linkedIds, ...rest }) => ({
+			nodeId:    typeof nodeId === 'number' ? nodeId : SlicingCriterion.parse(String(nodeId) as SlicingCriterion, idMap),
+			linkedIds: linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
+			...rest
+		}));
 	}
 	return out;
 }
@@ -199,12 +204,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			testQuery('Custom (by name)', 'custom.library(num1 = 1, num2 = 2, file = "my-custom-file")', expected, readCustomFile);
 			testQuery('Ignore default', 'library(testLibrary)', {}, { ignoreDefaultFunctions: true });
 			testQuery('Disabled', 'library(testLibrary)', {}, { enabledCategories: ['source', 'read', 'write'] });
+			testQuery('Disabled', 'a::dep', {}, { enabledCategories: [] });
 			testQuery('Enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
 			}, { enabledCategories: ['library'] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
-			}, { enabledCategories: [] });
+			}, { enabledCategories: undefined });
 		});
 	});
 
@@ -213,12 +219,14 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'source_url',
 			'source_gist'
 		] as const) {
-			testQuery(`${sourceFn}`, `${sourceFn}("a")` , { source: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, value: 'a' }] });
+			testQuery(`${sourceFn}`, `${sourceFn}("a")`, { source: [{ nodeId: `1@${sourceFn}`, functionName: sourceFn, value: 'a' }] });
 		}
 
 		testQuery('Single source', 'source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
 		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
+
+		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""' }] });
 
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
@@ -246,14 +254,14 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'read_html_live',
 			'read.ftable',
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}("a")` , { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}("a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 
 		for(const readFn of [
 			'dbReadTable',
 			'dbReadTableArrow'
 		] as const) {
-			testQuery(`${readFn}`, `${readFn}(obj, "a")` , { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
+			testQuery(`${readFn}`, `${readFn}(obj, "a")`, { read: [{ nodeId: `1@${readFn}`, functionName: readFn, value: 'a' }] });
 		}
 
 		testQuery('read.table', "read.table('test.csv')", { read: [{ nodeId: '1@read.table', functionName: 'read.table', value: 'test.csv' }] });
@@ -267,7 +275,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		describe('Only if file parameter', () => {
 			testQuery('parse', 'parse(file="test.R")', { read: [{ nodeId: '1@parse', functionName: 'parse', value: 'test.R' }] });
-			testQuery('parse text', 'parse(text="test.R")', { });
+			testQuery('parse text', 'parse(text="test.R")', {});
 		});
 
 		describe('Custom', () => {
@@ -295,12 +303,12 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			'Export',
 			'windows'
 		]) {
-			testQuery(`${writeFn}`, `${writeFn}("a")` , { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
+			testQuery(`${writeFn}`, `${writeFn}("a")`, { write: [{ nodeId: `1@${writeFn}`, functionName: writeFn, value: 'a' }] });
 		}
 
-		testQuery('visSave', 'visSave(obj, "a")' , { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
-		testQuery('save_graph', 'save_graph(obj, "a")' , { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
-		testQuery('export_graph', 'export_graph(file_name = "a")' , { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
+		testQuery('visSave', 'visSave(obj, "a")', { write: [{ nodeId: '1@visSave', functionName: 'visSave', value: 'a' }] });
+		testQuery('save_graph', 'save_graph(obj, "a")', { write: [{ nodeId: '1@save_graph', functionName: 'save_graph', value: 'a' }] });
+		testQuery('export_graph', 'export_graph(file_name = "a")', { write: [{ nodeId: '1@export_graph', functionName: 'export_graph', value: 'a' }] });
 
 		testQuery('dump', 'dump("My text", "MyTextFile.txt")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'MyTextFile.txt' }] });
 		testQuery('dump (argument)', 'dump(file="foo.txt", "foo")', { write: [{ nodeId: '1@dump', functionName: 'dump', value: 'foo.txt' }] });
@@ -348,7 +356,7 @@ describe('Dependencies Query', withTreeSitter(parser => {
 	describe('Visualize', () => {
 		describe('Creation', () => {
 			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
-				testQuery(f, `${f}()` , { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
+				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
 		});
 		describe('Modification', () => {
@@ -371,29 +379,13 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		});
 	});
 
-	describe('Test', () => {
-		describe('Simple', () => {
-			testQuery('simple', 'expect_equal(1 + 1, 2)', { test: [{ nodeId: '1@expect_equal', functionName: 'expect_equal' }] });
-			testQuery('testthat', 'testthat::expect_equal(1 + 1, 2)', {
-				test:    [{ nodeId: '1@testthat::expect_equal', functionName: 'expect_equal' }],
-				library: [{ nodeId: '1@expect_equal', functionName: '::', value: 'testthat' }]
-			});
-		});
-		describe('With info', () => {
-			testQuery('tinytest', 'expect_equal(1 + 1, 2, info="Failure lol")', { test: [
-				{ nodeId: '1@expect_equal', functionName: 'expect_equal', value: 'Failure lol' }
-			] });
-		});
-	});
-
-
 	describe('With file connections', () => {
 		for(const ro of ['r', 'rb', 'rt'] as const) {
 			testQuery('read only file connection', `file("test.txt", "${ro}")`, {
 				read: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
 		}
-		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at',] as const) {
+		for(const wo of ['w', 'wb', 'wt', 'a', 'ab', 'at'] as const) {
 			testQuery('write only file connection', `file("test.txt", "${wo}")`, {
 				write: [{ nodeId: '1@file', functionName: 'file', value: 'test.txt' }]
 			});
@@ -423,6 +415,30 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 		});
+		testQuery('simple additional', 'cat("a")', {
+			test: [{ value: 'cat', functionName: 'cat', nodeId: '1@cat' }]
+		}, {
+			ignoreDefaultFunctions: true,
+			additionalCategories:   {
+				'test': {
+					queryDisplayName:   'Testing',
+					functions:          [],
+					additionalAnalysis: async(data, _id, _f, _qr, results) => {
+						const ns = (await data.analyzer.normalize()).idMap;
+						for(const n of ns.values()) {
+							if(n.type === RType.FunctionCall && n.lexeme === 'cat' && n.arguments.length > 0) {
+								results.push({
+									nodeId:       n.info.id,
+									functionName: 'cat',
+									value:        n.lexeme
+								});
+								break;
+							}
+						}
+					}
+				}
+			}
+		});
 		testQuery('addon', 'cat("a")\nx <- 2', {
 			write:      [{ value: 'stdout', functionName: 'cat', nodeId: '1@cat' }],
 			assignment: [{ lexemeOfArgument: '2', functionName: '<-', nodeId: '2@<-', value: Unknown }]
@@ -433,5 +449,36 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				}
 			}
 		});
+	});
+	describe('Test Functions', () => {
+		testQuery('Nesting example', `test_that("trigonometric functions match identities", {
+  expect_equal(sin(pi / 4), 1 / sqrt(2))
+  expect_equal(cos(pi / 4), 1 / sqrt(2))
+  expect_equal(tan(pi / 4), 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47, 36, 20] }
+			]
+		});
+
+		testQuery('standalone expect_equal is not detected', 'expect_equal(1 + 1, 2)', {});
+
+		testQuery('expect_equal nested links to test_that via linkedIds', `test_that("basic", {
+  expect_equal(1, 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'basic', linkedIds: ['2@expect_equal'] }
+			]
+		});
+
+		testQuery('checkmate assertion nested links to test_that via linkedIds', `test_that("checks", {
+  assert_true(1 == 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'checks', linkedIds: ['2@assert_true'] }
+			]
+		});
+
+		testQuery('standalone checkmate assert_true is not detected', 'assert_true(x > 0)', {});
 	});
 }));

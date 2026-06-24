@@ -43,9 +43,9 @@ function parseUnaryOp(data: NormalizerData, operator: NamedJsonEntry, operand: N
 		lexeme:   content,
 		operand:  parsedOperand,
 		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       data.currentLexeme
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: data.currentLexeme
 		}
 	};
 }

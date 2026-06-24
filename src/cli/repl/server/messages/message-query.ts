@@ -1,6 +1,6 @@
 import type { IdMessageBase, MessageDefinition } from './all-messages';
 import Joi from 'joi';
-import { type Queries, type QueryResults, type SupportedQueryTypes , QueriesSchema } from '../../../../queries/query';
+import { type Queries, type QueryResults, type SupportedQueryTypes, QueriesSchema } from '../../../../queries/query';
 
 export interface QueryRequestMessage extends IdMessageBase {
 	type:      'request-query',

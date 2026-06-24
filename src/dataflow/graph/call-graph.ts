@@ -2,126 +2,36 @@ import { DataflowGraph } from './graph';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo } from './vertex';
-import {
-	VertexType
+	DataflowGraphVertexInfo
 } from './vertex';
+import { VertexType } from './vertex';
 import type { REnvironmentInformation } from '../environments/environment';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { getAllFunctionCallTargets } from '../internal/linker';
-import { edgeDoesNotIncludeType, edgeIncludesType, EdgeType } from './edge';
-import { builtInId, BuiltInProcName, isBuiltIn } from '../environments/built-in';
+import { DfEdge, EdgeType } from './edge';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 import { DefaultMap } from '../../util/collections/defaultmap';
+import { GraphHelper } from './graph-helper';
 
 /**
  * A call graph is a dataflow graph where all vertices are function calls.
- * You can create a call graph from a dataflow graph using {@link computeCallGraph}.
- * If you want to extract a sub call graph, use {@link getSubCallGraph}.
+ * You can create a call graph from a dataflow graph using {@link CallGraph.compute}.
+ * If you want to extract a sub call graph, use {@link CallGraph.computeSubCallGraph}.
+ * @see {@link dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
  */
 export type CallGraph = DataflowGraph<
 	Required<DataflowGraphVertexFunctionCall | DataflowGraphVertexFunctionDefinition>
->
+>;
 
-interface State {
-	visited:           Set<NodeId>;
+export interface State {
+	visited:    Set<NodeId>;
 	// links to be added if not otherwise found
-	potentials:        [NodeId, Set<NodeId>][]
-	knownReachability: DefaultMap<NodeId, Set<NodeId>>;
-}
-
-/**
- * Extracts the sub call graph from the given call graph, starting from the given entry points.
- */
-export function getSubCallGraph(graph: CallGraph, entryPoints: Set<NodeId>): CallGraph {
-	const result: CallGraph = new DataflowGraph(graph.idMap);
-	const toVisit: NodeId[] = Array.from(entryPoints);
-	const visited: Set<NodeId> = new Set();
-
-	while(toVisit.length > 0) {
-		const currentId = toVisit.pop() as NodeId;
-		if(visited.has(currentId)) {
-			continue;
-		}
-		visited.add(currentId);
-		const currentVtx = graph.getVertex(currentId, true);
-		if(!currentVtx) {
-			continue;
-		}
-		result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
-		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, EdgeType.Calls)) {
-				result.addEdge(currentId, tar, EdgeType.Calls);
-				toVisit.push(tar);
-			}
-		}
-	}
-
-	return result;
-}
-
-
-function reaches(from: NodeId, to: NodeId, graph: DataflowGraph, knownReachability: DefaultMap<NodeId, Set<NodeId>>): boolean {
-	const visited: Set<NodeId> = new Set();
-	const toVisit: NodeId[] = [from];
-
-	while(toVisit.length > 0) {
-		const currentId = toVisit.pop() as NodeId;
-		if(visited.has(currentId)) {
-			continue;
-		}
-		if(currentId === to) {
-			knownReachability.get(from).add(to);
-			return true;
-		} else if(knownReachability.get(currentId).has(to)) {
-			knownReachability.get(from).add(to);
-			return true;
-		}
-		visited.add(currentId);
-		for(const [tar] of graph.outgoingEdges(currentId) ?? []) {
-			toVisit.push(tar);
-		}
-	}
-	return false;
-}
-
-/**
- * Computes the call graph from the given dataflow graph.
- */
-export function computeCallGraph(graph: DataflowGraph): CallGraph {
-	const result: CallGraph = new DataflowGraph(graph.idMap);
-	const state: State = {
-		visited:           new Set(),
-		potentials:        [],
-		knownReachability: new DefaultMap(() => new Set())
-	};
-	for(const [,vert] of graph.vertices(false)) {
-		if(vert.tag === VertexType.FunctionCall) {
-			processCall(vert, undefined, graph, result, state);
-		} else if(vert.tag === VertexType.FunctionDefinition) {
-			processFunctionDefinition(vert, undefined, graph, result, state);
-		}
-	}
-	for(const [from, tos] of state.potentials) {
-		for(const to of tos) {
-			if(!result.hasVertex(to)) {
-				const v = graph.getVertex(to, true);
-				if(v) {
-					processUnknown(v, from, graph, result, state);
-					if(v.tag === VertexType.FunctionDefinition) {
-						processFunctionDefinition(v, from, graph, result, state);
-					}
-				}
-			} else if(!reaches(from, to, result, state.knownReachability)) {
-				result.addEdge(from, to, EdgeType.Calls);
-			}
-		}
-	}
-	return result;
+	potentials: [NodeId, Set<NodeId>][]
 }
 
 function processCds(vtx: DataflowGraphVertexInfo, graph: DataflowGraph, result: CallGraph, state: State): void {
 	for(const tar of vtx.cds ?? []) {
-		const targetVtx = graph.getVertex(tar.id, true);
+		const targetVtx = graph.getVertex(tar.id);
 		if(targetVtx) {
 			processUnknown(targetVtx, undefined, graph, result, state);
 		}
@@ -146,13 +56,13 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 			continue;
 		}
 		visited.add(currentId);
-		const currentVtx = graph.getVertex(currentId, true);
+		const currentVtx = graph.getVertex(currentId);
 		if(!currentVtx) {
 			continue;
 		}
 		let addedNew = false;
-		for(const [tar, { types }] of graph.outgoingEdges(currentId) ?? []) {
-			if(edgeIncludesType(types, UntargetedCallFollow) && edgeDoesNotIncludeType(types, UntargetedCallAvoid)) {
+		for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+			if(DfEdge.includesType(e, UntargetedCallFollow) && DfEdge.doesNotIncludeType(e, UntargetedCallAvoid)) {
 				addedNew = true;
 				toVisit.push(tar);
 			}
@@ -168,7 +78,7 @@ function fallbackUntargetedCall(vtx: Required<DataflowGraphVertexFunctionCall>, 
 
 function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeId | undefined, graph: DataflowGraph, result: CallGraph, state: State): void {
 	const vid = vtx.id;
-	if(from && !reaches(from, vid, result, state.knownReachability)) {
+	if(from) {
 		result.addEdge(from, vid, EdgeType.Calls);
 	}
 	if(state.visited.has(vid)) {
@@ -182,24 +92,26 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	// for each call, resolve the targets
 	const tars = getAllFunctionCallTargets(vid, graph, vtx.environment);
 	let addedTarget = false;
+	let addedBiTarget = false;
 	for(const tar of tars) {
-		if(isBuiltIn(tar)) {
+		if(NodeId.isBuiltIn(tar)) {
 			result.addEdge(vid, tar, EdgeType.Calls);
 			addedTarget = true;
+			addedBiTarget = true;
 			continue;
 		}
-		const targetVtx = graph.getVertex(tar, true);
+		const targetVtx = graph.getVertex(tar);
 		if(targetVtx?.tag !== VertexType.FunctionDefinition) {
 			continue;
 		}
 		addedTarget = true;
 		processFunctionDefinition(targetVtx, vid, graph, result, state);
 	}
-	if(vtx.origin !== 'unnamed') {
+	if(!addedBiTarget && vtx.origin !== 'unnamed') {
 		for(const origs of vtx.origin) {
 			if(origs.startsWith('builtin:')) {
 				addedTarget = true;
-				result.addEdge(vid, builtInId(
+				result.addEdge(vid, NodeId.toBuiltIn(
 					origs.substring('builtin:'.length)
 				), EdgeType.Calls);
 			}
@@ -208,7 +120,7 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	if(!addedTarget) {
 		const origs = fallbackUntargetedCall(vtx, graph);
 		for(const ori of origs) {
-			const oriVtx = graph.getVertex(ori, true);
+			const oriVtx = graph.getVertex(ori);
 			if(!oriVtx) {
 				continue;
 			}
@@ -228,11 +140,11 @@ function processCall(vtx: Required<DataflowGraphVertexFunctionCall>, from: NodeI
 	}
 
 	// handle arguments, traversing the 'reads' and the 'returns' edges
-	for(const [tar, { types }] of graph.outgoingEdges(vtx.id) ?? []) {
-		if(edgeDoesNotIncludeType(types, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
+	for(const [tar, e] of graph.outgoingEdges(vtx.id) ?? []) {
+		if(DfEdge.doesNotIncludeType(e, EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)) {
 			continue;
 		}
-		const tVtx = graph.getVertex(tar, true);
+		const tVtx = graph.getVertex(tar);
 		if(!tVtx) {
 			continue;
 		}
@@ -246,7 +158,7 @@ function processUnknown(vtx: DataflowGraphVertexInfo, from: NodeId | undefined, 
 			return;
 		case VertexType.FunctionDefinition:
 			if(from) {
-				result.addEdge(from, builtInId('function'), EdgeType.Calls);
+				result.addEdge(from, NodeId.toBuiltIn('function'), EdgeType.Calls);
 			}
 			return;
 		default:
@@ -269,9 +181,109 @@ function processFunctionDefinition(vtx: Required<DataflowGraphVertexFunctionDefi
 	state.potentials.push([vtx.id, vtx.subflow.graph.difference(exits)]);
 
 	for(const { nodeId } of exits) {
-		const v = graph.getVertex(nodeId, true);
+		const v = graph.getVertex(nodeId);
 		if(v) {
 			processUnknown(v, vtx.id, graph, result, state);
 		}
 	}
 }
+
+
+/**
+ * Helper object for call-graphs, you can compute new call graphs based on {@link CallGraph.compute}.
+ * @see {@link Dataflow}
+ * @see {@link CallGraph}
+ */
+export const CallGraph = {
+	name: 'CallGraph',
+	...GraphHelper,
+	/**
+	 * Extracts the sub call graph from the given call graph, starting from the given entry points.
+	 */
+	computeSubCallGraph(this: void, graph: CallGraph, entryPoints: Set<NodeId>): CallGraph {
+		const result: CallGraph = new DataflowGraph(graph.idMap);
+		const toVisit: NodeId[] = Array.from(entryPoints);
+		const visited: Set<NodeId> = new Set();
+
+		while(toVisit.length > 0) {
+			const currentId = toVisit.pop() as NodeId;
+			if(visited.has(currentId)) {
+				continue;
+			}
+			visited.add(currentId);
+			const currentVtx = graph.getVertex(currentId);
+			if(!currentVtx) {
+				continue;
+			}
+			result.addVertex(currentVtx, undefined as unknown as REnvironmentInformation, true);
+			for(const [tar, e] of graph.outgoingEdges(currentId) ?? []) {
+				if(DfEdge.includesType(e, EdgeType.Calls)) {
+					result.addEdge(currentId, tar, EdgeType.Calls);
+					toVisit.push(tar);
+				}
+			}
+		}
+
+		return result;
+	},
+
+	/**
+	 * Reduces the call graph by dropping all transitive edges.
+	 */
+	dropTransitiveEdges(this: void, graph: CallGraph): CallGraph {
+		const newCg: CallGraph = new DataflowGraph(graph.idMap);
+		newCg.mergeVertices(graph);
+		const knownReachability: DefaultMap<NodeId, Set<NodeId>> = new DefaultMap(() => new Set());
+		// heuristically sort by dif in ids
+		const es = Array.from(
+			graph.edges(),
+			([e, ts]) => ts.entries().map(([t, { types }]) => [e, t, types] as [NodeId, NodeId, EdgeType]).toArray()
+		).flat()
+			.sort((a, b) => String(a[0]).localeCompare(String(a[1])) - String(b[0]).localeCompare(String(b[1])));
+
+		for(const [from, to, types] of es) {
+			if(!CallGraph.reaches(from, to, newCg, knownReachability)) {
+				newCg.addEdge(from, to, types);
+			}
+		}
+		return newCg;
+	},
+
+
+	/**
+	 * Computes the call graph from the given dataflow graph.
+	 * @see {@link CallGraph} - for details
+	 * @see {@link CallGraph.computeSubCallGraph} - to extract sub call graphs
+	 * @see {@link CallGraph.dropTransitiveEdges} - to reduce the call graph by dropping transitive edges
+	 */
+	compute(this: void, graph: DataflowGraph): CallGraph {
+		const result: CallGraph = new DataflowGraph(graph.idMap);
+		const state: State = {
+			visited:    new Set(),
+			potentials: []
+		};
+		for(const [,vert] of graph.vertices(false)) {
+			if(vert.tag === VertexType.FunctionCall) {
+				processCall(vert, undefined, graph, result, state);
+			} else if(vert.tag === VertexType.FunctionDefinition) {
+				processFunctionDefinition(vert, undefined, graph, result, state);
+			}
+		}
+		for(const [from, tos] of state.potentials) {
+			for(const to of tos) {
+				if(!result.hasVertex(to)) {
+					const v = graph.getVertex(to);
+					if(v) {
+						processUnknown(v, from, graph, result, state);
+						if(v.tag === VertexType.FunctionDefinition) {
+							processFunctionDefinition(v, from, graph, result, state);
+						}
+					}
+				} else {
+					result.addEdge(from, to, EdgeType.Calls);
+				}
+			}
+		}
+		return result;
+	}
+} as const;

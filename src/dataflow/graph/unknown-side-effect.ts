@@ -21,5 +21,7 @@ export function onUnknownSideEffect(handler: UnknownSideEffectHandler) {
  */
 export function handleUnknownSideEffect(graph: DataflowGraph, env: REnvironmentInformation, id: NodeId, target?: LinkTo<RegExp | string>) {
 	graph.markIdForUnknownSideEffects(id, target);
-	handlers.forEach(handler => handler(graph, env, id, target));
+	for(const handler of handlers) {
+		handler(graph, env, id, target);
+	}
 }

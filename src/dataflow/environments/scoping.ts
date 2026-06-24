@@ -1,4 +1,4 @@
-import { type REnvironmentInformation , Environment } from './environment';
+import { type REnvironmentInformation, Environment } from './environment';
 import { guard } from '../../util/assert';
 
 /**

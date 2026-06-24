@@ -1,13 +1,13 @@
 import { summarizeSlicerStats } from '../../../src/benchmark/summarizer/first-phase/process';
 import { BenchmarkSlicer } from '../../../src/benchmark/slicer';
 import { formatNanoseconds, stats2string } from '../../../src/benchmark/stats/print';
-import { type CommonSlicerMeasurements , PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
-import { amendConfig, defaultConfigOptions } from '../../../src/config';
+import { type CommonSlicerMeasurements, PerSliceMeasurements, RequiredSlicerMeasurements } from '../../../src/benchmark/stats/stats';
 import { assert, describe, test } from 'vitest';
 import { DefaultAllVariablesFilter } from '../../../src/slicing/criterion/filters/all-variables';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
 import { guard, isNotUndefined } from '../../../src/util/assert';
 import { DataFrameOperationNames, type DataFrameOperationName } from '../../../src/abstract-interpretation/data-frame/semantics';
+import { FlowrConfig } from '../../../src/config';
 
 async function retrieveStatsSafe(slicer: BenchmarkSlicer, request: { request: string; content: string }) {
 	const { stats: rawStats } = slicer.finish();
@@ -33,7 +33,7 @@ describe('Benchmark Slicer', () => {
 		test('Simple slice for simple line', { timeout: 15 * 60 * 1000 }, async() => {
 			const slicer = new BenchmarkSlicer('r-shell');
 			const request = { request: 'text' as const, content: 'a <- b' };
-			await slicer.init(request, defaultConfigOptions);
+			await slicer.init(request, FlowrConfig.default());
 			await slicer.slice('1@a');
 			const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
 
@@ -55,10 +55,7 @@ describe('Benchmark Slicer', () => {
 				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                196,
-				storedVertexIndices:         0,  // no indices
-				storedEnvIndices:            0,  // no indices
-				overwrittenIndices:          0,  // no indices
+				sizeOfObject:                205,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -101,7 +98,7 @@ d <- b + 5
 cat(c, d)
 cat(d)`
 			};
-			await slicer.init(request, defaultConfigOptions);
+			await slicer.init(request, FlowrConfig.default());
 			await slicer.slice('2@a');
 			await slicer.slice('2@a', '4@c');
 			await slicer.slice('7@d');
@@ -125,10 +122,7 @@ cat(d)`
 				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1666,
-				storedVertexIndices:         0,
-				storedEnvIndices:            0,
-				overwrittenIndices:          0,
+				sizeOfObject:                1677,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
@@ -160,46 +154,6 @@ cat(d)`
 
 		});
 
-		describe('Slicing with pointer-tracking enabled', () => {
-			test('When indices are stored, then correct values are counted', async() => {
-				const slicer = new BenchmarkSlicer('r-shell');
-				const request = {
-					request: 'text' as const,
-					content: `
-person <- list(firstName = "John", lastName = "Doe", age = 32)
-
-person$firstName <- "Jane"
-person$lastName <- "eoD"
-person$age <- 34
-person$zipCode <- 67890
-person$city <- "other example"
-
-person$city <- list(name = "big-city", lat = 12.345, lon = 67.890, country = "foo")
-
-person$age <- 42
-
-print(person$age)`,
-					pointerTracking: true
-				};
-
-				await slicer.init(request, amendConfig(defaultConfigOptions, c => {
-					c.solver.pointerTracking = true;
-					return c;
-				}));
-				await slicer.slice('14@print');
-
-				const { stats, statInfo } = await retrieveStatsSafe(slicer, request);
-
-				// 'storedEnvIndices' are less because indices are overwritten
-				assert.deepStrictEqual(stats.dataflow, {
-					...stats.dataflow,
-					storedVertexIndices: 14,
-					storedEnvIndices:    13,
-					overwrittenIndices:  1,
-				}, statInfo);
-			});
-		});
-
 		describe('Slicing with sampling enabled', () => {
 			test('When equidistant sampling is enabled, then correct values are counted', async() => {
 				const slicer = new BenchmarkSlicer('r-shell');
@@ -213,7 +167,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.deepStrictEqual(criteria, [['$0'], ['$6'], ['$12']], 'Correct criteria');
 				}, { sampleCount: 3, sampleStrategy: 'equidistant' });
@@ -248,7 +202,7 @@ d <- 4
 e <- 5`,
 				};
 
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				const slicedCount = await slicer.sliceForAll(DefaultAllVariablesFilter, (_1, _2, criteria) => {
 					assert.equal(criteria.length, 3, '3 criteria are sliced');
 				}, { sampleCount: 3, sampleStrategy: 'random' });
@@ -275,7 +229,7 @@ e <- 5`,
 			test('Data frame shape inference', async() => {
 				const slicer = new BenchmarkSlicer('tree-sitter');
 				const request = requestFromInput('df <- data.frame(id = 1:3, age = c(25, 30, 40))');
-				await slicer.init(request, defaultConfigOptions);
+				await slicer.init(request, FlowrConfig.default());
 				slicer.extractCFG();
 				slicer.inferDataFrameShapes();
 
@@ -301,6 +255,8 @@ e <- 5`,
 					numberOfValueNodes:        2,
 					numberOfEntriesPerNode:    { min: 1, max: 2, median: 2, mean: 1.5, std: 0.5, total: 3 },
 					numberOfOperations:        1,
+					numberOfTotalConstraints:  1,
+					numberOfTotalExact:        1,
 					numberOfTotalValues:       1,
 					numberOfTotalBottom:       0,
 					numberOfTotalTop:          0,

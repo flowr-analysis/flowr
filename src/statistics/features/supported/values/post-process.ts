@@ -22,7 +22,7 @@ import type { StatisticsOutputFormat } from '../../../output/statistics-file';
 
 // values contains - and + values
 
-type ValuesPostProcessing = ReplaceKeysForSummary<ValueInfo, SummarizedWithProject>
+type ValuesPostProcessing = ReplaceKeysForSummary<ValueInfo, SummarizedWithProject>;
 
 
 /**

@@ -1,4 +1,4 @@
-import type { SingleSlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../../slicing/criterion/parse';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReconstructionResult } from '../../reconstruct/reconstruct';
 import type { RParseRequestFromFile, RParseRequestFromText } from '../../r-bridge/retriever';
@@ -7,18 +7,18 @@ import type { MergeableRecord } from '../../util/objects';
 import type { DataFrameOperationName } from '../../abstract-interpretation/data-frame/semantics';
 
 export const RequiredSlicerMeasurements = ['initialize R session', 'retrieve AST from R code', 'normalize R AST', 'produce dataflow information', 'close R session', 'total'] as const;
-export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes'] as const;
+export const OptionalSlicerMeasurements = ['extract control flow graph', 'infer data frame shapes', 'extract call graph'] as const;
 export const CommonSlicerMeasurements = [...RequiredSlicerMeasurements, ...OptionalSlicerMeasurements] as const;
-export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number]
+export type CommonSlicerMeasurements = typeof CommonSlicerMeasurements[number];
 
 export const PerSliceMeasurements = ['static slicing', 'reconstruct code', 'total'] as const;
-export type PerSliceMeasurements = typeof PerSliceMeasurements[number]
+export type PerSliceMeasurements = typeof PerSliceMeasurements[number];
 
-export type ElapsedTime = bigint
+export type ElapsedTime = bigint;
 
 export interface PerSliceStats {
 	measurements:                Map<PerSliceMeasurements, ElapsedTime>
-	slicingCriteria:             { criterion: SingleSlicingCriterion, id: NodeId }[]
+	slicingCriteria:             { criterion: SlicingCriterion, id: NodeId }[]
 	reconstructedCode:           ReconstructionResult
 	numberOfDataflowNodesSliced: number
 	timesHitThreshold:           number
@@ -45,9 +45,6 @@ export interface SlicerStatsDataflow<T = number> {
 	numberOfFunctionDefinitions: T
 	/* size of object in bytes as measured by v8 serialization */
 	sizeOfObject:                T
-	storedVertexIndices:         T
-	storedEnvIndices:            T
-	overwrittenIndices:          T
 }
 
 export interface SlicerStatsDfShape<T = number> {
@@ -107,5 +104,6 @@ export interface SlicerStats {
 	dataflowTimePerToken:        TimePerToken<number>
 	totalCommonTimePerToken:     TimePerToken<number>
 	controlFlowTimePerToken?:    TimePerToken<number>
+	callGraphTimePerToken?:      TimePerToken<number>
 	dataFrameShapeTimePerToken?: TimePerToken<number>
 }

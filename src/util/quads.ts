@@ -7,10 +7,10 @@
  * @module
  */
 
-import { type NamedNode, type Quad , DataFactory, Writer } from 'n3';
+import { type NamedNode, type Quad, DataFactory, Writer } from 'n3';
 const namedNode = (v: string) => DataFactory.namedNode(v);
 const quad = (s: RDF.Quad_Subject, p: RDF.Quad_Predicate, o: RDF.Quad_Object, g?: RDF.Quad_Graph) => DataFactory.quad(s, p, o, g);
-import { type MergeableRecord , deepMergeObject, isObjectOrArray } from './objects';
+import { type MergeableRecord, deepMergeObject, isObjectOrArray } from './objects';
 import { guard } from './assert';
 import { DefaultMap } from './collections/defaultmap';
 const literal = (v: string, n?: string | RDF.NamedNode) => DataFactory.literal(v, n);
@@ -20,27 +20,27 @@ import type * as RDF from '@rdfjs/types';
 
 const domain = 'https://uni-ulm.de/r-ast/';
 
-type RecordForQuad = Record<string, unknown>
-type DataForQuad = Record<string, unknown> | ArrayLike<unknown>
-type ContextForQuad = string
+type RecordForQuad = Record<string, unknown>;
+type DataForQuad = Record<string, unknown> | ArrayLike<unknown>;
+type ContextForQuad = string;
 
 /**
  * Predicate that allows you to ignore given elements based on their key/value
  * @returns true if the given key/value should be ignored, false otherwise
  */
-export type QuadIgnoreIf = (key: string, value: unknown) => boolean
+export type QuadIgnoreIf = (key: string, value: unknown) => boolean;
 
 /**
  * Deterministically retrieve a unique id for a given object.
  * @param obj - The object to retrieve the id for
  * @param context - to provide unique ids even for different contexts, we add the context to the id.
  */
-export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string
+export type QuadIdRetriever = (obj: unknown, context: ContextForQuad) => string;
 
 /**
  * Either a constant string or a supplier depending on the object in question
  */
-export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad)
+export type QuadContextRetriever = ContextForQuad | ((obj: DataForQuad) => ContextForQuad);
 
 /**
  * A deterministic counting id generator for quads.
@@ -118,13 +118,13 @@ export function serialize2quads(obj: RecordForQuad, config: QuadSerializationCon
 
 export type VertexInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
 	id: NodeId
-}
+};
 
 export type EdgeInformationForQuad<AdditionalInformation extends MergeableRecord> = MergeableRecord & AdditionalInformation & {
 	from: NodeId,
 	type: NodeId | NodeId[],
 	to:   NodeId
-}
+};
 
 export interface GraphInformationForQuad<AdditionalVertexInformation extends MergeableRecord, AdditionalEdgeInformation extends MergeableRecord> extends MergeableRecord {
 	rootIds:     NodeId[],
@@ -232,15 +232,21 @@ function processLiteralEntry(value: unknown, key: string, obj: DataForQuad, quad
 }
 
 function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads: Quad[], config: Required<QuadSerializationConfiguration>) {
-	if(config.ignore(key, value)) {
-		return;
-	}
-	if(guardCycle(value)) {
+	if(config.ignore(key, value) || guardCycle(value)) {
 		return;
 	}
 	if(isObjectOrArray(value)) {
 		if(Array.isArray(value)) {
 			processArrayEntries(key, value, obj, quads, config);
+		} else if(value instanceof Map) {
+			for(const [mapKey, mapValue] of value.entries()) {
+				processObjectEntry('key-' + String(mapKey), mapValue, obj, quads, config);
+			}
+		} else if(value instanceof Set) {
+			let i = 0;
+			for(const setValue of value.values()) {
+				processObjectEntry('idx-'+String(i++), setValue, obj, quads, config);
+			}
 		} else {
 			processObjectEntries(key, value, obj, quads, config);
 		}
@@ -254,10 +260,10 @@ let store = new Set();
 function guardCycle(obj: unknown) {
 	// @ts-expect-error we do not care about the type here
 	if(isObjectOrArray(obj) && 'id' in obj) {
-		if(store.has(obj.id)) {
+		if(store.has(obj)) {
 			return true;
 		}
-		store.add(obj.id);
+		store.add(obj);
 	}
 	return false;
 }

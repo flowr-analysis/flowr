@@ -4,7 +4,7 @@ import { retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
 import type { RArgument } from '../../../../model/nodes/r-argument';
 import type { RDelimiter } from '../../../../model/nodes/info/r-delimiter';
-import type { RNode } from '../../../../model/model';
+import type { NoInfo, RNode } from '../../../../model/model';
 import type { RSymbol } from '../../../../model/nodes/r-symbol';
 import { RawRType, RType } from '../../../../model/type';
 import { normalizeSingleNode } from '../structure/normalize-single-node';
@@ -29,21 +29,20 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 	const { location, content } = retrieveMetaStructure(symbolOrExpr.content);
 
 	let parsedValue: RNode | RDelimiter | undefined |  null;
-	let name: RSymbol | undefined;
+	let name: RSymbol<NoInfo, string> | undefined;
 	if(symbolOrExpr.name === RawRType.Expression) {
 		name = undefined;
 		parsedValue = normalizeSingleNode(data, symbolOrExpr);
 	} else if(symbolOrExpr.name === RawRType.SymbolSub || symbolOrExpr.name === RawRType.StringConst) {
 		name =    {
-			type:      RType.Symbol,
+			type:    RType.Symbol,
 			location,
-			content:   symbolOrExpr.name === RawRType.StringConst ? content.slice(1,-1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
-			namespace: undefined,
-			lexeme:    content,
-			info:      {
-				fullRange:        location,
-				additionalTokens: [],
-				fullLexeme:       content
+			content: symbolOrExpr.name === RawRType.StringConst ? content.slice(1, -1) : (startAndEndsWith(content, '`') ? content.slice(1, -1) : content),
+			lexeme:  content,
+			info:    {
+				fullRange:  location,
+				adToks:     [],
+				fullLexeme: content
 			}
 		};
 		parsedValue = parseWithValue(data, objs);
@@ -61,9 +60,9 @@ export function tryToNormalizeArgument(data: NormalizerData, objs: readonly Name
 		name,
 		value:  parsedValue ?? undefined,
 		info:   {
-			fullRange:        location,
-			fullLexeme:       content,
-			additionalTokens: []
+			fullRange:  location,
+			fullLexeme: content,
+			adToks:     []
 		}
 	};
 }

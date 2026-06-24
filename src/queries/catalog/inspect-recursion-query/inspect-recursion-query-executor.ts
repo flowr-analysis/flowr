@@ -12,7 +12,7 @@ export async function executeRecursionQuery({ analyzer }: BasicQueryData, querie
 	const { cg, fns } = await getFunctionsToConsiderInCallGraph(queries, analyzer);
 
 	const result: Record<NodeId, boolean> = {};
-	for(const [id,] of fns) {
+	for(const [id] of fns) {
 		result[id] = isFunctionRecursive(id, cg);
 	}
 

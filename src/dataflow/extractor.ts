@@ -9,15 +9,13 @@ import { processAsNamedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
-import { invalidRange } from '../util/range';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
-import {
-	identifyLinkToLastCallRelation
+import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
@@ -26,6 +24,9 @@ import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-con
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
+import { Identifier } from './environments/identifier';
+import { SourceRange } from '../util/range';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -55,12 +56,12 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.ExpressionList]:     ({ grouping, info, children, location }, d) => {
 		const groupStart = grouping?.[0];
 		return processNamedCall({
-			type:      RType.Symbol,
-			info:      info,
-			content:   groupStart?.content ?? '{',
-			lexeme:    groupStart?.lexeme ?? '{',
-			location:  location ?? invalidRange(),
-			namespace: groupStart?.content ? undefined : 'base'
+			type:     RType.Symbol,
+			info:     info,
+			content:  groupStart?.content ?? '{',
+			lexeme:   groupStart?.lexeme ?? '{',
+			location: location ?? SourceRange.invalid(),
+			ns:       groupStart?.content ? undefined : 'base'
 		}, wrapArgumentsUnnamed(children, d.completeAst.idMap), info.id, d);
 	}
 };
@@ -80,7 +81,8 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			cf = extractCfgQuick(ast);
 			if(graph.unknownSideEffects.size > 20) {
 				knownCalls = getCallsInCfg(cf, graph);
-				allCallNames = Array.from(new Set(knownCalls.values().map(c => c.name)));
+
+				allCallNames = Array.from(new Set(knownCalls.values().map(c => Identifier.toString(c.name))));
 			}
 		} else if(handled.has(s.id)) {
 			continue;
@@ -96,7 +98,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
 			continue;
 		}
 		/* this has to change whenever we add a new link to relations because we currently offer no abstraction for the type */
-		const potentials = identifyLinkToLastCallRelation(s.id, cf?.graph, graph, s.linkTo, knownCalls);
+		const potentials = identifyLinkToLastCallRelationSync(s.id, cf.graph, graph, s.linkTo as LinkToLastCall<RegExp>, knownCalls);
 		for(const pot of potentials) {
 			graph.addEdge(s.id, pot, EdgeType.Reads);
 		}
@@ -125,16 +127,27 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	ctx.files.addConsideredFile(files[0].filePath ? files[0].filePath : FlowrFile.INLINE_PATH);
 
+	const env = ctx.env.makeCleanEnv();
+	env.current.n = ctx.meta.getNamespace();
+
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:    ctx.env.makeCleanEnv(),
+		environment:    env,
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],
 		ctx
 	};
-	let df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	let df: DataflowInformation;
+	try {
+		df = processDataflowFor<OtherInfo>(files[0].root, dfData);
+	} catch(e) {
+		if(e instanceof RangeError) {
+			throw new Error(`Dataflow analysis exceeded the call stack for '${files[0].filePath ?? '<inline>'}' (code is too deeply nested). Consider --stack-size=65536 when invoking Node.js.`, { cause: e });
+		}
+		throw e;
+	}
 
 	for(let i = 1; i < files.length; i++) {
 		/* source requests register automatically */
@@ -145,6 +158,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	updateNestedFunctionCalls(df.graph, df.environment);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };
 }

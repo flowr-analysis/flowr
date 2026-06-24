@@ -10,13 +10,15 @@ import type {
 	RNodeWithParent
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { Location, RAstNodeBase, RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import type { RAccess } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
+	Identifier,
 	type IdentifierReference,
 	type InGraphIdentifierDefinition,
 	type InGraphReferenceType,
@@ -26,29 +28,31 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import type { RUnnamedArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type ContainerIndicesCollection, VertexType } from '../../../../../graph/vertex';
+import type { DataflowGraphVertexFunctionDefinition } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, isFunctionDefinitionVertex, VertexType } from '../../../../../graph/vertex';
 import { define } from '../../../../../environments/define';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import type { DataflowGraph } from '../../../../../graph/graph';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { addSubIndicesToLeafIndices, resolveIndicesByName } from '../../../../../../util/containers';
+import { resolveEnvirArg, resolveSymbolToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
 import { markAsOnlyBuiltIn } from '../named-call-handling';
-import { BuiltInProcessorMapper, BuiltInProcName } from '../../../../../environments/built-in';
+import { BuiltInProcessorMapper } from '../../../../../environments/built-in';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { createFreshEnvState } from './built-in-new-env';
 
-function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: string, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
+function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
-		type:      RType.Symbol,
-		info:      target.info,
+		type:     RType.Symbol,
+		info:     target.info,
 		/* they are all mapped to `<-` in R, but we mark super as well */
-		content:   `${prefix}${superAssignment ? '<<-' : '<-'}`,
-		lexeme:    target.lexeme,
-		location:  target.location,
-		namespace: undefined
+		content:  Identifier.mapName(prefix, n => n + (superAssignment ? '<<-' : '<-')),
+		lexeme:   target.lexeme,
+		location: target.location
 	};
 }
 
@@ -67,13 +71,19 @@ export interface AssignmentConfiguration extends ForceArguments {
 	readonly canBeReplacement?:    boolean
 	/** is the target a variable pointing at the actual name? */
 	readonly targetVariable?:      boolean
-	readonly indicesCollection?:   ContainerIndicesCollection
 	readonly mayHaveMoreArgs?:     boolean
+	readonly modesForFn?:          DataflowGraphVertexFunctionDefinition['mode']
+	/**
+	 * The name of the argument that selects the target environment (e.g. `'envir'` for `assign`).
+	 * When present and the argument resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
+	 * the assignment is routed into that environment instead of the current scope.
+	 */
+	readonly environmentArg?:      string
 }
 
 export interface ExtendedAssignmentConfiguration extends AssignmentConfiguration {
-	readonly source: { idx?: number, name: string};
-	readonly target: { idx?: number, name: string};
+	readonly source: { idx?: number, name: string };
+	readonly target: { idx?: number, name: string };
 }
 
 function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): RSymbol<OtherInfo & ParentInformation> | undefined {
@@ -83,18 +93,16 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 	}
 	if(current.type === RType.Symbol) {
 		return current;
-	} else {
-		return undefined;
 	}
+	return undefined;
 }
 
-function tryReplacementPassingIndices<OtherInfo>(
+function tryReplacement<OtherInfo>(
 	rootId: NodeId,
 	functionName: RSymbol<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: string,
-	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[],
-	indices: ContainerIndicesCollection
+	name: Identifier,
+	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	const resolved = resolveByName(functionName.content, data.environment, ReferenceType.Function) ?? [];
 
@@ -105,20 +113,18 @@ function tryReplacementPassingIndices<OtherInfo>(
 
 	const info = BuiltInProcessorMapper[BuiltInProcName.Replacement](
 		{
-			type:      RType.Symbol,
-			info:      functionName.info,
-			content:   name,
-			lexeme:    functionName.lexeme,
-			location:  functionName.location,
-			namespace: undefined
+			type:     RType.Symbol,
+			info:     functionName.info,
+			content:  name,
+			lexeme:   functionName.lexeme,
+			location: functionName.location
 		},
 		wrapArgumentsUnnamed(args, data.completeAst.idMap),
 		functionName.info.id,
 		data,
 		{
 			...resolved[0].config,
-			activeIndices: indices,
-			assignRootId:  rootId
+			assignRootId: rootId
 		}
 	);
 
@@ -132,13 +138,13 @@ function tryReplacementPassingIndices<OtherInfo>(
 export function processAssignmentLike<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: ExtendedAssignmentConfiguration
 ): DataflowInformation {
-	const argsWithNames = new Map<string, RFunctionArgument<OtherInfo & ParentInformation>>();
-	const argsWithoutNames: RFunctionArgument<OtherInfo & ParentInformation>[] = [];
+	const argsWithNames = new Map<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
+	const argsWithoutNames: PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[] = [];
 	for(const arg of args) {
 		const name = arg === EmptyArgument ? undefined : arg.name?.content;
 		if(name === undefined) {
@@ -170,21 +176,29 @@ export function processAssignmentLike<OtherInfo>(
 export function processAssignment<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	/* we expect them to be ordered in the sense that we have (source, target): `<source> <- <target>` */
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: AssignmentConfiguration
 ): DataflowInformation {
 	if(!config.mayHaveMoreArgs && args.length !== 2) {
-		dataflowLogger.warn(`Assignment ${name.content} has something else than 2 arguments, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has something else than 2 arguments, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 
-	const effectiveArgs = getEffectiveOrder(config, args as [RFunctionArgument<OtherInfo & ParentInformation>, RFunctionArgument<OtherInfo & ParentInformation>]);
+	/* route into a custom environment when envir resolves to a tracked env variable */
+	if(config.environmentArg) {
+		const routed = tryRouteToCustomEnv(name, args, rootId, data, config);
+		if(routed !== undefined) {
+			return routed;
+		}
+	}
+
+	const effectiveArgs = getEffectiveOrder(config, args as [PotentiallyEmptyRArgument<OtherInfo & ParentInformation>, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>]);
 	const { target, source } = extractSourceAndTarget(effectiveArgs);
 
 	if(target === undefined || source === undefined) {
-		dataflowLogger.warn(`Assignment ${name.content} has an undefined target or source, skipping`);
+		dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an undefined target or source, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: 'default' }).information;
 	}
 	const { type, named } = target;
@@ -198,7 +212,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -223,7 +237,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       BuiltInProcName.Assignment
+						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -241,13 +255,17 @@ export function processAssignment<OtherInfo>(
 		}
 	} else if(config.canBeReplacement && type === RType.FunctionCall && named) {
 		/* as replacement functions take precedence over the lhs fn-call (i.e., `names(x) <- ...` is independent from the definition of `names`), we do not have to process the call */
-		dataflowLogger.debug(`Assignment ${name.content} has a function call as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has a function call as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.functionName.content, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [...target.arguments, source], config.indicesCollection);
+		return tryReplacement(rootId, replacement, data, replacement.content, [...target.arguments, source]);
 	} else if(config.canBeReplacement && type === RType.Access) {
-		dataflowLogger.debug(`Assignment ${name.content} has an access-type node as target ==> replacement function ${target.lexeme}`);
+		dataflowLogger.debug(`Assignment ${Identifier.toString(name.content)} has an access-type node as target ==> replacement function ${target.lexeme}`);
 		const replacement = toReplacementSymbol(target, target.operator, config.superAssignment ?? false);
-		return tryReplacementPassingIndices(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source], config.indicesCollection);
+		const envRouted = tryRouteDollarEnvAssign(rootId, data, config, target as RAccess<OtherInfo & ParentInformation>, source, replacement);
+		if(envRouted !== undefined) {
+			return envRouted;
+		}
+		return tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 	} else if(type === RType.Access) {
 		const rootArg = findRootAccess(target);
 		if(rootArg) {
@@ -258,7 +276,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -276,17 +294,17 @@ export function processAssignment<OtherInfo>(
 		return processAssignmentToString(target, args, name, rootId, data, config, source);
 	}
 
-	dataflowLogger.warn(`Assignment ${name.content} has an unknown target type ${target.type} => unknown impact`);
+	dataflowLogger.warn(`Assignment ${Identifier.toString(name.content)} has an unknown target type ${target.type} => unknown impact`);
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Assignment
+		origin:    config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
 }
 
-function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
+function extractSourceAndTarget<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
 	const source = unpackArg(args[1]);
 	const target = unpackArg(args[0]);
 	return { source, target };
@@ -295,13 +313,13 @@ function extractSourceAndTarget<OtherInfo>(args: readonly RFunctionArgument<Othe
 /**
  * Promotes the ingoing/unknown references of target (an assignment) to definitions
  */
-function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: string })[] {
-	const written: (InGraphIdentifierDefinition & { name: string })[] = [];
+function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformation, referenceType: InGraphReferenceType, data: DataflowProcessorInformation<OtherInfo>, makeMaybe: boolean, value: NodeId[] | undefined): (InGraphIdentifierDefinition & { name: Identifier })[] {
+	const written: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
 	for(const refs of [target.in, target.unknownReferences]) {
 		for(const ref of refs) {
 			written.push({
 				nodeId:    ref.nodeId,
-				name:      ref.name as string,
+				name:      ref.name as Identifier,
 				type:      referenceType,
 				definedAt: rootId,
 				cds:       data.cds ?? (makeMaybe ? [] : undefined),
@@ -314,7 +332,7 @@ function produceWrittenNodes<OtherInfo>(rootId: NodeId, target: DataflowInformat
 
 function processAssignmentToString<OtherInfo>(
 	target: RString<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -322,19 +340,19 @@ function processAssignmentToString<OtherInfo>(
 	source: RNode<OtherInfo & ParentInformation>
 ) {
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      target.info,
-		content:   removeRQuotes(target.lexeme),
-		lexeme:    target.lexeme,
-		location:  target.location,
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     target.info,
+		content:  removeRQuotes(target.lexeme),
+		lexeme:   target.lexeme,
+		location: target.location,
 	};
 
-	// treat first argument to Symbol
+	// treat first argument to Symbol; include extra args (e.g. envir=) so they get graph vertices
+	const extraArgs = config.mayHaveMoreArgs ? Array.from(args).slice(2) : [];
 	const mappedArgs = config.swapSourceAndTarget ? [args[0], {
 		...(args[1] as RUnnamedArgument<OtherInfo & ParentInformation>),
 		value: symbol
-	}] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1]];
+	}, ...extraArgs] : [{ ...(args[0] as RUnnamedArgument<OtherInfo & ParentInformation>), value: symbol }, args[1], ...extraArgs];
 	const res = processKnownFunctionCall({
 		name,
 		args:         mappedArgs,
@@ -342,7 +360,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       BuiltInProcName.Assignment
+		origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -357,10 +375,18 @@ function processAssignmentToString<OtherInfo>(
 	});
 }
 
-function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInformation>, sourceInfo: DataflowInformation): InGraphReferenceType {
-	const vert = sourceInfo.graph.getVertex(source.info.id, true);
+function checkTargetReferenceType(sourceInfo: DataflowInformation, fnModes: DataflowGraphVertexFunctionDefinition['mode'] | undefined): InGraphReferenceType {
+	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
 	switch(vert?.tag) {
 		case VertexType.FunctionDefinition:
+			if(fnModes && fnModes.length > 0) {
+				vert.mode ??= [];
+				for(const m of fnModes) {
+					if(!vert.mode.includes(m)) {
+						vert.mode.push(m);
+					}
+				}
+			}
 			return ReferenceType.Function;
 		case VertexType.Use:
 		case VertexType.FunctionCall:
@@ -370,13 +396,103 @@ function checkTargetReferenceType<OtherInfo>(source: RNode<OtherInfo & ParentInf
 	}
 }
 
+/**
+ * Returns `true` when the entry-point of `sourceInfo` is a call to a `new.env`-family function.
+ * Used by {@link processAssignmentToSymbol} to attach an initial {@link InGraphIdentifierDefinition#envState}.
+ */
+function isEnvCreatorSource(sourceInfo: DataflowInformation): boolean {
+	const vert = sourceInfo.graph.getVertex(sourceInfo.entryPoint);
+	return isFunctionCallVertex(vert) && vert.origin.includes(BuiltInProcName.NewEnv);
+}
+
+/**
+ * When `e$x <- val` and `e` holds a tracked {@link InGraphIdentifierDefinition#envState},
+ * adds the field `x` into that envState instead of redefining the whole `e` object.
+ * Returns `undefined` when routing is not applicable.
+ */
+function tryRouteDollarEnvAssign<OtherInfo>(
+	rootId:      NodeId,
+	data:        DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config:      AssignmentConfiguration,
+	target:      RAccess<OtherInfo & ParentInformation>,
+	source:      RNode<OtherInfo & ParentInformation>,
+	replacement: RSymbol<OtherInfo & ParentInformation>
+): DataflowInformation | undefined {
+	if(target.operator !== '$' || target.accessed.type !== RType.Symbol) {
+		return undefined;
+	}
+	const envirResolution = resolveSymbolToEnvir(target.accessed.content, target.accessed.info.id, data);
+	if(!envirResolution) {
+		return undefined;
+	}
+
+	const fieldNode = unpackArg(target.access[0]);
+	if(!fieldNode) {
+		return undefined;
+	}
+	const fieldName = (fieldNode.type === RType.String ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
+
+	const normalResult = tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+
+	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
+		type:      ReferenceType.Variable,
+		name:      fieldName,
+		nodeId:    fieldNode.info.id,
+		definedAt: rootId,
+		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
+	};
+	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
+	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
+		...envirResolution.envDef,
+		definedAt: rootId,
+		envState:  newEnvState
+	};
+	const strippedEnv = {
+		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
+		level:   normalResult.environment.level
+	};
+	normalResult.graph.addEdge(normalResult.entryPoint, target.accessed.info.id, EdgeType.Reads);
+	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
+}
+
+/**
+ * When `config.environmentArg` identifies an `envir`-like parameter (e.g. `'envir'` for `assign`)
+ * and that argument resolves to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
+ * this function routes the written definitions into that custom environment instead of the current
+ * global scope.
+ * @returns `undefined` if routing is not possible
+ */
+function tryRouteToCustomEnv<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation | undefined {
+	const resolution = resolveEnvirArg(args, data, config.environmentArg);
+	if(!resolution) {
+		return undefined;
+	}
+
+	/* run the normal assignment path to get the correct graph structure */
+	const normalResult = processAssignment(name, args, rootId, data, {
+		...config,
+		environmentArg: undefined   // prevent re-entry
+	});
+
+	normalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+
+	/* pass rootId as definedAt so only defs made at this call site are routed */
+	return routeWrittenToCustomEnv(normalResult, resolution.envDef, rootId, rootId);
+}
+
 export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfiguration {
-	readonly nameOfAssignmentFunction: string
+	readonly nameOfAssignmentFunction: Identifier
 	readonly source:                   RNode<OtherInfo & ParentInformation>
 	readonly args:                     [DataflowInformation, DataflowInformation]
 	readonly targetId:                 NodeId
 	/** pass only if the assignment target differs from normal R assignments (i.e., if the symbol is to be resolved) */
-	readonly targetName?:              string
+	readonly targetName?:              Identifier
 	readonly rootId:                   NodeId
 	readonly data:                     DataflowProcessorInformation<OtherInfo>
 	readonly information:              DataflowInformation
@@ -396,50 +512,21 @@ export function markAsAssignment<OtherInfo>(
 		environment: REnvironmentInformation,
 		graph:       DataflowGraph
 	},
-	nodeToDefine: InGraphIdentifierDefinition & { name: string},
+	nodeToDefine: InGraphIdentifierDefinition & { name: Identifier },
 	sourceIds: readonly NodeId[],
 	rootIdOfAssignment: NodeId,
 	data: DataflowProcessorInformation<OtherInfo>,
 	assignmentConfig?: AssignmentConfiguration
 ) {
-	if(data.ctx.config.solver.pointerTracking) {
-		let indicesCollection: ContainerIndicesCollection = undefined;
-		if(sourceIds.length === 1) {
-			// support for tracking indices.
-			// Indices were defined for the vertex e.g. a <- list(c = 1) or a$b <- list(c = 1)
-			indicesCollection = information.graph.getVertex(sourceIds[0])?.indicesCollection;
-
-			// support assignment of container e.g. container1 <- container2
-			// defined indices are passed
-			if(!indicesCollection) {
-				const node = information.graph.idMap?.get(sourceIds[0]);
-				if(node && node.type === RType.Symbol) {
-					indicesCollection = resolveIndicesByName(node.lexeme, information.environment);
-				}
-			}
-		}
-		// Indices defined by replacement operation e.g. $<-
-		if(assignmentConfig?.indicesCollection !== undefined) {
-			// If there were indices stored in the vertex, then a container was defined
-			// and assigned to the index of another container e.g. a$b <- list(c = 1)
-			if(indicesCollection) {
-				indicesCollection = addSubIndicesToLeafIndices(assignmentConfig.indicesCollection, indicesCollection);
-			} else {
-				// No indices were defined for the vertex e.g. a$b <- 2
-				indicesCollection = assignmentConfig.indicesCollection;
-			}
-		}
-		nodeToDefine.indicesCollection ??= indicesCollection;
-	}
-
-	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment, data.ctx.config);
-	information.graph.setDefinitionOfVertex(nodeToDefine);
+	information.environment = define(nodeToDefine, assignmentConfig?.superAssignment, information.environment);
+	information.graph.setDefinitionOfVertex(nodeToDefine, sourceIds);
+	const nid = nodeToDefine.nodeId;
 	if(!assignmentConfig?.quoteSource) {
 		for(const sourceId of sourceIds) {
-			information.graph.addEdge(nodeToDefine, sourceId, EdgeType.DefinedBy);
+			information.graph.addEdge(nid, sourceId, EdgeType.DefinedBy);
 		}
 	}
-	information.graph.addEdge(nodeToDefine, rootIdOfAssignment, EdgeType.DefinedBy);
+	information.graph.addEdge(nid, rootIdOfAssignment, EdgeType.DefinedBy);
 	// kinda dirty, but we have to remove existing read edges for the symbol, added by the child
 	const out = information.graph.outgoingEdges(nodeToDefine.nodeId);
 	for(const [id, edge] of (out ?? [])) {
@@ -455,9 +542,10 @@ export function markAsAssignment<OtherInfo>(
  */
 function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParameters<OtherInfo>): DataflowInformation {
 	const { nameOfAssignmentFunction, source, args: [targetArg, sourceArg], targetId, targetName, rootId, data, information, makeMaybe, quoteSource } = config;
-	const referenceType = checkTargetReferenceType(source, sourceArg);
+	const referenceType = checkTargetReferenceType(sourceArg, config.modesForFn);
+	const useSourceIds = [sourceArg.graph.hasVertex(source.info.id) ? source.info.id : sourceArg.entryPoint];
 
-	const aliases = getAliases([source.info.id], information.graph, information.environment);
+	const aliases = getAliases(useSourceIds, information.graph, information.environment);
 	const writeNodes = targetName ? [{
 		nodeId:    targetId,
 		name:      targetName,
@@ -465,8 +553,46 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		definedAt: rootId,
 		cds:       data.cds ?? (makeMaybe ? [] : undefined),
 		value:     aliases
-	} satisfies InGraphIdentifierDefinition & { name: string }]
+	} satisfies InGraphIdentifierDefinition & { name: Identifier }]
 		: produceWrittenNodes(rootId, targetArg, referenceType, data, makeMaybe ?? false, aliases);
+
+	if(data.ctx.config.solver.trackEnvironments) {
+		let envState: REnvironmentInformation | undefined;
+		let returnsEnvState: REnvironmentInformation | undefined;
+		if(isEnvCreatorSource(sourceArg)) {
+			envState = createFreshEnvState(data, sourceArg);
+		} else if(source.type === RType.Symbol) {
+			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
+			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+			envState = def?.envState;
+			if(!envState) {
+				const fnDef = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
+				if(fnDef?.returnsEnvState) {
+					envState = fnDef.returnsEnvState;
+				}
+			}
+		} else {
+			const entryVertex = sourceArg.graph.getVertex(sourceArg.entryPoint);
+			if(isFunctionDefinitionVertex(entryVertex) && entryVertex.returnEnvState !== undefined) {
+				returnsEnvState = entryVertex.returnEnvState;
+			} else if(isFunctionCallVertex(entryVertex) && entryVertex.name) {
+				const fnDefs = resolveByName(entryVertex.name, data.environment, ReferenceType.Function);
+				const fnDef = fnDefs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).returnsEnvState !== undefined);
+				if(fnDef?.returnsEnvState) {
+					envState = fnDef.returnsEnvState;
+				}
+			}
+		}
+		if(envState) {
+			for(let i = 0; i < writeNodes.length; i++) {
+				writeNodes[i] = { ...writeNodes[i], envState };
+			}
+		} else if(returnsEnvState) {
+			for(let i = 0; i < writeNodes.length; i++) {
+				writeNodes[i] = { ...writeNodes[i], returnsEnvState };
+			}
+		}
+	}
 
 	if(writeNodes.length !== 1 && log.settings.minLevel >= LogLevel.Warn) {
 		log.warn(`Unexpected write number in assignment: ${JSON.stringify(writeNodes)}`);
@@ -474,20 +600,27 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
-	const readTargets: readonly IdentifierReference[] = [
+	const readTargets: IdentifierReference[] = [
 		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
-	].concat(
-		sourceArg.unknownReferences,
-		sourceArg.in,
-		targetName ? targetArg.in : targetArg.in.filter(i => i.nodeId !== targetId),
-		readFromSourceWritten
-	);
+	];
+	readTargets.push(...sourceArg.unknownReferences);
+	readTargets.push(...sourceArg.in);
+	if(targetName) {
+		readTargets.push(...targetArg.in);
+	} else {
+		for(const i of targetArg.in) {
+			if(i.nodeId !== targetId) {
+				readTargets.push(i);
+			}
+		}
+	}
+	readTargets.push(...readFromSourceWritten);
 
 	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 
 	// install assigned variables in environment
 	for(const write of writeNodes) {
-		markAsAssignment(information, write, [source.info.id], rootId, data, config);
+		markAsAssignment(information, write, useSourceIds, rootId, data, config);
 	}
 
 	information.graph.addEdge(rootId, targetArg.entryPoint, EdgeType.Returns);

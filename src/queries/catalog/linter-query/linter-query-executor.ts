@@ -1,6 +1,6 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { LinterQuery, LinterQueryResult } from './linter-query-format';
-import { type LintingRuleNames , LintingRules } from '../../../linter/linter-rules';
+import { type LintingRuleNames, LintingRules } from '../../../linter/linter-rules';
 import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';

@@ -27,27 +27,27 @@ const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
  * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
  */
 export interface RProjectAnalysisRequest {
-    readonly request: 'project';
-    /**
-     * The path to the root folder (an absolute path is probably best here).
-     */
-    readonly content: string;
+	readonly request: 'project';
+	/**
+	 * The path to the root folder (an absolute path is probably best here).
+	 */
+	readonly content: string;
 }
 
-export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest
+export type RAnalysisRequest = RParseRequest | RProjectAnalysisRequest;
 
 export type RoleBasedFiles = {
 	[FileRole.Description]: FlowrDescriptionFile[];
 	[FileRole.News]:        FlowrNewsFile[];
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
-    /* currently no special support */
+	/* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];
 	[FileRole.License]:     FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];
 	[FileRole.Data]:        FlowrFileProvider[];
 	[FileRole.Other]:       FlowrFileProvider[];
-}
+};
 
 function wrapFile(file: string | FlowrFileProvider | RParseRequestFromFile, roles?: readonly FileRole[]): FlowrFileProvider {
 	if(typeof file === 'string') {
@@ -88,9 +88,22 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 */
 	getAllFiles(): FlowrFileProvider[];
 	/**
+	 * Get a file by its path.
+	 * Checks both disk-backed files and inline files.
+	 * However, this will not load new files that have not yet been requested by flowR.
+	 * @param path - The exact path of the file.
+	 * @returns The file if found, otherwise `undefined`.
+	 */
+	getFileByPath(path: string): FlowrFileProvider | undefined;
+	/**
+	 * Check if the context has a cached file with the given path.
+	 * @param path - The path to the file.
+	 */
+	hasCached(path: string): boolean;
+	/**
 	 * Check if the context has a file with the given path.
 	 * Please note, that this may also check the file system, depending on the configuration
-	 * (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @param path - The path to the file.
 	 *
 	 * If you do not know the exact path or, e.g., casing of the file, use {@link exists} instead.
@@ -101,7 +114,7 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @param path - The path to the file.
 	 * @param ignoreCase - Whether to ignore case when checking for the file.
 	 *
-	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfigOptions.project.resolveUnknownPathsOnDisk}).
+	 * Please note that this method checks the file system based on the configuration (see {@link FlowrConfig.project.resolveUnknownPathsOnDisk}).
 	 * @returns The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
@@ -124,13 +137,15 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
 	public readonly name = 'flowr-analyzer-files-context';
 
-	public readonly loadingOrder:     FlowrAnalyzerLoadingOrderContext;
+	public readonly loadingOrder:      FlowrAnalyzerLoadingOrderContext;
 	/* all project files etc., this contains *all* (non-inline) files, loading orders etc. are to be handled by plugins */
-	private files:                    Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
-	private inlineFiles:              FlowrFileProvider[] = [];
-	private readonly fileLoaders:     readonly FlowrAnalyzerFilePlugin[];
+	private files:                     Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
+	private inlineFiles:               FlowrFileProvider[] = [];
+	private readonly fileLoaders:      readonly FlowrAnalyzerFilePlugin[];
 	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
-	private readonly consideredFiles: string[] = [];
+	private readonly consideredFiles:  string[] = [];
+	/** User-registered project discovery plugins; if non-empty, they replace the default. */
+	private readonly discoveryPlugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[];
 
 	/* files that are part of the analysis, e.g. source files */
 	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
@@ -140,7 +155,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
 		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
 	) {
-		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
+		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), []);
+		this.discoveryPlugins = plugins;
 		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
 	}
@@ -178,6 +194,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	/**
 	 * Add a request to the context. If the request is of type `project`, it will be expanded using the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
+	 * User-registered discovery plugins replace the built-in default; if none are registered, the default runs.
 	 */
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
@@ -185,7 +202,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 
-		const expandedRequests = this.applyPlugins(request).flat();
+		const active = this.discoveryPlugins.length > 0
+			? this.discoveryPlugins
+			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
 		for(const req of expandedRequests) {
 			if(isParseRequest(req)) {
 				this.addRequest(req);
@@ -228,11 +248,12 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return f;
 	}
 
+	public hasCached(path: string): boolean {
+		return this.files.has(path);
+	}
+
 	public hasFile(path: string): boolean {
-		return this.files.has(path)
-			|| (
-				this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path)
-			);
+		return this.hasCached(path) || (this.ctx.config.project.resolveUnknownPathsOnDisk && fs.existsSync(path));
 	}
 
 	public exists(p: string, ignoreCase: boolean): string | undefined {
@@ -240,20 +261,38 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			if(!ignoreCase) {
 				return this.hasFile(p) ? p : undefined;
 			}
+			if(this.hasFile(p)) {
+				return p;
+			}
 			// walk the directory and find the first match
 			const dir = path.dirname(p);
-			const file = path.basename(p);
+			const file = path.basename(p).toLowerCase();
 			// try to find in local known files first
-			const localFound = Array.from(this.files.keys()).find(f => {
-				return path.dirname(f) === dir && path.basename(f).toLowerCase() === file.toLowerCase();
-
-			});
-			if(localFound) {
-				return localFound;
+			for(const f of this.files.keys()) {
+				if(path.dirname(f).toLowerCase() !== dir.toLowerCase()) {
+					continue;
+				}
+				const lf = path.basename(f).toLowerCase();
+				if(file === lf) {
+					return f;
+				}
 			}
 			if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
-				const files = fs.readdirSync(dir);
-				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
+				let files: string[] | undefined;
+				if(fs.existsSync(dir)) {
+					files = fs.readdirSync(dir);
+				} else {
+					// try to find a dir in parent
+					const parentDir = path.dirname(dir);
+					if(fs.existsSync(parentDir)) {
+						const parentFiles = fs.readdirSync(parentDir);
+						const foundDir = parentFiles.find(f => f.toLowerCase() === path.basename(dir).toLowerCase());
+						if(foundDir) {
+							files = fs.readdirSync(path.join(parentDir, foundDir));
+						}
+					}
+				}
+				const found = files?.find(f => f.toLowerCase() === file);
 				return found ? path.join(dir, found) : undefined;
 			}
 			return undefined;
@@ -329,5 +368,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getAllFiles(): FlowrFileProvider[] {
 		return [...this.files.values(), ...this.inlineFiles];
+	}
+
+	public getFileByPath(path: string): FlowrFileProvider | undefined {
+		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
 	}
 }

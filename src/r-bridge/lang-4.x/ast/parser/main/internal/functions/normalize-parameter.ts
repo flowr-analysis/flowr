@@ -45,16 +45,16 @@ export function tryNormalizeParameter(data: NormalizerData, objs: readonly Named
 			location, content,
 			lexeme: content,
 			info:   {
-				fullRange:        location,
-				additionalTokens: [],
-				fullLexeme:       content
+				fullRange:  location,
+				adToks:     [],
+				fullLexeme: content
 			}
 		},
 		defaultValue: delim ? undefined : defaultValue,
 		info:         {
-			fullRange:        location,
-			fullLexeme:       content,
-			additionalTokens: delim ? [defaultValue] : []
+			fullRange:  location,
+			fullLexeme: content,
+			adToks:     delim ? [defaultValue] : []
 		}
 	};
 }

@@ -44,7 +44,7 @@ export interface NamedJsonEntry {
 	content: JsonEntry
 }
 
-type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string]
+type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string];
 
 /**
  * Takes the raw {@link RShell} output and extracts the csv information contained

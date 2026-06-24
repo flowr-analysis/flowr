@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import { createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { isFunctionHigherOrder } from '../../../../src/dataflow/fn/higher-order-function';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
@@ -10,9 +10,9 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 		label: string,
 		code: string,
 		expect: {
-            pos?: SingleSlicingCriterion[]
-            neg?: SingleSlicingCriterion[]
-        }
+			pos?: SlicingCriterion[]
+			neg?: SlicingCriterion[]
+		}
 	) {
 		for(const [exp, crit] of [[true, expect.pos], [false, expect.neg]] as const) {
 			for(const c of crit ?? []) {
@@ -22,7 +22,7 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 						context: context
 					}).allRemainingSteps();
 
-					const id = tryResolveSliceCriterionToId(c, df.normalize.idMap);
+					const id = SlicingCriterion.tryParse(c, df.normalize.idMap);
 					// move up the error message :sparkles:
 					assert.isDefined(id, `could not resolve criterion ${c}`);
 
@@ -33,9 +33,9 @@ describe('is-higher-order-function', withTreeSitter(ts => {
 	}
 
 	describe('function definitions', () => {
-		testHigherOrder('identity, no calls','f <- function(x) x', { neg: ['1@function'] });
+		testHigherOrder('identity, no calls', 'f <- function(x) x', { neg: ['1@function'] });
 		testHigherOrder('returning fn', 'f <- function()\n    function(x) x', { pos: ['1@function'], neg: ['2@function'] });
-		testHigherOrder('maybe returning fn','f <- function() {\nif(u) 42 else { function(x) x }}', {
+		testHigherOrder('maybe returning fn', 'f <- function() {\nif(u) 42 else { function(x) x }}', {
 			pos: ['1@function'],
 			neg: ['2@function']
 		}); // function maybe returning another function

@@ -8,7 +8,7 @@
 
 import { DefaultMap } from '../../../src/util/collections/defaultmap';
 import type { MergeableRecord } from '../../../src/util/objects';
-import { type FlowrCapabilityWithPath, type SupportedFlowrCapabilityId , getAllCapabilities } from '../../../src/r-bridge/data/get';
+import { type FlowrCapabilityWithPath, type SupportedFlowrCapabilityId, getAllCapabilities } from '../../../src/r-bridge/data/get';
 import { randomString } from '../../../src/util/random';
 
 // map flowr ids to the capabilities
@@ -20,7 +20,7 @@ function uniqueTestId(): string {
 
 
 const _TestLabelContexts = ['parse', 'desugar-shell', 'desugar-tree-sitter', 'dataflow', 'controlflow', 'call-graph', 'other', 'slice', 'output', 'query', 'search', 'linter', 'resolve', 'absint'] as const;
-export type TestLabelContext = typeof _TestLabelContexts[number]
+export type TestLabelContext = typeof _TestLabelContexts[number];
 
 export interface TestLabel extends MergeableRecord {
 	readonly id:           string
@@ -47,8 +47,8 @@ export interface SerializedTestLabel {
  * @param ids      - the capability ids to attach to the test
  * @param context  - the context in which the test is run, if not given this returns the label information for a test-helper to attach it
  */
-export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string
-export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel
+export function label(testname: string, ids: readonly SupportedFlowrCapabilityId[], context: readonly TestLabelContext[]): string;
+export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel;
 export function label(testname: string, ids?: readonly SupportedFlowrCapabilityId[], context?: readonly TestLabelContext[]): TestLabel | string {
 	const capabilities: Set<SupportedFlowrCapabilityId> = new Set(ids);
 	const label: TestLabel = {
@@ -97,9 +97,9 @@ function getFullNameOfLabel(label: TestLabel): string {
 }
 
 
-export function modifyLabelName(label: TestLabel, nameModification: (name: string) => string): TestLabel
-export function modifyLabelName(label: string, nameModification: (name: string) => string): string
-export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string
+export function modifyLabelName(label: TestLabel, nameModification: (name: string) => string): TestLabel;
+export function modifyLabelName(label: string, nameModification: (name: string) => string): string;
+export function modifyLabelName(label: TestLabel | string, nameModification: (name: string) => string): TestLabel | string;
 
 /**
  *

@@ -1,4 +1,4 @@
-import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult , LintingRules } from './linter-rules';
+import { type LintingRuleConfig, type LintingRuleMetadata, type LintingRuleNames, type LintingRuleResult, LintingRules } from './linter-rules';
 import type { LintingResults, LintingRule } from './linter-format';
 import { runSearch } from '../search/flowr-search-executor';
 import type { DeepPartial } from 'ts-essentials';
@@ -20,29 +20,20 @@ export async function executeLintingRule<Name extends LintingRuleNames>(ruleName
 		const searchTime = Date.now() - searchStart;
 
 		const processStart = Date.now();
-		const result = await rule.processSearchResult(searchResult, fullConfig,
-			{
-				/* we currently await them here for simplicity (no redundant awaits in the linting rules), but they could be passed as promises too */
-				dataflow:  await input.dataflow(),
-				normalize: await input.normalize(),
-				cfg:       await input.controlflow(),
-				analyzer:  input
-			}
-		);
+		const result = await rule.processSearchResult(searchResult, fullConfig, input);
 		const processTime = Date.now() - processStart;
 
 		return {
 			...result,
 			'.meta': {
-				...result['.meta'],
+				...(result['.meta'] as LintingRuleMetadata<Name> ?? {}),
 				searchTimeMs:  searchTime,
 				processTimeMs: processTime
 			}
 		};
 	} catch(e) {
-		const msg = typeof e === 'string' ? e : e instanceof Error ? e.message : JSON.stringify(e);
 		return {
-			error: msg
+			error: e
 		};
 	}
 }

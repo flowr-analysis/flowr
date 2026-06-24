@@ -1,6 +1,6 @@
 import { processCommandLineArgs } from './common/script';
 import { flowrScriptGetStats } from './script-core/statistics-core';
-import { getConfig } from '../config';
+import { FlowrConfig } from '../config';
 
 export interface StatsCliOptions {
 	readonly verbose:      boolean
@@ -15,7 +15,7 @@ export interface StatsCliOptions {
 	readonly features:     string[]
 }
 
-const scriptOptions = processCommandLineArgs<StatsCliOptions>('stats', [],{
+const scriptOptions = processCommandLineArgs<StatsCliOptions>('stats', [], {
 	subtitle: 'Given input files or folders, this will collect usage statistics for the given features and write them to a file',
 	examples: [
 		'{bold -i} {italic example.R} {bold -i} {italic example2.R} {bold --output-dir} {italic "output-folder/"}',
@@ -25,4 +25,4 @@ const scriptOptions = processCommandLineArgs<StatsCliOptions>('stats', [],{
 	]
 });
 
-void flowrScriptGetStats(scriptOptions, getConfig());
+void flowrScriptGetStats(scriptOptions, FlowrConfig.fromFile());

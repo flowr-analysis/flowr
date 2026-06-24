@@ -202,11 +202,13 @@
     <a id="repository-link" rel="noopener" class="icon-link"><i class="fa fa-github"></i></a>
 </div>
 <div class="description text" style="padding-top: 3em;">
-    These pages continuously track the performance of flowR comparing both <a
+    This page continuously tracks the performance of flowR comparing both <a
         href="https://github.com/flowr-analysis/flowr/wiki/Engines">Engines</a> on an artificial and a real-world
     dataset.
     Please have a look at the <a href="https://github.com/flowr-analysis/flowr/tree/main/test/performance">performance
     test documentation</a> for more information on the used files and the benchmarking process.
+    Note that we update and increase the benchmark suite from time to time to better reflect real-world usage
+    scenarios (see <a href="https://github.com/flowr-analysis/flowr/pull/2295">PR#2295</a>).
 
     Currently, the page shows all benchmark results collected in the <span id="show-range"><span
         style="color:gray;user-select:none;">fetching date range...</span></span>.
@@ -290,7 +292,7 @@
             'Last Week': 7,
             'Last Day': 1,
         }
-        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)\]\s*)(?<version>\d+\.\d+\.\d+)/;
+        const releaseRegex = /.*(Release v|\[release:(patch|minor|major)]\s*)(?<version>\d+\.\d+\.\d+)/;
 
         const data = ensureEveryElementHasAllKeys(window.BENCHMARK_DATA);
 
@@ -380,7 +382,7 @@
             };
 
             // Prepare data points for charts
-            return Object.keys(data.entries).map(name => ({
+            return Object.keys(data.entries).reverse()  .map(name => ({
                 name,
                 dataSet: collectBenchesPerTestCase(data.entries[name]),
             }));
@@ -402,12 +404,12 @@
 
                 const dataset = benchSet.get(names[0]) || [];
                 const unpaddedDatasets = names.map((name, j) => {
-                    const values = benchSet.get(name).filter(d => d.bench.value !== undefined && d.bench.value !== null);
+                    const values = benchSet.get(name)?.filter(d => d.bench.value !== undefined && d.bench.value !== null);
                     return {
                         label: name,
-                        data: values.map(d => d.bench.value),
-                        range: values.map(d => d.bench.range),
-                        extra: values.map(d => d.bench.extra),
+                        data: values?.map(d => d.bench.value) ?? [],
+                        range: values?.map(d => d.bench.range) ?? [],
+                        extra: values?.map(d => d.bench.extra) ?? [],
                         borderColor: cycleColors[(i + j) % cycleColors.length],
                         backgroundColor: 'transparent'
                     }
@@ -455,12 +457,12 @@
                                 return label;
                             },
                             afterLabel: item => {
-                                const it = benchSet.get(names[item.datasetIndex])[item.index].bench;
-                                if (it.range) {
+                                const it = benchSet.get(names[item.datasetIndex])[item.index]?.bench;
+                                if (it?.range) {
                                     const {unit} = dataset[item.index].bench
                                     return '\nRange: ' + Math.round(it.range) + ' ' + unit + (it.extra ? '; ' + it.extra : '');
                                 } else {
-                                    return it.extra ? '\n' + it.extra : '';
+                                    return it?.extra ? '\n' + it.extra : '';
                                 }
                             }
                         }
@@ -498,7 +500,7 @@
                 setElem.appendChild(graphsElem);
 
                 // render the first chart with stacked data
-                renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information", "Extract control flow graph"], benchSet, 0)
+                renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information", "Extract control flow graph", "Extract call graph"], benchSet, 0)
                 renderGraph(graphsElem, ["Static slicing", "Reconstruct code"], benchSet, 3)
                 // add a details element to contain the rest of the charts
                 const details = document.createElement('details');

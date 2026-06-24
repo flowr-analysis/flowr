@@ -22,12 +22,9 @@ import {
 } from '../util/text/ansi';
 import commandLineArgs from 'command-line-args';
 import {
-	amendConfig,
 	type EngineConfig,
-	type FlowrConfigOptions,
-	getConfig,
+	FlowrConfig,
 	type KnownEngines,
-	parseConfig
 } from '../config';
 import { guard } from '../util/assert';
 import { type ScriptInformation, scripts } from './common/scripts-info';
@@ -100,11 +97,11 @@ if(options['no-ansi']) {
 	setFormatter(voidFormatter);
 }
 
-function createConfig(): FlowrConfigOptions {
-	let config: FlowrConfigOptions | undefined;
+function createConfig(): FlowrConfig {
+	let config: FlowrConfig | undefined;
 
 	if(options['config-json']) {
-		const passedConfig = parseConfig(options['config-json']);
+		const passedConfig = FlowrConfig.parse(options['config-json']);
 		if(passedConfig) {
 			log.info(`Using passed config ${JSON.stringify(passedConfig)}`);
 			config = passedConfig;
@@ -118,12 +115,12 @@ function createConfig(): FlowrConfigOptions {
 				process.exit(1);
 			}
 		}
-		config = getConfig(options['config-file'] ?? defaultConfigFile);
+		config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 	}
 
 
 	// for all options that we manually supply that have a config equivalent, set them in the config
-	config = amendConfig(config, c => {
+	config = FlowrConfig.amend(config, c => {
 		(c.engines as EngineConfig[]) ??= [];
 
 		if(!options['engine.r-shell.disabled']) {
@@ -162,12 +159,23 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 	process.on('SIGTERM', end);
 }
 
+function getReplPlugins(config: FlowrConfig) {
+	const plugins = config.repl.plugins.filter(p => p !== 'flowr:default');
+	if(plugins.length !== config.repl.plugins.length) {
+		return plugins.concat(config.defaultPlugins);
+	} else {
+		return plugins;
+	}
+}
+
 async function mainRepl() {
 	const config = createConfig();
 
 	if(options.script) {
-		const target = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script].target as string | undefined;
-		guard(target !== undefined, `Unknown script ${options.script}, pick one of ${getScriptsText()}.`);
+		const script = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script];
+		guard(script !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
+		const target = script.target as string | undefined;
+		guard(target !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
@@ -191,9 +199,10 @@ async function mainRepl() {
 	}
 	hookSignalHandlers(engines);
 
-	const analyzer = new FlowrAnalyzerBuilder()
+	const analyzer = new FlowrAnalyzerBuilder(false)
 		.setParser(defaultEngine)
 		.setConfig(config)
+		.registerPlugins(...getReplPlugins(config))
 		.buildSync();
 
 	const allowRSessionAccess = options['r-session-access'] ?? false;
@@ -203,7 +212,7 @@ async function mainRepl() {
 		await printVersionRepl(defaultEngine);
 		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
-		await repl({ analyzer: analyzer, allowRSessionAccess });
+		await repl({ analyzer, allowRSessionAccess });
 	}
 	process.exit(0);
 }

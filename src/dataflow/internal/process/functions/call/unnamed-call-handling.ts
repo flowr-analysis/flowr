@@ -10,12 +10,13 @@ import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
-import { BuiltInProcName } from '../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
-export const UnnamedFunctionCallPrefix = 'unnamed-function-call-';
+export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 
 /**
  * Processes an unnamed function call.
+ * For example `(function(x) { x + 1 })(5)`
  */
 export function processUnnamedFunctionCall<OtherInfo>(functionCall: RUnnamedFunctionCall<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): DataflowInformation {
 	const calledFunction = processDataflowFor(functionCall.calledFunction, data);

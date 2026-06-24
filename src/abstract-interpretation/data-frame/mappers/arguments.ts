@@ -1,20 +1,23 @@
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
-import type { DataflowGraph } from '../../../dataflow/graph/graph';
-import { isUseVertex, VertexType } from '../../../dataflow/graph/vertex';
+import { FunctionArgument, type DataflowGraph } from '../../../dataflow/graph/graph';
+import { isFunctionCallVertex, isUseVertex } from '../../../dataflow/graph/vertex';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
-import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
-import { type RFunctionArgument, type RFunctionCall, EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import {
+	type PotentiallyEmptyRArgument,
+	type RFunctionCall,
+	EmptyArgument
+} from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RSymbol } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { visitAst } from '../../../r-bridge/lang-4.x/ast/model/processing/visitor';
-import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNull } from '../../../r-bridge/lang-4.x/convert-values';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import { assertUnreachable } from '../../../util/assert';
 import { readLineByLineSync } from '../../../util/files';
 import { resolveIdToArgName, resolveIdToArgValue, unescapeSpecialChars, unquoteArgument } from '../resolve-args';
 import type { DataFrameShapeInferenceVisitor } from '../shape-inference';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 /** Regular expression representing valid columns names, e.g. for `data.frame` */
 const ColNamesRegex = /^[A-Za-z.][A-Za-z0-9_.]*$/;
@@ -29,9 +32,9 @@ const LineTerminationRegex = /\r\n|\r|\n/;
  * - `default` optionally contains the default value of the function parameter
  */
 export interface FunctionParameterLocation<T = never> {
-    pos:      number,
-    name?:    string
-    default?: T
+	pos:      number,
+	name?:    string
+	default?: T
 }
 
 /**
@@ -87,7 +90,7 @@ export function filterValidNames(
  * @returns The resolved value of the argument or `undefined`
  */
 export function getArgumentValue<T>(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	argument: FunctionParameterLocation<T> | string,
 	info: ResolveInfo
 ) {
@@ -104,10 +107,10 @@ export function getArgumentValue<T>(
  * @returns The filtered list of arguments
  */
 export function getEffectiveArgs(
-	args: readonly RFunctionArgument<ParentInformation>[],
-	excluded: string[]
-): readonly RFunctionArgument<ParentInformation>[] {
-	return args.filter(arg => arg === EmptyArgument || arg.name === undefined || !excluded.includes(unquoteArgument(arg.name.content)));
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
+	excluded: readonly string[]
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
+	return args.filter(arg => RArgument.isEmpty(arg) || !RArgument.isNamed(arg) || !excluded.includes(unquoteArgument(arg.name.content)));
 }
 
 /**
@@ -118,10 +121,10 @@ export function getEffectiveArgs(
  * @returns An argument matching the specified `argument` or `undefined`
  */
 export function getFunctionArgument(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	argument: FunctionParameterLocation<unknown> | string,
 	info: ResolveInfo
-): RFunctionArgument<ParentInformation> | undefined {
+): PotentiallyEmptyRArgument<ParentInformation> | undefined {
 	const pos = typeof argument !== 'string' ? argument.pos : -1;
 	const name = typeof argument !== 'string' ? argument.name : argument;
 	let arg = undefined;
@@ -146,15 +149,15 @@ export function getFunctionArgument(
 export function getFunctionArguments(
 	node: RFunctionCall<ParentInformation>,
 	dfg: DataflowGraph
-): readonly RFunctionArgument<ParentInformation>[] {
+): readonly PotentiallyEmptyRArgument<ParentInformation>[] {
 	const vertex = dfg.getVertex(node.info.id);
 
-	if(vertex?.tag === VertexType.FunctionCall && dfg.idMap !== undefined) {
+	if(isFunctionCallVertex(vertex) && dfg.idMap !== undefined) {
 		const idMap = dfg.idMap;
 
 		return vertex.args
-			.map(arg => arg === EmptyArgument ? arg : idMap.get(arg.nodeId))
-			.map(arg => arg === EmptyArgument || arg?.type === RType.Argument ? arg : toUnnamedArgument(arg, idMap));
+			.map(arg => FunctionArgument.isEmpty(arg) ? arg : idMap.get(arg.nodeId))
+			.map(arg => RArgument.isEmpty(arg) || RArgument.is(arg) ? arg : toUnnamedArgument(arg, idMap));
 	}
 	return node.arguments;
 }
@@ -168,18 +171,20 @@ export function getFunctionArguments(
 export function getUnresolvedSymbolsInExpression(
 	expression: RNode<ParentInformation> | typeof EmptyArgument | undefined,
 	dfg?: DataflowGraph
-): string[] {
+): Identifier[] {
 	if(expression === undefined || expression === EmptyArgument || dfg === undefined) {
 		return [];
 	}
-	const unresolvedSymbols: string[] = [];
+	const unresolvedSymbols: Identifier[] = [];
 
-	visitAst(expression, node => {
-		if(node.type === RType.Symbol) {
+	RNode.visitAst(expression, node => {
+		if(RSymbol.is(node)) {
 			const vertex = dfg.get(node.info.id);
+			const symbolName = Identifier.mapName(node.content, unquoteArgument);
 
-			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0) {
-				unresolvedSymbols.push(unquoteArgument(node.content));
+			// ignore symbols named ".", as they are used as argument placeholder in magrittr pipe operations
+			if(isUseVertex(vertex?.[0]) && vertex[1].size === 0 && symbolName !== '.') {
+				unresolvedSymbols.push(symbolName);
 			}
 		}
 	});
@@ -194,7 +199,7 @@ export function getUnresolvedSymbolsInExpression(
  * @returns Whether the arguments contain any critical argument
  */
 export function hasCriticalArgument(
-	args: readonly RFunctionArgument<ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<ParentInformation>[],
 	critical: (FunctionParameterLocation<unknown> | string)[] | undefined,
 	info: ResolveInfo
 ): boolean {
@@ -223,19 +228,10 @@ export function hasCriticalArgument(
  */
 export function isDataFrameArgument(arg: RNode<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
 	arg is RNode<ParentInformation>;
-export function isDataFrameArgument(arg: RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
+export function isDataFrameArgument(arg: PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor):
 	arg is RArgument<ParentInformation> & { value: RNode<ParentInformation> };
-export function isDataFrameArgument(arg: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
+export function isDataFrameArgument(arg: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined, inference: DataFrameShapeInferenceVisitor): boolean {
 	return arg !== EmptyArgument && inference.getAbstractValue(arg) !== undefined;
-}
-
-/**
- * Checks whether a function argument is a names argument.
- */
-export function isNamedArgument(
-	arg: RFunctionArgument<ParentInformation> | undefined
-): arg is RArgument<ParentInformation> & { name: RSymbol<ParentInformation> } {
-	return arg !== EmptyArgument && arg?.name !== undefined;
 }
 
 /**
@@ -243,13 +239,15 @@ export function isNamedArgument(
  */
 export function isRNull(node: RNode<ParentInformation> | undefined):
 	node is RSymbol<ParentInformation, typeof RNull>;
-export function isRNull(node: RFunctionArgument<ParentInformation> | undefined):
+export function isRNull(node: PotentiallyEmptyRArgument<ParentInformation> | undefined):
 	node is RArgument<ParentInformation> & { value: RSymbol<ParentInformation, typeof RNull> };
-export function isRNull(node: RNode<ParentInformation> | RFunctionArgument<ParentInformation> | undefined): boolean  {
-	if(node === EmptyArgument || node?.type === RType.Argument) {
-		return node !== EmptyArgument && isRNull(node.value);
+export function isRNull(node: RNode<ParentInformation> | PotentiallyEmptyRArgument<ParentInformation> | undefined): boolean  {
+	if(RArgument.isEmpty(node)) {
+		return false;
+	} else if(RArgument.is(node)) {
+		return isRNull(node.value);
 	}
-	return node?.type === RType.Symbol && node.content === RNull;
+	return RSymbol.is(node) && node.content === RNull;
 }
 
 /**

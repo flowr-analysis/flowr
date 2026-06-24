@@ -1,6 +1,6 @@
 import type { SupportedFlowrCapabilityId } from '../../../src/r-bridge/data/get';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
-import { type FlowrSearchBuilder, type FlowrSearchLike , Q } from '../../../src/search/flowr-search-builder';
+import { type FlowrSearchBuilder, type FlowrSearchLike, Q } from '../../../src/search/flowr-search-builder';
 
 /**
  * Type of container. Maps to R container creation functions.

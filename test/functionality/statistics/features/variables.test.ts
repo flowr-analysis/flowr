@@ -19,7 +19,7 @@ describe.sequential('Variables', withShell(shell => {
 			},
 			written: [['usedVariables', [[[
 				'a',
-				[1,1]
+				[1, 1]
 			]]]]]
 		},
 		{
@@ -31,7 +31,7 @@ describe.sequential('Variables', withShell(shell => {
 			written: [
 				['definedVariables', [[[
 					'a',
-					[1,1]
+					[1, 1]
 				]]]],
 			]
 		}

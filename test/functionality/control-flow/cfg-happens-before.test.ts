@@ -6,7 +6,7 @@ import { assertHappensBefore } from '../_helper/controlflow/happens-before';
 describe.sequential('Happens Before', withShell(shell => {
 	assertHappensBefore(shell, 'x <- 1\ny <- 2', '1@<-', '2@<-', Ternary.Always);
 	assertHappensBefore(shell, 'x <- 1\nprint(x)\ny <- 2\nprint(y)', '1@<-', '3@<-', Ternary.Always);
-	for(const criteria of ['1@x','1@<-', '1@4'] as const) {
+	for(const criteria of ['1@x', '1@<-', '1@4'] as const) {
 		assertHappensBefore(shell, 'x <- 4\nrepeat { print(x) }', criteria, '2@print', Ternary.Always);
 	}
 	for(const [a, b, t] of [['1@x', '2@x', Ternary.Always], ['1@x', '3@<-', Ternary.Maybe], ['2@x', '3@x', Ternary.Maybe], ['2@<', '3@<-', Ternary.Maybe]] as const) {

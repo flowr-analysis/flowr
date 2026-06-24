@@ -1,12 +1,12 @@
 import { autoGenHeader } from './doc-util/doc-auto-gen';
 import { FlowrWikiBaseRef, linkFlowRSourceFile } from './doc-util/doc-files';
-import { type LintingRuleNames , LintingRules } from '../linter/linter-rules';
+import { type LintingRuleNames, LintingRules } from '../linter/linter-rules';
 import { codeBlock } from './doc-util/doc-code';
 import { showQuery } from './doc-util/doc-query';
-import { type TypeElementInSource, type TypeReport , getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
+import { type TypeElementInSource, type TypeReport, getDocumentationForType, getTypePathLink, getTypesFromFolder, mermaidHide, shortLink, shortLinkFile } from './doc-util/doc-types';
 import path from 'path';
 import { documentReplSession } from './doc-util/doc-repl';
-import { section } from './doc-util/doc-structure';
+import { block, section } from './doc-util/doc-structure';
 import { LintingRuleTag } from '../linter/linter-tags';
 import { textWithTooltip } from '../util/html-hover-over';
 import { joinWithLast } from '../util/text/strings';
@@ -15,6 +15,7 @@ import { getFunctionsFromFolder } from './doc-util/doc-functions';
 import { LintingResultCertainty, LintingRuleCertainty } from '../linter/linter-format';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
+import type { GeneralDocContext } from './wiki-mk/doc-context';
 import type { KnownParser } from '../r-bridge/parser';
 
 const SpecialTagColors: Record<string, string> = {
@@ -47,12 +48,12 @@ function prettyPrintExpectedOutput(expected: string): string {
 	//
 	lines = expected.trim().replace(/^\s*\[+\s*{*/m, '').replace(/\s*}*\s*]+\s*$/, '').split('\n').filter(l => l.trim() !== '');
 	/* take the indentation of the last line and remove it from all but the first: */
-	const indentation = lines[lines.length - 1].match(/^\s*/)?.[0] ?? '';
+	const indentation = lines.at(-1)?.match(/^\s*/)?.[0] ?? '';
 	return lines.map((line, i) => {
 		if(i === 0) {
 			return line;
 		}
-		return line.replace(new RegExp('^' + indentation, 'g'), '');
+		return line.replaceAll(new RegExp('^' + indentation, 'g'), '');
 	}).join('\n');
 }
 
@@ -158,6 +159,34 @@ df[6, "value"]
 		'useless-loop', 'UselessLoopConfig', 'USELESS_LOOP', 'lint-useless-loop',
 		'for(i in c(1)) { print(i) }', tagTypes);
 
+	rule(knownParser,
+		'stop-call', 'StopWithCallConfig', 'STOP_WITH_CALL_ARG', 'lint-stop-call',
+		'stop(42)', tagTypes);
+
+	rule(knownParser,
+		'roxygen-arguments', 'RoxygenArgsConfig', 'ROXYGEN_ARGS', 'lint-roxygen-arguments',
+		'#\' A function with two parameters, but only only one documented\n#\' @param a A variable\nf = function(a, b){return a;}', tagTypes);
+
+	rule(knownParser,
+		'problematic-inputs', 'ProblematicInputsConfig', 'PROBLEMATIC_INPUTS', 'lint-problematic-inputs',
+		`
+function(x) {
+	eval(x)
+}
+`, tagTypes);
+
+	rule(knownParser,
+		'software-has-license', 'SoftwareHasLicenseConfig', 'SOFTWARE_HAS_LICENSE', 'lint-software-has-license',
+		'cat("a project without a license")', tagTypes);
+
+	rule(knownParser,
+		'software-has-tests', 'SoftwareHasTestsConfig', 'SOFTWARE_HAS_TESTS', 'lint-software-has-tests',
+		'cat("hello")', tagTypes);
+
+	rule(knownParser,
+		'no-leaked-credentials', 'NoLeakedCredentialsConfig', 'NO_LEAKED_CREDENTIALS', 'lint-no-leaked-credentials',
+		'password <- "s3cr3t"', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
@@ -239,7 +268,7 @@ function linkToRule(name: LintingRuleNames): string {
 	return `[${name}](${FlowrWikiBaseRef}/${encodeURIComponent(getPageNameForLintingRule(name).replaceAll(' ', '-'))})`;
 }
 
-async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport): Promise<string> {
+async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, ctx: GeneralDocContext): Promise<string> {
 	const rules = registerRules(knownParser, tagTypes.info);
 
 	return `
@@ -263,6 +292,11 @@ ${res}
 
 ${section('Linting Rules', 2, 'linting-rules')}
 
+${block({
+	type:    'NOTE',
+	content: `If you want to add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.`
+})}
+
 The following linting rules are available:
 
 ${await(async() => {
@@ -283,7 +317,7 @@ We use tags to categorize linting rules for users. The following tags are availa
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
@@ -297,7 +331,7 @@ ${section('Rule Certainty', 3, 'rule-certainty')}
 | Rule Certainty | Description |
 | -------------- | :---------- |
 ${Object.entries(LintingRuleCertainty).map(([name, certainty]) => {
-	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
+	return `| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingRuleCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWitCertainty(certainty).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWitCertainty(certainty).map(l => linkToRule(l))) || '_none_'
 	}) |`;
 }).join('\n')}
@@ -307,7 +341,7 @@ ${section('Result Certainty', 3, 'result-certainty')}
 | Result Certainty | Description |
 | ---------------- | :---------- |
 ${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
-	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll(/\n/g, ' ')} |`).join('\n')}
+	`| <a id="${certainty}"></a> \`${certainty}\` | ${getDocumentationForType('LintingResultCertainty::' + name, tagTypes.info).replaceAll('\n', ' ')} |`).join('\n')}
 
 `.trim();
 }
@@ -325,14 +359,14 @@ async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Pr
 }
 
 /** Maps file-names to their content, the 'main' file is named 'main' */
-async function getTexts(parser: KnownParser): Promise<Record<string, string> & { main: string }> {
+async function getTexts(parser: KnownParser, ctx: GeneralDocContext): Promise<Record<string, string> & { main: string }> {
 	const tagTypes = getTypesFromFolder({
 		rootFolder:  path.resolve('./src/linter/'),
 		inlineTypes: mermaidHide
 	});
 
 	return {
-		'main': await getTextMainPage(parser, tagTypes),
+		'main': await getTextMainPage(parser, tagTypes, ctx),
 		...await getRulesPages(parser, tagTypes)
 	};
 }
@@ -345,8 +379,8 @@ export class WikiLinter extends DocMaker<'wiki/Linter.md'> {
 		super('wiki/Linter.md', module.filename, 'linter');
 	}
 
-	protected async text({ treeSitter }: DocMakerArgs): Promise<string> {
-		const texts = await getTexts(treeSitter);
+	protected async text({ treeSitter, ctx }: DocMakerArgs): Promise<string> {
+		const texts = await getTexts(treeSitter, ctx);
 		for(const [file, content] of Object.entries(texts)) {
 			if(file === 'main') {
 				continue; // main is printed below

@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.8.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -35,11 +35,11 @@ It offers a wide variety of features, for example:
     ```text
     Query: linter (2 ms)
        ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ Seeded Randomness (seeded-randomness):
            ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Absolute Paths (absolute-file-paths):
@@ -51,13 +51,29 @@ It offers a wide variety of features, for example:
        ╰ Naming Convention (naming-convention):
            ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Network Functions (network-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
            ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dead Code (dead-code):
-           ╰ Metadata: consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: searchTimeMs: 1, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
+       ╰ Problematic inputs (problematic-inputs):
+           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
+       ╰ Stop without call.=False argument (stop-call):
+           ╰ Metadata: consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0
+       ╰ Roxygen Arguments (roxygen-arguments):
+           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
+       ╰ Software Has License (software-has-license):
+           ╰ certain:
+               ╰ No license found in the project
+           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
+       ╰ Software Has Tests (software-has-tests):
+           ╰ certain:
+               ╰ No tests found in the project
+           ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0
+       ╰ No Leaked Credentials (no-leaked-credentials):
+           ╰ Metadata: totalChecked: 0, searchTimeMs: 0, processTimeMs: 0
     All queries together required ≈2 ms (1ms accuracy, total 2 ms)
     ```
     
@@ -82,17 +98,17 @@ It offers a wide variety of features, for example:
     
     Query: **linter** (2 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
@@ -100,16 +116,32 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 5, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Software Has License** (software-has-license):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No license found in the project\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;╰ **Software Has Tests** (software-has-tests):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No tests found in the project\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalChecked: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    _All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _2.2 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -126,7 +158,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalCalls": 0,
               "totalFunctionDefinitions": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -134,7 +166,7 @@ It offers a wide variety of features, for example:
             "results": [
               {
                 "involvedId": 3,
-                "range": [
+                "loc": [
                   1,
                   1,
                   1,
@@ -149,7 +181,7 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -170,7 +202,7 @@ It offers a wide variety of features, for example:
               {
                 "certainty": "certain",
                 "filePath": "/root/x.txt",
-                "range": [
+                "loc": [
                   1,
                   1,
                   1,
@@ -181,7 +213,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "totalConsidered": 1,
               "totalUnknown": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -218,13 +250,12 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "dead-code": {
             "results": [],
             ".meta": {
-              "consideredNodes": 5,
               "searchTimeMs": 0,
               "processTimeMs": 0
             }
@@ -233,6 +264,74 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "numOfUselessLoops": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "problematic-inputs": {
+            "results": [],
+            ".meta": {
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "stop-call": {
+            "results": [],
+            ".meta": {
+              "consideredNodes": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "roxygen-arguments": {
+            "results": [],
+            ".meta": {
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "software-has-license": {
+            "results": [
+              {
+                "certainty": "certain",
+                "loc": [
+                  -1,
+                  -1,
+                  -1,
+                  -1
+                ],
+                "message": "No license found in the project"
+              }
+            ],
+            ".meta": {
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "software-has-tests": {
+            "results": [
+              {
+                "certainty": "certain",
+                "loc": [
+                  -1,
+                  -1,
+                  -1,
+                  -1
+                ],
+                "message": "No tests found in the project"
+              }
+            ],
+            ".meta": {
+              "testFilesFound": 0,
+              "testCallsFound": 0,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
+          },
+          "no-leaked-credentials": {
+            "results": [],
+            ".meta": {
+              "totalChecked": 0,
               "searchTimeMs": 0,
               "processTimeMs": 0
             }
@@ -308,7 +407,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.8.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -322,7 +421,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -356,16 +455,16 @@ It offers a wide variety of features, for example:
          
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">117 ms</span></i> (as of Jan 18, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
-  _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
-  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the dataflow graphs as well as call graphs.
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">101.7 ms</span></i> (as of Jun 15, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
+  and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph#perspectives-cg).
 
     
     <details><summary>Example: Generating a dataflow graph with flowR</summary>
     
     
     You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
-    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a dataflow graph for a given R script.
+    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for a given R script.
     
     Let's have a look at the following example:
     
@@ -386,13 +485,13 @@ It offers a wide variety of features, for example:
     ```
     
     
-    To get the dataflow graph for this script, you can use the following command:
+    To get the [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for this script, you can use the following command:
     
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.8.9, R grammar v14 (tree-sitter engine)
+    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -401,7 +500,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAgMShbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RmaWxlc1xuICAgICAgKDEpXG4gICAgICAqMS42LTE0KmBcIl0pXG4gICAgMltbXCJgIzkxO1JCaW5hcnlPcCM5MzsgL1xuICAgICAgKDIpXG4gICAgICAqMS4xLTE0KlxuICAgICgwLCAxKWBcIl1dXG4gICAgYnVpbHQtaW46X1tcImBCdWlsdC1Jbjpcbi9gXCJdXG4gICAgc3R5bGUgYnVpbHQtaW46XyBzdHJva2U6Z3JheSxmaWxsOmdyYXksc3Ryb2tlLXdpZHRoOjJweCxvcGFjaXR5Oi44O1xuICAgIDMoW1wiYCM5MTtSU3ltYm9sIzkzOyBleGFtcGxlLlJcbiAgICAgICgzKVxuICAgICAgKjEuMTYtMjQqYFwiXSlcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMFxuICAgIDEoW1wiYCM5MTtSU3ltYm9sIzkzOyB0ZXN0ZmlsZXNcbiAgICAgICgxKVxuICAgICAgKjEuNi0xNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDFcbiAgICAyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoMilcbiAgICAgICoxLjEtMTQqXG4gICAgKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuL2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -416,8 +515,9 @@ It offers a wide variety of features, for example:
         1{{"`#91;RNumber#93; 0
           (1)
           *1.8*`"}}
+       %% No edges found for 1
         0["`#91;RSymbol#93; sum
-          (0)
+          (0, sources: [1])
           *1.1-3*`"]
         2[["`#91;RBinaryOp#93; #60;#45;
           (2)
@@ -429,8 +529,9 @@ It offers a wide variety of features, for example:
         4{{"`#91;RNumber#93; 1
           (4)
           *2.12*`"}}
+       %% No edges found for 4
         3["`#91;RSymbol#93; product
-          (3)
+          (3, sources: [4])
           *2.1-7*`"]
         5[["`#91;RBinaryOp#93; #60;#45;
           (5)
@@ -439,8 +540,9 @@ It offers a wide variety of features, for example:
         7{{"`#91;RNumber#93; 7
           (7)
           *3.6*`"}}
+       %% No edges found for 7
         6["`#91;RSymbol#93; w
-          (6)
+          (6, sources: [7])
           *3.1*`"]
         8[["`#91;RBinaryOp#93; #60;#45;
           (8)
@@ -449,25 +551,28 @@ It offers a wide variety of features, for example:
         10{{"`#91;RNumber#93; 10
           (10)
           *4.6-7*`"}}
+       %% No edges found for 10
         9["`#91;RSymbol#93; N
-          (9)
+          (9, sources: [10])
           *4.1*`"]
         11[["`#91;RBinaryOp#93; #60;#45;
           (11)
           *4.1-7*
         (9, 10)`"]]
         12["`#91;RSymbol#93; i
-          (12)
+          (12, sources: [20])
           *6.6*`"]
         13{{"`#91;RNumber#93; 1
           (13)
           *6.11*`"}}
+       %% No edges found for 13
         16(["`#91;RSymbol#93; N
           (16)
           *6.14*`"])
         17{{"`#91;RNumber#93; 1
           (17)
           *6.16*`"}}
+       %% No edges found for 17
         18[["`#91;RBinaryOp#93; #45;
           (18)
           *6.14-16*
@@ -479,9 +584,6 @@ It offers a wide variety of features, for example:
           (19)
           *6.13*
         (18)`"]]
-        built-in:_["`Built-In:
-    (`"]
-        style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         20[["`#91;RBinaryOp#93; #58;
           (20)
           *6.11-17*
@@ -499,6 +601,9 @@ It offers a wide variety of features, for example:
           (26, :may:36+)
           *7.10-16*
         (24, 25)`"]]
+        built-in:_["`Built-In:
+    #43;`"]
+        style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         27(["`#91;RSymbol#93; w
           (27, :may:36+)
           *7.20*`"])
@@ -507,7 +612,7 @@ It offers a wide variety of features, for example:
           *7.10-20*
         (26, 27)`"]]
         23["`#91;RSymbol#93; sum
-          (23, :may:36+)
+          (23, :may:36+, sources: [28])
           *7.3-5*`"]
         29[["`#91;RBinaryOp#93; #60;#45;
           (29, :may:36+)
@@ -524,7 +629,7 @@ It offers a wide variety of features, for example:
           *8.14-24*
         (31, 32)`"]]
         30["`#91;RSymbol#93; product
-          (30, :may:36+)
+          (30, :may:36+, sources: [33])
           *8.3-9*`"]
         34[["`#91;RBinaryOp#93; #60;#45;
           (34, :may:36+)
@@ -544,16 +649,15 @@ It offers a wide variety of features, for example:
         38{{"`#91;RString#93; #34;Sum#58;#34;
           (38)
           *11.5-10*`"}}
+       %% No edges found for 38
         40(["`#91;RSymbol#93; sum
           (40)
           *11.13-15*`"])
-        built-in:sum["`Built-In:
-    sum`"]
-        style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         42{{"`#91;RString#93; #34;
     #34;
           (42)
           *11.18-21*`"}}
+       %% No edges found for 42
         44[["`#91;RFunctionCall#93; cat
           (44)
           *11.1-22*
@@ -564,6 +668,7 @@ It offers a wide variety of features, for example:
         46{{"`#91;RString#93; #34;Product#58;#34;
           (46)
           *12.5-14*`"}}
+       %% No edges found for 46
         48(["`#91;RSymbol#93; product
           (48)
           *12.17-23*`"])
@@ -571,6 +676,7 @@ It offers a wide variety of features, for example:
     #34;
           (50)
           *12.26-29*`"}}
+       %% No edges found for 50
         52[["`#91;RFunctionCall#93; cat
           (52)
           *12.1-30*
@@ -606,98 +712,94 @@ It offers a wide variety of features, for example:
         18 -.->|"reads, calls"| built-in:-
         linkStyle 24 stroke:gray;
         19 -->|"returns, argument"| 18
-        19 -.->|"reads"| built-in:_
-        linkStyle 26 stroke:gray;
         20 -->|"reads, argument"| 13
         20 -->|"reads, argument"| 19
         20 -.->|"reads, calls"| built-in::
-        linkStyle 29 stroke:gray;
+        linkStyle 28 stroke:gray;
         24 -->|"reads"| 0
         24 -->|"reads"| 23
         24 -->|"CD-True"| 36
-        linkStyle 32 stroke:gray,color:gray;
+        linkStyle 31 stroke:gray,color:gray;
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
-        linkStyle 34 stroke:gray,color:gray;
+        linkStyle 33 stroke:gray,color:gray;
         26 -->|"reads, argument"| 24
         26 -->|"reads, argument"| 25
         26 -.->|"reads, calls"| built-in:_
-        linkStyle 37 stroke:gray;
+        linkStyle 36 stroke:gray;
         26 -->|"CD-True"| 36
-        linkStyle 38 stroke:gray,color:gray;
+        linkStyle 37 stroke:gray,color:gray;
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
-        linkStyle 40 stroke:gray,color:gray;
+        linkStyle 39 stroke:gray,color:gray;
         28 -->|"reads, argument"| 26
         28 -->|"reads, argument"| 27
         28 -.->|"reads, calls"| built-in:_
-        linkStyle 43 stroke:gray;
+        linkStyle 42 stroke:gray;
         28 -->|"CD-True"| 36
-        linkStyle 44 stroke:gray,color:gray;
+        linkStyle 43 stroke:gray,color:gray;
         23 -->|"defined-by"| 28
         23 -->|"defined-by"| 29
         23 -->|"CD-True"| 36
-        linkStyle 47 stroke:gray,color:gray;
+        linkStyle 46 stroke:gray,color:gray;
         29 -->|"reads, argument"| 28
         29 -->|"returns, argument"| 23
         29 -.->|"reads, calls"| built-in:_-
-        linkStyle 50 stroke:gray;
+        linkStyle 49 stroke:gray;
         29 -->|"CD-True"| 36
-        linkStyle 51 stroke:gray,color:gray;
+        linkStyle 50 stroke:gray,color:gray;
         31 -->|"reads"| 3
         31 -->|"reads"| 30
         31 -->|"CD-True"| 36
-        linkStyle 54 stroke:gray,color:gray;
+        linkStyle 53 stroke:gray,color:gray;
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
-        linkStyle 56 stroke:gray,color:gray;
+        linkStyle 55 stroke:gray,color:gray;
         33 -->|"reads, argument"| 31
         33 -->|"reads, argument"| 32
         33 -.->|"reads, calls"| built-in:_
-        linkStyle 59 stroke:gray;
+        linkStyle 58 stroke:gray;
         33 -->|"CD-True"| 36
-        linkStyle 60 stroke:gray,color:gray;
+        linkStyle 59 stroke:gray,color:gray;
         30 -->|"defined-by"| 33
         30 -->|"defined-by"| 34
         30 -->|"CD-True"| 36
-        linkStyle 63 stroke:gray,color:gray;
+        linkStyle 62 stroke:gray,color:gray;
         34 -->|"reads, argument"| 33
         34 -->|"returns, argument"| 30
         34 -.->|"reads, calls"| built-in:_-
-        linkStyle 66 stroke:gray;
+        linkStyle 65 stroke:gray;
         34 -->|"CD-True"| 36
-        linkStyle 67 stroke:gray,color:gray;
+        linkStyle 66 stroke:gray,color:gray;
         35 -->|"argument"| 29
         35 -->|"returns, argument"| 34
         35 -.->|"reads, calls"| built-in:_
-        linkStyle 70 stroke:gray;
+        linkStyle 69 stroke:gray;
         35 -->|"CD-True"| 36
-        linkStyle 71 stroke:gray,color:gray;
+        linkStyle 70 stroke:gray,color:gray;
         36 -->|"argument"| 12
         36 -->|"reads, argument"| 20
         36 -->|"argument, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
-        linkStyle 75 stroke:gray;
+        linkStyle 74 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
-        40 -.->|"reads"| built-in:sum
-        linkStyle 78 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 82 stroke:gray;
+        linkStyle 80 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 88 stroke:gray;
+        linkStyle 86 stroke:gray;
     ```
     
     	
-    (The analysis required _2.0 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -724,8 +826,8 @@ If you are already using flowR and want to give feedback, please consider fillin
  
 ## ⭐ Getting Started
 
-To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/Overview) wiki page. 
-The [Setup](https://github.com/flowr-analysis/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. 
+To get started with _flowR_ and its features, please check out the [Overview](https://github.com/flowr-analysis/flowr/wiki/overview) wiki page. 
+The [Setup](https://github.com/flowr-analysis/flowr/wiki/setup) wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
 
@@ -753,15 +855,34 @@ If you want to use the same commands:
 ## 📜 More Information
 
 For more details on how to use _flowR_ please refer to the [wiki pages](https://github.com/flowr-analysis/flowr/wiki),
-as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
+as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/docs).
+To cite flowR, please check out the publications below. To specifically refer to the source code, 
+please check out flowR's [Zenodo archive](https://zenodo.org/doi/10.5281/zenodo.13319290).
 
 ## 📃 Publications on flowR
 
 If you are interested in the theoretical background of _flowR_,
 please check out the following publications (if you find that a paper is missing here, please open [a new issue](https://github.com/flowr-analysis/flowr/issues/new/choose)):
 
+* [Supporting the Comprehension of Data Analysis Scripts (FSE '25, Tool)](https://doi.org/10.1145/3803437.3806402)  
+  This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.
+  <details><summary>BibTeX</summary>
+  
+   
+   ```bibtex
+   @article{10.1145/3803437.3806402,
+   	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+   	title = {Supporting the Comprehension of Data Analysis Scripts},
+   	year = {2026},
+   	doi = {10.1145/3803437.3806402}
+   }
+   ```
+   
+  
+  </details>
+
 * [Statically Analyzing the Dataflow of R Programs (OOPSLA '25)](https://doi.org/10.1145/3763087)  
-  Please cite this paper if you are using flowR in your research.
+  **Please cite this paper if you are using flowR in your research.**
   <details><summary>BibTeX</summary>
   
    
@@ -790,7 +911,7 @@ please check out the following publications (if you find that a paper is missing
   </details>
 
 * [flowR: A Static Program Slicer for R (ASE '24, Tool)](https://doi.org/10.1145/3691620.3695359)  
-  This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr">VS Code Extension</a>.
+  This refers to the tool-demonstration of the <a href="https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr" target="_blank">VS Code Extension</a>.
   <details><summary>BibTeX</summary>
   
    
@@ -860,7 +981,7 @@ please check out the following publications (if you find that a paper is missing
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/Onboarding) section in the wiki for all the information you will need.
+We welcome every contribution! Please check out the [developer onboarding](https://github.com/flowr-analysis/flowr/wiki/onboarding) section in the wiki for all the information you will need.
 
 ### Contributors
 
@@ -872,7 +993,8 @@ We welcome every contribution! Please check out the [developer onboarding](https
 
 *flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) and (since October 1st 2025) [Oliver Gerstl](https://www.linkedin.com/in/oliver-gerstl) under the
 [GPLv3 License](LICENSE).\
-It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector").
+It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector")
+and received an unrestricted gift from [Posit](https://posit.co/), the open-source data science company. 
 
 ----
 

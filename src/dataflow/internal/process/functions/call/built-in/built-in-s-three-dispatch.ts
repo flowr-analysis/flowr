@@ -1,32 +1,31 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
-import { alwaysExits, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation, alwaysExits } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import {
-	type RFunctionArgument
-} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { BuiltInProcName } from '../../../../../environments/built-in';
-import { invertArgumentMap, pMatch } from '../../../../linker';
+import { pMatch } from '../../../../linker';
 import { convertFnArguments, patchFunctionCall } from '../common';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { ReferenceType } from '../../../../../environments/identifier';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { invalidRange } from '../../../../../../util/range';
+import { SourceRange } from '../../../../../../util/range';
+import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /** e.g. UseMethod(generic, object) */
 interface S3DispatchConfig {
 	args: {
 		generic: string,
 		object:  string
-	}
+	},
+	/** For NextMethod/if `generic` is not given, try to infer from the closure? */
+	inferFromClosure?: boolean
 }
 
 /**
@@ -34,12 +33,12 @@ interface S3DispatchConfig {
  */
 export function processS3Dispatch<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: S3DispatchConfig
 ): DataflowInformation {
-	if(args.length === 0) {
+	if(args.length === 0 && !config.inferFromClosure) {
 		dataflowLogger.warn('empty s3, skipping');
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
@@ -49,13 +48,13 @@ export function processS3Dispatch<OtherInfo>(
 		[config.args.object]:  'object',
 		'...':                 '...'
 	};
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
-	const generic = unpackArg(getArgumentWithId(args, argMaps.get('generic')?.[0]));
-	if(!generic) {
+	const argMaps = pMatch(convertFnArguments(args), params);
+	const generic = unpackArg(RArgument.getWithId(args, argMaps.get('generic')?.[0]));
+	if(!generic && !config.inferFromClosure) {
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
-	const obj = unpackArg(getArgumentWithId(args, argMaps.get('object')?.[0]));
-	const dfObj = obj ? processDataflowFor(obj, data) : initializeCleanDataflowInformation(rootId, data);
+	const obj = unpackArg(RArgument.getWithId(args, argMaps.get('object')?.[0]));
+	const dfObj = obj ? processDataflowFor(obj, data) : DataflowInformation.initialize(rootId, data);
 
 	if(alwaysExits(dfObj)) {
 		patchFunctionCall({
@@ -67,6 +66,29 @@ export function processS3Dispatch<OtherInfo>(
 			origin:                BuiltInProcName.S3Dispatch
 		});
 		return dfObj;
+	}
+
+	if(!generic) {
+		patchFunctionCall({
+			nextGraph:             dfObj.graph,
+			rootId,
+			name,
+			data,
+			argumentProcessResult: [dfObj],
+			origin:                BuiltInProcName.S3DispatchNext
+		});
+		const ingoing = dfObj.in.concat(dfObj.unknownReferences);
+		ingoing.push({ nodeId: rootId, name: name.content, cds: data.cds, type: ReferenceType.Function });
+		return {
+			hooks:             dfObj.hooks,
+			environment:       dfObj.environment,
+			exitPoints:        dfObj.exitPoints,
+			graph:             dfObj.graph,
+			entryPoint:        rootId,
+			in:                ingoing,
+			out:               dfObj.out,
+			unknownReferences: []
+		};
 	}
 
 	const n = resolveIdToValue(generic.info.id, { environment: data.environment, resolve: data.ctx.config.solver.variables, idMap: data.completeAst.idMap, full: true, ctx: data.ctx });
@@ -84,12 +106,11 @@ export function processS3Dispatch<OtherInfo>(
 	}
 	const dfGeneric = processDataflowFor(generic, data);
 	const symbol: RSymbol<OtherInfo & ParentInformation> = {
-		type:      RType.Symbol,
-		info:      generic.info,
-		content:   accessedIdentifiers[0],
-		lexeme:    accessedIdentifiers[0],
-		location:  generic.location ?? invalidRange(),
-		namespace: undefined
+		type:     RType.Symbol,
+		info:     generic.info,
+		content:  accessedIdentifiers[0],
+		lexeme:   accessedIdentifiers[0],
+		location: generic.location ?? SourceRange.invalid()
 	};
 
 	patchFunctionCall({

@@ -1,17 +1,16 @@
-import { DataflowGraph } from '../dataflow/graph/graph';
+import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
 	VertexType
 } from '../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType, edgeTypeToName, splitEdgeTypes } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { DataflowGraphBuilder, emptyGraph } from '../dataflow/graph/dataflowgraph-builder';
 import { guard } from '../util/assert';
 import { formatSideEffect, printDfGraph, printDfGraphForCode, verifyExpectedSubgraph } from './doc-util/doc-dfg';
 import {
 	FlowrGithubBaseRef,
 	FlowrGithubGroupName,
-	FlowrVsCode,
 	FlowrWikiBaseRef,
 	getFilePathMd
 } from './doc-util/doc-files';
@@ -29,8 +28,8 @@ import { block, details, section } from './doc-util/doc-structure';
 import { codeBlock } from './doc-util/doc-code';
 import path from 'path';
 import { lastJoin, prefixLines } from './doc-util/doc-general';
-import { type NodeId, recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { ReferenceType } from '../dataflow/environments/identifier';
+import { NodeId, recoverContent, recoverName } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier, ReferenceType } from '../dataflow/environments/identifier';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
 	resolveByName,
@@ -60,7 +59,12 @@ import type { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-s
 import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
+import { mermaidNodeBrackets } from '../util/mermaid/dfg';
+import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
+import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import { SourceRange } from '../util/range';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 async function subExplanation(parser: KnownParser, { description, code, expectedSubgraph }: SubExplanationParameters): Promise<string> {
 	expectedSubgraph = await verifyExpectedSubgraph(parser, code, expectedSubgraph);
@@ -119,16 +123,16 @@ ${subExplanations.length > 0 ? await printAllSubExplanations(parser, subExplanat
 }
 
 function edgeTypeToId(edgeType: EdgeType): string {
-	return edgeTypeToName(edgeType).toLowerCase().replaceAll(' ', '-');
+	return DfEdge.typeToName(edgeType).toLowerCase().replaceAll(' ', '-');
 }
 
 function linkEdgeName(edgeType: EdgeType, page = ''): string {
-	return `[\`${edgeTypeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
+	return `[\`${DfEdge.typeToName(edgeType)}\`](${page}#${edgeTypeToId(edgeType)})`;
 }
 
 async function getVertexExplanations(parser: TreeSitterExecutor, ctx: GeneralDocContext): Promise<string> {
 	/* we use the map to ensure order easily :D */
-	const vertexExplanations = new Map<VertexType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const vertexExplanations = new Map<VertexType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	vertexExplanations.set(VertexType.Value, [{
 		name:        'Value Vertex',
@@ -232,7 +236,7 @@ ${block({
 	content: `
 	If you want to obtain the locations where a variable is defined, or read, or re-defined, refrain from tracking these details manually in the dataflow graph
 	as there are some edge-cases that require special attention.
-	In general, the ${ctx.link(getOriginInDfg)} function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
+	In general, the ${ctx.link(getOriginInDfg)} (which is also available as ${ctx.linkO(Dataflow, 'origin')}) function explained below in [working with the dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph#working-with-the-dataflow-graph) will help you to get the information you need.
 	`
 })}
 
@@ -271,7 +275,7 @@ ${
 		await (async() => {
 			const code = 'foo(x,3,y=3,)';
 			const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([8]), exposeResult: true });
-			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+			const callInfo = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 			guard(callInfo !== undefined, () => `Could not find call vertex for ${code}`);
 			const [callId, callVert] = callInfo as [NodeId, DataflowGraphVertexFunctionCall];
 			const inverseMapReferenceTypes = Object.fromEntries(Object.entries(ReferenceType).map(([k, v]) => [v, k]));
@@ -344,7 +348,7 @@ ${await (async() => {
 		const [text, info] = await printDfGraphForCode(parser, code, { exposeResult: true, mark: new Set([6, '6->0', '6->1', '6->3']) });
 
 		const numberOfEdges = [...info.dataflow.graph. edges()].flatMap(e => [...e[1].keys()]).length;
-		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && vertex.name === 'foo');
+		const callVertex = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionCall && Identifier.getName(vertex.name) === 'foo');
 		guard(callVertex !== undefined, () => `Could not find call vertex for ${code}`);
 		const [callId] = callVertex;
 
@@ -421,7 +425,7 @@ Hence, trying to re-resolve the call using ${ctx.link(getAllFunctionCallTargets)
 the following target ids: { \`${[...getAllFunctionCallTargets(id, info.dataflow.graph)].join('`, `')}\` }.
 This way we know that the call may refer to the built-in assignment operator or to the multiplication.
 Similarly, trying to resolve the name with ${ctx.link(resolveByName)}\` using the environment attached to the call vertex (filtering for any reference type) returns (in a similar fashion): 
-{ \`${resolveByNameAnyType(name, env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
+{ \`${resolveByNameAnyType(Identifier.make(name), env)?.map(d => d.nodeId).join('`, `')}\` } (however, the latter will not trace aliases).
 
 	`;
 })()}
@@ -481,6 +485,7 @@ The implementation is relatively sparse and similar to the other marker vertices
 ${
 	ctx.hierarchy('DataflowGraphVertexVariableDefinition')
 }
+Of only interest is \`par\`, which signals that the definitions is partial (e.g., in the case of \`x[a] <- 1\`).
 
 Of course, there are not just operators that define variables, but also functions, like \`assign\`.
 
@@ -629,7 +634,7 @@ Besides this being a theoretically "shorter" way of defining a function, this be
 }
 
 async function getEdgesExplanations(parser: KnownParser, ctx: GeneralDocContext): Promise<string> {
-	const edgeExplanations = new Map<EdgeType,[ExplanationParameters, SubExplanationParameters[]]>();
+	const edgeExplanations = new Map<EdgeType, [ExplanationParameters, SubExplanationParameters[]]>();
 
 	edgeExplanations.set(EdgeType.Reads, [{
 		name:        'Reads Edge',
@@ -880,12 +885,15 @@ export class WikiDataflowGraph extends DocMaker<'wiki/Dataflow Graph.md'> {
 	}
 
 	protected async text({ ctx, treeSitter }: DocMakerArgs): Promise<string> {
-		return `
-This page briefly summarizes flowR's dataflow graph, represented by the ${ctx.link(DataflowGraph)} class within the code.
-In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
-If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
-In summary, we discuss the following topics:
+		const introExampleCode = 'x <- 3\ny <- x + 1\ny';
 
+		return `
+This page briefly summarizes flowR's dataflow graph (${ctx.link(DataflowGraph)}).
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities')} page.
+In case you want to manually build such a graph (e.g., for testing), you can use the ${ctx.link(DataflowGraphBuilder)}.
+In summary, we discuss the following topics in this wiki page:
+
+- [Reading the Visualization](#reading-the-visualization)
 - [Vertices](#vertices)
 - [Edges](#edges)
 - [Control Dependencies](#control-dependencies)
@@ -895,61 +903,52 @@ In summary, we discuss the following topics:
     - [Call Graph Perspective](#perspectives-cg)
 - [Working with the Dataflow Graph](#dfg-working)
 
-Please be aware that the accompanied [dataflow information](#dataflow-information) (${ctx.link('DataflowInformation')}) returned by _flowR_ contains things besides the graph,
-like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
-Additionally, you may be interested in the set of [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
-
-Potentially, you are interested in another perspective that flowR provides, the [control flow graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph), so please check the correpsonding
-wiki page if you are unsure.
+Please be aware that the accompanied [dataflow information](#dataflow-information) (${ctx.link('DataflowInformation')}) returned by _flowR_ 
+contains things besides the graph, like the entry and exit points of the subgraphs, and currently active references (see [below](#dataflow-information)).
+Additionally, you may be interested in the [Unknown Side Effects](#unknown-side-effects), marking calls which _flowR_ is unable to handle correctly.
 
 > [!TIP]
-> If you want to investigate the dataflow graph,
-> you can either use the [Visual Studio Code extension](${FlowrVsCode}) or the ${ctx.replCmd('dataflow*')}
-> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information). 
-> There is also a simplified perspective available with ${ctx.replCmd('dataflowsimple*')} that does not show everything but is easier to read.
+> To investigate the dataflow graph,
+> you can either use the ${ctx.linkPage('flowr:vscode')} or the ${ctx.replCmd('dataflow*')}
+> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')}). 
+> There is also a simplified version available with ${ctx.replCmd('dataflowsimple*')} that does not show everything but is easier to read.
 > For small graphs, you can also use ${ctx.replCmd('dataflowascii')} to print the graph as ASCII art.
->
-> When using _flowR_ as a library, you may use the functions in ${getFilePathMd('../util/mermaid/dfg.ts')}.
 > 
-> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.linkM(DataflowGraph, 'fromJson', { realNameWrapper: 'i', codeFont: true })} to retrieve the graph from the JSON representation.
+> If you receive a dataflow graph in its serialized form (e.g., by talking to a [_flowR_ server](${FlowrWikiBaseRef}/Interface)), you can use ${ctx.linkM(DataflowGraph, 'fromJson', { realNameWrapper: 'i', codeFont: true })} to recover the graph object.
 >
 > Also, check out the [${FlowrGithubGroupName}/sample-analyzer-df-diff](${FlowrGithubBaseRef}/sample-analyzer-df-diff) repository for a complete example project creating and comparing dataflow graphs.
 
-${await printDfGraphForCode(treeSitter,'x <- 3\ny <- x + 1\ny')}
+To get started, let's look at the graph for the following code snippet:
+${codeBlock('r', introExampleCode)}
 
+With this code, the corresponding dataflow graph looks like this:
 
-The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G = (V, E), differentiating between ${getAllVertices().length} types of vertices V and
-${getAllEdges().length} types of edges E allowing each vertex to have a single, and each edge to have multiple distinct types.
+${await printDfGraphForCode(treeSitter, introExampleCode, { showCode: false })}
+
+The above dataflow graph showcases the general gist. We define a dataflow graph as a directed graph G&nbsp;=&nbsp;(V,&nbsp;E), 
+differentiating between ${getAllVertices().length} types of vertices&nbsp;V and
+${getAllEdges().length} types of edges&nbsp;E allowing each vertex to have a single, and each edge to have multiple distinct types.
 Additionally, every node may have links to its [control dependencies](#control-dependencies) (which you may view as a ${nth(getAllEdges().length + 1)} edge type, 
 although they are explicitly no data dependency and relate to the ${ctx.linkPage('wiki/Control Flow Graph')}. 
 
-<details open>
-
-<summary>Vertex Types</summary>
+${details('Simplified Version of the graph', await printDfGraphForCode(treeSitter, 'x <- 3\ny <- x + 1\ny', { simplified: true, showCode: false }))}
 
 The following vertices types exist:
 
 1. ${getAllVertices().map(
-	([k,v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
+	([k, v], index) => `[\`${k}\`](#${index + 1}-${v.toLowerCase().replace(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('DataflowGraphVertexInfo', { inlineTypes: ['MergeableRecord'] })))}
 
-</details>
-
-<details open>
-
-<summary>Edge Types</summary>
-
-The following edges types exist, internally we use bitmasks to represent multiple types in a compact form:
+The following edges types exist, internally we use bitmasks to represent multiple types in a compact form, so you 
+should use the ${ctx.link('DfEdge', { codeFont: false, realNameWrapper: 'i' }, { type: 'variable' })} object and its methods to work with them:
 
 1. ${getAllEdges().map(
 	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
 ).join('\n1. ')}
 
 ${details('Class Diagram', 'All boxes should link to their respective implementation:\n' + codeBlock('mermaid', ctx.mermaid('EdgeType', { inlineTypes: ['MergeableRecord'] })))}
-
-</details>
 
 
 From an implementation perspective all of these types are represented by respective interfaces, see ${getFilePathMd('../dataflow/graph/vertex.ts')} and ${getFilePathMd('../dataflow/graph/edge.ts')}.
@@ -971,10 +970,72 @@ ${prefixLines(codeBlock('ts', `const name = ${recoverName.name}(id, graph.idMap)
 > For argument wrappers you can access the dataflow information for their value. For dead code, however, flowR currently contains
 > some core heuristics that remove it which cannot be reversed easily. So please open [an issue](${NewIssueUrl}) if you encounter such a case and require the node to be present in the dataflow graph.
 
+${section('Reading the Visualizations', 2, 'reading-the-visualization')}
+
+Before we dive into the details of the different vertices and edges, let's briefly talk about how to read the visualizations.
+For this, let's have a look at a very simple graph, created for the number \`42\`:
+
+${await printDfGraphForCode(treeSitter, '42', { showCode: false })}
+
+${section('Vertex Shape', 3, 'vtx-shape')}
+
+The _shape_ of the vertex tells you the type of the vertex in the dataflow graph using the following scheme (the types are 
+explained in more detail in the following sections):
+
+${
+	codeBlock('mermaid',
+		'flowchart TD\n' +
+	// use mermaidNodeBrackets to get open and closing bracket
+	Object.entries(VertexType)
+		.map(([k, v]) => {
+			const { open, close } = mermaidNodeBrackets(v);
+			return `   ${v}${open}${k}${close}`;
+		}).join('\n') +
+		// we add a subflow for the function definition
+		'\n    subgraph fbox ["function body"]\n   body((...))\n    end\n   fdef-->fbox'
+	)
+}
+
+${section('Syntactic Types', 3, 'vtx-synt-type')}
+
+Within the shape, in square brackets, you can find the syntactic type of the vertex
+which is linked to the node in the ${ctx.linkPage('wiki/Normalized AST')}.
+For more information on valid types and what to do with them, please refer to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST wiki page')}
+and the corresponding helper objects (e.g., ${ctx.link(RNumber, undefined, { type: 'variable' })}).
+
+${section('Lexeme', 3, 'vtx-lexeme')}
+
+Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
+This usually represents the textual source string of the respective vertex, and is also linked to the ${ctx.linkPage('wiki/Normalized AST')}.
+You can access the lexeme too with ${ctx.linkO(RNode, 'lexeme')}.
+
+${section('Vertex Id', 3, 'vtx-id')}
+
+In the second line, you will usually find the id (in the form of a ${ctx.link(NodeId, undefined, { type: 'variable' })}) of the vertex,
+alongside its [control dependencies](#control-dependencies) if it has any. This id links the vertex to the respective node in the ${ctx.linkPage('wiki/Normalized AST')} (and all other perspectives created by flowR).
+To give you an example, have a look at the following graph:
+
+${await printDfGraphForCode(treeSitter, 'if(u) a', { showCode: false, mark: new Set(['1']) })}
+With the _may_ prefix you can see that \`a\` has a [control dependency](#control-dependencies)
+on the \`if\`, which only triggers when the condition is \`true\` (as indicated by the \`+\` suffix).
+
+${section('Location', 3, 'vtx-location')}
+
+The third line indicates the compressed ${ctx.link(SourceRange)} of the vertex in the format \`startLine.startCharacter - endLine.endCharacter\`. If the range reads \`1.7\`, 
+this is short for \`1.7-1.7\`, likewise, \`1.7-9\` is short for \`1.7-1.9\`. So, \`1.7-9\` describes something starting
+in the first line at the seventh character and ending in the first line at the ninth character.
+
+${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
+
+Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
+As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
+these vertices also have an additional line which lists the ids of the arguments in order to clear any ambiguity in case, for example,
+the mermaid graph layouting fumbles the order.
+
 ${section('Vertices', 2, 'vertices')}
 
 1. ${getAllVertices().map(
-	([k,v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
+	([k, v]) => `[\`${k}\`](#${v.toLowerCase().replaceAll(/\s/g, '-')}-vertex)`
 ).join('\n1. ')}
 
 ${await getVertexExplanations(treeSitter, ctx)}
@@ -982,7 +1043,7 @@ ${await getVertexExplanations(treeSitter, ctx)}
 ${section('Edges', 2, 'edges')}
 
 1. ${getAllEdges().map(
-	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replace(/\s/g, '-')}-edge)`
+	([k, v], index) => `[\`${k}\` (${v})](#${index + 1}-${k.toLowerCase().replaceAll(/\s/g, '-')}-edge)`
 ).join('\n1. ')}
 
 ${await getEdgesExplanations(treeSitter, ctx)}
@@ -995,7 +1056,7 @@ and a boolean flag \`when\` to indicate if the control dependency is active when
 
 As an example, consider the following dataflow graph:
 
-${await printDfGraphForCode(treeSitter,'if(p) a else b')}
+${await printDfGraphForCode(treeSitter, 'if(p) a else b')}
 
 Whenever we visualize a graph, we represent the control dependencies as grayed out edges with a \`CD\` prefix, followed
 by the \`when\` flag.
@@ -1090,7 +1151,7 @@ In case _flowR_ encounters a function call that it cannot handle, it marks the c
 You can find these as part of the dataflow graph, specifically as \`unknownSideEffects\` (with a leading underscore if sesrialized as JSON).
 In the following graph, _flowR_ realizes that it is unable to correctly handle the impacts of the \`load\` call and therefore marks it as such (marked in bright red):
 
-${await printDfGraphForCode(treeSitter,'load("file")\nprint(x + y)')}
+${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)')}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and [queries](${FlowrWikiBaseRef}/Query%20API)) to handle these cases
 as they see fit.
@@ -1150,19 +1211,25 @@ ${await printDfGraphForCode(treeSitter, 'alias <- unknown\nalias()', { callGraph
 ${section('Working with the Dataflow Graph', 2, 'dfg-working')}
 
 The ${ctx.link('DataflowInformation')} is the core result of _flowR_ and summarizes a lot of information.
-Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions:
+Depending on what you are interested in, there exists a plethora of functions and queries to help you out, answering the most important questions.
+Generally, we recommend you check out the ${ctx.link(Dataflow, undefined, { type: 'variable' })} helper object!
 
 * The **${ctx.linkPage('wiki/Query API')}** provides many functions to query the dataflow graph for specific information (dependencies, calls, slices, clusters, ...)
 * The **${ctx.linkPage('wiki/Search API')}** allows you to search for specific vertices or edges in the dataflow graph or the original program
 * ${ctx.link(recoverName)} and ${ctx.link(recoverContent)} to get the name or content of a vertex in the dataflow graph
 * ${ctx.link(resolveIdToValue)} to resolve the value of a variable or id (if possible, see [below](#dfg-resolving-values))
 * ${ctx.link(getAliases)} to get all (potentially currently) aliases of a given definition
-* ${ctx.link(edgeIncludesType)} to check if an edge includes a specific type and ${ctx.link(splitEdgeTypes)} to split the bitmask of edges into its types (see [below](#dfg-resolving-values))
 * ${ctx.link(getValueOfArgument)} to get the (syntactical) value of an argument in a function call 
 * ${ctx.link(getOriginInDfg)} to get information about where a read, call, ... comes from (see [below](#dfg-resolving-values))
 
-Some of these functions have been explained in their respective wiki pages. However, some are part of the [Dataflow Graph API](${FlowrWikiBaseRef}/Dataflow-Graph) and so we explain them here.
-If you are interested in which features we support and which features are still to be worked on, please refer to our [capabilities](${FlowrWikiBaseRef}/Capabilities) page.
+FlowR also provides various helper objects (with the same name as the corresponding type) to help you work with the dataflow graph:
+
+* ${ctx.link(DfEdge, undefined, { type: 'variable' })} to get helpful functions wrt. edges (see [below](#dfg-resolving-values))
+* ${ctx.link(Identifier, undefined, { type: 'variable' })} to get helpful functions wrt. identifiers
+* ${ctx.link(FunctionArgument, undefined, { type: 'variable' })} to get helpful functions wrt. function arguments
+
+Some of these functions have been explained in their respective wiki pages. However, some are part of the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph API')} and so we explain them here.
+If you are interested in which features we support and which features are still to be worked on, please refer to our ${ctx.linkPage('wiki/Capabilities', 'capabilities')} page.
 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
@@ -1200,14 +1267,14 @@ ${await(async() => {
 			}
 			throw new Error('Could not find edge');
 		})()}&mdash;which is usually not very helpful.
-You can use ${ctx.link(splitEdgeTypes.name)} to get the individual bitmasks of all included types, and 
-${ctx.link(edgeIncludesType.name)} to check whether a specific type (or one of a collection of types) is included in the edge.
+You can use ${ctx.linkO(DfEdge, 'splitTypes')} to get the individual bitmasks of all included types, and 
+${ctx.linkO(DfEdge, 'includesType')} to check whether a specific type (or one of a collection of types) is included in the edge.
 
 ${section('Handling Origins', 3, 'dfg-handling-origins')}
 
 If you are writing another analysis on top of the dataflow graph, you probably want to know all definitions that serve as the source of a read, all functions
 that are called by an invocation, and more.
-For this, the ${ctx.link(getOriginInDfg)} function provides you with a collection of ${ctx.link('Origin')} objects:
+For this, the ${ctx.link(getOriginInDfg)} (this is also accessible with ${ctx.linkO(Dataflow, 'origin')}) function provides you with a collection of ${ctx.link('Origin')} objects:
 
 ${ctx.hierarchy('Origin', { openTop: true })}
 

@@ -12,12 +12,13 @@ import { unpackNonameArg } from '../argument/unpack-argument';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { Identifier } from '../../../../../environments/identifier';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a built-in repeat loop function call like `repeat { ... }`.
@@ -29,12 +30,12 @@ import { BuiltInProcName } from '../../../../../environments/built-in';
  */
 export function processRepeatLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length !== 1 || args[0] === EmptyArgument) {
-		dataflowLogger.warn(`Repeat-Loop ${name.content} does not have 1 argument, skipping`);
+		dataflowLogger.warn(`Repeat-Loop ${Identifier.toString(name.content)} does not have 1 argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -56,10 +57,10 @@ export function processRepeatLoop<OtherInfo>(
 	});
 
 	const body = processedArguments[0];
-	guard(body !== undefined, () => `Repeat-Loop ${name.content} has no body, impossible!`);
+	guard(body !== undefined, () => `Repeat-Loop ${Identifier.toString(name.content)} has no body, impossible!`);
 
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, [])), body.out);
-	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out,body.unknownReferences));
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph)), body.out);
+	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	information.exitPoints = filterOutLoopExitPoints(information.exitPoints);
 

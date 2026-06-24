@@ -22,7 +22,9 @@ export interface ControlDependency {
 	readonly when?:        boolean
 	/** whether this control dependency was created due to iteration (e.g., a loop) */
 	readonly byIteration?: boolean
-	/** the filepath that caused this dependency (e.g., for load() calls where the file must exist) */
+	/**
+	 * any file-exist assumptions made
+	 */
 	readonly file?:        string
 }
 
@@ -94,7 +96,9 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
-	existing.push(...toAdd);
+	for(const ep of toAdd) {
+		existing.push(ep);
+	}
 	for(const icd of invertedCds) {
 		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
 			invertExitCds.push(icd);
@@ -163,22 +167,34 @@ export interface DataflowInformation extends DataflowCfgInformation {
 }
 
 /**
- * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
- * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
- * @see {@link DataflowInformation}
+ * Helper object for {@link DataflowInformation}
  */
-export function initializeCleanDataflowInformation<T>(entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
-	return {
-		unknownReferences: [],
-		in:                [],
-		out:               [],
-		environment:       data.environment,
-		graph:             new DataflowGraph(data.completeAst.idMap),
-		entryPoint,
-		exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
-		hooks:             []
-	};
-}
+export const DataflowInformation = {
+	name: 'DataflowInformation',
+	/**
+	 * Initializes an empty {@link DataflowInformation} object with the given entry point and data.
+	 * This is to be used as a "starting point" when processing leaf nodes during the dataflow extraction.
+	 * @see {@link DataflowInformation}
+	 */
+	initialize<T>(this: void, entryPoint: NodeId, data: Pick<DataflowProcessorInformation<T>, 'environment' | 'completeAst'>): DataflowInformation {
+		return {
+			unknownReferences: [],
+			in:                [],
+			out:               [],
+			environment:       data.environment,
+			graph:             new DataflowGraph(undefined),
+			entryPoint,
+			exitPoints:        [{ nodeId: entryPoint, type: ExitPointType.Default }],
+			hooks:             []
+		};
+	},
+	/**
+	 * Type guard to check whether the given information is a {@link DataflowInformation}.
+	 */
+	is(info: unknown): info is DataflowInformation {
+		return typeof info === 'object' && info !== null && 'entryPoint' in info && 'exitPoints' in info && 'hooks' in info;
+	}
+} as const;
 
 /**
  * Checks whether the given control dependencies are exhaustive (i.e. if for every control dependency on a boolean,
@@ -252,7 +268,7 @@ export function diffControlDependency<Report extends WriteableDifferenceReport>(
 		info.report.addComment(`${info.position}Different control dependency ids. ${info.leftname}: ${JSON.stringify(a.id)} vs. ${info.rightname}: ${JSON.stringify(b.id)}`);
 	}
 	if(a.when !== b.when) {
-		info.report.addComment(`${info.position}Different control dependency when. ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
+		info.report.addComment(`${info.position}Different control dependency when (id: ${JSON.stringify(a.id)}). ${info.leftname}: ${a.when} vs. ${info.rightname}: ${b.when}`);
 	}
 }
 

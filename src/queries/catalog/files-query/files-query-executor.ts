@@ -10,8 +10,6 @@ import type { BasicQueryData } from '../../base-query-format';
  */
 export function executeFileQuery({ analyzer }: BasicQueryData, queries: readonly FilesQuery[]): Promise<FilesQueryResult> {
 	const start = Date.now();
-	analyzer.inspectContext().resolvePreAnalysis();
-
 	const base = analyzer.inspectContext().files.getAllFiles();
 
 	let files: FileQueryInfo[] = [];

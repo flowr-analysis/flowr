@@ -53,4 +53,4 @@ export type FlowrMessage = FlowrHelloResponseMessage
                          | SliceResponseMessage
                          | QueryRequestMessage
                          | QueryResponseMessage
-                         | FlowrErrorMessage
+                         | FlowrErrorMessage;

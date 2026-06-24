@@ -2,10 +2,10 @@ import { flowrVersion } from '../../util/version';
 import { linkFlowRSourceFile } from './doc-files';
 
 export interface AutoGenHeaderArguments {
-    readonly rVersion?:           string;
-    readonly currentDateAndTime?: string;
-    readonly filename:            string;
-    readonly purpose:             string;
+	readonly rVersion?:           string;
+	readonly currentDateAndTime?: string;
+	readonly filename:            string;
+	readonly purpose:             string;
 }
 
 /**

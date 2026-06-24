@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { withShell } from '../../_helper/shell';
-import { type DataflowGraphVertexFunctionCall , VertexType } from '../../../../src/dataflow/graph/vertex';
+import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../../src/dataflow/graph/vertex';
 import { getValueOfArgument } from '../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import type { RNumber } from '../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';

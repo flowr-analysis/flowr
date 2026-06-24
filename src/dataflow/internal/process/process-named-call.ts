@@ -6,6 +6,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RAstNodeBase, RNode, Location } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { Identifier } from '../../environments/identifier';
 
 /**
  * Helper function for {@link processNamedCall} using the given `functionName` as the name of the function.
@@ -13,15 +14,14 @@ import type { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r
 export function processAsNamedCall<OtherInfo>(
 	{ info, lexeme, location }: RNode<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	name: string,
+	name: Identifier,
 	args: readonly (RNode<OtherInfo & ParentInformation> | typeof EmptyArgument | undefined)[]
 ): DataflowInformation {
 	return processNamedCall({
-		type:      RType.Symbol,
+		type:    RType.Symbol,
 		info,
-		content:   name,
+		content: name,
 		lexeme,
 		location,
-		namespace: undefined
 	}, wrapArgumentsUnnamed(args, data.completeAst.idMap), info.id, data);
 }

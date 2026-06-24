@@ -19,9 +19,9 @@ export function normalizeComment(data: NormalizerData, obj: JsonEntry): RComment
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        data.currentRange,
-			additionalTokens: [],
-			fullLexeme:       content
+			fullRange:  data.currentRange,
+			adToks:     [],
+			fullLexeme: content
 		}
 	};
 }

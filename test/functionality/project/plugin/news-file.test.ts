@@ -2,16 +2,16 @@ import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
-import { defaultConfigOptions } from '../../../../src/config';
 import {
 	FlowrAnalyzerNewsFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-news-file-plugin';
 import type { NewsChunk } from '../../../../src/project/plugins/file-plugins/files/flowr-news-file';
+import { FlowrConfig } from '../../../../src/config';
 
 
 describe('NEWS-file', function() {
 	const ctx = new FlowrAnalyzerContext(
-		defaultConfigOptions,
+		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerNewsFilePlugin()
 		], p => p.type)
@@ -513,7 +513,6 @@ to gracefully prepare for changes in the next major release.
 * A new \`ggplot_build()\` S3 method for <ggplot_built> classes was added, which
   returns input unaltered (@teunbrand, #5800).
 	`));
-	ctx.resolvePreAnalysis();
 
 	test('Parse the News!', () => {
 		const files = ctx.files.getFilesByRole(FileRole.News);

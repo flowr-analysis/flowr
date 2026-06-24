@@ -1,9 +1,10 @@
 import type { CfgExpressionVertex, CfgStatementVertex, ControlFlowInformation } from './control-flow-graph';
+import { CfgVertex } from './control-flow-graph';
 import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfiguration } from './dfg-cfg-guided-visitor';
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getOriginInDfg, type Origin } from '../dataflow/origin/dfg-get-origin';
+import { type Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -16,15 +17,16 @@ import type { RString } from '../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import type { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import type { RLogical } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import type { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
-import { edgeIncludesType, EdgeType } from '../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -60,7 +62,7 @@ export interface SemanticCfgGuidedVisitorConfiguration<
  */
 export class SemanticCfgGuidedVisitor<
 	OtherInfo = NoInfo,
-    ControlFlow extends ControlFlowInformation = ControlFlowInformation,
+	ControlFlow extends ControlFlowInformation = ControlFlowInformation,
 	Ast extends NormalizedAst<OtherInfo>       = NormalizedAst<OtherInfo>,
 	Dfg extends DataflowGraph                  = DataflowGraph,
 	Config extends SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg> = SemanticCfgGuidedVisitorConfiguration<OtherInfo, ControlFlow, Ast, Dfg>
@@ -170,7 +172,7 @@ export class SemanticCfgGuidedVisitor<
 	 */
 	protected override visitUnknown(vertex: CfgStatementVertex | CfgExpressionVertex) {
 		super.visitUnknown(vertex);
-		const ast = this.getNormalizedAst(vertex.id);
+		const ast = this.getNormalizedAst(CfgVertex.getId(vertex));
 		if(ast && ast.type === RType.ExpressionList && ast.info.parent === undefined) {
 			this.onProgram(ast);
 		}
@@ -237,23 +239,10 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
-			case BuiltInProcName.TableAssignment: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
-							if(source.length === 1) {
-								return this.onAssignmentCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onAssignmentCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.TableAssignment:
+				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.SpecialBinOp:
 				if(call.args.length !== 2) {
 					return this.onSpecialBinaryOpCall({ call });
@@ -272,22 +261,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
 			case BuiltInProcName.WhileLoop:
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
-			case BuiltInProcName.Replacement: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = [...outgoing.entries()].filter(([, e]) => edgeIncludesType(e.types, EdgeType.Returns));
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = [...targetOut.entries()].filter(([t, e]) => edgeIncludesType(e.types, EdgeType.DefinedBy) && t !== call.id);
-							if(source.length === 1) {
-								return this.onReplacementCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onReplacementCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.Replacement:
+				return this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.Library:
 				return this.onLibraryCall({ call });
 			case BuiltInProcName.Try:
@@ -302,13 +277,27 @@ export class SemanticCfgGuidedVisitor<
 				return this.onLocalCall({ call });
 			case BuiltInProcName.S3Dispatch:
 				return this.onS3DispatchCall({ call });
+			case BuiltInProcName.S3DispatchNext:
+				return this.onS3DispatchNextCall({ call });
+			case BuiltInProcName.S7NewGeneric:
+				return this.onS7NewGenericCall({ call });
+			case BuiltInProcName.S7Dispatch:
+				return this.onS7DispatchCall({ call });
 			case BuiltInProcName.Break:
 				return this.onBreakCall({ call });
 			case BuiltInProcName.Return:
 				return this.onReturnCall({ call });
 			case BuiltInProcName.Unnamed:
 				return this.onUnnamedCall({ call });
+			case BuiltInProcName.Recall:
+				return this.onRecallCall({ call });
+			case BuiltInProcName.PurrrFormula:
+				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.With:
+			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:
+			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
 				return this.onDefaultFunctionCall({ call });
@@ -330,7 +319,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dfg, id);
+		return Dataflow.origin(this.config.dfg, id);
 	}
 
 	/**
@@ -656,9 +645,31 @@ export class SemanticCfgGuidedVisitor<
 	 * This event triggers for every call to a function that performs an S3-like dispatch.
 	 *
 	 * For example, this triggers for `UseMethod` in `UseMethod("print")`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchNextCall|`onS3DispatchNextCall`} for `NextMethod` calls.
 	 * @protected
 	 */
 	protected onS3DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs an S3-like *next* dispatch.
+	 *
+	 * For example, this triggers for `NextMethod`.
+	 * @see {@link SemanticCfgGuidedVisitor#onS3DispatchCall|`onS3DispatchCall`} for `UseMethod` calls.
+	 * @protected
+	 */
+	protected onS3DispatchNextCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that creates a new S7 generic, such as `new_generic`.
+	 * @protected
+	 */
+	protected onS7NewGenericCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to a function that performs an S7 dispatch, such as `S7_dispatch`.
+	 * @protected
+	 */
+	protected onS7DispatchCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
 
 	/**
 	 * This event triggers for every call to a function that registers a hook, such as `on.exit`.
@@ -689,6 +700,34 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onReturnCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for every call to `Recall`, which is used to recall the function closure (usually in recursive functions).
+	 * @protected
+	 */
+	protected onRecallCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
+	 */
+	protected onPurrFormulaCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {
+		const outgoing = this.config.dfg.outgoingEdges(call.id);
+		if(outgoing !== undefined) {
+			const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
+			if(target.length === 1) {
+				const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
+				if(targetOut !== undefined) {
+					const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
+					if(source.length === 1) {
+						return { target: target[0][0], source: source[0][0] };
+					}
+				}
+			}
+		}
+		return { target: undefined, source: undefined };
+	}
 
 	private onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

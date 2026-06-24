@@ -11,14 +11,12 @@ import type {
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import {
 	type DataflowGraph,
-	type FunctionArgument,
-	getReferenceOfArgument,
+	FunctionArgument,
 	type OutgoingEdges
 } from '../../dataflow/graph/graph';
-import { isBuiltIn } from '../../dataflow/environments/built-in';
 import { resolveByName } from '../../dataflow/environments/resolve-by-name';
-import { edgeIncludesType, EdgeType } from '../../dataflow/graph/edge';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { ReferenceType } from '../../dataflow/environments/identifier';
 import {
 	retrieveActiveEnvironment
@@ -30,7 +28,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-a
 /**
  * Returns the function call targets (definitions) by the given caller
  */
-export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
+export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, callerInfo: DataflowGraphVertexFunctionCall, baseEnvironment: REnvironmentInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): [Set<DataflowGraphVertexInfo>, REnvironmentInformation] {
 	// bind with call-local environments during slicing
 	const outgoingEdges = dataflowGraph.get(callerInfo.id, true);
 	guard(outgoingEdges !== undefined, () => `outgoing edges of id: ${callerInfo.id} must be in graph but can not be found, keep in slice to be sure`);
@@ -41,10 +39,10 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 
 	const name = callerInfo.name;
 	guard(name !== undefined, () => `name of id: ${callerInfo.id} can not be found in id map`);
-	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => !isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
+	const functionCallDefs = resolveByName(name, activeEnvironment, ReferenceType.Unknown)?.filter(d => !NodeId.isBuiltIn(d.definedAt))?.map(d => d.nodeId) ?? [];
 
 	for(const [target, outgoingEdge] of outgoingEdges[1].entries()) {
-		if(edgeIncludesType(outgoingEdge.types, EdgeType.Calls)) {
+		if(DfEdge.includesType(outgoingEdge, EdgeType.Calls)) {
 			functionCallDefs.push(target);
 		}
 	}
@@ -54,7 +52,7 @@ export function getAllFunctionCallTargets(dataflowGraph: DataflowGraph, callerIn
 }
 
 function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
-	const valueRoot = getReferenceOfArgument(arg);
+	const valueRoot = FunctionArgument.getReference(arg);
 	if(!valueRoot) {
 		return;
 	}
@@ -94,7 +92,7 @@ function linkCallTargets(
 
 /** returns the new threshold hit count */
 export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVertexFunctionCall, { graph }: DataflowInformation, queue: VisitingQueue, ctx: ReadOnlyFlowrAnalyzerContext): void {
-	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargets(graph, callerInfo, current.baseEnvironment, queue, ctx);
+	const [functionCallTargets, activeEnvironment] = getAllFunctionCallTargetsForSlice(graph, callerInfo, current.baseEnvironment, queue, ctx);
 
 	if(functionCallTargets.size === 0) {
 		/*
@@ -114,17 +112,17 @@ const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCal
 /** Returns true if we found at least one return edge */
 export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
 	const e = Array.from(currentEdges.entries());
-	const found = e.filter(([_, edge]) => edgeIncludesType(edge.types, EdgeType.Returns));
+	const found = e.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
 	if(found.length === 0) {
 		return false;
 	}
-	for(const [target,] of found) {
+	for(const [target] of found) {
 		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 	}
 	for(const [target, edge] of e) {
-		if(edgeIncludesType(edge.types, EdgeType.Reads)) {
+		if(DfEdge.includesType(edge, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
-		} else if(edgeIncludesType(edge.types, PotentialFollowOnReturn)) {
+		} else if(DfEdge.includesType(edge, PotentialFollowOnReturn)) {
 			updatePotentialAddition(queue, from, target, baseEnvironment, baseEnvFingerprint);
 		}
 	}

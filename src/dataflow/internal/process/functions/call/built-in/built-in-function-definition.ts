@@ -1,5 +1,9 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, ExitPointType, overwriteExitPoints } from '../../../../../info';
+import {
+	type DataflowInformation,
+	ExitPointType,
+	overwriteExitPoints
+} from '../../../../../info';
 import {
 	getAllFunctionCallTargets,
 	linkArgumentsOnCall,
@@ -15,34 +19,41 @@ import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
-import { type IdentifierReference, isReferenceType, ReferenceType } from '../../../../../environments/identifier';
+import {
+	Identifier,
+	type InGraphIdentifierDefinition,
+	type IdentifierReference,
+	isReferenceType,
+	ReferenceType
+} from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
-import { edgeIncludesType, EdgeType } from '../../../../../graph/edge';
+import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
-import { BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Process a function definition, i.e., `function(a, b) { ... }`
  */
 export function processFunctionDefinition<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
 	if(args.length < 1) {
-		dataflowLogger.warn(`Function Definition ${name.content} does not have an argument, skipping`);
+		dataflowLogger.warn(`Function Definition ${Identifier.toString(name.content)} does not have an argument, skipping`);
 		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
 	}
 
@@ -53,14 +64,14 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const originalEnvironment = data.environment;
 	// within a function def we do not pass on the outer binds as they could be overwritten when called
-	data = prepareFunctionEnvironment(data);
+	data = prepareFunctionEnvironment(data, rootId);
 
 	const subgraph = new DataflowGraph(data.completeAst.idMap);
 
 	let readInParameters: IdentifierReference[] = [];
 	const paramIds: NodeId[] = [];
 	for(const param of parameters) {
-		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${name.content}, ${JSON.stringify(args)}`);
+		guard(param !== EmptyArgument, () => `Empty param arg in function definition ${Identifier.toString(name.content)}, ${JSON.stringify(args)}`);
 		const processed = processDataflowFor(param, data);
 		if(param.value?.type === RType.Parameter) {
 			paramIds.push(param.value.name.info.id);
@@ -68,7 +79,7 @@ export function processFunctionDefinition<OtherInfo>(
 		subgraph.mergeWith(processed.graph);
 		const read = processed.in.concat(processed.unknownReferences);
 		linkInputs(read, data.environment, readInParameters, subgraph, false);
-		(data as { environment: REnvironmentInformation}).environment = overwriteEnvironment(data.environment, processed.environment);
+		(data as { environment: REnvironmentInformation }).environment = overwriteEnvironment(data.environment, processed.environment);
 	}
 	const paramsEnvironments = data.environment;
 
@@ -114,7 +125,6 @@ export function processFunctionDefinition<OtherInfo>(
 
 	const compactedHooks = compactHookStates(body.hooks);
 	const exitHooks = getHookInformation(compactedHooks, KnownHooks.OnFnExit);
-
 	const flow: DataflowFunctionFlowInformation = {
 		unknownReferences: [],
 		in:                remainingRead,
@@ -125,13 +135,13 @@ export function processFunctionDefinition<OtherInfo>(
 		hooks:             compactedHooks
 	};
 
-	updateS3Dispatches(subgraph, parameters.map<FunctionArgument>(p => {
+	updateDispatches(subgraph, parameters.map<FunctionArgument>(p => {
 		if(p === EmptyArgument) {
 			return EmptyArgument;
 		} else if(!p.name && p.value && p.value.type === RType.Parameter) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content };
+			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.value.name.info.id, name: p.value.name.content, valueId: p.value.defaultValue?.info.id };
 		} else if(p.name) {
-			return { type: ReferenceType.Argument, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
+			return { type: ReferenceType.Argument, valueId: p.value?.info.id, cds: data.cds, nodeId: p.name.info.id, name: p.name.content };
 		} else {
 			return EmptyArgument;
 		}
@@ -142,7 +152,7 @@ export function processFunctionDefinition<OtherInfo>(
 	const readParams: Record<NodeId, boolean> = {};
 	for(const paramId of paramIds) {
 		const ingoing = subgraph.ingoingEdges(paramId);
-		readParams[paramId] = ingoing?.values().some(({ types }) => edgeIncludesType(types, EdgeType.Reads)) ?? false;
+		readParams[paramId] = ingoing?.values().some(e => DfEdge.includesType(e, EdgeType.Reads)) ?? false;
 	}
 
 	let afterHookExitPoints = exitPoints?.filter(e => e.type === ExitPointType.Return || e.type === ExitPointType.Default || e.type === ExitPointType.Error) ?? [];
@@ -159,6 +169,26 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	let returnEnvState: REnvironmentInformation | undefined;
+	if(data.ctx.config.solver.trackEnvironments) {
+		for(const ep of afterHookExitPoints) {
+			const epVertex = subgraph.getVertex(ep.nodeId);
+			if(isFunctionCallVertex(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
+				break;
+			}
+			const epNode = subgraph.idMap?.get(ep.nodeId);
+			if(epNode?.type === RType.Symbol) {
+				const defs = resolveByName(epNode.content, outEnvironment, ReferenceType.Variable);
+				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				if(def?.envState) {
+					returnEnvState = def.envState;
+					break;
+				}
+			}
+		}
+	}
+
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
@@ -167,7 +197,8 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
-		exitPoints:  afterHookExitPoints
+		exitPoints:  afterHookExitPoints,
+		returnEnvState
 	}, data.ctx.env.makeCleanEnv());
 
 	return {
@@ -207,9 +238,9 @@ export function retrieveActiveEnvironment(callerEnvironment: REnvironmentInforma
 	return overwriteEnvironment(baseEnvironment, callerEnvironment);
 }
 
-function updateS3Dispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
+function updateDispatches(graph: DataflowGraph, myArgs: FunctionArgument[]): void {
 	for(const [, info] of graph.vertices(false)) {
-		if(info.tag !== VertexType.FunctionCall || !info.origin.includes(BuiltInProcName.S3Dispatch)) {
+		if(info.tag !== VertexType.FunctionCall || (!info.origin.includes(BuiltInProcName.S3Dispatch) && !info.origin.includes(BuiltInProcName.S7Dispatch))) {
 			continue;
 		}
 		if(info.args.length === 0) {
@@ -246,10 +277,11 @@ function updateNestedFunctionClosures(
 				remainingIn.push(ingoing);
 				continue;
 			}
+			const inId = ingoing.nodeId;
 			expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${fnId}`);
 			let allBuiltIn = true;
 			for(const ref of resolved) {
-				graph.addEdge(ingoing, ref, EdgeType.Reads);
+				graph.addEdge(inId, ref.nodeId, EdgeType.Reads);
 				if(!isReferenceType(ref.type, ReferenceType.BuiltInConstant | ReferenceType.BuiltInFunction)) {
 					allBuiltIn = false;
 				}
@@ -260,6 +292,52 @@ function updateNestedFunctionClosures(
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
 		subflow.in = remainingIn;
+
+		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
+	}
+}
+
+function linkSuperAssignmentsToOuterDefinitions(
+	parentGraph: DataflowGraph,
+	nestedGraphNodeIds: Set<NodeId>,
+	parentEnvironment: REnvironmentInformation
+): void {
+	for(const nodeId of nestedGraphNodeIds) {
+		const vertex = parentGraph.getVertex(nodeId);
+		if(vertex?.tag !== VertexType.FunctionCall || !vertex.origin.includes(BuiltInProcName.SuperAssignment)) {
+			continue;
+		}
+
+		const outgoingReturns = parentGraph.outgoingEdges(nodeId);
+		if(!outgoingReturns) {
+			continue;
+		}
+
+		for(const [targetId, edge] of outgoingReturns) {
+			if(!DfEdge.includesType(edge, EdgeType.Returns)) {
+				continue;
+			}
+
+			const targetVertex = parentGraph.getVertex(targetId);
+			if(targetVertex?.tag !== VertexType.VariableDefinition) {
+				continue;
+			}
+
+			const targetNode = parentGraph.idMap?.get(targetId);
+			if(targetNode?.type !== RType.Symbol) {
+				continue;
+			}
+
+			const varName = targetNode.content;
+			const resolved = resolveByName(varName, parentEnvironment, ReferenceType.Variable);
+			if(resolved) {
+				for(const ref of resolved) {
+					if(ref.nodeId !== targetId && !NodeId.isBuiltIn(ref.nodeId)) {
+						parentGraph.addEdge(targetId, ref.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -275,38 +353,46 @@ export function updateNestedFunctionCalls(
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
-	for(const [id, { onlyBuiltin, environment, name, args }] of graph.verticesOfType(VertexType.FunctionCall)) {
-		if(onlyBuiltin || !name) {
+	for(const [id, { onlyBuiltin, environment, name, args, origin }] of graph.verticesOfType(VertexType.FunctionCall)) {
+		if(onlyBuiltin || name === undefined) {
 			continue;
 		}
 
-		let effectiveEnvironment = outEnvironment;
-		// only the call environment counts!
-		if(environment) {
-			while(outEnvironment.level > environment.level) {
-				outEnvironment = popLocalEnvironment(outEnvironment);
-			}
-			while(outEnvironment.level < environment.level) {
-				outEnvironment = pushLocalEnvironment(outEnvironment);
-			}
-			effectiveEnvironment = overwriteEnvironment(outEnvironment, environment);
-		}
+		const effectiveEnvironment = environment ? overwriteEnvironment(outEnvironment, environment) : outEnvironment;
 
 		const targets = new Set(getAllFunctionCallTargets(id, graph, effectiveEnvironment));
+		const collectedNextMethods: Set<NodeId> = new Set();
+		const treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		for(const target of targets) {
-			if(isBuiltIn(target)) {
+			if(NodeId.isBuiltIn(target)) {
 				graph.addEdge(id, target, EdgeType.Calls);
 				continue;
 			}
 			const targetVertex = graph.getVertex(target);
 			// support reads on symbols
-			if(targetVertex?.tag === VertexType.Use) {
-				graph.addEdge(id, target, EdgeType.Reads);
-				continue;
-			} else if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+			if(targetVertex?.tag !== VertexType.FunctionDefinition) {
+				if(targetVertex?.tag === VertexType.Use) {
+					graph.addEdge(id, target, EdgeType.Reads);
+				}
 				continue;
 			}
 			graph.addEdge(id, target, EdgeType.Calls);
+			for(const exitPoint of targetVertex.exitPoints) {
+				graph.addEdge(id, exitPoint.nodeId, EdgeType.Returns);
+			}
+			if(treatAsS3) {
+				targetVertex.mode ??= [];
+				if(!targetVertex.mode.includes('s3')) {
+					targetVertex.mode.push('s3');
+				}
+				// collect all next method calls to link them to the same targets!
+				for(const s of targetVertex.subflow.graph) {
+					const v = graph.getVertex(s);
+					if(v?.tag === VertexType.FunctionCall && v.origin.includes(BuiltInProcName.S3DispatchNext)) {
+						collectedNextMethods.add(v.id);
+					}
+				}
+			}
 			const ingoingRefs = targetVertex.subflow.in;
 			const remainingIn: IdentifierReference[] = [];
 			for(const ingoing of ingoingRefs) {
@@ -315,11 +401,12 @@ export function updateNestedFunctionCalls(
 					remainingIn.push(ingoing);
 					continue;
 				}
+				const inId = ingoing.nodeId;
 				expensiveTrace(dataflowLogger, () => `Found ${resolved.length} references to open ref ${id} in closure of function definition ${id}`);
-				for(const def of resolved) {
-					if(!isBuiltIn(def.nodeId)) {
-						graph.addEdge(ingoing, def, EdgeType.DefinedByOnCall);
-						graph.addEdge(id, def, EdgeType.DefinesOnCall);
+				for(const { nodeId } of resolved) {
+					if(!NodeId.isBuiltIn(nodeId)) {
+						graph.addEdge(inId, nodeId, EdgeType.DefinedByOnCall);
+						graph.addEdge(id, nodeId, EdgeType.DefinesOnCall);
 					}
 				}
 			}
@@ -330,13 +417,26 @@ export function updateNestedFunctionCalls(
 				linkArgumentsOnCall(args, linkedParameters.parameters, graph);
 			}
 		}
+		for(const nextMethodId of collectedNextMethods) {
+			for(const target of targets) {
+				const targetVertex = graph.getVertex(target);
+				if(targetVertex?.tag === VertexType.Use) {
+					graph.addEdge(nextMethodId, target, EdgeType.Reads);
+				} else if(targetVertex?.tag === VertexType.FunctionDefinition) {
+					graph.addEdge(nextMethodId, target, EdgeType.Calls);
+				}
+			}
+		}
 	}
 }
 
-function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {
 	let env = data.ctx.env.makeCleanEnv();
 	for(let i = 0; i < data.environment.level + 1 /* add another env */; i++) {
 		env = pushLocalEnvironment(env);
+		if(i === data.environment.level) {
+			env.current.setClosureNodeId(rootId);
+		}
 	}
 	return { ...data, environment: env };
 }
@@ -355,9 +455,10 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 	const remainingRead: IdentifierReference[] = [];
 	for(const read of readInParameters) {
 		const resolved = read.name ? resolveByName(read.name, parameterEnvs, read.type) : undefined;
+		const rid = read.nodeId;
 		if(resolved !== undefined) {
-			for(const ref of resolved) {
-				parameters.addEdge(read, ref, EdgeType.Reads);
+			for(const { nodeId } of resolved) {
+				parameters.addEdge(rid, nodeId, EdgeType.Reads);
 			}
 			continue;
 		}
@@ -370,11 +471,11 @@ function findPromiseLinkagesForParameters(parameters: DataflowGraph, readInParam
 			continue;
 		}
 		if(writingOuts[0].cds === undefined) {
-			parameters.addEdge(read, writingOuts[0], EdgeType.Reads);
+			parameters.addEdge(rid, writingOuts[0].nodeId, EdgeType.Reads);
 			continue;
 		}
-		for(const out of writingOuts) {
-			parameters.addEdge(read, out, EdgeType.Reads);
+		for(const { nodeId } of writingOuts) {
+			parameters.addEdge(rid, nodeId, EdgeType.Reads);
 		}
 	}
 	return remainingRead;

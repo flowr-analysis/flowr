@@ -21,9 +21,9 @@ export function normalizeBreak(data: NormalizerData, obj: JsonEntry): RBreak {
 		location,
 		lexeme: content,
 		info:   {
-			fullRange:        location,
-			additionalTokens: [],
-			fullLexeme:       content
+			fullRange:  location,
+			adToks:     [],
+			fullLexeme: content
 		}
 	};
 }

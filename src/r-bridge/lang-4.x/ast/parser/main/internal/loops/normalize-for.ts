@@ -1,4 +1,4 @@
-import { type NormalizerData , ParseError } from '../../normalizer-data';
+import { type NormalizerData, ParseError } from '../../normalizer-data';
 import { parseLog } from '../../../json/parser';
 import { ensureExpressionList, getWithTokenType, retrieveMetaStructure } from '../../normalize-meta';
 import { guard } from '../../../../../../../util/assert';
@@ -35,7 +35,7 @@ export function tryNormalizeFor(
 	const newParseData = { ...data, data, currentRange: undefined, currentLexeme: undefined };
 
 	const { variable: parsedVariable, vector: parsedVector, comments } =
-    normalizeForHead(newParseData, head.content);
+		normalizeForHead(newParseData, head.content);
 	const parseBody = normalizeSingleNode(newParseData, body);
 
 	if(
@@ -61,9 +61,9 @@ export function tryNormalizeFor(
 		body:     ensureExpressionList(parseBody),
 		lexeme:   content,
 		info:     {
-			fullRange:        data.currentRange,
-			additionalTokens: comments,
-			fullLexeme:       data.currentLexeme,
+			fullRange:  data.currentRange,
+			adToks:     comments,
+			fullLexeme: data.currentLexeme,
 		},
 		location
 	};

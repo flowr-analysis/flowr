@@ -1,21 +1,22 @@
 import { assert, describe, it } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { SemanticCfgGuidedVisitor } from '../../../src/control-flow/semantic-cfg-guided-visitor';
-import { type TREE_SITTER_DATAFLOW_PIPELINE , createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
+import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../src/core/steps/pipeline/default-pipelines';
 import type { PipelineOutput } from '../../../src/core/steps/pipeline/pipeline';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import type { ControlFlowInformation } from '../../../src/control-flow/control-flow-graph';
 import type { DataflowGraphVertexFunctionCall, DataflowGraphVertexValue } from '../../../src/dataflow/graph/vertex';
 import type { RNumber } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-number';
-import { defaultConfigOptions } from '../../../src/config';
 import type { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { graphToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+import { FlowrConfig } from '../../../src/config';
+import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 
 describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
-	const config = defaultConfigOptions;
+	const config = FlowrConfig.default();
 
 	function testSemanticVisitor<V extends SemanticCfgGuidedVisitor>(
 		code: string,
@@ -35,7 +36,7 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 			try {
 				assert(v);
 			} catch(error) {
-				console.error('dfg: ', graphToMermaidUrl(data.dataflow.graph));
+				console.error('dfg: ', Dataflow.visualize.mermaid.url(data.dataflow.graph));
 				console.error('cfg: ', cfgToMermaidUrl(cfg, data.normalize));
 				throw error;
 			}
@@ -138,11 +139,11 @@ describe('SemanticCfgGuidedVisitor', withTreeSitter(ts => {
 		}
 
 		protected onVectorCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(data.call.name);
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		protected onAssignmentCall(data: { call: DataflowGraphVertexFunctionCall }) {
-			this.lexemes.push(data.call.name);
+			this.lexemes.push(Identifier.toString(data.call.name));
 		}
 
 		public getLexemes(): string[] {

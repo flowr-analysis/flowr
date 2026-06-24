@@ -1,31 +1,31 @@
-import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowGraph , getReferenceOfArgument } from '../../../dataflow/graph/graph';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { type DataflowGraph, FunctionArgument } from '../../../dataflow/graph/graph';
 import { visitCfgInReverseOrder } from '../../../control-flow/simple-visitor';
 import { type DataflowGraphVertexFunctionCall, isFunctionCallVertex } from '../../../dataflow/graph/vertex';
-import { edgeIncludesType, EdgeType } from '../../../dataflow/graph/edge';
+import { DfEdge, EdgeType } from '../../../dataflow/graph/edge';
 import { resolveByName } from '../../../dataflow/environments/resolve-by-name';
-import { ReferenceType } from '../../../dataflow/environments/identifier';
-import { isBuiltIn } from '../../../dataflow/environments/built-in';
+import { Identifier, ReferenceType } from '../../../dataflow/environments/identifier';
 import { assertUnreachable } from '../../../util/assert';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { RNodeWithParent } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { LinkTo } from './call-context-query-format';
+import type { LinkToLastCall } from './call-context-query-format';
 import { CascadeAction } from './cascade-action';
-import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 import type { PromotedLinkTo } from './call-context-query-executor';
+import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import { CfgKind } from '../../../project/cfg-kind';
+import type { ControlFlowGraph } from '../../../control-flow/control-flow-graph';
 
 export enum CallTargets {
-    /** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
-    OnlyGlobal = 'global',
-    /** call targets a function that is defined locally or globally, but must include a global function */
-    MustIncludeGlobal = 'must-include-global',
-    /** call targets a function that is defined locally  */
-    OnlyLocal = 'local',
-    /** call targets a function that is defined locally or globally, but must include a local function */
-    MustIncludeLocal = 'must-include-local',
-    /** call targets a function that is defined locally or globally */
-    Any = 'any'
+	/** call targets a function that is not defined locally in the script (e.g., the call targets a library function) */
+	OnlyGlobal = 'global',
+	/** call targets a function that is defined locally or globally, but must include a global function */
+	MustIncludeGlobal = 'must-include-global',
+	/** call targets a function that is defined locally  */
+	OnlyLocal = 'local',
+	/** call targets a function that is defined locally or globally, but must include a local function */
+	MustIncludeLocal = 'must-include-local',
+	/** call targets a function that is defined locally or globally */
+	Any = 'any'
 }
 
 /**
@@ -37,7 +37,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 		return 'no';
 	}
 	const callTargets = outgoing.entries()
-		.filter(([, { types }]) => edgeIncludesType(types, EdgeType.Calls))
+		.filter(([, e]) => DfEdge.includesType(e, EdgeType.Calls))
 		.map(([t]) => t)
 		.toArray()
     ;
@@ -50,7 +50,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
          * including any potential built-in mapping.
          */
 		const reResolved = resolveByName(info.name, info.environment, ReferenceType.Unknown);
-		if(reResolved?.some(t => isBuiltIn(t.definedAt))) {
+		if(reResolved?.some(t => NodeId.isBuiltIn(t.definedAt))) {
 			builtIn = true;
 		}
 	} else {
@@ -64,7 +64,7 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 		case CallTargets.Any:
 			return callTargets;
 		case CallTargets.OnlyGlobal:
-			if(callTargets.every(isBuiltIn)) {
+			if(callTargets.every(NodeId.isBuiltIn)) {
 				return builtIn ? ['built-in'] : [];
 			} else {
 				return 'no';
@@ -93,14 +93,14 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 	if(!call) {
 		return undefined;
 	}
-	const totalIndex = argument.name ? call.args.findIndex(arg => arg !== EmptyArgument && arg.name === argument.name) : -1;
+	const totalIndex = argument.name ? call.args.findIndex(arg => FunctionArgument.hasName(arg, argument.name)) : -1;
 	let refAtIndex: NodeId | undefined;
 	if(totalIndex < 0) {
-		const references = call.args.filter(arg => arg !== EmptyArgument && !arg.name).map(getReferenceOfArgument);
+		const references = call.args.filter(FunctionArgument.isPositional).map(FunctionArgument.getReference);
 		refAtIndex = references[argument.index];
 	} else {
 		const arg = call.args[totalIndex];
-		refAtIndex = getReferenceOfArgument(arg);
+		refAtIndex = FunctionArgument.getReference(arg);
 	}
 	if(refAtIndex === undefined) {
 		return undefined;
@@ -115,30 +115,47 @@ export function getValueOfArgument<Types extends readonly RType[] = readonly RTy
 }
 
 /**
+ * **Please refer to {@link identifyLinkToRelation}.**
+ *
  * Identifies nodes that link to the last call of a specified function from a given starting node in the control flow graph.
  * If you pass on `knownCalls` (e.g., produced by {@link getCallsInCfg}), this will only respect the functions
  * listed there and ignore any other calls. This can be also used to speed up the process if you already have
  * the known calls available.
+ * @see {@link identifyLinkToLastCallRelationSync} for the synchronous version.
  */
-export function identifyLinkToLastCallRelation(
+export async function identifyLinkToLastCallRelation(
+	from: NodeId,
+	analyzer: ReadonlyFlowrAnalysisProvider,
+	l: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
+	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
+): Promise<NodeId[]> {
+	const graph = (await analyzer.dataflow()).graph;
+	const cfg = (await analyzer.controlflow([], CfgKind.WithDataflow)).graph;
+
+	return identifyLinkToLastCallRelationSync(from, cfg, graph, l, knownCalls);
+}
+
+/**
+ * Synchronous version of {@link identifyLinkToLastCallRelation}.
+ */
+export function identifyLinkToLastCallRelationSync(
 	from: NodeId,
 	cfg: ControlFlowGraph,
 	graph: DataflowGraph,
-	{ callName, ignoreIf, cascadeIf }: LinkTo<RegExp> | PromotedLinkTo,
+	{ callName, cascadeIf, ignoreIf }: LinkToLastCall<RegExp> | PromotedLinkTo<LinkToLastCall<RegExp>>,
 	knownCalls?: Map<NodeId, Required<DataflowGraphVertexFunctionCall>>
 ): NodeId[] {
 	if(ignoreIf?.(from, graph)) {
 		return [];
 	}
-
 	const found: NodeId[] = [];
-	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(name)
-		: ({ name }: DataflowGraphVertexFunctionCall) => callName.has(name);
+	const cNameCheck = callName instanceof RegExp ? ({ name }: DataflowGraphVertexFunctionCall) => callName.test(Identifier.getName(name))
+		: ({ name }: DataflowGraphVertexFunctionCall) => callName(Identifier.getName(name));
 
 	const getVertex = knownCalls ?
 		(node: NodeId) => knownCalls.get(node) :
 		(node: NodeId) => {
-			const v = graph.getVertex(node, true);
+			const v = graph.getVertex(node);
 			return isFunctionCallVertex(v) ? v : undefined;
 		};
 

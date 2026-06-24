@@ -24,10 +24,21 @@ import { DocMaker } from './wiki-mk/doc-maker';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{
+		header:      'Supporting the Comprehension of Data Analysis Scripts (FSE \'25, Tool)',
+		description: 'This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.',
+		doi:         'https://doi.org/10.1145/3803437.3806402',
+		bibtex:      String.raw`@article{10.1145/3803437.3806402,
+	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+	title = {Supporting the Comprehension of Data Analysis Scripts},
+	year = {2026},
+	doi = {10.1145/3803437.3806402}
+}`
+	},
+	{
 		header:      'Statically Analyzing the Dataflow of R Programs (OOPSLA \'25)',
-		description: 'Please cite this paper if you are using flowR in your research.',
+		description: '**Please cite this paper if you are using flowR in your research.**',
 		doi:         'https://doi.org/10.1145/3763087',
-		bibtex:      `@article{10.1145/3763087,
+		bibtex:      String.raw`@article{10.1145/3763087,
 	author = {Sihler, Florian and Tichy, Matthias},
 	title = {Statically Analyzing the Dataflow of R Programs},
 	year = {2025},
@@ -38,7 +49,7 @@ const PublicationsMain: { header: string, description: string, doi: string, bibt
 	number = {OOPSLA2},
 	url = {https://doi.org/10.1145/3763087},
 	doi = {10.1145/3763087},
-	abstract = {The R programming language is primarily designed for statistical computing and mostly used by researchers without a background in computer science. R provides a wide range of dynamic features and peculiarities that are difficult to analyze statically like dynamic scoping and lazy evaluation with dynamic side effects. At the same time, the R ecosystem lacks sophisticated analysis tools that support researchers in understanding and improving their code.   In this paper, we present a novel static dataflow analysis framework for the R programming language that is capable of handling the dynamic nature of R programs and produces the dataflow graph of given R programs. This graph can be essential in a range of analyses, including program slicing, which we implement as a proof of concept. The core analysis works as a stateful fold over a normalized version of the abstract syntax tree of the R program, which tracks (re-)definitions, values, function calls, side effects, external files, and a dynamic control flow to produce one dataflow graph per program.   We evaluate the correctness of our analysis using output equivalence testing on a manually curated dataset of 779 sensible slicing points from executable real-world R scripts. Additionally, we use a set of systematic test cases based on the capabilities of the R language and the implementation of the R interpreter and measure the runtimes well as the memory consumption on a set of 4,230 real-world R scripts and 20,815 packages available on R’s package manager CRAN.   Furthermore, we evaluate the recall of our program slicer, its accuracy using shrinking, and its improvement over the state of the art. We correctly analyze almost all programs in our equivalence test suite, preserving the identical output for 99.7\\% of the manually curated slicing points. On average, we require 576ms to analyze the dataflow and around 213kB to store the graph of a research script.   This shows that our analysis is capable of analyzing real-world sources quickly and correctly. Our slicer achieves an average reduction of 84.8\\% of tokens indicating its potential to improve program comprehension.},
+	abstract = {The R programming language is primarily designed for statistical computing and mostly used by researchers without a background in computer science. R provides a wide range of dynamic features and peculiarities that are difficult to analyze statically like dynamic scoping and lazy evaluation with dynamic side effects. At the same time, the R ecosystem lacks sophisticated analysis tools that support researchers in understanding and improving their code.   In this paper, we present a novel static dataflow analysis framework for the R programming language that is capable of handling the dynamic nature of R programs and produces the dataflow graph of given R programs. This graph can be essential in a range of analyses, including program slicing, which we implement as a proof of concept. The core analysis works as a stateful fold over a normalized version of the abstract syntax tree of the R program, which tracks (re-)definitions, values, function calls, side effects, external files, and a dynamic control flow to produce one dataflow graph per program.   We evaluate the correctness of our analysis using output equivalence testing on a manually curated dataset of 779 sensible slicing points from executable real-world R scripts. Additionally, we use a set of systematic test cases based on the capabilities of the R language and the implementation of the R interpreter and measure the runtimes well as the memory consumption on a set of 4,230 real-world R scripts and 20,815 packages available on R’s package manager CRAN.   Furthermore, we evaluate the recall of our program slicer, its accuracy using shrinking, and its improvement over the state of the art. We correctly analyze almost all programs in our equivalence test suite, preserving the identical output for 99.7\% of the manually curated slicing points. On average, we require 576ms to analyze the dataflow and around 213kB to store the graph of a research script.   This shows that our analysis is capable of analyzing real-world sources quickly and correctly. Our slicer achieves an average reduction of 84.8\% of tokens indicating its potential to improve program comprehension.},
 	journal = {Proc. ACM Program. Lang.},
 	month = oct,
 	articleno = {309},
@@ -48,7 +59,7 @@ const PublicationsMain: { header: string, description: string, doi: string, bibt
 	},
 	{
 		header:      'flowR: A Static Program Slicer for R (ASE \'24, Tool)',
-		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}">VS Code Extension</a>.`,
+		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}" target="_blank">VS Code Extension</a>.`,
 		doi:         'https://doi.org/10.1145/3691620.3695359',
 		bibtex:      `@inproceedings{DBLP:conf/kbse/SihlerT24,
   author       = {Florian Sihler and
@@ -207,18 +218,18 @@ The following showcases the dependency view of the [Visual Studio Code extension
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\\
   Within just [${'<i>' + textWithTooltip(roundToDecimals(await getLatestDfAnalysisTime('"social-science" Benchmark Suite (tree-sitter)'), 1) + ' ms', 'This measurement is automatically fetched from the latest benchmark!') + '</i>'} (as of ${new Date(await getLastBenchmarkUpdate()).toLocaleDateString('en-US', dateOptions)})](${FlowrSiteBaseRef}/wiki/stats/benchmark), 
-  _flowR_ can analyze the data- and control-flow of the average real-world R script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
-  and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the dataflow graphs as well as call graphs.
+  _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the ${ctx.linkPage('flowr:benchmarks', 'benchmarks')} for more information,
+  and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
 You can investigate flowR's analyses using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl).
-Commands like ${getReplCommand('dataflow*')} allow you to view a dataflow graph for a given R script.
+Commands like ${getReplCommand('dataflow*')} allow you to view a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for a given R script.
 
 Let's have a look at the following example:
 
 ${codeBlock('r', getFileContentFromRoot('test/testfiles/example.R'))}
 
-To get the dataflow graph for this script, you can use the following command:
+To get the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for this script, you can use the following command:
 
 ${await documentReplSession(treeSitter, [{
 	command:     ':dataflow* test/testfiles/example.R',
@@ -243,8 +254,8 @@ If you are already using flowR and want to give feedback, please consider fillin
  
 ## ⭐ Getting Started
 
-To get started with _flowR_ and its features, please check out the [Overview](${FlowrGithubBaseRef}/flowr/wiki/Overview) wiki page. 
-The [Setup](${FlowrGithubBaseRef}/flowr/wiki/Setup) wiki page explains how you can download and setup _flowR_ on your system. 
+To get started with _flowR_ and its features, please check out the ${ctx.linkPage('wiki/Overview')} wiki page. 
+The ${ctx.linkPage('wiki/Setup')} wiki page explains how you can download and setup _flowR_ on your system. 
 With docker&nbsp;🐳️, the following line should be enough (and drop you directly into the read-eval-print loop):
 
 ${codeBlock('shell', 'docker run -it --rm eagleoutice/flowr')}
@@ -267,8 +278,10 @@ If you want to use the same commands:
 
 ## 📜 More Information
 
-For more details on how to use _flowR_ please refer to the [wiki pages](${FlowrGithubBaseRef}/flowr/wiki),
-as well as the deployed [code documentation](https://flowr-analysis.github.io/flowr/doc/).
+For more details on how to use _flowR_ please refer to the ${ctx.linkPage('flowr:wiki', 'wiki pages')},
+as well as the deployed ${ctx.linkPage('flowr:docs', 'code documentation')}.
+To cite flowR, please check out the publications below. To specifically refer to the source code, 
+please check out flowR's ${ctx.linkPage('flowr:zenodo', 'Zenodo archive')}.
 
 ## 📃 Publications on flowR
 
@@ -279,7 +292,7 @@ ${printPublications()}
 
 ## 🚀 Contributing
 
-We welcome every contribution! Please check out the [developer onboarding](${FlowrWikiBaseRef}/Onboarding) section in the wiki for all the information you will need.
+We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboarding', 'developer onboarding')} section in the wiki for all the information you will need.
 
 ### Contributors
 
@@ -291,7 +304,8 @@ We welcome every contribution! Please check out the [developer onboarding](${Flo
 
 *flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) and (since October 1st 2025) [Oliver Gerstl](https://www.linkedin.com/in/oliver-gerstl) under the
 [GPLv3 License](LICENSE).\\
-It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector").
+It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector")
+and received an unrestricted gift from [Posit](https://posit.co/), the open-source data science company. 
 
 ----
 

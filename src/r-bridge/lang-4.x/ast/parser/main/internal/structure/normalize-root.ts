@@ -44,9 +44,9 @@ export function normalizeRootObjToAst(
 					grouping: undefined,
 					lexeme:   undefined,
 					info:     {
-						fullRange:        data.currentRange,
-						additionalTokens: delimiters,
-						fullLexeme:       data.currentLexeme
+						fullRange:  data.currentRange,
+						adToks:     delimiters,
+						fullLexeme: data.currentLexeme
 					}
 				}
 			}

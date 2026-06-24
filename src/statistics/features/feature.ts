@@ -30,7 +30,7 @@ import type { Document } from '@xmldom/xmldom';
  * <p>
  * Since we are writing to files {@link process}, we only count feature occurrences (some feature/parts are not written to file)
  */
-export type FeatureInfo = Record<string, unknown> & MergeableRecord
+export type FeatureInfo = Record<string, unknown> & MergeableRecord;
 
 
 /**
@@ -50,7 +50,7 @@ export interface FeatureProcessorInput extends MergeableRecord {
 /**
  * A function that processes the analysis results of a document and returns the feature information.
  */
-export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: FeatureProcessorInput) => T
+export type FeatureProcessor<T extends FeatureInfo> = (existing: T, input: FeatureProcessorInput) => T;
 
 /**
  * A feature is something to be retrieved by the statistics.
@@ -95,18 +95,18 @@ export const ALL_FEATURES = {
 	variables:        variables
 } as const;
 
-export type FeatureKey = keyof typeof ALL_FEATURES
-export type FeatureValue<K extends FeatureKey> = ReturnType<typeof ALL_FEATURES[K]['process']>
+export type FeatureKey = keyof typeof ALL_FEATURES;
+export type FeatureValue<K extends FeatureKey> = ReturnType<typeof ALL_FEATURES[K]['process']>;
 
 /** If the user passes `all`, this should be every feature present in {@link ALL_FEATURES} (see {@link allFeatureNames})*/
-export type FeatureSelection = Set<FeatureKey>
+export type FeatureSelection = Set<FeatureKey>;
 
 export const allFeatureNames: Set<FeatureKey> = new Set<FeatureKey>(Object.keys(ALL_FEATURES) as FeatureKey[]);
 
 export type FeatureStatistics = {
 	[K in FeatureKey]: FeatureInfo
-}
+};
 
-export type FeatureStatisticsWithMeta = FeatureStatistics & { stats: MetaStatistics }
+export type FeatureStatisticsWithMeta = FeatureStatistics & { stats: MetaStatistics };
 
 export interface Query { select(options?: EvalOptions): Node[] }

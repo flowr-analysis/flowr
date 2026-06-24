@@ -10,40 +10,41 @@ import { guard, isNotUndefined } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { patchFunctionCall } from '../common';
 import type { Environment, REnvironmentInformation } from '../../../../../environments/environment';
-import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { DataflowGraph } from '../../../../../graph/graph';
-import { type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, type IdentifierReference, ReferenceType } from '../../../../../environments/identifier';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { builtInId, BuiltInProcName, isBuiltIn } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
+import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
-const dotDotDotAccess = /^\.\.\d+$/;
 
 function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: REnvironmentInformation, listEnvironments: Set<NodeId>, remainingRead: Map<string | undefined, IdentifierReference[]>, nextGraph: DataflowGraph) {
-	const readName = read.name && dotDotDotAccess.test(read.name) ? '...' : read.name;
-
+	const readName = read.name && Identifier.isDotDotDotAccess(read.name) ? Identifier.dotdotdot() : read.name;
 	const probableTarget = readName ? resolveByName(readName, environments, read.type) : undefined;
 
 	// record if at least one has not been defined
 	if(probableTarget === undefined || probableTarget.some(t => !listEnvironments.has(t.nodeId) || !happensInEveryBranch(t.cds))) {
-		const has = remainingRead.get(readName);
+		const readId = readName ? Identifier.getName(readName) : undefined;
+		const has = remainingRead.get(readId);
 		if(has) {
-			if(!has?.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
+			if(!has.some(h => h.nodeId === read.nodeId && h.name === read.name && h.cds === read.cds)) {
 				has.push(read);
 			}
 		} else {
-			remainingRead.set(readName, [read]);
+			remainingRead.set(readId, [read]);
 		}
 	}
 
@@ -53,11 +54,22 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 		return;
 	}
 
+	const rid = read.nodeId;
+	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
 	for(const target of probableTarget) {
-		// we can stick with maybe even if readId.attribute is always
-		nextGraph.addEdge(read, target, EdgeType.Reads);
-		if((read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction) && (isBuiltIn(target.definedAt))) {
-			nextGraph.addEdge(read, target, EdgeType.Calls);
+		const tid = target.nodeId;
+		if(NodeId.isBuiltIn(target.definedAt) && isFunc) {
+			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
+		} else {
+			nextGraph.addEdge(rid, tid, EdgeType.Reads);
+		}
+		if(target.type === ReferenceType.BuiltInConstant) {
+			nextGraph.addVertex({
+				tag:   VertexType.Value,
+				id:    tid,
+				cds:   undefined,
+				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+			}, environments, false);
 		}
 	}
 }
@@ -82,7 +94,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 			while(!current?.builtInEnv) {
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
-						if(!isBuiltIn(def.definedAt)) {
+						if(!NodeId.isBuiltIn(def.definedAt)) {
 							hasUpdate = true;
 							nextGraph.addEdge(def.nodeId, functionCall, EdgeType.SideEffectOnCall);
 						}
@@ -100,7 +112,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 					};
 				}
 				if(callDependencies === null) {
-					callDependencies = nextGraph.getVertex(functionCall, true)?.cds;
+					callDependencies = nextGraph.getVertex(functionCall)?.cds;
 				}
 				inputEnvironment = overwriteEnvironment(inputEnvironment, environment, callDependencies);
 			}
@@ -115,7 +127,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
  */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -130,7 +142,7 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	let out: IdentifierReference[] = [];
+	const out: IdentifierReference[] = [];
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
@@ -157,13 +169,14 @@ export function processExpressionList<OtherInfo>(
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		out = out.concat(processed.out);
+		out.push(...processed.out);
 
 		// all inputs that have not been written until now are read!
-		for(const ls of [processed.in, processed.unknownReferences]) {
-			for(const read of ls) {
-				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
-			}
+		for(const read of processed.in) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		}
+		for(const read of processed.unknownReferences) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
@@ -203,7 +216,12 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing = remainingRead.values().toArray().flat();
+	const ingoing: IdentifierReference[] = [];
+	for(const refs of remainingRead.values()) {
+		for(const ref of refs) {
+			ingoing.push(ref);
+		}
+	}
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;
@@ -219,7 +237,7 @@ export function processExpressionList<OtherInfo>(
 			origin:                BuiltInProcName.ExpressionList
 		});
 
-		nextGraph.addEdge(rootId, builtInId('{'), EdgeType.Reads | EdgeType.Calls);
+		nextGraph.addEdge(rootId, NodeId.toBuiltIn('{'), EdgeType.Reads | EdgeType.Calls);
 
 		// process all exit points as potential returns:
 		for(const exit of exitPoints) {

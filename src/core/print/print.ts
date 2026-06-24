@@ -54,9 +54,9 @@ export function internalPrinter<Input>(input: Input): Input {
  */
 export type IPipelineStepPrinter<StepInput extends StepProcessingFunction, Format extends StepOutputFormat, AdditionalInput extends unknown[]> =
 	Format extends StepOutputFormat.Internal ? (input: Awaited<ReturnType<StepInput>>) => Awaited<ReturnType<StepInput>> :
-		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string
+		(input: Awaited<ReturnType<StepInput>>, ...additional: AdditionalInput) => Promise<string> | string;
 
-export type InternalStepPrinter<StepInput extends StepProcessingFunction> = IPipelineStepPrinter<StepInput, StepOutputFormat.Internal, []>
+export type InternalStepPrinter<StepInput extends StepProcessingFunction> = IPipelineStepPrinter<StepInput, StepOutputFormat.Internal, []>;
 
 /**
  * For a `step` of the given name, which returned the given `data`. Convert that data into the given `format`.

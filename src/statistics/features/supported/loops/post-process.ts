@@ -1,8 +1,8 @@
 import type { FeatureStatisticsWithMeta } from '../../feature';
-import { type SummarizedWithProject , emptySummarizedWithProject, recordFilePath } from '../../post-processing';
+import { type SummarizedWithProject, emptySummarizedWithProject, recordFilePath } from '../../post-processing';
 import type { LoopInfo } from './loops';
 import {
-	type CommonSyntaxTypeCounts ,
+	type CommonSyntaxTypeCounts,
 	appendCommonSyntaxTypeCounter,
 	emptyCommonSyntaxTypeCounts
 } from '../../common-syntax-probability';
@@ -19,7 +19,7 @@ import {
 
 type LoopInfoPostProcess = MergeableRecord & {
 	[k in keyof LoopInfo]: LoopInfo[k] extends number | bigint ? SummarizedWithProject : CommonSyntaxTypeCounts<number[][]>
-}
+};
 
 
 /**

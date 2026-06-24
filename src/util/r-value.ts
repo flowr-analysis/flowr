@@ -1,11 +1,12 @@
-import {
+import { type ValueNull,
 	type Value,
 	type ValueInterval,
 	type ValueLogical,
 	type ValueNumber,
 	type ValueString,
 	type ValueVector
-	, isValue } from '../dataflow/eval/values/r-value';
+	, isValue
+} from '../dataflow/eval/values/r-value';
 import type { RLogicalValue } from '../r-bridge/lang-4.x/ast/model/nodes/r-logical';
 import { RFalse, RTrue, type RNumberValue, type RStringValue } from '../r-bridge/lang-4.x/convert-values';
 import { assertUnreachable, isNotUndefined } from './assert';
@@ -100,21 +101,25 @@ export function unwrapRValueToString(value: RStringValue | RNumberValue | RLogic
 	}
 }
 
+export function unliftRValue(value: ValueNull): null;
 export function unliftRValue(value: ValueString): RStringValue | undefined;
 export function unliftRValue(value: ValueNumber | ValueInterval): RNumberValue | undefined;
 export function unliftRValue(value: ValueLogical): RLogicalValue | undefined;
 export function unliftRValue(value: ValueVector): (RStringValue | RNumberValue | RLogicalValue)[] | undefined;
-export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue)[] | undefined;
+export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue | null)[] | null | undefined;
 /**
  * Unlifts an R value to its core representation.
  */
-export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue)[] | undefined {
+export function unliftRValue(value: Value): RStringValue | RNumberValue | 'fn-def' | boolean | ('fn-def' | RStringValue | RNumberValue | RLogicalValue | null)[] | null | undefined {
 	if(!isValue(value)) {
 		return undefined;
 	}
 	const type = value.type;
 
 	switch(type) {
+		case 'null': {
+			return null;
+		}
 		case 'string': {
 			return isValue(value.value) ? value.value : undefined;
 		}

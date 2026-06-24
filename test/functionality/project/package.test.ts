@@ -1,4 +1,4 @@
-import { describe, test , assert } from 'vitest';
+import { describe, test, assert } from 'vitest';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 import { Range } from 'semver';
 

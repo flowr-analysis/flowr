@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
 import { assertLinter } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
-import { type SlicingCriteria , convertAllSlicingCriteriaToIds } from '../../../src/slicing/criterion/parse';
+import { SlicingCriteria } from '../../../src/slicing/criterion/parse';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { guard } from '../../../src/util/assert';
-import { type SourceRange , rangeFrom } from '../../../src/util/range';
+import { SourceLocation, SourceRange } from '../../../src/util/range';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('unused definitions', () => {
@@ -20,6 +20,18 @@ describe('flowR linter', withTreeSitter(parser => {
 				'f <- function(v) { x <<- v * 2 }\nf(2)\nprint(x)',
 				'(function() { x <- 42; print(x) })()',
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
+				'x <- list()\nx$a <- 2\nprint(x)',
+				'x <- new.env()\nx$a <- 2\nprint(x)',
+				/* the first `x <- 42` is *not* unused as it serves as an anchor for the global redefinition within the nested function! */
+				`f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())
+print(x)`
 			]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', []);
@@ -27,29 +39,37 @@ describe('flowR linter', withTreeSitter(parser => {
 		});
 		describe('With unused definitions', () => {
 			for(const [program, criteria, removableRange] of [
-				['x <- 2', '1@x', rangeFrom(1, 1, 1, 6)],
-				['x <- 2\nx <- 1\nprint(x)', '1@x', rangeFrom(1, 1, 1, 6)],
-				['x <- 1\ny <- 2\nprint(x + 1)',   '2@y', rangeFrom(2, 1, 2, 6)],
-				['x <- 4\ny <- foo(42)\nprint(y)', '1@x', rangeFrom(1, 1, 1, 6)],
+				['x <- 2', '1@x', SourceRange.from(1, 1, 1, 6)],
+				['x <- 2\nx <- 1\nprint(x)', '1@x', SourceRange.from(1, 1, 1, 6)],
+				['x <- 1\ny <- 2\nprint(x + 1)',   '2@y', SourceRange.from(2, 1, 2, 6)],
+				['x <- 4\ny <- foo(42)\nprint(y)', '1@x', SourceRange.from(1, 1, 1, 6)],
 				['for(i in 1:10) 42;', '1@i', undefined],
-				['f <- function(x) { x + 1 }\nprint(2)', '1@f', rangeFrom(1, 1, 1, 26)], // ;1@function is included in f
-				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', rangeFrom(1, 20, 1, 30)],
-				['function() { 42 }', '1@function', rangeFrom(1, 1, 1, 17)],
-				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', rangeFrom(2, 2, 2, 18)]
+				['f <- function(x) { x + 1 }\nprint(2)', '1@f', SourceRange.from(1, 1, 1, 26)], // ;1@function is included in f
+				['f <- function(v) { x <<- v * 2 }\nf(2)', '1@x', SourceRange.from(1, 20, 1, 30)],
+				['function() { 42 }', '1@function', SourceRange.from(1, 1, 1, 17)],
+				['f <- function() {\n function() { 42 } }\nprint(f())', '2@function', SourceRange.from(2, 2, 2, 18)],
+				[`f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 			] as const satisfies readonly [string, string, SourceRange | undefined][]) {
 				/* @ignore-in-wiki */
 				assertLinter(program, parser, program, 'unused-definitions', (df, ast) => {
-					const ids = convertAllSlicingCriteriaToIds(criteria.split(';') as SlicingCriteria, ast.idMap);
+					const ids = SlicingCriteria.decodeAll(criteria.split(';') as SlicingCriteria, ast.idMap);
 					return ids.map(({ id }) => {
 						const node = ast.idMap.get(id);
 						guard(node !== undefined, `Expected node for id ${id} to be defined, but got undefined`);
 						return {
 							certainty:    LintingResultCertainty.Uncertain,
 							variableName: node.lexeme,
-							range:        node.info.fullRange ?? node.location ?? rangeFrom(-1, -1, -1, -1),
+							loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 							quickFix:     removableRange ? [{
 								type:        'remove',
-								range:       removableRange,
+								loc:         removableRange as SourceLocation,
 								description: `Remove unused definition of \`${node.lexeme}\``
 							}] : undefined
 						};

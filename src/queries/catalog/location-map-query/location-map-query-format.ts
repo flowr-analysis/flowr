@@ -6,16 +6,16 @@ import Joi from 'joi';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { FlowrConfigOptions } from '../../../config';
+import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
 import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
 	/** Optional list of ids to filter the results by. If not provided, all ids will be included. */
-	readonly ids?: readonly SingleSlicingCriterion[];
+	readonly ids?: readonly SlicingCriterion[];
 }
 
 export type FileId = number & { readonly __fileId?: unique symbol };
@@ -24,11 +24,11 @@ export type FilePath = string & { readonly __filePath?: unique symbol };
 export interface LocationMapQueryResult extends BaseQueryResult {
 	readonly map: {
 		files: Record<FileId, FilePath>;
-		ids:   Record<NodeId, [FileId,SourceRange]>
+		ids:   Record<NodeId, [FileId, SourceRange]>
 	}
 }
 
-function locationMapLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfigOptions): ParsedQueryLine<'location-map'> {
+function locationMapLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'location-map'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	return {
 		query: {

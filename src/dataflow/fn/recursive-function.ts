@@ -9,7 +9,7 @@ import type { CallGraph } from '../graph/call-graph';
  */
 export function isFunctionRecursive(id: NodeId, graph: CallGraph): boolean {
 	const vert = graph.getVertex(id);
-	if(!vert || !isFunctionDefinitionVertex(vert)) {
+	if(!isFunctionDefinitionVertex(vert)) {
 		return false;
 	}
 

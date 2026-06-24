@@ -16,7 +16,7 @@ const initialValueInfo = {
 	strings:          0
 };
 
-export type ValueInfo = Writable<typeof initialValueInfo>
+export type ValueInfo = Writable<typeof initialValueInfo>;
 
 
 const numericConstantQuery: Query = xpath.parse('//NUM_CONST');

@@ -12,10 +12,10 @@ function fingerPrintTransformer(transformer: readonly FlowrSearchTransformerNode
  * in an update of the search object.
  */
 export function optimize<
-    Info,
-    Generator extends GeneratorNames,
-    Transformers extends TransformerNames[],
-    ElementType extends FlowrSearchElements<Info, FlowrSearchElement<Info>[]>
+	Info,
+	Generator extends GeneratorNames,
+	Transformers extends TransformerNames[],
+	ElementType extends FlowrSearchElements<Info, FlowrSearchElement<Info>[]>
 >(generator: FlowrSearchGeneratorNode, search: readonly FlowrSearchTransformerNode[]): FlowrSearch<Info, Generator, Transformers, ElementType> {
 	let searchToOptimize = search.slice();
 	let fingerprint = fingerPrintTransformer(searchToOptimize);

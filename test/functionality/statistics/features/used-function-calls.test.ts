@@ -55,7 +55,7 @@ describe.sequential('Used Function Calls', withShell(shell => {
 			written: [
 				['all-calls', [[[
 					'b',
-					[1,1],
+					[1, 1],
 					2,
 					'a',
 					0
@@ -83,7 +83,7 @@ describe.sequential('Used Function Calls', withShell(shell => {
 				]],
 				['all-calls', [[[
 					undefined,
-					[1,1],
+					[1, 1],
 					1,
 					'',
 					1
@@ -107,7 +107,7 @@ describe.sequential('Used Function Calls', withShell(shell => {
 			written: [
 				['all-calls', [[[
 					'sin',
-					[1,1],
+					[1, 1],
 					1,
 					'',
 					0
@@ -167,21 +167,21 @@ describe.sequential('Used Function Calls', withShell(shell => {
 					]],
 					[[
 						'b',
-						[1,3],
+						[1, 3],
 						0,
 						'',
 						0
 					]],
 					[[
 						'c',
-						[1,8],
+						[1, 8],
 						2,
 						'',
 						1
 					]],
 					[[
 						'd',
-						[1,13],
+						[1, 13],
 						0,
 						'',
 						0
@@ -195,21 +195,21 @@ describe.sequential('Used Function Calls', withShell(shell => {
 					]],
 					[[
 						'b',
-						[2,38],
+						[2, 38],
 						0,
 						'',
 						0
 					]],
 					[[
 						'd',
-						[2,43],
+						[2, 43],
 						1,
 						'',
 						0
 					]],
 					[[
 						'f',
-						[3,41],
+						[3, 41],
 						0,
 						'',
 						0

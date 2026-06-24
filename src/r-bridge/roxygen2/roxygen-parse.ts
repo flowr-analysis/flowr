@@ -2,11 +2,10 @@ import type { RoxygenBlock, RoxygenTag } from './roxygen-ast';
 import { isKnownRoxygenText, KnownRoxygenTags } from './roxygen-ast';
 import type { RNode } from '../lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../lang-4.x/ast/model/processing/decorate';
-import type { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
-import { isRComment } from '../lang-4.x/ast/model/nodes/r-comment';
+import { RComment } from '../lang-4.x/ast/model/nodes/r-comment';
 import { isNotUndefined } from '../../util/assert';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { mergeRanges } from '../../util/range';
+import { SourceRange } from '../../util/range';
 
 function prepareCommentContext(commentText: readonly string[]): string[] {
 	const contents = [];
@@ -35,8 +34,8 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 	let comments: RComment<ParentInformation>[] | undefined;
 	let cur: RNode<ParentInformation> | undefined = node;
 	do{
-		comments = cur?.info.additionalTokens
-			?.filter(isRComment).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
+		comments = cur?.info.adToks
+			?.filter(RComment.is).filter(r => isNotUndefined(r.lexeme)) as RComment<ParentInformation>[] | undefined;
 		cur = cur?.info.parent ? idMap?.get(cur.info.parent) : undefined;
 	} while((comments === undefined || comments.length === 0) && cur !== undefined);
 	if(comments === undefined || comments.length === 0) {
@@ -49,7 +48,7 @@ export function parseRoxygenCommentsOfNode(node: RNode<ParentInformation>, idMap
 		attachedTo:  cur?.info.id,
 		requestNode: node.info.id,
 		range:       [
-			...mergeRanges(comments.map(c => c.location)),
+			...SourceRange.merge(comments.map(c => c.location)),
 			comments.find(c => c.info.file)?.info.file
 		]
 	};

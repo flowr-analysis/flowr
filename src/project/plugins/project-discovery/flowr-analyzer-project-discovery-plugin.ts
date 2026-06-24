@@ -22,7 +22,7 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
-const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd)$/i;
+const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd|rnw)$/i;
 const ignorePathsWith = /(\.git|\.svn|\.hg|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
 const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 

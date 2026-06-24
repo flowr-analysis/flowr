@@ -19,7 +19,7 @@ import { DocMaker } from './wiki-mk/doc-maker';
  */
 export class WikiLintingAndTesting extends DocMaker<'wiki/Linting and Testing.md'> {
 	constructor() {
-		super('wiki/Linting and Testing.md', module.filename,'linting and testing definitions');
+		super('wiki/Linting and Testing.md', module.filename, 'linting and testing definitions');
 	}
 
 	protected text({ ctx }: DocMakerArgs): string {
@@ -59,7 +59,7 @@ This command includes the construction of the docker image, the generation of th
 
 The functionality tests represent conventional unit (and depending on your terminology component/api) tests.
 We use [vitest](https://vitest.dev/) as our testing framework.
-You can run the tests by issuing (some quick benchmarks may be available with \`vitest bench\`):
+You can run the tests by issuing (some quick benchmarks may be available with \`npm run test:bench\`):
 
 ${codeBlock('shell', 'npm run test')}
 

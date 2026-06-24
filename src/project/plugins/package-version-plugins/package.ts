@@ -11,7 +11,7 @@ export type PackageOptions = {
 	dependencies?:       Package[];
 	namespaceInfo?:      NamespaceInfo;
 	versionConstraints?: Range[];
-}
+};
 
 export class Package {
 	public name:               string;

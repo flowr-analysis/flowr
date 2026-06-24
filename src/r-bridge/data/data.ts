@@ -102,10 +102,42 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
 						},
 						{
-							name:        'Dynamic Environment Resolution',
-							id:          'dynamic-environment-resolution',
-							supported:   'not',
-							description: '_For example, using `new.env` and friends_'
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								}
+							]
 						},
 						{
 							name:        'Environment Sharing',
@@ -122,13 +154,13 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Search Path',
 							id:          'search-path',
-							supported:   'not',
+							supported:   'partially',
 							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
 						},
 						{
 							name:        'Namespaces',
 							id:          'namespaces',
-							supported:   'not',
+							supported:   'partially',
 							description: "_Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_"
 						},
 						{
@@ -140,7 +172,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Accessing Internal Names',
 							id:          'accessing-internal-names',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Similar to `::` but for internal names._'
 						},
 						{
@@ -155,6 +187,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							supported:   'partially',
 							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
 						},
+						{
+							name:        'Anonymous Bindings',
+							id:          'anonymous-bindings',
+							supported:   'fully',
+							description: '_Support for [`Recall`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Recall)_'
+						}
 					]
 				}
 			]
@@ -531,9 +569,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								},
 								{
 									name:        'Pipe and Pipe-Bind',
-									id:          'built-in-pipe-and-pipe-bind',
+									id:          'pipe-and-pipe-bind',
 									supported:   'partially',
-									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.'
+									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; Similarly support the other pipe binds'
 								},
 								{
 									name:        'Sequencing',
@@ -584,7 +622,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 										{
 											name:        'Evaluation',
 											id:          'built-in-evaluation',
-											supported:   'not',
+											supported:   'partially',
 											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
 										},
 										{
@@ -754,12 +792,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						},
 						{
 							name: 'R7/S7',
-							id:   'r7-s7',
+							id:   'oop-r7-s7',
 							url:  [
 								{ name: 'R7', href: 'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/' },
 								{ name: 'S7', href: 'https://cran.r-project.org/web/packages/S7/index.html' }
 							],
-							supported:   'not',
+							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
 						}
 					]
@@ -823,13 +861,37 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 					id:          'system-calls',
 					supported:   'not',
 					description: '_Handle [`system`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/system), `system.*`, ..._ We do not support system calls but treat them as unknown function calls.'
+				},
+				{
+					name:        'R-Markdown files',
+					id:          'file:rmd',
+					supported:   'fully',
+					description: 'Support R-Markdown files as R sources.'
+				},
+				{
+					name:        'Jupyter Notebook',
+					id:          'file:ipynb',
+					supported:   'partially',
+					description: 'Support Jupyter Notebooks as R sources.'
+				},
+				{
+					name:        'Quarto',
+					id:          'file:qmd',
+					supported:   'partially',
+					description: 'Support Quarto files as R sources.'
+				},
+				{
+					name:        'Sweave',
+					id:          'file:rnw',
+					supported:   'partially',
+					description: 'Support for Sweave files as R sources.'
 				}
 			]
 		},
 		{
 			name:        'Pre-Processors/external Tooling',
 			id:          'pre-processors-external-tooling',
-			supported:   'not',
+			supported:   'fully',
 			description: '_Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)'
 		}
 	]

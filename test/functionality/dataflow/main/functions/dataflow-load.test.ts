@@ -8,10 +8,10 @@ import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { getVarsAndTypesFromShell } from '../../../project/plugin/load-pipeline/load-pipeline.test';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { builtInId } from '../../../../../src/dataflow/environments/built-in';
-import { defaultConfigOptions } from '../../../../../src/config';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import os from 'os';
+import { FlowrConfig } from '../../../../../src/config';
 
 describe('load real-world', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
@@ -153,8 +153,10 @@ describe('load real-world', withTreeSitter(parser => {
 				emptyGraph(),
 				{
 					expectIsSubgraph:    true,
-					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`])
-				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
+					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`]),
+				},
+				0,
+				FlowrConfig.setInConfig(FlowrConfig.default(), 'ignoreLoadCalls', true)
 			);
 		}
 	});
@@ -338,7 +340,9 @@ describe('load random', withTreeSitter(parser => {
 				{
 					expectIsSubgraph:    true,
 					mustNotHaveVertices: new Set([`3:loaded:${firstVar}`])
-				}, 0, { ...defaultConfigOptions, ignoreLoadCalls: true }
+				},
+				0,
+				FlowrConfig.setInConfig(FlowrConfig.default(), 'ignoreLoadCalls', true)
 			);
 		}
 	});

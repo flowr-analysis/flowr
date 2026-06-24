@@ -1,4 +1,4 @@
-import type { FileRole , FlowrFileProvider } from '../../../context/flowr-file';
+import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'node:fs';
 // @ts-expect-error no type information provided for package bzip2
@@ -775,7 +775,7 @@ export class RDAParser{
 		writerVersion = writerVersion % 2 ** 8;
 		const s = writerVersion;
 
-		return [v,p,s];
+		return [v, p, s];
 	}
 
 	/**

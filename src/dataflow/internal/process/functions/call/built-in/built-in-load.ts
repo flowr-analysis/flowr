@@ -1,11 +1,9 @@
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
@@ -20,19 +18,23 @@ import { expensiveTrace } from '../../../../../../util/log';
 import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
-import { invertArgumentMap, pMatch } from '../../../../linker';
-import { convertFnArguments } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
-import { getArgumentWithId } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { isValue } from '../../../../../eval/values/r-value';
 import { isNotUndefined } from '../../../../../../util/assert';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
-import type { SourceRange } from '../../../../../../util/range';
-import { invalidRange } from '../../../../../../util/range';
+import { SourceRange } from '../../../../../../util/range';
 import type { RExpressionList } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type {
+	PotentiallyEmptyRArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import {
+	EmptyArgument
+} from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { bindArgs } from './built-in-envir-utils';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -41,7 +43,7 @@ import type { DataflowFunctionFlowInformation } from '../../../../../graph/graph
  */
 export function processLoadCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
@@ -90,7 +92,7 @@ export function processLoadCall<OtherInfo>(
 			}
 
 			let envir = fn.information.environment;
-			const loadLocation = name.location ?? name.fullRange ?? invalidRange();
+			const loadLocation = name.location ?? name.fullRange ?? SourceRange.invalid();
 			const loadCds = [...(data.cds ?? []), { id: rootId, when: true, file: filepath }];
 
 			for(const variable of variables) {
@@ -131,8 +133,8 @@ function defineLoadedVariable<OtherInfo>(
 			id:     syntheticId,
 			parent: rootId,
 			role:   RoleInParent.ExpressionListChild,
-		}
-	} as RSymbol<OtherInfo & ParentInformation>);
+		} as OtherInfo & ParentInformation
+	});
 
 	if(isClosure) {
 		defineLoadedClosure(syntheticId, variable, fn, envir, loadLocation, loadCds, data, rootInfo);
@@ -151,7 +153,7 @@ function defineLoadedVariable<OtherInfo>(
 		definedAt: rootId,
 		cds:       loadCds,
 	};
-	const newCurrent = envir.current.define(nodeToDefine, data.ctx.config);
+	const newCurrent = envir.current.define(nodeToDefine);
 	return { ...envir, current: newCurrent };
 }
 
@@ -262,19 +264,17 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 	}
 }
 
-function getArguments<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
-	const params = {
-		['file']:    'file',
-		['envir']:   'envir',
-		['verbose']: 'verbose',
-		'...':       '...'
-	};
+function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
+	const loadParams = ['file', 'envir', 'verbose'] as const;
+	const bound = bindArgs(args, loadParams);
 
-	const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+	const fileArgBound = bound.get('file');
+	const envirArgBound = bound.get('envir');
+	const verboseArgBound = bound.get('verbose');
 
-	const fileArg = unpackArg(getArgumentWithId(args, argMaps.get('file')?.[0]));
-	const envirArg = unpackArg(getArgumentWithId(args, argMaps.get('envir')?.[0]));
-	const verboseArg = unpackArg(getArgumentWithId(args, argMaps.get('verbose')?.[0]));
+	const fileArg = fileArgBound && fileArgBound !== EmptyArgument ? unpackArg(fileArgBound) : undefined;
+	const envirArg = envirArgBound && envirArgBound !== EmptyArgument ? unpackArg(envirArgBound) : undefined;
+	const verboseArg = verboseArgBound && verboseArgBound !== EmptyArgument ? unpackArg(verboseArgBound) : undefined;
 
 	return { fileArg, envirArg, verboseArg };
 }

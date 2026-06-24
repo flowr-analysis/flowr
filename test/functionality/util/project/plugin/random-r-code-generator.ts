@@ -2,9 +2,9 @@ import { randomString } from '../../../../../src/util/random';
 
 export const validStringSymbols = [
 	[
-		'a','b','c','x','y','z',
-		'A','B','C','X','Y','Z',
-		'0','1','2','3','4','5','6','7','8','9',
+		'a', 'b', 'c', 'x', 'y', 'z',
+		'A', 'B', 'C', 'X', 'Y', 'Z',
+		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 
 		'.', ',', ';', ':', '!', '?',
 		'-', '_', '+', '*', '/', '=',
@@ -13,13 +13,13 @@ export const validStringSymbols = [
 
 		'@', '€', '#', '§', '$', '%', '&', '^', '|', '`', '~', '<', '>', '°',
 
-		'ä','ö','ü','ß',
-		'Ä','Ö','Ü',
-		'é','è','ê',
+		'ä', 'ö', 'ü', 'ß',
+		'Ä', 'Ö', 'Ü',
+		'é', 'è', 'ê',
 		'í', 'ì', 'î',
 	],
 	// eslint-disable-next-line no-useless-escape
-	[ '\n','\t','\v','\b','\r','\f','\a','\\','\'','\"', ' ' ],
+	[ '\n', '\t', '\v', '\b', '\r', '\f', '\a', '\\', '\'', '\"', ' ' ],
 	[ '😀', '💩' ]
 ];
 
@@ -142,7 +142,7 @@ export class RandomRCodeGenerator {
                         role = "Software Developer")`;
 	}
 
-	generateObject(nestingLevel: number, maxNestingLevel: number): {value: string, type: string, len: number} {
+	generateObject(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
 		if(nestingLevel >= maxNestingLevel){
 			return this.generateLiteral();
 		}
@@ -157,7 +157,7 @@ export class RandomRCodeGenerator {
 		return { value: `factor(${vector.value})`, type: 'factor', len: vector.len };
 	}
 
-	generateAttribute(name: string): {value: string, len: number} {
+	generateAttribute(name: string): { value: string, len: number } {
 		const obj = this.generateLiteral();
 		return { value: `attr(${name}, 'attr') <- ${obj.value}`, len: obj.len };
 	}
@@ -275,7 +275,7 @@ export class RandomRCodeGenerator {
 		}
 	}
 
-	generateString(): {value: string, type: string, len: number } {
+	generateString(): { value: string, type: string, len: number } {
 		const len = this.rnd.int(50);
 
 		const weights = [70, 20, 10];
@@ -324,7 +324,7 @@ export class RandomRCodeGenerator {
 				const value = this.rnd.int(1e10);
 				return { value: `${value}`, type: 'double', len: Math.ceil(Math.log10(value + 1)) };
 			},
-			() =>{
+			() => {
 				const value = `${(this.rnd.int(999))}.${this.rnd.int(999)}e${this.rnd.pick(['+', '-'])}${this.rnd.int(10)}`;
 				return { value: `${value}`, type: 'double', len: value.length };
 			},

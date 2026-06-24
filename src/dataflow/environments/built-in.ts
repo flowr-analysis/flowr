@@ -28,7 +28,7 @@ import { processGet } from '../internal/process/functions/call/built-in/built-in
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
 import { processLibrary } from '../internal/process/functions/call/built-in/built-in-library';
 import { processSourceCall } from '../internal/process/functions/call/built-in/built-in-source';

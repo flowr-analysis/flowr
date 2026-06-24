@@ -432,7 +432,7 @@ export const DefaultBuiltinConfig = [
 	{ type: 'function', names: ['new.env', Identifier.make('new_environment', 'rlang')], processor: BuiltInProcName.NewEnv, config: {}, assumePrimitive: true },
 	{ type:            'function', names:           ['globalenv', 'baseenv', 'emptyenv', 'parent.env', 'parent.frame', 'environmentName', 'as.environment', 'pos.to.env', 'sys.frame', 'sys.frames', 'topenv'],
 		processor:       BuiltInProcName.Default, config:          {}, assumePrimitive: true },
-	{ type: 'function', names: ['load', 'load_image'],                        processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true },                                                assumePrimitive: false },
+	{ type: 'function', names: ['load_image'],                        processor: BuiltInProcName.Default,             config: { hasUnknownSideEffects: true },                                                assumePrimitive: false },
 	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
 	{ type: 'function', names: ['attach'],                                    processor: BuiltInProcName.Attach,              config: {},                                                                            assumePrimitive: false },
 	{ type: 'function', names: ['for'],                                        processor: BuiltInProcName.ForLoop,            config: {},                                                                            assumePrimitive: true  },

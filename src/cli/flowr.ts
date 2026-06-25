@@ -5,8 +5,7 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import type { DeepReadonly } from 'ts-essentials';
-import { FlowRServer } from './repl/server/server';
-import { NetServer, type Server, WebSocketServerWrapper } from './repl/server/net';
+import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
@@ -218,16 +217,21 @@ async function mainRepl() {
 	exitSafe(0);
 }
 
-async function mainServer(backend: Server = new NetServer()) {
+async function mainServer(useWebSocket: boolean) {
 	const config = createConfig();
 	const engines = await retrieveEngineInstances(config);
 	hookSignalHandlers(engines);
+	// the server stack (incl. the `ws` websocket library) is only loaded when actually running a server,
+	// so the common one-shot analysis path does not pay for evaluating it
+	const { FlowRServer } = await import('./repl/server/server');
+	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 
 
 if(options.server) {
-	void mainServer(options.ws ? new WebSocketServerWrapper() : new NetServer());
+	void mainServer(options.ws);
 } else {
 	void mainRepl();
 }

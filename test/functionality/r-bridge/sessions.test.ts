@@ -2,6 +2,30 @@ import { testWithShell, withShell } from '../_helper/shell';
 import semver from 'semver/preload';
 import { guard } from '../../../src/util/assert';
 import { describe, assert, test, expect } from 'vitest';
+import { RShell } from '../../../src/r-bridge/shell';
+
+describe.sequential('RShell spawns R lazily', () => {
+	test('constructing an RShell does not spawn R', () => {
+		const shell = new RShell();
+		try {
+			expect(shell.hasSession(), 'no R process before first use').toBe(false);
+		} finally {
+			// closing an unused shell must succeed without ever spawning R
+			expect(shell.close(), 'closing an unused shell succeeds').toBe(true);
+		}
+		expect(shell.hasSession(), 'closing must not spawn R').toBe(false);
+	});
+	test('the first interaction spawns the R process', async() => {
+		const shell = new RShell();
+		try {
+			expect(shell.hasSession()).toBe(false);
+			await shell.usedRVersion();
+			expect(shell.hasSession(), 'R is spawned on first use').toBe(true);
+		} finally {
+			shell.close();
+		}
+	});
+});
 
 /** here we use testWithShell to get a fresh shell within each call */
 describe.sequential('RShell sessions', withShell(shell => {

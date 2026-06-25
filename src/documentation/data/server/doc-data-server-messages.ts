@@ -88,6 +88,14 @@ Furthermore, the request must contain either a \`content\` field to directly pas
 If you add the \`id\` field, the answer will use the same \`id\` so you can match requests and the corresponding answers.
 See the implementation of the request-file-analysis message for more information.
 
+You can drop one or more stored file tokens by adding the \`invalidateToken\` field (a single token or an array of tokens).
+The server frees the corresponding analyses _after_ it has answered the request.
+
+> **Tip!**\\
+> If you only want to drop tokens, you do not need a separate message: send a \`request-file-analysis\` that contains _just_ the \`invalidateToken\` field (and no \`content\` or \`filepath\`).
+> Such a request behaves like an empty file analysis and the server replies with an empty \`results\` object.
+> Because invalidation happens after the response, you may even pass the _current_ \`filetoken\` in \`invalidateToken\` to analyze a file once and have the server forget it right after you received the results.
+
 ${
 	await documentServerMessageResponse({
 		shell,

@@ -145,7 +145,7 @@ export class RShell implements AsyncParser<string> {
 	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
-	private session:         RShellSession;
+	private _session:        RShellSession | undefined = undefined;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;
 	// should never be more than one, but let's be sure
@@ -154,9 +154,25 @@ export class RShell implements AsyncParser<string> {
 	public constructor(config?: RShellEngineConfig, options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(config), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
+		// the underlying R process is spawned lazily on first use (see the `session` getter),
+		// so merely constructing an RShell does not pay the cost of starting R.
+	}
 
-		this.session = new RShellSession(this.options, this.log);
-		this.revive();
+	/**
+	 * The underlying R session, spawned on first access. Use {@link hasSession} to check whether
+	 * the R process has actually been started without triggering a spawn (e.g. in {@link close}).
+	 */
+	private get session(): RShellSession {
+		if(this._session === undefined) {
+			this._session = new RShellSession(this.options, this.log);
+			this.revive();
+		}
+		return this._session;
+	}
+
+	/** Whether the underlying R process has already been spawned. */
+	public hasSession(): boolean {
+		return this._session !== undefined;
 	}
 
 	public parse(request: RParseRequest): Promise<string> {
@@ -174,15 +190,15 @@ export class RShell implements AsyncParser<string> {
 	}
 
 	private revive() {
-		if(this.options.revive === RShellReviveOptions.Never) {
+		if(this.options.revive === RShellReviveOptions.Never || this._session === undefined) {
 			return;
 		}
 
-		this.session.onExit((code, signal) => {
+		this._session.onExit((code, signal) => {
 			if(this.options.revive === RShellReviveOptions.Always || (this.options.revive === RShellReviveOptions.OnError && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`);
 				this.options.onRevive(code, signal);
-				this.session = new RShellSession(this.options, this.log);
+				this._session = new RShellSession(this.options, this.log);
 				this.revive();
 			}
 		});
@@ -315,7 +331,11 @@ export class RShell implements AsyncParser<string> {
 	 * @returns true if the operation succeeds, false otherwise
 	 */
 	public close(): boolean {
-		return this.session.end([...this.tempDirs]);
+		// if R was never spawned there is nothing to close - and we must not spawn it just to close it
+		if(this._session === undefined) {
+			return true;
+		}
+		return this._session.end([...this.tempDirs]);
 	}
 
 	private _sendCommand(command: string): void {

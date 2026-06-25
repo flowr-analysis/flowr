@@ -549,10 +549,31 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
  * }
  * ```
  * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
+ *
+ * When `environment` is supplied the function uses it to discover ALL definitions that are still live at the
+ * loop exit, so sequential overwrites contribute a single candidate while if-else branches contribute one
+ * candidate per branch.
  */
-export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[]): void {
-	// first, we preprocess out so that only the last definition of a given identifier survives
-	// this implicitly assumes that the outgoing references are ordered
+export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
+	if(environment !== undefined) {
+		const outgoingIds = new Set(outgoing.map(o => o.nodeId));
+		for(const [name, targets] of openIns.entries()) {
+			const liveDefs = environment.current.memory.get(Identifier.getName(name));
+			if(liveDefs === undefined) {
+				continue;
+			}
+			for(const def of liveDefs) {
+				if(outgoingIds.has(def.nodeId)) {
+					for(const target of targets) {
+						graph.addEdge(target.nodeId, def.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	// fallback: keep only the last definition per identifier (used when no environment is available)
 	const lastOutgoing = new Map<Identifier, IdentifierReference>();
 	for(const out of outgoing) {
 		const on = out.name;

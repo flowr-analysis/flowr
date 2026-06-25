@@ -34,7 +34,7 @@ import type {
 import {
 	EmptyArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { bindArgs } from './built-in-envir-utils';
+import { bindArgs, resolveArgToEnvir } from './built-in-envir-utils';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -47,7 +47,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg } = getArguments(args);
+	const { fileArg, envirArg } = getArguments(args);
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
@@ -63,12 +63,18 @@ export function processLoadCall<OtherInfo>(
 		return fn.information;
 	}
 
+	const envirResolution = envirArg ? resolveArgToEnvir(envirArg, data) : undefined;
+	if(envirResolution) {
+		fn.information.graph.addEdge(rootId, envirResolution.envirNodeId, EdgeType.Reads);
+	}
+
+
 	let sourceFile: string[] | undefined;
 
 	if(fileArg.type === RType.String) {
 		sourceFile = [removeRQuotes(fileArg.lexeme)];
 	} else {
-		const resolved = valueSetGuard(resolveIdToValue(fileArg.info.id, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+		const resolved = valueSetGuard(resolveIdToValue(fileArg.info.id, { environment: envirResolution ? envirResolution.envirData.environment : data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
 		sourceFile = resolved?.elements.map(r => r.type === 'string' && isValue(r.value) ? r.value.str : undefined).filter(isNotUndefined);
 	}
 
@@ -93,7 +99,8 @@ export function processLoadCall<OtherInfo>(
 				continue;
 			}
 
-			let envir = fn.information.environment;
+			let envir = envirResolution ? envirResolution.envirData.environment : fn.information.environment;
+
 			const loadLocation = name.location ?? name.fullRange ?? SourceRange.invalid();
 			const loadCds = [...(data.cds ?? []), { id: rootId, when: true, file: filepath }];
 
@@ -271,11 +278,10 @@ function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherI
 	const bound = bindArgs(args, loadParams);
 
 	const fileArgBound = bound.get('file');
-	const envirArgBound = bound.get('envir');
+	const envirArg = bound.get('envir');
 	const verboseArgBound = bound.get('verbose');
 
 	const fileArg = fileArgBound && fileArgBound !== EmptyArgument ? unpackArg(fileArgBound) : undefined;
-	const envirArg = envirArgBound && envirArgBound !== EmptyArgument ? unpackArg(envirArgBound) : undefined;
 	const verboseArg = verboseArgBound && verboseArgBound !== EmptyArgument ? unpackArg(verboseArgBound) : undefined;
 
 	return { fileArg, envirArg, verboseArg };

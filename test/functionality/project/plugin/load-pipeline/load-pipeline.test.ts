@@ -140,6 +140,7 @@ function expectNames(result: RObjectData[], vars: ReadonlyMap<string, string>) {
 	expect(result?.flatMap(x => x.name).sort()).toEqual([...vars.keys()].sort());
 }
 
+/* Maps the {@link SexpType} to its string representation in the R shell*/
 const SexpToRType = {
 	0:  'NULL',
 	1:  'symbol',
@@ -155,7 +156,7 @@ const SexpToRType = {
 	13: 'integer',
 	14: 'double',
 	15: 'complex',
-	16: 'character',
+	16: 'string',
 	17: '...',
 	19: 'list',
 	20: 'expression',

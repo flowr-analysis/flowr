@@ -12,6 +12,7 @@ import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import os from 'os';
 import { FlowrConfig } from '../../../../../src/config';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe('load real-world', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
@@ -366,5 +367,30 @@ describe('file not found', withTreeSitter(parser => {
 			.argument('3', '1')
 			.calls('3', builtInId('load')),
 		{ expectIsSubgraph: true }
+	);
+}));
+
+describe('no resolvable file argument', withTreeSitter(parser => {
+	assertDataflow(label('load without any file argument is unknown side effect', ['unnamed-arguments']), parser, 'load()', emptyGraph()
+		.call('1', 'load', [], { returns: [], reads: [builtInId('load')], origin: [BuiltInProcName.Function] })
+		.calls('1', builtInId('load'))
+		.markIdForUnknownSideEffects('1'),
+	{ expectIsSubgraph: true }
+	);
+
+	assertDataflow(label('load with only envir argument is unknown side effect', ['unnamed-arguments', 'name-normal']), parser, 'e <- new.env()\nload(envir = e)', emptyGraph()
+		.use('6', 'e')
+		.reads('6', '0')
+		.use('7', 'envir')
+		.reads('7', '6')
+		.call('2', 'new.env', [], { returns: [], reads: [builtInId('new.env')] })
+		.calls('2', builtInId('new.env'))
+		.call('3', '<-', [argumentInCall('0'), argumentInCall('2')], { returns: ['0'], reads: ['2', builtInId('<-')], onlyBuiltIn: true })
+		.calls('3', builtInId('<-'))
+		.call('8', 'load', [argumentInCall('7', { name: 'envir' })], { returns: [], reads: [builtInId('load')], origin: [BuiltInProcName.Function] })
+		.calls('8', builtInId('load'))
+		.defineVariable('0', 'e', { definedBy: ['2', '3'] })
+		.markIdForUnknownSideEffects('8'),
+	{ expectIsSubgraph: true }
 	);
 }));

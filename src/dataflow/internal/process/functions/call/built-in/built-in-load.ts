@@ -50,7 +50,9 @@ export function processLoadCall<OtherInfo>(
 	const { fileArg } = getArguments(args);
 
 	if(!fileArg) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: 'default' }).information;
+		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
+		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
+		return fn.information;
 	}
 
 	const fn = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load });

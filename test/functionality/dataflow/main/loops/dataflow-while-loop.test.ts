@@ -79,19 +79,19 @@ print(x)`, emptyGraph()
 		mustNotHaveEdges:      [['4:10', '1@x'], ['4:10', '4@x']]
 	});
 	assertDataflow(label('if-else inside while: both branch definitions are loop-back origins', ['while-loop', 'if', 'name-normal', 'local-left-assignment', 'numbers']), shell, `a <- 1
-while(TRUE) {
-if(a > 0) {
-a <- a + 1
-} else {
-a <- a - 2
-}
+while (TRUE) {
+  if (a > 0) {
+    a <- a + 1
+  } else {
+    a <- a - 2
+  }
 }`, emptyGraph()
-		.reads('4:6', '1@a')
-		.reads('4:6', '4:1')
-		.reads('4:6', '6:1')
-		.reads('6:6', '1@a')
-		.reads('6:6', '4:1')
-		.reads('6:6', '6:1')
+		.reads('4:10', '1@a')
+		.reads('4:10', '4:5')
+		.reads('4:10', '6:5')
+		.reads('6:10', '1@a')
+		.reads('6:10', '4:5')
+		.reads('6:10', '6:5')
 	, {
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,

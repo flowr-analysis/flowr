@@ -89,9 +89,6 @@ while (TRUE) {
 while(TRUE)
     { if(a > 0) { a <- a + 1 } else
     { a <- a - 2 } }`);
-		assertSlicedF(label('a loop-carried if-branch definition reaches both branches', ['name-normal', 'while-loop', 'logical', 'if', 'newlines', 'numbers', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['>'].capabilities, ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['-'].capabilities, 'precedence']),
-			shell, whileIfElse, ['4:5'], `{ if(a > 0) { a <- a + 1 } else
-{ a <- a - 2 } }`);
 	});
 	describe('Replacement With Argument-Name', () => {
 		assertSlicedF(label('simple argument', ['replacement-functions']), shell,

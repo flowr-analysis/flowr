@@ -550,9 +550,9 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
  * ```
  * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
  *
- * When `environment` is supplied the function uses it to discover ALL live definitions at the loop exit.
- * It reads only the innermost (loop-body) scope so that sequential overwrites produce one candidate while
- * if-else branches correctly produce one candidate per branch.
+ * When `environment` is supplied the function uses it to discover ALL definitions that are still live at the
+ * loop exit, so sequential overwrites contribute a single candidate while if-else branches contribute one
+ * candidate per branch.
  */
 export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
 	if(environment !== undefined) {

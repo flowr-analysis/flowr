@@ -96,4 +96,72 @@ while (TRUE) {
 		expectIsSubgraph:      true,
 		resolveIdsAsCriterion: true,
 	});
+	assertDataflow(label('dominating definition after the if is the only loop-back origin', ['while-loop', 'if', 'name-normal', 'local-left-assignment', 'numbers']), shell, `a <- 1
+while (TRUE) {
+  if (a > 0) {
+    a <- a + 1
+  } else {
+    a <- a - 2
+  }
+  a <- a * 3
+}`, emptyGraph()
+		.reads('8:8', '4:5')
+		.reads('8:8', '6:5')
+		.reads('4:10', '1@a')
+		.reads('4:10', '8:3')
+		.reads('6:10', '1@a')
+		.reads('6:10', '8:3')
+	, {
+		expectIsSubgraph:      true,
+		resolveIdsAsCriterion: true,
+		mustNotHaveEdges:      [['4:10', '4:5'], ['4:10', '6:5'], ['6:10', '4:5'], ['6:10', '6:5']]
+	});
+	assertDataflow(label('nested if-else inside while: all three branch definitions are loop-back origins', ['while-loop', 'if', 'name-normal', 'local-left-assignment', 'numbers']), shell, `a <- 1
+while (TRUE) {
+  if (a > 0) {
+    if (a > 5) {
+      a <- a + 1
+    } else {
+      a <- a + 2
+    }
+  } else {
+    a <- a - 2
+  }
+}`, emptyGraph()
+		.reads('5:12', '1@a')
+		.reads('5:12', '5:7')
+		.reads('5:12', '7:7')
+		.reads('5:12', '10:5')
+		.reads('7:12', '1@a')
+		.reads('7:12', '5:7')
+		.reads('7:12', '7:7')
+		.reads('7:12', '10:5')
+		.reads('10:10', '1@a')
+		.reads('10:10', '5:7')
+		.reads('10:10', '7:7')
+		.reads('10:10', '10:5')
+	, {
+		expectIsSubgraph:      true,
+		resolveIdsAsCriterion: true,
+	});
+	assertDataflow(label('if-else inside nested while loops links both branch definitions', ['while-loop', 'if', 'name-normal', 'local-left-assignment', 'numbers']), shell, `a <- 1
+while (TRUE) {
+  while (TRUE) {
+    if (a > 0) {
+      a <- a + 1
+    } else {
+      a <- a - 2
+    }
+  }
+}`, emptyGraph()
+		.reads('5:12', '1@a')
+		.reads('5:12', '5:7')
+		.reads('5:12', '7:7')
+		.reads('7:12', '1@a')
+		.reads('7:12', '5:7')
+		.reads('7:12', '7:7')
+	, {
+		expectIsSubgraph:      true,
+		resolveIdsAsCriterion: true,
+	});
 }));

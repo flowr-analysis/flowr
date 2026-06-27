@@ -6,6 +6,7 @@ import { documentAllServerMessages } from './data/server/doc-data-server-message
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { watchProtocol } from '../cli/repl/core';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -176,6 +177,11 @@ For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magi
 Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) allow for a file as well
 if the argument starts with \`${fileProtocol}\`.
 If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${ctx.replCmd('parse')} command:
+
+> **Watch mode**: Replace \`${fileProtocol}\` with \`${watchProtocol}\` to enter watch mode.
+> flowR runs the command immediately and then re-runs it every time the file (or any file inside the folder) changes.
+> Enter any other command to leave watch mode.
+> For example: \`:df ${watchProtocol}analysis.R\`
 
 ${await documentReplSession(parser, [{
 	command:     `:parse ${fileProtocol}test/testfiles/example.R`,

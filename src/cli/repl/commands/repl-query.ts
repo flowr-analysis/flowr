@@ -10,7 +10,6 @@ import {
 	type SupportedQueryTypes
 } from '../../../queries/query';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
@@ -21,7 +20,7 @@ function printHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
 	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
 	output.stdout(`With this, ${bold(':query @config', output.formatter)} prints the result of the config query.`);
-	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)}.`);
+	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)} (or ${bold('watch://<path>', output.formatter)} to re-run on changes).`);
 	output.stdout(ansiInfo('Otherwise, you can also directly pass the query json. Then, the query is an array of query objects to represent multiple queries.'));
 	output.stdout(ansiInfo('The example') + italic(String.raw`:query "[{\"type\": \"call-context\", \"callName\": \"mean\" }]" mean(1:10)`, output.formatter, { color: Colors.White, effect: ColorEffect.Foreground }) + ansiInfo('would return the call context of the mean function.'));
 	output.stdout('Please have a look at the wiki for more info: https://github.com/flowr-analysis/flowr/wiki/Query-API');
@@ -113,7 +112,7 @@ function parseArgs(line: string) {
 }
 
 export const queryCommand: ReplCodeCommand = {
-	description:   `Query the given R code, start with '${fileProtocol}' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).`,
+	description:   'Query the given R code (use \'help\' for more information)',
 	isCodeCommand: true,
 	usageExample:  ':query "<query>" <code>',
 	aliases:       [],

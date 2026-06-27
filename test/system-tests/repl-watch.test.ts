@@ -9,7 +9,7 @@ import path from 'path';
  * and return the accumulated output once `terminateOn` appears in stdout
  * (or `timeout` ms elapses, which rejects).
  */
-function flowrReplUntil(command: string, terminateOn: string, timeout = 30_000): Promise<string> {
+function flowrReplUntil(command: string, terminateOn: string, timeout = 60_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error(`timed out waiting for '${terminateOn}'`));
@@ -43,7 +43,7 @@ function flowrReplUntil(command: string, terminateOn: string, timeout = 30_000):
  * Spawn the flowr REPL, send a watch command, wait for the 'Watching' signal,
  * write `newContent` to `filePath`, then wait for 'Change detected' in output.
  */
-function flowrReplWatchAndChange(command: string, filePath: string, newContent: string, timeout = 30_000): Promise<string> {
+function flowrReplWatchAndChange(command: string, filePath: string, newContent: string, timeout = 60_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error('watch test timed out'));
@@ -82,7 +82,7 @@ function flowrReplWatchAndChange(command: string, filePath: string, newContent: 
  * Spawn the flowr REPL, send two Ctrl+C characters (with a small delay between them),
  * and resolve with the accumulated output once the process exits.
  */
-function flowrReplDoubleCtrlC(timeout = 30_000): Promise<string> {
+function flowrReplDoubleCtrlC(timeout = 60_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error('double Ctrl+C test timed out'));

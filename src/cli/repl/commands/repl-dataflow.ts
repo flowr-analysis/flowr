@@ -1,5 +1,4 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
@@ -13,7 +12,7 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const dataflowCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflow',
 	aliases:       [ 'd', 'df' ],
@@ -99,7 +98,7 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 
 
 export const dataflowSimplifiedCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the simplified dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the simplified dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsimple',
 	aliases:       [ 'ds', 'dfs' ],

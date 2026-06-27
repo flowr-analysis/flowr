@@ -63,6 +63,14 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('How to *watch* a file for changes in the REPL?', `
+Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
+flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
+Press Ctrl+C or enter any other command to leave watch mode.
+${codeBlock('shell', ':df watch://path/to/analysis.R')}
+For a folder, flowR uses the same project discovery as with \`file://\`:
+${codeBlock('shell', ':query @linter watch://path/to/project')}
+`)
 		.addFaq('How to *query* an R project?', `
 For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
 If you want to create your own project using flowR as a library, check out the

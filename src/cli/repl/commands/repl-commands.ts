@@ -72,6 +72,11 @@ ${
 }
 
 You can combine commands by separating them with a semicolon ${bold(';', output.formatter)}.
+
+Commands that accept a file path support two path prefixes:
+  ${bold('file://<path>', output.formatter)}   run the command once on the given file or folder
+  ${bold('watch://<path>', output.formatter)}  re-run the command whenever the file (or any file in the folder) changes
+                     Press Ctrl+C or enter any other command to leave watch mode.
 `);
 	}
 };

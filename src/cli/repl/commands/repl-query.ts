@@ -15,6 +15,7 @@ import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
+import { Record } from '../../../util/record';
 
 
 function printHelp(output: ReplOutput) {
@@ -139,8 +140,9 @@ export const queryStarCommand: ReplCodeCommand = {
 	fn:            async({ output, analyzer, remainingArgs }) => {
 		const results = await processQueryArgs(output, analyzer, remainingArgs);
 		if(results) {
-			const json = Object.fromEntries(Object.entries(results.query)
-				.map(([query, queryResults]) => [query, (SupportedQueries[query as SupportedQueryTypes] as SupportedQuery)?.jsonFormatter?.(queryResults as BaseQueryResult) ?? queryResults]));
+			const json = Record.map(results.query, ([query, queryResults]: [SupportedQueryTypes, BaseQueryResult]) =>
+				[query, (SupportedQueries[query] as SupportedQuery)?.jsonFormatter?.(queryResults) ?? queryResults]
+			);
 			output.stdout(JSON.stringify(json, jsonReplacer));
 		}
 	}

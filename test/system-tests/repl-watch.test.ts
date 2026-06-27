@@ -1,8 +1,13 @@
-import { assert, describe, test } from 'vitest';
+import { beforeAll, assert, describe, test } from 'vitest';
 import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+
+const flowrBin = 'node dist/src/cli/flowr.min.js';
+
+const enum WatchState  { AwaitPrompt, AwaitWatch, AwaitRerun }
+const enum CtrlCState  { AwaitPrompt, AwaitHint,  AwaitExit  }
 
 /**
  * Spawn the flowr REPL, send `command` when the first prompt appears,
@@ -14,7 +19,7 @@ function flowrReplUntil(command: string, terminateOn: string, timeout = 60_000):
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error(`timed out waiting for '${terminateOn}'`));
 		}, timeout);
-		const child = exec('npm run flowr', { timeout: timeout + 5_000 });
+		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
 		let sent = false;
 
@@ -48,22 +53,22 @@ function flowrReplWatchAndChange(command: string, filePath: string, newContent: 
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error('watch test timed out'));
 		}, timeout);
-		const child = exec('npm run flowr', { timeout: timeout + 5_000 });
+		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
-		let state: 'await-prompt' | 'await-watch' | 'await-rerun' = 'await-prompt';
+		let state = WatchState.AwaitPrompt;
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
-			if(state === 'await-prompt' && buffer.includes('R>')) {
-				state = 'await-watch';
+			if(state === WatchState.AwaitPrompt && buffer.includes('R>')) {
+				state = WatchState.AwaitWatch;
 				child.stdin?.write(`${command}\n`);
-			} else if(state === 'await-watch' && buffer.includes('Watching')) {
-				state = 'await-rerun';
+			} else if(state === WatchState.AwaitWatch && buffer.includes('Watching')) {
+				state = WatchState.AwaitRerun;
 				// small delay to ensure the watcher is set up before we write
 				setTimeout(() => {
 					fs.writeFileSync(filePath, newContent);
 				}, 200);
-			} else if(state === 'await-rerun' && buffer.includes('Change detected')) {
+			} else if(state === WatchState.AwaitRerun && buffer.includes('Change detected')) {
 				clearTimeout(timer);
 				child.stdin?.write(':quit\n');
 				setTimeout(() => {
@@ -87,17 +92,17 @@ function flowrReplDoubleCtrlC(timeout = 60_000): Promise<string> {
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error('double Ctrl+C test timed out'));
 		}, timeout);
-		const child = exec('npm run flowr', { timeout: timeout + 5_000 });
+		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
-		let state: 'await-prompt' | 'await-hint' | 'await-exit' = 'await-prompt';
+		let state = CtrlCState.AwaitPrompt;
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
-			if(state === 'await-prompt' && buffer.includes('R>')) {
-				state = 'await-hint';
+			if(state === CtrlCState.AwaitPrompt && buffer.includes('R>')) {
+				state = CtrlCState.AwaitHint;
 				child.stdin?.write('\x03');
-			} else if(state === 'await-hint' && buffer.includes('Press Ctrl+C again')) {
-				state = 'await-exit';
+			} else if(state === CtrlCState.AwaitHint && buffer.includes('Press Ctrl+C again')) {
+				state = CtrlCState.AwaitExit;
 				setTimeout(() => child.stdin?.write('\x03'), 200);
 			}
 		});
@@ -114,6 +119,10 @@ function flowrReplDoubleCtrlC(timeout = 60_000): Promise<string> {
 }
 
 describe('repl watch mode', () => {
+	beforeAll(() => new Promise<void>((resolve, reject) => {
+		exec('npm run build:bundle-flowr', { timeout: 120_000 }, err => err ? reject(err) : resolve());
+	}), 120_000);
+
 	test('double Ctrl+C exits the REPL', async() => {
 		const output = await flowrReplDoubleCtrlC();
 		assert.include(output, 'Press Ctrl+C again', `hint message missing:\n${output}`);

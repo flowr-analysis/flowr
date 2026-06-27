@@ -18,6 +18,14 @@ export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `
 export const SlicingCriterion = {
 	name: 'SlicingCriterion',
 	/**
+	 * Checks whether a value has a valid slicing criterion syntax.
+	 * This does not check whether the slicing criterion exists (represents a valid node ID).
+	 * @see {@link SlicingCriterion.parse} to parse a slicing criterion to a node ID
+	 */
+	isValid(this: void, criterion: unknown): criterion is SlicingCriterion {
+		return typeof criterion === 'string' && criterion.match(/^\d+:\d+|\d+@.+|\$.+$/) !== null;
+	},
+	/**
 	 * Takes a criterion in the form of `line:column` or `line@variable-name` and returns the corresponding node id
 	 * @see {@link SlicingCriterion.tryParse} for a version that does not throw an error
 	 */

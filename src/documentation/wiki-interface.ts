@@ -198,7 +198,7 @@ As _flowR_ directly transforms this AST the output focuses on being human-readab
 You can run any query supported by _flowR_ using the ${ctx.replCmd('query')} command.
 For example, to obtain the shapes of all data frames in a given piece of code, you can run:
 ${await documentReplSession(parser, [{
-	command:     ':query @df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
+	command:     ':query @absint df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
 	description: 'Retrieve the shapes of all data frames in the given code.'
 }], { openOutput: true })}
 To run the linter on a file, you can use (in this example, we just issue the \`dead-code\` linter on a small piece of code):

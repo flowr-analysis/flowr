@@ -33,7 +33,6 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
-import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
@@ -51,6 +50,8 @@ import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-que
 import { SliceDirection } from '../util/slice-direction';
 import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
 import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
+import { executeAbsintQuery } from '../queries/catalog/absint-query/absint-query-executor';
+import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-query-format';
 
 
 registerQueryDocumentation('call-context', {
@@ -539,29 +540,32 @@ enables quick statistics after each REPL command. Likewise, setting \`repl.dfPro
 	}
 });
 
-registerQueryDocumentation('df-shape', {
-	name:             'Dataframe Shape Inference Query',
+registerQueryDocumentation('absint', {
+	name:             'Abstract Interpretation Query',
 	type:             'active',
-	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
-	functionName:     executeDfShapeQuery.name,
-	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	shortDescription: 'Returns the abstract values inferred for every expression or at specific locations.',
+	functionName:     executeAbsintQuery.name,
+	functionFile:     '../queries/catalog/absint-query/absint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
-		const criterion = '2@x' as SlicingCriterion;
+		const criteria = ['1@df', '1@data.frame'] satisfies SlicingCriteria;
+		const inference = 'df-shape' satisfies AbsintQueryType;
+		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
 		return `
-This query infers all shapes of dataframes within the code. For example, you can use:
+This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
 ${
 	await showQuery(shell, exampleCode, [{
-		type: 'df-shape'
+		type:      'absint',
+		inference: inference
 	}], { showCode: true, collapseQuery: true, ctx })
 }
 
-The query also accepts an optional slice criterion to narrow the results to a specific node. For example:
+The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:      'df-shape',
-		criterion: criterion
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+		type:      'absint',
+		inference: inference,
+		criteria:  criteria
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
 	}

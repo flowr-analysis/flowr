@@ -355,7 +355,7 @@ export async function repl(
 				output.stdout('(Press Ctrl+C again or type :quit to exit)');
 				setTimeout(() => {
 					sigintCount = 0;
-				}, 1000).unref();
+				}, 2000).unref();
 			}
 		}
 		rl.prompt();

@@ -97,6 +97,39 @@ export const Dataflow = {
 	},
 
 	/**
+	 * Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`}
+	 * but in a single pass over the graph, allocating only one intermediate object instead of two.
+	 * Use this when you need the reduced-and-inverted graph for a forward traversal within a restriction set.
+	 */
+	reduceAndInvertGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, cleanEnv: REnvironmentInformation): G {
+		const df = new DataflowGraph(graph.idMap);
+		for(const [id, vtx] of graph.vertices(true)) {
+			if(select.has(id)) {
+				df.addVertex(vtx, cleanEnv);
+			}
+		}
+		for(const [from, targets] of graph.edges()) {
+			if(!select.has(from)) {
+				continue;
+			}
+			for(const [to, { types }] of targets) {
+				if(!select.has(to)) {
+					continue;
+				}
+				df.addEdge(to, from, types);
+			}
+		}
+		for(const u of graph.unknownSideEffects) {
+			if(typeof u === 'object' && select.has(u.id)) {
+				df.markIdForUnknownSideEffects(u.id, u.linkTo);
+			} else if(select.has(u as NodeId)) {
+				df.markIdForUnknownSideEffects(u as NodeId);
+			}
+		}
+		return df as G;
+	},
+
+	/**
 	 * Given the id of a vertex (usually a variable use),
 	 * this returns a reachable provenance set by calculating a non-interprocedural and non-context sensitive backward slice, but stopping at the given ids!
 	 * You can obtain the corresponding graph using {@link Dataflow.reduceGraph}.

@@ -248,11 +248,11 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 		return this.create(result);
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Bottom) {
 			return this.value.description;
 		}
-		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJson()]));
+		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJSON()]));
 	}
 
 	public toString(): string {

@@ -419,7 +419,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Bottom) {
 			return this.value.description;
 		}

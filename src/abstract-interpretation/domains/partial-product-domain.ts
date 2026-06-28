@@ -171,8 +171,8 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 		return this.create(result);
 	}
 
-	public toJson(): unknown {
-		return Record.mapProperties(this.value, entry => entry?.toJson());
+	public toJSON(): unknown {
+		return Record.mapProperties(this.value, entry => entry?.toJSON());
 	}
 
 	public toString(): string {

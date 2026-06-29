@@ -107,7 +107,7 @@ export function processWhileLoop<OtherInfo>(
 		information.environment, condition.in.concat(condition.unknownReferences), information.graph, true);
 	applyCdToReferences(body.out, cdTrue);
 
-	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out);
+	linkCircularRedefinitionsWithinALoop(information.graph, produceNameSharedIdMap(findNonLocalReads(information.graph, new Set(condition.in.map(i => i.nodeId)))), body.out, body.environment);
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), information.graph);
 
 	// as the while-loop always evaluates its condition

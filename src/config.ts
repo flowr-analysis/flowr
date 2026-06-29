@@ -15,6 +15,7 @@ import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
+import type { FlowrGasConfig } from './gas';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -95,16 +96,6 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
-	/**
-	 * Whether to check the heap memory usage before analyzing a sourced file,
-	 * skipping the analysis when memory pressure exceeds {@link memoryThreshold}.
-	 */
-	readonly checkMemoryOnSource?:  boolean
-	/**
-	 * Fraction of the V8 heap limit at which source analysis is skipped (0-1).
-	 * Only effective when {@link checkMemoryOnSource} is true.
-	 */
-	readonly memoryThreshold?:      number
 }
 
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
@@ -237,6 +228,14 @@ export interface FlowrConfig extends MergeableRecord {
 			}
 		}
 	}
+	/**
+	 * Resource-usage guard (gas) configuration.
+	 * Gas checks are disabled by default (all feature factors are `0`).
+	 * Set a `feature factor > 0` to enable checking for that feature.
+	 * @see {@link FlowrGasConfig}
+	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
+	 */
+	readonly gas: FlowrGasConfig;
 }
 
 export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
@@ -330,9 +329,7 @@ export const FlowrConfig = {
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            [],
-					repeatedSourceLimit:   2,
-					checkMemoryOnSource:   true,
-					memoryThreshold:       0.9
+					repeatedSourceLimit:   2
 				},
 				instrument: {
 					dataflowExtractors: undefined
@@ -351,6 +348,13 @@ export const FlowrConfig = {
 						maxReadLines:      1e6
 					}
 				}
+			},
+			gas: {
+				thresholds: {
+					memory: { problematic: 0.7,       critical: 0.9 },
+					timeMs: { problematic: 100_000,   critical: 120_000 }
+				},
+				features: {}
 			}
 		};
 	},
@@ -403,9 +407,7 @@ export const FlowrConfig = {
 				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files'),
-				checkMemoryOnSource:   Joi.boolean().optional().description('Check heap memory usage before analyzing a sourced file, skipping when memory pressure exceeds the configured threshold.'),
-				memoryThreshold:       Joi.number().min(0).max(1).optional().description('Fraction of the V8 heap limit (0-1) at which source analysis is skipped. Only effective when checkMemoryOnSource is true.')
+				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
 				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),
@@ -421,7 +423,20 @@ export const FlowrConfig = {
 					maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
-		}).description('The configuration options for abstract interpretation.')
+		}).description('The configuration options for abstract interpretation.'),
+		gas: Joi.object({
+			thresholds: Joi.object({
+				memory: Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
+				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+				timeMs: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
+				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
+			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
+			features: Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`.')
+		}).optional().description('Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard.')
 	}).description('The configuration file format for flowR.'),
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.

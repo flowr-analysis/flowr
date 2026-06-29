@@ -293,6 +293,7 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRecallCall({ call });
 			case BuiltInProcName.PurrrFormula:
 				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NamespaceAccess:
 			case BuiltInProcName.NewEnv:
 			case BuiltInProcName.With:
 			case BuiltInProcName.Attach:

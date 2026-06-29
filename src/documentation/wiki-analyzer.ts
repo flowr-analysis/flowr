@@ -1,7 +1,7 @@
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { block, collapsibleToc, section } from './doc-util/doc-structure';
-import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName } from './doc-util/doc-files';
 import { FlowrAnalyzerQmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { BuiltInPlugins, makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
 import { codeInline } from './doc-util/doc-code';
@@ -114,14 +114,14 @@ ${section('Overview', 2)}
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
 your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#builder-configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
-what [engine](${FlowrWikiBaseRef}/Engines) to use for the analysis.
+what ${ctx.linkPage('wiki/Engines', 'engine')} to use for the analysis.
 
 When building the ${ctx.link(FlowrAnalyzer)} instance, the builder will take care to
 
 * load the [requested plugins](#Plugins)
 * setup an initial [context](#Context_Information)
 * create a [cache](#Caching) for speeding up future analyses
-* initialize the [engine](${FlowrWikiBaseRef}/Engines) (e.g., TreeSitter) if needed
+* initialize the ${ctx.linkPage('wiki/Engines', 'engine')} (e.g., TreeSitter) if needed
 
 The builder provides two methods for building the analyzer:
 
@@ -161,19 +161,19 @@ Please make sure to add all of the files, folder, and projects you want to analy
 ${ctx.linkM(FlowrAnalyzer, 'addRequest')} method (or ${ctx.linkM(FlowrAnalyzer, 'addFile')} for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* ${ctx.linkM(FlowrAnalyzer, 'parse')} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
+* ${ctx.linkM(FlowrAnalyzer, 'parse')} to get the parsed information by the respective ${ctx.linkPage('wiki/Engines', 'engine')}\\
 You can also use ${ctx.linkM(FlowrAnalyzer, 'peekParse', { codeFont: true, realNameWrapper: 'i' })} to inspect the parse information if it was already computed (but without triggering a computation).
 With ${ctx.linkM(FlowrAnalyzer, 'parserInformation', { codeFont: true, realNameWrapper: 'i' })}, you get additional information on the parser used for the analysis.
-* ${ctx.linkM(FlowrAnalyzer, 'normalize')} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
+* ${ctx.linkM(FlowrAnalyzer, 'normalize')} to compute the ${ctx.linkPage('wiki/Normalized AST', 'Normalized AST')}\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekNormalize', { codeFont: true, realNameWrapper: 'i' })} returns the normalized AST if it was already computed but without triggering a computation.
-* ${ctx.linkM(FlowrAnalyzer, 'dataflow')} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
+* ${ctx.linkM(FlowrAnalyzer, 'dataflow')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}\\
 Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
+* ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the ${ctx.linkPage('wiki/Control Flow Graph', 'Control Flow Graph')}\\
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
 * ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'query')} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
-* ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
+* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.
+* ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the ${ctx.linkPage('wiki/Search API', 'search API')}
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -191,7 +191,7 @@ The following sections highlight some of the most important configuration option
 
 ${section('Configuring flowR', 3)}
 
-You can fundamentally change the behavior of flowR using the [config file](${FlowrWikiBaseRef}/Interface#configuring-flowr),
+You can fundamentally change the behavior of flowR using the ${ctx.linkPage('wiki/Interface', 'config file', 'configuring-flowr')},
 embedded in the interface ${ctx.link(FlowrConfig)}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 

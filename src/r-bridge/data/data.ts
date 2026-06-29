@@ -136,6 +136,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									id:          'environment-with',
 									supported:   'partially',
 									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
 								}
 							]
 						},

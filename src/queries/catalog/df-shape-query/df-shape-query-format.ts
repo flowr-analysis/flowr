@@ -58,7 +58,7 @@ export const DfShapeQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { domains, ...out } = queryResults as QueryResults<'df-shape'>['df-shape'];
 		const state = domains instanceof AbstractDomain ? domains.value : domains;
-		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
+		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null]));
 		const result = { domains: json, ...out } as object;
 
 		return result;

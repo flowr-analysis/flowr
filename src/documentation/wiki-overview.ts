@@ -1,6 +1,6 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { FlowrGithubBaseRef, FlowrPositron, FlowrRAdapter, FlowrRStudioAddin, FlowrVsCode } from './doc-util/doc-files';
+import { FlowrGithubBaseRef } from './doc-util/doc-files';
 import { RShell } from '../r-bridge/shell';
 import { DataflowGraph } from '../dataflow/graph/graph';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
@@ -38,7 +38,7 @@ for instructions on how to install _flowR_.
 Primarily, _flowR_ provides a dataflow analysis framework for the [*R*](https://www.r-project.org/) programming language.
 Its subcomponents (like the custom ${ctx.link(RShell)}) or the internals of the static ${ctx.link(DataflowGraph)}) 
 are not important if you simply wish to use _flowR_.
-If you wish to use _flowR_, check out one of its extensions (e.g., the [VS Code extension](${FlowrVsCode})), 
+If you wish to use _flowR_, check out one of its extensions (e.g., the ${ctx.linkPage('flowr:vscode', 'VS Code extension')}),
 the [REPL and server interfaces](#using-_flowr_-from-the-outside) or its coding API with the
 ${ctx.link(FlowrAnalyzer)}. 
 
@@ -61,8 +61,8 @@ _flowR_ itself has two main ways to operate:
 - as a [**server**](#the-server) which processes analysis and slicing requests (${ctx.cliOption('flowr', 'server')} option)
 - as a [**read-eval-print loop** (REPL)](#the-read-eval-print-loop-repl) that can be accessed directly from the command line (default option)
 
-Besides these two ways, there is a [Visual Studio Code extension](${FlowrVsCode}) that allows you to use _flowR_ directly from within the editor (it is available on [open-vsx](${FlowrPositron}) as well).
-Similarly, we offer an [Addin for RStudio](${FlowrRStudioAddin}), as well as an [R package](${FlowrRAdapter}).
+Besides these two ways, there is a ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} that allows you to use _flowR_ directly from within the editor (it is available on ${ctx.linkPage('flowr:positron', 'open-vsx')} as well).
+Similarly, we offer an ${ctx.linkPage('flowr:rstudio-addin', 'Addin for RStudio')}, as well as an ${ctx.linkPage('flowr:radapter', 'R package')}.
 
 🐳️ If you use the docker-version, simply starting the docker container in interactive mode drops you right into the REPL (\`docker run -it --rm eagleoutice/flowr:latest\`), while launching with the ${ctx.cliOption('flowr', 'server')} argument starts the server (\`docker run -it --rm eagleoutice/flowr:latest --server\`).\\
 ⚒️ If you compile the _flowR_ sources yourself, you can access _flowR_ by the main script \`npm run flowr\` or in the development mode \`npm run main-dev\`.

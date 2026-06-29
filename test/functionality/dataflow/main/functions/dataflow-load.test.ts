@@ -7,12 +7,12 @@ import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import { getVarsAndTypesFromShell } from '../../../project/plugin/load-pipeline/load-pipeline.test';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
-import { builtInId } from '../../../../../src/dataflow/environments/built-in';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import os from 'os';
 import { FlowrConfig } from '../../../../../src/config';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
+import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('load real-world', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
@@ -334,9 +334,9 @@ describe('load random', withTreeSitter(parser => {
 				parser,
 				`load("${file}")`,
 				emptyGraph()
-					.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [builtInId('load')] })
+					.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('load')] })
 					.argument('3', '1')
-					.calls('3', builtInId('load'))
+					.calls('3', NodeId.toBuiltIn('load'))
 					.markIdForUnknownSideEffects('3'),
 				{
 					expectIsSubgraph:    true,
@@ -363,17 +363,17 @@ describe('file not found', withTreeSitter(parser => {
 		parser,
 		'load("nonexistent.rda")',
 		emptyGraph()
-			.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [builtInId('load')] })
+			.call('3', 'load', [argumentInCall('1')], { returns: [], reads: [NodeId.toBuiltIn('load')] })
 			.argument('3', '1')
-			.calls('3', builtInId('load')),
+			.calls('3', NodeId.toBuiltIn('load')),
 		{ expectIsSubgraph: true }
 	);
 }));
 
 describe('no resolvable file argument', withTreeSitter(parser => {
 	assertDataflow(label('load without any file argument is unknown side effect', ['unnamed-arguments']), parser, 'load()', emptyGraph()
-		.call('1', 'load', [], { returns: [], reads: [builtInId('load')], origin: [BuiltInProcName.Function] })
-		.calls('1', builtInId('load'))
+		.call('1', 'load', [], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
+		.calls('1', NodeId.toBuiltIn('load'))
 		.markIdForUnknownSideEffects('1'),
 	{ expectIsSubgraph: true }
 	);
@@ -383,12 +383,12 @@ describe('no resolvable file argument', withTreeSitter(parser => {
 		.reads('6', '0')
 		.use('7', 'envir')
 		.reads('7', '6')
-		.call('2', 'new.env', [], { returns: [], reads: [builtInId('new.env')] })
-		.calls('2', builtInId('new.env'))
-		.call('3', '<-', [argumentInCall('0'), argumentInCall('2')], { returns: ['0'], reads: ['2', builtInId('<-')], onlyBuiltIn: true })
-		.calls('3', builtInId('<-'))
-		.call('8', 'load', [argumentInCall('7', { name: 'envir' })], { returns: [], reads: [builtInId('load')], origin: [BuiltInProcName.Function] })
-		.calls('8', builtInId('load'))
+		.call('2', 'new.env', [], { returns: [], reads: [NodeId.toBuiltIn('new.env')] })
+		.calls('2', NodeId.toBuiltIn('new.env'))
+		.call('3', '<-', [argumentInCall('0'), argumentInCall('2')], { returns: ['0'], reads: ['2', NodeId.toBuiltIn('<-')], onlyBuiltIn: true })
+		.calls('3', NodeId.toBuiltIn('<-'))
+		.call('8', 'load', [argumentInCall('7', { name: 'envir' })], { returns: [], reads: [NodeId.toBuiltIn('load')], origin: [BuiltInProcName.Function] })
+		.calls('8', NodeId.toBuiltIn('load'))
 		.defineVariable('0', 'e', { definedBy: ['2', '3'] })
 		.markIdForUnknownSideEffects('8'),
 	{ expectIsSubgraph: true }

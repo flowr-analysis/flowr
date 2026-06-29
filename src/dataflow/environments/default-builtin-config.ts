@@ -573,7 +573,7 @@ export const DefaultBuiltinConfig = [
 		Identifier.from(['topenv', PkgName.Base]),
 	], processor: BuiltInProcName.Default, config: {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['load', PkgName.Base]), 'load_image'],
-		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true }, assumePrimitive: false },
+		processor:       BuiltInProcName.Load, config:          {}, assumePrimitive: false },
 	/* attach injects an environment's contents into the search path; detach reverses it (treated as unknown side effect) */
 	{ type:            'function', names:           [Identifier.from(['attach', PkgName.Base])],
 		processor:       BuiltInProcName.Attach, config:          {}, assumePrimitive: false },

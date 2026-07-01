@@ -776,7 +776,7 @@ function intervalRunif<StateDomain extends AnyStateDomain<AnyAbstractDomain>>(ar
 	}
 
 	let [lmin, rmin] = [0, 0];
-	let [lmax, rmax] = [1, 1];
+	let [lmax, rmax] = [0, 0];
 	// min and max default to 0 and 1 if not specified
 	if(min !== 'unknown') {
 		if(min?.value === Bottom) {

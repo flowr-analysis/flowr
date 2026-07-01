@@ -102,7 +102,7 @@ async function instrument(folder: string, workingDir: string, outputFolder: stri
 						`tolower(as.character(is.numeric(${lhs}))), ` +
 						`tolower(as.character(is.vector(${lhs}))), ` +
 						`paste0(length(${lhs})), ` +
-						((isNotUndefined(inferredValue) || isNotUndefined(inferredPentagonValue)) ? `paste0('"', ifelse(length(${lhs}) == 1, paste0(${lhs}), ""), ` : `paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), `) +
+						((isNotUndefined(inferredValue) || isNotUndefined(inferredPentagonValue)) ? `paste0('"', ifelse(length(${lhs}) == 1, paste0(${lhs}), ""), '"'), ` : `paste0('"', ifelse(is.numeric(${lhs}) && length(${lhs}) == 1 , paste0(${lhs}), ""), '"'), `) +
 						`'"${inferredValue?.toString() ?? 'undefined'}"', ` +
 						`'"${inferredPentagonValue?.toString() ?? 'undefined'}"',` +
 						'"\\n", ' +

@@ -207,7 +207,7 @@ const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
 export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''
-		: header.substring(3, header.length-1).trim();
+		: header.substring(3, header.length - 1).trim();
 
 	const lines = content.split('\n');
 	for(const line of lines) {

@@ -683,7 +683,7 @@ function fuzzyCompare(a: string, b: string): boolean {
 	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource] | undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);

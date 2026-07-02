@@ -154,7 +154,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(this.value === Top || 2**(this.value.size) > limit) {
+		} else if(this.value === Top || 2 ** (this.value.size) > limit) {
 			return Top;
 		}
 		const subsets = [new this.setType()];

@@ -22,6 +22,7 @@ import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { ArrayQueue } from '../../../util/collections/queue';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -149,12 +150,11 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 	const aliases: Map<string, NodeId[]> = new Map();
 
 	const visited = new Set<NodeId>();
-	/* we store the current call name, consuming the queue via an index to avoid O(n) shifts */
-	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
-	let queueIdx = 0;
+	/* we store the current call name alongside each id */
+	const queue = new ArrayQueue<readonly [string, NodeId]>([[recoverContent(nodeId, graph) ?? '', nodeId]]);
 
-	while(queueIdx < queue.length) {
-		const [str, id] = queue[queueIdx++];
+	while(!queue.isEmpty()) {
+		const [str, id] = queue.dequeue() as readonly [string, NodeId];
 		if(visited.has(id)) {
 			continue;
 		}
@@ -181,7 +181,9 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
-			queue.push(...x);
+			for(const e of x) {
+				queue.enqueue(e);
+			}
 			continue;
 		}
 
@@ -195,7 +197,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		;
 
 		for(const call of out) {
-			queue.push([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
+			queue.enqueue([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
 		}
 	}
 

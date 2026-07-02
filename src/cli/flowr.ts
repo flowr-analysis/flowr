@@ -5,8 +5,7 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import type { DeepReadonly } from 'ts-essentials';
-import { FlowRServer } from './repl/server/server';
-import { NetServer, type Server, WebSocketServerWrapper } from './repl/server/net';
+import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
@@ -31,6 +30,7 @@ import { type ScriptInformation, scripts } from './common/scripts-info';
 import { waitOnScript } from './repl/execute';
 import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
+import { exitSafe } from '../util/proc';
 import { printVersionRepl } from './repl/print-version';
 import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
@@ -152,7 +152,7 @@ function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof Kno
 			console.log(`\n${italic('Exiting...')}`);
 		}
 		Object.values(engines.engines).forEach(e => e?.close());
-		process.exit(0);
+		exitSafe(0);
 	};
 
 	process.on('SIGINT', end);
@@ -179,12 +179,12 @@ async function mainRepl() {
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
 		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
-		process.exit(0);
+		return exitSafe(0);
 	}
 
 	if(options.help) {
 		console.log(commandLineUsage(optionHelp));
-		process.exit(0);
+		return exitSafe(0);
 	}
 
 	const engines = await retrieveEngineInstances(config);
@@ -195,7 +195,7 @@ async function mainRepl() {
 			await printVersionInformation(standardReplOutput, engine);
 			engine?.close();
 		}
-		process.exit(0);
+		return exitSafe(0);
 	}
 	hookSignalHandlers(engines);
 
@@ -214,19 +214,24 @@ async function mainRepl() {
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
 		await repl({ analyzer, allowRSessionAccess });
 	}
-	process.exit(0);
+	exitSafe(0);
 }
 
-async function mainServer(backend: Server = new NetServer()) {
+async function mainServer(useWebSocket: boolean) {
 	const config = createConfig();
 	const engines = await retrieveEngineInstances(config);
 	hookSignalHandlers(engines);
+	// the server stack (incl. the `ws` websocket library) is only loaded when actually running a server,
+	// so the common one-shot analysis path does not pay for evaluating it
+	const { FlowRServer } = await import('./repl/server/server');
+	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 
 
 if(options.server) {
-	void mainServer(options.ws ? new WebSocketServerWrapper() : new NetServer());
+	void mainServer(options.ws);
 } else {
 	void mainRepl();
 }

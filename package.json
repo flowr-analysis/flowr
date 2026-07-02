@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.10.7",
+  "version": "2.10.9",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -38,6 +38,7 @@
     "license-compat": "license-checker-rseidelsohn --onlyAllow 'MIT;MPL-2.0;MIT OR X11;GPLv2;LGPL;GNUGPL;ISC;Apache-2.0;FreeBSD;BSD-2-Clause;clearbsd;ModifiedBSD;BSD-3-Clause;Python-2.0;Unlicense;WTFPL;BlueOak-1.0.0;CC-BY-4.0;CC-BY-3.0;CC0-1.0;0BSD'",
     "doc": "typedoc",
     "test": "vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
+    "test:verbose": "FLOWR_VERBOSE=true vitest --exclude \"test/system-tests/**\" --config test/vitest.config.mts",
     "test:system": "vitest --dir test/system-tests --config test/system-tests/vitest.config.mts",
     "test:coverage": "npm run test -- --coverage",
     "test:full": "npm run test-full",
@@ -46,7 +47,7 @@
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
     "test:performance": "npm run performance-test --",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
-    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run gen:readme && npm-run-all wiki:*"
+    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run wiki"
   },
   "keywords": [
     "static code analysis",
@@ -168,7 +169,7 @@
   "devDependencies": {
     "@commitlint/cli": "^20.5.0",
     "@commitlint/config-angular": "^20.5.0",
-    "@eagleoutice/eslint-config-flowr": "^1.0.40",
+    "@eagleoutice/eslint-config-flowr": "^1.0.43",
     "@eslint/eslintrc": "^3.3.3",
     "@eslint/js": "^9.39.2",
     "@j-ulrich/release-it-regex-bumper": "^5.4.0",
@@ -185,7 +186,7 @@
     "@types/ws": "^8.18.1",
     "@typescript-eslint/eslint-plugin": "^8.40.0",
     "@vitest/coverage-v8": "^4.1.8",
-    "esbuild": "^0.27.2",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.2",
     "license-checker-rseidelsohn": "^4.4.2",
     "npm-run-all": "^4.1.5",

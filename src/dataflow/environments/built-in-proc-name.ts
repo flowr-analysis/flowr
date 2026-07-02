@@ -38,6 +38,8 @@ export enum BuiltInProcName {
 	List = 'builtin:list',
 	/** for `local` calls, see {@link processLocal} */
 	Local = 'builtin:local',
+	/** for `::` and `:::` called as a function, see {@link processNamespaceAccess} */
+	NamespaceAccess = 'builtin:ns-access',
 	/** for the pipe operators, see {@link processPipe} */
 	Pipe = 'builtin:pipe',
 	/**

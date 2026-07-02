@@ -454,7 +454,7 @@ function describePrecedenceTestsForOp(op: string, shell: RShell): void {
 							info:     {},
 						}, {
 							type:     RType.Symbol,
-							location: SourceRange.from(1, 12 + 2*opOffset, 1, 12 + 2*opOffset),
+							location: SourceRange.from(1, 12 + 2 * opOffset, 1, 12 + 2 * opOffset),
 							lexeme:   ')',
 							content:  ')',
 							info:     {},

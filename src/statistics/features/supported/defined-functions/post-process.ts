@@ -203,7 +203,7 @@ function processNextLine(data: FunctionDefinitionSummaryInformation<number[]>[],
 		forFile.length.lines.push(length.lines);
 		forFile.length.chars.push(length.characters);
 		forFile.length.nonWhitespaceChars.push(length.nonWhitespaceCharacters);
-		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l/length.lines));
+		forFile.exitPointsLinePercentageInDef.push(returns.map(r => r.location[0]).map(l => l / length.lines));
 
 		forFile.callsites.push(callsites.length);
 

@@ -96,7 +96,9 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
-	existing.push(...toAdd);
+	for(const ep of toAdd) {
+		existing.push(ep);
+	}
 	for(const icd of invertedCds) {
 		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
 			invertExitCds.push(icd);

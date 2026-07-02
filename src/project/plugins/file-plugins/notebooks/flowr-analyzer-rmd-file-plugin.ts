@@ -7,7 +7,7 @@ import { FlowrRMarkdownFile } from '../files/flowr-rmarkdown-file';
 import { platformBasename } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 
-const RmdPattern = /\.rmd$/i;
+export const RmdPattern = /\.rmd$/i;
 
 /**
  * The plugin provides support for R Markdown (`.rmd`) files
@@ -31,7 +31,7 @@ export class FlowrAnalyzerRmdFilePlugin extends FlowrAnalyzerFilePlugin {
 		return this.pattern.test(platformBasename(file.toString()));
 	}
 
-	protected process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return FlowrRMarkdownFile.from(arg);
+	protected process(ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
+		return FlowrRMarkdownFile.from(arg, ctx);
 	}
 }

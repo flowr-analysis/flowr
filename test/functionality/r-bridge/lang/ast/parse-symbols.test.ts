@@ -35,4 +35,3 @@ describe.sequential('Parse symbols', withShell(shell => {
 		})
 	);
 }));
-

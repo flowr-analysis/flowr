@@ -1,6 +1,6 @@
 import ts, { SyntaxKind, type NamedDeclaration, type SourceFile, type TypeChecker } from 'typescript';
 import { guard } from '../../util/assert';
-import { RemoteFlowrFilePathBaseRef } from './doc-files';
+import { RemoteFlowrFilePathBaseRef, toPosixPath } from './doc-files';
 import fs from 'fs';
 import path from 'path';
 import { codeBlock } from './doc-code';
@@ -61,8 +61,10 @@ const options: ts.CompilerOptions = {
  */
 export function getTypeScriptSourceFiles(fileNames: readonly string[]): { files: ts.SourceFile[], program: ts.Program } {
 	try {
-		const program = ts.createProgram(fileNames, options);
-		return { program, files: fileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
+		// keeps wiki/doc links consistent across OSes (Windows uses backslashes)
+		const normalizedFileNames = fileNames.map(toPosixPath);
+		const program = ts.createProgram(normalizedFileNames, options);
+		return { program, files: normalizedFileNames.map(fileName => program.getSourceFile(fileName)).filter(file => !!file) };
 	} catch(err) {
 		console.error('Failed to get source files', err);
 		return { files: [], program: undefined as unknown as ts.Program };
@@ -634,7 +636,7 @@ export function printCodeOfElement(info: FnElementInfo, name: string): string {
  * This is great to show examples that are directly taken from the source code.
  */
 export function printCodeOfFile(info: FnElementInfo, relativePath: string): string {
-	const fullPath = path.resolve(__dirname, `../../../${relativePath}`);
+	const fullPath = toPosixPath(path.resolve(__dirname, `../../../${relativePath}`));
 	const code = info.program.getSourceFile(fullPath)?.getFullText().trim();
 	if(!code) {
 		console.error(`Could not find source file ${relativePath}!`);
@@ -681,7 +683,7 @@ function fuzzyCompare(a: string, b: string): boolean {
 	return aStr === bStr || aStr.includes(bStr) || bStr.includes(aStr);
 }
 
-function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource]| undefined {
+function retrieveNode(name: string, hierarchy: readonly TypeElementInSource[], fuzzy = false, type: TypeElementKind | undefined = undefined): [string | undefined, string, TypeElementInSource] | undefined {
 	let container: string | undefined = undefined;
 	if(name.includes('::')) {
 		[container, name] = name.split(/:::?/);

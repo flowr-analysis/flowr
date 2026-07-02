@@ -145,7 +145,7 @@ function visitDefinitions(info: FunctionDefinitionInfo, input: FeatureProcessorI
 			appendStatisticsFile(definedFunctions.name, 'recursive', recursiveCalls.map(n => RNode.lexeme(n) ?? 'unknown'), input.filepath);
 
 			const lexeme = node.info.fullLexeme;
-			const lexemeSplit= lexeme?.split('\n');
+			const lexemeSplit = lexeme?.split('\n');
 
 			allDefinitions.push({
 				location:           SourceRange.getStart(node.location),

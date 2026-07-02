@@ -341,7 +341,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(this.value.range === Top || 2**(this.value.range.size) > limit) {
+		} else if(this.value.range === Top || 2 ** (this.value.range.size) > limit) {
 			return Top;
 		}
 		const subsets = [new this.setType()];
@@ -419,7 +419,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Bottom) {
 			return this.value.description;
 		}

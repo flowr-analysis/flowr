@@ -254,13 +254,21 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				};
 			}
 			case TreeSitterType.NamespaceOperator: {
-				const [lhs, int, rhs] = nonErrorChildren(node);
+				const [comments, children] = splitComments(nonErrorChildren(node));
+				if(children.length < 3) {
+					break;
+				}
+				const [lhs, int, rhs] = children;
 				return {
 					type:     RType.Symbol,
 					location: makeSourceRange(rhs),
 					content:  Identifier.make(rhs.text, lhs.text, int.text === ':::' ),
 					lexeme:   rhs.text,
-					...defaultInfo
+					...defaultInfo,
+					info:     {
+						...defaultInfo.info,
+						adToks: comments.map(c => c[1]),
+					}
 				};
 			}
 			case '(' as TreeSitterType:

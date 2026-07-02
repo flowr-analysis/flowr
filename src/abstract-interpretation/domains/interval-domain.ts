@@ -265,7 +265,7 @@ export class IntervalDomain<Value extends IntervalLift = IntervalLift>
 		}
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Bottom) {
 			return this.value.description;
 		}

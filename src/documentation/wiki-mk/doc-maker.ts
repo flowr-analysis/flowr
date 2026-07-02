@@ -32,6 +32,11 @@ export enum WikiChangeType {
 	Identical
 }
 
+/** Strips `\r` so generated files stay consistent regardless of OS/checkout settings. */
+export function normalizeLineEndings(text: string): string {
+	return text.replace(/\r\n/g, '\n');
+}
+
 export interface DocMakerLike<Target extends string = string> {
 	make(args: DocMakerArgs & DocMakerOutputArgs): Promise<boolean>;
 	getTarget(): Target;
@@ -118,7 +123,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 	): Promise<boolean> {
 		this.currentArgs = args;
 		this.writtenSubfiles = new Set();
-		const newText = (this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args);
+		const newText = normalizeLineEndings((this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n' : '') + await this.text(args));
 		if(args.force || this.didUpdate(this.target, newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
 			return true;
@@ -133,6 +138,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 		if(!this.currentArgs) {
 			throw new Error('DocMaker: writeSubFile called outside of make()');
 		}
+		data = normalizeLineEndings(data);
 		if(this.currentArgs.force || this.didUpdate(path, data, this.currentArgs.readFileSync(path)?.toString()) === WikiChangeType.Changed) {
 			this.currentArgs.writeFileSync(path.toString(), data);
 			this.writtenSubfiles.add(path.toString());

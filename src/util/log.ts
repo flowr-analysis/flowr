@@ -1,8 +1,8 @@
 import { type ILogObj, type ISettingsParam, Logger } from 'tslog';
 import { createStream, type Options } from 'rotating-file-stream';
 
-export const expensiveTrace = (log: Logger<ILogObj>, supplier: () => string): void => {
-	if(log.settings.minLevel <= LogLevel.Trace) {
+export const expensiveTrace = (log: Logger<ILogObj> | undefined, supplier: () => string): void => {
+	if(log !== undefined && log.settings.minLevel <= LogLevel.Trace) {
 		log.trace(supplier());
 	}
 };

@@ -24,7 +24,7 @@ globalThis.hasXmlParseData = false;
 globalThis.produceLabelSummary = false;
 
 await (async() => {
-	const isVerbose = process.argv.includes('--verbose');
+	const isVerbose = process.env['FLOWR_VERBOSE'] === 'true';
 	setMinLevelOfAllLogs(isVerbose ? LogLevel.Trace : LogLevel.Error, isVerbose);
 	globalThis.produceLabelSummary = process.argv.includes('--make-summary');
 

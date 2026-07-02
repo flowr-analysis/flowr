@@ -82,22 +82,36 @@ export function promoteCallName(callName: CallNameTypes, exact = false): Promote
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
 	callName:    PromotedCallTest,
+	/** names the query matches exactly (if any), allowing map-based lookup instead of per-vertex predicate checks */
+	exactNames?: readonly string[],
+	/** position in the original query list, keeps result order stable */
+	idx:         number,
 	fileFilter?: FileFilter<PromotedCallTest>,
 	linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
 export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: PromotedCallTest };
+
+/** string arrays always match exactly, plain strings only if the query requests an exact match */
+function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly string[] | undefined {
+	if(Array.isArray(callName)) {
+		return callName;
+	}
+	return exact && typeof callName === 'string' ? [callName] : undefined;
+}
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 	promotedQueries: PromotedQuery[],
 	requiresCfg:     boolean
 } {
 	let requiresCfg = false;
-	const promotedQueries: PromotedQuery[] = queries.map(q => {
+	const promotedQueries: PromotedQuery[] = queries.map((q, idx) => {
 		if(isSubCallQuery(q)) {
 			requiresCfg = true;
 			return {
 				...q,
 				callName:   promoteCallName(q.callName, q.callNameExact),
+				exactNames: exactNamesOf(q.callName, q.callNameExact),
+				idx,
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
@@ -115,6 +129,8 @@ function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 			return {
 				...q,
 				callName:   promoteCallName(q.callName, q.callNameExact),
+				exactNames: exactNamesOf(q.callName, q.callNameExact),
+				idx,
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
@@ -133,11 +149,12 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 	const aliases: Map<string, NodeId[]> = new Map();
 
 	const visited = new Set<NodeId>();
-	/* we store the current call name */
+	/* we store the current call name, consuming the queue via an index to avoid O(n) shifts */
 	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	let queueIdx = 0;
 
-	while(queue.length > 0) {
-		const [str, id] = queue.shift() as [string, NodeId];
+	while(queueIdx < queue.length) {
+		const [str, id] = queue[queueIdx++];
 		if(visited.has(id)) {
 			continue;
 		}
@@ -251,6 +268,26 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	}
 	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
+	/* index exact-name queries so each vertex costs one map lookup instead of a predicate check per query */
+	const nonAliasByName = new Map<string, PromotedQuery[]>();
+	const nonAliasPatterns: PromotedQuery[] = [];
+	for(const query of promotedQueries) {
+		if(query.includeAliases) {
+			continue;
+		}
+		if(query.exactNames) {
+			for(const name of query.exactNames) {
+				const present = nonAliasByName.get(name);
+				if(present) {
+					present.push(query);
+				} else {
+					nonAliasByName.set(name, [query]);
+				}
+			}
+		} else {
+			nonAliasPatterns.push(query);
+		}
+	}
 
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
@@ -271,7 +308,16 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 
 		const n = Identifier.getName(info.name);
-		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName(n))) {
+		const byName = nonAliasByName.get(n) ?? [];
+		let matching: readonly PromotedQuery[];
+		if(nonAliasPatterns.length === 0) {
+			matching = byName;
+		} else {
+			const patternMatches = nonAliasPatterns.filter(q => q.callName(n));
+			matching = byName.length === 0 ? patternMatches
+				: [...byName, ...patternMatches].sort((a, b) => a.idx - b.idx);
+		}
+		for(const query of matching) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;

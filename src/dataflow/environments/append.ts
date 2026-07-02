@@ -4,9 +4,10 @@ import { pushLocalEnvironment } from './scoping';
 
 /**
  * Merges two arrays of identifier definitions, ensuring uniqueness based on `nodeId` and `definedAt`.
+ * Returns a copy, the input arrays are not modified (they may be shared with other environments).
  */
-export function uniqueMergeValuesInDefinitions(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
-	const result = old;
+export function uniqueMergeValuesInDefinitions(old: readonly IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
+	const result = old.slice();
 	for(const v of value) {
 		const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
 		if(find < 0) {

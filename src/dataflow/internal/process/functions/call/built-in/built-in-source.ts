@@ -24,7 +24,6 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
-import { getHeapStatistics } from 'v8';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -33,6 +32,26 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/con
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { EdgeType } from '../../../../../graph/edge';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+
+type HeapStatistics = { used_heap_size: number, heap_size_limit: number };
+let heapStatisticsProvider: (() => HeapStatistics) | null | undefined = undefined;
+
+/**
+ * Heap statistics are only available on V8-based runtimes (e.g., Node.js).
+ * Elsewhere, this returns undefined and the memory-pressure check on source is skipped.
+ */
+function tryGetHeapStatistics(): HeapStatistics | undefined {
+	if(heapStatisticsProvider === undefined) {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-require-imports
+			heapStatisticsProvider = (require('v8') as typeof import('v8')).getHeapStatistics;
+		} catch{
+			heapStatisticsProvider = null;
+			log.info('v8 heap statistics are unavailable in this runtime, skipping memory pressure checks on source');
+		}
+	}
+	return heapStatisticsProvider ? heapStatisticsProvider() : undefined;
+}
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -258,12 +277,15 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		}
 		const resolveSource = data.ctx.config.solver.resolveSource;
 		if(resolveSource?.checkMemoryOnSource) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { used_heap_size, heap_size_limit } = getHeapStatistics();
-			if(heap_size_limit > 0 && used_heap_size / heap_size_limit > (resolveSource.memoryThreshold ?? .9)) {
-				dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to memory pressure (${Math.round(used_heap_size / 1048576)}/${Math.round(heap_size_limit / 1048576)} MB used)`);
-				handleUnknownSideEffect(information.graph, information.environment, rootId);
-				return information;
+			const heapStatistics = tryGetHeapStatistics();
+			if(heapStatistics) {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				const { used_heap_size, heap_size_limit } = heapStatistics;
+				if(heap_size_limit > 0 && used_heap_size / heap_size_limit > (resolveSource.memoryThreshold ?? .9)) {
+					dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to memory pressure (${Math.round(used_heap_size / 1048576)}/${Math.round(heap_size_limit / 1048576)} MB used)`);
+					handleUnknownSideEffect(information.graph, information.environment, rootId);
+					return information;
+				}
 			}
 		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);

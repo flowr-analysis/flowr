@@ -87,9 +87,13 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
  */
 export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: Environment = environment.current;
-	const g = current.cache?.get(id);
-	if(g !== undefined) {
-		return g;
+	/* only cache plain names: namespaced ids are arrays (no stable map key) and must not answer plain lookups */
+	const cacheable = typeof id === 'string';
+	if(cacheable) {
+		const g = current.cache?.get(id);
+		if(g !== undefined) {
+			return g;
+		}
 	}
 	const [name, ns, internal] = Identifier.toArray(id);
 
@@ -105,8 +109,10 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
 			if(definition.every(d => happensInEveryBranch(d.cds))) {
-				environment.current.cache ??= new Map();
-				environment.current.cache?.set(name, definition);
+				if(cacheable) {
+					environment.current.cache ??= new Map();
+					environment.current.cache.set(id, definition);
+				}
 				return definition;
 			} else if(definition.length > 0) {
 				if(definitions) {
@@ -126,9 +132,9 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 	} else {
 		ret = builtIns;
 	}
-	if(ret) {
+	if(ret && cacheable) {
 		environment.current.cache ??= new Map();
-		environment.current.cache?.set(id, ret);
+		environment.current.cache.set(id, ret);
 	}
 	return ret;
 }

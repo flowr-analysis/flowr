@@ -416,7 +416,7 @@ export class DataflowGraph<
 		}
 		const vtag = vertex.tag;
 
-		// keep a clone of the original environment
+		// keep a clone of the original environment, isolating the snapshot from later updates
 		(vertex as { environment: REnvironmentInformation | undefined }).environment = vertex.environment ? cloneEnvironmentInformation(vertex.environment) : (vtag === VertexType.FunctionDefinition || (vtag === VertexType.FunctionCall && !vertex.onlyBuiltin) ? fallbackEnv : undefined);
 		this.vertexInformation.set(vid, vertex as Vertex);
 		const typeIds = this.types.get(vtag);

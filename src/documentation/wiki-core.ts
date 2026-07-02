@@ -496,7 +496,8 @@ During a large analysis, flowR may run into memory or time pressure.
 The _gas_ system provides per-feature resource guards that check the current heap usage and elapsed analysis time.
 
 Any analysis site queries the level with ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas')}, where \`key\` is a feature name.
-The call is a no-op when gas is disabled for that key.
+The call is a no-op when gas is disabled for that key and no gas plugins are registered.
+Heap statistics come from the \`v8\` module (Node.js, Electron, VS Code) or Chromium's \`performance.memory\` in browsers. If neither is available, gas skips the memory check and only the elapsed-time thresholds apply. Programmatic configs can supply a custom source via the \`heapProvider\` of the ${ctx.link('FlowrGasConfig')} (\`config.gas.heapProvider\`), and gas plugins can override levels entirely.
 
 | Level                    | Value | Description                         |
 |:-------------------------|------:|:------------------------------------|
@@ -536,6 +537,10 @@ is at 35% (= 0.7 / 2) instead of 70%.
 ### Known Feature Keys
 
 ${ctx.doc('GasFeatureKey')}
+
+| Key | Description |
+|:----|:------------|
+${Object.entries(GasFeatureKey).map(([name, key]) => `| \`${key}\` | ${ctx.doc(`GasFeatureKey::${name}`)} |`).join('\n')}
 
 You can search for \`ctx.gas.checkGas(\` in the source to locate every active check site.
 

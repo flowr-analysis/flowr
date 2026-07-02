@@ -7,7 +7,6 @@ import { MIN_VERSION_RAW_STABLE } from '../versions';
 
 /**
  * Represents a string like `"hello"`, including raw strings like `r"(hello)"`.
- * @see {@link isRString} - to check whether a node is an R string
  */
 export interface RString<Info = NoInfo> extends Leaf<Info>, Location {
 	readonly type: RType.String;

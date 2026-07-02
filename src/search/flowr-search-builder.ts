@@ -70,7 +70,7 @@ export const FlowrSearchGenerator = {
 	 */
 	all: all,
 	/**
-	 * Returns all elements that match the given {@link FlowrSearchGetFilters|filters}.
+	 * Returns all elements that match the given {@link FlowrSearchGetFilter|filters}.
 	 * You may pass a negative line number to count from the back.
 	 * Please note that this is currently only working for single files, it approximates over the nodes, and it is not to be used for "production".
 	 */

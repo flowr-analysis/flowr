@@ -18,7 +18,7 @@ import { CallGraph } from '../../dataflow/graph/call-graph';
 
 /**
  * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
- * Please use this only for documentation purposes, for programmatic usage use {@link graphToMermaid} directly.
+ * Please use this only for documentation purposes, for programmatic usage use {@link DataflowMermaid.convert} directly.
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `

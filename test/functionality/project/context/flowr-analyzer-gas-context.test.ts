@@ -1,7 +1,7 @@
 import { describe, test } from 'vitest';
 import { assert } from 'chai';
 import { FlowrConfig } from '../../../../src/config';
-import { GasLevel } from '../../../../src/gas';
+import { type GasHeapStatistics, GasLevel } from '../../../../src/gas';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
 import { FlowrAnalyzerGasPlugin } from '../../../../src/project/plugins/gas-plugins/flowr-analyzer-gas-plugin';
@@ -26,10 +26,10 @@ class FixedLevelGasPlugin extends FlowrAnalyzerGasPlugin {
 	}
 }
 
-function makeContext(plugins: FlowrAnalyzerGasPlugin[], gasFeatures: Record<string, number> = {}): FlowrAnalyzerContext {
+function makeContext(plugins: FlowrAnalyzerGasPlugin[], gasFeatures: Record<string, number> = {}, heapProvider?: () => GasHeapStatistics | undefined): FlowrAnalyzerContext {
 	const config: FlowrConfig = {
 		...FlowrConfig.default(),
-		gas: { ...FlowrConfig.default().gas, features: gasFeatures }
+		gas: { ...FlowrConfig.default().gas, features: gasFeatures, heapProvider }
 	};
 	return new FlowrAnalyzerContext(config, arraysGroupBy(plugins, p => p.type));
 }
@@ -54,5 +54,14 @@ describe('FlowrAnalyzerGasContext', () => {
 		const severe  = new FixedLevelGasPlugin('source', GasLevel.Critical);
 		const ctx     = makeContext([mild, severe]);
 		assert.strictEqual(ctx.gas.checkGas('source'), GasLevel.Critical, 'max of Problematic and Critical must be Critical');
+	});
+
+	test('configured heapProvider overrides the built-in heap source', () => {
+		const full  = makeContext([], { linter: 1 }, () => ({ used_heap_size: 100, heap_size_limit: 100 }));
+		assert.strictEqual(full.gas.checkGas('linter'), GasLevel.Critical, 'a full heap must be Critical');
+		const empty = makeContext([], { linter: 1 }, () => ({ used_heap_size: 0, heap_size_limit: 100 }));
+		assert.strictEqual(empty.gas.checkGas('linter'), GasLevel.Normal, 'an empty heap (and fresh timer) must be Normal');
+		const none  = makeContext([], { linter: 1 }, () => undefined);
+		assert.strictEqual(none.gas.checkGas('linter'), GasLevel.Normal, 'a provider returning undefined skips memory checks');
 	});
 });

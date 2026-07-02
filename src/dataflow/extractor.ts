@@ -27,6 +27,8 @@ import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
 import { SourceRange } from '../util/range';
+import { dataflowLogger } from './logger';
+import { GasFeatureKey, GasLevel } from '../gas';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -67,7 +69,14 @@ export const processors: DataflowProcessors<ParentInformation> = {
 };
 
 
-function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph) {
+function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
+	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
+	if(gasLevel >= GasLevel.Critical) {
+		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+		return undefined;
+	} else if(gasLevel >= GasLevel.Problematic) {
+		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+	}
 	let cf: ControlFlowInformation | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
 	let allCallNames: string[] = [];
@@ -157,7 +166,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	// finally, resolve linkages
 	updateNestedFunctionCalls(df.graph, df.environment);
 
-	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph);
+	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 
 	// performance optimization: return cfgQuick as part of the result to avoid recomputation
 	return df as DataflowInformation & { cfgQuick: ControlFlowInformation | undefined };

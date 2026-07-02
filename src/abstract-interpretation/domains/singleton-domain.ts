@@ -126,7 +126,7 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top) {
 			return Top.description;
 		} else if(this.value === Bottom) {

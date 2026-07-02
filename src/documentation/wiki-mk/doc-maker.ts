@@ -123,7 +123,7 @@ export abstract class DocMaker<Target extends string> implements DocMakerLike<Ta
 	): Promise<boolean> {
 		this.currentArgs = args;
 		this.writtenSubfiles = new Set();
-		const newText = normalizeLineEndings((this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n': '') + await this.text(args));
+		const newText = normalizeLineEndings((this.printHeader ? (await args.ctx.header(this.filename, this.purpose)) + '\n' : '') + await this.text(args));
 		if(args.force || this.didUpdate(this.target, newText, args.readFileSync(this.target)?.toString()) === WikiChangeType.Changed) {
 			args.writeFileSync(this.target, newText);
 			return true;

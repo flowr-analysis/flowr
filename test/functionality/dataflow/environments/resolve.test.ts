@@ -114,7 +114,7 @@ describe.sequential('Resolve', withShell(shell => {
 		describe(name, () => {
 			for(const distractor of distractors) {
 				const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
-				testResolve(distractor, `${line*2}@${identifier}`, mutatedCode, expected, allow);
+				testResolve(distractor, `${line * 2}@${identifier}`, mutatedCode, expected, allow);
 			}
 		});
 	}

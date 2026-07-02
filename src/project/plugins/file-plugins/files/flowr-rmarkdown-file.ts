@@ -40,6 +40,13 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		return this.data;
 	}
 
+	get executableCells(): CodeBlock[] {
+		return this.rmd.blocks.filter(b => {
+			const opt = b.options.get('eval');
+			return opt !== 'F' && opt !== 'FALSE';
+		});
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns RmdInfo
@@ -102,6 +109,7 @@ export type CodeBlockOptions = Map<string, string>;
 export interface CodeBlock {
 	options:  CodeBlockOptions,
 	code:     string,
+	header:   string,
 	startpos: { line: number, col: number }
 }
 
@@ -149,6 +157,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		blocks.push({
 			code:     node.literal,
 			options:  options,
+			header:   node.info,
 			startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
 		});
 	}
@@ -207,7 +216,7 @@ const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
 export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''
-		: header.substring(3, header.length-1).trim();
+		: header.substring(3, header.length - 1).trim();
 
 	const lines = content.split('\n');
 	for(const line of lines) {

@@ -4,6 +4,7 @@ import { intervalFrom } from './intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from './logical/logical-constants';
 import { type Lift, type Value, type ValueSet, Bottom, isBottom, isTop, Top } from './r-value';
 import { stringFrom } from './string/string-constants';
+import { vectorFrom } from './vectors/vector-constants';
 
 /**
  * Takes n potentially lifted ops and returns `Top` or `Bottom` if any is `Top` or `Bottom`.
@@ -42,6 +43,8 @@ export function valueFromTsValue(a: unknown): Value {
 		return intervalFrom(a, a);
 	} else if(typeof a === 'boolean') {
 		return a ? ValueLogicalTrue : ValueLogicalFalse;
+	} else if(Array.isArray(a)) {
+		return vectorFrom(a.map(v => valueFromTsValue(v)));
 	}
 
 	return Top;

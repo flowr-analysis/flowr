@@ -13,6 +13,7 @@ import { scripts } from '../common/scripts-info';
 import type { StatsHelperCliOptions } from '../statistics-helper-app';
 import { setFormatter, voidFormatter } from '../../util/text/ansi';
 import type { FlowrConfig } from '../../config';
+import { exitSafe } from '../../util/proc';
 
 const testRegex = /[^/]*\/test/i;
 const exampleRegex = /[^/]*\/example/i;
@@ -63,7 +64,7 @@ async function collectFileArguments(options: StatsCliOptions, verboseAdd: readon
 export async function flowrScriptGetStats(options: StatsCliOptions, config: FlowrConfig) {
 	if(options.input.length === 0) {
 		console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
-		process.exit(0);
+		return exitSafe(0);
 	}
 
 	if(options['no-ansi']) {

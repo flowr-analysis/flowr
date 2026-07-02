@@ -3,6 +3,7 @@ import { answerForValidationError, validateBaseMessageFormat, validateMessage } 
 import {
 	type FileAnalysisRequestMessage,
 	type FileAnalysisResponseMessageCompact,
+	type FileAnalysisResponseMessageJson,
 	type FileAnalysisResponseMessageNQuads
 	, requestAnalysisMessage } from './messages/message-analysis';
 import { type SliceRequestMessage, type SliceResponseMessage, requestSliceMessage } from './messages/message-slice';
@@ -128,6 +129,17 @@ export class FlowRServerConnection {
 		const message = requestResult.message;
 		this.logger.info(`[${this.name}] Received file analysis request for ${message.filename ?? 'unknown file'}${message.filetoken ? ' with token: ' + message.filetoken : ''}`);
 
+		if(message.content === undefined && message.filepath === undefined) {
+			sendMessage<FileAnalysisResponseMessageJson>(this.socket, {
+				type:    'response-file-analysis',
+				format:  'json',
+				id:      message.id,
+				results: {} as FileAnalysisResponseMessageJson['results']
+			});
+			this.invalidateTokens(message.invalidateToken);
+			return;
+		}
+
 		if(message.filetoken && this.fileMap.has(message.filetoken)) {
 			this.logger.warn(`File token ${message.filetoken} already exists. Overwriting.`);
 			// explicitly delete the previous store
@@ -151,6 +163,21 @@ export class FlowRServerConnection {
 
 		// this is an interestingly named function that means "I am a callback that removes a file" - so this deletes the file
 		tempFile.removeCallback();
+		this.invalidateTokens(message.invalidateToken);
+	}
+
+	private invalidateTokens(invalidateToken: string | readonly string[] | undefined) {
+		if(!invalidateToken) {
+			return;
+		}
+		const tokens = typeof invalidateToken === 'string' ? [invalidateToken] : invalidateToken;
+		for(const token of tokens) {
+			if(this.fileMap.delete(token)) {
+				this.logger.info(`[${this.name}] Invalidated file token ${token}`);
+			} else {
+				this.logger.warn(`[${this.name}] Cannot invalidate unknown file token ${token}`);
+			}
+		}
 	}
 
 	private async sendFileAnalysisResponse(analyzer: FlowrAnalyzer, message: FileAnalysisRequestMessage): Promise<void> {

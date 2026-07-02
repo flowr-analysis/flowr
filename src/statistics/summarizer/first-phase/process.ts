@@ -59,7 +59,7 @@ function groupByContext(input: string | undefined): StatisticsOutputFormat<never
 		return [];
 	}
 	const parsed = input.split('\n').filter(s => s && s !== '').map(s => JSON.parse(s) as StatisticsOutputFormat<never>);
-	const grouped = new Map<string|undefined, never[]>();
+	const grouped = new Map<string | undefined, never[]>();
 	for(const content of parsed) {
 		if(!Array.isArray(content)) {
 			// in this case it is a meta file or other which does not have to be grouped

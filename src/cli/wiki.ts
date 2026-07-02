@@ -1,3 +1,4 @@
+import { exitSafe } from '../util/proc';
 import { makeDocContextForTypes } from '../documentation/wiki-mk/doc-context';
 import { RShell } from '../r-bridge/shell';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
@@ -131,7 +132,7 @@ export async function makeAllWikis(force: boolean, filter: string[] | undefined)
 	console.log('All wikis processed in ' + (new Date().getTime() - setupStart.getTime()) + 'ms');
 	console.log(`    * Changed ${changedWikis.size} wiki/doc files.`);
 	// write a temp file in the os temp dir with the changed wikis
-	const filename=`${os.tmpdir()}/flowr-wiki-changed-files.txt`;
+	const filename = `${os.tmpdir()}/flowr-wiki-changed-files.txt`;
 	fs.writeFileSync(`${filename}`, Array.from(changedWikis).join('\n'));
 	console.log(`    * List of changed wikis/docs written to ${filename}`);
 }
@@ -179,7 +180,7 @@ if(require.main === module) {
 	}
 	void makeAllWikis(options.force, options.filter).catch(err => {
 		console.error('Error while generating wikis:', err);
-		process.exit(1);
+		exitSafe(1);
 	}).then(() => {
 		if(options['keep-alive']) {
 			console.log('Wiki generator running in keep-alive mode...');

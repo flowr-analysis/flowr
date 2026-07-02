@@ -26,7 +26,7 @@ export function writeGraphOutput(ultimate: UltimateSlicerStats, outputGraphPath:
 			if(point === 'close R session' || point === 'initialize R session' || !measurement?.mean || !measurement?.std) {
 				continue;
 			}
-			const pointName = point === 'total'? `total ${name}` : point;
+			const pointName = point === 'total' ? `total ${name}` : point;
 			data.push({
 				name:  pointName[0].toUpperCase() + pointName.slice(1),
 				unit:  'ms',

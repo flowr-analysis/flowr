@@ -171,7 +171,7 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
 	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
+	const command = `flowr_get_ast(${request.request}=${JSON.stringify(
 		request.content
 	)}${suffix})`;
 

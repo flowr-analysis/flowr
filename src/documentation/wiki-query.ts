@@ -59,7 +59,7 @@ registerQueryDocumentation('call-context', {
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
 	functionName:     executeCallContextQueries.name,
 	functionFile:     '../queries/catalog/call-context-query/call-context-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 Call context queries can be used to identify calls to specific functions that match criteria of your interest.
 For now, we support two criteria:
@@ -102,7 +102,7 @@ ${
 			subkind:  'plot',
 			linkTo:   { type: 'link-to-last-call', callName: '^plot$' }
 		}
-	], { showCode: false })
+	], { showCode: false, ctx })
 }
 
 As you can see, all kinds and subkinds with the same name are grouped together.
@@ -120,7 +120,7 @@ my_test_function()
 `.trim();
 		return details('Alias Example', `Consider the following code: ${codeBlock('r', code)}\nNow let's say we want to query _all_ uses of the \`my_test_function\`:` + await showQuery(shell, code, [
 			{ type: 'call-context', callName: '^my_test_function', includeAliases: true }
-		], { showCode: false }));
+		], { showCode: false, ctx }));
 	})()
 }
 		`;
@@ -133,17 +133,17 @@ registerQueryDocumentation('dataflow', {
 	shortDescription: 'Returns the dataflow graph of the given code.',
 	functionName:     executeDataflowQuery.name,
 	functionFile:     '../queries/catalog/dataflow-query/dataflow-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
-Maybe you want to handle only the result of the query execution, or you just need the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) again.
+Maybe you want to handle only the result of the query execution, or you just need the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} again.
 This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the dataflow graph of the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'dataflow'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -164,7 +164,7 @@ Using the example code \`${exampleCode}\`, the following query returns the dataf
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'call-graph'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -176,7 +176,7 @@ registerQueryDocumentation('does-call', {
 	shortDescription: 'Checks whether a function calls another function matching given constraints.',
 	functionName:     executeDoesCallQuery.name,
 	functionFile:     '../queries/catalog/does-call-query/does-call-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function(x) { eval(x) };\nf("1 + 1")';
 		return `
 This query checks whether a function calls another function matching given constraints.
@@ -190,7 +190,7 @@ ${
 		queryId: 'calls-eval',
 		call:    '2@f',
 		calls:   { type: 'name', name: 'eval', nameExact: true }
-	}], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")' })
+	}], { showCode: true, collapseQuery: false, shorthand: '(2@f:"eval")', ctx })
 }
 		`;
 	}
@@ -203,13 +203,13 @@ registerQueryDocumentation('files', {
 	shortDescription: 'Returns the files matching the given criteria.',
 	functionName:     executeFileQuery.name,
 	functionFile:     '../queries/catalog/files-query/files-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 This query returns the files that match the given criteria.
 ${
 	await showQuery(shell, '', [{
 		type: 'files'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -221,7 +221,7 @@ registerQueryDocumentation('project', {
 	shortDescription: 'Returns information about the analyzed project',
 	functionName:     executeDataflowQuery.name,
 	functionFile:     '../queries/catalog/project-query/project-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
 This query returns the information about the analyzed project.
@@ -230,7 +230,7 @@ If present, it will incorporate plugins to, e.g., extract author and license inf
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'project'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -242,17 +242,17 @@ registerQueryDocumentation('normalized-ast', {
 	shortDescription: 'Returns the normalized AST of the given code.',
 	functionName:     executeNormalizedAstQuery.name,
 	functionFile:     '../queries/catalog/normalized-ast-query/normalized-ast-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
-Maybe you want to handle only the result of the query execution, or you just need the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) again.
+Maybe you want to handle only the result of the query execution, or you just need the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} again.
 This query type does exactly that!
 
 Using the example code \`${exampleCode}\`, the following query returns the normalized AST of the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'normalized-ast'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -264,7 +264,7 @@ registerQueryDocumentation('dataflow-cluster', {
 	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
 	functionName:     executeDataflowClusterQuery.name,
 	functionFile:     '../queries/catalog/cluster-query/cluster-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleA = 'x <- 1; x';
 		const exampleB = 'x <- 1; y';
 		return `
@@ -276,15 +276,15 @@ the code \`${exampleA}\` has one cluster (given that all code is related),
 while the code \`${exampleB}\` has two clusters (given that the \`y\` has no relation to the previous definition).
 
 ${details('Example <code>' + exampleA + '</code>',
-	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false }))}
+	await showQuery(shell, exampleA, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
 ${details('Example <code>' + exampleB + '</code>',
-	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false }))}
+	await showQuery(shell, exampleB, [{ type: 'dataflow-cluster' }], { showCode: false, ctx }))}
 
 Using the example code from above, the following query returns all clusters:
 ${
 	await showQuery(shell, exampleQueryCode, [{
 		type: 'dataflow-cluster'
-	}], { showCode: false, collapseQuery: true })
+	}], { showCode: false, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -296,19 +296,19 @@ registerQueryDocumentation('resolve-value', {
 	shortDescription: 'Provides access to flowR\'s value tracking (which is configurable)',
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/resolve-value-query/resolve-value-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <-2\nprint(x)\nprint(y)';
 		const criteria = ['3@x', '4@y'] as SlicingCriteria;
 		return `
 With this query you can use flowR's value-tracking capabilities to resolve identifiers to all potential values they may have at runtime (if possible).
-The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information).
+The extent to which flowR traces values (e.g., built-ins vs. constants) can be configured in flowR's Configuration file (see the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information).
 
 Using the example code \`${exampleCode}\` (with newlines), the following query returns all values of \`x\` in the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:     'resolve-value',
 		criteria: criteria
-	}], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
+	}], { showCode: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -320,7 +320,7 @@ registerQueryDocumentation('inspect-higher-order', {
 	shortDescription: 'Determine whether functions are higher-order functions',
 	functionName:     executeHigherOrderQuery.name,
 	functionFile:     '../queries/catalog/inspect-higher-order-query/inspect-higher-order-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'f <- function() function(x) x; f()';
 		return `
 With this query you can identify which functions in the code are higher-order functions, i.e., either take a function as an argument or return a function.
@@ -330,7 +330,7 @@ Using the example code \`${exampleCode}\` the following query returns the inform
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'inspect-higher-order',
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
@@ -338,7 +338,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:   'inspect-higher-order',
 		filter: ['1@function']
-	}], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -351,7 +351,7 @@ registerQueryDocumentation('inspect-recursion', {
 	shortDescription: 'Determine whether functions are recursive',
 	functionName:     executeRecursionQuery.name,
 	functionFile:     '../queries/catalog/inspect-recursion-query/inspect-recursion-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'fact <- function(n) { if(n <= 1) 1 else n * fact(n - 1) }';
 		return `
 With this query you can identify which functions in the code are recursive.
@@ -361,7 +361,7 @@ Using the example code \`${exampleCode}\` the following query returns the inform
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'inspect-recursion',
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 
 This query also supports a slicing criterion based query mode that only returns information for functions matching the given criteria:
@@ -369,7 +369,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:   'inspect-recursion',
 		filter: ['1@function']
-	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)) })
+	}], { showCode: true, shorthand: sliceQueryShorthand(['1@function'], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -381,7 +381,7 @@ registerQueryDocumentation('inspect-exception', {
 	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
 	functionName:     executeExceptionQuery.name,
 	functionFile:     '../queries/catalog/inspect-exceptions-query/inspect-exception-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = `mayFail <- function(x) {
   if(x < 0) stop("Negative value!")
   else sqrt(x)
@@ -401,7 +401,7 @@ the following query returns the information for all identified function definiti
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'inspect-exception',
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -414,7 +414,7 @@ registerQueryDocumentation('origin', {
 	shortDescription: 'Retrieve the origin of a variable, function call, ...',
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/origin-query/origin-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\nprint(x)';
 		const criterion = '2@x';
 		return `
@@ -426,7 +426,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'origin',
 		criterion: criterion
-	}], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+	}], { showCode: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 		`;
 	}
@@ -438,17 +438,17 @@ registerQueryDocumentation('search', {
 	shortDescription: 'Provides access to flowR\'s search API',
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/search-query/search-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
-With this query you can use the [Search API](${FlowrWikiBaseRef}/Search%20API) to conduct searches on the flowR analysis result. 
+With this query you can use the ${ctx.linkPage('wiki/Search API', 'Search API')} to conduct searches on the flowR analysis result.
 
 Using the example code \`${exampleCode}\`, the following query returns all uses of 'x' in the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type:   'search',
 		search: Q.var('x').filter(VertexType.Use).build()
-	}], { showCode: true, collapseQuery: false })
+	}], { showCode: true, collapseQuery: false, ctx })
 }
 		`;
 	}
@@ -460,7 +460,7 @@ registerQueryDocumentation('happens-before', {
 	shortDescription: 'Check whether one normalized AST node happens before another in the CFG.',
 	functionName:     executeSearch.name,
 	functionFile:     '../queries/catalog/happens-before-query/happens-before-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2';
 		return `
 With this query you can analyze the control flow graph:
@@ -475,7 +475,7 @@ ${
 		type: 'happens-before',
 		a:    '1@x',
 		b:    '2@y'
-	}], { showCode: true, collapseQuery: false })
+	}], { showCode: true, collapseQuery: false, ctx })
 }
 		`;
 	}
@@ -487,16 +487,16 @@ registerQueryDocumentation('id-map', {
 	shortDescription: 'Returns the id-map of the normalized AST of the given code.',
 	functionName:     executeIdMapQuery.name,
 	functionFile:     '../queries/catalog/id-map-query/id-map-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x + 1';
 		return `
-This query provides access to all nodes in the [normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) as a mapping from their id to the node itself. 
+This query provides access to all nodes in the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} as a mapping from their id to the node itself.
 
 Using the example code \`${exampleCode}\`, the following query returns all nodes from the code:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'id-map'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 		`;
 	}
@@ -509,9 +509,9 @@ registerQueryDocumentation('config', {
 	functionName:     executeConfigQuery.name,
 	functionFile:     '../queries/catalog/config-query/config-query-format.ts',
 
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
-This query provides access to the current configuration of the flowR instance. See the [Interface](${FlowrWikiBaseRef}/Interface) wiki page for more information on what the configuration represents.
+This query provides access to the current configuration of the flowR instance. See the ${ctx.linkPage('wiki/Interface', 'Interface')} wiki page for more information on what the configuration represents.
 Additionally, you can use this query to update the configuration of flowR on-the-fly (please do not rely on this mechanism it is mostly of interest for demonstrations).
 ${
 	await showQuery(shell, '', [{
@@ -519,7 +519,7 @@ ${
 		update: {
 			ignoreSourceCalls: true
 		}
-	}], { showCode: false, collapseQuery: true, collapseResult: true })
+	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 Please note that, in the REPL, a special syntax starting with \`+\` (which should be autocompleted) can be used to update the configuration on the fly:
@@ -545,7 +545,7 @@ registerQueryDocumentation('df-shape', {
 	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
 	functionName:     executeDfShapeQuery.name,
 	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
 		const criterion = '2@x' as SlicingCriterion;
 		return `
@@ -553,7 +553,7 @@ This query infers all shapes of dataframes within the code. For example, you can
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'df-shape'
-	}], { showCode: true, collapseQuery: true })
+	}], { showCode: true, collapseQuery: true, ctx })
 }
 
 The query also accepts an optional slice criterion to narrow the results to a specific node. For example:
@@ -561,7 +561,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:      'df-shape',
 		criterion: criterion
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -573,7 +573,7 @@ registerQueryDocumentation('compound', {
 	shortDescription: 'Combines multiple queries of the same type into one, specifying common arguments.',
 	functionName:     executeCompoundQueries.name,
 	functionFile:     '../queries/virtual-query/compound-query.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		return `
 A compound query comes in use, whenever we want to state multiple queries of the same type with a set of common arguments.
 It offers the following properties of interest:
@@ -594,7 +594,7 @@ ${
 			{ callName: '^mean$' },
 			{ callName: '^print$' }
 		]
-	}], { showCode: false })
+	}], { showCode: false, ctx })
 }
 
 Of course, in this specific scenario, the following query would be equivalent:
@@ -602,7 +602,7 @@ Of course, in this specific scenario, the following query would be equivalent:
 ${
 	await showQuery(shell, exampleQueryCode, [
 		{ type: 'call-context', callName: '^(mean|print)$', kind: 'visualize', subkind: 'text' }
-	], { showCode: false, collapseResult: true })
+	], { showCode: false, collapseResult: true, ctx })
 }
 
 However, compound queries become more useful whenever common arguments can not be expressed as a union in one of their properties.
@@ -619,7 +619,7 @@ ${
 			{ callName: '^mean$' },
 			{ callName: '^print$', callTargets: CallTargets.OnlyLocal }
 		]
-	}], { showCode: false })
+	}], { showCode: false, ctx })
 }
 
 Now, the results no longer contain calls to \`plot\` that are not defined locally.
@@ -634,12 +634,12 @@ registerQueryDocumentation('static-slice', {
 	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
 	functionName:     executeStaticSliceQuery.name,
 	functionFile:     '../queries/catalog/static-slice-query/static-slice-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criteria = ['3@z', '4@x'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
-return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice). 
+return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
 Given this, the backward slice is essentially the subpart of the program that may influence the value of the variables you are interested in.
 To specify a variable of interest, you have to present flowR with a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) (or, respectively, an array of them).
 
@@ -651,7 +651,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type:     'static-slice',
 		criteria: criteria
-	}], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 In general, you may be uninterested in seeing the reconstructed version and want to save some computation time, for this,
@@ -663,7 +663,7 @@ ${
 			type:             'static-slice',
 			criteria:         ['4@x'],
 			noReconstruction: true
-		}], { showCode: false })
+		}], { showCode: false, ctx })
 	)
 }
 
@@ -674,11 +674,11 @@ ${
 		type:      'static-slice',
 		criteria:  ['1@x'],
 		direction: SliceDirection.Forward
-	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true) })
+	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
 }
 
-You can disable [magic comments](${FlowrWikiBaseRef}/Interface#slice-magic-comments) using the \`noMagicComments\` flag.
-This query replaces the old [\`request-slice\`](${FlowrWikiBaseRef}/Interface#message-request-slice) message.
+You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
+This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 'message-request-slice')} message.
 		`;
 	}
 });
@@ -689,7 +689,7 @@ registerQueryDocumentation('provenance', {
 	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
 	functionName:     executeProvenanceQuery.name,
 	functionFile:     '../queries/catalog/provenance-query/provenance-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criterion: SlicingCriterion = '4@x';
 		return `
@@ -704,7 +704,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'provenance',
 		criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -716,7 +716,7 @@ registerQueryDocumentation('input-sources', {
 	shortDescription: 'Classify the input sources of function calls',
 	functionName:     executeInputSourcesQuery.name,
 	functionFile:     '../queries/catalog/input-sources-query/input-sources-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = `
 f <- function(x) {
 	x <- x * 2
@@ -735,7 +735,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'input-sources',
 		criterion
-	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)) })
+	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -747,7 +747,7 @@ registerQueryDocumentation('dependencies', {
 	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
 	functionName:     executeDependenciesQuery.name,
 	functionFile:     '../queries/catalog/dependencies-query/dependencies-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(x)';
 		const longerCode = `
 source("sample.R")
@@ -763,13 +763,13 @@ print("hello world!")
 		`;
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
-and more advanced tracking in the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
+and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'dependencies'
-	}], { showCode: false, collapseQuery: true })
+	}], { showCode: false, collapseQuery: true, ctx })
 }
 
 Of course, this works for more complicated scripts too. The query offers information on the loaded _libraries_, _sourced_ files, data which is _read_ and data which is _written_.
@@ -779,7 +779,7 @@ The following query returns the dependencies of the script.
 ${
 	await showQuery(shell, longerCode, [{
 		type: 'dependencies'
-	}], { showCode: false, collapseQuery: true, collapseResult: true })
+	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 Currently, the dependency extraction may fail as it is essentially a set of heuristics guessing the dependencies.
@@ -793,7 +793,7 @@ ${
 		ignoreDefaultFunctions: true,
 		enabledCategories:      ['library'],
 		libraryFunctions:       [{ package: 'base', name: 'print', argIdx: 0, argName: 'library', resolveValue: true }],
-	}], { showCode: false, collapseQuery: false, collapseResult: true })
+	}], { showCode: false, collapseQuery: false, collapseResult: true, ctx })
 }
 
 Here, \`resolveValue\` tells the dependency query to resolve the value of this argument in case it is not a constant.
@@ -807,7 +807,7 @@ registerQueryDocumentation('linter', {
 	shortDescription: 'Lints a given R script for common issues.',
 	functionName:     executeDependenciesQuery.name,
 	functionFile:     '../queries/catalog/linter-query/linter-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'read.csv("i_do_not_exist.csv")';
 		return `
 This query lints a given R script for common issues, such as missing files, unused variables, and more.
@@ -816,7 +816,7 @@ In other words, if you have a script simply reading: \`${exampleCode}\`, the fol
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'linter'
-	}], { showCode: false, collapseQuery: true })
+	}], { showCode: false, collapseQuery: true, ctx })
 }
 
 You can also configure which rules to apply and what settings to use for these rules:
@@ -827,7 +827,8 @@ ${
 	}], {
 		showCode:      false,
 		collapseQuery: true,
-		shorthand:     `rules:file-path-validity "${exampleCode}"`
+		shorthand:     `rules:file-path-validity "${exampleCode}"`,
+		ctx
 	})
 }
 
@@ -842,7 +843,7 @@ registerQueryDocumentation('control-flow', {
 	shortDescription: 'Provides the control-flow of the program.',
 	functionName:     executeControlFlowQuery.name,
 	functionFile:     '../queries/catalog/control-flow-query/control-flow-query-executor.ts',
-	buildExplanation: async(shell: RShell) => {
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'if(TRUE) 1 else 2';
 		return `
 This control-flow query provides you access to the control flow graph.
@@ -851,7 +852,7 @@ In other words, if you have a script simply reading: \`${exampleCode}\`, the fol
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'control-flow'
-	}], { showCode: false, collapseQuery: true, collapseResult: true })
+	}], { showCode: false, collapseQuery: true, collapseResult: true, ctx })
 }
 
 You can also overwrite the simplification passes to tune the perspective. for example, if you want to have basic blocks:
@@ -861,12 +862,12 @@ ${
 		config: {
 			simplificationPasses: ['unique-cf-sets', 'to-basic-blocks']
 		}
-	}], { showCode: false, collapseResult: true })
+	}], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces: 
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], ctx })}
 
 
 If, on the other hand, you want to prune dead code edges:
@@ -876,12 +877,12 @@ ${
 		config: {
 			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code']
 		}
-	}], { showCode: false, collapseResult: true })
+	}], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces:
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'] })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code'], ctx })}
 
 
 Or, completely remove dead code:
@@ -891,12 +892,12 @@ ${
 		config: {
 			simplificationPasses: ['unique-cf-sets', 'analyze-dead-code', 'remove-dead-code']
 		}
-	}], { showCode: false, collapseResult: true })
+	}], { showCode: false, collapseResult: true, ctx })
 }
 
 this produces:
 
-${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'] })}
+${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['analyze-dead-code', 'remove-dead-code'], ctx })}
 
 		`;
 	}
@@ -924,7 +925,7 @@ The following query then gives you the aforementioned mapping:
 ${
 	await showQuery(shell, exampleCode, [{
 		type: 'location-map'
-	}], { showCode: false, collapseQuery: true })
+	}], { showCode: false, collapseQuery: true, ctx })
 }
 
 The query also accepts a list of slice criteria to filter the results to only include the locations of specific nodes. For example:
@@ -933,7 +934,7 @@ ${
 	await showQuery(shell, exampleCode, [{
 		type: 'location-map',
 		ids:  criteria
-	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)) })
+	}], { showCode: false, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 
 All locations are given as a ${ctx.link('SourceRange')} paired with the file id in the format \`[file-id, [start-line, start-column, end-line, end-column]]\`.
@@ -960,8 +961,8 @@ ${
 		type:    'NOTE',
 		content: `
 There are many ways to query a dataflow graph created by flowR.
-For example, you can use the [\`request-query\`](${FlowrWikiBaseRef}/Interface#message-request-query) message
-with a running flowR server, or the ${getReplCommand('query')} command in the flowR [REPL](${FlowrWikiBaseRef}/Interface#repl).
+For example, you can use the ${ctx.linkPage('wiki/Interface', '`request-query`', 'message-request-query')} message
+with a running flowR server, or the ${getReplCommand('query')} command in the flowR ${ctx.linkPage('wiki/Interface', 'REPL', 'repl')}.
 
 Also, check out the [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for a complete example project using the query API.
 			`.trim()
@@ -1006,7 +1007,7 @@ ${exampleQueryCode}
 
 <details> <summary>Dataflow Graph of the Example</summary>
 
-${await printDfGraphForCode(shell, exampleQueryCode, { showCode: false })}
+${await printDfGraphForCode(shell, exampleQueryCode, { showCode: false, ctx })}
 
 </details>
 
@@ -1025,7 +1026,7 @@ For the specific use-case stated, you could use the ${linkToQueryOfName('call-co
 
 Just as an example, the following ${linkToQueryOfName('call-context')} finds all calls to \`read_csv\` that are not overwritten:
 
-${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false })}
+${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false, ctx })}
 
 ${await explainQueries(shell, ctx, 'active')}
 

@@ -31,7 +31,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter(`network funcion with multiple arguments: ${prefix}`, parser, `download.file("${prefix}foo.org/bar.csv", "local.csv")`,
 				'network-functions',
 				[
-					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length+45] }
+					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length + 45] }
 				],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: ['download.file'] }

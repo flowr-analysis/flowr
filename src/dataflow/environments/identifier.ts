@@ -38,8 +38,8 @@ const dotDotDotAccess = /^\.\.\d+$/;
 export const Identifier = {
 	name: 'Identifier',
 	/**
-	 * Create an identifier from its name and optional namespace.
-	 * Please note that for `internal` to count, a namespace must be provided!
+	 * Creates an identifier. Strips surrounding backticks from the name.
+	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
@@ -50,6 +50,18 @@ export const Identifier = {
 		} else {
 			return name;
 		}
+	},
+	/**
+	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
+	 * Use for static built-in config entries where name is a compile-time constant with no backticks.
+	 * @example
+	 * ```ts
+	 * Identifier.from(['map', 'purrr'])       // ['map', 'purrr']
+	 * Identifier.from(['map', 'purrr', true]) // ['map', 'purrr', true]
+	 * ```
+	 */
+	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
+		return arr;
 	},
 	/**
 	 * Verify whether an unknown element has a valid identifier shape!
@@ -192,6 +204,52 @@ export const Identifier = {
 		}
 	}
 } as const;
+
+/**
+ * Well-known R package names used in {@link DefaultBuiltinConfig}.
+ * Using a const enum keeps the string values inlined at compile time.
+ */
+export const enum PkgName {
+	/* R built-in / recommended packages */
+	Base        = 'base',
+	Compiler    = 'compiler',
+	Graphics    = 'graphics',
+	GrDevices   = 'grDevices',
+	Methods     = 'methods',
+	Stats       = 'stats',
+	Utils       = 'utils',
+	/* CRAN / third-party */
+	AssertThat   = 'assertthat',
+	Cli          = 'cli',
+	DataTable    = 'data.table',
+	Devtools     = 'devtools',
+	Dplyr        = 'dplyr',
+	Fs           = 'fs',
+	Functools    = 'functools',
+	GgPlot2      = 'ggplot2',
+	Import       = 'import',
+	Inferference = 'inferference',
+	Janitor      = 'janitor',
+	Lattice      = 'lattice',
+	Magick       = 'magick',
+	Magrittr     = 'magrittr',
+	Msgr         = 'msgr',
+	PkgLoad      = 'pkgload',
+	Plyr         = 'plyr',
+	Purrr        = 'purrr',
+	Ragg         = 'ragg',
+	RasterPdf    = 'rasterpdf',
+	Remotes      = 'remotes',
+	Rlang        = 'rlang',
+	RmethodsS3   = 'R.methodsS3',
+	Roo          = 'R.oo',
+	Rutils       = 'R.utils',
+	S7           = 'S7',
+	Soda         = 'SoDA',
+	Testthat     = 'testthat',
+	TinyPlot     = 'tinyplot',
+	TryCatchLog  = 'tryCatchLog',
+}
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.

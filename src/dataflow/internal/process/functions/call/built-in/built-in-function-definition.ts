@@ -22,7 +22,8 @@ import {
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import {
 	Identifier,
 	type InGraphIdentifierDefinition,
@@ -84,6 +85,41 @@ export function processFunctionDefinition<OtherInfo>(
 	const paramsEnvironments = data.environment;
 
 	const body = processDataflowFor(bodyArg, data);
+	for(const [, v] of body.graph.verticesOfType(VertexType.FunctionCall)) {
+		if(!v.origin.includes(BuiltInProcName.Rm)) {
+			continue;
+		}
+		const ea = v.args.find(a => a !== EmptyArgument && FunctionArgument.isNamed(a) && a.name === 'envir');
+		if(!ea || !FunctionArgument.isNamed(ea)) {
+			continue;
+		}
+		const offset = parseSysFrameOffset(data.completeAst.idMap.get(ea.valueId ?? ea.nodeId));
+		if(offset === undefined || offset > 0) {
+			continue;
+		}
+		const names: Identifier[] = [];
+		for(const a of v.args) {
+			if(a === EmptyArgument || (FunctionArgument.isNamed(a) && a.name === 'envir')) {
+				continue;
+			}
+			const node = data.completeAst.idMap.get(FunctionArgument.isNamed(a) ? (a.valueId ?? a.nodeId) : a.nodeId);
+			if(node?.type === RType.String) {
+				names.push(node.content.str);
+			} else if(node?.type === RType.Symbol) {
+				names.push(node.content);
+			}
+		}
+		const targetLevel = offset === 0 ? 0 : originalEnvironment.level + 1 + offset;
+		let targetEnv = originalEnvironment;
+		while(targetEnv.level > targetLevel && targetEnv.level > 0) {
+			targetEnv = popLocalEnvironment(targetEnv);
+		}
+		if(targetEnv.level === targetLevel) {
+			for(const n of names) {
+				targetEnv.current.remove(n);
+			}
+		}
+	}
 	// As we know, parameters cannot technically duplicate (i.e., their names are unique), we overwrite their environments.
 	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
 	const bodyEnvironment = body.environment;
@@ -428,6 +464,24 @@ export function updateNestedFunctionCalls(
 			}
 		}
 	}
+}
+
+function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
+	if(!node || node.type !== RType.FunctionCall || !node.named || node.functionName.content !== 'sys.frame' || node.arguments.length !== 1) {
+		return undefined;
+	}
+	const arg = node.arguments[0];
+	if(arg === EmptyArgument || !arg.value) {
+		return undefined;
+	}
+	const v = arg.value;
+	if(v.type === RType.Number) {
+		return v.content.num;
+	}
+	if(v.type === RType.UnaryOp && v.operator === '-' && v.operand.type === RType.Number) {
+		return -v.operand.content.num;
+	}
+	return undefined;
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {

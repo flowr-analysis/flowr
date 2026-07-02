@@ -9,48 +9,62 @@ import type { ControlFlowInformation } from '../../../../control-flow/control-fl
  * Answered by either an {@link FlowrErrorMessage} or a {@link FileAnalysisResponseMessageJson}.
  */
 export interface FileAnalysisRequestMessage extends IdMessageBase {
-	type:       'request-file-analysis',
+	type:             'request-file-analysis',
 	/**
 	 * This is a unique token that you assign to subsequently slice the respective files.
 	 * If you pass the same token multiple times, previous results will be overwritten.
 	 *
 	 * If you do _not_ pass a file token, the server will _not_ store the results!
 	 */
-	filetoken?: string,
+	filetoken?:       string,
 	/**
 	 * A human-readable file name. If you present a `filepath` or read from a file this should be straightforward.
 	 * However, the name is only for debugging and bears no semantic meaning.
 	 */
-	filename?:  string,
+	filename?:        string,
 	/**
 	 * The contents of the file, or an R expression itself (like `1 + 1`), give either this or the `filepath`.
 	 * If you want to load multiple R files as one, either use `filepath` or concatenate the file-contents for this field.
 	 */
-	content?:   string
+	content?:         string
 	/**
 	 * The filepath on the local machine, accessible to flowR, or simply. Give either this or the `content`.
 	 * If you want to load multiple R files as one, either use this or concatenate the file-contents for the `content`.
 	 */
-	filepath?:  string | readonly string[]
+	filepath?:        string | readonly string[]
 	/** Can be used to additionally extract the {@link ControlFlowInformation} of the file, which is not exposed (and not fully calculated) by default. */
-	cfg?:       boolean
+	cfg?:             boolean
 	/** Controls the serialization of the `results` (and the {@link ControlFlowGraph} if the corresponding flag is set). If missing, we assume _json_. */
-	format?:    'compact' | 'json' | 'n-quads'
+	format?:          'compact' | 'json' | 'n-quads'
+	/**
+	 * One or more previously stored file tokens that the server should drop after it has answered this request.
+	 * Use this to free the memory of analyses you no longer need.
+	 *
+	 * You may send a request that contains _only_ this field (without `content` or `filepath`) to drop tokens
+	 * without performing a new analysis. In that case the server answers with an empty `results` object.
+	 * As the tokens are dropped only after the response, you may also pass the request's own `filetoken` here to
+	 * analyze a file once and have the server forget it immediately afterward.
+	 */
+	invalidateToken?: string | readonly string[]
 }
 
 
 export const requestAnalysisMessage: MessageDefinition<FileAnalysisRequestMessage> = {
 	type:   'request-file-analysis',
 	schema: Joi.object({
-		type:      Joi.string().valid('request-file-analysis').required().description('The type of the message.'),
-		id:        Joi.string().optional().description('You may pass an id to link requests with responses (they get the same id).'),
-		filetoken: Joi.string().optional().description('A unique token to identify the file for subsequent requests. Only use this if you plan to send more queries!'),
-		filename:  Joi.string().optional().description('A human-readable name of the file, only for debugging purposes.'),
-		content:   Joi.string().optional().description('The content of the file or an R expression (either give this or the filepath).'),
-		filepath:  Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).optional().description('The path to the file(s) on the local machine (either give this or the content).'),
-		cfg:       Joi.boolean().optional().description('If you want to extract the control flow information of the file.'),
-		format:    Joi.string().valid('json', 'n-quads', 'compact').optional().description('The format of the results, if missing we assume json.')
-	}).xor('content', 'filepath')
+		type:            Joi.string().valid('request-file-analysis').required().description('The type of the message.'),
+		id:              Joi.string().optional().description('You may pass an id to link requests with responses (they get the same id).'),
+		filetoken:       Joi.string().optional().description('A unique token to identify the file for subsequent requests. Only use this if you plan to send more queries!'),
+		filename:        Joi.string().optional().description('A human-readable name of the file, only for debugging purposes.'),
+		content:         Joi.string().optional().description('The content of the file or an R expression (either give this or the filepath).'),
+		filepath:        Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).optional().description('The path to the file(s) on the local machine (either give this or the content).'),
+		cfg:             Joi.boolean().optional().description('If you want to extract the control flow information of the file.'),
+		format:          Joi.string().valid('json', 'n-quads', 'compact').optional().description('The format of the results, if missing we assume json.'),
+		invalidateToken: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).optional().description('One or more file tokens to drop from the server store after this request has been answered.')
+	}).when(Joi.object({ invalidateToken: Joi.exist() }).unknown(), {
+		then:      Joi.object().oxor('content', 'filepath'),
+		otherwise: Joi.object().xor('content', 'filepath')
+	})
 };
 
 /**

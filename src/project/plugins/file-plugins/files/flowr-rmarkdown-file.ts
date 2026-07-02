@@ -34,6 +34,13 @@ export class FlowrRMarkdownFile extends FlowrFile<string> {
 		return this.data;
 	}
 
+	get executableCells(): CodeBlock[] {
+		return this.rmd.blocks.filter(b => {
+			const opt = b.options.get('eval');
+			return opt !== 'F' && opt !== 'FALSE';
+		});
+	}
+
 	/**
 	 * Loads and parses the content of the wrapped file.
 	 * @returns RmdInfo
@@ -53,6 +60,7 @@ export type CodeBlockOptions = Map<string, string>;
 export interface CodeBlock {
 	options: CodeBlockOptions,
 	code:    string,
+	header:  string
 }
 
 export type CodeBlockEx = CodeBlock & {
@@ -104,6 +112,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 		blocks.push({
 			code:     node.literal,
 			options:  options,
+			header:   node.info,
 			startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
 		});
 	}

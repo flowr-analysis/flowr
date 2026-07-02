@@ -58,10 +58,10 @@ describe('Lax Parser', withTreeSitter(ts => {
 			.addEdge('8@t', '1@t', EdgeType.Reads)
 			.addEdge('8@t', '3@t', EdgeType.Reads)
 			.addEdge('8@t', '5@t', EdgeType.Reads)
-			.addEdge('4@if', '4@==', EdgeType.Reads |EdgeType.Argument)
-			.addEdge('4@==', '4@x', EdgeType.Reads |EdgeType.Argument)
-			.addEdge('4@==', '4@3', EdgeType.Reads |EdgeType.Argument)
-			.addEdge('8@print', '8@t', EdgeType.Reads |EdgeType.Returns |EdgeType.Argument)
+			.addEdge('4@if', '4@==', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('4@==', '4@x', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('4@==', '4@3', EdgeType.Reads | EdgeType.Argument)
+			.addEdge('8@print', '8@t', EdgeType.Reads | EdgeType.Returns | EdgeType.Argument)
 			.call('2@:', ':', [argumentInCall(4), argumentInCall(5)], { returns: [], reads: [NodeId.toBuiltIn(':'), 4, 5], onlyBuiltIn: true })
 			.calls('2@:', NodeId.toBuiltIn(':'))
 			.call('2@for', 'for', [argumentInCall(3), argumentInCall(6)], { returns: [], reads: [NodeId.toBuiltIn('for'), 11], onlyBuiltIn: true, environment: defaultEnv().defineVariable('x', 3) })
@@ -142,13 +142,13 @@ describe('Lax Parser', withTreeSitter(ts => {
 
 	assertDataflow(label('Conditions'), ts, '',
 		emptyGraph()
-			.addEdge('1@if', '1@==', EdgeType.Reads |EdgeType.Argument)
+			.addEdge('1@if', '1@==', EdgeType.Reads | EdgeType.Argument)
 			.addEdge('2@t', '2@3', EdgeType.DefinedBy)
 			.addEdge('5@t', '5@4', EdgeType.DefinedBy)
 			.defineVariable('2@t')
 			.addControlDependency('2@t', 9, true)
 			.addEdge('11@t', '11@6', EdgeType.DefinedBy)
-			.addEdge('12@print', '12@t', EdgeType.Reads |EdgeType.Argument |EdgeType.Returns),
+			.addEdge('12@print', '12@t', EdgeType.Reads | EdgeType.Argument | EdgeType.Returns),
 		{
 			modifyAnalyzer: _ => {
 				const analyzer = new FlowrAnalyzerBuilder().setParser(ts)

@@ -75,7 +75,7 @@ export const DEAD_CODE = {
 } as const satisfies LintingRule<DeadCodeResult, never, DeadCodeConfig>;
 
 function combineResults(results: Writable<DeadCodeResult>[]): DeadCodeResult[] {
-	for(let i = results.length-1; i >= 0; i--){
+	for(let i = results.length - 1; i >= 0; i--){
 		const result = results[i];
 		const other = results.find(other => result !== other && SourceLocation.isSubsetOf(result.loc, other.loc));
 		if(other !== undefined) {

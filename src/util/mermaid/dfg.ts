@@ -91,7 +91,7 @@ function printArg(arg: FunctionArgument | undefined): string {
 		const deps = arg.cds ? ', :may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		return `${arg.name} (${arg.nodeId}${deps})`;
 	} else if(FunctionArgument.isPositional(arg)) {
-		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')': '';
+		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')' : '';
 		return `${arg.nodeId}${deps}`;
 	} else {
 		return '??';
@@ -135,7 +135,7 @@ export function mermaidNodeBrackets(tag: DataflowGraphVertexInfo['tag']): { open
  * Prints an identifier definition in a human-readable format.
  */
 export function printIdentifier(id: IdentifierDefinition): string {
-	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
+	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds ? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {

@@ -11,7 +11,7 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DeepWritable } from 'ts-essentials';
 
 describe('Does Call Query', withTreeSitter(parser => {
-	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: readonly (SlicingCriterion|false)[]) {
+	function testQuery(name: string, code: string, rawQueries: readonly Omit<DoesCallQuery, 'type'> [], results: readonly (SlicingCriterion | false)[]) {
 		let i = 0;
 		const query: DoesCallQuery[] = [];
 		for(const rq of rawQueries) {

@@ -90,7 +90,7 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 			const vertsOfType = Array.from(result.graph.verticesOfType(vertType));
 			const longVertexName = Object.entries(VertexType).find(([, v]) => v === vertType)?.[0] ?? vertType;
 			output.stdout(
-				` - ${(longVertexName + ':').padEnd(longestVertexType+1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
+				` - ${(longVertexName + ':').padEnd(longestVertexType + 1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
 			);
 		}
 	}

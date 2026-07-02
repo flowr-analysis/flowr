@@ -161,7 +161,7 @@ export const SourceRange = {
 	 * Calculates the component-wise sum of two ranges.
 	 */
 	add(this: void, [r1sl, r1sc, r1el, r1ec]: SourceRange, [r2sl, r2sc, r2el, r2ec]: SourceRange): SourceRange {
-		return [r1sl+r2sl, r1sc+r2sc, r1el+r2el, r1ec+r2ec];
+		return [r1sl + r2sl, r1sc + r2sc, r1el + r2el, r1ec + r2ec];
 	},
 	/**
 	 * Provides a comparator for {@link SourceRange}s that sorts them in ascending order.

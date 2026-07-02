@@ -302,7 +302,7 @@ export const DataflowMermaid = {
 		return { string: `${mermaid.nodeLines.join('\n')}\n${mermaid.edgeLines.join('\n')}`, mermaid };
 	},
 	/**
-	 * This is a simplified version of {@link DataflowMermaid.convertToMermaid}
+	 * This is a simplified version of {@link DataflowMermaid.convert}
 	 */
 	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
 		graph = DataflowInformation.is(graph) ? graph.graph : graph;
@@ -310,7 +310,7 @@ export const DataflowMermaid = {
 	},
 	/**
 	 * Converts a dataflow graph to a mermaid url that visualizes the graph.
-	 * This is basically a combination of {@link DataflowMermaid.mermaidRaw} and {@link Mermaid.codeToUrl}.
+	 * This is basically a combination of {@link DataflowMermaid.raw} and {@link Mermaid.codeToUrl}.
 	 * @param graph               - the dataflow graph to render
 	 * @param includeEnvironments - whether to include the environment content in the output
 	 * @param mark                - which vertices to highlight in the visualization

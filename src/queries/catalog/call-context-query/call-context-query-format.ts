@@ -27,9 +27,9 @@ export interface FileFilter<FilterType> {
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
-	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
+	/** The function name to match: a string (interpreted as a regex unless {@link callNameExact} is set), a RegExp, or an array of strings (always matched exactly). */
 	readonly callName:               RegexType;
-	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match, we now also allow '.' etc. to have their conventional meaning if you pass in the regex as a string? */
+	/** For a string {@link callName}, match it literally instead of as a regex. For a RegExp, add `^` and `$` anchors. Arrays always match exactly, regardless of this flag. */
 	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:                  string;

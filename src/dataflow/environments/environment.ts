@@ -80,7 +80,8 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * Create a deep clone of this environment.
+	 * Create a clone of this environment. Definition arrays and objects are copy-on-write
+	 * (never mutated in place) and hence shared with the clone.
 	 * @param recurseParents     - Whether to also clone parent environments
 	 */
 	public clone(recurseParents: boolean): Environment {
@@ -92,15 +93,7 @@ export class Environment implements IEnvironment {
 		const clone = new Environment(parent, this.builtInEnv);
 		clone.c = this.c;
 		clone.n = this.n;
-		clone.memory = new Map(
-			this.memory.entries()
-				.map(([k, v]) => [k,
-					v.map(s => ({
-						...s,
-						cds: s.cds?.slice()
-					} satisfies IdentifierDefinition))
-				])
-		);
+		clone.memory = new Map(this.memory);
 		return clone;
 	}
 
@@ -112,6 +105,10 @@ export class Environment implements IEnvironment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		if(ns !== undefined && this.n !== ns) {
 			return this.defineInNamespace(definition, ns);
+		}
+		/* isolate the cds from the originating reference, which may still be updated in place */
+		if(definition.cds !== undefined) {
+			definition = { ...definition, cds: definition.cds.slice() };
 		}
 		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
@@ -128,7 +125,8 @@ export class Environment implements IEnvironment {
 			} else if(existing === undefined || definition.cds === undefined) {
 				newEnvironment.memory.set(name, [definition]);
 			} else {
-				existing.push(definition);
+				/* the array may be shared with clones, so replace instead of push */
+				newEnvironment.memory.set(name, [...existing, definition]);
 			}
 		}
 		return newEnvironment;
@@ -163,6 +161,10 @@ export class Environment implements IEnvironment {
 
 	public defineSuper(definition: IdentifierDefinition & { name: Identifier }): Environment {
 		const [name, ns] = Identifier.toArray(definition.name);
+		/* isolate the cds from the originating reference, see {@link define} */
+		if(definition.cds !== undefined) {
+			definition = { ...definition, cds: definition.cds.slice() };
+		}
 		const newEnvironment = this.clone(false);
 		if(ns !== undefined && this.n !== ns) {
 			newEnvironment.parent = newEnvironment.parent.defineInNamespace(definition, ns);

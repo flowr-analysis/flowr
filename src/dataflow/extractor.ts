@@ -28,7 +28,7 @@ import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-
 import { Identifier } from './environments/identifier';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
-import { GasFeatureKey, GasLevel } from '../gas';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -72,10 +72,10 @@ export const processors: DataflowProcessors<ParentInformation> = {
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
 	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
 	if(gasLevel >= GasLevel.Critical) {
-		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See ' + GasWikiRef);
 		return undefined;
 	} else if(gasLevel >= GasLevel.Problematic) {
-		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See ' + GasWikiRef);
 	}
 	let cf: ControlFlowInformation | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;

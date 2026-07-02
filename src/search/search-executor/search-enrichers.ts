@@ -202,8 +202,8 @@ export const Enrichments = {
 				...args
 			};
 
-			// short-circuit if we already have a cfg stored
-			if(!args.forceRefresh && prev?.simpleCfg) {
+			// short-circuit if we already have a cfg stored (and the reachability info if requested)
+			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
 

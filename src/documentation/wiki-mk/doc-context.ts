@@ -121,8 +121,8 @@ export interface GeneralDocContext {
 	 * ```
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
-	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
+	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 	/**
@@ -139,7 +139,7 @@ export interface GeneralDocContext {
 	 * ```
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * using the file path as link name.
-	 * @see {@link GeneralWikiContext#link|link} - to create a link with a custom name/using the type name by default.
+	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
 	 * @see {@link linkFile}  - for the underlying impl.
 	 */
 	linkFile(element: ElementIdOrRef): string;

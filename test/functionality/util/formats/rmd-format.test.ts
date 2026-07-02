@@ -270,7 +270,7 @@ print(42)
 				options:  new Map<string, string>(),
 				startpos: {
 					col:  0,
-					line: 3,
+					line: 12,
 				}
 			}
 		]);

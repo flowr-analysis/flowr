@@ -66,6 +66,13 @@ export function processNamedCall<OtherInfo>(
 	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
+	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
+	if(resolved.length > 0
+		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
+		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
+		data = { ...data, builtInNoEnv: rootId };
+	}
+
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
 	for(const resolvedFunction of resolved) {

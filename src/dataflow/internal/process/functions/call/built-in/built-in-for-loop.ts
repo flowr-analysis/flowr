@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation, filterOutLoopExitPoints } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, ExitPointType, filterOutLoopExitPoints } from '../../../../../info';
 import {
 	findNonLocalReads,
 	linkCircularRedefinitionsWithinALoop,
@@ -112,6 +112,25 @@ export function processForLoop<OtherInfo>(
 	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
+	// Control Flow
+	// for -> vector
+	nextGraph.addEdge(rootId, vector.entryPoint, EdgeType.FlowDependency);
+	// TODO: control flow if more than one
+	// vector -> variable
+	for(const exit of vector.exitPoints) {
+		nextGraph.addEdge(exit.nodeId, variable.entryPoint, EdgeType.FlowDependency);
+	}
+	// TODO: When can this happen?
+	// variable -> body
+	for(const exit of variable.exitPoints) {
+		nextGraph.addEdge(exit.nodeId, body.entryPoint, EdgeType.ControlDependency, { when: true, condition: rootId });
+	}
+
+	console.log(`LOOP EXITS: ${JSON.stringify(filterOutLoopExitPoints(body.exitPoints))}`);
+	for(const exit of body.exitPoints.filter(p => p.type === ExitPointType.Default)) {
+		nextGraph.addEdge(exit.nodeId, rootId, EdgeType.FlowDependency);
+	}
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
@@ -119,7 +138,7 @@ export function processForLoop<OtherInfo>(
 		out:               outgoing,
 		graph:             nextGraph,
 		entryPoint:        name.info.id,
-		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
+		exitPoints:        variable.exitPoints, // TODO: Body exit points
 		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
 		environment:       appendEnvironment(origEnv, outEnvironment),
 		hooks:             variable.hooks.concat(vector.hooks, body.hooks),

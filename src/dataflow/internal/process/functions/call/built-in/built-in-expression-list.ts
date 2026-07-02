@@ -194,14 +194,7 @@ export function processExpressionList<OtherInfo>(
 	}
 
 	if(defaultReturnExpr) {
-		exitPoints.push(data.cds ? {
-			type:   ExitPointType.Default,
-			nodeId: defaultReturnExpr.entryPoint,
-			cds:    data.cds
-		} : {
-			type:   ExitPointType.Default,
-			nodeId: defaultReturnExpr.entryPoint
-		});
+		exitPoints.push(...defaultReturnExpr.exitPoints);
 	}
 
 	const ingoing = remainingRead.values().toArray().flat();
@@ -232,11 +225,11 @@ export function processExpressionList<OtherInfo>(
 
 	const meId = withGroup ? rootId : (processedExpressions.find(isNotUndefined)?.entryPoint ?? rootId);
 
+	// TODO: Factor out into separate function
 	const firstArg = processedExpressions[0];
 	if(firstArg) {
 		nextGraph.addEdge(rootId, firstArg.entryPoint, EdgeType.FlowDependency);
 	}
-
 	for(let i = 0; i < processedExpressions.length - 1; i++) {
 		const current = processedExpressions[i];
 		const next = processedExpressions[i + 1];
@@ -246,11 +239,18 @@ export function processExpressionList<OtherInfo>(
 		}
 
 		console.log(`processing: ${current.entryPoint}`);
+		// TODO: If more than one, we should add ControlFlow edges instead of FlowDependency edges
 		for(const exit of current.exitPoints) {
 			console.log(`EL Edge ${exit.nodeId} -> ${next.entryPoint}`);
-			nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
+			if(exit.cds) {
+				nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.ControlDependency, { when: exit.cds[0].when, condition: exit.cds[0].id });
+			} else {
+				nextGraph.addEdge(exit.nodeId, next.entryPoint, EdgeType.FlowDependency);
+			}
 		}
 	}
+
+	console.log(`Expression List Exit Points of ${rootId}: ${JSON.stringify(exitPoints)}`);
 
 	return {
 		/* no active nodes remain, they are consumed within the remaining read collection */

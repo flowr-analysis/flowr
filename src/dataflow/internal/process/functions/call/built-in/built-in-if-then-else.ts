@@ -106,6 +106,7 @@ export function processIfThenElse<OtherInfo>(
 			makeThenMaybe = true;
 		}
 	}
+	console.log(`then directly after: ${JSON.stringify(then?.exitPoints)}`);
 
 	let otherwise: DataflowInformation | undefined;
 	let makeOtherwiseMaybe = false;

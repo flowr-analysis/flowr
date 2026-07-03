@@ -28,7 +28,6 @@ for instructions on how to install _flowR_.
   - [Generate Static Slices](#generate-static-slices)
   - [Benchmark the Slicer](#benchmark-the-slicer)
     - [Summarizing the Benchmark Results](#summarizing-the-benchmark-results)
-  - [Generate Usage Statistics of R Code](#generate-usage-statistics-of-r-code)
 <!-- TOC -->
 
 ## _flowR_'s Modules
@@ -42,10 +41,8 @@ If you wish to use _flowR_, check out one of its extensions (e.g., the ${ctx.lin
 the [REPL and server interfaces](#using-_flowr_-from-the-outside) or its coding API with the
 ${ctx.link(FlowrAnalyzer)}. 
 
-The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer. 
+The benchmark module is only of interest if you want to benchmark/measure the runtime performance and reduction of the slicer.
 It is available with the [\`benchmark\`](#benchmark-the-slicer) script.
-
-The statistics module is mostly independent of the slicer and can be used to analyze R files regarding their use of function definitions, assignments, and more.  It is used to identify common patterns in R code and is available with the [\`statistics\`](#generate-usage-statistics-of-r-code) script.
 
 The [core](https://github.com/flowr-analysis/flowr/tree/main/src/core) module contains _flowR_'s read-eval-print loop (REPL) and 
 _flowR_'s server. Furthermore, it contains the root definitions of how _flowR_ slices (see the ${ctx.linkPage('wiki/Interface')} wiki page for more information).
@@ -230,16 +227,6 @@ For more options, run the following from the \`cli\` directory:
 
 \`\`\`shell
 npm run summarizer -- --help
-\`\`\`
-
-### Generate Usage Statistics of R Code
-
-If you want to reproduce the statistics as presented in the original [master's thesis](http://dx.doi.org/10.18725/OPARU-50107), see the corresponding [wiki page](https://github.com/flowr-analysis/flowr/wiki/Thesis#how-to-reproduce-the-statistics-from-the-masters-thesis).
-
-For more information, run the following from the \`cli\` directory:
-
-\`\`\`shell
-npm run stats -- --help
 \`\`\`
     `.trim();
 	}

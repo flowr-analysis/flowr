@@ -31,7 +31,7 @@ export interface FunctionInfo extends FunctionArgInfo {
 	/** default value for the argument if no binding value is found, please be aware, that categories can define global defaults, these are overwritten by the per-function defaults */
 	defaultValue?:       string
 	/** the function is not to be counted as a dependency if the argument is missing */
-	ignoreIf?:           'arg-missing' | 'mode-only-read' | 'mode-only-write' | 'arg-true' | 'arg-false',
+	ignoreIf?:           'arg-missing' | 'mode-only-read' | 'mode-only-write' | 'arg-true' | 'arg-false' | 'arg-set',
 	/** additional info on arguments - e.g. for the mode flag */
 	additionalArgs?:     Record<string, FunctionArgInfo>
 	/** string replacements to apply to resolved values, e.g. `{ '': 'stdin' }` */

@@ -8,16 +8,37 @@ import type { AnyStateDomain } from '../../abstract-interpretation/domains/state
 import type { RNamedFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { ResolvedTaint } from '../function-mapper';
-import type { TaintVisitorConfiguration } from '../taint-visitor';
+import type { ArgTaintProjector, TaintVisitorConfiguration, TaintVisitorHook } from '../taint-visitor';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
+import type { DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+
+/**
+ * Information passed to a {@link FnCallHook} for each function call visited during taint analysis.
+ */
+export interface FnCallHookInfo {
+	/** The name of the taint analysis */
+	name:       string;
+	/** The resolved taint information for the function call */
+	taint:      ResolvedTaint<AnyAbstractDomain>;
+	/** The AST node representing the function call */
+	node:       RNamedFunctionCall<ParentInformation>;
+	/** The abstract domain value at this point (the outgoing/resolved taint) */
+	value:      AnyAbstractDomain;
+	/** Resolves the incoming taint of any argument node at this call, regardless of mapping rules */
+	projectArg: ArgTaintProjector;
+	/** The data flow graph vertex of the function call */
+	call:       DataflowGraphVertexFunctionCall;
+	/** The data flow graph (e.g. for resolving the call's arguments) */
+	dfg:        DataflowGraph;
+	/** The analysis context (e.g. for resolving argument values) */
+	ctx:        ReadOnlyFlowrAnalyzerContext;
+}
 
 /**
  * Callback hook invoked when a function call is visited during taint analysis.
- * @param name - The name of the taint analysis
- * @param taint - The resolved taint information for the function
- * @param node - The AST node representing the function call
- * @param value - The abstract domain value at this point
  */
-export type FnCallHook = (name: string, taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => void;
+export type FnCallHook = (info: FnCallHookInfo) => void;
 
 /**
  * Result of running a taint analysis, containing the final abstract domain state and an optional finding message.
@@ -81,13 +102,15 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 	 */
 	public async run(): Promise<Map<Defs[number], TaintInferenceResult>> {
 		const results: Map<Defs[number], TaintInferenceResult> = new Map();
+		const dfg = (await this.analyzer.dataflow()).graph;
+		const ctx = this.analyzer.inspectContext();
 		for(const def of this.defs) {
 			const baseConfig: TaintVisitorConfiguration = {
 				controlFlow:   await this.analyzer.controlflow(),
-				ctx:           this.analyzer.inspectContext(),
-				dfg:           (await this.analyzer.dataflow()).graph,
+				ctx:           ctx,
+				dfg:           dfg,
 				normalizedAst: await this.analyzer.normalize(),
-				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name),
+				fnCallHook:    this.wrapFnCallHook(this.fnCallHook, def.name, dfg, ctx),
 			};
 
 			const visitor = def.createVisitor(baseConfig);
@@ -101,9 +124,9 @@ export class TaintAnalysis<Defs extends readonly string[] = []> {
 		return results;
 	}
 
-	private wrapFnCallHook(fn: FnCallHook | undefined, name: string) {
+	private wrapFnCallHook(fn: FnCallHook | undefined, name: string, dfg: DataflowGraph, ctx: ReadOnlyFlowrAnalyzerContext): TaintVisitorHook {
 		return fn
-			? (taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain) => fn(name, taint, node, value)
+			? (taint, node, value, projectArg, call) => fn({ name, taint, node, value, projectArg, call, dfg, ctx })
 			: () => {};
 	}
 }

@@ -29,6 +29,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionArgument } from '../../../dataflow/graph/graph';
 
 
 /**
@@ -156,6 +157,26 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				return false;
 			}
 
+			function ignoreOnArgSet() {
+				if(info.ignoreIf !== 'arg-set') {
+					return;
+				}
+
+				const hasArg = (name?: string, index?: number | 'unnamed') => vertex.args.some((arg, idx) =>
+					FunctionArgument.isNamed(arg) && arg.name === name ||
+					FunctionArgument.isPositional(arg) && idx === index
+				);
+
+				if(hasArg(info.argName, info.argIdx)) {
+					return false;
+				}
+
+				const margs = info.additionalArgs?.argSet;
+				guard(margs, 'Need additional argument argSet when checking for arg-set');
+
+				return hasArg(margs.argName, margs.argIdx);
+			}
+
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
 				if(info.ignoreIf === 'arg-missing') {
@@ -186,7 +207,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					// all modes are write-only, so we can ignore this
 					continue;
 				}
-			} else if(ignoreOnArgVal()) {
+			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
 				continue;
 			}
 			for(const [arg, values] of foundValues.entries()) {

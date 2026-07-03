@@ -44,7 +44,8 @@ function* findRFiles(dir: string): Generator<string> {
 
 /** Collect all scripts below the dataset root, deriving source/id/script name from the path. */
 function collectScripts(root: string): ScriptRun[] {
-	return Array.from(findRFiles(root), file => {
+	const paths = fs.statSync(root).isDirectory() ? findRFiles(root) : [root];
+	return Array.from(paths, file => {
 		const parts = path.relative(root, file).split(path.sep);
 		return {
 			scriptName: parts.length >= 3 ? parts.slice(2).join('/') : parts[parts.length - 1],
@@ -116,9 +117,9 @@ async function main(): Promise<void> {
 		process.exit(1);
 	}
 
-	const root = path.resolve(datasetArg);
-	if(!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
-		console.error(`Dataset directory '${root}' does not exist or is not a directory`);
+	const datasetPath = path.resolve(datasetArg);
+	if(!fs.existsSync(datasetPath)) {
+		console.error(`Dataset directory or file '${datasetPath}' does not exist`);
 		process.exit(1);
 	}
 
@@ -128,8 +129,8 @@ async function main(): Promise<void> {
 		.setEngine('tree-sitter')
 		.build();
 
-	const scripts = collectScripts(root);
-	console.error(`Found ${scripts.length} R script(s) below ${root}; writing results to stdout`);
+	const scripts = collectScripts(datasetPath);
+	console.error(`Found ${scripts.length} R script(s) below ${datasetPath}; writing results to stdout`);
 
 	try {
 		for(const script of scripts) {

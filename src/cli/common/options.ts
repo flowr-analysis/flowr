@@ -82,11 +82,11 @@ export const slicerOptions = [
 export const summarizerOptions = [
 	{ name: 'verbose',       alias: 'v', type: Boolean, description: 'Run with verbose logging' },
 	{ name: 'help',          alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'type',          alias: 't', type: String,  description: 'Manually specify if you want to post-process benchmark results, statistics, or compressed statistics (defaults to auto).', defaultValue: 'auto' },
+	{ name: 'type',          alias: 't', type: String,  description: 'Manually specify if you want to post-process benchmark results (defaults to auto).', defaultValue: 'auto' },
 	{ name: 'graph',         alias: 'g', type: Boolean, description: 'Produce data to be used for visualizing benchmarks over time' },
 	{ name: 'categorize',                type: Boolean, description: 'Categorize the results (e.g., "test", "example", ...)', defaultValue: false },
 	{ name: 'project-skip',              type: Number,  description: 'Skip the first n folders to find the location of projects', defaultValue: 0 },
 	{ name: 'ultimate-only', alias: 'u', type: Boolean, description: 'Only perform the second summary-stage, with this, the input is used to find the summary-output.' },
-	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark, the statistics, ...', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
+	{ name: 'input',         alias: 'i', type: String,  description: 'The {italic output} produced by the benchmark', defaultOption: true, multiple: false, typeLabel: '{underline file.json/output}' },
 	{ name: 'output',        alias: 'o', type: String,  description: 'Basename of the summaries (defaults to {italic <input>-summary})', typeLabel: '{underline file}' },
 ] as const satisfies OptionDefinition[];

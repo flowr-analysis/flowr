@@ -5,7 +5,7 @@ import { run, runCaptureAll } from './utility/utility';
 describe('commands', () => {
 	test('flowr as server', async() => {
 		const expected = 'Server listening on port';
-		const output = await run('npm run flowr -- --server', expected);
+		const output = await run('npx ts-node --transpile-only src/cli/flowr.ts --server', expected);
 		assert.include(output, expected);
 	});
 

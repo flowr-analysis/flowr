@@ -41,7 +41,6 @@ ${
 
 For more information, please have a look at the ${ctx.linkPage('wiki/Analyzer')} wiki page, which explains how to construct and use the ${ctx.link(FlowrAnalyzer)} in more detail.
 To work with specific perspectives, you can also consult the respective pages like the ${ctx.linkPage('wiki/Dataflow Graph')} or the ${ctx.linkPage('wiki/Abstract Interpretation')} wiki pages.
-        
 ### The Pipeline Executor (Low-Level Interface)
 
 Once, in the beginning, _flowR_ was meant to produce a dataflow graph merely to provide *program slices*. 
@@ -76,7 +75,7 @@ The ${ctx.link(PipelineExecutor)}...
 
 See the in-code documentation for more information.
 
-	`)
+`)
 }
 
 ### Using the ${ctx.link(RShell)} to Interact with R
@@ -98,10 +97,10 @@ You can start a new "session" simply by constructing a new object with ${codeInl
 However, there are several options that may be of interest 
 (e.g., to automatically revive the shell in case of errors or to control the name location of the R process on the system).
 
-With a shell object (let's call it \`shell\`), you can execute R code by using ${ctx.linkM(RShell, 'sendCommand', { realNameWrapper: 'i' })}, 
-for example ${codeInline('shell.' + ctx.linkM(RShell, 'sendCommand', { codeFont: false, hideClass: true }) + '("1 + 1")')}. 
+With a shell object (let's call it \`shell\`), you can execute R code by using ${ctx.linkM(RShell, 'sendCommand', { realNameWrapper: 'i' })},
+for example ${codeInline('shell.' + ctx.linkM(RShell, 'sendCommand', { codeFont: false, hideClass: true }) + '("1 + 1")')}.
 However, this does not return anything, so if you want to collect the output of your command, use
 ${ctx.linkM(RShell, 'sendCommandWithOutput', { realNameWrapper: 'i' })} instead.
 
-	`;
+`;
 }

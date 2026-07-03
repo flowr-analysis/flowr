@@ -16,6 +16,16 @@ function getBenchmarkSummarizer(options: SummarizerCliOptions, outputBase: strin
  * The core function for the 'flowr summarize' script.
  */
 export async function flowrScriptSummarizer(options: SummarizerCliOptions) {
+	if(options.type && options.type !== 'benchmark') {
+		console.error(`Warning: --type ${options.type} is no longer supported. The summarizer only produces benchmark summaries.`);
+	}
+	if(options.categorize) {
+		console.error('Warning: --categorize is no longer supported.');
+	}
+	if(options['project-skip'] && options['project-skip'] > 0) {
+		console.error(`Warning: --project-skip ${options['project-skip']} is no longer supported.`);
+	}
+
 	const outputBase = (options.output ?? options.input).replace(/\.json$|\/$/, '-summary');
 	console.log(`Writing outputs to base ${outputBase}`);
 

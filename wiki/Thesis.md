@@ -12,7 +12,7 @@ The submission state is still available with [v1.0.0](https://github.com/flowr-a
 Each step assumes, that you start in the root directory of this repository. You need a working installation of *R* and *npm*.
 
 > [!IMPORTANT]  
-> Since [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0) we heavily extended on the statistics recorded and changed the way that _flowR_ should be used. Hence, to reproduce the results from that era, please make sure to work on [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0) or earlier.
+> Since [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0) we heavily extended the recorded statistics and changed the way that _flowR_ should be used. Hence, to reproduce the results from that era, please make sure to work on [v1.0.0](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0) or earlier.
 
 This mainly describes how to extract the statistics from the CRAN package sources, however, starting from step&nbsp;3,
 the steps are basically the same and only differ in the paths that have to be supplied (the social science sources are attached alongside the [master's thesis release](https://github.com/flowr-analysis/flowr/releases/tag/v1.0.0)).

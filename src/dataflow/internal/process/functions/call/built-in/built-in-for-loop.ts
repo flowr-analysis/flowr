@@ -22,6 +22,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -112,6 +113,10 @@ export function processForLoop<OtherInfo>(
 	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
+	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
+	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
@@ -121,7 +126,8 @@ export function processForLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
-		environment:       appendEnvironment(origEnv, outEnvironment),
+		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		kill:              loopKill,
 	};
 }

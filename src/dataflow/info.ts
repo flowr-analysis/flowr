@@ -117,6 +117,19 @@ export function overwriteExitPoints(existing: readonly ExitPoint[], replace: Exi
 	return existing.concat(replace);
 }
 
+/**
+ * A reference removed from scope within the current subtree (e.g., via `rm`). Like {@link DataflowInformation#out|out}
+ * references, kills bubble up so the enclosing scope can apply the removal at the right location.
+ * @see {@link applyKills}
+ */
+export type KillReference =
+	/** a statically known name (carries {@link IdentifierReference#cds|cds} for conditional removals) */
+	| { readonly kind: 'named', readonly reference: IdentifierReference }
+	/** the whole current scope is cleared, e.g., `rm(list = ls())` */
+	| { readonly kind: 'all', readonly cds?: readonly ControlDependency[] }
+	/** a not statically resolvable set of names, e.g., `rm(list = someVector)` */
+	| { readonly kind: 'unknown', readonly cds?: readonly ControlDependency[] };
+
 /** The control flow information for the current DataflowInformation. */
 export interface DataflowCfgInformation {
 	/** The entry node into the subgraph */
@@ -164,6 +177,11 @@ export interface DataflowInformation extends DataflowCfgInformation {
 	environment:       REnvironmentInformation
 	/** The current constructed dataflow graph */
 	graph:             DataflowGraph
+	/**
+	 * References removed from scope within the current subtree (e.g., via `rm`); `undefined` unless an `rm` occurred.
+	 * @see {@link KillReference}
+	 */
+	kill?:             readonly KillReference[]
 }
 
 /**

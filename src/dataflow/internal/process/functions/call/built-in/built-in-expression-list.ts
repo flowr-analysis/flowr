@@ -2,7 +2,7 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
@@ -25,6 +25,7 @@ import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
 import { valueFromTsValue } from '../../../../../eval/values/general';
@@ -143,6 +144,8 @@ export function processExpressionList<OtherInfo>(
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
 	const out: IdentifierReference[] = [];
+	/* lazily created - `rm` is rare, so rm-free lists never allocate this */
+	let killed: KillReference[] | undefined;
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
@@ -192,6 +195,16 @@ export function processExpressionList<OtherInfo>(
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
+
+		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
+		if(killed && processed.out.length > 0) {
+			killed = cancelRevivedKills(killed, processed.out);
+		}
+		if(processed.kill?.length) {
+			// if we may have already exited (break/next), the removal only happens maybe
+			const kills = exitPoints.length > 0 ? makeKillsMaybe(processed.kill, invertExitCds) : processed.kill;
+			(killed ??= []).push(...kills);
+		}
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId);
@@ -259,5 +272,6 @@ export function processExpressionList<OtherInfo>(
 		entryPoint:        meId,
 		exitPoints:        exitPoints,
 		hooks:             processedExpressions.flatMap(p => p?.hooks ?? []),
+		kill:              killed,
 	};
 }

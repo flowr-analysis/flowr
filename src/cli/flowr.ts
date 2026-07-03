@@ -32,7 +32,7 @@ import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
 import { exitSafe } from '../util/proc';
 import { printVersionRepl } from './repl/print-version';
-import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptArguments, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
@@ -178,7 +178,7 @@ async function mainRepl() {
 		guard(target !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
-		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
+		await waitOnScript(`${__dirname}/${target}`, getScriptArguments(options.script, process.argv), undefined, true);
 		return exitSafe(0);
 	}
 

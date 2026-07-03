@@ -90,7 +90,7 @@ export function dfgToAscii(dfg: DataflowGraph): string {
 
 		g.setNode(String(id), {
 			label,
-			width:  Math.max(3, label.length*1.2),
+			width:  Math.max(3, label.length * 1.2),
 			height: 4,
 			shape:  'rectangle'
 		});
@@ -168,7 +168,7 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 			e = type2Edge[tag as VertexType];
 		}
 		canvas.drawText(x - 1, y - 1, `${e}${'-'.repeat(label.length)}${e}`);
-		canvas.drawText(x - 1 + Math.round(label.length/2 - nodeId.length/2), y - 1, `<${nodeId}>`);
+		canvas.drawText(x - 1 + Math.round(label.length / 2 - nodeId.length / 2), y - 1, `<${nodeId}>`);
 		canvas.drawText(x - 1, y, `|${label}|`);
 		canvas.drawText(x - 1, y + 1, `${e}${'-'.repeat(label.length)}${e}`);
 	}

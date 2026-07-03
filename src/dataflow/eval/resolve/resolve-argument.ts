@@ -27,7 +27,7 @@ export function getArgumentStringValue(
 	argumentName: string | undefined,
 	resolveValue: boolean | 'library' | undefined,
 	ctx: ReadOnlyFlowrAnalyzerContext
-): Map<NodeId, Set<string|undefined>> | undefined {
+): Map<NodeId, Set<string | undefined>> | undefined {
 	if(argumentName) {
 		const arg = vertex?.args.findIndex(arg => arg !== EmptyArgument && arg.name === argumentName);
 		if(arg >= 0) {
@@ -42,7 +42,7 @@ export function getArgumentStringValue(
 		// return all unnamed arguments
 		const references = vertex.args.filter(arg => arg !== EmptyArgument && !arg.name).map(FunctionArgument.getReference).filter(isNotUndefined);
 
-		const map = new Map<NodeId, Set<string|undefined>>();
+		const map = new Map<NodeId, Set<string | undefined>>();
 		for(const ref of references) {
 			let valueNode = graph.idMap?.get(ref);
 			if(valueNode?.type === RType.Argument) {

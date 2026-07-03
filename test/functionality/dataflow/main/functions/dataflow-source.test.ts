@@ -9,6 +9,7 @@ import { describe } from 'vitest';
 import { FlowrConfig } from '../../../../../src/config';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe('source', withTreeSitter(parser => {
 	const sources = {
@@ -285,7 +286,8 @@ describe('source', withTreeSitter(parser => {
 				returns:     ['closure2-2:1-2:6-3'],
 				reads:       [NodeId.toBuiltIn('<<-'), 'closure2-2:1-2:6-4'],
 				onlyBuiltIn: true,
-				environment: defaultEnv().pushEnv()
+				environment: defaultEnv().pushEnv(),
+				origin:      [BuiltInProcName.SuperAssignment]
 			}, false)
 			.calls('closure2-2:1-2:6-5', NodeId.toBuiltIn('<<-'))
 			.argument('closure2-2:1-2:6-5', ['closure2-2:1-2:6-4', 'closure2-2:1-2:6-3'])

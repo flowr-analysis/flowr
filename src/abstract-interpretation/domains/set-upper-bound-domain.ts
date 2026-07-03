@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import { type SatisfiableDomain, SetComparator } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -154,7 +154,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(this.value === Top || 2**(this.value.size) > limit) {
+		} else if(this.value === Top || 2 ** (this.value.size) > limit) {
 			return Top;
 		}
 		const subsets = [new this.setType()];
@@ -195,7 +195,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		}
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top || this.value === Bottom) {
 			return this.value.description;
 		}
@@ -208,7 +208,7 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 		} else if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		const string = this.value.values().map(domainElementToString).toArray().join(', ');
+		const string = this.value.values().map(AbstractDomain.toString).toArray().join(', ');
 
 		return `{${string}}`;
 	}

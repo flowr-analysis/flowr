@@ -7,7 +7,7 @@ import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id'
 import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SourceLocation } from '../../../util/range';
 
 /**
@@ -46,8 +46,9 @@ export const InspectHigherOrderQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: inspectHoLineParser,
-	schema:   Joi.object({
+	fromLine:  inspectHoLineParser,
+	completer: criteriaQueryCompleter,
+	schema:    Joi.object({
 		type:   Joi.string().valid('inspect-higher-order').required().description('The type of the query.'),
 		filter: Joi.array().items(Joi.string().required()).optional().description('If given, only function definitions that match one of the given slicing criteria are considered. Each criterion can be either `line:column`, `line@variable-name`, or `$id`, where the latter directly specifies the node id of the function definition to be considered.')
 	}).description('Either returns all function definitions alongside whether they are higher-order functions, or just those matching the filters.'),

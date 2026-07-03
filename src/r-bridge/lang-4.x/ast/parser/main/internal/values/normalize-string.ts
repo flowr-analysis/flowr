@@ -7,7 +7,7 @@ import type { JsonEntry } from '../../../json/format';
 import { RStringValue } from '../../../../../convert-values';
 
 /**
- * Normalize the given object as a R string (see {@link string2ts}).
+ * Normalize the given object as a R string (see {@link RStringValue.fromRLexeme}).
  * This requires you to check the corresponding name beforehand.
  * @param data - The data used by the parser (see {@link NormalizerData})
  * @param obj  - The JSON object to extract the meta-information from

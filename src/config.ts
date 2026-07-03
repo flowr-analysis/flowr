@@ -14,6 +14,8 @@ import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
+import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
+import { type FlowrGasConfig, GasWikiRef } from './gas';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -96,6 +98,9 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	readonly applyReplacements?:    Record<string, string>[]
 }
 
+export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
+	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
+
 /**
  * The configuration file format for flowR.
  * @see {@link FlowrConfig.default} for the default configuration.
@@ -118,13 +123,17 @@ export interface FlowrConfig extends MergeableRecord {
 				readonly definitions:   BuiltInDefinitions
 			}
 		}
-	}
+	},
+	/** Plugins to load by default when creating a new FlowrAnalyzer */
+	readonly defaultPlugins: ConfigPlugin<string>[]
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
 		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
+		/** Plugins to load in REPL mode */
+		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -144,11 +153,17 @@ export interface FlowrConfig extends MergeableRecord {
 		/**
 		 * How to resolve variables and their values
 		 */
-		readonly variables:   VariableResolve,
+		readonly variables:         VariableResolve,
 		/**
 		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
 		 */
-		readonly evalStrings: boolean
+		readonly evalStrings:       boolean,
+		/**
+		 * Track user-created environments (`new.env()`, `assign(..., envir=e)`, `get(..., envir=e)`,
+		 * `local({}, envir=e)`, `e$x <- v`, `attach(e)`) with precise per-variable envState.
+		 * When disabled all envir-style calls fall through to the conservative global treatment.
+		 */
+		readonly trackEnvironments: boolean
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -209,6 +224,14 @@ export interface FlowrConfig extends MergeableRecord {
 			}
 		}
 	}
+	/**
+	 * Resource-usage guard (gas) configuration.
+	 * Gas checks are disabled by default (all feature factors are `0`).
+	 * Set a `feature factor > 0` to enable checking for that feature.
+	 * @see {@link FlowrGasConfig}
+	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
+	 */
+	readonly gas: FlowrGasConfig;
 }
 
 export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
@@ -245,6 +268,22 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 	'r-shell':     { type: 'r-shell' }
 };
 
+export const FlowrDefaultPlugins = [
+	'file:description',
+	'versions:description',
+	'loading-order:description',
+	'meta:description',
+	'files:vignette',
+	'files:test',
+	'file:rmd',
+	'file:qmd',
+	'file:rnw',
+	'file:ipynb',
+	'file:namespace',
+	'file:news',
+	'file:license',
+] satisfies ConfigPlugin<string>[];
+
 /**
  * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
  */
@@ -265,9 +304,11 @@ export const FlowrConfig = {
 					}
 				}
 			},
-			repl: {
+			defaultPlugins: FlowrDefaultPlugins,
+			repl:           {
 				quickStats:      false,
-				dfProcessorHeat: false
+				dfProcessorHeat: false,
+				plugins:         ['flowr:default'],
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -275,9 +316,10 @@ export const FlowrConfig = {
 			engines:       [],
 			defaultEngine: 'tree-sitter',
 			solver:        {
-				variables:     VariableResolve.Alias,
-				evalStrings:   true,
-				resolveSource: {
+				variables:         VariableResolve.Alias,
+				evalStrings:       true,
+				trackEnvironments: true,
+				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
@@ -301,6 +343,13 @@ export const FlowrConfig = {
 						maxReadLines:      1e6
 					}
 				}
+			},
+			gas: {
+				thresholds: {
+					memory: { problematic: 0.7,       critical: 0.9 },
+					timeMs: { problematic: 100_000,   critical: 120_000 }
+				},
+				features: {}
 			}
 		};
 	},
@@ -317,9 +366,11 @@ export const FlowrConfig = {
 				}).optional().description('Do you want to overwrite (parts) of the builtin definition?')
 			}).optional().description('Semantics regarding how to handle the R environment.')
 		}).description('Configure language semantics and how flowR handles them.'),
-		repl: Joi.object({
+		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
+		repl:           Joi.object({
 			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.')
+			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
@@ -338,9 +389,10 @@ export const FlowrConfig = {
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 		solver:        Joi.object({
-			variables:   Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-			evalStrings: Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
-			instrument:  Joi.object({
+			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
+			instrument:        Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
@@ -365,7 +417,21 @@ export const FlowrConfig = {
 					maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
-		}).description('The configuration options for abstract interpretation.')
+		}).description('The configuration options for abstract interpretation.'),
+		gas: Joi.object({
+			thresholds: Joi.object({
+				memory: Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
+				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+				timeMs: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
+				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
+			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
+			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`.'),
+			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
+		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.

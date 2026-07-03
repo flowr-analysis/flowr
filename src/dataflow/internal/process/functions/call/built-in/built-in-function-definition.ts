@@ -22,15 +22,18 @@ import {
 	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type DataflowFunctionFlowInformation, DataflowGraph, type FunctionArgument } from '../../../../../graph/graph';
+import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { type DataflowFunctionFlowInformation, DataflowGraph, FunctionArgument } from '../../../../../graph/graph';
 import {
 	Identifier,
+	type InGraphIdentifierDefinition,
 	type IdentifierReference,
 	isReferenceType,
 	ReferenceType
 } from '../../../../../environments/identifier';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
-import { VertexType } from '../../../../../graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
+import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
 import { type REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
@@ -82,6 +85,41 @@ export function processFunctionDefinition<OtherInfo>(
 	const paramsEnvironments = data.environment;
 
 	const body = processDataflowFor(bodyArg, data);
+	for(const [, v] of body.graph.verticesOfType(VertexType.FunctionCall)) {
+		if(!v.origin.includes(BuiltInProcName.Rm)) {
+			continue;
+		}
+		const ea = v.args.find(a => a !== EmptyArgument && FunctionArgument.isNamed(a) && a.name === 'envir');
+		if(!ea || !FunctionArgument.isNamed(ea)) {
+			continue;
+		}
+		const offset = parseSysFrameOffset(data.completeAst.idMap.get(ea.valueId ?? ea.nodeId));
+		if(offset === undefined || offset > 0) {
+			continue;
+		}
+		const names: Identifier[] = [];
+		for(const a of v.args) {
+			if(a === EmptyArgument || (FunctionArgument.isNamed(a) && a.name === 'envir')) {
+				continue;
+			}
+			const node = data.completeAst.idMap.get(FunctionArgument.isNamed(a) ? (a.valueId ?? a.nodeId) : a.nodeId);
+			if(node?.type === RType.String) {
+				names.push(node.content.str);
+			} else if(node?.type === RType.Symbol) {
+				names.push(node.content);
+			}
+		}
+		const targetLevel = offset === 0 ? 0 : originalEnvironment.level + 1 + offset;
+		let targetEnv = originalEnvironment;
+		while(targetEnv.level > targetLevel && targetEnv.level > 0) {
+			targetEnv = popLocalEnvironment(targetEnv);
+		}
+		if(targetEnv.level === targetLevel) {
+			for(const n of names) {
+				targetEnv.current.remove(n);
+			}
+		}
+	}
 	// As we know, parameters cannot technically duplicate (i.e., their names are unique), we overwrite their environments.
 	// This is the correct behavior, even if someone uses non-`=` arguments in functions.
 	const bodyEnvironment = body.environment;
@@ -167,6 +205,26 @@ export function processFunctionDefinition<OtherInfo>(
 		}
 	}
 
+	let returnEnvState: REnvironmentInformation | undefined;
+	if(data.ctx.config.solver.trackEnvironments) {
+		for(const ep of afterHookExitPoints) {
+			const epVertex = subgraph.getVertex(ep.nodeId);
+			if(isFunctionCallVertex(epVertex) && epVertex.origin.includes(BuiltInProcName.NewEnv)) {
+				returnEnvState = createFreshEnvState(data, { graph: subgraph, entryPoint: ep.nodeId });
+				break;
+			}
+			const epNode = subgraph.idMap?.get(ep.nodeId);
+			if(epNode?.type === RType.Symbol) {
+				const defs = resolveByName(epNode.content, outEnvironment, ReferenceType.Variable);
+				const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
+				if(def?.envState) {
+					returnEnvState = def.envState;
+					break;
+				}
+			}
+		}
+	}
+
 	const graph = new DataflowGraph(data.completeAst.idMap).mergeWith(subgraph, false);
 	graph.addVertex({
 		tag:         VertexType.FunctionDefinition,
@@ -175,7 +233,8 @@ export function processFunctionDefinition<OtherInfo>(
 		cds:         data.cds,
 		params:      readParams,
 		subflow:     flow,
-		exitPoints:  afterHookExitPoints
+		exitPoints:  afterHookExitPoints,
+		returnEnvState
 	}, data.ctx.env.makeCleanEnv());
 
 	return {
@@ -269,6 +328,52 @@ function updateNestedFunctionClosures(
 		}
 		expensiveTrace(dataflowLogger, () => `Keeping ${remainingIn.length} references to open ref ${id} in closure of function definition ${fnId}`);
 		subflow.in = remainingIn;
+
+		linkSuperAssignmentsToOuterDefinitions(graph, subflow.graph, outEnvironment);
+	}
+}
+
+function linkSuperAssignmentsToOuterDefinitions(
+	parentGraph: DataflowGraph,
+	nestedGraphNodeIds: Set<NodeId>,
+	parentEnvironment: REnvironmentInformation
+): void {
+	for(const nodeId of nestedGraphNodeIds) {
+		const vertex = parentGraph.getVertex(nodeId);
+		if(vertex?.tag !== VertexType.FunctionCall || !vertex.origin.includes(BuiltInProcName.SuperAssignment)) {
+			continue;
+		}
+
+		const outgoingReturns = parentGraph.outgoingEdges(nodeId);
+		if(!outgoingReturns) {
+			continue;
+		}
+
+		for(const [targetId, edge] of outgoingReturns) {
+			if(!DfEdge.includesType(edge, EdgeType.Returns)) {
+				continue;
+			}
+
+			const targetVertex = parentGraph.getVertex(targetId);
+			if(targetVertex?.tag !== VertexType.VariableDefinition) {
+				continue;
+			}
+
+			const targetNode = parentGraph.idMap?.get(targetId);
+			if(targetNode?.type !== RType.Symbol) {
+				continue;
+			}
+
+			const varName = targetNode.content;
+			const resolved = resolveByName(varName, parentEnvironment, ReferenceType.Variable);
+			if(resolved) {
+				for(const ref of resolved) {
+					if(ref.nodeId !== targetId && !NodeId.isBuiltIn(ref.nodeId)) {
+						parentGraph.addEdge(targetId, ref.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -359,6 +464,24 @@ export function updateNestedFunctionCalls(
 			}
 		}
 	}
+}
+
+function parseSysFrameOffset(node: RNode<ParentInformation> | undefined): number | undefined {
+	if(!node || node.type !== RType.FunctionCall || !node.named || node.functionName.content !== 'sys.frame' || node.arguments.length !== 1) {
+		return undefined;
+	}
+	const arg = node.arguments[0];
+	if(arg === EmptyArgument || !arg.value) {
+		return undefined;
+	}
+	const v = arg.value;
+	if(v.type === RType.Number) {
+		return v.content.num;
+	}
+	if(v.type === RType.UnaryOp && v.operator === '-' && v.operand.type === RType.Number) {
+		return -v.operand.content.num;
+	}
+	return undefined;
 }
 
 function prepareFunctionEnvironment<OtherInfo>(data: DataflowProcessorInformation<OtherInfo & ParentInformation>, rootId: NodeId) {

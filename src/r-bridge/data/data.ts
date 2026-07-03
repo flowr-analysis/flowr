@@ -102,10 +102,48 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
 						},
 						{
-							name:        'Dynamic Environment Resolution',
-							id:          'dynamic-environment-resolution',
-							supported:   'not',
-							description: '_For example, using `new.env` and friends_'
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+								}
+							]
 						},
 						{
 							name:        'Environment Sharing',

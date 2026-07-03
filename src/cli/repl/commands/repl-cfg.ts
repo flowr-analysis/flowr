@@ -1,5 +1,4 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { cfgToMermaid, cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ControlFlowInformation } from '../../../control-flow/control-flow-graph';
@@ -17,16 +16,17 @@ async function produceAndPrintCfg(analyzer: ReadonlyFlowrAnalysisProvider, outpu
 	const normalizedAst = await analyzer.normalize();
 	const mermaid = cfgConverter(cfg, normalizedAst);
 	output.stdout(mermaid);
-	try {
-		const clipboard = await import('clipboardy');
-		clipboard.default.writeSync(mermaid);
-		output.stdout(formatInfo(output, 'mermaid code'));
-	} catch{ /* do nothing this is a service thing */
+	if(output.allowClipboard !== false) {
+		try {
+			const clipboard = await import('clipboardy');
+			clipboard.default.writeSync(mermaid);
+			output.stdout(formatInfo(output, 'mermaid code'));
+		} catch{ /* do nothing this is a service thing */ }
 	}
 }
 
 export const controlflowCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the control-flow graph of R code, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the control-flow graph of R code',
 	isCodeCommand: true,
 	usageExample:  ':controlflow',
 	aliases:       [ 'cfg', 'cf' ],
@@ -52,7 +52,7 @@ export const controlflowStarCommand: ReplCodeCommand = {
 
 
 export const controlflowBbCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the control-flow graph with basic blocks, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the control-flow graph with basic blocks',
 	isCodeCommand: true,
 	usageExample:  ':controlflowbb',
 	aliases:       [ 'cfgb', 'cfb' ],

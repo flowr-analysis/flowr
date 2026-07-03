@@ -9,7 +9,7 @@ import { arrayEqual } from '../util/collections/arrays';
 /**
  * Compare two control flow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- * @see {@link diffOfDataflowGraphs} - for dataflow graphs
+ * @see {@link diffDataflowGraph} - for dataflow graphs
  */
 export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, right: NamedGraph<ControlFlowGraph>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 	if(left.graph === right.graph) {

@@ -191,13 +191,17 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			}
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
-					const dep = value ? d.getDependency(value) ?? undefined : undefined;
+					let resolvedValue = value;
+					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
+						resolvedValue = info.stringReplacements[resolvedValue];
+					}
+					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					finalResults.push(compactRecord({
 						nodeId:             id,
 						functionName:       vertex.name,
 						lexemeOfArgument:   getLexeme(value, arg),
 						linkedIds:          linked?.length ? linked : undefined,
-						value:              value ?? info.defaultValue ?? defaultValue,
+						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
 						derivedVersion:     dep?.derivedVersion,
 						namespaceInfo:      dep?.namespaceInfo
@@ -221,12 +225,12 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
 	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
-	const map = new Map<NodeId, Set<string|undefined>>();
+	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {
 			continue;

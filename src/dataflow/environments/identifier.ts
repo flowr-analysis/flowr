@@ -2,6 +2,7 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
+import type { REnvironmentInformation } from './environment';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -37,8 +38,8 @@ const dotDotDotAccess = /^\.\.\d+$/;
 export const Identifier = {
 	name: 'Identifier',
 	/**
-	 * Create an identifier from its name and optional namespace.
-	 * Please note that for `internal` to count, a namespace must be provided!
+	 * Creates an identifier. Strips surrounding backticks from the name.
+	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
@@ -49,6 +50,18 @@ export const Identifier = {
 		} else {
 			return name;
 		}
+	},
+	/**
+	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
+	 * Use for static built-in config entries where name is a compile-time constant with no backticks.
+	 * @example
+	 * ```ts
+	 * Identifier.from(['map', 'purrr'])       // ['map', 'purrr']
+	 * Identifier.from(['map', 'purrr', true]) // ['map', 'purrr', true]
+	 * ```
+	 */
+	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
+		return arr;
 	},
 	/**
 	 * Verify whether an unknown element has a valid identifier shape!
@@ -193,6 +206,52 @@ export const Identifier = {
 } as const;
 
 /**
+ * Well-known R package names used in {@link DefaultBuiltinConfig}.
+ * Using a const enum keeps the string values inlined at compile time.
+ */
+export const enum PkgName {
+	/* R built-in / recommended packages */
+	Base        = 'base',
+	Compiler    = 'compiler',
+	Graphics    = 'graphics',
+	GrDevices   = 'grDevices',
+	Methods     = 'methods',
+	Stats       = 'stats',
+	Utils       = 'utils',
+	/* CRAN / third-party */
+	AssertThat   = 'assertthat',
+	Cli          = 'cli',
+	DataTable    = 'data.table',
+	Devtools     = 'devtools',
+	Dplyr        = 'dplyr',
+	Fs           = 'fs',
+	Functools    = 'functools',
+	GgPlot2      = 'ggplot2',
+	Import       = 'import',
+	Inferference = 'inferference',
+	Janitor      = 'janitor',
+	Lattice      = 'lattice',
+	Magick       = 'magick',
+	Magrittr     = 'magrittr',
+	Msgr         = 'msgr',
+	PkgLoad      = 'pkgload',
+	Plyr         = 'plyr',
+	Purrr        = 'purrr',
+	Ragg         = 'ragg',
+	RasterPdf    = 'rasterpdf',
+	Remotes      = 'remotes',
+	Rlang        = 'rlang',
+	RmethodsS3   = 'R.methodsS3',
+	Roo          = 'R.oo',
+	Rutils       = 'R.utils',
+	S7           = 'S7',
+	Soda         = 'SoDA',
+	Testthat     = 'testthat',
+	TinyPlot     = 'tinyplot',
+	TryCatchLog  = 'tryCatchLog',
+}
+
+/**
  * Each reference has exactly one reference type, stored as the respective number.
  * However, when checking, we may want to allow for one of several types,
  * allowing the combination of the respective bitmasks.
@@ -286,18 +345,35 @@ export interface IdentifierReference {
  * @see {@link IdentifierReference}
  */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
-	readonly type:      InGraphReferenceType
+	readonly type:             InGraphReferenceType
 	/**
 	 * The assignment node which ultimately defined this identifier
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
-	readonly definedAt: NodeId
+	readonly definedAt:        NodeId
 	/**
 	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
 	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
-	readonly value?:    NodeId[]
+	readonly value?:           NodeId[]
+	/**
+	 * If this variable holds an R environment (created by `new.env()` etc.),
+	 * this tracks the current known state of that environment.
+	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
+	 */
+	readonly envState?:        REnvironmentInformation
+	/**
+	 * If this is a function that returns a tracked environment, stores the envState
+	 * that the function returns (best-effort: only set when statically detectable).
+	 */
+	readonly returnsEnvState?: REnvironmentInformation
 }
+
+/**
+ * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
+ * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.
+ */
+export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
 
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}.

@@ -1,4 +1,5 @@
 import fs from 'fs';
+import path from 'path';
 
 export const FlowrGithubGroupName = 'flowr-analysis';
 export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
@@ -13,16 +14,19 @@ export const FlowrVsCode = 'https://marketplace.visualstudio.com/items?itemName=
 export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode-flowr';
 export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
 export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
+
+/** Converts backslashes to forward slashes (Windows paths). */
+export function toPosixPath(p: string): string {
+	return p.replaceAll('\\', '/');
+}
+
 /**
  * Returns a markdown link to the given file path relative to the project root.
  */
-export function getFilePathMd(path: string): string {
+export function getFilePathMd(filePath: string): string {
 	// we go one up as we are in doc-util now :D #convenience
-	const fullpath = require.resolve('../' + path);
-	// normalize path separators so that this is consistent when testing on windows
-	const cwd = process.cwd().replaceAll('\\', '/');
-	const relative = fullpath.replaceAll('\\', '/').replace(cwd, '.');
-	/* remove project prefix */
+	const fullpath = require.resolve('../' + filePath);
+	const relative = './' + toPosixPath(path.relative(process.cwd(), fullpath));
 	return `[\`${relative}\`](${RemoteFlowrFilePathBaseRef}${relative})`;
 }
 

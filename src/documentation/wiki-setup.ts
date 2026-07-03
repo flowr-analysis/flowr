@@ -1,6 +1,5 @@
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
-import { FlowrDockerRef, FlowrPositron, FlowrRStudioAddin, FlowrVsCode } from './doc-util/doc-files';
 
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Setup
@@ -13,8 +12,8 @@ export class WikiSetup extends DocMaker<'wiki/Setup.md'> {
 	public text({ ctx }: DocMakerArgs): string {
 		return `
 There are several ways to use _flowR_.
-You can download and build it from source, download the accompanying [docker image](${FlowrDockerRef}), 
-or use its [Visual Studio Code extension](${FlowrVsCode}) and [RStudio Addin](${FlowrRStudioAddin}).
+You can download and build it from source, download the accompanying ${ctx.linkPage('flowr:docker', 'docker image')},
+or use its ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} and ${ctx.linkPage('flowr:rstudio-addin', 'RStudio Addin')}.
 
 - [🗒️ Using the Visual Studio Code Extension](#-using-the-visual-studio-code-extension)
 - [🗒️ Using the RStudio Addin](#-using-the-rstudio-addin)
@@ -28,18 +27,18 @@ look at the [Contributing Guidelines](https://github.com/flowr-analysis/flowr/tr
 
 ## 🗒️ Using the Visual Studio Code Extension
 
-The easiest way to use _flowR_ is to install the [Visual Studio Code extension](${FlowrVsCode}).
+The easiest way to use _flowR_ is to install the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}.
 The extension directly includes a version of _flowR_ that can be used by default, so you can start analyzing code right away (given that you have R installed on your system).
 Please check out the marketplace entry for more information.
-This extension works with Positron as well (in general, it is available on [open-vsx](${FlowrPositron}) as well).
+This extension works with Positron as well (in general, it is available on ${ctx.linkPage('flowr:positron', 'open-vsx')} as well).
 
 ## 🗒️ Using the RStudio Addin
 
-You can also use _flowR_ as an RStudio Addin. Please check out the [RStudio Addin repository](${FlowrRStudioAddin}) for more information on how to get started!
+You can also use _flowR_ as an RStudio Addin. Please check out the ${ctx.linkPage('flowr:rstudio-addin', 'RStudio Addin repository')} for more information on how to get started!
 
 ## 🐳️ Using the Docker Image
 
-You can get the image from [docker hub](${FlowrDockerRef}) by running:
+You can get the image from ${ctx.linkPage('flowr:docker', 'docker hub')} by running:
 
 \`\`\`shell
 docker pull eagleoutice/flowr

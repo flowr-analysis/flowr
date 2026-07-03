@@ -114,7 +114,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 
 		const stack: NodeId[] = [this.loopToCheck];
 		while(stack.length > 0) {
-			const current = stack.shift() as NodeId;
+			const current = stack.pop() as NodeId;
 
 			if(!this.visitNode(current)) {
 				continue;
@@ -124,7 +124,7 @@ class CfgSingleIterationLoopDetector extends SemanticCfgGuidedVisitor {
 			if(!exits.has(current)) {
 				const next = ingoing(current) ?? [];
 				for(const [to] of next) {
-					stack.unshift(to);
+					stack.push(to);
 				}
 			}
 

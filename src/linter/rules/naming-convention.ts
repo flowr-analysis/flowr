@@ -22,8 +22,7 @@ export enum CasingConvention {
 
 export interface NamingConventionResult extends LintingResult {
 	name:           string,
-	detectedCasing: CasingConvention,
-	loc:            SourceLocation
+	detectedCasing: CasingConvention
 }
 
 /**
@@ -67,9 +66,9 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
 	const hasUnderscores = identifier.includes('_');
-	const upperAfterAllScores = Array(identifier.length-1).keys().every(i =>
+	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i =>
 		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
-	const hasAnyUpperAfterLower = Array(identifier.length-1).keys().some(i =>
+	const hasAnyUpperAfterLower = Array(identifier.length - 1).keys().some(i =>
 		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
 		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
 
@@ -206,7 +205,8 @@ export function createNamingConventionQuickFixes(graph: DataflowGraph, nodeId: N
 
 export const NAMING_CONVENTION = {
 	createSearch:        (_config) => Q.all().filter(VertexType.VariableDefinition),
-	processSearchResult: (elements, config, data) =>  {
+	processSearchResult: async(elements, config, data) =>  {
+		const dataflow = await data.dataflow();
 		const symbols = elements.getElements()
 			.map(m => ({
 				certainty:      LintingResultCertainty.Certain,
@@ -223,7 +223,7 @@ export const NAMING_CONVENTION = {
 				return {
 					...m,
 					involvedId: id,
-					quickFix:   fix ? createNamingConventionQuickFixes(data.dataflow.graph, id, fix, casing) : undefined
+					quickFix:   fix ? createNamingConventionQuickFixes(dataflow.graph, id, fix, casing) : undefined
 				} as NamingConventionResult;
 			});
 		return {

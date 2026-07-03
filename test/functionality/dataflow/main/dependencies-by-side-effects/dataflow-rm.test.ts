@@ -19,9 +19,56 @@ describe.sequential('Dataflow Plot Dependencies', withShell(shell => {
 			.call('1@<-', '<-', [argumentInCall('1'), argumentInCall('0')], { onlyBuiltIn: true, origin: [BuiltInProcName.Assignment], reads: [NodeId.toBuiltIn('<-'), 1] })
 			.calls('1@<-', NodeId.toBuiltIn('<-'))
 			.reads('2@x', '1@x')
-			.use('3@x'), // there is no link between 3@x and 1@x
+			.use('3@x'),
 		{
 			resolveIdsAsCriterion: true
 		}
 	);
+
+	assertDataflow(label('rm with envir=sys.frame(-1) breaks link in caller', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'c <- 2\nbad <- function() rm(list="c", envir=sys.frame(-1))\nbad()\nprint(c)',
+		emptyGraph()
+			.use('4@c'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true,
+			mustNotHaveEdges:      [['4@c', '1@c']],
+			expectedOutput:        'function (...)  .Primitive("c")'
+		}
+	);
+
+	assertDataflow(label('rm with envir=sys.frame(0) also breaks link in caller', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'c <- 2\nbad <- function() rm(list="c", envir=sys.frame(0))\nbad()\nprint(c)',
+		emptyGraph()
+			.use('4@c'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true,
+			mustNotHaveEdges:      [['4@c', '1@c']]
+		}
+	);
+
+	assertDataflow(label('rm with envir=sys.frame(-1) does not remove local variable', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'bad <- function() {\n  x <- 3\n  rm(list="x", envir=sys.frame(-1))\n  x\n}\nbad()',
+		emptyGraph()
+			.use('4@x', 'x', undefined, false)
+			.reads('4@x', '2@x'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true,
+			expectedOutput:        '[1] 3'
+		}
+	);
+
+	assertDataflow(label('rm with envir=sys.frame(-2) does not break link from depth 1', ['functions-with-global-side-effects', 'dynamic-variable-removal']), shell,
+		'c <- 2\nbad <- function() rm(list="c", envir=sys.frame(-2))\nbad()\nprint(c)',
+		emptyGraph()
+			.use('4@c')
+			.reads('4@c', '1@c'),
+		{
+			resolveIdsAsCriterion: true,
+			expectIsSubgraph:      true
+		}
+	);
+
 }));

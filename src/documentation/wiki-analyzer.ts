@@ -1,7 +1,7 @@
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import { block, collapsibleToc, section } from './doc-util/doc-structure';
-import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, FlowrGithubGroupName } from './doc-util/doc-files';
 import { FlowrAnalyzerQmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { BuiltInPlugins, makePlugin, registerPluginMaker } from '../project/plugins/plugin-registry';
 import { codeInline } from './doc-util/doc-code';
@@ -31,7 +31,6 @@ import { FlowrAnalyzerLoadingOrderContext } from '../project/context/flowr-analy
 import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import { FlowrAnalyzerCache } from '../project/cache/flowr-analyzer-cache';
 import { PipelineExecutor } from '../core/pipeline-executor';
-import { FlowrAnalyzerPluginDefaults } from '../project/plugins/flowr-analyzer-plugin-defaults';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { FlowrAnalyzerRmdFilePlugin } from '../project/plugins/file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
@@ -115,14 +114,14 @@ ${section('Overview', 2)}
 No matter whether you want to analyze a single R script, a couple of R notebooks, a complete project, or an R package,
 your journey starts with the ${ctx.link(FlowrAnalyzerBuilder)} (further described in [Builder Configuration](#builder-configuration) below).
 This builder allows you to configure the analysis in many different ways, for example, by specifying which [plugins](#Plugins) to use or
-what [engine](${FlowrWikiBaseRef}/Engines) to use for the analysis.
+what ${ctx.linkPage('wiki/Engines', 'engine')} to use for the analysis.
 
 When building the ${ctx.link(FlowrAnalyzer)} instance, the builder will take care to
 
 * load the [requested plugins](#Plugins)
 * setup an initial [context](#Context_Information)
 * create a [cache](#Caching) for speeding up future analyses
-* initialize the [engine](${FlowrWikiBaseRef}/Engines) (e.g., TreeSitter) if needed
+* initialize the ${ctx.linkPage('wiki/Engines', 'engine')} (e.g., TreeSitter) if needed
 
 The builder provides two methods for building the analyzer:
 
@@ -162,19 +161,19 @@ Please make sure to add all of the files, folder, and projects you want to analy
 ${ctx.linkM(FlowrAnalyzer, 'addRequest')} method (or ${ctx.linkM(FlowrAnalyzer, 'addFile')} for virtual files).
 Afterwards, you can request different kinds of analysis results, such as:
 
-* ${ctx.linkM(FlowrAnalyzer, 'parse')} to get the parsed information by the respective [engine](${FlowrWikiBaseRef}/Engines)\\
+* ${ctx.linkM(FlowrAnalyzer, 'parse')} to get the parsed information by the respective ${ctx.linkPage('wiki/Engines', 'engine')}\\
 You can also use ${ctx.linkM(FlowrAnalyzer, 'peekParse', { codeFont: true, realNameWrapper: 'i' })} to inspect the parse information if it was already computed (but without triggering a computation).
 With ${ctx.linkM(FlowrAnalyzer, 'parserInformation', { codeFont: true, realNameWrapper: 'i' })}, you get additional information on the parser used for the analysis.
-* ${ctx.linkM(FlowrAnalyzer, 'normalize')} to compute the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)\\
+* ${ctx.linkM(FlowrAnalyzer, 'normalize')} to compute the ${ctx.linkPage('wiki/Normalized AST', 'Normalized AST')}\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekNormalize', { codeFont: true, realNameWrapper: 'i' })} returns the normalized AST if it was already computed but without triggering a computation.
-* ${ctx.linkM(FlowrAnalyzer, 'dataflow')} to compute the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph)\\
+* ${ctx.linkM(FlowrAnalyzer, 'dataflow')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}\\
 Again, ${ctx.linkM(FlowrAnalyzer, 'peekDataflow', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the dataflow graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the [Control Flow Graph](${FlowrWikiBaseRef}/Control%20Flow%20Graph)\\
+* ${ctx.linkM(FlowrAnalyzer, 'controlflow')} to compute the ${ctx.linkPage('wiki/Control Flow Graph', 'Control Flow Graph')}\\
 Also, ${ctx.linkM(FlowrAnalyzer, 'peekControlflow', { codeFont: true, realNameWrapper: 'i' })} returns the control flow graph if it was already computed but without triggering a computation.
 * ${ctx.linkM(FlowrAnalyzer, 'callGraph')} to compute the ${ctx.linkPage('wiki/Dataflow Graph', 'call graph', 'perspectives-cg')} of the analyzed code\\
 Likewise, ${ctx.linkM(FlowrAnalyzer, 'peekCallGraph', { codeFont: true, realNameWrapper: 'i' })} allows you to inspect the call graph if it was already computed (but without triggering a computation).
-* ${ctx.linkM(FlowrAnalyzer, 'query')} to run [queries](${FlowrWikiBaseRef}/Query-API) on the analyzed code.
-* ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the [search API](${FlowrWikiBaseRef}/Search%20API)
+* ${ctx.linkM(FlowrAnalyzer, 'query')} to run ${ctx.linkPage('wiki/Query API', 'queries')} on the analyzed code.
+* ${ctx.linkM(FlowrAnalyzer, 'runSearch')} to run a search query on the analyzed code using the ${ctx.linkPage('wiki/Search API', 'search API')}
 
 We work on providing a set of example repositories that demonstrate how to use the analyzer in different scenarios:
 
@@ -192,7 +191,7 @@ The following sections highlight some of the most important configuration option
 
 ${section('Configuring flowR', 3)}
 
-You can fundamentally change the behavior of flowR using the [config file](${FlowrWikiBaseRef}/Interface#configuring-flowr),
+You can fundamentally change the behavior of flowR using the ${ctx.linkPage('wiki/Interface', 'config file', 'configuring-flowr')},
 embedded in the interface ${ctx.link(FlowrConfig)}.
 With the builder you can either provide a complete configuration or amend the default configuration using:
 
@@ -239,7 +238,7 @@ This indicates three ways to add a new plugin:
 3. By providing a tuple of the plugin name and its constructor arguments (e.g., \`['file:rmd', [/.*.rmd/i]]\` for the ${ctx.link(FlowrAnalyzerRmdFilePlugin)}).\\
    This will also use the ${ctx.link(makePlugin)} function under the hood to create the plugin instance.
 
-Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link(FlowrAnalyzerPluginDefaults)}) are registered (otherwise, all of the plugins in the example above would be registered by default).
+Please note, that by passing \`false\` to the builder constructor, no default plugins (see ${ctx.link('FlowrDefaultPlugins')}) are registered (otherwise, all of the plugins in the example above would be registered by default).
 If you want to unregister specific plugins, you can use the ${ctx.linkM(FlowrAnalyzerBuilder, 'unregisterPlugins')} method.
 
 ${
@@ -281,7 +280,7 @@ Plugins allow you to extend the capabilities of the analyzer in many different w
 For example, they can be used to support other file formats, or to provide new algorithms to determine the loading order of files in a project.
 All plugins have to extend the ${ctx.link(FlowrAnalyzerPlugin)} base class and specify their ${ctx.link('PluginType')}.
 During the analysis, the analyzer will apply all registered plugins of the different types at the appropriate stages of the analysis.
-If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described 
+If you just want to _use_ these plugins, you can usually ignore their [type](#plugin-types) and just register them with the builder as described
 in the [Builder Configuration](#builder-configuration) section above.
 However, if you want to _create_ new plugins, you should be aware of the different plugin types and when they are applied during the analysis.
 
@@ -319,7 +318,7 @@ ${section('Project Discovery', 4)}
 
 These plugins trigger when confronted with a project analysis request (see, ${ctx.link('RProjectAnalysisRequest')}).
 Their job is to identify the files that belong to the project and add them to the analysis.
-flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a 
+flowR provides the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} with a
 ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin.name)} as the default implementation that simply collects all R source files in the given folder.
 
 Please note that all project discovery plugins should conform to the ${ctx.link(FlowrAnalyzerProjectDiscoveryPlugin)} base class.

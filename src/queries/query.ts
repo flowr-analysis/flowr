@@ -85,6 +85,8 @@ import {
 } from './catalog/input-sources-query/input-sources-query-format';
 import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
+import type { LintingResultCertainty } from '../linter/linter-format';
+import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -115,6 +117,7 @@ export type Query = CallContextQuery
 	| LinterQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
+	| DiceQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -153,7 +156,7 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	 * Flattens the involved query nodes to be added to a flowR search when the {@link fromQuery} function is used based on the given result after this query is executed.
 	 * If this query does not involve any nodes, an empty array can be returned.
 	 */
-	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[]) => NodeId[]
+	flattenInvolvedNodes: (queryResults: BaseQueryResult, query: readonly Query[], certainty?: LintingResultCertainty) => NodeId[]
 }
 
 export const SupportedQueries = {
@@ -182,7 +185,8 @@ export const SupportedQueries = {
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'origin':               OriginQueryDefinition,
-	'linter':               LinterQueryDefinition
+	'linter':               LinterQueryDefinition,
+	'dice':                 DiceQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

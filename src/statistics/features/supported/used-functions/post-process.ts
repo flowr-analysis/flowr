@@ -164,7 +164,7 @@ function processNextLine(data: Map<string | undefined, FunctionCallSummaryInform
 	for(const [name, loc, args, ns, known] of hits) {
 		const importantWrite = name && importants.get(name);
 		if(importantWrite) {
-			importantWrite.write(`${JSON.stringify(context)},${loc?.[0]??'?'}:${loc?.[1]??'?'},${ns??'""'},,,\n`);
+			importantWrite.write(`${JSON.stringify(context)},${loc?.[0] ?? '?'}:${loc?.[1] ?? '?'},${ns ?? '""'},,,\n`);
 		}
 		const fullname = ns && ns !== '' ? `${ns}::${name ?? ''}` : name;
 		const key = (fullname ?? '') + (known === 1 ? '-' + (context ?? '') : '');
@@ -184,7 +184,7 @@ function processNextLine(data: Map<string | undefined, FunctionCallSummaryInform
 		get[3].push(args);
 		if(loc && stats) {
 			// we reduce by 1 to get flat 0% if it is the first line
-			get[4].push(stats === 1 ? 1 : (loc[0]-1) / (stats-1));
+			get[4].push(stats === 1 ? 1 : (loc[0] - 1) / (stats - 1));
 		}
 	}
 

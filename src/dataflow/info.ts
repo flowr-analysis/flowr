@@ -96,7 +96,9 @@ export function addNonDefaultExitPoints(existing: ExitPoint[], invertExitCds: Co
 	const invertedCds = toAdd.flatMap(e => e.cds?.filter(
 		icd => !activeCds?.some(e => e.id === icd.id && e.when === icd.when)
 	).map(negateControlDependency)).filter(isNotUndefined);
-	existing.push(...toAdd);
+	for(const ep of toAdd) {
+		existing.push(ep);
+	}
 	for(const icd of invertedCds) {
 		if(!invertExitCds.some(e => e.id === icd.id && e.when === icd.when)) {
 			invertExitCds.push(icd);
@@ -136,7 +138,7 @@ export interface DataflowCfgInformation {
  * Each processor during the dataflow analysis may use the information from its children
  * to produce a new state of the dataflow information.
  *
- * You may initialize a new dataflow information with {@link initializeCleanDataflowInformation}.
+ * You may initialize a new dataflow information with {@link DataflowInformation.initialize}.
  * @see {@link DataflowCfgInformation} - the control flow aspects
  */
 export interface DataflowInformation extends DataflowCfgInformation {

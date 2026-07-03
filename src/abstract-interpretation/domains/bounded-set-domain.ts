@@ -1,6 +1,6 @@
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -150,7 +150,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top) {
 			return this.value.description;
 		}
@@ -161,7 +161,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		if(this.value === Top) {
 			return TopSymbol;
 		}
-		const string = this.value.values().map(domainElementToString).toArray().join(', ');
+		const string = this.value.values().map(AbstractDomain.toString).toArray().join(', ');
 
 		return `{${string}}`;
 	}

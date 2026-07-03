@@ -28,7 +28,7 @@ import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SlicingCriterion,
-	type SlicingCriteria,
+	SlicingCriteria,
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -110,7 +110,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
+		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
@@ -367,7 +367,7 @@ interface DataflowTestConfiguration extends TestConfigurationWithOutput {
 	addFiles:              FlowrFileProvider[]
 	/** The collection of vertex ids that should not exist */
 	mustNotHaveVertices:   Set<NodeId>
-	/** The collection of edges that should not exist */
+	/** The collection of edges that should not exist, if criterias are enabled, these can be slicing criteria */
 	mustNotHaveEdges:      [NodeId, NodeId][]
 	/** Whether to test the call graph instead of the dataflow graph */
 	context:               'dataflow' | 'call-graph',
@@ -683,5 +683,81 @@ export function assertSliced(
 			} /* v8 ignore stop */
 		}
 		handleAssertOutput(name, shell, input, testConfig);
+	});
+}
+
+/**
+ * Options for {@link assertDiced}. At least one field should be set.
+ */
+export interface DiceTestExpect {
+	/** Exact reconstructed code expected (trimmed) */
+	code?:       string
+	/** Strings that must appear in the reconstructed output */
+	contains?:   string[]
+	/** Strings that must NOT appear in the reconstructed output */
+	excludes?:   string[]
+	/** Lower bound on the number of nodes in the dice result */
+	minSize?:    number
+	/** Upper bound on the number of nodes (0 = empty result) */
+	maxSize?:    number
+	/** Slicing criteria whose resolved ids must be present in the result */
+	hasNodes?:   SlicingCriteria
+	/** Slicing criteria whose resolved ids must be absent from the result */
+	lacksNodes?: SlicingCriteria
+}
+
+/**
+ * Assert the result of program dicing from `from` to `to` using {@link staticDice}.
+ * When `expect` is a plain string it is treated as the exact reconstructed code.
+ */
+export function assertDiced(
+	name: string | TestLabel,
+	shell: KnownParser,
+	input: string,
+	from: SlicingCriteria,
+	to: SlicingCriteria,
+	expect: string | DiceTestExpect,
+	userConfig?: Partial<TestConfiguration>
+): void {
+	const effectiveName = typeof name === 'string' ? name : decorateLabelContext(name, ['slice']);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`[dice] ${effectiveName}`, async function() {
+		const { staticDice } = await import('../../../src/slicing/static/static-slicer');
+		const { reconstructToCode } = await import('../../../src/reconstruct/reconstruct');
+		const { doNotAutoSelect } = await import('../../../src/reconstruct/auto-select/auto-select-defaults');
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+		analyzer.addRequest(input);
+		const ast  = await analyzer.normalize();
+		const df   = await analyzer.dataflow();
+		const startIds = SlicingCriteria.convertAll(from, ast.idMap);
+		const endIds   = SlicingCriteria.convertAll(to, ast.idMap);
+		const slice    = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds);
+		const rec      = reconstructToCode(ast, { nodes: slice.result }, doNotAutoSelect);
+		const code     = (Array.isArray(rec.code) ? rec.code.join('\n') : rec.code).trim();
+
+		const opts: DiceTestExpect = typeof expect === 'string' ? { code: expect } : expect;
+
+		if(opts.code !== undefined) {
+			assert.strictEqual(code, opts.code,
+				`dice [${from.join(',')} -> ${to.join(',')}]: expected\n${opts.code}\ngot\n${code}\nfor input:\n${input}`
+			);
+		}
+		for(const s of opts.contains ?? []) {
+			assert.include(code, s, `dice result must contain "${s}"`);
+		}
+		for(const s of opts.excludes ?? []) {
+			assert.notInclude(code, s, `dice result must NOT contain "${s}"`);
+		}
+		if(opts.minSize !== undefined) {
+			assert.isAtLeast(slice.result.size, opts.minSize, 'result set must be at least this large');
+		}
+		if(opts.maxSize !== undefined) {
+			assert.isAtMost(slice.result.size, opts.maxSize, 'result set must be at most this large');
+		}
+		for(const id of SlicingCriteria.convertAll(opts.hasNodes ?? [], ast.idMap)) {
+			assert.isTrue(slice.result.has(id), `expected node id ${id} to be in dice result`);
+		}
+		for(const id of SlicingCriteria.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
+			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
+		}
 	});
 }

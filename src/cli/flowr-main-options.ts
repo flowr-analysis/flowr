@@ -129,3 +129,13 @@ export const flowrMainOptionDefinitions = [
 ] as const satisfies OptionDefinition[];
 
 export const defaultConfigFile = 'flowr.json';
+
+/**
+ * Arguments to forward to a sub-script: everything the user passed except the script name token,
+ * which (being the default option) may appear before or after the main flowR options.
+ */
+export function getScriptArguments(script: string, argv: readonly string[] = process.argv): string[] {
+	const passedArgs = argv.slice(2);
+	const scriptIndex = passedArgs.indexOf(script);
+	return scriptIndex < 0 ? [...passedArgs] : [...passedArgs.slice(0, scriptIndex), ...passedArgs.slice(scriptIndex + 1)];
+}

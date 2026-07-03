@@ -1,5 +1,5 @@
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, domainElementToString } from './abstract-domain';
+import { AbstractDomain } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 /* eslint-disable @typescript-eslint/unified-signatures */
@@ -126,7 +126,7 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top) {
 			return Top.description;
 		} else if(this.value === Bottom) {
@@ -141,7 +141,7 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		} else if(this.value === Bottom) {
 			return BottomSymbol;
 		}
-		return domainElementToString(this.value);
+		return AbstractDomain.toString(this.value);
 	}
 
 	public isTop(): this is SingletonDomain<T, SingletonTop> {

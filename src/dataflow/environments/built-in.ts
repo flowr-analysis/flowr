@@ -64,6 +64,10 @@ import { processS7Dispatch } from '../internal/process/functions/call/built-in/b
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
+import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
+import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
+import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
+import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -216,6 +220,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
 	[BuiltInProcName.Local]:              processLocal,
+	[BuiltInProcName.NamespaceAccess]:    processNamespaceAccess,
 	[BuiltInProcName.Pipe]:               processPipe,
 	[BuiltInProcName.PurrrFormula]:       processPurrrFormula,
 	[BuiltInProcName.Quote]:              processQuote,
@@ -231,6 +236,9 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,
 	[BuiltInProcName.Try]:                processTryCatch,
+	[BuiltInProcName.Attach]:             processAttach,
+	[BuiltInProcName.NewEnv]:             processNewEnv,
+	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
 	[BuiltInProcName.WhileLoop]:          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;

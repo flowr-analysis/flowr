@@ -122,7 +122,7 @@ export function histograms2table(histograms: Histogram[], countAsDensity = false
 			row[1] = histograms[0].min.toFixed(3);
 			row[2] = histograms[0].min.toFixed(3);
 		} else {
-			row[1] = String((binIndex-1) * histograms[0].binSize + histograms[0].min);
+			row[1] = String((binIndex - 1) * histograms[0].binSize + histograms[0].min);
 			row[2] = String((binIndex) * histograms[0].binSize + histograms[0].min);
 		}
 		// fill remaining columns

@@ -86,7 +86,7 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	 */
 	public abstract abstract(concrete: ReadonlySet<Concrete> | typeof Top): this;
 
-	public abstract toJson(): unknown;
+	public abstract toJSON(): unknown;
 
 	public abstract toString(): string;
 
@@ -113,12 +113,40 @@ implements Lattice<Abstract, Top, Bot, Value> {
 		guard(values.length > 0 || defaultValue !== undefined, 'Abstract values to meet cannot be empty');
 		return values[0]?.meetAll(values.slice(1)) ?? defaultValue;
 	}
+
+	/**
+	 * Converts an element of an abstract domain into a string.
+	 */
+	public static toString(this: void, value: AnyAbstractDomain | unknown): string {
+		if(value instanceof Map) {
+			return `{${value.entries().map(([key, value]) => `${AbstractDomain.toString(key)} -> ${AbstractDomain.toString(value)}`).toArray().join(', ')}}`;
+		} else if(value instanceof Set) {
+			return `{${value.values().map(AbstractDomain.toString).toArray().join(', ')}}`;
+		} else if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
+			// eslint-disable-next-line @typescript-eslint/no-base-to-string
+			return value.toString();
+		} else if(Array.isArray(value)) {
+			return `[${value.map(AbstractDomain.toString).join(', ')}]`;
+		} else if(value === Top) {
+			return TopSymbol;
+		} else if(value === Bottom) {
+			return BottomSymbol;
+		}
+		return JSON.stringify(value);
+	}
 }
 
 /**
  * A type representing any abstract domain without additional information.
  */
 export type AnyAbstractDomain = AbstractDomain<unknown, unknown, unknown, unknown>;
+
+/**
+ * The type of the abstract values of an abstract domain (including the Top and Bottom element).
+ * @template Domain - The abstract domain to get the abstract value type for
+ */
+export type AbstractValue<Domain extends AnyAbstractDomain> =
+	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
 
 /**
  * The type of the concrete domain of an abstract domain.
@@ -128,47 +156,22 @@ export type ConcreteDomain<Domain extends AnyAbstractDomain> =
 	Domain extends AbstractDomain<infer Concrete, unknown, unknown, unknown> ? Concrete : never;
 
 /**
- * The type of the abstract values of an abstract domain (including the Top and Bottom element).
- * @template Domain - The abstract domain to get the abstract value type for
+ * The type of an abstract domain holding an abstract value of the domain.
+ * @template Domain - The abstract domain abstract domain value type for
  */
 export type AbstractDomainValue<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, infer Value, infer Top, infer Bot> ? Value | Top | Bot : never;
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Value> : never;
 
 /**
- * The type of the Top element (greatest element) of an abstract domain.
- * @template Domain - The abstract domain to get the Top element type for
+ * The type an abstract domain holding the Top element (greatest element) of the domain.
+ * @template Domain - The abstract domain to get the abstract domain top for
  */
 export type AbstractDomainTop<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, unknown, infer Top, unknown> ? Top : never;
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Top> : never;
 
 /**
- * The type of the Bottom element (least element) of an abstract domain.
- * @template Domain - The abstract domain to get the Bottom element type for
+ * The type an abstract domain holding the Bottom element (least element) of the domain.
+ * @template Domain - The abstract domain to get the abstract domain bottom for
  */
 export type AbstractDomainBottom<Domain extends AnyAbstractDomain> =
-	Domain extends AbstractDomain<unknown, unknown, unknown, infer Bot> ? Bot : never;
-
-/**
- * Converts an element of an abstract domain into a string.
- */
-export function domainElementToString(value: AnyAbstractDomain | unknown): string {
-	if(typeof value === 'object' && value !== null && value.toString !== Object.prototype.toString) {
-		// eslint-disable-next-line @typescript-eslint/no-base-to-string
-		return value.toString();
-	} else if(value === Top) {
-		return TopSymbol;
-	} else if(value === Bottom) {
-		return BottomSymbol;
-	}
-	return JSON.stringify(value);
-}
-
-/**
- * Checks whether a value is an abstract domain.
- */
-export function isAbstractDomain(value: unknown): value is AnyAbstractDomain {
-	if(typeof value !== 'object' || value === null) {
-		return false;
-	}
-	return ['value', 'top', 'bottom', 'leq', 'join', 'meet', 'widen', 'narrow', 'concretize', 'abstract'].every(property => property in value);
-}
+	Domain extends AbstractDomain<infer Concrete, infer Value, infer Top, infer Bot> ? Domain & AbstractDomain<Concrete, Value, Top, Bot, Bot> : never;

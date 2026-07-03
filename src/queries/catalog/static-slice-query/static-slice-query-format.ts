@@ -15,7 +15,7 @@ import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SliceDirection } from '../../../util/slice-direction';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
@@ -99,8 +99,9 @@ export const StaticSliceQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: sliceQueryLineParser,
-	schema:   Joi.object({
+	fromLine:  sliceQueryLineParser,
+	completer: criteriaQueryCompleter,
+	schema:    Joi.object({
 		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),

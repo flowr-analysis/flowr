@@ -19,14 +19,21 @@ import { resolveIdToValue, resolveToConstants } from '../../../../src/dataflow/e
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../../src/config';
 
+/** Controls which extra results are accepted in addition to an exact match */
 enum Allow {
-	None = 0,
-	Top = 1,
-	Bottom = 2
+	/** Only the exact expected value is accepted */
+	ExactOnly = 0,
+	/** Also accept top (unknown); use when the analysis may give up */
+	Top       = 1,
+	/** Also accept bottom (unreachable); use when the result may be unreachable */
+	Bottom    = 2
 }
 
+/** Controls how {@link resolveIdToValue} is invoked during tests */
 enum With {
-	Graph,
+	/** Pass only the dataflow graph, no environment is given to the resolver */
+	GraphOnly,
+	/** Pass the full program environment, the normal fully-informed path */
 	Environment
 }
 
@@ -49,8 +56,8 @@ describe.sequential('Resolve', withShell(shell => {
 	}
 
 	function testWithGraphAndEnvironment(name: string, tests: (withWhat: With) => void) {
-		describe(`${name} (Graph)`, () => {
-			tests(With.Graph);
+		describe(`${name} (Graph only)`, () => {
+			tests(With.GraphOnly);
 		});
 
 		describe(`${name} (Environment)`, () => {
@@ -63,7 +70,7 @@ describe.sequential('Resolve', withShell(shell => {
 		identifier: SlicingCriterion,
 		code: string,
 		expectedValues: Value,
-		allow: Allow = Allow.None,
+		allow: Allow = Allow.ExactOnly,
 		withEnv: With = With.Environment
 	): void {
 		const effectiveName = decorateLabelContext(label(name), ['resolve']);
@@ -76,7 +83,7 @@ describe.sequential('Resolve', withShell(shell => {
 			}).allRemainingSteps();
 
 			const resolved = resolveIdToValue(SlicingCriterion.parse(identifier, dataflow.normalize.idMap), {
-				environment: withEnv === With.Environment ? dataflow.dataflow.environment : undefined,
+				environment: withEnv === With.GraphOnly ? undefined : dataflow.dataflow.environment,
 				graph:       dataflow.dataflow.graph,
 				idMap:       dataflow.normalize.idMap,
 				full:        true,
@@ -96,7 +103,7 @@ describe.sequential('Resolve', withShell(shell => {
 		});
 	}
 
-	function testMutate(name: string, line: number, identifier: string, code: string, expected: Value, allow: Allow = Allow.None) {
+	function testMutate(name: string, line: number, identifier: string, code: string, expected: Value, allow: Allow = Allow.ExactOnly) {
 		const distractors: string[] = [
 			`while(FALSE) { ${identifier} <- 0 }`,
 			`if(FALSE) { ${identifier} <- 0 }`,
@@ -107,7 +114,7 @@ describe.sequential('Resolve', withShell(shell => {
 		describe(name, () => {
 			for(const distractor of distractors) {
 				const mutatedCode = code.split('\n').map(line => `${distractor}\n${line}`).join('\n');
-				testResolve(distractor, `${line*2}@${identifier}`, mutatedCode, expected, allow);
+				testResolve(distractor, `${line * 2}@${identifier}`, mutatedCode, expected, allow);
 			}
 		});
 	}
@@ -210,6 +217,18 @@ describe.sequential('Resolve', withShell(shell => {
 			});
 		});
 	});
+	describe.each<[string, With]>([
+		['Graph only',  With.GraphOnly  ],
+		['Environment', With.Environment],
+	])('Resolve built-in constants (%s)', (_name, resolveWith) => {
+		testResolve('T resolves to true',         '1@T',    'T',             set([true]),  Allow.ExactOnly, resolveWith);
+		testResolve('F resolves to false',        '1@F',    'F',             set([false]), Allow.ExactOnly, resolveWith);
+		testResolve('TRUE resolves to true',      '1@TRUE', 'TRUE',          set([true]),  Allow.ExactOnly, resolveWith);
+		testResolve('T multiple, resolve second', '2@T',    'T\nT\nT',       set([true]),  Allow.ExactOnly, resolveWith);
+		testResolve('T shadow with logical',      '2@T',    'T <- FALSE\nT', set([false]), Allow.ExactOnly, resolveWith);
+		testResolve('T shadow with number',       '2@T',    'T <- 42\nT',    set([42]),    Allow.ExactOnly, resolveWith);
+	});
+
 	describe('Builtin Constants', () => {
 		// Always Resolve
 		test.each([

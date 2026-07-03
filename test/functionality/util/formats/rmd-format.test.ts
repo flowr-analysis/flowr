@@ -6,8 +6,29 @@ import {
 	restoreBlocksWithoutMd
 } from '../../../../src/project/plugins/file-plugins/files/flowr-rmarkdown-file';
 import { FlowrInlineTextFile, FlowrTextFile } from '../../../../src/project/context/flowr-file';
+import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../../src/config';
 
 describe('rmd', () => {
+
+	test('load with child', () => {
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		const file = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/parent.Rmd'), ctx);
+		const content = file.content();
+		assert.equal(content, `
+x <- "the cake is"
+
+
+
+
+x <- paste(x, "a lie")
+
+print(x)
+
+`);
+	});
+
+
 	describe('utility functions', () => {
 		test.each([
 			/* Positive Cases           */
@@ -33,16 +54,18 @@ describe('rmd', () => {
 			[ // #1 - simple
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 2,
 							col:  1
@@ -55,16 +78,18 @@ describe('rmd', () => {
 			[ // #2 - new lines at end
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 2,
 							col:  1
@@ -77,16 +102,18 @@ describe('rmd', () => {
 			[ // #3 - new lines between and at end
 				[
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
 						}
 					},
 					{
-						options:  'dont care',
+						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 5,
 							col:  1
@@ -104,28 +131,53 @@ describe('rmd', () => {
 
 
 	test('load simple', () => {
-		const data = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/example.Rmd'));
+		const data = FlowrRMarkdownFile.from(new FlowrTextFile('test/testfiles/notebook/example.Rmd'), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
 				{
-					code:    'test <- 42\ncat(test)\n',
-					options: '',
+					header:   '{r}',
+					code:     'test <- 42\ncat(test)\n',
+					options:  new Map<string, string>(),
+					startpos: {
+						col:  0,
+						line: 11,
+					},
 				},
 				{
-					code:    'x <- "Hello World"\n',
-					options: 'abc',
+					header:   '{r abc}',
+					code:     'x <- "Hello World"\n',
+					options:  new Map<string, string>(),
+					startpos: {
+						col:  0,
+						line: 17,
+					},
 				},
 				{
-					code:    '  cat("Hi")\n',
-					options: 'ops, echo=FALSE',
+					header:   '{r ops, echo=FALSE}',
+					code:     '  cat("Hi")\n',
+					options:  new Map<string, string>([['echo', 'FALSE']]),
+					startpos: {
+						col:  0,
+						line: 22,
+					},
 				},
 				{
-					code:    '#| cache=FALSE\ncat(test)\n',
-					options: 'echo=FALSE, cache=FALSE',
+					header:   '{r, echo=FALSE}',
+					code:     '#| cache=FALSE\ncat(test)\n',
+					options:  new Map<string, string>([['echo', 'FALSE'], ['cache', 'FALSE']]),
+					startpos: {
+						col:  0,
+						line: 28,
+					},
 				},
 				{
-					code:    'v <- c(1,2,3)\n',
-					options: 'test'
+					header:   '{r, test}',
+					code:     'v <- c(1,2,3)\n',
+					options:  new Map<string, string>(),
+					startpos: {
+						col:  0,
+						line: 39,
+					},
 				}
 			],
 			options: { title: 'Sample Document', output: 'pdf_document' }
@@ -142,13 +194,18 @@ test: 1
 \`\`\`{r}
 print(42)
 \`\`\`
-		`));
+		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
 
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
 				{
-					code:    'print(42)\n',
-					options: '',
+					header:   '{r}',
+					code:     'print(42)\n',
+					options:  new Map<string, string>(),
+					startpos: {
+						col:  0,
+						line: 8,
+					},
 				},
 			],
 			options: {
@@ -156,5 +213,66 @@ print(42)
 			}
 		});
 	});
-});
 
+
+	test('do not load with overridden engine', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.Rmd', `
+\`\`\`{r}
+print(42)
+\`\`\`
+
+
+\`\`\`{r engine='python'}
+print(42)
+\`\`\`
+
+\`\`\`{python}
+print(42)
+\`\`\`
+		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+
+		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
+			blocks: [
+				{
+					code:     'print(42)\n',
+					options:  new Map<string, string>(),
+					header:   '{r}',
+					startpos: {
+						col:  0,
+						line: 3,
+					}
+				}
+			],
+			options: {}
+		});
+	});
+
+	test('do not use block with eval=FALSE', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.Rmd', `
+\`\`\`{r eval=FALSE}
+print(42)
+\`\`\`
+
+
+\`\`\`{r eval=F}
+print(42)
+\`\`\`
+
+\`\`\`{r}
+print(42)
+\`\`\`
+		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+
+		assert.deepEqual(data.executableCells, [
+			{
+				header:   '{r}',
+				code:     'print(42)\n',
+				options:  new Map<string, string>(),
+				startpos: {
+					col:  0,
+					line: 12,
+				}
+			}
+		]);
+	});
+});

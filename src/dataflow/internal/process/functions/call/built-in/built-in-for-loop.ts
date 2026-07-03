@@ -95,7 +95,7 @@ export function processForLoop<OtherInfo>(
 	applyCdToReferences(body.out, cd);
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
-	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
+	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
 
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 

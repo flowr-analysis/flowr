@@ -1,7 +1,7 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, DEFAULT_INFERENCE_LIMIT, domainElementToString } from './abstract-domain';
+import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
 import type { SatisfiableDomain } from './satisfiable-domain';
 import { SetComparator } from './satisfiable-domain';
@@ -341,7 +341,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	public concretize(limit: number): ReadonlySet<ReadonlySet<T>> |  typeof Top {
 		if(this.value === Bottom) {
 			return new Set();
-		} else if(this.value.range === Top || 2**(this.value.range.size) > limit) {
+		} else if(this.value.range === Top || 2 ** (this.value.range.size) > limit) {
 			return Top;
 		}
 		const subsets = [new this.setType()];
@@ -419,7 +419,7 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		}
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Bottom) {
 			return this.value.description;
 		}
@@ -433,12 +433,12 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 		if(this.value === Bottom) {
 			return BottomSymbol;
 		} else if(this.value.range === Top) {
-			const minString = this.value.min.values().map(domainElementToString).toArray().join(', ');
+			const minString = this.value.min.values().map(AbstractDomain.toString).toArray().join(', ');
 
 			return `[{${minString}}, ${TopSymbol}]`;
 		}
-		const minString = this.value.min.values().map(domainElementToString).toArray().join(', ');
-		const rangeString = this.value.range.values().map(domainElementToString).toArray().join(', ');
+		const minString = this.value.min.values().map(AbstractDomain.toString).toArray().join(', ');
+		const rangeString = this.value.range.values().map(AbstractDomain.toString).toArray().join(', ');
 
 		return `[{${minString}}, {${rangeString}}]`;
 	}

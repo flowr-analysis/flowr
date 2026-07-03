@@ -31,7 +31,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter(`network funcion with multiple arguments: ${prefix}`, parser, `download.file("${prefix}foo.org/bar.csv", "local.csv")`,
 				'network-functions',
 				[
-					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length+45] }
+					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length + 45] }
 				],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: ['download.file'] }
@@ -74,6 +74,23 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
 			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
 		);
+
+		assertLinter('do not trigger on known source', parser, 'source("tex.R")',
+			'network-functions',
+			[],
+			{ totalCalls: 0, totalFunctionDefinitions: 0 },
+			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
+		);
+
+		assertLinter('trigger on web source', parser, 'source("https://foo.com")',
+			'network-functions',
+			[
+				{ certainty: LintingResultCertainty.Certain, function: 'source', loc: [1, 1, 1, 25] }
+			],
+			{ totalCalls: 1, totalFunctionDefinitions: 1 },
+			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
+		);
+
 
 		assertLinter('Named argument', parser, 'read.csv(file = "http://example.com/data.csv")',
 			'network-functions',

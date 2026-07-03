@@ -1,7 +1,6 @@
 import type { OptionDefinition } from 'command-line-usage';
 import os from 'os';
 import { date2string } from '../../util/text/time';
-import { allFeatureNames } from '../../statistics/features/feature';
 
 /**
  * This interface describes options, that every script *must* provide.
@@ -78,31 +77,6 @@ export const slicerOptions = [
 	{ name: 'output',            alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
 	{ name: 'no-magic-comments', alias: 'm', type: Boolean, description: 'Disable the effects of magic comments which force lines to be included.' },
 	{ name: 'api',                           type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
-] as const satisfies OptionDefinition[];
-
-const featureNameList = Array.from(allFeatureNames).map(s => `"${s}"`).join(', ');
-export const statisticOptions = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'limit',        alias: 'l', type: Number,  description: 'Limit the number of files to process' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass a folder or file as src to read from', multiple: true, defaultOption: true, defaultValue: [], typeLabel: '{underline files/folders}' },
-	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', defaultValue: `${process.cwd()}/statistics-out/${date2string(new Date())}`, typeLabel: '{underline folder}' },
-	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
-	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
-	{ name: 'parallel',     alias: 'p', type: String,  description: 'Number of parallel executors (defaults to {italic max(cpu.count-1, 1)})', defaultValue: Math.max(os.cpus().length - 1, 1), typeLabel: '{underline number}' },
-	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
-] as const satisfies OptionDefinition[];
-
-export const statisticHelperOptions = [
-	{ name: 'verbose',      alias: 'v', type: Boolean, description: 'Run with verbose logging' },
-	{ name: 'help',         alias: 'h', type: Boolean, description: 'Print this usage guide' },
-	{ name: 'input',        alias: 'i', type: String,  description: 'Pass single file as src to read from', multiple: false, defaultOption: true, typeLabel: '{underline file}' },
-	{ name: 'output-dir',   alias: 'o', type: String,  description: 'Folder to write the output to', typeLabel: '{underline folder}' },
-	{ name: 'root-dir',                 type: String,  description: 'Root dir for the statistics files', defaultValue: '' },
-	{ name: 'compress',                 type: Boolean, description: 'Compress the output folder to a single file', defaultValue: false },
-	{ name: 'dump-json',                type: Boolean, description: 'Write JSON output during the extraction', typeLabel: '{underline folder}' },
-	{ name: 'no-ansi',                  type: Boolean, description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.' },
-	{ name: 'features',                 type: String,  description: `Features to track, supported are "all" or ${featureNameList}`, multiple: true, defaultValue: 'all', typeLabel: '{underline names}' },
 ] as const satisfies OptionDefinition[];
 
 export const summarizerOptions = [

@@ -167,7 +167,6 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
-	needsXmlParseData:      boolean
 	needsNetworkConnection: boolean
 }
 
@@ -179,7 +178,6 @@ export interface TestConfigurationWithOutput extends TestConfiguration {
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsXmlParseData:      false,
 	needsNetworkConnection: false
 };
 
@@ -208,14 +206,6 @@ function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean 
 }
 
 
-function skipTestBecauseXmlParseDataIsMissing(): boolean {
-	if(!globalThis.hasXmlParseData) {
-		console.warn('Skipping test because package "xmlparsedata" is not installed (install it locally to get the tests to run).');
-		return true;
-	}
-	return false;
-}
-
 
 /**
  * Automatically skip a test if the given configuration is not met
@@ -223,8 +213,7 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
-		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`)
-		|| config.needsXmlParseData && skipTestBecauseXmlParseDataIsMissing();
+		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
 /**

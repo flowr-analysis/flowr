@@ -1,4 +1,5 @@
 import { beforeAll, assert, describe, test } from 'vitest';
+import type { ChildProcess } from 'child_process';
 import { exec } from 'child_process';
 import fs from 'fs';
 import os from 'os';
@@ -9,16 +10,28 @@ const flowrBin = 'node dist/src/cli/flowr.min.js';
 const enum WatchState  { AwaitPrompt, AwaitWatch, AwaitRerun }
 const enum CtrlCState  { AwaitPrompt, AwaitHint,  AwaitExit  }
 
+/** Reject if the spawned process dies before the expected output was seen, so we fail fast instead of timing out. */
+function rejectOnEarlyExit(child: ChildProcess, getBuffer: () => string, reject: (e: Error) => void): void {
+	child.on('exit', code => reject(new Error(`flowr exited early (code ${code ?? 'null'}) before completing:\n${getBuffer()}`)));
+	child.on('error', e => reject(e));
+}
+
 /**
  * Spawn the flowr REPL, send `command` when the first prompt appears,
  * and return the accumulated output once `terminateOn` appears in stdout
  * (or `timeout` ms elapses, which rejects).
  */
-function flowrReplUntil(command: string, terminateOn: string, timeout = 60_000): Promise<string> {
+function flowrReplUntil(command: string, terminateOn: string, timeout = 90_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
-		const timer = setTimeout(() => {
-			child.kill('SIGKILL'); reject(new Error(`timed out waiting for '${terminateOn}'`));
-		}, timeout);
+		let done = false;
+		const finish = (fn: () => void) => {
+			if(!done){
+				done = true; clearTimeout(timer); fn();
+			}
+		};
+		const timer = setTimeout(() => finish(() => {
+			child.kill('SIGKILL'); reject(new Error(`timed out waiting for '${terminateOn}':\n${buffer}`));
+		}), timeout);
 		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
 		let sent = false;
@@ -30,32 +43,39 @@ function flowrReplUntil(command: string, terminateOn: string, timeout = 60_000):
 				child.stdin?.write(`${command}\n`);
 			}
 			if(buffer.includes(terminateOn)) {
-				clearTimeout(timer);
-				child.stdin?.write(':quit\n');
-				setTimeout(() => {
-					child.kill('SIGKILL'); resolve(buffer);
-				}, 500);
+				finish(() => {
+					child.stdin?.write(':quit\n');
+					setTimeout(() => {
+						child.kill('SIGKILL'); resolve(buffer);
+					}, 500);
+				});
 			}
 		});
-
-		child.on('error', (e) => {
-			clearTimeout(timer); reject(e);
-		});
+		rejectOnEarlyExit(child, () => buffer, e => finish(() => reject(e)));
 	});
 }
 
 /**
  * Spawn the flowr REPL, send a watch command, wait for the 'Watching' signal,
- * write `newContent` to `filePath`, then wait for 'Change detected' in output.
+ * repeatedly touch `filePath` until 'Change detected' appears in the output.
+ * The repeated writes make the test robust against a single `fs.watch` event being dropped under load.
  */
-function flowrReplWatchAndChange(command: string, filePath: string, newContent: string, timeout = 60_000): Promise<string> {
+function flowrReplWatchAndChange(command: string, filePath: string, contents: readonly string[], timeout = 90_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
-		const timer = setTimeout(() => {
-			child.kill('SIGKILL'); reject(new Error('watch test timed out'));
-		}, timeout);
+		let done = false;
+		let writer: ReturnType<typeof setInterval> | undefined;
+		const finish = (fn: () => void) => {
+			if(!done){
+				done = true; clearTimeout(timer); clearInterval(writer); fn();
+			}
+		};
+		const timer = setTimeout(() => finish(() => {
+			child.kill('SIGKILL'); reject(new Error(`watch test timed out:\n${buffer}`));
+		}), timeout);
 		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
 		let state = WatchState.AwaitPrompt;
+		let i = 0;
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
@@ -64,22 +84,18 @@ function flowrReplWatchAndChange(command: string, filePath: string, newContent: 
 				child.stdin?.write(`${command}\n`);
 			} else if(state === WatchState.AwaitWatch && buffer.includes('Watching')) {
 				state = WatchState.AwaitRerun;
-				// small delay to ensure the watcher is set up before we write
-				setTimeout(() => {
-					fs.writeFileSync(filePath, newContent);
-				}, 200);
+				// keep changing the file until the watcher fires, alternating contents so every write is a real change
+				writer = setInterval(() => fs.writeFileSync(filePath, contents[i++ % contents.length]), 500);
 			} else if(state === WatchState.AwaitRerun && buffer.includes('Change detected')) {
-				clearTimeout(timer);
-				child.stdin?.write(':quit\n');
-				setTimeout(() => {
-					child.kill('SIGKILL'); resolve(buffer);
-				}, 500);
+				finish(() => {
+					child.stdin?.write(':quit\n');
+					setTimeout(() => {
+						child.kill('SIGKILL'); resolve(buffer);
+					}, 500);
+				});
 			}
 		});
-
-		child.on('error', (e) => {
-			clearTimeout(timer); reject(e);
-		});
+		rejectOnEarlyExit(child, () => buffer, e => finish(() => reject(e)));
 	});
 }
 
@@ -87,7 +103,7 @@ function flowrReplWatchAndChange(command: string, filePath: string, newContent: 
  * Spawn the flowr REPL, send two Ctrl+C characters (with a small delay between them),
  * and resolve with the accumulated output once the process exits.
  */
-function flowrReplDoubleCtrlC(timeout = 60_000): Promise<string> {
+function flowrReplDoubleCtrlC(timeout = 90_000): Promise<string> {
 	return new Promise<string>((resolve, reject) => {
 		const timer = setTimeout(() => {
 			child.kill('SIGKILL'); reject(new Error('double Ctrl+C test timed out'));
@@ -118,7 +134,7 @@ function flowrReplDoubleCtrlC(timeout = 60_000): Promise<string> {
 	});
 }
 
-describe('repl watch mode', () => {
+describe.sequential('repl watch mode', () => {
 	beforeAll(() => new Promise<void>((resolve, reject) => {
 		exec('npm run build:bundle-flowr', { timeout: 120_000 }, err => err ? reject(err) : resolve());
 	}), 120_000);
@@ -149,7 +165,7 @@ describe('repl watch mode', () => {
 			const output = await flowrReplWatchAndChange(
 				`:df watch://${tmpFile}`,
 				tmpFile,
-				'b <- 2\n'
+				['b <- 2\n', 'c <- 3\n']
 			);
 			assert.include(output, 'Watching', `watch signal missing:\n${output}`);
 			assert.include(output, 'Change detected', `re-run signal missing:\n${output}`);

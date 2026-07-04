@@ -65,7 +65,7 @@ describe('Link libraries', withTreeSitter(ts => {
 
 	assertDataflow(label('No dependencies set', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nggplot()',
 		emptyGraph()
-			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls),
+			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads | EdgeType.Calls),
 		{
 			expectIsSubgraph:      true,
 			resolveIdsAsCriterion: true,

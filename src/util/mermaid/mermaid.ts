@@ -54,10 +54,20 @@ export const Mermaid = {
 		return text;
 	},
 	/**
+	 * Mermaid reserved keywords that cannot be used as bare node IDs.
+	 * When a node ID matches one of these, Mermaid's lexer will tokenize it as
+	 * a keyword token instead of an identifier, causing parse errors.
+	 */
+	reservedKeywords: ['class', 'subgraph', 'end', 'click', 'link', 'style', 'graph', 'flowchart'],
+	/**
 	 * Escapes a string or number to be used as a mermaid node id.
+	 * Also handles Mermaid reserved keywords to prevent parse errors.
 	 */
 	escapeId(this: void, text: string | number): string {
-		text = String(text).replace(/[^a-zA-Z0-9:-]/g, '_');
+		text = String(text).replace(/[^a-zA-Z0-9_-]/g, '_');
+		if(text.length > 0 && (Mermaid.reservedKeywords as readonly string[]).includes(text)) {
+			text = 'n_' + text;
+		}
 		return text;
 	},
 	/**

@@ -62,13 +62,14 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.staticsLoaded = true;
 	}
 
-	public addDependency(pkg: Package): void {
+	public addDependency(pkg: Package): this {
 		const p = this.dependencies.get(pkg.name);
 		if(p) {
 			p.mergeInPlace(pkg);
 		} else {
 			this.dependencies.set(pkg.name, pkg);
 		}
+		return this;
 	}
 
 	public getDependency(name: string): Package | undefined {

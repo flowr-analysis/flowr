@@ -1,6 +1,6 @@
-import { type REnvironmentInformation  } from './environment';
+import { libraryLayerHeight, type REnvironmentInformation  } from './environment';
 import type { ControlDependency } from '../info';
-import { pushLocalEnvironment } from './scoping';
+import { padToCommonScope } from './scoping';
 
 export function overwriteEnvironment(base: REnvironmentInformation, next: REnvironmentInformation | undefined, applyCds?: readonly ControlDependency[]): REnvironmentInformation;
 export function overwriteEnvironment(base: REnvironmentInformation | undefined, next: REnvironmentInformation, applyCds?: readonly ControlDependency[]): REnvironmentInformation;
@@ -16,17 +16,10 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
 		return next ?? base;
 	}
 
-	if(base.level !== next.level) {
-		while(next.level < base.level) {
-			next = pushLocalEnvironment(next);
-		}
-		while(next.level > base.level) {
-			base = pushLocalEnvironment(base);
-		}
-	}
-
+	const { base: b, next: n, scope } = padToCommonScope(base, next);
+	const current = b.current.overwrite(n.current, applyCds);
 	return {
-		current: base.current.overwrite(next.current, applyCds),
-		level:   base.level
+		current,
+		level: scope + libraryLayerHeight(current)
 	};
 }

@@ -1,6 +1,6 @@
-import { type REnvironmentInformation  } from './environment';
+import { libraryLayerHeight, type REnvironmentInformation  } from './environment';
 import type { IdentifierDefinition } from './identifier';
-import { pushLocalEnvironment } from './scoping';
+import { padToCommonScope } from './scoping';
 
 /**
  * Merges two arrays of identifier definitions, ensuring uniqueness based on `nodeId` and `definedAt`.
@@ -31,17 +31,11 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 		return base;
 	}
 
-	if(base.level !== next.level) {
-		while(next.level < base.level) {
-			next = pushLocalEnvironment(next);
-		}
-		while(next.level > base.level) {
-			base = pushLocalEnvironment(base);
-		}
-	}
-
+	const { base: b, next: n, scope } = padToCommonScope(base, next);
+	// the library layers of both branches are unified by Environment#append
+	const current = b.current.append(n.current);
 	return {
-		current: base.current.append(next.current),
-		level:   base.level,
+		current,
+		level: scope + libraryLayerHeight(current),
 	};
 }

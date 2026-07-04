@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
+import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
@@ -9,6 +10,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
 import { EnvType } from '../../../../../src/dataflow/environments/environment';
+import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const namespaceContent = `S3method(fortify,data.frame)
@@ -204,42 +206,106 @@ describe('Link libraries', withTreeSitter(ts => {
 		expect(new Set(env.memory.keys()).size === 0).toBeTruthy();
 	});
 
-	/*test('Multiple options for library', async() => {
-		const analyzer = await new FlowrAnalyzerBuilder()
-			.setParser(ts)
-			.build();
-		analyzer.context().deps.addDependency(new Package({
-			name:          'a',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
-		}));
-		analyzer.context().deps.addDependency(new Package({
-			name:          'b',
-			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(test1)\nexport(test2)')).content().current, ['test1', 'test2'])
-		}));
-		analyzer.addRequest(`
-			if(u){
-				library(a)
-			} else {
-				library(b)
-			}
-			`);
-		const df = await analyzer.dataflow();
-		let env = df.environment.current;
-		const environments = [[env.n, env.t]];
-		for(let i = 0; i < 3; i++){
-			env = env.parent;
-			environments.push([env.n, env.t]);
+	// two branches attaching different packages must keep the namespace *and* imports layer of both
+	test('Multiple options for library keep every branch\'s layers', async() => {
+		const layers = await loadedLayers(ts, 'if(u){ library(a) } else { library(b) }');
+		expect(new Set(layers.map(l => `${l[0]}:${l[1]}`))).toEqual(new Set([
+			`a:${EnvType.Namespace}`, `a:${EnvType.Imports}`, `b:${EnvType.Namespace}`, `b:${EnvType.Imports}`
+		]));
+	});
+
+	// flowR's search path mirrors R's `library()` semantics (verified against `search()`): most recent is
+	// nearest, re-attaching is a no-op, and across branches all possibly attached packages are kept.
+	test('Straight-line loading keeps R\'s attach order', async() => {
+		// most recently loaded package is nearest, matching R `search()`: library(a); library(b) => [b, a]
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)')).toEqual(['b', 'a']);
+	});
+
+	test('Re-loading an already attached package is a no-op', async() => {
+		// R does not move or duplicate an already attached package
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)\nlibrary(a)')).toEqual(['b', 'a']);
+		expect(await loadedPackages(ts, 'library(a)\nlibrary(b)\nlibrary(c)\nlibrary(b)')).toEqual(['c', 'b', 'a']);
+	});
+
+	test('require attaches like library', async() => {
+		expect(await loadedPackages(ts, 'require(a)\nrequire(b)')).toEqual(['b', 'a']);
+	});
+
+	test('Branch merge keeps every possibly attached package, deduplicated', async() => {
+		// overlapping branches: `b` is loaded in both, so it appears exactly once
+		const overlap = await loadedPackages(ts, 'if(u){ library(a); library(b) } else { library(b); library(c) }');
+		expect(new Set(overlap)).toEqual(new Set(['a', 'b', 'c']));
+		expect(overlap.filter(l => l === 'b')).toHaveLength(1);
+		// different number of libraries per branch (unequal scope levels) still keeps all of them
+		expect(new Set(await loadedPackages(ts, 'if(u){ library(a); library(c) } else { library(b) }'))).toEqual(new Set(['a', 'b', 'c']));
+	});
+
+	// unique-per-package callables let us assert that a call links to exactly the right package through complex control flow
+	const registerAbc = (a: FlowrAnalyzer): void => {
+		a.context().deps
+			.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']))
+			.addDependency(Package.fromConstants('pkgB', 'export(fb)', ['fb']))
+			.addDependency(Package.fromConstants('pkgC', 'export(fc)', ['fc']));
+	};
+
+	/** Builds the expected subgraph for calls that resolve to a package export and back to its `library()` call. */
+	const resolvesTo = (...links: { call: string, pkg: string, fn: string, lib: string, callEdge?: number }[]) => {
+		let g = emptyGraph();
+		for(const { call, pkg, fn, lib, callEdge } of links) {
+			const builtIn = NodeId.toBuiltIn(Package.funcIdentif(pkg, fn));
+			g = g.addEdge(call, builtIn, callEdge ?? (EdgeType.Reads | EdgeType.Calls))
+				.addEdge(builtIn, lib, EdgeType.Reads | EdgeType.Calls);
 		}
-		const expected = [['b', EnvType.Namespace], ['b', EnvType.Imports], ['a', EnvType.Namespace], ['a', EnvType.Imports]];
-		environments.sort();
-		expected.sort();
-		let match = environments.length === expected.length;
-		for(let i = 0; i < Math.min(expected.length, environments.length); i++){
-			match = match && expected[i][0] === environments[i][0] && environments[i][1] === expected[i][1];
-		}
-		expect(match).toBeTruthy();
-	});*/
+		return g;
+	};
+	const abc = { modifyAnalyzer: registerAbc, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
+
+	assertDataflow(label('Nested if-else links each call to its package'), ts,
+		'if(u) {\n  if(v) {\n    library(pkgA)\n  } else {\n    library(pkgB)\n  }\n} else {\n  library(pkgC)\n}\nfa()\nfb()\nfc()',
+		resolvesTo(
+			{ call: '10@fa', pkg: 'pkgA', fn: 'fa', lib: '3@library' },
+			{ call: '11@fb', pkg: 'pkgB', fn: 'fb', lib: '5@library' },
+			{ call: '12@fc', pkg: 'pkgC', fn: 'fc', lib: '8@library' }),
+		abc);
+
+	assertDataflow(label('Library loaded in a while loop survives the loop'), ts,
+		'while(cond) {\n  library(pkgA)\n}\nfa()',
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '2@library' }),
+		abc);
+
+	assertDataflow(label('For loop keeps both the pre-loop and in-loop library'), ts,
+		'library(pkgA)\nfor(i in 1:10) {\n  library(pkgB)\n}\nfa()\nfb()',
+		resolvesTo(
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '3@library' }),
+		abc);
+
+	// inside a function body the call is resolved lazily, so only the `calls` edge is present
+	assertDataflow(label('Library is visible inside the function that loads it'), ts,
+		'library(pkgA)\nh <- function() {\n  fa()\n}\nh()',
+		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		abc);
 }));
+
+/** Loads the given `code` (with dummy packages `a`, `b`, `c` registered) and returns its leading library layers as `[name, type]`, nearest first. */
+async function loadedLayers(ts: TreeSitterExecutor, code: string): Promise<[string | undefined, EnvType | undefined][]> {
+	const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+	for(const n of ['a', 'b', 'c']) {
+		analyzer.context().deps.addDependency(Package.fromConstants(n, 'export(test1)\nexport(test2)', ['test1', 'test2']));
+	}
+	analyzer.addRequest(code);
+	const df = await analyzer.dataflow();
+	const layers: [string | undefined, EnvType | undefined][] = [];
+	for(let env = df.environment.current; env.t !== undefined; env = env.parent){
+		layers.push([env.n, env.t]);
+	}
+	return layers;
+}
+
+/** The attached package names, nearest (most recently loaded) first. */
+async function loadedPackages(ts: TreeSitterExecutor, code: string): Promise<(string | undefined)[]> {
+	return (await loadedLayers(ts, code)).filter(l => l[1] === EnvType.Namespace).map(l => l[0]);
+}
 
 function compare<T>(s1: Set<T>, s2: Set<T>){
 	return s1.difference(s2).size === 0 && s2.difference(s1).size === 0;

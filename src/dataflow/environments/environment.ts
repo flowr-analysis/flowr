@@ -62,6 +62,8 @@ export class Environment implements IEnvironment {
 	memory:      BuiltInMemory;
 	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
+	/** cached count of leading library layers (see {@link EnvType}), kept up to date via {@link refreshLib} so reading it is O(1) */
+	libs = 0;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
@@ -71,6 +73,19 @@ export class Environment implements IEnvironment {
 		if(isBuiltInDefault) {
 			this.builtInEnv = isBuiltInDefault;
 		}
+	}
+
+	/** Marks this as a library layer (see {@link EnvType}) for package `name`, keeping {@link libs} consistent. */
+	public asLibrary(name: string, type: EnvType): this {
+		this.n = name;
+		this.t = type;
+		return this.refreshLib();
+	}
+
+	/** Recomputes the cached {@link libs} from {@link t} and {@link parent}; call after either changes. */
+	public refreshLib(): this {
+		this.libs = this.t !== undefined && !this.builtInEnv ? this.parent.libs + 1 : 0;
+		return this;
 	}
 
 	/** please only use if you know what you are doing */
@@ -102,7 +117,8 @@ export class Environment implements IEnvironment {
 		clone.n = this.n;
 		clone.t = this.t;
 		clone.memory = new Map(this.memory);
-		return clone;
+		// only library layers need the cached lib bookkeeping; a fresh clone already has libs=0
+		return this.t === undefined ? clone : clone.refreshLib();
 	}
 
 	/**
@@ -113,6 +129,12 @@ export class Environment implements IEnvironment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		if(ns !== undefined && this.n !== ns) {
 			return this.defineInNamespace(definition, ns);
+		}
+		// a plain identifier must not land in an attached package's namespace (see EnvType): descend past the library layers to the base scope
+		if(ns === undefined && this.t !== undefined) {
+			const clone = this.clone(false);
+			clone.parent = clone.parent.define(definition);
+			return clone.refreshLib();
 		}
 		/* isolate the cds from the originating reference, which may still be updated in place */
 		if(definition.cds !== undefined) {
@@ -242,8 +264,9 @@ export class Environment implements IEnvironment {
 		const out = new Environment(this.parent.overwrite(other.parent, applyCds));
 		out.c = this.c;
 		out.n = this.n;
+		out.t = this.t;
 		out.memory = map;
-		return out;
+		return this.t === undefined ? out : out.refreshLib();
 	}
 
 	/**
@@ -251,7 +274,15 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
-		if(!other || this.builtInEnv || this === other || this.n !== other.n) {
+		if(!other || this.builtInEnv || this === other) {
+			return this;
+		}
+		if(this.n !== other.n) {
+			// divergent namespace/imports layers, e.g. `library(a)` in one branch and `library(b)` in another:
+			// keep every loaded library environment from both branches instead of dropping one
+			if(this.t !== undefined || other.t !== undefined) {
+				return this.appendLibraryLayers(other);
+			}
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -265,8 +296,45 @@ export class Environment implements IEnvironment {
 		}
 
 		const out = new Environment(this.parent.append(other.parent));
+		out.n = this.n;
+		out.t = this.t;
 		out.memory = map;
-		return out;
+		return this.t === undefined ? out : out.refreshLib();
+	}
+
+	/**
+	 * Merges the library environments (see {@link EnvType}) of two branches that loaded different packages,
+	 * stacking every namespace/imports layer of both on top of their shared base environment.
+	 */
+	private appendLibraryLayers(other: Environment): Environment {
+		const [thisLayers, thisBase] = splitLibraryLayers(this);
+		const [otherLayers, otherBase] = splitLibraryLayers(other);
+
+		// collect the unique layers by name+type; a package loaded in both branches is kept once with merged memory
+		const merged = new Map<string, Environment>();
+		for(const layers of [thisLayers, otherLayers]) {
+			for(const layer of layers) {
+				const key = `${layer.t}:${layer.n}`;
+				const existing = merged.get(key);
+				if(existing === undefined) {
+					merged.set(key, layer.clone(false));
+				} else {
+					for(const [name, value] of layer.memory) {
+						const old = existing.memory.get(name);
+						existing.memory.set(name, old ? uniqueMergeValuesInDefinitions(old, value) : value);
+					}
+				}
+			}
+		}
+
+		// re-stack the unique layers (in encounter order) on top of the merged shared base
+		const uniqueLayers = Array.from(merged.values());
+		let current = thisBase.append(otherBase);
+		for(let i = uniqueLayers.length - 1; i >= 0; i--) {
+			uniqueLayers[i].parent = current;
+			current = uniqueLayers[i].refreshLib();
+		}
+		return current;
 	}
 
 	public remove(id: Identifier) {
@@ -316,6 +384,26 @@ export class Environment implements IEnvironment {
 			memory: this.memory,
 		};
 	}
+}
+
+/** Splits an environment chain into its leading library layers (see {@link EnvType}) and the remaining base. */
+function splitLibraryLayers(env: Environment): [Environment[], Environment] {
+	const layers: Environment[] = [];
+	let current = env;
+	while(current.t !== undefined && !current.builtInEnv) {
+		layers.push(current);
+		current = current.parent;
+	}
+	return [layers, current];
+}
+
+/**
+ * Number of leading library layers (see {@link EnvType}) of an environment chain (cached in {@link Environment#libs}, hence O(1)).
+ * Loaded libraries extend the search path rather than nesting a lexical scope, so they must be
+ * discounted when {@link appendEnvironment|appending} or {@link overwriteEnvironment|overwriting} environments of different {@link REnvironmentInformation#level|levels}.
+ */
+export function libraryLayerHeight(env: Environment): number {
+	return env.libs;
 }
 
 /**

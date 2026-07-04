@@ -163,22 +163,28 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	const currentEnv = info.environment.current;
 	const pack = dependency.name;
+	// R attaches a package only once: re-loading an already attached package is a no-op (neither moved nor duplicated)
+	if(isAttached(currentEnv, pack)){
+		return;
+	}
 	const functions = dependency.namespaceInfo.callable;
 
-	//add package environment
-	let namespaceEnv = new Environment(currentEnv);
-	namespaceEnv.n = pack;
-	namespaceEnv.t = EnvType.Namespace;
+	// the imports layer sits on the current search path, the namespace layer (package exports) on top of it
+	let importsEnv = new Environment(currentEnv).asLibrary(pack, EnvType.Imports);
+	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
+
+	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
 	for(const func of functions){
+		const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
 		namespaceEnv = namespaceEnv.define({
 			name:      Identifier.make(func, pack),
 			type:      ReferenceType.Function,
-			nodeId:    NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
+			nodeId:    builtInId,
 			definedAt: NodeId.toBuiltIn(pack),
 		});
 		info.graph.addVertex({
 			tag:         VertexType.FunctionDefinition,
-			id:          NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
+			id:          builtInId,
 			environment: info.environment,
 			cds:         data.cds,
 			params:      {},
@@ -188,28 +194,27 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 				in:                [],
 				out:               [],
 				environment:       info.environment,
-				entryPoint:        NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)),
+				entryPoint:        builtInId,
 				hooks:             []
 			},
 			exitPoints: [],
 		}, data.ctx.env.makeCleanEnv());
-		info.graph.addEdge(NodeId.toBuiltIn(Package.funcIdentif(dependency.name, func)), rootId, EdgeType.Reads | EdgeType.Calls);
+		info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
 	}
 	info.environment = {
-		level:   info.environment.level + 1,
+		level:   info.environment.level + 2,
 		current: namespaceEnv
 	};
-	//add imports environment
-	let importsEnv: Environment = new Environment(currentEnv);
-	importsEnv.n = pack;
-	importsEnv.t = EnvType.Imports;
-	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
+}
 
-	info.environment = {
-		level:   info.environment.level + 1,
-		current: info.environment.current
-	};
-	namespaceEnv.parent = importsEnv;
+/** Whether package `pack` is already on the current search path, i.e. among the leading library layers (see {@link EnvType}). */
+function isAttached(env: Environment, pack: string): boolean {
+	for(let e: Environment | undefined = env; e !== undefined && e.t !== undefined && !e.builtInEnv; e = e.parent){
+		if(e.n === pack){
+			return true;
+		}
+	}
+	return false;
 }
 
 function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: NamespaceInfo, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, alreadyImportedAll: Set<string>){

@@ -1139,6 +1139,38 @@ ${printEnvironmentToMarkdown(result.environment.current)}
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.
 
+#### Attached Packages and the Search Path
+
+Calling \`library(pkg)\` (or \`require\`) attaches a package to the search path.
+Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports environments *below* the global environment (\`.GlobalEnv\`), so resolution walks **current scope -> enclosing scopes -> global -> attached packages -> built-ins**.
+
+**A global binding shadows a package export** of the same name, exactly as in R:
+
+\`\`\`r
+filter <- function(x) x   # your global definition
+library(stats)            # stats also exports filter()
+filter(1)                 # -> resolves to YOUR filter, not stats::filter
+\`\`\`
+
+**Most recently attached is nearest, and re-attaching is a no-op:**
+
+\`\`\`r
+library(A)   # search path (top-down): A
+library(B)   #                         B, A
+library(A)   # no-op                   B, A   (A is not moved or duplicated)
+\`\`\`
+
+**Attaching inside a function propagates to the caller** (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path):
+
+\`\`\`r
+f <- function() library(A)   # attaches A when called
+f()
+someExportOfA()              # -> resolves against A
+if (cond) library(B)         # B is kept (may be attached)
+\`\`\`
+
+Note that a conditionally attached package (\`if(cond) library(B)\`) is currently treated as **definitely** attached rather than *maybe* attached: keeping it is a sound over-approximation of whether the package is available, but a call resolving to one of its exports gets a definite (not a maybe/control-dependent) edge. This is because package exports are materialized directly into the search-path environment and therefore bypass the usual branch maybe-marking (\`makeAllMaybe\`).
+
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
 		}) and a set of **exit points** (${

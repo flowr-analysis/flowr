@@ -11,6 +11,27 @@ import { KnownHooks } from '../hooks';
 import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
 
+/** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
+export type StackEnvKind = 'global' | 'base' | 'empty' | 'current' | 'parent' | 'named';
+
+/**
+ * The env-returning/-transforming base builtins - the `globalenv`/`baseenv`/`emptyenv`/`environment`/`parent.env`/
+ * `as.environment` functions and the `.GlobalEnv`/`.BaseEnv`/`.BaseNamespaceEnv` constants - mapped to which stack
+ * environment each denotes. Single source of truth: both the registration below and the resolution in
+ * `built-in-stack-env.ts` derive from this, so none of these identifiers is hard-coded outside this config.
+ */
+export const StackEnvBuiltins = {
+	globalenv:           'global',
+	baseenv:             'base',
+	emptyenv:            'empty',
+	environment:         'current',
+	'parent.env':        'parent',
+	'as.environment':    'named',
+	'.GlobalEnv':        'global',
+	'.BaseEnv':          'base',
+	'.BaseNamespaceEnv': 'base'
+} as const satisfies Record<string, StackEnvKind>;
+
 export const GgPlotCreate = [
 	'ggplot', 'ggplotly', 'ggMarginal', 'ggcorrplot', 'ggseasonplot', 'ggdendrogram', 'qmap', 'qplot', 'quickplot', 'autoplot', 'grid.arrange',
 	'fviz_pca_biplot', 'fviz_pca', 'fviz_pca_ind', 'fviz_pca_var', 'fviz_screeplot', 'fviz_mca_biplot', 'fviz_mca', 'fviz_mca_ind', 'fviz_mca_var', 'fviz_cluster', 'fviz_dend',
@@ -564,9 +585,13 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.With, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])],
 		processor:       BuiltInProcName.NewEnv, config:          {}, assumePrimitive: true },
+	/* env-returning builtins that point into the current search-path stack (so `e <- globalenv(); e$x` resolves into it) */
+	{ type:  'function', names: Object.entries(StackEnvBuiltins)
+		.filter(([n, kind]) => !n.startsWith('.') && (kind === 'global' || kind === 'base' || kind === 'empty'))
+		.map(([n]) => Identifier.from([n, PkgName.Base])),
+	processor: BuiltInProcName.StackEnv, config: {}, assumePrimitive: true },
 	{ type:  'function', names: [
-		Identifier.from(['globalenv', PkgName.Base]),     Identifier.from(['baseenv', PkgName.Base]),
-		Identifier.from(['emptyenv', PkgName.Base]),      Identifier.from(['parent.env', PkgName.Base]),
+		Identifier.from(['parent.env', PkgName.Base]),
 		Identifier.from(['parent.frame', PkgName.Base]),  Identifier.from(['environmentName', PkgName.Base]),
 		Identifier.from(['as.environment', PkgName.Base]), Identifier.from(['pos.to.env', PkgName.Base]),
 		Identifier.from(['sys.frame', PkgName.Base]),     Identifier.from(['sys.frames', PkgName.Base]),

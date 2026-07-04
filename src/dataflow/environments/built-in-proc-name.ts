@@ -76,6 +76,8 @@ export enum BuiltInProcName {
 	Source = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
 	SpecialBinOp = 'builtin:s-bop',
+	/** for env-returning builtins (`globalenv`/`baseenv`/`emptyenv`) that point into the search-path stack, see {@link processStackEnv} */
+	StackEnv = 'builtin:stack-env',
 	/** for `stop` calls */
 	Stop = 'builtin:stop',
 	/** for `stopifnot` calls, see {@link processStopIfNot} */

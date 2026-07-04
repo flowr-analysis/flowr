@@ -7,7 +7,7 @@ import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-fi
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
-import { EnvType } from '../../../../../src/dataflow/environments/environment';
+import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
@@ -41,7 +41,7 @@ importFrom(scales,alpha)
 importFrom(stats,setNames)`)).content().current, ggplot2Callable);
 
 describe('Link libraries with character.only', withTreeSitter(ts => {
-	assertDataflow(label('Link with variable'), ts, 'x <- "ggplot2"\nlibrary(x, character.only = TRUE)\nggplot()\nggplot()',
+	assertDataflow(label('Link with variable', ['library-loading', 'search-path']), ts, 'x <- "ggplot2"\nlibrary(x, character.only = TRUE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
 			.addEdge('2@library', 8, EdgeType.Argument)
@@ -61,7 +61,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		}
 	);
-	assertDataflow(label('Link usually'), ts, 'library(ggplot2, character.only = FALSE)\nggplot()\nggplot()',
+	assertDataflow(label('Link usually', ['library-loading', 'search-path']), ts, 'library(ggplot2, character.only = FALSE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
 			.addEdge('1@library', 5, EdgeType.Argument)
@@ -81,7 +81,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			resolveIdsAsCriterion: true
 		}
 	);
-	assertDataflow(label('link with string value'), ts, 'library("ggplot2", character.only = TRUE)\nggplot()\nggplot()',
+	assertDataflow(label('link with string value', ['library-loading', 'search-path']), ts, 'library("ggplot2", character.only = TRUE)\nggplot()\nggplot()',
 		emptyGraph()
 		//reads character.only
 			.addEdge('1@library', 5, EdgeType.Argument)
@@ -127,7 +127,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			library(x, character.only=TRUE)
 			`);
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const environments = [[env.n, env.t]];
 		for(let i = 0; i < 3; i++){
 			env = env.parent;
@@ -164,7 +164,7 @@ describe('Link libraries with character.only', withTreeSitter(ts => {
 			library(x, character.only=u)
 			`);
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const environments = [[env.n, env.t]];
 		for(let i = 0; i < 3; i++){
 			env = env.parent;

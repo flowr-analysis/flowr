@@ -92,6 +92,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 			let hasUpdate = false;
 			while(!current?.builtInEnv) {
+				// a package attached inside the body (library()) must propagate to the caller, like R attaching globally
+				if(current.t !== undefined) {
+					hasUpdate = true;
+				}
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {

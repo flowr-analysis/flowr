@@ -1,4 +1,4 @@
-import { libraryLayerHeight, type REnvironmentInformation  } from './environment';
+import { type REnvironmentInformation  } from './environment';
 import type { IdentifierDefinition } from './identifier';
 import { padToCommonScope } from './scoping';
 
@@ -31,11 +31,10 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 		return base;
 	}
 
-	const { base: b, next: n, scope } = padToCommonScope(base, next);
-	// the library layers of both branches are unified by Environment#append
-	const current = b.current.append(n.current);
+	({ base, next } = padToCommonScope(base, next));
+	// packages attached below the global env are unified branch-wise by Environment#append
 	return {
-		current,
-		level: scope + libraryLayerHeight(current),
+		current: base.current.append(next.current),
+		level:   base.level,
 	};
 }

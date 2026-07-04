@@ -1,4 +1,4 @@
-import { type REnvironmentInformation, Environment, libraryLayerHeight } from './environment';
+import { type REnvironmentInformation, Environment } from './environment';
 import { guard } from '../../util/assert';
 
 /**
@@ -25,21 +25,17 @@ export function popLocalEnvironment({ current, level }: REnvironmentInformation)
 }
 
 /**
- * Pads the lexical scopes of `base` and `next` to a common depth so they can be merged
- * (see {@link appendEnvironment}/{@link overwriteEnvironment}). Loaded libraries (see {@link EnvType})
- * extend the search path rather than nesting a scope, so they are discounted from the level.
- * @returns the padded environments and their shared lexical `scope` depth.
+ * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same
+ * lexical {@link REnvironmentInformation#level|level}, so they can be merged pairwise (see
+ * {@link appendEnvironment}/{@link overwriteEnvironment}). Attached packages live below the global
+ * env and do not raise the level, so nothing library-specific is needed here.
  */
-export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation, scope: number } {
-	let baseScope = base.level - libraryLayerHeight(base.current);
-	let nextScope = next.level - libraryLayerHeight(next.current);
-	while(nextScope < baseScope) {
+export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation } {
+	while(next.level < base.level) {
 		next = pushLocalEnvironment(next);
-		nextScope++;
 	}
-	while(nextScope > baseScope) {
+	while(next.level > base.level) {
 		base = pushLocalEnvironment(base);
-		baseScope++;
 	}
-	return { base, next, scope: baseScope };
+	return { base, next };
 }

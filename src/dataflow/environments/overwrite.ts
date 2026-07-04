@@ -1,4 +1,4 @@
-import { libraryLayerHeight, type REnvironmentInformation  } from './environment';
+import { type REnvironmentInformation  } from './environment';
 import type { ControlDependency } from '../info';
 import { padToCommonScope } from './scoping';
 
@@ -16,10 +16,9 @@ export function overwriteEnvironment(base: REnvironmentInformation | undefined, 
 		return next ?? base;
 	}
 
-	const { base: b, next: n, scope } = padToCommonScope(base, next);
-	const current = b.current.overwrite(n.current, applyCds);
+	({ base, next } = padToCommonScope(base, next));
 	return {
-		current,
-		level: scope + libraryLayerHeight(current)
+		current: base.current.overwrite(next.current, applyCds),
+		level:   base.level
 	};
 }

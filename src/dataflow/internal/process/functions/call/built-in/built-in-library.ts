@@ -11,14 +11,16 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { Environment, EnvType } from '../../../../../environments/environment';
+import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
+import type { FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import { EdgeType } from '../../../../../graph/edge';
 import { isNotUndefined, isUndefined } from '../../../../../../util/assert';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { Package } from '../../../../../../project/plugins/package-version-plugins/package';
-import type { NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { getCallables, type NamespaceInfo } from '../../../../../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { convertFnArguments } from '../common';
 import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
@@ -161,27 +163,14 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	if(info.environment.level < 0|| isUndefined(dependency.namespaceInfo)){
 		return;
 	}
-	const currentEnv = info.environment.current;
 	const pack = dependency.name;
 	// R attaches a package only once: re-loading an already attached package is a no-op (neither moved nor duplicated)
-	if(isAttached(currentEnv, pack)){
+	if(isAttached(info.environment.current, pack)){
 		return;
 	}
-	const functions = dependency.namespaceInfo.callable;
-
-	// the imports layer sits on the current search path, the namespace layer (package exports) on top of it
-	let importsEnv = new Environment(currentEnv).asLibrary(pack, EnvType.Imports);
-	importsEnv = recImports(importsEnv, dependency.namespaceInfo, data, new Set());
-
-	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
-	for(const func of functions){
+	// graph: register each export as a built-in function-definition reachable from this library() call
+	for(const func of getCallables(dependency.namespaceInfo)){
 		const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
-		namespaceEnv = namespaceEnv.define({
-			name:      Identifier.make(func, pack),
-			type:      ReferenceType.Function,
-			nodeId:    builtInId,
-			definedAt: NodeId.toBuiltIn(pack),
-		});
 		info.graph.addVertex({
 			tag:         VertexType.FunctionDefinition,
 			id:          builtInId,
@@ -201,15 +190,43 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 		}, data.ctx.env.makeCleanEnv());
 		info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
 	}
-	info.environment = {
-		level:   info.environment.level + 2,
-		current: namespaceEnv
-	};
+	info.environment = attachDependencyToEnvironment(dependency, info.environment, data.ctx);
 }
 
-/** Whether package `pack` is already on the current search path, i.e. among the leading library layers (see {@link EnvType}). */
+/**
+ * Attaches `dependency`'s package block (namespace + imports layers) below the global environment (see
+ * {@link attachPackageBelowGlobal}), returning the enriched environment. This is the single point that
+ * materializes an attached package into an environment - used both by \`library()\` and by the transitive
+ * side-effect propagation (see {@link propagateTransitiveSideEffects}). It does not touch the graph.
+ *
+ * Known limitation: the exports are defined without control dependencies, so a conditionally attached package
+ * (`if(c) library(pkg)`) is treated as *definitely* attached rather than maybe. This is a sound over-approximation
+ * of availability; marking it maybe would require routing the exports through the branch `makeAllMaybe` machinery.
+ */
+export function attachDependencyToEnvironment(dependency: Package, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const pack = dependency.name;
+	if(isUndefined(dependency.namespaceInfo) || isAttached(envInfo.current, pack)){
+		return envInfo;
+	}
+	// R attaches a package below `.GlobalEnv`: the imports layer sits at the bottom, the namespace layer (package exports) on top of it
+	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
+	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
+	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
+	for(const func of getCallables(dependency.namespaceInfo)){
+		namespaceEnv = namespaceEnv.define({
+			name:      Identifier.make(func, pack),
+			type:      ReferenceType.Function,
+			nodeId:    NodeId.toBuiltIn(Package.funcIdentif(pack, func)),
+			definedAt: NodeId.toBuiltIn(pack),
+		});
+	}
+	// attaching a package extends the search path below global; it does not nest a lexical scope, so the level is unchanged
+	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
+}
+
+/** Whether package `pack` is already attached, i.e. among the package layers (see {@link EnvType}) below the global env. */
 function isAttached(env: Environment, pack: string): boolean {
-	for(let e: Environment | undefined = env; e !== undefined && e.t !== undefined && !e.builtInEnv; e = e.parent){
+	for(let e: Environment = REnvironment.findGlobal(env).parent; e.t !== undefined && !e.builtInEnv; e = e.parent){
 		if(e.n === pack){
 			return true;
 		}
@@ -217,13 +234,15 @@ function isAttached(env: Environment, pack: string): boolean {
 	return false;
 }
 
-function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: NamespaceInfo, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, alreadyImportedAll: Set<string>){
+function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){
 	for(const imp of namespaceInfo.importedPackages){
-		const importedDependency = data.ctx.deps.getDependency(imp[0]);
+		const importedDependency = ctx.deps.getDependency(imp[0]);
 		if(isUndefined(importedDependency)){
 			continue;
 		}
-		const funcToImport: string[] | undefined = imp[1] === 'all' ? importedDependency?.namespaceInfo?.callable : importedDependency?.namespaceInfo?.callable.filter(v => (imp[1] as string[]).includes(v));
+		const importedNs = importedDependency.namespaceInfo;
+		const funcToImport: string[] | undefined = importedNs === undefined ? undefined
+			: imp[1] === 'all' ? getCallables(importedNs) : getCallables(importedNs).filter(v => (imp[1] as string[]).includes(v));
 		if(isUndefined(funcToImport)){
 			continue;
 		}
@@ -246,7 +265,7 @@ function recImports<OtherInfo>(importsEnv: Environment, namespaceInfo: Namespace
 		}
 		//if only importFrom() we don't have to recursively import
 		if(imp[1] === 'all' && importedDependency?.namespaceInfo){
-			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, data, alreadyImportedAll);
+			importsEnv = recImports(importsEnv, importedDependency.namespaceInfo, ctx, alreadyImportedAll);
 		}
 	}
 	return importsEnv;

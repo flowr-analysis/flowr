@@ -19,11 +19,16 @@ import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
+import { propagateTransitiveSideEffects, reResolveOpenReferences } from './internal/process/functions/call/built-in/transitive-side-effects';
+import type { REnvironmentInformation } from './environments/environment';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+
+/** Safety backstop for the transitive-side-effect fixpoint; each growing round attaches a new package, so real programs converge in one or two rounds. */
+const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
 import { SourceRange } from '../util/range';
@@ -163,8 +168,25 @@ export function produceDataFlowGraph<OtherInfo>(
 		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
-	// finally, resolve linkages
+	// finally, resolve linkages and propagate transitive side effects (attached packages) across calls to a fixpoint.
+	// Each growing round attaches at least one new package, so this terminates (bounded by the number of packages).
 	updateNestedFunctionCalls(df.graph, df.environment);
+	const escapedNames = new Set<string>();
+	for(let round = 0; round < transitiveSideEffectRounds; round++) {
+		const { environment, grew, escapedNames: roundNames } = propagateTransitiveSideEffects(df.graph, df.environment, ctx);
+		(df as { environment: REnvironmentInformation }).environment = environment;
+		for(const n of roundNames) {
+			escapedNames.add(n);
+		}
+		if(!grew) {
+			break;
+		}
+		updateNestedFunctionCalls(df.graph, df.environment);
+	}
+	// escaped `<<-` definitions folded into the environment above: resolve the top-level reads that see them now
+	if(escapedNames.size > 0) {
+		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
+	}
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 

@@ -65,6 +65,7 @@ import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
 import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
 import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
+import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
@@ -238,6 +239,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Try]:                processTryCatch,
 	[BuiltInProcName.Attach]:             processAttach,
 	[BuiltInProcName.NewEnv]:             processNewEnv,
+	[BuiltInProcName.StackEnv]:           processStackEnv,
 	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
 	[BuiltInProcName.WhileLoop]:          processWhileLoop,

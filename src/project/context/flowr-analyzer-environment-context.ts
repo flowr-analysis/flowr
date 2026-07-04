@@ -75,7 +75,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public makeCleanEnv(): REnvironmentInformation {
 		return {
-			current: new Environment(this.builtInEnv),
+			current: new Environment(this.builtInEnv).asGlobal(),
 			level:   0
 		};
 	}
@@ -89,7 +89,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
 		return {
-			current: new Environment(this.emptyBuiltInEnv),
+			current: new Environment(this.emptyBuiltInEnv).asGlobal(),
 			level:   0
 		};
 	}

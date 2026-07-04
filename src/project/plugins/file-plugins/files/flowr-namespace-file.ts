@@ -233,15 +233,25 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 	});
 }
 
-/** Sets the given list of strings as callable functions */
-export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
-	const exGen = [];
-	for(const [g, f] of info.exportS3Generics.entries()){
-		for(const fi of f){
-			exGen.push(g+'.'+fi);
+/** All exported names of a namespace that can be referenced (functions, symbols, patterns and S3 methods as `generic.class`). */
+export function getExportedNames(info: NamespaceInfo): string[] {
+	const s3: string[] = [];
+	for(const [g, methods] of info.exportS3Generics){
+		for(const m of methods){
+			s3.push(`${g}.${m}`);
 		}
 	}
-	const all = new Set(info.exportedSymbols.concat(info.exportedFunctions).concat(info.exportedPatterns).concat(exGen));
+	return [...new Set([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3])];
+}
+
+/** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
+export function getCallables(info: NamespaceInfo): string[] {
+	return info.callable.length > 0 ? info.callable : getExportedNames(info);
+}
+
+/** Sets the given list of strings as callable functions */
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
+	const all = new Set(getExportedNames(info));
 	for(const f of func){
 		if(all.has(f)){
 			info.callable.push(f);

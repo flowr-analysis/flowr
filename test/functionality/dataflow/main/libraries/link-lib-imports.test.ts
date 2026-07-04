@@ -4,7 +4,7 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
-import { EnvType } from '../../../../../src/dataflow/environments/environment';
+import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const randomPlaceholder1Callable = ['test1', 'test2'];
@@ -63,7 +63,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rPSsymbols = ['test1', 'test2'];
 		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
@@ -98,7 +98,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		analyzer.addRequest('library(ggplot2)\nlibrary(random_placeholder2)\nlibrary(random_placeholder3)\nggplot()');
 
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rP1symbols = ['test1', 'test2'];
 		const rP2Symbols = ['test1', 'test2', 'test3'];
@@ -134,7 +134,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		//namespace:ggplot2 -> imports: ggplot2 -> globalEnv -> ...
 		//ggplot namespace
@@ -159,7 +159,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		//namespace:ggplot -> imports:ggplot -> globalEnv
 		//ggplot package

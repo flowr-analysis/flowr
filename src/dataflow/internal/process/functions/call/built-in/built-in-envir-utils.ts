@@ -22,6 +22,12 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
+import { resolveNodeToStackEnv } from './built-in-stack-env';
+
+/** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
+function isStackEnvState(envState: REnvironmentInformation): boolean {
+	return envState.current.globalEnv === true || envState.current.builtInEnv === true;
+}
 
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
@@ -31,6 +37,8 @@ export interface EnvirResolution<OtherInfo> {
 	readonly envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
+	/** `true` when this resolves to a real stack environment (`globalenv()`/`.GlobalEnv`), not a tracked custom env - writes to it fall through to the normal (global) scope. */
+	readonly isStackEnv?: boolean;
 }
 
 /**
@@ -56,7 +64,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 			return undefined;
 		}
 		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
-		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
+		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: isStackEnvState(envState) };
 	}
 	if(!inDefs.every(d => d.envState !== undefined)) {
 		return undefined;
@@ -158,10 +166,33 @@ export function resolveArgToEnvir<OtherInfo>(
 		return undefined;
 	}
 	const node = unpackArg(arg);
+	// `.GlobalEnv`/`.BaseEnv` or a `globalenv()`/`baseenv()`/`emptyenv()` call -> the corresponding stack env directly
+	const stackEnv = resolveNodeToStackEnv(node, data);
+	if(stackEnv !== undefined && node !== undefined) {
+		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
+	}
 	if(node?.type !== RType.Symbol) {
 		return undefined;
 	}
 	return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
+}
+
+/** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
+function stackEnvirResolution<OtherInfo>(
+	envState: REnvironmentInformation,
+	nodeId:   NodeId,
+	lexeme:   string,
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> {
+	// there is no holder variable, so this envDef is only a carrier for envState/nodeId (its name is never resolved against)
+	const envDef = {
+		name:      lexeme as Identifier,
+		nodeId,
+		type:      ReferenceType.Variable,
+		definedAt: nodeId,
+		envState,
+	} as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true };
 }
 
 /**

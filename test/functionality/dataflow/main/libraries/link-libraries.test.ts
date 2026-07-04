@@ -9,7 +9,8 @@ import { EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { label } from '../../../_helper/label';
-import { EnvType } from '../../../../../src/dataflow/environments/environment';
+import { EnvType, REnvironment, builtInEnvJsonReplacer } from '../../../../../src/dataflow/environments/environment';
+import { VertexType } from '../../../../../src/dataflow/graph/vertex';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
@@ -45,7 +46,7 @@ const namespaceContent = `S3method(fortify,data.frame)
 const namespaceInfo = setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespaceContent)).content().current, ggplot2Callable);
 
 describe('Link libraries', withTreeSitter(ts => {
-	assertDataflow(label('ggplot links to ggplot2'), ts, 'library(ggplot2)\nggplot()\nggplot()',
+	assertDataflow(label('ggplot links to ggplot2', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nggplot()\nggplot()',
 		emptyGraph()
 			.addEdge('2@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
 			.addEdge('3@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
@@ -62,7 +63,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}
 	);
 
-	assertDataflow(label('No dependencies set'), ts, 'library(ggplot2)\nggplot()',
+	assertDataflow(label('No dependencies set', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nggplot()',
 		emptyGraph()
 			.addEdge('2@ggplot', NodeId.toBuiltIn('ggplot'), EdgeType.Reads |EdgeType.Calls),
 		{
@@ -71,7 +72,7 @@ describe('Link libraries', withTreeSitter(ts => {
 			mustNotHaveEdges:      [[NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), 3], [NodeId.toBuiltIn('ggplot'), 3]]
 		});
 
-	assertDataflow(label('Several methods of same library'), ts, 'library(ggplot2)\nggplot(data = NULL, mapping = aes())',
+	assertDataflow(label('Several methods of same library', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nggplot(data = NULL, mapping = aes())',
 		emptyGraph()
 			.addEdge('2@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
 			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), '1@library', EdgeType.Reads | EdgeType.Calls)
@@ -89,7 +90,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}
 	);
 
-	assertDataflow(label('Links to several libraries'), ts, 'library(ggplot2)\nlibrary(dplyr)\nggplot(data = NULL, mapping = aes())\nacross()',
+	assertDataflow(label('Links to several libraries', ['library-loading', 'search-path']), ts, 'library(ggplot2)\nlibrary(dplyr)\nggplot(data = NULL, mapping = aes())\nacross()',
 		emptyGraph()
 			.addEdge('3@ggplot', NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), EdgeType.Reads | EdgeType.Calls)
 			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')), '1@library', EdgeType.Reads | EdgeType.Calls)
@@ -113,7 +114,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}
 	);
 
-	assertDataflow(label('pkgB overwrites bindings of pkgA'), ts, 'library(pkgA)\nlibrary(pkgB)\nx()\npkgA::x()\ny()',
+	assertDataflow(label('pkgB overwrites bindings of pkgA', ['library-loading', 'search-path']), ts, 'library(pkgA)\nlibrary(pkgB)\nx()\npkgA::x()\ny()',
 		emptyGraph()
 			.addEdge('3@x', NodeId.toBuiltIn(Package.funcIdentif('pkgB', 'x')), EdgeType.Reads | EdgeType.Calls)
 			.addEdge(NodeId.toBuiltIn(Package.funcIdentif('pkgB', 'x')), '2@library', EdgeType.Reads | EdgeType.Calls)
@@ -149,7 +150,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
@@ -168,7 +169,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}));
 		analyzer.addRequest('library(ggplot2)\nggplot()');
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace).toBeTruthy();
 		const exportedSymbols = ['ggplot', 'aes', 'geom_point', 'print.rel'];
 		expect(compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
@@ -191,7 +192,7 @@ describe('Link libraries', withTreeSitter(ts => {
 		}));
 		analyzer.addRequest('library(ggplot2)\nlibrary(random1)');
 		const df = await analyzer.dataflow();
-		let env = df.environment.current;
+		let env = REnvironment.findGlobal(df.environment.current).parent;
 		expect(env.n === 'random1' && env.t === EnvType.Namespace).toBeTruthy();
 		expect(compare(new Set(['test1', 'test2']), new Set(env.memory.keys()))).toBeTruthy();
 		env = env.parent;
@@ -231,6 +232,19 @@ describe('Link libraries', withTreeSitter(ts => {
 		expect(await loadedPackages(ts, 'require(a)\nrequire(b)')).toEqual(['b', 'a']);
 	});
 
+	// production packages are registered without an explicit callable subset; exports must still resolve (see getCallables)
+	assertDataflow(label('Exports resolve without an explicit callable list', ['library-loading', 'search-path']), ts, 'library(prod)\nfa()',
+		emptyGraph().addEdge('2@fa', NodeId.toBuiltIn(Package.funcIdentif('prod', 'fa')), EdgeType.Reads | EdgeType.Calls),
+		{
+			modifyAnalyzer: (a: FlowrAnalyzer) => {
+				a.context().deps.addDependency(new Package({
+					name:          'prod',
+					namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(fa)')).content().current
+				}));
+			},
+			expectIsSubgraph: true, resolveIdsAsCriterion: true
+		});
+
 	test('Branch merge keeps every possibly attached package, deduplicated', async() => {
 		// overlapping branches: `b` is loaded in both, so it appears exactly once
 		const overlap = await loadedPackages(ts, 'if(u){ library(a); library(b) } else { library(b); library(c) }');
@@ -239,6 +253,30 @@ describe('Link libraries', withTreeSitter(ts => {
 		// different number of libraries per branch (unequal scope levels) still keeps all of them
 		expect(new Set(await loadedPackages(ts, 'if(u){ library(a); library(c) } else { library(b) }'))).toEqual(new Set(['a', 'b', 'c']));
 	});
+
+	// a `<<-` inside a helper propagates transitively: the escaping definition gets a side-effect-on-call edge at the outer call
+	assertDataflow(label('Transitive super-assignment marks the outer call', ['library-loading', 'search-path']), ts,
+		'h <- function() { x <<- 1 }\ng <- function() h()\ng()',
+		emptyGraph().addEdge('1@x', '3@g', EdgeType.SideEffectOnCall),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true });
+
+	// and it is folded into the environment, so a top-level read resolves to the transitively escaped definition (real R: x == 1)
+	assertDataflow(label('Transitive super-assignment resolves at a top-level read', ['library-loading', 'search-path']), ts,
+		'f <- function() { x <<- 1 }\ng <- function() { f() }\ng()\nprint(x)',
+		emptyGraph().addEdge('4@x', '1@x', EdgeType.Reads),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true });
+
+	// R searches .GlobalEnv before attached packages, so a global binding shadows a package export of the same name
+	assertDataflow(label('Global definition shadows a package export', ['library-loading', 'search-path']), ts,
+		'fa <- function() 1\nlibrary(pkgA)\nfa()',
+		emptyGraph().addEdge('3@fa', '1@fa', EdgeType.Reads),
+		{
+			modifyAnalyzer: (a: FlowrAnalyzer) => {
+				a.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']));
+			},
+			expectIsSubgraph:      true,
+			resolveIdsAsCriterion: true
+		});
 
 	// unique-per-package callables let us assert that a call links to exactly the right package through complex control flow
 	const registerAbc = (a: FlowrAnalyzer): void => {
@@ -260,7 +298,7 @@ describe('Link libraries', withTreeSitter(ts => {
 	};
 	const abc = { modifyAnalyzer: registerAbc, expectIsSubgraph: true, resolveIdsAsCriterion: true } as const;
 
-	assertDataflow(label('Nested if-else links each call to its package'), ts,
+	assertDataflow(label('Nested if-else links each call to its package', ['library-loading', 'search-path']), ts,
 		'if(u) {\n  if(v) {\n    library(pkgA)\n  } else {\n    library(pkgB)\n  }\n} else {\n  library(pkgC)\n}\nfa()\nfb()\nfc()',
 		resolvesTo(
 			{ call: '10@fa', pkg: 'pkgA', fn: 'fa', lib: '3@library' },
@@ -268,12 +306,12 @@ describe('Link libraries', withTreeSitter(ts => {
 			{ call: '12@fc', pkg: 'pkgC', fn: 'fc', lib: '8@library' }),
 		abc);
 
-	assertDataflow(label('Library loaded in a while loop survives the loop'), ts,
+	assertDataflow(label('Library loaded in a while loop survives the loop', ['library-loading', 'search-path']), ts,
 		'while(cond) {\n  library(pkgA)\n}\nfa()',
 		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '2@library' }),
 		abc);
 
-	assertDataflow(label('For loop keeps both the pre-loop and in-loop library'), ts,
+	assertDataflow(label('For loop keeps both the pre-loop and in-loop library', ['library-loading', 'search-path']), ts,
 		'library(pkgA)\nfor(i in 1:10) {\n  library(pkgB)\n}\nfa()\nfb()',
 		resolvesTo(
 			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' },
@@ -281,10 +319,116 @@ describe('Link libraries', withTreeSitter(ts => {
 		abc);
 
 	// inside a function body the call is resolved lazily, so only the `calls` edge is present
-	assertDataflow(label('Library is visible inside the function that loads it'), ts,
+	assertDataflow(label('Library is visible inside the function that loads it', ['library-loading', 'search-path']), ts,
 		'library(pkgA)\nh <- function() {\n  fa()\n}\nh()',
 		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
 		abc);
+
+	// a library loaded in a helper propagates transitively to the caller (fixpoint over the call graph)
+	assertDataflow(label('Transitively loaded library resolves at the call site', ['library-loading', 'search-path']), ts,
+		'g <- function() library(pkgA)\nf <- function() g()\nf()\nfa()',
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// recursion must terminate and still resolve the transitively attached package
+	assertDataflow(label('Recursive library loader terminates and resolves', ['library-loading', 'search-path']), ts,
+		'f <- function() { library(pkgA); f() }\nf()\nfa()',
+		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
+		abc);
+
+	// diamond: one function calls two helpers that each attach a different package (matches R: both become available)
+	assertDataflow(label('Diamond of helpers attaches every package', ['library-loading', 'search-path']), ts,
+		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() { a(); b() }\nf()\nfa()\nfb()',
+		resolvesTo(
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// higher-order: a library loaded in a function passed as an argument still propagates (matches R)
+	assertDataflow(label('Higher-order library loader propagates', ['library-loading', 'search-path']), ts,
+		'ap <- function(fn) fn()\nap(function() library(pkgA))\nfa()',
+		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '2@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// transitive propagation through control flow inside/around the helpers. All are AVAILABLE in real R when the
+	// loading branch runs; flowR soundly over-approximates, keeping the package even when the branch/loop is only maybe-taken.
+
+	// conditional load inside a called helper
+	assertDataflow(label('Conditional library in a helper propagates', ['library-loading', 'search-path']), ts,
+		'g <- function(c) { if(c) library(pkgA) }\nf <- function() g(u)\nf()\nfa()',
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// a branch selecting between two different library-loading helpers keeps both packages
+	assertDataflow(label('Branch over library-loading helpers keeps both', ['library-loading', 'search-path']), ts,
+		'a <- function() library(pkgA)\nb <- function() library(pkgB)\nf <- function() if(u) a() else b()\nf()\nfa()\nfb()',
+		resolvesTo(
+			{ call: '5@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls },
+			{ call: '6@fb', pkg: 'pkgB', fn: 'fb', lib: '2@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// a helper loading a library, called from within a loop
+	assertDataflow(label('Library in a helper called from a loop propagates', ['library-loading', 'search-path']), ts,
+		'h <- function() library(pkgA)\nf <- function() for(i in 1:3) h()\nf()\nfa()',
+		resolvesTo({ call: '4@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library', callEdge: EdgeType.Calls }),
+		abc);
+
+	// conditionally-guarded recursion that loads on the recursive branch (must terminate)
+	assertDataflow(label('Conditional recursion loader terminates and resolves', ['library-loading', 'search-path']), ts,
+		'f <- function(n) { if(n > 0) { library(pkgA); f(n - 1) } }\nf(2)\nfa()',
+		resolvesTo({ call: '3@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
+		abc);
+
+	// KNOWN LIMITATION: a conditionally attached package currently resolves as DEFINITE (no cds/maybe marker), identical to
+	// the unconditional case. This is a sound over-approximation of *availability* (the package may be attached), but the
+	// resolution edge is definite rather than maybe. Reason: package exports are materialized directly into the search-path
+	// environment, so they are not among the branch's `out` references that the if-then-else maybe-marking (makeAllMaybe)
+	// operates on; making them maybe is a cross-cutting change to the maybe-propagation contract (see the feature notes).
+	assertDataflow(label('Conditional library attaches (definite, over-approximation)', ['library-loading', 'search-path']), ts,
+		'if(u) library(pkgA)\nfa()',
+		resolvesTo({ call: '2@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
+		abc);
+
+	// regression: the below-global markers (globalEnv/n/t) must survive JSON serialization so the search path is intact after a round-trip
+	test('serialization preserves the global marker and attached-package layers', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']));
+		analyzer.addRequest('library(pkgA)\nfa()');
+		const df = await analyzer.dataflow();
+		interface EnvJson { globalEnv?: boolean, n?: string, t?: string, parent: EnvJson }
+		const json = JSON.parse(JSON.stringify(df.environment.current, builtInEnvJsonReplacer)) as EnvJson;
+		expect(json.globalEnv).toBe(true);                // the global env marker survives
+		expect(json.parent.n).toBe('pkgA');               // its parent is the attached package (below global)
+		expect(json.parent.t).toBe(EnvType.Namespace);
+		expect(json.parent.parent.t).toBe(EnvType.Imports);
+	});
+
+	// regression: a library loaded only inside an UNCALLED function must not be attached at the top level
+	test('library loaded in an uncalled function is not attached', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.context().deps.addDependency(Package.fromConstants('pkgA', 'export(fa)', ['fa']));
+		analyzer.addRequest('f <- function() library(pkgA)\nfa()');
+		const df = await analyzer.dataflow();
+		expect(REnvironment.findGlobal(df.environment.current).parent.t).toBeUndefined(); // no package layer below global
+		const pkgTarget = NodeId.toBuiltIn(Package.funcIdentif('pkgA', 'fa'));
+		for(const [id, vertex] of df.graph.vertices(true)) {
+			if(vertex.tag === VertexType.FunctionCall && String(vertex.name) === 'fa') {
+				expect([...(df.graph.outgoingEdges(id)?.keys() ?? [])]).not.toContain(pkgTarget);
+			}
+		}
+	});
+
+	// regression: a package with no callable exports still attaches (no crash, no spurious export vertices)
+	test('package with no exports attaches without spurious edges', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		analyzer.context().deps.addDependency(Package.fromConstants('pkgEmpty', 'import(grid)', []));
+		analyzer.addRequest('library(pkgEmpty)\nfoo()');
+		const df = await analyzer.dataflow();
+		expect(REnvironment.findGlobal(df.environment.current).parent.n).toBe('pkgEmpty'); // the empty package is attached
+		for(const [id] of df.graph.vertices(true)) {
+			expect(String(id)).not.toContain('pkgEmpty:'); // no export builtins were created
+		}
+	});
 }));
 
 /** Loads the given `code` (with dummy packages `a`, `b`, `c` registered) and returns its leading library layers as `[name, type]`, nearest first. */
@@ -296,7 +440,8 @@ async function loadedLayers(ts: TreeSitterExecutor, code: string): Promise<[stri
 	analyzer.addRequest(code);
 	const df = await analyzer.dataflow();
 	const layers: [string | undefined, EnvType | undefined][] = [];
-	for(let env = df.environment.current; env.t !== undefined; env = env.parent){
+	// attached packages sit below the global env
+	for(let env = REnvironment.findGlobal(df.environment.current).parent; env.t !== undefined; env = env.parent){
 		layers.push([env.n, env.t]);
 	}
 	return layers;

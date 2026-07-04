@@ -37,7 +37,15 @@ export enum EnvType{
 	Imports = 'imp'
 }
 
-type Jsonified = { id: NodeId, parent: Jsonified | undefined, builtInEnv?: true, memory: BuiltInMemory };
+interface Jsonified {
+	id:          NodeId;
+	parent:      Jsonified | undefined;
+	builtInEnv?: true;
+	memory:      BuiltInMemory;
+	n?:          string;
+	t?:          EnvType;
+	globalEnv?:  true;
+}
 
 /**
  * Please use this function only if you do not know the object type.
@@ -62,8 +70,8 @@ export class Environment implements IEnvironment {
 	memory:      BuiltInMemory;
 	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
-	/** cached count of leading library layers (see {@link EnvType}), kept up to date via {@link refreshLib} so reading it is O(1) */
-	libs = 0;
+	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live *below* it, the built-in env below them */
+	globalEnv?:  true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
 		this.id = isBuiltInDefault ? 0 : environmentIdCounter++;
@@ -75,16 +83,16 @@ export class Environment implements IEnvironment {
 		}
 	}
 
-	/** Marks this as a library layer (see {@link EnvType}) for package `name`, keeping {@link libs} consistent. */
+	/** Marks this as an attached-package layer (see {@link EnvType}) for package `name`. */
 	public asLibrary(name: string, type: EnvType): this {
 		this.n = name;
 		this.t = type;
-		return this.refreshLib();
+		return this;
 	}
 
-	/** Recomputes the cached {@link libs} from {@link t} and {@link parent}; call after either changes. */
-	public refreshLib(): this {
-		this.libs = this.t !== undefined && !this.builtInEnv ? this.parent.libs + 1 : 0;
+	/** Marks this as the global environment (`.GlobalEnv`); see {@link globalEnv}. */
+	public asGlobal(): this {
+		this.globalEnv = true;
 		return this;
 	}
 
@@ -116,9 +124,9 @@ export class Environment implements IEnvironment {
 		clone.c = this.c;
 		clone.n = this.n;
 		clone.t = this.t;
+		clone.globalEnv = this.globalEnv;
 		clone.memory = new Map(this.memory);
-		// only library layers need the cached lib bookkeeping; a fresh clone already has libs=0
-		return this.t === undefined ? clone : clone.refreshLib();
+		return clone;
 	}
 
 	/**
@@ -129,12 +137,6 @@ export class Environment implements IEnvironment {
 		const [name, ns] = Identifier.toArray(definition.name);
 		if(ns !== undefined && this.n !== ns) {
 			return this.defineInNamespace(definition, ns);
-		}
-		// a plain identifier must not land in an attached package's namespace (see EnvType): descend past the library layers to the base scope
-		if(ns === undefined && this.t !== undefined) {
-			const clone = this.clone(false);
-			clone.parent = clone.parent.define(definition);
-			return clone.refreshLib();
 		}
 		/* isolate the cds from the originating reference, which may still be updated in place */
 		if(definition.cds !== undefined) {
@@ -209,6 +211,12 @@ export class Environment implements IEnvironment {
 				found = true;
 				break;
 			}
+			// R's `<<-` assigns in the global env if the name is unbound in every enclosing frame; it never writes into an attached package below global
+			if(current.globalEnv) {
+				current.memory.set(name, [definition]);
+				found = true;
+				break;
+			}
 			last = current;
 			current.parent = current.parent.clone(false);
 			current = current.parent;
@@ -226,7 +234,14 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
-		if(this.builtInEnv || this === other || !other || this.n !== other.n) {
+		if(!other || this === other) {
+			return this;
+		}
+		// attached-package blocks (below global) are unioned, never overwritten - so a package attached in either env survives (see append)
+		if(this.t !== undefined || other.t !== undefined) {
+			return this.mergePackageBlocks(other);
+		}
+		if(this.builtInEnv || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -265,8 +280,9 @@ export class Environment implements IEnvironment {
 		out.c = this.c;
 		out.n = this.n;
 		out.t = this.t;
+		out.globalEnv = this.globalEnv;
 		out.memory = map;
-		return this.t === undefined ? out : out.refreshLib();
+		return out;
 	}
 
 	/**
@@ -274,15 +290,16 @@ export class Environment implements IEnvironment {
 	 * This always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
-		if(!other || this.builtInEnv || this === other) {
+		if(!other || this === other) {
 			return this;
 		}
-		if(this.n !== other.n) {
-			// divergent namespace/imports layers, e.g. `library(a)` in one branch and `library(b)` in another:
-			// keep every loaded library environment from both branches instead of dropping one
-			if(this.t !== undefined || other.t !== undefined) {
-				return this.appendLibraryLayers(other);
-			}
+		// attached-package blocks (below global) may diverge between branches (e.g. `library(a)` in one, `library(b)` in the
+		// other, or one branch attaching nothing) - union them so no package is lost. Runs before the built-in guard because
+		// one side's base may be the built-in env while the other still has packages to keep.
+		if(this.t !== undefined || other.t !== undefined) {
+			return this.mergePackageBlocks(other);
+		}
+		if(this.builtInEnv || this.n !== other.n) {
 			return this;
 		}
 		const map = new Map(this.memory);
@@ -298,21 +315,23 @@ export class Environment implements IEnvironment {
 		const out = new Environment(this.parent.append(other.parent));
 		out.n = this.n;
 		out.t = this.t;
+		out.globalEnv = this.globalEnv;
 		out.memory = map;
-		return this.t === undefined ? out : out.refreshLib();
+		return out;
 	}
 
 	/**
-	 * Merges the library environments (see {@link EnvType}) of two branches that loaded different packages,
-	 * stacking every namespace/imports layer of both on top of their shared base environment.
+	 * Unions two attached-package blocks (see {@link EnvType}) - e.g. from two branches attaching different packages -
+	 * keeping every package once (memory merged for a package attached in both) and re-stacking them on the shared base below.
 	 */
-	private appendLibraryLayers(other: Environment): Environment {
+	private mergePackageBlocks(other: Environment): Environment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
 
-		// collect the unique layers by name+type; a package loaded in both branches is kept once with merged memory
+		// collect the unique layers by name+type; a package loaded in both branches is kept once with merged memory.
+		// `other` (the later write) first, so its packages end up nearest global - most recently attached is nearest (R `search()`)
 		const merged = new Map<string, Environment>();
-		for(const layers of [thisLayers, otherLayers]) {
+		for(const layers of [otherLayers, thisLayers]) {
 			for(const layer of layers) {
 				const key = `${layer.t}:${layer.n}`;
 				const existing = merged.get(key);
@@ -332,7 +351,7 @@ export class Environment implements IEnvironment {
 		let current = thisBase.append(otherBase);
 		for(let i = uniqueLayers.length - 1; i >= 0; i--) {
 			uniqueLayers[i].parent = current;
-			current = uniqueLayers[i].refreshLib();
+			current = uniqueLayers[i];
 		}
 		return current;
 	}
@@ -379,14 +398,56 @@ export class Environment implements IEnvironment {
 			builtInEnv: this.builtInEnv,
 			memory:     this.memory,
 		} : {
-			id:     this.id,
-			parent: this.parent,
-			memory: this.memory,
+			id:        this.id,
+			parent:    this.parent,
+			memory:    this.memory,
+			// markers needed to rebuild the search path after a round-trip (undefined values are dropped by JSON.stringify)
+			n:         this.n,
+			t:         this.t,
+			globalEnv: this.globalEnv,
 		};
 	}
 }
 
-/** Splits an environment chain into its leading library layers (see {@link EnvType}) and the remaining base. */
+/** Walks up to the global environment (see {@link Environment#globalEnv}), falling back to the last non-builtin env. */
+function findGlobalEnvironment(this: void, env: Environment): Environment {
+	let current = env;
+	while(!current.globalEnv && !current.parent.builtInEnv) {
+		current = current.parent;
+	}
+	return current;
+}
+
+/**
+ * Splices a package block (`blockTop` .. `blockBottom`) directly below the global environment, mirroring R
+ * attaching a package below `.GlobalEnv` (so global bindings shadow package exports, and the most recently
+ * attached package is nearest global). Returns a fresh `current`; only clones the path down to global.
+ */
+function attachPackageBelowGlobal(this: void, current: Environment, blockTop: Environment, blockBottom: Environment): Environment {
+	const clonedCurrent = current.clone(false);
+	let global = clonedCurrent;
+	while(!global.globalEnv && !global.parent.builtInEnv) {
+		global.parent = global.parent.clone(false);
+		global = global.parent;
+	}
+	blockBottom.parent = global.parent; // the built-in env, or the previously attached packages
+	global.parent = blockTop;
+	return clonedCurrent;
+}
+
+/**
+ * Helper functions for navigating and manipulating {@link REnvironmentInformation|environments} beyond the
+ * {@link Environment} methods, in particular around the global environment and attached-package search path.
+ */
+export const REnvironment = {
+	name:              'REnvironment',
+	/** Walks up to the global environment (`.GlobalEnv`); see {@link findGlobalEnvironment}. */
+	findGlobal:        findGlobalEnvironment,
+	/** Attaches a package block below the global environment; see {@link attachPackageBelowGlobal}. */
+	attachBelowGlobal: attachPackageBelowGlobal,
+} as const;
+
+/** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */
 function splitLibraryLayers(env: Environment): [Environment[], Environment] {
 	const layers: Environment[] = [];
 	let current = env;
@@ -395,15 +456,6 @@ function splitLibraryLayers(env: Environment): [Environment[], Environment] {
 		current = current.parent;
 	}
 	return [layers, current];
-}
-
-/**
- * Number of leading library layers (see {@link EnvType}) of an environment chain (cached in {@link Environment#libs}, hence O(1)).
- * Loaded libraries extend the search path rather than nesting a lexical scope, so they must be
- * discounted when {@link appendEnvironment|appending} or {@link overwriteEnvironment|overwriting} environments of different {@link REnvironmentInformation#level|levels}.
- */
-export function libraryLayerHeight(env: Environment): number {
-	return env.libs;
 }
 
 /**

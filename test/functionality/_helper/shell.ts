@@ -52,7 +52,7 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
 		let shell: RShell | null = null;
 		try {
@@ -62,7 +62,7 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) =>
 			// ensure we close the shell in error cases too
 			shell?.close();
 		}
-	});
+	}, timeout);
 };
 
 

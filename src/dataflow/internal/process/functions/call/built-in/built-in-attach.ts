@@ -9,7 +9,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Environment } from '../../../../../environments/environment';
+import { Environment, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
@@ -45,8 +45,8 @@ export function processAttach<OtherInfo>(
 		return result;
 	}
 
-	/* build the attached layer with the env's known bindings */
-	let attachedLayer = new Environment(result.environment.current.parent);
+	/* build the attached layer with the env's known bindings (its parent is set when spliced below global) */
+	let attachedLayer = new Environment(result.environment.current);
 	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
@@ -60,8 +60,9 @@ export function processAttach<OtherInfo>(
 		}
 	}
 
-	/* splice the attached layer between the current scope and its original parent */
-	const newCurrent = result.environment.current.clone(false);
-	newCurrent.parent = attachedLayer;
-	return { ...result, environment: { current: newCurrent, level: result.environment.level } };
+	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones - correct even when attach() runs inside a function */
+	return { ...result, environment: {
+		current: REnvironment.attachBelowGlobal(result.environment.current, attachedLayer, attachedLayer),
+		level:   result.environment.level
+	} };
 }

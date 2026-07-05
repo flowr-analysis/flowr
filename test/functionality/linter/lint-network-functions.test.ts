@@ -53,6 +53,18 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
 			{ fns: ['read.csv'] }
 		);
+		assertLinter('trigger with custom url prefix', parser, 'read.csv("www.example.com")',
+			'network-functions',
+			[{ certainty: LintingResultCertainty.Certain, function: 'read.csv', loc: [1, 1, 1, 27] }],
+			{ totalCalls: 1, totalFunctionDefinitions: 1 },
+			{ fns: [{ name: 'read.csv', onlyTriggerWithArgument: /^www\./ }] }
+		);
+		assertLinter('do not trigger with custom url prefix', parser, 'read.csv("https://example.com")',
+			'network-functions',
+			[],
+			{ totalCalls: 0, totalFunctionDefinitions: 0 },
+			{ fns: [{ name: 'read.csv', onlyTriggerWithArgument: /^www\./ }] }
+		);
 
 		assertLinter('do not trigger with multiple arguments', parser, 'download.file("data/local.csv", "local.csv")',
 			'network-functions',

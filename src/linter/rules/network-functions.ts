@@ -8,29 +8,50 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
+import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 
 export interface NetworkFunctionsConfig extends MergeableRecord {
-	/** The list of function names that should be marked in the given context if their arguments match. */
-	fns:                      readonly string[]
-	/** only trigger if the function's read argument is linked to a value that matches this pattern */
+	/**
+	 * The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match.
+	 */
+	fns:                      readonly (string | NetworkFunction)[]
+	/**
+	 * Only trigger if the function's read argument is linked to a value that matches this pattern.
+	 * This value is only used for entries in {@link fns} that are either strings, or whose {@link NetworkFunction.onlyTriggerWithArgument} value is unset.
+	 */
+	onlyTriggerWithArgument?: RegExp | string
+}
+export interface NetworkFunction extends MergeableRecord{
+	/**
+	 * The name of the network function to find.
+	 */
+	name:                     string,
+	/**
+	 * The {@link FunctionInfo} to use for querying the argument whose value should match {@link onlyTriggerWithArgument}.
+	 * If this is not specified, flowR's default database of functions ({@link ReadFunctions}, {@link SourceFunctions} and {@link WriteFunctions}) is queried for appropriate information on the function's read argument.
+	 */
+	info?:                    Omit<FunctionInfo, 'name'>
+	/**
+	 * Only trigger if the function's read argument is linked to a value that matches this pattern through {@link info}.
+	 *  If this is unset for any function, the default value from the {@link NetworkFunctionsConfig} is used.
+	 */
 	onlyTriggerWithArgument?: RegExp | string
 }
 
-
-const FnPool = new Map(ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [f.name, f] as const));
+const DefaultFunctionPool = new Map(ReadFunctions.concat(SourceFunctions, WriteFunctions).map(f => [f.name, f] as const));
 export const NETWORK_FUNCTIONS = {
-	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
+	createSearch:        (config) => functionFinderUtil.createSearch(config.fns.map(f => typeof f === 'string' ? f : f.name)),
 	processSearchResult: (e, c, d) => {
+		const fnPool = new Map<string, FunctionInfo>([
+			...DefaultFunctionPool,
+			...c.fns.flatMap(f => typeof f === 'string' ? [] : f.info === undefined ? [] : [[f.name, { name: f.name, ...f.info }] as const])
+		]);
+		const onlyTriggerLookup = new Map(c.fns.flatMap(f => typeof f === 'string' ? [] : [[f.name, f.onlyTriggerWithArgument] as const]));
 		return functionFinderUtil.processSearchResult(e, c, d,
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					const val = await functionFinderUtil.requireArgumentValue(
-						e,
-						FnPool,
-						d,
-						c.onlyTriggerWithArgument);
-
+					const val = await functionFinderUtil.requireArgumentValue(e, fnPool, d, onlyTriggerLookup.get(e.node.lexeme ?? '') ?? c.onlyTriggerWithArgument);
 					if(val === Ternary.Never) {
 						continue;
 					}

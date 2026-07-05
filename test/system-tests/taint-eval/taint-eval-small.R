@@ -2,3 +2,5 @@
 x <- read.table()
 bla <- someunknown("argOfUnmapped")
 y <- source(x, "someOtherArg", namedArg = TRUE)
+myLocal <- function(a) a
+z <- myLocal(x)

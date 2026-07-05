@@ -10,6 +10,7 @@ import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/proces
 import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ArgTaintProjector } from '../taint-visitor';
+import { satisfiesCallTargets, CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],
@@ -20,15 +21,19 @@ interface ArgInfo {
 	name?:  string,
 	value?: string | number | boolean | (string | number | boolean)[],
 	/** The incoming taint of the argument, resolved for every argument regardless of mapping rules. */
-	taint?: string,
+	taint?: unknown,
 }
 
 interface CallInfo {
-	functionName: Identifier,
-	nodeId:       NodeId,
-	line:         string | undefined,
+	functionName:  Identifier,
+	nodeId:        NodeId,
+	line:          string | undefined,
 	/** All arguments of the call (name, resolved value, and incoming taint). */
-	args:         ArgInfo[],
+	args:          ArgInfo[],
+	/**
+	 * Locally-defined call targets (present only when the call resolves purely to local functions),
+	 */
+	localTargets?: NodeId[],
 }
 
 interface MappedCallInfo extends CallInfo {
@@ -53,18 +58,20 @@ export class TaintAnalysisInstrumentation {
 		return this._trace;
 	}
 
-	fnCallHook = ({ name, taint, node, value, projectArg, dfg, ctx }: FnCallHookInfo) => {
+	fnCallHook = ({ name, taint, node, value, projectArg, call, dfg, ctx }: FnCallHookInfo) => {
 		const fnCallInfo = this.addFile(name, node);
-		const call: CallInfo = {
+		const localTargets = satisfiesCallTargets(call, dfg, CallTargets.OnlyLocal);
+		const callInfo: CallInfo = {
 			line:         node.info.fullRange?.[0].toString(),
 			nodeId:       node.info.id,
 			functionName: node.functionName.content,
 			args:         this.evaluateArguments(dfg, ctx, node, projectArg),
+			...(localTargets === 'no' ? {} : { localTargets }),
 		};
 		if(taint) {
-			fnCallInfo.mappedCalls.push({ ...call, taint: value.toJson() });
+			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJson() });
 		} else {
-			fnCallInfo.unmappedCalls.push(call);
+			fnCallInfo.unmappedCalls.push(callInfo);
 		}
 	};
 
@@ -92,7 +99,7 @@ export class TaintAnalysisInstrumentation {
 			return {
 				name:  resolveIdToArgName(resolvable, resolveInfo),
 				value: resolveIdToArgValue(resolvable, resolveInfo),
-				taint: valueId === undefined ? undefined : projectArg(valueId)?.toString(),
+				taint: valueId === undefined ? undefined : projectArg(valueId)?.toJson(),
 			};
 		});
 	}

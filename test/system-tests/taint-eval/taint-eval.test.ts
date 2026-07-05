@@ -57,13 +57,27 @@ describe('taint-analysis evaluation', () => {
 				{ taint: 'Network Input' }, { value: 'someOtherArg' }, { name: 'namedArg', value: true }
 			], taint: 'bottom' });
 
-		assert.equal(sec.unmappedCalls.length, 1);
+		assert.equal(sec.unmappedCalls.length, 2);
 		assert.deepEqual(sec.unmappedCalls[0], {
 			line:         '3',
 			nodeId:       8,
 			functionName: 'someunknown',
 			args:         [ { value: 'argOfUnmapped' } ],
 		});
+
+		// the locally-defined function call carries its local definition target(s),
+		// signalling that intraprocedural analysis could apply
+		assert.deepEqual(sec.unmappedCalls[1], {
+			line:         '6',
+			nodeId:       32,
+			functionName: 'myLocal',
+			args:         [ { taint: 'bottom' } ],
+			localTargets: [ 26 ],
+		});
+
+		// calls resolving to library/built-in functions carry no local targets
+		assert.isUndefined(sec.mappedCalls[0].localTargets);
+		assert.isUndefined(sec.unmappedCalls[0].localTargets);
 
 		assert.deepEqual(output.result['security'], { 'domains': 'bottom', 'finding': 'User input potentially flowing to output' });
 	});

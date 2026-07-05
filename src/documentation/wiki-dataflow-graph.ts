@@ -38,6 +38,7 @@ import {
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
+import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
@@ -1120,7 +1121,7 @@ Let's start by looking at the properties of the dataflow information object: ${O
 
 ${ (() => {
 			/* this includes the meta field for timing and the quick CFG in order to enable re-use and improve performance */
-			guard(Object.keys(result).length === 10, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
+			guard(Object.keys(result).length === 11, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
 		})() }
 
 There are three sets of references.
@@ -1139,12 +1140,45 @@ ${printEnvironmentToMarkdown(result.environment.current)}
 This shows us that the local environment contains a single definition for \`x\` (with id 0) and that the parent environment is the built-in environment.
 Additionally, we get the information that the node with the id 2 was responsible for the definition of \`x\`.
 
+#### Attached Packages and the Search Path
+
+Calling \`library(pkg)\` (or \`require\`) attaches a package to the search path.
+Mirroring R's \`search()\`, _flowR_ inserts the package's namespace and imports environments *below* the global environment (\`.GlobalEnv\`), so resolution walks **current scope -> enclosing scopes -> global -> attached packages -> built-ins**.
+
+**A global binding shadows a package export** of the same name, exactly as in R:
+
+\`\`\`r
+filter <- function(x) x   # your global definition
+library(stats)            # stats also exports filter()
+filter(1)                 # -> resolves to YOUR filter, not stats::filter
+\`\`\`
+
+**Most recently attached is nearest, and re-attaching is a no-op:**
+
+\`\`\`r
+library(A)   # search path (top-down): A
+library(B)   #                         B, A
+library(A)   # no-op                   B, A   (A is not moved or duplicated)
+\`\`\`
+
+**Attaching inside a function propagates to the caller** (R attaches globally), and across branches every possibly-attached package is kept (a sound over-approximation of R's single runtime path):
+
+\`\`\`r
+f <- function() library(A)   # attaches A when called
+f()
+someExportOfA()              # -> resolves against A
+if (cond) library(B)         # B is kept (may be attached)
+\`\`\`
+
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
 		}) and a set of **exit points** (${
 			JSON.stringify(result.exitPoints.map(e => e.nodeId))
 		}). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
+
+Finally, the **kill** property (${ctx.link('KillReference', undefined, { type: 'type' })}) tracks references that are removed from scope within the current subtree (e.g., via \`rm(x)\`).
+It is \`undefined\` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see ${ctx.link(applyKills)}) at the right location.
 
 ### Unknown Side Effects
 

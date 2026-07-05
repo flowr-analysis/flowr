@@ -1,8 +1,16 @@
-import type { Environment, REnvironmentInformation } from './environment';
+import { EnvType, type Environment, type REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
+import { Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
+
+/** A namespaced lookup only sees its matching layer; a bare lookup skips loaded-but-unattached namespaces (`requireNamespace`). */
+function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boolean {
+	if(ns !== undefined) {
+		return layer.n !== ns;
+	}
+	return layer.t === EnvType.LoadedNamespace;
+}
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -41,7 +49,7 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
-		if(ns && current.n !== ns) {
+		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
 		}
@@ -99,7 +107,7 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{
-		if(ns && current.n !== ns) {
+		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
 		}

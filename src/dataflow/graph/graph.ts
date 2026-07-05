@@ -13,7 +13,7 @@ import { uniqueArrayMerge } from '../../util/collections/arrays';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { BrandedIdentifier, IdentifierDefinition, IdentifierReference } from '../environments/identifier';
 import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Environment, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import { Environment, type EnvType, type IEnvironment, type REnvironmentInformation } from '../environments/environment';
 import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { cloneEnvironmentInformation } from '../environments/clone';
 import type { LinkTo } from '../../queries/catalog/call-context-query/call-context-query-format';
@@ -650,6 +650,9 @@ export interface IEnvironmentJson {
 	parent:      IEnvironmentJson;
 	memory:      Record<BrandedIdentifier, IdentifierDefinition[]>;
 	builtInEnv:  true | undefined;
+	n?:          string;
+	t?:          EnvType;
+	globalEnv?:  true;
 }
 
 interface REnvironmentInformationJson {
@@ -666,7 +669,11 @@ function envFromJson(json: IEnvironmentJson): Environment {
 	const obj: Writable<IEnvironment> = new Environment(parent as Environment, json.builtInEnv);
 	(obj as { id: NodeId }).id = json.id;
 	obj.memory = memory;
-	return obj as Environment;
+	const env = obj as Environment;
+	env.n = json.n;
+	env.t = json.t;
+	env.globalEnv = json.globalEnv;
+	return env;
 }
 
 function renvFromJson(json: REnvironmentInformationJson): REnvironmentInformation {

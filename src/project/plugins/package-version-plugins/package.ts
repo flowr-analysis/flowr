@@ -1,6 +1,8 @@
 import type { Range } from 'semver';
 import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
+import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { parseRRange } from '../../../util/r-version';
 
 export type PackageType = 'package' | 'system' | 'r';
@@ -24,6 +26,14 @@ export class Package {
 	constructor(info: { name: string } & PackageOptions) {
 		this.name = info.name;
 		this.addInfo(info);
+	}
+
+	/** Builds a package from a raw `NAMESPACE` body and its list of callable exports. */
+	public static fromConstants(name: string, namespace: string, callable: string[]): Package {
+		return new Package({
+			name,
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespace)).content().current, callable)
+		});
 	}
 
 	has(name: string, className?: string): boolean {
@@ -107,5 +117,9 @@ export class Package {
 		} else {
 			return undefined;
 		}
+	}
+
+	public static funcIdentif(dependency: string, func: string): string{
+		return `${dependency}:${func}`;
 	}
 }

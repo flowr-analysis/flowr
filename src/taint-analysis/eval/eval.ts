@@ -46,7 +46,7 @@ function* findRFiles(dir: string): Generator<string> {
 function collectScripts(root: string): ScriptRun[] {
 	const paths = fs.statSync(root).isDirectory() ? findRFiles(root) : [root];
 	return Array.from(paths, file => {
-		const parts = path.relative(root, file).split(path.sep);
+		const parts = file === root ? [path.basename(file)] : path.relative(root, file).split(path.sep);
 		return {
 			scriptName: parts.length >= 3 ? parts.slice(2).join('/') : parts[parts.length - 1],
 			path:       file,
@@ -130,7 +130,7 @@ async function main(): Promise<void> {
 		.build();
 
 	const scripts = collectScripts(datasetPath);
-	console.error(`Found ${scripts.length} R script(s) below ${datasetPath}; writing results to stdout`);
+	console.error(`Found ${scripts.length} R script(s) in ${datasetPath}; writing results to stdout`);
 
 	try {
 		for(const script of scripts) {

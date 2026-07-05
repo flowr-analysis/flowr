@@ -481,4 +481,34 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('standalone checkmate assert_true is not detected', 'assert_true(x > 0)', {});
 	});
+
+	describe('Read from string', () => {
+		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', {
+			read:  [],
+			write: []
+		});
+
+		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       7,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+
+		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       8,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+	});
+
 }));

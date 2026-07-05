@@ -27,6 +27,7 @@ import {
 	applyCdsToAllInGraphButConstants,
 	applyCdToReferences
 } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { appendEnvironment } from '../../../../../environments/append';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
@@ -113,7 +114,11 @@ export function processWhileLoop<OtherInfo>(
 	// as the while-loop always evaluates its condition
 	information.graph.addEdge(nameId, condition.entryPoint, EdgeType.Reads);
 	// the body's environment carries its side effects (e.g. a `library()` call), which must survive the loop
-	const loopEnvironment = appendEnvironment(information.environment, body.environment);
+	const bodyEnvironment = appendEnvironment(information.environment, body.environment);
+	// as we do not know whether the loop executes at all, we merge the original environment back in (the body may never run)
+	const loopEnvironment = conditionIsAlwaysTrue ? bodyEnvironment : appendEnvironment(origEnv, bodyEnvironment);
+	// unless the loop always runs, a body removal only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? (conditionIsAlwaysTrue ? body.kill : makeKillsMaybe(body.kill, cdTrue)) : undefined;
 	return {
 		unknownReferences: [],
 		in:                [{ nodeId: nameId, name: name.lexeme, cds: originalDependency, type: ReferenceType.Function }, ...remainingInputs],
@@ -121,8 +126,8 @@ export function processWhileLoop<OtherInfo>(
 		entryPoint:        nameId,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		graph:             information.graph,
-		// as we do not know whether the loop executes at all, we merge the original environment back in (the body may never run)
-		environment:       conditionIsAlwaysTrue ? loopEnvironment : appendEnvironment(origEnv, loopEnvironment),
-		hooks:             condition.hooks.concat(body.hooks)
+		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
+		hooks:             condition.hooks.concat(body.hooks),
+		kill:              loopKill,
 	};
 }

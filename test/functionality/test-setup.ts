@@ -14,13 +14,11 @@ import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree
 declare global {
 	var hasNetwork: boolean;
 	var rVersion: SemVer | null | undefined;
-	var hasXmlParseData: boolean;
 	var produceLabelSummary: boolean;
 }
 
 
 globalThis.hasNetwork = false;
-globalThis.hasXmlParseData = false;
 globalThis.produceLabelSummary = false;
 
 await (async() => {
@@ -34,7 +32,6 @@ await (async() => {
 		shell = new RShell();
 		shell.tryToInjectHomeLibPath();
 		globalThis.rVersion = await shell.usedRVersion();
-		globalThis.hasXmlParseData = await shell.isPackageInstalled('xmlparsedata');
 	} catch(e) {
 		console.error(e);
 	} finally {

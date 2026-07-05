@@ -38,6 +38,7 @@ import {
 import { createDataflowPipeline } from '../core/steps/pipeline/default-pipelines';
 import { nth } from '../util/text/text';
 import { getAllFunctionCallTargets } from '../dataflow/internal/linker';
+import { applyKills } from '../dataflow/environments/apply-kill';
 import { printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
 import type { RFunctionDefinition } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 import { getOriginInDfg } from '../dataflow/origin/dfg-get-origin';
@@ -1120,7 +1121,7 @@ Let's start by looking at the properties of the dataflow information object: ${O
 
 ${ (() => {
 			/* this includes the meta field for timing and the quick CFG in order to enable re-use and improve performance */
-			guard(Object.keys(result).length === 10, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
+			guard(Object.keys(result).length === 11, () => 'Update Dataflow Documentation! (Keys: ' + Object.keys(result).join(', ') + ')'); return '';
 		})() }
 
 There are three sets of references.
@@ -1177,6 +1178,9 @@ Last but not least, the information contains the single **entry point** (${
 			JSON.stringify(result.exitPoints.map(e => e.nodeId))
 		}). 
 Besides marking potential exits, the exit points also provide information about why the exit occurs and which control dependencies affect the exit.
+
+Finally, the **kill** property (${ctx.link('KillReference', undefined, { type: 'type' })}) tracks references that are removed from scope within the current subtree (e.g., via \`rm(x)\`).
+It is \`undefined\` unless such a removal occurred and, like the outgoing references, bubbles up so that the enclosing scope can apply the removal (see ${ctx.link(applyKills)}) at the right location.
 
 ### Unknown Side Effects
 

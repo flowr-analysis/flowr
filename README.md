@@ -33,7 +33,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (1 ms)
+    Query: linter (2 ms)
        ╰ Deprecated Functions (deprecated-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
@@ -74,7 +74,7 @@ It offers a wide variety of features, for example:
            ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ No Leaked Credentials (no-leaked-credentials):
            ╰ Metadata: totalChecked: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈1 ms (1ms accuracy, total 1 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -137,11 +137,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalChecked: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 2 ms)_
+    _All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _2.1 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _2.6 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -365,7 +365,6 @@ It offers a wide variety of features, for example:
     	   
     
     </details>
-        
 
 
 * 🍕 **program slicing**\
@@ -421,7 +420,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈1 ms (1ms accuracy, total 1 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 8 ms)
     ```
     
     
@@ -434,7 +433,6 @@ It offers a wide variety of features, for example:
        
     
     </details>
-        
 
 * 📚 **dependency analysis**\
   Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/query-api) to get more information about your code.
@@ -451,8 +449,7 @@ It offers a wide variety of features, for example:
       
       
     
-    </details>
-         
+    </details> 
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
   Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">107.1 ms</span></i> (as of Jul 2, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
@@ -804,7 +801,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _1.5 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _2.3 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -815,7 +812,6 @@ It offers a wide variety of features, for example:
        
     
     </details>
-        
 
 If you want to use flowR and the features it provides, feel free to check out the:
 

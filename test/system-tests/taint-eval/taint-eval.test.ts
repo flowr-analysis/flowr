@@ -4,6 +4,7 @@ import { allPredefinedTaintAnalysisNames } from '../../../src/taint-analysis/pre
 import type { LoggedFnCallInfo } from '../../../src/taint-analysis/eval/instrumentation';
 
 type ParsedTrace = Record<string, Record<string, LoggedFnCallInfo>>;
+type ParsedCallInfo = LoggedFnCallInfo['unmappedCalls'][number];
 
 interface EvalOutput {
 	script_name: string;
@@ -24,6 +25,17 @@ async function getEvalOutput(script: string) {
 	const output = parseEvalOutput(stdout);
 	assert.isNumber(output.infer_time, 'expected an inference time to be reported');
 	return output;
+}
+
+function findUnmappedCall(info: LoggedFnCallInfo, name: string): ParsedCallInfo {
+	const call = info.unmappedCalls.find(c => c.functionName === name);
+	assert.isDefined(call, `expected an unmapped call to ${name} to be logged`);
+	return call;
+}
+
+/** The cds of a call without their (fixture-dependent) node ids. */
+function cdConstructs(call: ParsedCallInfo) {
+	return call.cds?.map(({ id: _, ...rest }) => rest);
 }
 
 describe('taint-analysis evaluation', () => {
@@ -80,5 +92,40 @@ describe('taint-analysis evaluation', () => {
 		assert.isUndefined(sec.unmappedCalls[0].localTargets);
 
 		assert.deepEqual(output.result['security'], { 'domains': 'bottom', 'finding': 'User input potentially flowing to output' });
+	});
+
+	test('logs the control dependencies of guarded calls', async() => {
+		const output = await getEvalOutput('test/system-tests/taint-eval/taint-eval-control-deps.R');
+
+		const sec = Object.values(output.inferred['security'])[0];
+		assert.isDefined(sec);
+
+		// top-level calls and the conditions of `if`/`while` execute unconditionally
+		assert.isUndefined(sec.mappedCalls[0].cds, 'expected no cds for the top-level read.table');
+		assert.isUndefined(sec.mappedCalls[0].inEveryBranch);
+		for(const name of ['isTRUE', 'running', 'stopifnot']) {
+			assert.isUndefined(findUnmappedCall(sec, name).cds, `expected no cds for ${name}`);
+		}
+
+		// both branches of an `if` depend on the same node, with complementary `when` flags
+		const guardedThen = findUnmappedCall(sec, 'guardedThen');
+		const guardedElse = findUnmappedCall(sec, 'guardedElse');
+		const ifId = guardedThen.cds?.[0].id;
+		assert.isDefined(ifId);
+		assert.deepEqual(guardedThen.cds, [{ id: ifId, construct: 'if', when: true }]);
+		assert.deepEqual(guardedElse.cds, [{ id: ifId, construct: 'if', when: false }]);
+		assert.isFalse(guardedThen.inEveryBranch);
+		assert.isFalse(guardedElse.inEveryBranch);
+
+		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inFor')), [{ construct: 'for', when: true }]);
+		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inWhile')), [{ construct: 'while', when: true }]);
+		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'inRepeat')), [{ construct: 'repeat' }, { construct: 'if', when: true }]);
+
+		// the `stopifnot` cd points at the condition expression, i.e., the `is.numeric` call
+		const condition = findUnmappedCall(sec, 'is.numeric');
+		assert.deepEqual(findUnmappedCall(sec, 'afterStopifnot').cds, [{ id: condition.nodeId, construct: 'stopifnot', when: true }]);
+
+		// the rhs of `&&` is evaluated lazily (and inherits the preceding stopifnot guard)
+		assert.deepEqual(cdConstructs(findUnmappedCall(sec, 'lazyRhs')), [{ construct: '&&', when: true }, { construct: 'stopifnot', when: true }]);
 	});
 });

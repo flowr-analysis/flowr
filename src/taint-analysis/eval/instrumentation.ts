@@ -1,4 +1,4 @@
-import type { Identifier } from '../../dataflow/environments/identifier';
+import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from '../builder/taint-analysis';
 import { getFunctionArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
@@ -11,6 +11,10 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ArgTaintProjector } from '../taint-visitor';
 import { satisfiesCallTargets, CallTargets } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
+import type { ControlDependency } from '../../dataflow/info';
+import { happensInEveryBranch } from '../../dataflow/info';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],
@@ -24,16 +28,33 @@ interface ArgInfo {
 	taint?: unknown,
 }
 
+interface ControlDependencyInfo {
+	/** Node id of the governing construct (e.g., the `if` node, or a `stopifnot` condition expression). */
+	id:           NodeId,
+	/** Resolved construct kind, e.g. 'if', 'for', 'while', 'repeat', '&&', '||', 'stopifnot'. */
+	construct:    string,
+	/** Whether the dependency triggers when the governing condition is true or false. */
+	when?:        boolean,
+	/** Whether the dependency was created due to iteration (e.g., a conditional loop exit). */
+	byIteration?: boolean,
+	/** Any file-exist assumption made (e.g., by `source`). */
+	file?:        string,
+}
+
 interface CallInfo {
-	functionName:  Identifier,
-	nodeId:        NodeId,
-	line:          string | undefined,
+	functionName:   Identifier,
+	nodeId:         NodeId,
+	line:           string | undefined,
 	/** All arguments of the call (name, resolved value, and incoming taint). */
-	args:          ArgInfo[],
+	args:           ArgInfo[],
 	/**
 	 * Locally-defined call targets (present only when the call resolves purely to local functions),
 	 */
-	localTargets?: NodeId[],
+	localTargets?:  NodeId[],
+	/** Control dependencies governing the execution of this call; absent if unconditional. */
+	cds?:           ControlDependencyInfo[],
+	/** Whether the cds are exhaustive (i.e., the call executes in every branch); only set when cds are present. */
+	inEveryBranch?: boolean,
 }
 
 interface MappedCallInfo extends CallInfo {
@@ -61,12 +82,14 @@ export class TaintAnalysisInstrumentation {
 	fnCallHook = ({ name, taint, node, value, projectArg, call, dfg, ctx }: FnCallHookInfo) => {
 		const fnCallInfo = this.addFile(name, node);
 		const localTargets = satisfiesCallTargets(call, dfg, CallTargets.OnlyLocal);
+		const cds = call.cds?.map(cd => resolveControlDependency(cd, dfg));
 		const callInfo: CallInfo = {
 			line:         node.info.fullRange?.[0].toString(),
 			nodeId:       node.info.id,
 			functionName: node.functionName.content,
 			args:         this.evaluateArguments(dfg, ctx, node, projectArg),
 			...(localTargets === 'no' ? {} : { localTargets }),
+			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
 		if(taint) {
 			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJson() });
@@ -104,4 +127,57 @@ export class TaintAnalysisInstrumentation {
 		});
 	}
 
+}
+
+function resolveControlDependency(cd: ControlDependency, dfg: DataflowGraph): ControlDependencyInfo {
+	return {
+		id:        cd.id,
+		construct: classifyControlConstruct(cd, dfg),
+		...(cd.when === undefined ? {} : { when: cd.when }),
+		...(cd.byIteration === undefined ? {} : { byIteration: cd.byIteration }),
+		...(cd.file === undefined ? {} : { file: cd.file }),
+	};
+}
+
+/** Binary operators that lazily evaluate their rhs and thus act as control constructs. */
+const LazyBinaryOperators: ReadonlySet<string> = new Set(['&&', '&', '||', '|']);
+
+/**
+ * Resolves the construct that causes a control dependency. The cd id points either directly at the construct
+ * (`if`, loops, lazy binary operators, `source`) or at a governing expression (e.g., a `stopifnot` condition or
+ * a `tryCatch` block), for which the enclosing named call names the construct.
+ */
+function classifyControlConstruct(cd: ControlDependency, dfg: DataflowGraph): string {
+	const node = dfg.idMap?.get(cd.id);
+	if(node === undefined) {
+		return 'unknown';
+	}
+	switch(node.type) {
+		case RType.IfThenElse:   return 'if';
+		case RType.ForLoop:      return 'for';
+		case RType.WhileLoop:    return 'while';
+		case RType.RepeatLoop:   return 'repeat';
+		case RType.BinaryOp:
+			if(LazyBinaryOperators.has(node.operator)) {
+				return node.operator;
+			}
+			break;
+		case RType.FunctionCall:
+			// only file-exist assumptions point directly at their call (`source`); other call-typed cd ids are
+			// governing expressions (e.g., a `stopifnot` condition) whose enclosing call names the construct
+			if(node.named && cd.file !== undefined) {
+				return Identifier.toString(node.functionName.content);
+			}
+			break;
+	}
+	for(let parent = parentNode(node, dfg); parent !== undefined; parent = parentNode(parent, dfg)) {
+		if(parent.type === RType.FunctionCall && parent.named) {
+			return Identifier.toString(parent.functionName.content);
+		}
+	}
+	return node.type;
+}
+
+function parentNode(node: RNode<ParentInformation>, dfg: DataflowGraph): RNode<ParentInformation> | undefined {
+	return node.info.parent === undefined ? undefined : dfg.idMap?.get(node.info.parent);
 }

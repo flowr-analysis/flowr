@@ -11,16 +11,16 @@ import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ArgTaintProjector } from '../taint-visitor';
 
-interface LoggedFnCallInfo {
+export interface LoggedFnCallInfo {
 	mappedCalls:   MappedCallInfo[],
 	unmappedCalls: CallInfo[],
 }
 
 interface ArgInfo {
-	name:  string | undefined,
-	value: string | number | boolean | (string | number | boolean)[] | undefined,
+	name?:  string,
+	value?: string | number | boolean | (string | number | boolean)[],
 	/** The incoming taint of the argument, resolved for every argument regardless of mapping rules. */
-	taint: string | undefined,
+	taint?: string,
 }
 
 interface CallInfo {
@@ -32,7 +32,7 @@ interface CallInfo {
 }
 
 interface MappedCallInfo extends CallInfo {
-	taint: string
+	taint: unknown
 }
 
 /**
@@ -62,7 +62,7 @@ export class TaintAnalysisInstrumentation {
 			args:         this.evaluateArguments(dfg, ctx, node, projectArg),
 		};
 		if(taint) {
-			fnCallInfo.mappedCalls.push({ ...call, taint: value.toString() });
+			fnCallInfo.mappedCalls.push({ ...call, taint: value.toJson() });
 		} else {
 			fnCallInfo.unmappedCalls.push(call);
 		}

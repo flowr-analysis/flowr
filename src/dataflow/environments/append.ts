@@ -3,8 +3,7 @@ import type { IdentifierDefinition } from './identifier';
 import { padToCommonScope } from './scoping';
 
 /**
- * Merges two arrays of identifier definitions, ensuring uniqueness based on `nodeId` and `definedAt`.
- * Returns a copy, the input arrays are not modified (they may be shared with other environments).
+ * Merges two arrays of identifier definitions into a fresh array, unique by `nodeId` and `definedAt`.
  */
 export function uniqueMergeValuesInDefinitions(old: readonly IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
 	const result = old.slice();

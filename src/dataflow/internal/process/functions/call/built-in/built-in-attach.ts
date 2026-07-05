@@ -15,14 +15,7 @@ import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effec
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 
-/**
- * Processes `attach(what, ...)` - when `what` is a variable that holds a tracked
- * {@link InGraphIdentifierDefinition#envState}, all statically-known definitions from
- * that environment are injected into a new scope layer inserted *between* the current
- * scope and its parent.  This mirrors R's behaviour: `attach` adds to the search path
- * below `.GlobalEnv`, so existing global bindings take precedence, but after a
- * `rm(name)` removes a global shadow the attached binding becomes visible again.
- */
+/** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -45,7 +38,7 @@ export function processAttach<OtherInfo>(
 		return result;
 	}
 
-	/* build the attached layer with the env's known bindings (its parent is set when spliced below global) */
+	/* build the attached layer with the env's known bindings */
 	let attachedLayer = new Environment(result.environment.current);
 	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
 		for(const varDef of varDefs) {
@@ -60,7 +53,7 @@ export function processAttach<OtherInfo>(
 		}
 	}
 
-	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones - correct even when attach() runs inside a function */
+	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones */
 	return { ...result, environment: {
 		current: REnvironment.attachBelowGlobal(result.environment.current, attachedLayer, attachedLayer),
 		level:   result.environment.level

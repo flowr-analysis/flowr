@@ -2,7 +2,7 @@ import { type REnvironmentInformation, Environment } from './environment';
 import { guard } from '../../util/assert';
 
 /**
- * Add a new local environment scope to the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone)
+ * Add a new local environment scope to the stack, returns the modified variant (shares the original stack, no deep-clone).
  * @see {@link popLocalEnvironment} - to remove the local scope again
  */
 export function pushLocalEnvironment({ level, current }: REnvironmentInformation): REnvironmentInformation {
@@ -13,7 +13,7 @@ export function pushLocalEnvironment({ level, current }: REnvironmentInformation
 }
 
 /**
- * Remove the top local environment scope from the stack, returns the modified variant - sharing the original environments in the stack (no deep-clone)
+ * Remove the top local environment scope from the stack, returns the modified variant (shares the original stack, no deep-clone).
  * @see {@link pushLocalEnvironment} - to add a local scope
  */
 export function popLocalEnvironment({ current, level }: REnvironmentInformation): REnvironmentInformation {
@@ -25,10 +25,7 @@ export function popLocalEnvironment({ current, level }: REnvironmentInformation)
 }
 
 /**
- * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same
- * lexical {@link REnvironmentInformation#level|level}, so they can be merged pairwise (see
- * {@link appendEnvironment}/{@link overwriteEnvironment}). Attached packages live below the global
- * env and do not raise the level, so nothing library-specific is needed here.
+ * Pads whichever of `base`/`next` is shallower with empty local scopes until both are at the same lexical {@link REnvironmentInformation#level|level}.
  */
 export function padToCommonScope(base: REnvironmentInformation, next: REnvironmentInformation): { base: REnvironmentInformation, next: REnvironmentInformation } {
 	while(next.level < base.level) {

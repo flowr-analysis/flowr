@@ -28,7 +28,7 @@ export class Package {
 		this.addInfo(info);
 	}
 
-	/** Builds a package from a raw `NAMESPACE` body and its list of callable exports (handy for tests and fixtures). */
+	/** Builds a package from a raw `NAMESPACE` body and its list of callable exports. */
 	public static fromConstants(name: string, namespace: string, callable: string[]): Package {
 		return new Package({
 			name,

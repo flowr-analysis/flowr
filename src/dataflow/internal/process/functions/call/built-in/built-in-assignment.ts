@@ -476,8 +476,7 @@ function tryRouteToCustomEnv<OtherInfo>(
 	}
 
 	if(resolution.isStackEnv) {
-		/* a real stack env, not a private snapshot. Writing to the global env is a real global assignment: route it as a
-		 * super-assignment so it reaches the global scope even from inside a function (envir=baseenv()/emptyenv() falls through). */
+		/* real stack env, not a private snapshot. Route a global write as a super-assignment so it reaches global scope from inside a function. */
 		if(resolution.envirData.environment.current.globalEnv !== true) {
 			return undefined;
 		}
@@ -579,7 +578,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 		if(isEnvCreatorSource(sourceArg)) {
 			envState = createFreshEnvState(data, sourceArg);
 		} else if(stackEnv !== undefined) {
-			// globalenv()/baseenv()/emptyenv() -> point the assigned variable into that env of the current search-path stack
+			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
 			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);

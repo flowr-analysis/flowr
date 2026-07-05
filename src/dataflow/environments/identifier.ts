@@ -220,6 +220,7 @@ export const enum PkgName {
 	Utils       = 'utils',
 	/* CRAN / third-party */
 	AssertThat   = 'assertthat',
+	Box          = 'box',
 	Cli          = 'cli',
 	DataTable    = 'data.table',
 	Devtools     = 'devtools',

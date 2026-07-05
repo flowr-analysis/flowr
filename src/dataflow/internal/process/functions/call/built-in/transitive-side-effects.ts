@@ -23,14 +23,7 @@ function calledDefinitions(graph: DataflowGraph, call: NodeId): NodeId[] {
 }
 
 /**
- * Generic, reusable interprocedural summary over the call graph. For every function-definition vertex `F` it
- * computes `summary(F) = own(F) union over every (transitive) callee G of summary(G)`, where `own(F)` are the
- * effects `F` produces itself. Callees are read from the {@link EdgeType.Calls} edges of the calls in `F`'s body.
- *
- * The summaries form a monotone {@link Set} lattice (join = set union), computed with a worklist that only
- * re-visits a function when one of its callees grew - so it is near-linear in the call graph and terminates for
- * recursion and mutual recursion alike. Extend flowR with a new propagated effect by picking an element type
- * `T` and an `own` extractor - nothing else changes here.
+ * Computes, for every function-definition vertex `F`, `summary(F) = own(F)` unioned with `summary(G)` over every transitive callee `G`.
  * @param graph - the fully linked dataflow graph
  * @param own   - the effects a single function definition produces itself (its contribution to the summary)
  * @returns a map from each function-definition vertex to its transitive-effect summary
@@ -52,9 +45,9 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 		callees.set(id, targets);
 	}
 	if(summary.size === 0) {
-		return summary; // no functions -> nothing to propagate
+		return summary;
 	}
-	// reverse edges: which functions call a given function (so we only re-process affected callers)
+	// reverse edges: callers of each function
 	const callers = new Map<NodeId, NodeId[]>();
 	for(const [id, targets] of callees) {
 		for(const callee of targets) {
@@ -66,8 +59,7 @@ export function computeCallGraphSummaries<T>(this: void, graph: DataflowGraph, o
 			}
 		}
 	}
-	// monotone worklist fixpoint: pull each callee's summary; if a function grew, re-enqueue its callers.
-	// The lattice is a growing Set, so this terminates even with (mutual) recursion.
+	// worklist fixpoint: pull each callee's summary, re-enqueue callers when a function grew
 	const queue = [...summary.keys()];
 	const queued = new Set(queue);
 	while(queue.length > 0) {
@@ -109,7 +101,7 @@ function attachedPackages(_id: NodeId, fdef: DataflowGraphVertexFunctionDefiniti
 /** The non-built-in definitions a function body lets escape to an outer scope (e.g. a `<<-` super-assignment). */
 function escapedDefinitions(_id: NodeId, fdef: DataflowGraphVertexFunctionDefinition): NodeId[] {
 	const defs: NodeId[] = [];
-	// skip the function's own frame; anything defined in an outer (enclosing/global) scope escaped the call
+	// skip the function's own frame; outer-scope definitions escaped
 	for(let e: Environment | undefined = fdef.subflow.environment.current.parent; e !== undefined && !e.builtInEnv; e = e.parent) {
 		for(const definitions of e.memory.values()) {
 			for(const def of definitions) {
@@ -122,11 +114,7 @@ function escapedDefinitions(_id: NodeId, fdef: DataflowGraphVertexFunctionDefini
 	return defs;
 }
 
-/**
- * Emits {@link EdgeType.SideEffectOnCall} edges for definitions that escape a function *transitively*: if calling
- * `F` (possibly through helpers) lets a `<<-` definition escape, every call site of `F` gets the edge - the same
- * signal the inline pass produces for direct calls, so slicing and linting see the transitive effect too.
- */
+/** Emits {@link EdgeType.SideEffectOnCall} edges for definitions that escape a function transitively. */
 function propagateTransitiveDefinitions(graph: DataflowGraph): void {
 	const summary = computeCallGraphSummaries(graph, escapedDefinitions);
 	for(const [id, vertex] of graph.vertices(true)) {
@@ -142,7 +130,7 @@ function propagateTransitiveDefinitions(graph: DataflowGraph): void {
 }
 
 /**
- * Attaches the packages that are (transitively) loaded by the top-level calls to `environment`, so that
+ * Attaches packages transitively loaded by top-level calls to `environment`.
  * `g <- function() library(A); f <- function() g(); f()` makes `A` available after `f()`.
  * @returns the enriched environment and whether it grew (so the caller can re-link and re-run to a fixpoint).
  */
@@ -174,7 +162,7 @@ function propagateTransitivePackages(graph: DataflowGraph, environment: REnviron
 	return { environment, grew };
 }
 
-/** Maps each escaped definition's node id to its full (name-carrying) definition so it can be folded into an environment. */
+/** Maps each escaped definition's node id to its full (name-carrying) definition. */
 function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifierDefinition & { name: string }> {
 	const map = new Map<NodeId, InGraphIdentifierDefinition & { name: string }>();
 	for(const [, vertex] of graph.vertices(true)) {
@@ -195,8 +183,8 @@ function escapedDefinitionMap(graph: DataflowGraph): Map<NodeId, InGraphIdentifi
 }
 
 /**
- * Folds the `<<-` definitions that escape *transitively* from top-level calls into `environment`, so that a read at
- * the top level resolves them: `f <- function() x <<- 1; g <- function() f(); g(); print(x)` makes `x` resolvable.
+ * Folds the `<<-` definitions that escape transitively from top-level calls into `environment`.
+ * `f <- function() x <<- 1; g <- function() f(); g(); print(x)` makes `x` resolvable.
  * @returns the enriched environment and whether it grew (so the extractor can re-resolve open reads and re-run).
  */
 function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment: REnvironmentInformation): { environment: REnvironmentInformation, grew: boolean, names: Set<string> } {
@@ -226,12 +214,7 @@ function propagateTransitiveEscapedDefinitions(graph: DataflowGraph, environment
 	return { environment, grew, names };
 }
 
-/**
- * Re-resolves still-open reads whose name is one of the transitively escaped `<<-` definitions in `escapedNames`
- * (e.g. a top-level `print(x)` whose `x` is only defined by such an escape) against the enriched `environment`,
- * adding the {@link EdgeType.Reads} edges the inline pass could not yet produce. Restricting to `escapedNames`
- * keeps unrelated open reads (e.g. the right-hand `x` in `x <- x`) untouched.
- */
+/** Re-resolves still-open reads whose name is one of the transitively escaped `<<-` definitions in `escapedNames`, adding {@link EdgeType.Reads} edges. */
 export function reResolveOpenReferences(this: void, graph: DataflowGraph, environment: REnvironmentInformation, references: readonly IdentifierReference[], escapedNames: ReadonlySet<string>): void {
 	for(const ref of references) {
 		if(ref.name === undefined || !escapedNames.has(String(ref.name))) {
@@ -246,11 +229,7 @@ export function reResolveOpenReferences(this: void, graph: DataflowGraph, enviro
 }
 
 /**
- * Propagates the escaped side effects of every function to its (transitive) callers, reusing the single
- * {@link computeCallGraphSummaries} mechanism for each effect kind:
- * - attached packages ({@link EnvType}) are materialized into `environment` so package exports resolve at the call site;
- * - escaped definitions (`<<-`) get transitive {@link EdgeType.SideEffectOnCall} edges for slicing/linting and are
- *   folded into `environment` so a top-level read of the escaped variable resolves.
+ * Propagates every function's escaped side effects (attached packages and `<<-` definitions) to its transitive callers.
  * @returns the enriched top-level environment and whether it grew (so the extractor can re-link and re-run to a fixpoint).
  */
 export function propagateTransitiveSideEffects(this: void, graph: DataflowGraph, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext): { environment: REnvironmentInformation, grew: boolean, escapedNames: Set<string> } {

@@ -53,9 +53,7 @@ export const Dataflow = {
 	 */
 	origin:      getOriginInDfg,
 	/**
-	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their (transitive) callers.
-	 * - `propagateTransitive` - {@link propagateTransitiveSideEffects}, the pass wired into the extractor,
-	 * - `callGraphSummaries` - {@link computeCallGraphSummaries}, the reusable monotone-set fixpoint over the call graph it builds on.
+	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */
 	sideEffects: {
 		propagateTransitive: propagateTransitiveSideEffects,

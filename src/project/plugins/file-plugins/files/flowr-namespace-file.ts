@@ -29,10 +29,7 @@ export interface NamespaceInfo {
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
 	callable:             string[];
-	/**
-	 * This will only be present in complex parsed NAMESPACE files and tell you
-	 * about which parts are only active with given conditions!
-	 */
+	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
 	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
 }
 
@@ -42,26 +39,21 @@ export interface NamespaceFormat {
 }
 
 /**
- * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
- * Namespace files can be parsed in a simple mode which is much quicker, but does not support `if`/other R-constructs!
+ * Decorates a text file to expose its content as a {@link NamespaceFormat}.
+ * Simple parsing is quicker but does not support `if`/other R constructs.
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider;
 	private readonly ctx:     FlowrAnalyzerContext | undefined;
 
-	/**
-	 * Prefer the static {@link FlowrNamespaceFile.from} method to create instances of this class as it will not re-create if already a namespace file
-	 * and handle role assignments.
-	 */
+	/** Prefer {@link FlowrNamespaceFile.from}, which avoids re-wrapping and handles roles. */
 	constructor(file: FlowrFileProvider, ctx?: FlowrAnalyzerContext) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.ctx = ctx;
 	}
 
-	/**
-	 * Creates a {@link FlowrNamespaceFile} from a given {@link NamespaceFormat}, path and optional roles. This is useful if you already have the namespace content parsed and want to create a namespace file instance without re-parsing.
-	 */
+	/** Creates a {@link FlowrNamespaceFile} from an already-parsed {@link NamespaceFormat}. */
 	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
 		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
 		file.setContent(fmt);
@@ -89,8 +81,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/**
-	 * Namespace file lifter, this does not re-create if already a namespace file
-	 * and handles role assignments.
+	 * Lifts a file to a {@link FlowrNamespaceFile}, reusing it if already one and assigning roles.
 	 * @param file - The file to lift or return if already a namespace file
 	 * @param ctx - An optional analyzer context to use for complex parsing
 	 * @param role - An optional role to assign to the file
@@ -133,7 +124,6 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 			}
 		}
 	}
-	// pattern
 	for(const pattern of nsInfo.exportedPatterns) {
 		const regex = parseRRegexPattern(pattern);
 		if(regex.test(name)) {
@@ -141,7 +131,6 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	if(nsInfo.conditional) {
-		// nested with recursion
 		for(const [cond, info] of nsInfo.conditional) {
 			const res = isExportedInInfo(name, info);
 			if(res === true) {

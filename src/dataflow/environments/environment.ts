@@ -1,6 +1,5 @@
 /**
  * Provides an environment structure similar to R.
- * This allows the dataflow to hold current definition locations for variables, based on the current scope.
  * @module
  */
 import { jsonReplacer } from '../../util/json';
@@ -20,21 +19,21 @@ import { log } from '../../util/log';
 
 /** A single entry/scope within an {@link REnvironmentInformation} */
 export interface IEnvironment {
-	/** Unique and internally generated identifier -- will not be used for comparison but helps with debugging for tracking identities */
+	/** Unique internally generated identifier, used for debugging not comparison */
 	readonly id: number
 	/** Lexical parent of the environment, if any (can be manipulated by R code) */
 	parent:      IEnvironment
 	/** Maps to exactly one definition of an identifier if the source is known, otherwise to a list of all possible definitions */
 	memory:      BuiltInMemory
-	/**
-	 * Is this a built-in environment that is not allowed to change? Please use this carefully and only for the top-most envs!
-	 */
+	/** Built-in environment that must not change; only for the top-most envs. */
 	builtInEnv?: true | undefined
 }
 
 export enum EnvType{
 	Namespace = 'ns',
-	Imports = 'imp'
+	Imports = 'imp',
+	/** `requireNamespace("pkg")`: `pkg::fn` resolves, bare `fn` does not */
+	LoadedNamespace = 'lns'
 }
 
 interface Jsonified {
@@ -48,8 +47,7 @@ interface Jsonified {
 }
 
 /**
- * Please use this function only if you do not know the object type.
- * Otherwise, rely on {@link IEnvironment#builtInEnv}
+ * Use only if you do not know the object type; otherwise rely on {@link IEnvironment#builtInEnv}.
  */
 export function isDefaultBuiltInEnvironment(obj: unknown) {
 	return typeof obj === 'object' && obj !== null && ((obj as Record<string, unknown>).builtInEnv === true);
@@ -62,7 +60,7 @@ export class Environment implements IEnvironment {
 	readonly id: number;
 	/** Optional name for namespaced/non-anonymous environments, please only set if you know what you are doing */
 	n?:          string;
-	/** to keep track if/whether environment was added as package/namespace/imports environment */
+	/** which search-path layer this env is (package/namespace/imports), if any */
 	t?:          EnvType;
 	/** if created by a closure, the node id of that closure */
 	private c?:  NodeId;
@@ -70,7 +68,7 @@ export class Environment implements IEnvironment {
 	memory:      BuiltInMemory;
 	cache?:      Map<Identifier, IdentifierDefinition[]>;
 	builtInEnv?: true;
-	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live *below* it, the built-in env below them */
+	/** marks the global environment (`.GlobalEnv`); attached packages (see {@link EnvType}) live below it */
 	globalEnv?:  true;
 
 	constructor(parent: Environment, isBuiltInDefault: true | undefined = undefined) {
@@ -101,17 +99,13 @@ export class Environment implements IEnvironment {
 		this.c = nodeId;
 	}
 
-	/**
-	 * Provides the closure linked to this environment.
-	 * This is of importance if, for example, if you want to know the function definition associated with this environment.
-	 */
+	/** Provides the closure linked to this environment. */
 	public get closure(): NodeId | undefined {
 		return this.c;
 	}
 
 	/**
-	 * Create a clone of this environment. Definition arrays and objects are copy-on-write
-	 * (never mutated in place) and hence shared with the clone.
+	 * Create a clone of this environment.
 	 * @param recurseParents     - Whether to also clone parent environments
 	 */
 	public clone(recurseParents: boolean): Environment {
@@ -211,7 +205,7 @@ export class Environment implements IEnvironment {
 				found = true;
 				break;
 			}
-			// R's `<<-` assigns in the global env if the name is unbound in every enclosing frame; it never writes into an attached package below global
+			// `<<-` falls back to the global env, never an attached package below it
 			if(current.globalEnv) {
 				current.memory.set(name, [definition]);
 				found = true;
@@ -229,15 +223,13 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * Assumes, that all definitions within other replace those within this environment (given the same name).
-	 * <b>But</b> if all definitions within other are maybe, then they are appended to the current definitions (updating them to be `maybe` from now on as well), similar to {@link appendEnvironment}.
-	 * This always recurses parents.
+	 * Definitions within `other` replace those here by name; if all of `other`'s are maybe, they are appended instead (turning existing ones maybe too), like {@link appendEnvironment}. Always recurses parents.
 	 */
 	public overwrite(other: Environment | undefined, applyCds?: readonly ControlDependency[]): Environment {
 		if(!other || this === other) {
 			return this;
 		}
-		// attached-package blocks (below global) are unioned, never overwritten - so a package attached in either env survives (see append)
+		// package blocks are unioned, never overwritten (see mergePackageBlocks)
 		if(this.t !== undefined || other.t !== undefined) {
 			return this.mergePackageBlocks(other);
 		}
@@ -286,16 +278,13 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * Adds all writes of `other` to this environment (i.e., the operations of `other` *might* happen).
-	 * This always recurses parents.
+	 * Adds all writes of `other` to this environment (`other`'s operations *might* happen). Always recurses parents.
 	 */
 	public append(other: Environment | undefined): Environment {
 		if(!other || this === other) {
 			return this;
 		}
-		// attached-package blocks (below global) may diverge between branches (e.g. `library(a)` in one, `library(b)` in the
-		// other, or one branch attaching nothing) - union them so no package is lost. Runs before the built-in guard because
-		// one side's base may be the built-in env while the other still has packages to keep.
+		// package blocks may diverge between branches; union them before the built-in guard
 		if(this.t !== undefined || other.t !== undefined) {
 			return this.mergePackageBlocks(other);
 		}
@@ -321,15 +310,13 @@ export class Environment implements IEnvironment {
 	}
 
 	/**
-	 * Unions two attached-package blocks (see {@link EnvType}) - e.g. from two branches attaching different packages -
-	 * keeping every package once (memory merged for a package attached in both) and re-stacking them on the shared base below.
+	 * Unions two attached-package blocks, keeping every package once (memory merged for a package in both).
 	 */
 	private mergePackageBlocks(other: Environment): Environment {
 		const [thisLayers, thisBase] = splitLibraryLayers(this);
 		const [otherLayers, otherBase] = splitLibraryLayers(other);
 
-		// collect the unique layers by name+type; a package loaded in both branches is kept once with merged memory.
-		// `other` (the later write) first, so its packages end up nearest global - most recently attached is nearest (R `search()`)
+		// `other` first so its packages end up nearest global (most recently attached is nearest, cf. R `search()`)
 		const merged = new Map<string, Environment>();
 		for(const layers of [otherLayers, thisLayers]) {
 			for(const layer of layers) {
@@ -346,7 +333,6 @@ export class Environment implements IEnvironment {
 			}
 		}
 
-		// re-stack the unique layers (in encounter order) on top of the merged shared base
 		const uniqueLayers = Array.from(merged.values());
 		let current = thisBase.append(otherBase);
 		for(let i = uniqueLayers.length - 1; i >= 0; i--) {
@@ -419,9 +405,7 @@ function findGlobalEnvironment(this: void, env: Environment): Environment {
 }
 
 /**
- * Splices a package block (`blockTop` .. `blockBottom`) directly below the global environment, mirroring R
- * attaching a package below `.GlobalEnv` (so global bindings shadow package exports, and the most recently
- * attached package is nearest global). Returns a fresh `current`; only clones the path down to global.
+ * Splices a package block (`blockTop`..`blockBottom`) directly below the global environment. Returns a fresh `current`, cloning only the path down to global.
  */
 function attachPackageBelowGlobal(this: void, current: Environment, blockTop: Environment, blockBottom: Environment): Environment {
 	const clonedCurrent = current.clone(false);
@@ -436,8 +420,7 @@ function attachPackageBelowGlobal(this: void, current: Environment, blockTop: En
 }
 
 /**
- * Helper functions for navigating and manipulating {@link REnvironmentInformation|environments} beyond the
- * {@link Environment} methods, in particular around the global environment and attached-package search path.
+ * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
  */
 export const REnvironment = {
 	name:              'REnvironment',
@@ -461,15 +444,7 @@ function splitLibraryLayers(env: Environment): [Environment[], Environment] {
 /**
  * An environment describes a ({@link IEnvironment#parent|scoped}) mapping of names to their definitions ({@link BuiltIns}).
  *
- * First, yes, R stores its environments differently, potentially even with another differentiation between
- * the `baseenv`, the `emptyenv`, and other default environments (see https://adv-r.hadley.nz/environments.html).
- * Yet, during the dataflow analysis, we want sometimes to know more (static {@link IdentifierDefinition|reference information})
- * and sometimes know less (to be honest, we do not want that,
- * but statically determining all attached environments is theoretically impossible --- consider attachments by user input).
- *
- * One important environment is the {@link BuiltIns|BuiltInEnvironment} which contains the default definitions for R's built-in functions and constants.
- * This environment is created and provided by the {@link FlowrAnalyzerEnvironmentContext}.
- * During serialization, you may want to rely on the {@link builtInEnvJsonReplacer} to avoid the huge built-in environment.
+ * The {@link BuiltIns|BuiltInEnvironment} holds R's built-in functions and constants; during serialization use {@link builtInEnvJsonReplacer} to avoid inlining it.
  * @see {@link define} - to define a new {@link IdentifierDefinition|identifier definition} within an environment
  * @see {@link resolveByName} - to resolve an {@link Identifier|identifier/name} to its {@link IdentifierDefinition|definitions} within an environment
  * @see {@link makeReferenceMaybe} - to attach control dependencies to a reference
@@ -479,15 +454,13 @@ function splitLibraryLayers(env: Environment): [Environment[], Environment] {
  * @see {@link overwriteEnvironment} - to overwrite the definitions in the current environment with those of another one
  */
 export interface REnvironmentInformation {
-	/**  The currently active environment (the stack is represented by the currently active {@link IEnvironment#parent}). Environments are maintained within the dataflow graph. */
+	/** The currently active environment (the stack is represented by the {@link IEnvironment#parent} chain). */
 	readonly current: Environment
 	/** nesting level of the environment, will be `0` for the global/root environment */
 	readonly level:   number
 }
 
-/**
- * Helps to serialize an environment, but replaces the built-in environment with a placeholder.
- */
+/** Serializes an environment, replacing the built-in environment with a placeholder. */
 export function builtInEnvJsonReplacer(k: unknown, v: unknown): unknown {
 	if(isDefaultBuiltInEnvironment(v)) {
 		return '<BuiltInEnvironment>';

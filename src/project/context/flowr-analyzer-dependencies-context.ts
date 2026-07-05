@@ -6,9 +6,7 @@ import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 
 /**
- * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
- * It prevents you from modifying the dependencies, but allows you to inspect them (which is probably what you want when using the {@link FlowrAnalyzer}).
- * If you are a {@link FlowrAnalyzerPackageVersionsPlugin} and want to modify the dependencies, you can use the {@link FlowrAnalyzerDependenciesContext} directly.
+ * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
  */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
@@ -35,9 +33,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 }
 
 /**
- * This context is responsible for managing the dependencies of the project, including their versions and interplays with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- *
- * If you are interested in inspecting these dependencies, refer to {@link ReadOnlyFlowrAnalyzerDependenciesContext}.
+ * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
  */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
 	public readonly name = 'flowr-analyzer-dependencies-context';

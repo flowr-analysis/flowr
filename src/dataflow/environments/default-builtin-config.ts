@@ -12,24 +12,26 @@ import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
-export type StackEnvKind = 'global' | 'base' | 'empty' | 'current' | 'parent' | 'named';
+export enum StackEnvKind {
+	Global,
+	Base,
+	Empty,
+	Current,
+	Parent,
+	Named
+}
 
-/**
- * The env-returning/-transforming base builtins - the `globalenv`/`baseenv`/`emptyenv`/`environment`/`parent.env`/
- * `as.environment` functions and the `.GlobalEnv`/`.BaseEnv`/`.BaseNamespaceEnv` constants - mapped to which stack
- * environment each denotes. Single source of truth: both the registration below and the resolution in
- * `built-in-stack-env.ts` derive from this, so none of these identifiers is hard-coded outside this config.
- */
+/** Maps the env-returning/-transforming base builtins and constants to the stack environment each denotes. */
 export const StackEnvBuiltins = {
-	globalenv:           'global',
-	baseenv:             'base',
-	emptyenv:            'empty',
-	environment:         'current',
-	'parent.env':        'parent',
-	'as.environment':    'named',
-	'.GlobalEnv':        'global',
-	'.BaseEnv':          'base',
-	'.BaseNamespaceEnv': 'base'
+	globalenv:           StackEnvKind.Global,
+	baseenv:             StackEnvKind.Base,
+	emptyenv:            StackEnvKind.Empty,
+	environment:         StackEnvKind.Current,
+	'parent.env':        StackEnvKind.Parent,
+	'as.environment':    StackEnvKind.Named,
+	'.GlobalEnv':        StackEnvKind.Global,
+	'.BaseEnv':          StackEnvKind.Base,
+	'.BaseNamespaceEnv': StackEnvKind.Base
 } as const satisfies Record<string, StackEnvKind>;
 
 export const GgPlotCreate = [
@@ -397,8 +399,16 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.IfThenElse, config:          { args: { cond: 'condition', yes: 'true', no: 'false' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['get', PkgName.Base])],
 		processor:       BuiltInProcName.Get, config:          {}, assumePrimitive: false },
-	{ type:            'function', names:           [Identifier.from(['from', PkgName.Import]), Identifier.from(['library', PkgName.Base]), Identifier.from(['require', PkgName.Base])],
+	{ type:            'function', names:           [Identifier.from(['library', PkgName.Base]), Identifier.from(['require', PkgName.Base])],
 		processor:       BuiltInProcName.Library, config:          {}, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['attachNamespace', PkgName.Base])],
+		processor:       BuiltInProcName.Library, config:          { characterOnly: true }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['requireNamespace', PkgName.Base]), Identifier.from(['loadNamespace', PkgName.Base])],
+		processor:       BuiltInProcName.Library, config:          { namespaceOnly: true, characterOnly: true }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['from', PkgName.Import])],
+		processor:       BuiltInProcName.Library, config:          { fromImports: true }, assumePrimitive: false },
+	{ type:            'function', names:           [Identifier.from(['use', PkgName.Box]), Identifier.from(['use', PkgName.Base])],
+		processor:       BuiltInProcName.Library, config:          { boxUse: true }, assumePrimitive: false },
 	{ type:            'function', names:           ['<-', '='],
 		processor:       BuiltInProcName.Assignment, config:          { canBeReplacement: true }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from([':=', PkgName.DataTable])],
@@ -585,9 +595,9 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.With, config:          {}, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['new.env', PkgName.Base]), Identifier.from(['new_environment', PkgName.Rlang])],
 		processor:       BuiltInProcName.NewEnv, config:          {}, assumePrimitive: true },
-	/* env-returning builtins that point into the current search-path stack (so `e <- globalenv(); e$x` resolves into it) */
+	/* env-returning builtins pointing into the current search-path stack (`e <- globalenv(); e$x`) */
 	{ type:  'function', names: Object.entries(StackEnvBuiltins)
-		.filter(([n, kind]) => !n.startsWith('.') && (kind === 'global' || kind === 'base' || kind === 'empty'))
+		.filter(([n, kind]) => !n.startsWith('.') && (kind === StackEnvKind.Global || kind === StackEnvKind.Base || kind === StackEnvKind.Empty))
 		.map(([n]) => Identifier.from([n, PkgName.Base])),
 	processor: BuiltInProcName.StackEnv, config: {}, assumePrimitive: true },
 	{ type:  'function', names: [
@@ -654,10 +664,8 @@ export const DefaultBuiltinConfig = [
 		names: [
 			Identifier.from(['sys.on.exit', PkgName.Base]), Identifier.from(['par', PkgName.Graphics]),
 			Identifier.from(['tpar', PkgName.TinyPlot]),    Identifier.from(['sink', PkgName.Base]),
-			/* library and require is handled above */
-			Identifier.from(['requireNamespace', PkgName.Base]), Identifier.from(['loadNamespace', PkgName.Base]),
-			Identifier.from(['attachNamespace', PkgName.Base]),  Identifier.from(['asNamespace', PkgName.Base]),
-			Identifier.from(['use', PkgName.Base]),
+			/* library/require/(require|load|attach)Namespace/use are handled above */
+			Identifier.from(['asNamespace', PkgName.Base]),
 			/* env attachment */
 			Identifier.from(['unname', PkgName.Base]), Identifier.from(['data', PkgName.Utils]),
 			/* file creation/removal (base) */

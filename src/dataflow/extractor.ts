@@ -27,7 +27,7 @@ import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
 
-/** Safety backstop for the transitive-side-effect fixpoint; each growing round attaches a new package, so real programs converge in one or two rounds. */
+/** Round cap for the transitive-side-effect fixpoint. */
 const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
@@ -168,8 +168,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
-	// finally, resolve linkages and propagate transitive side effects (attached packages) across calls to a fixpoint.
-	// Each growing round attaches at least one new package, so this terminates (bounded by the number of packages).
+	// resolve linkages and propagate transitive side effects across calls to a fixpoint
 	updateNestedFunctionCalls(df.graph, df.environment);
 	const escapedNames = new Set<string>();
 	for(let round = 0; round < transitiveSideEffectRounds; round++) {
@@ -183,7 +182,7 @@ export function produceDataFlowGraph<OtherInfo>(
 		}
 		updateNestedFunctionCalls(df.graph, df.environment);
 	}
-	// escaped `<<-` definitions folded into the environment above: resolve the top-level reads that see them now
+	// resolve top-level reads that now see the escaped `<<-` definitions folded in above
 	if(escapedNames.size > 0) {
 		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
 	}

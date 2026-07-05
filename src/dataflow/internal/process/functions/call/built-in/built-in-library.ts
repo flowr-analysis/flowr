@@ -12,7 +12,7 @@ import { dataflowLogger } from '../../../../../logger';
 import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -68,7 +68,7 @@ export function processLibrary<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: true, origin: 'default' }).information;
 	}
 	if(config.boxUse){
-		return processBoxUse(name, args, rootId, data);
+		return processUse(name, args, rootId, data);
 	}
 	/* parse the import selection before the library flow rewrites `args` below */
 	const spec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
@@ -252,12 +252,8 @@ function parseFromSpec<Info>(args: readonly PotentiallyEmptyRArgument<Info>[]): 
 	};
 }
 
-/** Parse the first argument of `box::use` (`pkg`, `pkg[a, b]`, or `pkg[...]`) into a package and its attach spec. */
+/** Parse a `box::use` bracket argument (`pkg[a, b]` or `pkg[...]`) into a package and its attach spec; `undefined` if not a bracket. */
 function parseBoxSpec<Info>(first: RNode<Info> | undefined): { pack: string, spec: AttachSpec } | undefined {
-	const bareName = symbolOrStringName(first);
-	if(bareName !== undefined){
-		return { pack: bareName, spec: { namespaceOnly: true } }; // use(pkg): reached via pkg$fn, no bare attach
-	}
 	if(first === undefined || !RAccess.isIndex(first)){
 		return undefined;
 	}
@@ -283,8 +279,19 @@ function parseBoxSpec<Info>(first: RNode<Info> | undefined): { pack: string, spe
 	return { pack, spec: { include: include.size > 0 ? include : undefined, all } };
 }
 
-/** Process `box::use(pkg[a, b])`: attach the bracketed exports (or all with `[...]`, or namespace-only for a bare `pkg`). */
-function processBoxUse<OtherInfo>(
+/** Whether `use` should be read as `box::use` here: a `box::`-qualified call, or `box` is a loaded dependency. */
+function usesBoxSemantics<OtherInfo>(name: RSymbol<OtherInfo & ParentInformation>, data: DataflowProcessorInformation<OtherInfo & ParentInformation>): boolean {
+	if(Identifier.getNamespace(name.content) === PkgName.Box){
+		return true;
+	}
+	return data.ctx.deps.getDependency(PkgName.Box) !== undefined;
+}
+
+/**
+ * Process a `use` call, library-sensitively: `pkg[...]` uses box's bracket selection; a bare `pkg` is box's
+ * namespace-only member access when box is loaded, otherwise `import::from`-style extra-argument selection.
+ */
+function processUse<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
@@ -292,7 +299,7 @@ function processBoxUse<OtherInfo>(
 ): DataflowInformation {
 	const info = processKnownFunctionCall({ name, args, rootId, data, hasUnknownSideEffect: false, origin: BuiltInProcName.Library }).information;
 	const first = args[0] === EmptyArgument ? undefined : args[0]?.value;
-	const parsed = parseBoxSpec(first);
+	const parsed = parseUseSpec(name, first, args, data);
 	const dependency = parsed && data.ctx.deps.getDependency(parsed.pack);
 	if(parsed && dependency){
 		linkLibrary(dependency, info, rootId, data, parsed.spec);
@@ -300,6 +307,27 @@ function processBoxUse<OtherInfo>(
 		info.graph.markIdForUnknownSideEffects(rootId);
 	}
 	return info;
+}
+
+/** The package and attach spec for a `use` call (see {@link processUse}). */
+function parseUseSpec<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	first: RNode<OtherInfo & ParentInformation> | undefined,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
+): { pack: string, spec: AttachSpec } | undefined {
+	const bracket = parseBoxSpec(first);
+	if(bracket !== undefined){
+		return bracket;
+	}
+	const pack = symbolOrStringName(first);
+	if(pack === undefined){
+		return undefined;
+	}
+	if(usesBoxSemantics(name, data)){
+		return { pack, spec: { namespaceOnly: true } }; // box: use(pkg) is member access via pkg$fn
+	}
+	return { pack, spec: parseFromSpec(args) }; // extra-argument selection: use(pkg, a, b) / use(pkg)
 }
 
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, spec: AttachSpec = {}) {

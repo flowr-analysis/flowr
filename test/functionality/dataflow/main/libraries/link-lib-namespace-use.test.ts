@@ -37,6 +37,18 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@keep', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		withPkg);
 
+	assertDataflow(label('bare use(pkg, a) attaches only the named symbol (extra-args form)', ['library-loading', 'search-path']), ts,
+		'use(pkgA, fa)\nfa()\nfb()',
+		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [[fbBuiltIn, '3@fb']] });
+
+	assertDataflow(label('bare use(pkg) attaches every export (extra-args form)', ['library-loading', 'search-path']), ts,
+		'use(pkgA)\nfa()\nfb()',
+		emptyGraph()
+			.addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls)
+			.addEdge('3@fb', fbBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		withPkg);
+
 	assertDataflow(label('box::use[a] attaches only the bracketed symbol', ['library-loading', 'search-path']), ts,
 		'box::use(pkgA[fa])\nfa()\nfb()',
 		emptyGraph().addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
@@ -48,6 +60,22 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 			.addEdge('2@fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls)
 			.addEdge('3@fb', fbBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		withPkg);
+
+	// library-sensitive: box::use(pkg) is member access (namespace-only); the same bare use(pkg) without box attaches all
+	assertDataflow(label('box::use(pkg) is namespace-only member access', ['library-loading', 'search-path']), ts,
+		'box::use(pkgA)\npkgA::fa()\nfa()',
+		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ ...withPkg, mustNotHaveEdges: [['3@fa', faBuiltIn]] });
+
+	const withBoxAndPkg = (a: FlowrAnalyzer): void => {
+		twoExports(a);
+		a.context().deps.addDependency(Package.fromConstants('box', 'export(use)', ['use']));
+	};
+	// with box among the loaded dependencies, bare use(pkg) follows box (member access), not the extra-args form
+	assertDataflow(label('use(pkg) is namespace-only when box is a loaded dependency', ['library-loading', 'search-path']), ts,
+		'use(pkgA)\npkgA::fa()\nfa()',
+		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
+		{ modifyAnalyzer: withBoxAndPkg, expectIsSubgraph: true, resolveIdsAsCriterion: true, mustNotHaveEdges: [['3@fa', faBuiltIn]] });
 
 	test('requireNamespace produces a LoadedNamespace layer', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();

@@ -61,7 +61,7 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 			.addEdge('3@fb', fbBuiltIn, EdgeType.Reads | EdgeType.Calls),
 		withPkg);
 
-	// library-sensitive: box::use(pkg) is member access (namespace-only); the same bare use(pkg) without box attaches all
+	// contrast with bare use(pkg) above, which attaches every export
 	assertDataflow(label('box::use(pkg) is namespace-only member access', ['library-loading', 'search-path']), ts,
 		'box::use(pkgA)\npkgA::fa()\nfa()',
 		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),
@@ -71,7 +71,6 @@ describe('Namespace loading, import::from and box::use', withTreeSitter(ts => {
 		twoExports(a);
 		a.context().deps.addDependency(Package.fromConstants('box', 'export(use)', ['use']));
 	};
-	// with box among the loaded dependencies, bare use(pkg) follows box (member access), not the extra-args form
 	assertDataflow(label('use(pkg) is namespace-only when box is a loaded dependency', ['library-loading', 'search-path']), ts,
 		'use(pkgA)\npkgA::fa()\nfa()',
 		emptyGraph().addEdge('2@pkgA::fa', faBuiltIn, EdgeType.Reads | EdgeType.Calls),

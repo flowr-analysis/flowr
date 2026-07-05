@@ -1170,8 +1170,6 @@ someExportOfA()              # -> resolves against A
 if (cond) library(B)         # B is kept (may be attached)
 \`\`\`
 
-Note that a conditionally attached package (\`if(cond) library(B)\`) is currently treated as **definitely** attached rather than *maybe* attached: keeping it is a sound over-approximation of whether the package is available, but a call resolving to one of its exports gets a definite (not a maybe/control-dependent) edge. This is because package exports are materialized directly into the search-path environment and therefore bypass the usual branch maybe-marking (\`makeAllMaybe\`).
-
 Last but not least, the information contains the single **entry point** (${
 		JSON.stringify(result.entryPoint)
 		}) and a set of **exit points** (${

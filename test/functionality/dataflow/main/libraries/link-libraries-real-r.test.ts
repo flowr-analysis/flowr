@@ -28,19 +28,14 @@ async function filterCallTargets(shell: RShell, code: string, register: [string,
 	return targets;
 }
 
-// Real-R comparison test: run actual R and assert flowR's search-path behavior matches it.
-// (The RShell is sequential; ordering/re-attach are covered by the tree-sitter tests, so this focuses on the
-//  one case where R gives a definitive resolution answer: a global binding shadowing a package export.)
+// ordering/re-attach are covered by the tree-sitter tests, so this focuses on the one case R answers definitively: a global binding shadowing a package export
 describe.sequential('Link libraries against real R', () => {
 	testWithShell('global definition shadows a package export (matches R)', async(shell) => {
-		// real R: the global filter() shadows stats::filter, so calling filter(1) runs the user function -> 42
 		const rOut = await shell.sendCommandWithOutput('local({ filter <- function(x) 42; suppressMessages(library(stats)); filter(1) })');
 		expect(rOut.join(' ')).toContain('42');
 
-		// flowR (stats registered as exporting filter): filter() must resolve to the GLOBAL definition, not stats:filter
 		const targets = await filterCallTargets(shell, 'filter <- function(x) 42\nlibrary(stats)\nfilter(1)', [['stats', ['filter']]]);
 		expect(targets.has(NodeId.toBuiltIn(Package.funcIdentif('stats', 'filter')))).toBe(false);
-		// it resolves to a real (non-built-in) node, i.e. the user's global definition
 		expect([...targets].some(t => !NodeId.isBuiltIn(t))).toBe(true);
 	});
 });

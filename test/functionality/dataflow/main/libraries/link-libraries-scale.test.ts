@@ -36,8 +36,7 @@ function exportResolution(df: DataflowInformation): Map<string, string[]> {
 	return byName;
 }
 
-// Scale/regression: many transitively attached packages must all resolve to their own package, and terminate.
-// (Measured ~80ms for N=100 vs ~75ms library-free, i.e. near-zero overhead and linear scaling.)
+// scale/regression: many transitively attached packages must all resolve to their own package, and terminate
 describe('Link libraries at scale', withTreeSitter(ts => {
 	const N = 100;
 

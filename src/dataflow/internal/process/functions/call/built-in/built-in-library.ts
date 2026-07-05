@@ -397,8 +397,7 @@ function isSubsetAttach(spec: AttachSpec): boolean {
 /**
  * Attaches `dependency`'s exports below the global environment (see {@link attachPackageBelowGlobal}) and returns the
  * enriched environment (the graph is untouched). Used by `library()`, `import::from`, `box::use`, `requireNamespace`,
- * and the transitive side-effect propagation. Exports are defined without control dependencies, so a conditional
- * `if(c) library(pkg)` is treated as definitely attached (a sound over-approximation of availability).
+ * and the transitive side-effect propagation.
  */
 export function attachDependencyToEnvironment(dependency: Package, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext, spec: AttachSpec = {}): REnvironmentInformation {
 	const pack = dependency.name;

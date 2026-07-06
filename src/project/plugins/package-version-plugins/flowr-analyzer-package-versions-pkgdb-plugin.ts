@@ -55,6 +55,13 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 	public readonly description = 'Resolves library exports from precomputed flowr-pkgdb databases.';
 	public readonly version     = new SemVer('0.1.0');
 
+	/**
+	 * Process-wide cache of parsed file databases, keyed by their source path, so a flowR session parses
+	 * each file once. Parsing the bundled database is ~25ms and a fresh plugin instance is created per
+	 * analyzer, so without this every analysis touching a `library()` call would re-parse the multi-MB file.
+	 */
+	private static readonly fileCache = new Map<string, PkgDatabase>();
+
 	private readonly extraSources: PkgDbSource[];
 	private databases:             PkgDatabase[] | undefined;
 
@@ -66,6 +73,11 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 	public process(ctx: FlowrAnalyzerContext): void {
 		this.databases = undefined;   // reload on (re)registration so config/source changes take effect
 		ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
+	}
+
+	/** Mount the databases up front (see `solver.eagerlyLoadPackageDatabase`) instead of on the first library load. */
+	public override preloadDatabasesSync(): void {
+		this.loadDatabases();
 	}
 
 	/** metadata of the databases currently loaded (the synchronously available, non-URL sources) */
@@ -129,7 +141,21 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 		if(source instanceof PkgDatabase) {
 			return source;
 		}
-		return typeof source === 'string' ? PkgDatabase.fromFileSync(source) : PkgDatabase.fromObject(source);
+		if(typeof source !== 'string') {
+			return PkgDatabase.fromObject(source);
+		}
+		return FlowrAnalyzerPackageVersionsPkgDbPlugin.loadFileCached(source);
+	}
+
+	/** Load a file source once per session, reusing the parsed database across analyzer instances. */
+	private static loadFileCached(file: string): PkgDatabase {
+		const cache = FlowrAnalyzerPackageVersionsPkgDbPlugin.fileCache;
+		let db = cache.get(file);
+		if(db === undefined) {
+			db = PkgDatabase.fromFileSync(file);
+			cache.set(file, db);
+		}
+		return db;
 	}
 
 	private resolve(name: string, existing?: Package): Package | undefined {

@@ -20,6 +20,9 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	public loadedDatabases(): PkgDbLoadedInfo[] {
 		return [];
 	}
+
+	/** Eagerly parse and mount this plugin's databases up front (no-op for plugins without any). */
+	public preloadDatabasesSync(): void {}
 }
 
 /**

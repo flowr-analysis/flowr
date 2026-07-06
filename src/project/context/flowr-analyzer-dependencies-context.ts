@@ -68,6 +68,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
+	/** Eagerly mount every version plugin's package database up front (see `solver.eagerlyLoadPackageDatabase`). */
+	public eagerlyLoadPackageDatabases(): void {
+		for(const p of this.plugins) {
+			p.preloadDatabasesSync();
+		}
+	}
+
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
 		super(functionsContext.getAttachedContext(), FlowrAnalyzerPackageVersionsPlugin.defaultPlugin(), plugins);
 		this.functionsContext = functionsContext;

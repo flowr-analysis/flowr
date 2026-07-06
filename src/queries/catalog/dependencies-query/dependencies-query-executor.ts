@@ -30,6 +30,7 @@ import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/process
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import { FunctionArgument } from '../../../dataflow/graph/graph';
+import { Identifier } from '../../../dataflow/environments/identifier';
 
 
 /**
@@ -186,7 +187,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				}
 				const record = compactRecord({
 					nodeId:           id,
-					functionName:     vertex.name,
+					functionName:     Identifier.getName(vertex.name),
 					lexemeOfArgument: undefined,
 					linkedIds:        linked?.length ? linked : undefined,
 					value:            info.defaultValue ?? defaultValue
@@ -219,7 +220,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					finalResults.push(compactRecord({
 						nodeId:             id,
-						functionName:       vertex.name,
+						functionName:       Identifier.getName(vertex.name),
 						lexemeOfArgument:   getLexeme(value, arg),
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,

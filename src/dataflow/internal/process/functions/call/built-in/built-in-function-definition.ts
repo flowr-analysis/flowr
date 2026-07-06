@@ -39,7 +39,8 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import type { ReadOnlyFlowrAnalyzerContext, FlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
+import { attachExportVertex } from './built-in-library';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { compactHookStates, getHookInformation, KnownHooks } from '../../../../../hooks';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -385,7 +386,8 @@ function linkSuperAssignmentsToOuterDefinitions(
  */
 export function updateNestedFunctionCalls(
 	graph: DataflowGraph,
-	outEnvironment: REnvironmentInformation
+	outEnvironment: REnvironmentInformation,
+	ctx: FlowrAnalyzerContext
 ) {
 	// track *all* function definitions - including those nested within the current graph,
 	// try to resolve their 'in' by only using the lowest scope which will be popped after this definition
@@ -401,6 +403,12 @@ export function updateNestedFunctionCalls(
 		const treatAsS3 = origin.includes(BuiltInProcName.S3Dispatch);
 		for(const target of targets) {
 			if(NodeId.isBuiltIn(target)) {
+				// a package export resolved lazily here (nested), so materialize it and link to its loader
+				const loader = (resolveByName(name, effectiveEnvironment, ReferenceType.Function)?.find(r => r.nodeId === target) as InGraphIdentifierDefinition | undefined)?.definedAt;
+				if(loader !== undefined && !NodeId.isBuiltIn(loader)) {
+					attachExportVertex(graph, target, effectiveEnvironment, ctx);
+					graph.addEdge(target, loader, EdgeType.Reads | EdgeType.Calls);
+				}
 				graph.addEdge(id, target, EdgeType.Calls);
 				continue;
 			}

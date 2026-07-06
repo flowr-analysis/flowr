@@ -701,3 +701,7 @@ test-results.xml
 /test_perf/*/*
 /test_perf/*.json
 .vscode/settings.json
+
+# pkgdb: track only the plain JSON tiers; compressed copies are build output
+src/data/pkgdb/*.br
+src/data/pkgdb/*.gz

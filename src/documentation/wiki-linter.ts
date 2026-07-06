@@ -187,6 +187,10 @@ function(x) {
 		'no-leaked-credentials', 'NoLeakedCredentialsConfig', 'NO_LEAKED_CREDENTIALS', 'lint-no-leaked-credentials',
 		'password <- "s3cr3t"', tagTypes);
 
+	rule(knownParser,
+		'undefined-symbol', 'UndefinedSymbolConfig', 'UNDEFINED_SYMBOL', 'lint-undefined-symbol',
+		'undefined_helper(42)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 
@@ -273,6 +277,7 @@ async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, c
 
 	return `
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter ${ctx.linkPage('wiki/Query API', 'query')}.
+Some rules also draw on the ${ctx.linkPage('wiki/Package Database', 'package database')}.
 For example:
 
 ${await(async() => {

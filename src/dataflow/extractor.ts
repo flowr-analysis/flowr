@@ -19,7 +19,7 @@ import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
-import { propagateTransitiveSideEffects, reResolveOpenReferences } from './internal/process/functions/call/built-in/transitive-side-effects';
+import { propagateTransitiveSideEffects, reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
 import type { REnvironmentInformation } from './environments/environment';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
@@ -169,7 +169,7 @@ export function produceDataFlowGraph<OtherInfo>(
 	}
 
 	// resolve linkages and propagate transitive side effects across calls to a fixpoint
-	updateNestedFunctionCalls(df.graph, df.environment);
+	updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	const escapedNames = new Set<string>();
 	for(let round = 0; round < transitiveSideEffectRounds; round++) {
 		const { environment, grew, escapedNames: roundNames } = propagateTransitiveSideEffects(df.graph, df.environment, ctx);
@@ -180,12 +180,14 @@ export function produceDataFlowGraph<OtherInfo>(
 		if(!grew) {
 			break;
 		}
-		updateNestedFunctionCalls(df.graph, df.environment);
+		updateNestedFunctionCalls(df.graph, df.environment, ctx);
 	}
 	// resolve top-level reads that now see the escaped `<<-` definitions folded in above
 	if(escapedNames.size > 0) {
 		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
 	}
+	// link on-demand-materialized package exports back to their `library()` loaders
+	linkMaterializedExportsToLoaders(df.graph, df.environment);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 

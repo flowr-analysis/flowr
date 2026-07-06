@@ -21,3 +21,7 @@ src/**
 test/**
 **/*.map
 .idea/
+
+# pkgdb: npm ships the `tiny` and `latest` tiers; the large `all` tier is left out and downloadable
+# (see the Package Database wiki). The plain JSON tiers live under src/** (excluded above).
+pkgdb-all.json.br

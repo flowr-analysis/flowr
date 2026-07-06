@@ -22,6 +22,7 @@ import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { getOriginInDfg } from '../../../dataflow/origin/dfg-get-origin';
 import { ArrayQueue } from '../../../util/collections/queue';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
@@ -329,6 +330,13 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			if(query.callTargets) {
 				targets = satisfiesCallTargets(info, dataflow.graph, query.callTargets);
 				if(targets === 'no') {
+					continue;
+				}
+			}
+			if(query.callTargetNamespace !== undefined) {
+				// the resolved package (a loaded-library export) or the call's explicit namespace
+				const pkg = Identifier.getNamespace(Identifier.toQualified(getOriginInDfg(dataflow.graph, nodeId)) ?? info.name);
+				if(pkg !== query.callTargetNamespace) {
 					continue;
 				}
 			}

@@ -1,5 +1,6 @@
 import { type DataflowProcessorInformation } from '../../../../../processor';
-import type { DataflowInformation } from '../../../../../info';
+import type { DataflowInformation, ControlDependency } from '../../../../../info';
+import type { DataflowGraph } from '../../../../../graph/graph';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -330,6 +331,20 @@ function parseUseSpec<OtherInfo>(
 	return { pack, spec: parseFromSpec(args) }; // extra-argument selection: use(pkg, a, b) / use(pkg)
 }
 
+/** Materialize the empty built-in function-definition vertex for a package export (idempotent). */
+export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, environment: REnvironmentInformation, ctx: FlowrAnalyzerContext, cds?: ControlDependency[]): void {
+	if(graph.hasVertex(builtInId)){
+		return;
+	}
+	graph.addVertex({
+		tag:        VertexType.FunctionDefinition,
+		id:         builtInId,
+		environment, cds, params:     {},
+		subflow:    { graph: new Set(), unknownReferences: [], in: [], out: [], environment, entryPoint: builtInId, hooks: [] },
+		exitPoints: [],
+	}, ctx.env.makeCleanEnv());
+}
+
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, spec: AttachSpec = {}) {
 	if(info.environment.level < 0 || isUndefined(dependency.namespaceInfo)){
 		return;
@@ -339,29 +354,16 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	if(isAttached(info.environment.current, pack, spec.namespaceOnly)){
 		return;
 	}
-	// register each attached export as a built-in function-definition reachable from this call
-	for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
-		const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
-		info.graph.addVertex({
-			tag:         VertexType.FunctionDefinition,
-			id:          builtInId,
-			environment: info.environment,
-			cds:         data.cds,
-			params:      {},
-			subflow:     {
-				graph:             new Set(),
-				unknownReferences: [],
-				in:                [],
-				out:               [],
-				environment:       info.environment,
-				entryPoint:        builtInId,
-				hooks:             []
-			},
-			exitPoints: [],
-		}, data.ctx.env.makeCleanEnv());
-		info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
+	// by default only the environment carries the exports; their built-in vertices are materialized on
+	// demand when a call resolves to one (see attachExportVertex). Eager mode registers them all upfront.
+	if(data.ctx.config.solver.eagerlyLoadPackages){
+		for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
+			const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
+			attachExportVertex(info.graph, builtInId, info.environment, data.ctx, data.cds);
+			info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
+		}
 	}
-	info.environment = attachDependencyToEnvironment(dependency, info.environment, data.ctx, spec);
+	info.environment = attachDependencyToEnvironment(dependency, info.environment, data.ctx, spec, rootId);
 }
 
 /** An export to attach: its name in the package and the name it is bound under (differs only when aliased). */
@@ -380,12 +382,12 @@ function selectExports(callables: readonly string[], spec: AttachSpec): Attached
 }
 
 /** The identifier definition binding a package export (or its alias) to its built-in function-definition. */
-function exportDefinition(pack: string, exp: AttachedExport) {
+function exportDefinition(pack: string, exp: AttachedExport, definedAt: NodeId = NodeId.toBuiltIn(pack)) {
 	return {
-		name:      Identifier.make(exp.as, pack),
-		type:      ReferenceType.Function,
-		nodeId:    NodeId.toBuiltIn(Package.funcIdentif(pack, exp.exported)),
-		definedAt: NodeId.toBuiltIn(pack),
+		name:   Identifier.make(exp.as, pack),
+		type:   ReferenceType.Function,
+		nodeId: NodeId.toBuiltIn(Package.funcIdentif(pack, exp.exported)),
+		definedAt,
 	} as const;
 }
 
@@ -399,7 +401,7 @@ function isSubsetAttach(spec: AttachSpec): boolean {
  * enriched environment (the graph is untouched). Used by `library()`, `import::from`, `box::use`, `requireNamespace`,
  * and the transitive side-effect propagation.
  */
-export function attachDependencyToEnvironment(dependency: Package, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext, spec: AttachSpec = {}): REnvironmentInformation {
+export function attachDependencyToEnvironment(dependency: Package, envInfo: REnvironmentInformation, ctx: FlowrAnalyzerContext, spec: AttachSpec = {}, definedAt?: NodeId): REnvironmentInformation {
 	const pack = dependency.name;
 	if(isUndefined(dependency.namespaceInfo) || isAttached(envInfo.current, pack, spec.namespaceOnly)){
 		return envInfo;
@@ -409,7 +411,7 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
 		let layer = new Environment(envInfo.current).asLibrary(pack, layerType);
 		for(const exp of exports){
-			layer = layer.define(exportDefinition(pack, exp));
+			layer = layer.define(exportDefinition(pack, exp, definedAt));
 		}
 		return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
 	}
@@ -418,7 +420,7 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
 	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
 	for(const exp of exports){
-		namespaceEnv = namespaceEnv.define(exportDefinition(pack, exp));
+		namespaceEnv = namespaceEnv.define(exportDefinition(pack, exp, definedAt));
 	}
 	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
 }

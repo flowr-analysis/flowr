@@ -11,6 +11,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -358,6 +359,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 			for(const f of ['ggplot', 'tinyplot', 'plot', 'bootcurve']) {
 				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
+		});
+		describe('Namespace disambiguation', () => {
+			// regression: an unqualified `map` plot entry used to swallow purrr::map / dplyr::map
+			testQuery('purrr::map is not a visualization', 'purrr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'purrr' }],
+				visualize: []
+			});
+			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
+				visualize: []
+			});
+			testQuery('maps::map stays a visualization', 'maps::map(x)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
+				visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }]
+			});
 		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {

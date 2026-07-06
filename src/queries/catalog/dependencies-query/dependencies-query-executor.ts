@@ -11,6 +11,8 @@ import {
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { getOriginInDfg } from '../../../dataflow/origin/dfg-get-origin';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
@@ -133,6 +135,20 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const info = functionMap.get(name) as FunctionInfo;
 
+			// the qualified call name (`dplyr::filter` for a bare `filter()` after `library(dplyr)`),
+			// falling back to the plain called name when the call does not resolve to a loaded package
+			const functionName = Identifier.toQualified(getOriginInDfg(dfg, id)) ?? vertex.name;
+
+			// a call qualified to (or resolved via a loaded library to) a different package than the
+			// function's is not this function - e.g. purrr::map, or a bare map() after library(purrr),
+			// is not the maps `map` plot; bare/matching-namespace calls still count.
+			if(info.package !== undefined) {
+				const callNamespace = Identifier.getNamespace(functionName);
+				if(callNamespace !== undefined && callNamespace !== info.package) {
+					continue;
+				}
+			}
+
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 			const linked = dropInfoOnLinkedIds(linkedIds);
@@ -186,7 +202,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				}
 				const record = compactRecord({
 					nodeId:           id,
-					functionName:     vertex.name,
+					functionName,
 					lexemeOfArgument: undefined,
 					linkedIds:        linked?.length ? linked : undefined,
 					value:            info.defaultValue ?? defaultValue
@@ -219,7 +235,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					finalResults.push(compactRecord({
 						nodeId:             id,
-						functionName:       vertex.name,
+						functionName,
 						lexemeOfArgument:   getLexeme(value, arg),
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,

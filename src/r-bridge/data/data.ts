@@ -184,7 +184,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Library Loading',
 							id:          'library-loading',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
 						},
 						{

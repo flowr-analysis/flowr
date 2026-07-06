@@ -298,6 +298,7 @@ export const FlowrDefaultPlugins = [
 	'file:namespace',
 	'file:news',
 	'file:license',
+	'file:virtualenv',
 ] satisfies ConfigPlugin<string>[];
 
 /**

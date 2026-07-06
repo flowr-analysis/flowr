@@ -1,15 +1,16 @@
 import { FlowrAnalyzerPackageVersionsPlugin } from './flowr-analyzer-package-versions-plugin';
 import { SemVer } from 'semver';
-import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
-import type { FlowrFileProvider } from '../../context/flowr-file';
+import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
+import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { log } from '../../../util/log';
 
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
-function fileByName(ctx: FlowrAnalyzerContext, name: string): FlowrFileProvider | undefined {
-	return ctx.files.getAllFiles().find(f => path.basename(f.path()) === name);
+/** The {@link FileRole.VirtualEnv} lockfiles named `name` (e.g. `renv.lock`), collected by role like the DESCRIPTION reader. */
+function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProvider[] {
+	return ctx.files.getFilesByRole(FileRole.VirtualEnv).filter(f => platformBasename(f.path()) === name);
 }
 
 function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
@@ -24,20 +25,18 @@ export class FlowrAnalyzerPackageVersionsRenvPlugin extends FlowrAnalyzerPackage
 	public readonly version     = new SemVer('0.1.0');
 
 	public process(ctx: FlowrAnalyzerContext): void {
-		const file = fileByName(ctx, 'renv.lock');
-		if(!file) {
-			return;
-		}
-		let lock: { Packages?: Record<string, { Version?: string }> };
-		try {
-			lock = JSON.parse(file.content().toString()) as typeof lock;
-		} catch(e) {
-			lockfileLog.warn(`Could not parse renv.lock: ${(e as Error).message}`);
-			return;
-		}
-		for(const [pkg, meta] of Object.entries(lock.Packages ?? {})) {
-			if(typeof meta?.Version === 'string') {
-				pin(ctx, pkg, meta.Version);
+		for(const file of virtualEnvFiles(ctx, 'renv.lock')) {
+			let lock: { Packages?: Record<string, { Version?: string }> };
+			try {
+				lock = JSON.parse(file.content().toString()) as typeof lock;
+			} catch(e) {
+				lockfileLog.warn(`Could not parse renv.lock: ${(e as Error).message}`);
+				continue;
+			}
+			for(const [pkg, meta] of Object.entries(lock.Packages ?? {})) {
+				if(typeof meta?.Version === 'string') {
+					pin(ctx, pkg, meta.Version);
+				}
 			}
 		}
 	}
@@ -50,16 +49,14 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 	public readonly version     = new SemVer('0.1.0');
 
 	public process(ctx: FlowrAnalyzerContext): void {
-		const file = fileByName(ctx, 'rv.lock');
-		if(!file) {
-			return;
-		}
-		// rv.lock is TOML with repeated `[[packages]]` tables carrying `name`/`version`
-		for(const block of file.content().toString().split(/\[\[packages\]\]/).slice(1)) {
-			const name = /^\s*name\s*=\s*"([^"]+)"/m.exec(block)?.[1];
-			const version = /^\s*version\s*=\s*"([^"]+)"/m.exec(block)?.[1];
-			if(name && version) {
-				pin(ctx, name, version);
+		for(const file of virtualEnvFiles(ctx, 'rv.lock')) {
+			// rv.lock is TOML with repeated `[[packages]]` tables carrying `name`/`version`
+			for(const block of file.content().toString().split(/\[\[packages\]\]/).slice(1)) {
+				const name = /^\s*name\s*=\s*"([^"]+)"/m.exec(block)?.[1];
+				const version = /^\s*version\s*=\s*"([^"]+)"/m.exec(block)?.[1];
+				if(name && version) {
+					pin(ctx, name, version);
+				}
 			}
 		}
 	}

@@ -21,6 +21,7 @@ import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
+import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
@@ -47,6 +48,7 @@ export const BuiltInPlugins = [
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
+	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 

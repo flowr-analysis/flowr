@@ -28,6 +28,7 @@ import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { Identifier } from '../../dataflow/environments/identifier';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { OtherPathFunctions } from '../../queries/catalog/dependencies-query/function-info/other-path-functions';
 
 export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
@@ -142,7 +143,7 @@ export const ABSOLUTE_PATH = {
 				type:                   'dependencies',
 				// we use the dependencies query to give us all functions that take a file path as input
 				ignoreDefaultFunctions: true,
-				readFunctions:          ReadFunctions.concat(WriteFunctions, SourceFunctions, config.additionalPathFunctions),
+				readFunctions:          ReadFunctions.concat(WriteFunctions, SourceFunctions, OtherPathFunctions, config.additionalPathFunctions),
 			});
 		}
 		if(config.include.constructed) {

@@ -99,6 +99,9 @@ relevant documentation. If you don't know the origin of the package, you can use
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)
+		.addFaq('How does flowR know a *package\'s exports*?', `
+See the ${ctx.linkPage('wiki/Package Database', 'Package Database')} wiki page.
+`)
 	;
 
 	wikiFaq.withTopic('editor.configs')

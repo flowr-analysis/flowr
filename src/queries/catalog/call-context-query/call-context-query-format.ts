@@ -40,6 +40,8 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	 * Request this specifically to gain all call targets we can resolve.
 	 */
 	readonly callTargets?:           CallTargets;
+	/** Only keep calls that resolve to (or are explicitly qualified with) this package, e.g. `bar` to find `bar::foo` / `foo()` after `library(bar)`. */
+	readonly callTargetNamespace?:   string;
 	/** Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results? */
 	readonly includeAliases?:        boolean;
 	/** Should we ignore default values for parameters in the results? */
@@ -161,6 +163,7 @@ export const CallContextQueryDefinition = {
 		kind:                  Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
 		subkind:               Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
 		callTargets:           Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
+		callTargetNamespace:   Joi.string().optional().description('Only keep calls that resolve to (or are explicitly qualified with) this package (e.g. `bar` to find `bar::foo`).'),
 		ignoreParameterValues: Joi.boolean().optional().description('Should we ignore default values for parameters in the results?'),
 		includeAliases:        Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
 		fileFilter:            Joi.object({

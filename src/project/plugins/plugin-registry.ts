@@ -4,6 +4,12 @@ import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
 import {
+	FlowrAnalyzerPackageVersionsPkgDbPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
+import {
+	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
+import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
@@ -15,6 +21,7 @@ import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
+import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
@@ -27,6 +34,9 @@ import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discover
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
+	['versions:pkgdb', FlowrAnalyzerPackageVersionsPkgDbPlugin],
+	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
+	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
@@ -38,6 +48,7 @@ export const BuiltInPlugins = [
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
+	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 

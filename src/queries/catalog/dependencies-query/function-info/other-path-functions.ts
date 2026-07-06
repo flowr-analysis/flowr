@@ -9,7 +9,6 @@ export const OtherPathFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'file.mode',     argIdx: 'unnamed',           resolveValue: true },
 	{ package: 'base', name: 'file.mtime',    argIdx: 'unnamed',           resolveValue: true },
 	{ package: 'base', name: 'file.size',     argIdx: 'unnamed',           resolveValue: true },
-	{ package: 'base', name: 'file.path',     argIdx: 0,                   resolveValue: true },
 	{ package: 'base', name: 'file.create',   argIdx: 'unnamed',           resolveValue: true },
 	{ package: 'base', name: 'file.exists',   argIdx: 'unnamed',           resolveValue: true },
 	{ package: 'base', name: 'file.remove',   argIdx: 'unnamed',           resolveValue: true },

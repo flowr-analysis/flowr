@@ -28,17 +28,9 @@ interface ArgInfo {
 	taint?: unknown,
 }
 
-interface ControlDependencyInfo {
-	/** Node id of the governing construct (e.g., the `if` node, or a `stopifnot` condition expression). */
-	id:           NodeId,
+interface ControlDependencyInfo extends ControlDependency {
 	/** Resolved construct kind, e.g. 'if', 'for', 'while', 'repeat', '&&', '||', 'stopifnot'. */
-	construct:    string,
-	/** Whether the dependency triggers when the governing condition is true or false. */
-	when?:        boolean,
-	/** Whether the dependency was created due to iteration (e.g., a conditional loop exit). */
-	byIteration?: boolean,
-	/** Any file-exist assumption made (e.g., by `source`). */
-	file?:        string,
+	construct: string,
 }
 
 interface CallInfo {
@@ -131,15 +123,18 @@ export class TaintAnalysisInstrumentation {
 
 function resolveControlDependency(cd: ControlDependency, dfg: DataflowGraph): ControlDependencyInfo {
 	return {
-		id:        cd.id,
-		construct: classifyControlConstruct(cd, dfg),
-		...(cd.when === undefined ? {} : { when: cd.when }),
-		...(cd.byIteration === undefined ? {} : { byIteration: cd.byIteration }),
-		...(cd.file === undefined ? {} : { file: cd.file }),
+		id:          cd.id,
+		construct:   classifyControlConstruct(cd, dfg),
+		when:        cd.when,
+		byIteration: cd.byIteration,
+		file:        cd.file
 	};
 }
 
-/** Binary operators that lazily evaluate their rhs and thus act as control constructs. */
+/**
+ * Binary operators that lazily evaluate their rhs and thus act as control constructs.
+ * See {@link BuiltInProcName.SpecialBinOp} operators in {@link DefaultBuiltinConfig}.
+ */
 const LazyBinaryOperators: ReadonlySet<string> = new Set(['&&', '&', '||', '|']);
 
 /**
@@ -163,13 +158,14 @@ function classifyControlConstruct(cd: ControlDependency, dfg: DataflowGraph): st
 			}
 			break;
 		case RType.FunctionCall:
-			// only file-exist assumptions point directly at their call (`source`); other call-typed cd ids are
-			// governing expressions (e.g., a `stopifnot` condition) whose enclosing call names the construct
+			// for file-exist assumptions (e.g. `source`)
 			if(node.named && cd.file !== undefined) {
 				return Identifier.toString(node.functionName.content);
 			}
 			break;
 	}
+	// the cd id is a governing expression (e.g., a `stopifnot` condition or a `tryCatch` block)
+	// the nearest enclosing named call names the construct (intermediate nodes are skipped)
 	for(let parent = parentNode(node, dfg); parent !== undefined; parent = parentNode(parent, dfg)) {
 		if(parent.type === RType.FunctionCall && parent.named) {
 			return Identifier.toString(parent.functionName.content);

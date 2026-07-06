@@ -36,30 +36,29 @@ ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')}, and 
 
 ## Configuration
 
-Three plugins provide this, all on by default (see ${ctx.linkPage('wiki/Interface', 'configuring flowR', 'configuring-flowr')}):
+The exports come from ${pluginLink('versions:pkgdb')}, which reads the bundled database (on by default;
+see ${ctx.linkPage('wiki/Interface', 'configuring flowR', 'configuring-flowr')}).
 
-- ${pluginLink('versions:pkgdb')} reads the bundled database.
+*Which* version's exports are resolved is decided by the version-reading plugins that pin the packages
+used in a project. These are only examples - more may be registered:
+
+- ${pluginLink('versions:description')} reads a package's \`DESCRIPTION\` (\`Depends\` / \`Imports\`, ${linkFlowRSourceFile('src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-description-file-plugin.ts')}).
 - ${pluginLink('versions:renv')} and ${pluginLink('versions:rv')} read a project's \`renv.lock\` / \`rv.lock\`
-  to pin package versions, so \`library(pkg)\` resolves the pinned version's exports (${linkFlowRSourceFile('src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts')}).
+  to pin exact versions (${linkFlowRSourceFile('src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin.ts')}).
 
-To override or extend the bundle, hand ${pluginLink('versions:pkgdb')} extra sources (file paths, parsed
-objects, or \`http(s)\` URLs).
+So \`library(pkg)\` resolves the pinned version's exports. To override or extend the bundle, hand
+${pluginLink('versions:pkgdb')} extra sources (file paths, parsed objects, or \`http(s)\` URLs).
 
 ${ctx.code(usePackageDatabase, { dropLinesStart: 1 })}
 
-File sources load lazily on first use; for a URL source call ${ctx.linkM(FlowrAnalyzerPackageVersionsPkgDbPlugin, 'preload', { hideClass: true, codeFont: true })} (\`await pkgdb.preload()\`) before analysis to download it.
-
-## Tiers
-
-Three tiers, \`tiny\`, \`latest\`, and \`all\` (every package, version, and identifier), are built from
-CRAN's history. npm and Docker ship the smaller tiers; download \`all\` for full coverage and
-version-aware resolution. \`defaultPkgDbPath()\` picks the richest tier available and falls back to \`latest\`.
+File sources load lazily on the first package load, so scripts without \`library()\`/\`use()\` calls never
+pay for parsing them (set \`solver.eagerlyLoadPackageDatabase\` to mount the database up front instead).
+For a URL source call ${ctx.linkM(FlowrAnalyzerPackageVersionsPkgDbPlugin, 'preload', { hideClass: true, codeFont: true })} (\`await pkgdb.preload()\`) before analysis to download it.
 
 ## Format
 
-One JSON object (\`flowr-pkgdb\`, schema ${PkgDbSchema}) with a pooled string table. The \`all\` tier also
-pools export lists and can carry optional definition locations. CRAN source URLs are reconstructed on
-load. Reader and writer both live in ${linkFlowRSourceFile('src/project/plugins/package-version-plugins/pkgdb.ts')}.
+One JSON object (\`flowr-pkgdb\`, schema ${PkgDbSchema}) with a pooled string table.
+Reader and writer both live in ${linkFlowRSourceFile('src/project/plugins/package-version-plugins/pkgdb.ts')}.
 `.trim();
 	}
 }

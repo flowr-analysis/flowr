@@ -277,6 +277,7 @@ async function getTextMainPage(knownParser: KnownParser, tagTypes: TypeReport, c
 
 	return `
 This page describes the flowR linter, which is a tool that utilizes flowR's dataflow analysis to find common issues in R scripts. The linter can currently be used through the linter ${ctx.linkPage('wiki/Query API', 'query')}.
+Some rules also draw on the ${ctx.linkPage('wiki/Package Database', 'package database')}.
 For example:
 
 ${await(async() => {

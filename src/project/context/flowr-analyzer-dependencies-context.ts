@@ -65,10 +65,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
+		if(!this.ctx.config.solver.pkgdb.enabled) {
+			return [];
+		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
-	/** Eagerly mount every version plugin's package database up front (see `solver.eagerlyLoadPackageDatabase`). */
+	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */
 	public eagerlyLoadPackageDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();

@@ -271,12 +271,11 @@ ${codeBlock('json', JSON.stringify(
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
-				variables:                  VariableResolve.Alias,
-				evalStrings:                true,
-				trackEnvironments:          true,
-				eagerlyLoadPackages:        false,
-				eagerlyLoadPackageDatabase: false,
-				resolveSource:              {
+				variables:         VariableResolve.Alias,
+				evalStrings:       true,
+				trackEnvironments: true,
+				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,

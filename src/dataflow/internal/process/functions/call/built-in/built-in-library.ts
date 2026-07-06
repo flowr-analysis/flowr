@@ -356,7 +356,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	// by default only the environment carries the exports; their built-in vertices are materialized on
 	// demand when a call resolves to one (see attachExportVertex). Eager mode registers them all upfront.
-	if(data.ctx.config.solver.eagerlyLoadPackages){
+	if(data.ctx.config.solver.pkgdb.eagerlyLoadExports){
 		for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
 			const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
 			attachExportVertex(info.graph, builtInId, info.environment, data.ctx, data.cds);

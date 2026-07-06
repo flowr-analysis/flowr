@@ -75,7 +75,7 @@ describe('Link libraries from a pkgdb database', withTreeSitter(ts => {
 
 	test(label('eager mode (config) materializes every export vertex on load', ['library-loading'], ['dataflow']), async() => {
 		const eager = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.solver.eagerlyLoadPackages = true;
+			c.solver.pkgdb.eagerlyLoadExports = true;
 		});
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).setConfig(eager)
 			.unregisterPlugins(PkgDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(ggplotDb())).build();

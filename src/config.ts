@@ -153,30 +153,26 @@ export interface FlowrConfig extends MergeableRecord {
 		/**
 		 * How to resolve variables and their values
 		 */
-		readonly variables:                  VariableResolve,
+		readonly variables:         VariableResolve,
 		/**
 		 * Should we include eval(parse(text="...")) calls in the dataflow graph?
 		 */
-		readonly evalStrings:                boolean,
+		readonly evalStrings:       boolean,
 		/**
 		 * Track user-created environments (`new.env()`, `assign(..., envir=e)`, `get(..., envir=e)`,
 		 * `local({}, envir=e)`, `e$x <- v`, `attach(e)`) with precise per-variable envState.
 		 * When disabled all envir-style calls fall through to the conservative global treatment.
 		 */
-		readonly trackEnvironments:          boolean
-		/**
-		 * Materialize a built-in function-definition vertex for every export when a package is loaded
-		 * (`library()`, `use()`, ...). By default (`false`) exports are only added to the environment
-		 * and their vertices are created on demand, when a call actually resolves to one, keeping the
-		 * dataflow graph small for large packages.
-		 */
-		readonly eagerlyLoadPackages:        boolean
-		/**
-		 * Mount the package database (e.g. the bundled `flowr-pkgdb`) up front instead of lazily on the
-		 * first package load. By default (`false`) the database is parsed only when a `library()`/`use()`
-		 * call first needs it, so scripts without package loads never pay for it.
-		 */
-		readonly eagerlyLoadPackageDatabase: boolean
+		readonly trackEnvironments: boolean
+		/** Resolving `library()`/`use()` exports from a package database (e.g. the bundled `flowr-pkgdb`). */
+		readonly pkgdb: {
+			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
+			readonly enabled:            boolean
+			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
+			readonly eagerlyLoad:        boolean
+			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
+			readonly eagerlyLoadExports: boolean
+		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -333,12 +329,11 @@ export const FlowrConfig = {
 			engines:       [],
 			defaultEngine: 'tree-sitter',
 			solver:        {
-				variables:                  VariableResolve.Alias,
-				evalStrings:                true,
-				trackEnvironments:          true,
-				eagerlyLoadPackages:        false,
-				eagerlyLoadPackageDatabase: false,
-				resolveSource:              {
+				variables:         VariableResolve.Alias,
+				evalStrings:       true,
+				trackEnvironments: true,
+				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
@@ -408,12 +403,15 @@ export const FlowrConfig = {
 		)).description('The engine or set of engines to use for interacting with R code. An empty array means all available engines will be used.'),
 		defaultEngine: Joi.string().optional().valid('tree-sitter', 'r-shell').description('The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from the specified list will be used.'),
 		solver:        Joi.object({
-			variables:                  Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
-			evalStrings:                Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
-			trackEnvironments:          Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
-			eagerlyLoadPackages:        Joi.boolean().optional().description('Create a built-in vertex for every export when a package is loaded. When false (default), export vertices are created on demand as calls resolve to them, keeping the dataflow graph small.'),
-			eagerlyLoadPackageDatabase: Joi.boolean().optional().description('Mount the package database up front instead of lazily on the first package load. When false (default), it is parsed only when a library()/use() call first needs it.'),
-			instrument:                 Joi.object({
+			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
+			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
+			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
+			pkgdb:             Joi.object({
+				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a package database (default true); when false no database is consulted.'),
+				eagerlyLoad:        Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
+				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.')
+			}).description('Resolving library exports from a package database.'),
+			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({

@@ -431,7 +431,7 @@ export const REnvironment = {
 } as const;
 
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */
-function splitLibraryLayers(env: Environment): [Environment[], Environment] {
+function splitLibraryLayers(this: void, env: Environment): [Environment[], Environment] {
 	const layers: Environment[] = [];
 	let current = env;
 	while(current.t !== undefined && !current.builtInEnv) {

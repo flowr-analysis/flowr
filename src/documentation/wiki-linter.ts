@@ -187,6 +187,10 @@ function(x) {
 		'no-leaked-credentials', 'NoLeakedCredentialsConfig', 'NO_LEAKED_CREDENTIALS', 'lint-no-leaked-credentials',
 		'password <- "s3cr3t"', tagTypes);
 
+	rule(knownParser,
+		'undefined-symbol', 'UndefinedSymbolConfig', 'UNDEFINED_SYMBOL', 'lint-undefined-symbol',
+		'undefined_helper(42)', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

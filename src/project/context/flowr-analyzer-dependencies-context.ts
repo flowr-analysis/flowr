@@ -1,6 +1,7 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
-	FlowrAnalyzerPackageVersionsPlugin
+	FlowrAnalyzerPackageVersionsPlugin,
+	type PkgDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
@@ -30,6 +31,11 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
+
+	/**
+	 * Metadata of the package databases the version plugins currently have loaded.
+	 */
+	loadedPackageDatabases(): PkgDbLoadedInfo[];
 }
 
 /**
@@ -40,12 +46,26 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
-	private dependencies: Map<string, Package> = new Map();
+	private dependencies:  Map<string, Package> = new Map();
 	private staticsLoaded = false;
+	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
+	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
+	private resolvedMisses = new Set<string>();
 
 	public reset(): void {
 		this.dependencies = new Map();
 		this.staticsLoaded = false;
+		this.lazyResolvers = [];
+		this.resolvedMisses = new Set();
+	}
+
+	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */
+	public addLazyResolver(resolver: (name: string, existing?: Package) => Package | undefined): void {
+		this.lazyResolvers.push(resolver);
+	}
+
+	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
+		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
@@ -72,7 +92,22 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!this.staticsLoaded) {
 			this.resolveStaticDependencies();
 		}
-		return this.dependencies.get(name);
+		const existing = this.dependencies.get(name);
+		// a package already carrying exports is complete; a version-only one is still enriched below
+		if(existing?.namespaceInfo || (!existing && this.resolvedMisses.has(name))) {
+			return existing;
+		}
+		if(!this.resolvedMisses.has(name)) {
+			for(const resolve of this.lazyResolvers) {
+				const resolved = resolve(name, existing);
+				if(resolved) {
+					this.addDependency(resolved);   // merges exports into any existing version info
+					return this.dependencies.get(name);
+				}
+			}
+			this.resolvedMisses.add(name);
+		}
+		return existing;
 	}
 
 	public getDependencies(): Package[] {

@@ -18,7 +18,8 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		log.warn(`Linter query collection contains duplicate rules ${pretty}, only linting for each rule once`);
 	}
 
-	const results: Omit<LinterQueryResult, '.meta'> = { results: {} };
+	// typed loosely to avoid a too-complex mapped-union at the indexed writes below; cast back on return
+	const results: { results: Record<string, unknown> } = { results: {} };
 
 	const start = Date.now();
 
@@ -38,5 +39,5 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		'.meta': {
 			timing: Date.now() - start
 		}
-	};
+	} as LinterQueryResult;
 }

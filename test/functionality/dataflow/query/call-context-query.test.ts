@@ -10,6 +10,7 @@ import { CallTargets } from '../../../../src/queries/catalog/call-context-query/
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 /** simple query shortcut */
 function q(callName: RegExp | string, c: Partial<CallContextQuery> = {}): CallContextQuery {
@@ -52,6 +53,11 @@ describe('Call Context Query', withTreeSitter(parser => {
 	testQuery('Quoted Call', 'quote(print())', [q(/print/)], baseResult({}));
 	testQuery('Do call', 'do.call("print")', [q(/print/)], r([{ id: 1, name: 'print' }]));
 
+	describe('Namespace filter', () => {
+		testQuery('keeps only bar::foo', 'bar::foo()\nbaz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })],
+			r([{ id: 1, name: Identifier.make('foo', 'bar') }]));
+		testQuery('no match for a different package', 'baz::foo()', [q(/foo/, { callTargetNamespace: 'bar' })], baseResult({}));
+	});
 	describe('Local Targets', () => {
 		testQuery('Happy Foo(t)', 'foo <- function(){}\nfoo()', [q(/foo/)], r([{ id: 7, name: 'foo' }]));
 		testQuery('Happy Foo(t) (only local)', 'foo <- function(){}\nfoo()', [q(/foo/, { callTargets: CallTargets.OnlyLocal })], r([{ id: 7, calls: [4], name: 'foo' }]));

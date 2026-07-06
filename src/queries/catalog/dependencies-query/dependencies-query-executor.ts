@@ -11,6 +11,8 @@ import {
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { getOriginInDfg } from '../../../dataflow/origin/dfg-get-origin';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
@@ -132,6 +134,17 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 		for(const { id, linkedIds } of results) {
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const info = functionMap.get(name) as FunctionInfo;
+
+			// a call qualified to (or resolved via a loaded library to) a different package than the
+			// function's is not this function - e.g. purrr::map, or a bare map() after library(purrr),
+			// is not the maps `map` plot; bare/matching-namespace calls still count. Only packaged
+			// entries need this check, so we skip the origin lookup for the (common) unpackaged ones.
+			if(info.package !== undefined) {
+				const callNamespace = Identifier.getNamespace(Identifier.toQualified(getOriginInDfg(dfg, id)) ?? vertex.name);
+				if(callNamespace !== undefined && callNamespace !== info.package) {
+					continue;
+				}
+			}
 
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);

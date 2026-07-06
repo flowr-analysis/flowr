@@ -271,10 +271,11 @@ ${codeBlock('json', JSON.stringify(
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
-				variables:         VariableResolve.Alias,
-				evalStrings:       true,
-				trackEnvironments: true,
-				resolveSource:     {
+				variables:           VariableResolve.Alias,
+				evalStrings:         true,
+				trackEnvironments:   true,
+				eagerlyLoadPackages: false,
+				resolveSource:       {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,

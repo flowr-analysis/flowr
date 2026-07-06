@@ -6,3 +6,5 @@ wiki/
 statistics-out/
 *.gz
 *.log
+# keep the packaged databases regardless of the *.gz / *.log filters above
+!src/data/pkgdb/**

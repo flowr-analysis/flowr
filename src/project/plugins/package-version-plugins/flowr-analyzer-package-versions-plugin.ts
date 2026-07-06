@@ -1,6 +1,9 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
 
+/** metadata of a package database a plugin currently has loaded */
+export interface PkgDbLoadedInfo { scope: string, version: number, date: string }
+
 /**
  * This is the base class for all plugins that identify package and dependency versions used in the project.
  * These plugins interplay with the {@link FlowrAnalyzerDependenciesContext} to gather information about the packages used in the project.
@@ -11,6 +14,11 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 
 	public static override defaultPlugin(): FlowrAnalyzerPackageVersionsPlugin {
 		return new DefaultFlowrAnalyzerPackageVersionsPlugin();
+	}
+
+	/** metadata of the databases this plugin currently has loaded (empty for plugins without any) */
+	public loadedDatabases(): PkgDbLoadedInfo[] {
+		return [];
 	}
 }
 

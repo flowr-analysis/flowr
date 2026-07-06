@@ -3,6 +3,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { REnvironmentInformation } from './environment';
+import type { Origin } from '../origin/dfg-get-origin';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -202,6 +203,29 @@ export const Identifier = {
 		} else {
 			return [id, undefined, undefined];
 		}
+	},
+	/**
+	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
+	 * resolves to an export of a loaded package (the `flowr-pkgdb` info attached by `library()`/`use()`);
+	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 */
+	toQualified(this: void, origins: readonly Origin[] | undefined): Identifier | undefined {
+		for(const origin of origins ?? []) {
+			// a package-export origin carries the target builtin id `built-in:pkg:func` in `proc`
+			if('proc' in origin && origin.proc.startsWith('built-in:')) {
+				const rest = origin.proc.slice('built-in:'.length);
+				const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
+				if(sep > 0) {
+					return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
+				}
+			}
+		}
+		return undefined;
+	},
+	/** The fully qualified `package::name` of a resolved call (see {@link Identifier.toQualified}). */
+	toQualifiedName(this: void, origins: readonly Origin[] | undefined): string | undefined {
+		const qualified = Identifier.toQualified(origins);
+		return qualified === undefined ? undefined : Identifier.toString(qualified);
 	}
 } as const;
 

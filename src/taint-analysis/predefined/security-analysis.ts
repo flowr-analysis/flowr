@@ -25,7 +25,7 @@ export const securityAnalysis = new TaintAnalysisDefinition('security', security
 		},
 		{
 			identifier: ['read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT',
-				'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'readLines', 'load', 'curl_download', // TODO Fix source ambiguity
+				'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'readLines', 'load', 'curl_download',
 				'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'read_xml', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get',
 				's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub', 'scan',
 				'socketConnection', 'request', 'curl'],

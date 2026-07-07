@@ -101,7 +101,7 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 	const resultingTaint = taint.condition(taint.valArgs, incomingTaints);
 
 	if(!resultingTaint) {
-		log.warn('Argument is undefined'); // TODO Investigate cases in eval data set
+		log.warn('Argument is undefined');
 	}
 
 	return domain.create(resultingTaint ?? Top);
@@ -110,7 +110,7 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =
 	{
 		condition: TaintConditionFunction<Domain>,
-		valArgs:   unknown[], // TODO Support for other types apart from booleans
+		valArgs:   unknown[],
 		taintArgs: (PotentiallyEmptyRArgument<ParentInformation> | undefined)[]
 	}
 	| { taint: AbstractValue<Domain> }

@@ -1,4 +1,3 @@
-import { FlowrWikiBaseRef } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details, section } from './doc-util/doc-structure';
 import { getCfg, printCfgCode } from './doc-util/doc-cfg';
@@ -149,11 +148,11 @@ export class WikiCfg extends DocMaker<'wiki/Control Flow Graph.md'> {
 
 	public async text({ ctx, shell }: DocMakerArgs): Promise<string> {
 		return `
-_flowR_ produces three main perspectives of the program: 1) a [normalized version of the AST](${FlowrWikiBaseRef}/Normalized-AST)
-and 2) a [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph), and 3) a control flow graph (CFG).
-flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a [Call-Context Query](${FlowrWikiBaseRef}/Query-API)).
+_flowR_ produces three main perspectives of the program: 1) a ${ctx.linkPage('wiki/Normalized AST', 'normalized version of the AST')}
+and 2) a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}, and 3) a control flow graph (CFG).
+flowR uses this CFG interweaved with its data flow analysis and for some of its queries (e.g., to link to the last call in a ${ctx.linkPage('wiki/Query API', 'Call-Context Query', 'call-context-query')}).
 
-Please note that, mostly due to historical reasons, the [control dependencies](${FlowrWikiBaseRef}/Dataflow%20Graph#control-dependencies) that are stored directly within the
+Please note that, mostly due to historical reasons, the ${ctx.linkPage('wiki/Dataflow Graph', 'control dependencies', 'control-dependencies')} that are stored directly within the
 DFG provide only a partial view of the CFG. While they provide you with information on the conditional execution of vertices, they do not encode the order of execution.
 	In contrast, the CFG describes a complete view of the program's control flow.
 
@@ -161,7 +160,7 @@ ${
 	block({
 		type:    'TIP',
 		content: `If you want to investigate the Control Flow Graph,
-you can use the ${getReplCommand('controlflow*')} command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
+you can use the ${getReplCommand('controlflow*')} command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information).
 By default, this view does _not_ use basic blocks as, for example, R allows unconditional jumps to occur in spots where conventional languages would assume expressions (e.g., if-conditions).
 Yet, by using ${getReplCommand('controlflowbb*')} you can inspect the CFG with basic blocks (although you have to keep in mind that now, there can be a value flow between basic blocks)`
 	})
@@ -196,39 +195,39 @@ ${codeBlock('r', 'x <- 2 * 3 + 1')}
 
 The corresponding CFG is a directed, labeled graph with two types of edges (control and flow dependencies).
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', ctx })}
 
 ${block({
 	type:    'IMPORTANT',
 	content: 'As the edges describe dependencies they point in the inverse order of execution (which is very helpful for backward analyses)! The [visitors](#cfg-working) abstract away from this and there is no harm in considering an inverted CFG. Yet, you should keep this in mind!'
 })}
 
-Every normalized node of the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) that has any relevance to the
-execution is added and automatically linked using its id (similarly to vertices of the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph)).
+Every normalized node of the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} that has any relevance to the
+execution is added and automatically linked using its id (similarly to vertices of the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}).
 Expressions, such as \`2 * 3\` get an additional node with an artificial id that ends in \`-exit\` to mark whenever their calculation is over.
 
 To gain a better understanding, let's have a look at a simple program with a single branching structure:
 
-${await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, openCode: false, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, openCode: false, prefix: 'flowchart RL\n', ctx })}
 
 Here, you can see the \`if\` node followed by the condition (in this case merely \`u\`) that then splits into two branches for the two possible outcomes.
 The \`if\` structure is terminated by the corresponding \`-exit\` node (see the [structure](#cfg-structure) section for more details).
 
 For you to compare, the following shows the CFG of an \`if\` without an \`else\` branch:
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', ctx })}
 
 Activating the calculation of basic blocks produces the following:
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'] })}
+${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], ctx })}
 
 Which is probably much more readable if compacted (although the reconstucted code can sometimes be slightly mislieading as flowR tries its best to make it syntactically correct and hence add closing braces etc. which are technically not part of the respective block):
 
-${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true })}
+${await printCfgCode(shell, 'if(u || v) 3', { showCode: true, openCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
 
 The control flow graph also harmonizes with function definitions, and calls:
 
-${await printCfgCode(shell, 'f <- function() { 3 }\nf()', { showCode: true, openCode: true, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'f <- function() { 3 }\nf()', { showCode: true, openCode: true, prefix: 'flowchart RL\n', ctx })}
 
 ${section('Structure of the Control Flow Graph', 2, 'cfg-structure')}
 
@@ -270,7 +269,7 @@ Blocks are visualized as boxes around the contained vertices.
 ${block({
 	type:    'NOTE',
 	content: `
-	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) (although basic blocks will find no counterpart as they are a structuring element of the CFG).
+	Every CFG vertex has a ${ctx.link('NodeId')} that links it to the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} (although basic blocks will find no counterpart as they are a structuring element of the CFG).
 	Additionally, it may provide information on the called functions (in case that the current element is a function call).
 	Have a look at the ${ctx.link('CfgBaseVertexWithMarker')} interface for more information.
 		`.trim()
@@ -286,7 +285,7 @@ ${section('Flow Dependencies', 4, 'cfg-flow-dependency')}
 The most common edge is the flow dependency&nbsp;(FD) which simply signals that the source vertex happens _after_ the target vertex in the control flow.
 So \`x; y\` would produce a flow dependency from \`y\` to \`x\` (additionally to the program-enveloping root expression list):
 
-${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'x; y', { showCode: false, prefix: 'flowchart RL\n', ctx })}
 
 ${section('Control Dependencies', 4, 'cfg-control-dependency')}
 
@@ -299,12 +298,12 @@ The extra \`caused\` link signals the vertex that caused the control flow influe
 
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, 'if(u) 3 else 2', { showCode: true, prefix: 'flowchart RL\n', ctx });
 	return details('Example: if-else', exa);
 })()}
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'while(u) b', { showCode: true, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, 'while(u) b', { showCode: true, prefix: 'flowchart RL\n', ctx });
 	return details('Example: while-loop', exa);
 })()}
 <br/>
@@ -314,12 +313,12 @@ Additionally, the control flow graph does not have to be connected. If you use a
 the corresponding exit markers are not reachable from the entry:
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'repeat { b }; after', { showCode: true, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, 'repeat { b }; after', { showCode: true, prefix: 'flowchart RL\n', ctx });
 	return details('Example: repeat-loop (infinite)',  exa);
 })()}
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'repeat { b; if(u) break; }; after', { showCode: true, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, 'repeat { b; if(u) break; }; after', { showCode: true, prefix: 'flowchart RL\n', ctx });
 	return details('Example: repeat-loop (with break)',  exa);
 })()}
 <br/>
@@ -327,22 +326,22 @@ ${await (async() => {
 In the context of a for-loop, the control dependency refer to whether the respective vector still has values to iterate over.
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, 'for(i in 1:10) b', { showCode: true, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, 'for(i in 1:10) b', { showCode: true, prefix: 'flowchart RL\n', ctx });
 	return details('Example: for-loop', exa);
 })()}
 
 ${section('Extra: Call Links', 4, 'cfg-call-links')}
 
 If you generate the CFG with the ${ctx.link(extractCfg)} function you can (and, if you want to gain inter-procedural information, should)
-pass a matching [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) to it to incorporate the dataflow perspective into the CFG.
+pass a matching ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} to it to incorporate the dataflow perspective into the CFG.
 
 The difference becomes obvious when we look at the code \`f <- function() b; f()\` first without the dataflow graph:
 
-${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: false })}
+${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: false, ctx })}
 
 And now, including dataflow information:
 
-${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: true })}
+${await printCfgCode(shell, 'f <- function() b; f()', { showCode: true, prefix: 'flowchart RL\n', useDfg: true, ctx })}
 
 There are two important additions:
 
@@ -350,14 +349,14 @@ There are two important additions:
    This marker always follows the exit marker of the function call and links not just the call but also the exit points of the function definition.
 2. A new _calls_ attribute attached to the function call vertex. This holds the ${ctx.link('NodeId')} of the function definitions that are called from this vertex.
 
-For built-in functions that are provided by flowR's built-in configuration (see the [interface wiki page](${FlowrWikiBaseRef}/Interface)) the CFG does not contain
+For built-in functions that are provided by flowR's built-in configuration (see the ${ctx.linkPage('wiki/Interface', 'interface wiki page')}) the CFG does not contain
 the additional information directly:
 
-${await printCfgCode(shell, 'print(3)', { showCode: true, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'print(3)', { showCode: true, prefix: 'flowchart RL\n', ctx })}
 
-This is due to the fact that the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph) does contain the required call information (and there are no new control vertices to add as the built-in call has no target in the source code):
+This is due to the fact that the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} does contain the required call information (and there are no new control vertices to add as the built-in call has no target in the source code):
 
-${await printDfGraphForCode(shell, 'print(3)', { showCode: true })}
+${await printDfGraphForCode(shell, 'print(3)', { showCode: true, ctx })}
 
 ${section('Adding Basic Blocks', 3, 'cfg-basic-blocks')}
 
@@ -368,16 +367,16 @@ Yet, we can request basic blocks or transform an existing CFG into basic blocks 
 
 Any program without any (un-)conditional jumps now contains a single basic block:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: true, openCode: true, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: true, openCode: true, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
 
 While the CFG without basic blocks is much bigger:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n' })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', ctx })}
 
 In a way, using the basic blocks perspective does not remove any of these vertices (we just usually visualize them compacted as their execution order should be "obvious").
 The vertices are still there, as elems of the ${ctx.link('CfgBasicBlockVertex')}:
 
-${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: false })}
+${await printCfgCode(shell, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: false, ctx })}
 
 The benefit (for comprehensibility and algorithms) becomes more apparent when we look at a more complicated program:
 
@@ -385,12 +384,12 @@ ${codeBlock('r', CfgLongExample)}
 
 With basic blocks, this code looks like this:
 
-${await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true })}
+${await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n', simplifications: ['to-basic-blocks'], simplify: true, ctx })}
 
 Now, without basic blocks, this is a different story...
 
 ${await (async() => {
-	const exa = await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n' });
+	const exa = await printCfgCode(shell, CfgLongExample, { showCode: false, prefix: 'flowchart RL\n', ctx });
 	return details('The full CFG', exa);
 })()}
 
@@ -398,7 +397,7 @@ And again it should be noted that even though the example code is more complicat
 
 ${section('Working with the CFG', 2, 'cfg-working')}
 
-There is a plethora of functions that you can use the traverse the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) and the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph). 
+There is a plethora of functions that you can use the traverse the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} and the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}.
 Similarly, flowR provides you with a set of utility functions and classes that you can use to interact with the control flow graph:
 
 * ${ctx.link(visitCfgInOrder)} and ${ctx.link(visitCfgInReverseOrder)} for simple traversals
@@ -425,7 +424,7 @@ ${await (async() => {
 })()}
 
 A more useful appearance of these visitors occurs with ${ctx.link(happensBefore)} which uses the CFG to determine whether the execution
-of one vertex always, maybe, or never happens before another vertex (see the corresponding [query documentation](${FlowrWikiBaseRef}/Query-API#happens-before-query) for more information).
+of one vertex always, maybe, or never happens before another vertex (see the corresponding ${ctx.linkPage('wiki/Query API', 'query documentation', 'happens-before-query')} for more information).
 
 
 ${section('Diffing and Testing', 3, 'cfg-diff-and-test')}
@@ -450,9 +449,9 @@ visitors that incorporate various alternative perspectives:
 - [Basic CFG Visitor](#cfg-traversal-basic):\\
   As a class-based version of the [simple traversal](#cfg-traversal-basic) functions
 - [Syntax-Aware CFG Visitor](#cfg-traversal-syntax):\\
-  If you want directly incorporate the type of the respective vertex in the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) into your visitor
+  If you want directly incorporate the type of the respective vertex in the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} into your visitor
 - [Dataflow-Aware CFG Visitor](#cfg-traversal-dfg):\\
-  If you require the [dataflow information](${FlowrWikiBaseRef}/Dataflow%20Graph) as well (e.g., to track built-in function calls, ...)
+  If you require the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow information')} as well (e.g., to track built-in function calls, ...)
 - [Semantic CFG Visitor](#cfg-traversal-semantic):\\
   Currently the most advanced visitor that combines syntactic with dataflow information.
 
@@ -479,7 +478,7 @@ ${await (async() => {
 
 ${section('Syntax-Aware CFG Visitor', 4, 'cfg-traversal-syntax')}
 
-The ${ctx.link(SyntaxAwareCfgGuidedVisitor)} class incorporates knowledge of the [normalized AST](${FlowrWikiBaseRef}/Normalized-AST) into the CFG traversal and
+The ${ctx.link(SyntaxAwareCfgGuidedVisitor)} class incorporates knowledge of the ${ctx.linkPage('wiki/Normalized AST', 'normalized AST')} into the CFG traversal and
 directly provides specialized visitors for the various node types.
 Now, our running example of collecting all numbers simplifies to this:
 
@@ -497,7 +496,7 @@ ${await (async() => {
 
 ${section('Dataflow-Aware CFG Visitor', 4, 'cfg-traversal-dfg')}
 
-There is a lot of benefit in incorporating the [dataflow information](${FlowrWikiBaseRef}/Dataflow%20Graph) into the CFG traversal, as it contains
+There is a lot of benefit in incorporating the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow information')} into the CFG traversal, as it contains
 information about overwritten function calls, definition targets, and so on.
 Our best friend is the ${ctx.link(getOriginInDfg)} function which provides the important information about the origin of a vertex in the dataflow graph.
 The ${ctx.link(DataflowAwareCfgGuidedVisitor)} class does some of the basic lifting for us.
@@ -568,7 +567,7 @@ ${await (async function() {
 		= CfgVertex.getEnd(plusVertex)?.length ?? 0;
 	guard(numOfExits === 1);
 
-	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n' })}
+	return `${await printCfgCode(shell, 'x + 1', { showCode: true, prefix: 'flowchart RL\n', ctx })}
 	
 Looking at the binary operation vertex for \`+\` (with id \`${plusVertexId}\`) we see that it is linked to a single exit ("end marker") point: \`${CfgVertex.getEnd(plusVertex)?.[0] ?? '??'}\`.
 Checking this vertex essentially reveals all exit points of the expression &dash; in this case, this simply refers to the operands of the addition.
@@ -585,7 +584,7 @@ ${details('Example: Exit Points for an if', await (async function() {
 		=  CfgVertex.getEnd(ifVertex)?.length ?? 0;
 	guard(numOfExits === 1);
 
-	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n' })}
+	return `${await printCfgCode(shell, expr, { showCode: true, prefix: 'flowchart RL\n', ctx })}
 	
 Looking at the if vertex for (with id \`${ifVertexId}\`) we see that it is again linked to a single exit point: \`${CfgVertex.getEnd(ifVertex)?.[0] ?? '??'}\`.
 Yet, now this exit vertex is linked to the two branches of the if statement (the \`then\` and \`else\` branch).

@@ -5,8 +5,7 @@
  * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
  */
 import type { DeepReadonly } from 'ts-essentials';
-import { FlowRServer } from './repl/server/server';
-import { NetServer, type Server, WebSocketServerWrapper } from './repl/server/net';
+import type { Server } from './repl/server/net';
 import { flowrVersion, printVersionInformation } from '../util/version';
 import commandLineUsage from 'command-line-usage';
 import { log, LogLevel } from '../util/log';
@@ -33,7 +32,7 @@ import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
 import { exitSafe } from '../util/proc';
 import { printVersionRepl } from './repl/print-version';
-import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptArguments, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
@@ -93,7 +92,7 @@ const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 log.info('running with options', options);
 
-if(options['no-ansi']) {
+if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
 	log.info('disabling ansi colors');
 	setFormatter(voidFormatter);
 }
@@ -179,7 +178,7 @@ async function mainRepl() {
 		guard(target !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
-		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
+		await waitOnScript(`${__dirname}/${target}`, getScriptArguments(options.script, process.argv), undefined, true);
 		return exitSafe(0);
 	}
 
@@ -218,16 +217,21 @@ async function mainRepl() {
 	exitSafe(0);
 }
 
-async function mainServer(backend: Server = new NetServer()) {
+async function mainServer(useWebSocket: boolean) {
 	const config = createConfig();
 	const engines = await retrieveEngineInstances(config);
 	hookSignalHandlers(engines);
+	// the server stack (incl. the `ws` websocket library) is only loaded when actually running a server,
+	// so the common one-shot analysis path does not pay for evaluating it
+	const { FlowRServer } = await import('./repl/server/server');
+	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
 	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
 }
 
 
 if(options.server) {
-	void mainServer(options.ws ? new WebSocketServerWrapper() : new NetServer());
+	void mainServer(options.ws);
 } else {
 	void mainRepl();
 }

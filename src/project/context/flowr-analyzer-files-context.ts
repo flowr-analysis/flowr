@@ -44,6 +44,7 @@ export type RoleBasedFiles = {
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];
 	[FileRole.License]:     FlowrFileProvider[];
+	[FileRole.VirtualEnv]:  FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];
 	[FileRole.Data]:        FlowrFileProvider[];
 	[FileRole.Other]:       FlowrFileProvider[];
@@ -88,6 +89,14 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 */
 	getAllFiles(): FlowrFileProvider[];
 	/**
+	 * Get a file by its path.
+	 * Checks both disk-backed files and inline files.
+	 * However, this will not load new files that have not yet been requested by flowR.
+	 * @param path - The exact path of the file.
+	 * @returns The file if found, otherwise `undefined`.
+	 */
+	getFileByPath(path: string): FlowrFileProvider | undefined;
+	/**
 	 * Check if the context has a cached file with the given path.
 	 * @param path - The path to the file.
 	 */
@@ -129,13 +138,15 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RProjectAnalysisRequest, (RParseRequest | FlowrFile<string>)[], FlowrAnalyzerProjectDiscoveryPlugin> implements ReadOnlyFlowrAnalyzerFilesContext {
 	public readonly name = 'flowr-analyzer-files-context';
 
-	public readonly loadingOrder:     FlowrAnalyzerLoadingOrderContext;
+	public readonly loadingOrder:      FlowrAnalyzerLoadingOrderContext;
 	/* all project files etc., this contains *all* (non-inline) files, loading orders etc. are to be handled by plugins */
-	private files:                    Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
-	private inlineFiles:              FlowrFileProvider[] = [];
-	private readonly fileLoaders:     readonly FlowrAnalyzerFilePlugin[];
+	private files:                     Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
+	private inlineFiles:               FlowrFileProvider[] = [];
+	private readonly fileLoaders:      readonly FlowrAnalyzerFilePlugin[];
 	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
-	private readonly consideredFiles: string[] = [];
+	private readonly consideredFiles:  string[] = [];
+	/** User-registered project discovery plugins; if non-empty, they replace the default. */
+	private readonly discoveryPlugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[];
 
 	/* files that are part of the analysis, e.g. source files */
 	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
@@ -145,7 +156,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		plugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[],
 		fileLoaders: readonly FlowrAnalyzerFilePlugin[]
 	) {
-		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), plugins);
+		super(loadingOrder.getAttachedContext(), FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin(), []);
+		this.discoveryPlugins = plugins;
 		this.fileLoaders = [...fileLoaders, FlowrAnalyzerFilePlugin.defaultPlugin()];
 		this.loadingOrder = loadingOrder;
 	}
@@ -183,6 +195,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	/**
 	 * Add a request to the context. If the request is of type `project`, it will be expanded using the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
+	 * User-registered discovery plugins replace the built-in default; if none are registered, the default runs.
 	 */
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
@@ -190,7 +203,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			return;
 		}
 
-		const expandedRequests = this.applyPlugins(request).flat();
+		const active = this.discoveryPlugins.length > 0
+			? this.discoveryPlugins
+			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
 		for(const req of expandedRequests) {
 			if(isParseRequest(req)) {
 				this.addRequest(req);
@@ -353,5 +369,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public getAllFiles(): FlowrFileProvider[] {
 		return [...this.files.values(), ...this.inlineFiles];
+	}
+
+	public getFileByPath(path: string): FlowrFileProvider | undefined {
+		return this.files.get(path) ?? this.inlineFiles.find(f => f.path() === path);
 	}
 }

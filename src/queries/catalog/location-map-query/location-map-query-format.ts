@@ -10,7 +10,7 @@ import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
@@ -51,8 +51,9 @@ export const LocationMapQueryDefinition = {
 		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...Object.keys(out.map.ids)])}}`);
 		return true;
 	},
-	fromLine: locationMapLineParser,
-	schema:   Joi.object({
+	fromLine:  locationMapLineParser,
+	completer: criteriaQueryCompleter,
+	schema:    Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')
 	}).description('The location map query retrieves the location of every id in the ast.'),

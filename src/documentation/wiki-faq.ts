@@ -1,4 +1,5 @@
 import { registerFaqs } from './data/faq/faqs';
+import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 
 /**
@@ -9,8 +10,8 @@ export class WikiFaq extends DocMaker<'wiki/FAQ.md'> {
 		super('wiki/FAQ.md', module.filename, 'frequently asked questions');
 	}
 
-	public text(): string {
-		const faqs = registerFaqs();
+	public text({ ctx }: DocMakerArgs): string {
+		const faqs = registerFaqs(ctx);
 		return `
 	${faqs.toMarkdown()}
     `.trim();

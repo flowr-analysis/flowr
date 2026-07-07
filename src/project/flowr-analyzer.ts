@@ -323,9 +323,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	/**
-	 * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
+	 * Free the cached analyses (including any WASM-backed parse trees) and close the parser.
+	 * Closing is only required for an RShell/remote engine, but this also frees the cached parse trees.
 	 */
 	public close() {
+		this.cache.reset();
 		return this.parser?.close();
 	}
 }

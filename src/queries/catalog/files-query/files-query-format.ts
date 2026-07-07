@@ -68,7 +68,7 @@ function filesQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 		const parseResult = rolesFromInput(rolesPart);
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Invalid roles: ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
-				+`\nValid roles are: ${Object.values(FileRole).map(r => bold(r, output.formatter)).join(', ')}`);
+				+ `\nValid roles are: ${Object.values(FileRole).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		roles = parseResult.valid;
 		input = line[1];

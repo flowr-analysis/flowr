@@ -5,10 +5,13 @@ import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
 import { ReferenceType } from '../../../../environments/identifier';
+import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import { EdgeType } from '../../../../graph/edge';
+import { attachExportVertex } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
 
 
@@ -66,6 +69,13 @@ export function processNamedCall<OtherInfo>(
 	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
+	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
+	if(resolved.length > 0
+		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
+		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
+		data = { ...data, builtInNoEnv: rootId };
+	}
+
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
 	for(const resolvedFunction of resolved) {
@@ -82,6 +92,21 @@ export function processNamedCall<OtherInfo>(
 	} else if(information && builtIn) {
 		// mark the function call as built in only
 		markAsOnlyBuiltIn(information.graph, rootId);
+	}
+
+	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we
+	// already know the loading call here, link to it (a function-local export is invisible to the later
+	// top-level linkMaterializedExportsToLoaders pass, so we must catch it at the call site)
+	if(information) {
+		for(const r of resolved) {
+			if(r.type === ReferenceType.Function && r.nodeId !== undefined && NodeId.isBuiltIn(r.nodeId)) {
+				attachExportVertex(information.graph, r.nodeId, data.environment, data.ctx, data.cds);
+				const definedAt = (r as Partial<InGraphIdentifierDefinition>).definedAt;
+				if(definedAt !== undefined && !NodeId.isBuiltIn(definedAt)) {
+					information.graph.addEdge(r.nodeId, definedAt, EdgeType.Reads | EdgeType.Calls);
+				}
+			}
+		}
 	}
 
 	return information ?? DataflowInformation.initialize(rootId, data);

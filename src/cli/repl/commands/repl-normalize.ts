@@ -1,5 +1,4 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
@@ -13,7 +12,7 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const normalizeCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the normalized AST of R code',
 	isCodeCommand: true,
 	usageExample:  ':normalize',
 	aliases:       [ 'n' ],
@@ -23,11 +22,13 @@ export const normalizeCommand: ReplCodeCommand = {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaid(result.ast);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -42,11 +43,13 @@ export const normalizeStarCommand: ReplCodeCommand = {
 		const result = await analyzer.normalize();
 		const mermaid = normalizedAstToMermaidUrl(result.ast);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 

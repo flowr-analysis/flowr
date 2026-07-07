@@ -121,8 +121,8 @@ export interface GeneralDocContext {
 	 * ```
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
-	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
+	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 	/**
@@ -139,7 +139,7 @@ export interface GeneralDocContext {
 	 * ```
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * using the file path as link name.
-	 * @see {@link GeneralWikiContext#link|link} - to create a link with a custom name/using the type name by default.
+	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
 	 * @see {@link linkFile}  - for the underlying impl.
 	 */
 	linkFile(element: ElementIdOrRef): string;
@@ -162,7 +162,27 @@ export interface GeneralDocContext {
 	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
-	 * Returns the code snippet for a code element as markdown string.
+	 * Returns the documentation for a member of a class as Markdown string.
+	 * This is a convenience method around {@link GeneralDocContext#doc|doc}.
+	 * @example
+	 * ```ts
+	 * docM(MyClass, 'myMethod')
+	 * ```
+	 *
+	 * Creates the documentation for the `myMethod` member of the `MyClass` class in the code base.
+	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
+	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
+	 */
+	docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the documentation for a type/element definition which is retrieved from an object reference.
+	 * This is similar to {@link GeneralDocContext#doc}, but it uses an object reference to identify the element.
+	 */
+	docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the code snippet for a code element as Markdown string.
 	 * @param element - The element to create a code snippet for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the code snippet (see {@link FnElementInfo})
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
@@ -315,6 +335,15 @@ export function makeDocContextForTypes(
 	return {
 		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
+		},
+		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
+			const className = cls.prototype.constructor.name;
+			const fullName = `${className}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
+		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.doc(fullName, filter);
 		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');

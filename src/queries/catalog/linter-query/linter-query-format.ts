@@ -64,7 +64,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		const parseResult = rulesFromInput(output, rulesPart);
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
-				+`\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
+				+ `\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		rules = parseResult.valid;
 		input = line[1];
@@ -148,13 +148,17 @@ export const LinterQueryDefinition = {
 				name:   Joi.string().valid(...Object.keys(LintingRules)).required(),
 				config: Joi.object()
 			})
-		).description('The rules to lint for. If unset, all rules will be included.')
+		).description('The rules to lint for. If unset, all rules will be included.'),
 	}).description('The linter query lints for the given set of rules and returns the result.'),
-	flattenInvolvedNodes: (queryResults) => {
+	flattenInvolvedNodes: (queryResults, _queries, certainty) => {
 		const out = queryResults as LinterQueryResult;
-		return Object.values(out.results).flatMap(v =>
-			Array.from(LintingResults.allInvolvedIds(v))
-		).filter(isNotUndefined);
+		return Object.values(out.results).flatMap(v => {
+			if(LintingResults.isError(v)) {
+				return [];
+			}
+			const rows = certainty !== undefined ? v.results.filter(r => r.certainty === certainty) : v.results;
+			return rows.flatMap(r => r.involvedId);
+		}).filter(isNotUndefined);
 	}
 } as const satisfies SupportedQuery<'linter'>;
 

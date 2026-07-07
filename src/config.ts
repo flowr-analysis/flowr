@@ -15,6 +15,7 @@ import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
+import { type FlowrGasConfig, GasWikiRef } from './gas';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -163,6 +164,15 @@ export interface FlowrConfig extends MergeableRecord {
 		 * When disabled all envir-style calls fall through to the conservative global treatment.
 		 */
 		readonly trackEnvironments: boolean
+		/** Resolving `library()`/`use()` exports from a package database (e.g. the bundled `flowr-pkgdb`). */
+		readonly pkgdb: {
+			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
+			readonly enabled:            boolean
+			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
+			readonly eagerlyLoad:        boolean
+			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
+			readonly eagerlyLoadExports: boolean
+		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -223,6 +233,14 @@ export interface FlowrConfig extends MergeableRecord {
 			}
 		}
 	}
+	/**
+	 * Resource-usage guard (gas) configuration.
+	 * Gas checks are disabled by default (all feature factors are `0`).
+	 * Set a `feature factor > 0` to enable checking for that feature.
+	 * @see {@link FlowrGasConfig}
+	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
+	 */
+	readonly gas: FlowrGasConfig;
 }
 
 export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
@@ -262,6 +280,9 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
+	'versions:pkgdb',
+	'versions:renv',
+	'versions:rv',
 	'loading-order:description',
 	'meta:description',
 	'files:vignette',
@@ -273,6 +294,7 @@ export const FlowrDefaultPlugins = [
 	'file:namespace',
 	'file:news',
 	'file:license',
+	'file:virtualenv',
 ] satisfies ConfigPlugin<string>[];
 
 /**
@@ -310,6 +332,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
+				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -334,6 +357,13 @@ export const FlowrConfig = {
 						maxReadLines:      1e6
 					}
 				}
+			},
+			gas: {
+				thresholds: {
+					memory: { problematic: 0.7,       critical: 0.9 },
+					timeMs: { problematic: 100_000,   critical: 120_000 }
+				},
+				features: {}
 			}
 		};
 	},
@@ -376,7 +406,12 @@ export const FlowrConfig = {
 			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
 			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
-			instrument:        Joi.object({
+			pkgdb:             Joi.object({
+				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a package database (default true); when false no database is consulted.'),
+				eagerlyLoad:        Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
+				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.')
+			}).description('Resolving library exports from a package database.'),
+			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
@@ -401,7 +436,21 @@ export const FlowrConfig = {
 					maxReadLines:      Joi.number().min(1).description('The maximum number of lines to read when extracting data frame shapes from loaded files, such as CSV files.')
 				}).description('Configuration options for reading data frame shapes from loaded external data files, such as CSV files.')
 			}).description('The configuration of the shape inference for data frames.')
-		}).description('The configuration options for abstract interpretation.')
+		}).description('The configuration options for abstract interpretation.'),
+		gas: Joi.object({
+			thresholds: Joi.object({
+				memory: Joi.object({
+					problematic: Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Problematic is returned.'),
+					critical:    Joi.number().min(0).max(1).optional().description('Heap fraction (0-1) above which Critical is returned.')
+				}).optional().description('Heap-usage fraction thresholds (0-1).'),
+				timeMs: Joi.object({
+					problematic: Joi.number().min(0).optional().description('Elapsed ms above which Problematic is returned.'),
+					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
+				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
+			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
+			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`.'),
+			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
+		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.

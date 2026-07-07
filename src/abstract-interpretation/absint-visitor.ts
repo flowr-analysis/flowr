@@ -273,7 +273,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	}
 
 	protected override onVariableDefinition({ vertex }: { vertex: DataflowGraphVertexVariableDefinition; }): void {
-		if(this.currentState.get(vertex.id) === undefined) {
+		if(!this.trace.has(vertex.id)) {
 			this.unassigned.add(vertex.id);
 		}
 	}
@@ -287,8 +287,10 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 		if(value !== undefined) {
 			this.currentState.set(target, value);
-			this.trace.set(target, this.currentState);
+		} else {
+			this.currentState.remove(target);
 		}
+		this.trace.set(target, this.currentState);
 	}
 
 	protected override onReplacementCall({ target }: { call: DataflowGraphVertexFunctionCall, target?: NodeId, source?: NodeId }): void {
@@ -334,7 +336,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 	/** Checks whether a node represents a unsupported (environment-changing) function call (e.g. `eval`, `load`, `attach`, `rm`, ...) */
 	protected isUnsupportedFunctionCall(nodeId: NodeId): boolean {
-		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId));
+		return UnsupportedFunctions.isUnsupportedCall(this.getDataflowGraph(nodeId), this.config.dfg);
 	}
 
 	/** We only perform widening at `for`, `while`, or `repeat` loops with more than one ingoing CFG edge */

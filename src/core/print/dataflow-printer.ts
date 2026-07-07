@@ -53,8 +53,8 @@ export function dataflowGraphToJson(df: DataflowInformation): string {
 /**
  * Transforms the dataflow graph into a quad serialization.
  * @see {@link df2quads}
- * @see {@link dataflowGraphToMermaidUrl}
- * @see {@link dataflowGraphToMermaid}
+ * @see {@link DataflowMermaid.url}
+ * @see {@link DataflowMermaid.convert}
  * @see {@link dataflowGraphToJson}
  */
 export function dataflowGraphToQuads(df: DataflowInformation, config: QuadSerializationConfiguration): string {

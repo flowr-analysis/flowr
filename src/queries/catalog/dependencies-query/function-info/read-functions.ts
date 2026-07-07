@@ -2,10 +2,11 @@ import type { FunctionInfo } from './function-info';
 
 export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'base', name: 'read.table',          argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.csv',            argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.csv2',           argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.delim',          argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.table',          argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.csv',           argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.csv2',          argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.delim',         argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.delim2',        argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
 	{ package: 'base', name: 'read.dcf',            argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'base', name: 'scan',                argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'utils', name: 'read.fwf',            argIdx: 0, argName: 'file', resolveValue: true },
@@ -114,5 +115,25 @@ export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'readODS', name: 'read_ods', argIdx: 0, argName: 'path', resolveValue: true },
 	{ package: 'vroom', name: 'vroom', argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'compiler', name: 'loadcmp', argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true }
+	{ package: 'compiler', name: 'cmpfile', argIdx: 0, argName: 'infile', resolveValue: true },
+	/* image / raster */
+	{ package: 'jpeg',       name: 'readJPEG',       argIdx: 0, argName: 'source',   resolveValue: true },
+	{ package: 'png',        name: 'readPNG',         argIdx: 0, argName: 'source',   resolveValue: true },
+	{ package: 'tiff',       name: 'readTIFF',        argIdx: 0, argName: 'source',   resolveValue: true },
+	{ package: 'imager',     name: 'load.image',      argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'imager',     name: 'load.video',      argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'imager',     name: 'load.dir',        argIdx: 0, argName: 'path',     resolveValue: true },
+	{ package: 'OpenImageR', name: 'readImage',       argIdx: 0, argName: 'path',     resolveValue: true },
+	{ package: 'EBImage',    name: 'readImage',       argIdx: 0, argName: 'files',    resolveValue: true },
+	/* audio / video */
+	{ package: 'av',     name: 'av_video_images', argIdx: 0, argName: 'video', resolveValue: true },
+	{ package: 'av',     name: 'read_audio_bin',  argIdx: 0, argName: 'audio', resolveValue: true },
+	{ package: 'av',     name: 'read_audio_fft',  argIdx: 0, argName: 'audio', resolveValue: true },
+	{ package: 'tuneR',  name: 'readWave',         argIdx: 0, argName: 'filename', resolveValue: true },
+	{ package: 'tuneR',  name: 'readMP3',          argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'tuneR',  name: 'readMidi',         argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'seewave', name: 'read.audacity',   argIdx: 0, argName: 'file',     resolveValue: true },
+	{ package: 'audio',  name: 'load.wave',         argIdx: 0, argName: 'where',   resolveValue: true },
+	/* shinyjs - loads an external JavaScript file */
+	{ package: 'shinyjs', name: 'extendShinyjs', argIdx: 0, argName: 'script', resolveValue: true, ignoreIf: 'arg-missing' }
 ] as const;

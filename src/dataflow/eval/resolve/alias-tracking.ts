@@ -215,6 +215,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 	}
 
 	const defs = resolveByNameAnyType(identifier, environment);
+
 	if(defs === undefined) {
 		return Top;
 	}

@@ -4,6 +4,7 @@ import { type LintingRuleNames, LintingRules } from '../../../linter/linter-rule
 import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../gas';
 
 /**
  * Executes the given linter queries using the provided analyzer.
@@ -17,12 +18,19 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		log.warn(`Linter query collection contains duplicate rules ${pretty}, only linting for each rule once`);
 	}
 
-	const results: Omit<LinterQueryResult, '.meta'> = { results: {} };
+	// typed loosely to avoid a too-complex mapped-union at the indexed writes below; cast back on return
+	const results: { results: Record<string, unknown> } = { results: {} };
 
 	const start = Date.now();
 
+	const gas = analyzer.inspectContext().gas;
 	for(const entry of distinct) {
 		const ruleName = typeof entry === 'string' ? entry : entry.name;
+		if(gas.checkGas(GasFeatureKey.Linter) >= GasLevel.Critical) {
+			log.warn(`Skipping linting rule ${ruleName} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			results.results[ruleName] = { error: new Error(`skipped due to resource pressure (gas: critical), see ${GasWikiRef}`) };
+			continue;
+		}
 		results.results[ruleName] = await executeLintingRule<typeof ruleName>(ruleName, analyzer, (entry as ConfiguredLintingRule)?.config);
 	}
 
@@ -31,5 +39,5 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		'.meta': {
 			timing: Date.now() - start
 		}
-	};
+	} as LinterQueryResult;
 }

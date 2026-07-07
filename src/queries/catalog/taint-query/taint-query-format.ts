@@ -84,7 +84,7 @@ function taintQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 		const parseResult = defsInInput(defsPart);
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Unknown taint definition names: ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
-				+`\nKnown taint definitions are: ${Object.keys(predefinedTaintAnalyses).map(r => bold(r, output.formatter)).join(', ')}`);
+				+ `\nKnown taint definitions are: ${Object.keys(predefinedTaintAnalyses).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		defs = parseResult.valid;
 		input = line[1];

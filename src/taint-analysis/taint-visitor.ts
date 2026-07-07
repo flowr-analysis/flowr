@@ -66,4 +66,8 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 
 		this.config.fnCallHook(taint, node, value, this.projectArg, call);
 	}
+
+	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {
+		return false;
+	}
 }

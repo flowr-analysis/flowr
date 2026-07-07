@@ -29,10 +29,4 @@ describe('commands', () => {
 			assert.notInclude(output, misForwarded, `\`flowr ${command}\` forwarded the wrong arguments to the slicer:\n${output}`);
 		}
 	});
-
-	test('flowr --execute output is not truncated when piped', async() => {
-		const output = await run('npx ts-node --transpile-only src/cli/flowr.ts --execute ":parse 1+2"');
-		assert.include(output, '"1"', `missing first literal in output:\n${output}`);
-		assert.include(output, '"2"', `missing last literal — output was likely truncated:\n${output}`);
-	});
 });

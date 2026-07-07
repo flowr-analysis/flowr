@@ -51,7 +51,7 @@ export class CompositeTaintInferenceVisitor extends AbstractInterpretationVisito
 	) {
 		const template = Object.fromEntries(components.map(component => [component.name, component.domain])) as Required<TaintProduct>;
 		super(
-			{ ...visitorConfig, ignoreUnsupportedFunctions: false },
+			{ ...visitorConfig },
 			new MultiValueStateDomain<TaintProduct>(new Map<NodeId, MultiValueDomain<TaintProduct>>(), template, reductions)
 		);
 		this.components = components;

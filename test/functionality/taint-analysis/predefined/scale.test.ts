@@ -1,7 +1,7 @@
 import { test, describe } from 'vitest';
 import type { TaintAnalysisExpectation } from '../helper';
 import { testPredefinedTaintAnalysis } from '../helper';
-import { ZScore, ZeroCentered } from '../../../../src/taint-analysis/predefined/scale-analysis';
+import { ZScore, ZeroCentered, MinMax } from '../../../../src/taint-analysis/predefined/scale-analysis';
 import { Bottom, Top } from '../../../../src/abstract-interpretation/domains/lattice';
 
 const testScaleAnalysis =
@@ -63,6 +63,14 @@ describe('Taint Analysis Scale', () => {
 			x <- mean(x)`,
 		{
 			'2@x': Bottom,
+		});
+	});
+
+	test('call to rescale package -> MinMax', async() => {
+		await testScaleAnalysis(`
+			x <- rescale::scales(x)`,
+		{
+			'1@x': MinMax,
 		});
 	});
 });

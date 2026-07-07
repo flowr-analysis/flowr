@@ -60,13 +60,13 @@ describe('taint-analysis evaluation', () => {
 		assert.isDefined(sec);
 
 		assert.equal(sec.mappedCalls.length, 2);
-		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], taint: 'Network Input' });
+		assert.deepEqual(sec.mappedCalls[0], { line: '2', nodeId: 2, functionName: 'read.table', args: [], taint: 'File Input' });
 		assert.deepEqual(sec.mappedCalls[1], {
 			line:         '4',
 			nodeId:       19,
 			functionName: 'source',
 			args:         [
-				{ taint: 'Network Input' }, { value: 'someOtherArg' }, { name: 'namedArg', value: true }
+				{ taint: 'File Input' }, { value: 'someOtherArg' }, { name: 'namedArg', value: true }
 			], taint: 'bottom' });
 
 		assert.equal(sec.unmappedCalls.length, 2);

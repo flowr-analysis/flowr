@@ -9,9 +9,15 @@ import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../..
  * @see standardReplOutput
  */
 export interface ReplOutput {
-	formatter: OutputFormatter
+	formatter:       OutputFormatter
 	stdout(msg: string): void
 	stderr(msg: string): void
+	/**
+	 * When `false`, REPL commands must skip clipboard operations and must not emit
+	 * "Copied to clipboard" messages. Defaults to `true` (clipboard allowed).
+	 * Set to `false` in non-interactive contexts such as wiki generation or tests.
+	 */
+	allowClipboard?: boolean
 }
 
 /**

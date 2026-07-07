@@ -22,6 +22,10 @@ import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
+function getSuperAssignOrigin(op: string): { origin: BuiltInProcName[] } | object {
+	return op === '<<-' || op === '->>' ? { origin: [BuiltInProcName.SuperAssignment] } : {};
+}
+
 describe.sequential('Atomic (dataflow information)', withShell(shell => {
 	describe('Uninteresting Leafs', () => {
 		for(const [input, id] of [
@@ -263,7 +267,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				assertDataflow(label(`${constantAssignment} (constant assignment)`, ['name-normal', ...OperatorDatabase[op].capabilities, 'numbers']),
 					shell, constantAssignment,
 					emptyGraph()
-						.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`] })
+						.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
 						.calls(2, NodeId.toBuiltIn(op))
 						.defineVariable(variableId, 'x', { definedBy: [constantId, 2] })
 						.reads(2, constantId)
@@ -272,7 +276,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 
 				const variableAssignment = `x ${op} y`;
 				const dataflowGraph = emptyGraph()
-					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`] })
+					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
 					.calls(2, NodeId.toBuiltIn(op));
 
 				if(swapSourceAndTarget) {
@@ -295,7 +299,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				const circularAssignment = `x ${op} x`;
 
 				const circularGraph = emptyGraph()
-					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`] })
+					.call(2, op, args, { reads: [NodeId.toBuiltIn(op)], returns: [`${variableId}`], ...getSuperAssignOrigin(op) })
 					.calls(2, NodeId.toBuiltIn(op));
 
 				if(swapSourceAndTarget) {
@@ -382,12 +386,12 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'x <<- y <<- z', emptyGraph()
 					.use(2, 'z')
 					.argument(3, 2)
-					.call(3, '<<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<<-')] })
+					.call(3, '<<-', [argumentInCall(1), argumentInCall(2)], { returns: [1], reads: [NodeId.toBuiltIn('<<-')], ...getSuperAssignOrigin('<<-') })
 					.reads(3, 2)
 					.calls(3, NodeId.toBuiltIn('<<-'))
 					.argument(3, 1)
 					.argument(4, 3)
-					.call(4, '<<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<<-')] })
+					.call(4, '<<-', [argumentInCall(0), argumentInCall(3)], { returns: [0], reads: [NodeId.toBuiltIn('<<-')], ...getSuperAssignOrigin('<<-') })
 					.reads(4, 3)
 					.calls(4, NodeId.toBuiltIn('<<-'))
 					.argument(4, 0)
@@ -398,7 +402,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 				shell, 'x <<- y <- y2 <<- z', emptyGraph()
 					.use(3, 'z')
 					.argument(4, 3)
-					.call(4, '<<-', [argumentInCall(2), argumentInCall(3)], { returns: [2], reads: [NodeId.toBuiltIn('<<-'), 3], onlyBuiltIn: true })
+					.call(4, '<<-', [argumentInCall(2), argumentInCall(3)], { returns: [2], reads: [NodeId.toBuiltIn('<<-'), 3], onlyBuiltIn: true, ...getSuperAssignOrigin('<<-') })
 					.calls(4, NodeId.toBuiltIn('<<-'))
 					.argument(4, 2)
 					.argument(5, 4)
@@ -406,7 +410,7 @@ describe.sequential('Atomic (dataflow information)', withShell(shell => {
 					.calls(5, NodeId.toBuiltIn('<-'))
 					.argument(5, 1)
 					.argument(6, 5)
-					.call(6, '<<-', [argumentInCall(0), argumentInCall(5)], { returns: [0], reads: [NodeId.toBuiltIn('<<-'), 5], onlyBuiltIn: true })
+					.call(6, '<<-', [argumentInCall(0), argumentInCall(5)], { returns: [0], reads: [NodeId.toBuiltIn('<<-'), 5], onlyBuiltIn: true, ...getSuperAssignOrigin('<<-') })
 					.calls(6, NodeId.toBuiltIn('<<-'))
 					.argument(6, 0)
 					.defineVariable(2, 'y2', { definedBy: [3, 4] })

@@ -1,5 +1,4 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import { handleString } from '../core';
@@ -13,7 +12,7 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const dataflowCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflow',
 	aliases:       [ 'd', 'df' ],
@@ -23,11 +22,13 @@ export const dataflowCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false }).string;
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid code', result));
-		} catch{ /* do nothing this is a service thing */
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid code', result));
+			} catch{ /* do nothing this is a service thing */
+			}
 		}
 	}
 };
@@ -43,11 +44,13 @@ export const dataflowStarCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -87,7 +90,7 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 			const vertsOfType = Array.from(result.graph.verticesOfType(vertType));
 			const longVertexName = Object.entries(VertexType).find(([, v]) => v === vertType)?.[0] ?? vertType;
 			output.stdout(
-				` - ${(longVertexName + ':').padEnd(longestVertexType+1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
+				` - ${(longVertexName + ':').padEnd(longestVertexType + 1)} ` + output.formatter.format(`${String(vertsOfType.length).padStart(8)}`, { color: Colors.Cyan, effect: ColorEffect.Foreground }).padStart(9, ' ')
 			);
 		}
 	}
@@ -95,7 +98,7 @@ export const dataflowSilentCommand: ReplCodeCommand = {
 
 
 export const dataflowSimplifiedCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the simplified dataflow graph, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the simplified dataflow graph',
 	isCodeCommand: true,
 	usageExample:  ':dataflowsimple',
 	aliases:       [ 'ds', 'dfs' ],
@@ -105,11 +108,13 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid code', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid code', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };
 
@@ -124,10 +129,12 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 		const result = await analyzer.dataflow();
 		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true);
 		output.stdout(mermaid);
-		try {
-			const clipboard = await import('clipboardy');
-			clipboard.default.writeSync(mermaid);
-			output.stdout(formatInfo(output, 'mermaid url', result));
-		} catch{ /* do nothing this is a service thing */ }
+		if(output.allowClipboard !== false) {
+			try {
+				const clipboard = await import('clipboardy');
+				clipboard.default.writeSync(mermaid);
+				output.stdout(formatInfo(output, 'mermaid url', result));
+			} catch{ /* do nothing this is a service thing */ }
+		}
 	}
 };

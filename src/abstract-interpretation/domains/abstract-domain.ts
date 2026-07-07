@@ -86,7 +86,7 @@ implements Lattice<Abstract, Top, Bot, Value> {
 	 */
 	public abstract abstract(concrete: ReadonlySet<Concrete> | typeof Top): this;
 
-	public abstract toJson(): unknown;
+	public abstract toJSON(): unknown;
 
 	public abstract toString(): string;
 

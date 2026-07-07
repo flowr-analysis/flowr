@@ -11,6 +11,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -22,9 +23,9 @@ function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Part
 		if(key === '.meta') {
 			continue;
 		}
-		out[key] = value.map(({ nodeId, ...rest }) => ({
+		out[key] = value.map(({ nodeId, linkedIds, ...rest }) => ({
 			nodeId:    typeof nodeId === 'number' ? nodeId : SlicingCriterion.parse(String(nodeId) as SlicingCriterion, idMap),
-			linkedIds: rest.linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
+			linkedIds: linkedIds?.map(lid => typeof lid === 'number' ? lid : SlicingCriterion.parse(String(lid) as SlicingCriterion, idMap)),
 			...rest
 		}));
 	}
@@ -226,6 +227,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('Single source variable', 'a <- "test/file.R"; source("test/file.R")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'test/file.R' }] });
 
+		testQuery('source with empty string', 'source("")', { source: [{ nodeId: '1@source', functionName: 'source', value: 'stdin', lexemeOfArgument: '""' }] });
+
 		describe('Custom', () => {
 			const sourceCustomFile: Partial<DependenciesQuery> = {
 				sourceFunctions: [{ name: 'source.custom.file', argIdx: 1, argName: 'file' }]
@@ -357,6 +360,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
 		});
+		describe('Namespace disambiguation', () => {
+			// regression: an unqualified `map` plot entry used to swallow purrr::map / dplyr::map
+			testQuery('purrr::map is not a visualization', 'purrr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'purrr' }],
+				visualize: []
+			});
+			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
+				visualize: []
+			});
+			testQuery('maps::map stays a visualization', 'maps::map(x)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
+				visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }]
+			});
+		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
 				testQuery(f, `plot()\n${f}(x, y, z)`, { visualize: [
@@ -455,11 +473,58 @@ describe('Dependencies Query', withTreeSitter(parser => {
   expect_equal(tan(pi / 4), 1)
 })`, {
 			test: [
-				/* { nodeId: '2@expect_equal', functionName: 'expect_equal' },
-				{ nodeId: '3@expect_equal', functionName: 'expect_equal' },
-				{ nodeId: '4@expect_equal', functionName: 'expect_equal' }, */
 				{ nodeId: '1@test_that', functionName: 'test_that', value: 'trigonometric functions match identities', linkedIds: [47, 36, 20] }
 			]
 		});
+
+		testQuery('standalone expect_equal is not detected', 'expect_equal(1 + 1, 2)', {});
+
+		testQuery('expect_equal nested links to test_that via linkedIds', `test_that("basic", {
+  expect_equal(1, 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'basic', linkedIds: ['2@expect_equal'] }
+			]
+		});
+
+		testQuery('checkmate assertion nested links to test_that via linkedIds', `test_that("checks", {
+  assert_true(1 == 1)
+})`, {
+			test: [
+				{ nodeId: '1@test_that', functionName: 'test_that', value: 'checks', linkedIds: ['2@assert_true'] }
+			]
+		});
+
+		testQuery('standalone checkmate assert_true is not detected', 'assert_true(x > 0)', {});
 	});
+
+	describe('Read from string', () => {
+		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', {
+			read:  [],
+			write: []
+		});
+
+		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       7,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+
+		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       8,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+	});
+
 }));

@@ -42,6 +42,20 @@ else
   echo "Linting project (local mode)..."
   $NPM_CMD run lint-local -- --fix
   if [ -n "$(git status --porcelain)" ]; then
+    if $unclean; then
+      # we linted a disposable clone, so copy fixes back before it gets removed by the reset trap;
+      # skip files you already have uncommitted changes for, to avoid clobbering your edits
+      dirtyFiles="$(git -C "$curdir" status --porcelain | awk '{print $2}')"
+      for f in $(git diff --name-only); do
+        if echo "$dirtyFiles" | grep -qx "$f"; then
+          echo "  - skipping $f (you have uncommitted changes to it, fix it manually)"
+        else
+          mkdir -p "$(dirname "$curdir/$f")"
+          cp -f "$f" "$curdir/$f"
+          echo "  - copied lint fix for $f back to your working tree"
+        fi
+      done
+    fi
     echo ""
     echo "╔══════════════════════════════════════════════════════════════╗"
     echo "║  lint --fix changed files --- please review, stage, and      ║"

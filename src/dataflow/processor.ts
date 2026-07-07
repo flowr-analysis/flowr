@@ -11,6 +11,7 @@ import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
 	readonly parser:         Parser<KnownParserType>
@@ -40,6 +41,11 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
 	readonly ctx:            FlowrAnalyzerContext
+	/**
+	 * If set, the function call with this id is known to resolve to built-ins only,
+	 * so its vertex needs no environment snapshot (it would be discarded by markAsOnlyBuiltIn anyway).
+	 */
+	readonly builtInNoEnv?:  NodeId
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

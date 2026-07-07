@@ -10,7 +10,7 @@ export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest
  * Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty.
  */
 export type TailTypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
-	U : T extends [unknown] ? U :Tail<T>[number];
+	U : T extends [unknown] ? U : Tail<T>[number];
 
 /**
  * Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty.

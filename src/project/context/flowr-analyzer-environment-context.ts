@@ -7,8 +7,7 @@ import type { Fingerprint } from '../../slicing/static/fingerprint';
 import { envFingerprint } from '../../slicing/static/fingerprint';
 
 /**
- * This is the read-only interface to the {@link FlowrAnalyzerEnvironmentContext},
- * which provides access to the built-in environment used during analysis.
+ * Read-only interface to the {@link FlowrAnalyzerEnvironmentContext}.
  */
 export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 	/**
@@ -44,8 +43,7 @@ export interface ReadOnlyFlowrAnalyzerEnvironmentContext {
 }
 
 /**
- * This context is responsible for providing the built-in environment.
- * It creates the built-in environment based on the configuration provided in the {@link FlowrAnalyzerContext}.
+ * Provides the built-in environment, created from the {@link FlowrAnalyzerContext} configuration.
  */
 export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnvironmentContext {
 	public readonly name = 'flowr-analyzer-environment-context';
@@ -75,7 +73,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public makeCleanEnv(): REnvironmentInformation {
 		return {
-			current: new Environment(this.builtInEnv),
+			current: new Environment(this.builtInEnv).asGlobal(),
 			level:   0
 		};
 	}
@@ -89,7 +87,7 @@ export class FlowrAnalyzerEnvironmentContext implements ReadOnlyFlowrAnalyzerEnv
 
 	public makeCleanEnvWithEmptyBuiltIns(): REnvironmentInformation {
 		return {
-			current: new Environment(this.emptyBuiltInEnv),
+			current: new Environment(this.emptyBuiltInEnv).asGlobal(),
 			level:   0
 		};
 	}

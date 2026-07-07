@@ -471,7 +471,7 @@ function getIndentString(indent: number): string {
 	return ' '.repeat(indent * 4);
 }
 
-function prettyPrintCodeToString(code: Code, lf ='\n'): string {
+function prettyPrintCodeToString(code: Code, lf = '\n'): string {
 	return code.map(({ line, indent }) => `${getIndentString(indent)}${line}`).join(lf);
 }
 

@@ -239,6 +239,7 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
 			case BuiltInProcName.TableAssignment:
 				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });
@@ -292,7 +293,9 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRecallCall({ call });
 			case BuiltInProcName.PurrrFormula:
 				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NamespaceAccess:
 			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.StackEnv:
 			case BuiltInProcName.With:
 			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:

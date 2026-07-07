@@ -9,20 +9,13 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { ReferenceType, type InGraphIdentifierDefinition, type NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
-import { Environment } from '../../../../../environments/environment';
+import { Environment, REnvironment } from '../../../../../environments/environment';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
 
-/**
- * Processes `attach(what, ...)` - when `what` is a variable that holds a tracked
- * {@link InGraphIdentifierDefinition#envState}, all statically-known definitions from
- * that environment are injected into a new scope layer inserted *between* the current
- * scope and its parent.  This mirrors R's behaviour: `attach` adds to the search path
- * below `.GlobalEnv`, so existing global bindings take precedence, but after a
- * `rm(name)` removes a global shadow the attached binding becomes visible again.
- */
+/** Processes `attach(what, ...)`, injecting the tracked env's known definitions into a new scope layer below `.GlobalEnv`. */
 export function processAttach<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -46,7 +39,7 @@ export function processAttach<OtherInfo>(
 	}
 
 	/* build the attached layer with the env's known bindings */
-	let attachedLayer = new Environment(result.environment.current.parent);
+	let attachedLayer = new Environment(result.environment.current);
 	for(const [varName, varDefs] of envirResolution.envDef.envState.current.memory) {
 		for(const varDef of varDefs) {
 			const inDef = varDef as InGraphIdentifierDefinition;
@@ -60,8 +53,9 @@ export function processAttach<OtherInfo>(
 		}
 	}
 
-	/* splice the attached layer between the current scope and its original parent */
-	const newCurrent = result.environment.current.clone(false);
-	newCurrent.parent = attachedLayer;
-	return { ...result, environment: { current: newCurrent, level: result.environment.level } };
+	/* R attaches below `.GlobalEnv`, so existing global bindings shadow the attached ones */
+	return { ...result, environment: {
+		current: REnvironment.attachBelowGlobal(result.environment.current, attachedLayer, attachedLayer),
+		level:   result.environment.level
+	} };
 }

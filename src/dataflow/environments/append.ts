@@ -1,12 +1,12 @@
 import { type REnvironmentInformation  } from './environment';
 import type { IdentifierDefinition } from './identifier';
-import { pushLocalEnvironment } from './scoping';
+import { padToCommonScope } from './scoping';
 
 /**
- * Merges two arrays of identifier definitions, ensuring uniqueness based on `nodeId` and `definedAt`.
+ * Merges two arrays of identifier definitions into a fresh array, unique by `nodeId` and `definedAt`.
  */
-export function uniqueMergeValuesInDefinitions(old: IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
-	const result = old;
+export function uniqueMergeValuesInDefinitions(old: readonly IdentifierDefinition[], value: readonly IdentifierDefinition[]): IdentifierDefinition[] {
+	const result = old.slice();
 	for(const v of value) {
 		const find = result.findIndex(o => o.nodeId === v.nodeId && o.definedAt === v.definedAt);
 		if(find < 0) {
@@ -30,15 +30,8 @@ export function appendEnvironment(base: REnvironmentInformation | undefined, nex
 		return base;
 	}
 
-	if(base.level !== next.level) {
-		while(next.level < base.level) {
-			next = pushLocalEnvironment(next);
-		}
-		while(next.level > base.level) {
-			base = pushLocalEnvironment(base);
-		}
-	}
-
+	({ base, next } = padToCommonScope(base, next));
+	// packages attached below the global env are unified branch-wise by Environment#append
 	return {
 		current: base.current.append(next.current),
 		level:   base.level,

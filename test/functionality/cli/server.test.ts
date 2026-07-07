@@ -15,6 +15,8 @@ import { jsonReplacer } from '../../../src/util/json';
 import { extractCfg } from '../../../src/control-flow/extract-cfg';
 import { sanitizeAnalysisResults } from '../../../src/cli/repl/server/connection';
 import type { QueryRequestMessage, QueryResponseMessage } from '../../../src/cli/repl/server/messages/message-query';
+import type { SliceRequestMessage } from '../../../src/cli/repl/server/messages/message-slice';
+import type { FlowrErrorMessage } from '../../../src/cli/repl/server/messages/message-error';
 import { assert, describe, test } from 'vitest';
 import { uncompact } from '../../../src/cli/repl/server/compact';
 import { getPlatform } from '../../../src/util/os';
@@ -192,6 +194,85 @@ describe('flowr', () => {
 			assert.exists(response.results['call-context'], 'Expected the query to return at least one result');
 			assert.exists(response.results['.meta'], 'Expected the query to return at least one result');
 			assert.equal(response.results['call-context']['kinds']['.']['subkinds']['.'].length, 1, 'We should find one call to print!');
+		}));
+
+		test.skipIf(skip)('Invalidate a file token', withSocket(shell, async socket => {
+			/* analyze and drop the very same token in one request */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:            'request-file-analysis',
+				id:              '42',
+				filetoken:       'super-token',
+				filename:        'x',
+				content:         'print(17)',
+				invalidateToken: 'super-token'
+			});
+			await socket.waitForMessage('response-file-analysis');
+
+			const analysis = socket.getMessages(['hello', 'response-file-analysis'])[1] as FileAnalysisResponseMessageJson;
+			assert.strictEqual(analysis.id, '42', 'Expected the analysis response to carry the request id');
+			assert.exists(analysis.results.dataflow, 'Expected the analysis to still produce results before the token is dropped');
+
+			/* as the token is dropped after the response, it must no longer be queryable */
+			fakeSend<QueryRequestMessage>(socket, {
+				type:      'request-query',
+				id:        '21',
+				filetoken: 'super-token',
+				query:     [{ type: 'call-context', callName: 'print' }]
+			});
+			await socket.waitForMessage('error');
+			const error = socket.getMessages(['hello', 'response-file-analysis', 'error'])[2] as FlowrErrorMessage;
+			assert.strictEqual(error.id, '21', 'Expected the error to carry the query id');
+			assert.match(error.reason, /never been analyzed/, 'Expected the token to be dropped after the response');
+
+			/* a request carrying only invalidateToken needs no file and is answered with empty results */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:            'request-file-analysis',
+				id:              '43',
+				invalidateToken: 'super-token'
+			});
+			await socket.waitForMessage('response-file-analysis');
+			const dropOnly = socket.getMessages(['hello', 'response-file-analysis', 'error', 'response-file-analysis'])[3] as FileAnalysisResponseMessageJson;
+			assert.strictEqual(dropOnly.id, '43', 'Expected the invalidation response to carry the request id');
+			assert.strictEqual(Object.keys(dropOnly.results).length, 0, 'Expected the drop-only request to be answered with empty results');
+		}));
+
+		test.skipIf(skip)('Many requests in quick succession do not crash', withSocket(shell, async socket => {
+			/* fire an analysis and a burst of slices/queries for the same token without awaiting in between */
+			fakeSend<FileAnalysisRequestMessage>(socket, {
+				type:      'request-file-analysis',
+				id:        'a',
+				filetoken: 'super-token',
+				filename:  'x',
+				content:   'x <- 1\ny <- x + 2\nprint(y)'
+			});
+			const burst = 12;
+			for(let i = 0; i < burst; i++) {
+				if(i % 2 === 0) {
+					fakeSend<SliceRequestMessage>(socket, {
+						type:      'request-slice',
+						id:        `s${i}`,
+						filetoken: 'super-token',
+						criterion: ['3@y']
+					});
+				} else {
+					fakeSend<QueryRequestMessage>(socket, {
+						type:      'request-query',
+						id:        `q${i}`,
+						filetoken: 'super-token',
+						query:     [{ type: 'call-context', callName: 'print' }]
+					});
+				}
+			}
+
+			/* wait until every request produced its response (hello + analysis + burst) */
+			const expected = 2 + burst;
+			for(let waited = 0; socket.getMessages().length < expected && waited < 100; waited++) {
+				await new Promise(resolve => setTimeout(resolve, 100));
+			}
+
+			const messages = socket.getMessages();
+			assert.strictEqual(messages.length, expected, `expected ${expected} messages, got ${messages.length}`);
+			assert.isUndefined(messages.find(m => m.type === 'error'), 'no request may fail when they arrive in quick succession');
 		}));
 	}));
 });

@@ -4,6 +4,7 @@ import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Unknown } from '../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import { withTreeSitter } from '../_helper/shell';
 import { FlowrInlineTextFile } from '../../../src/project/context/flowr-file';
+import { getPlatform } from '../../../src/util/os';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('file path validity', () => {
@@ -49,5 +50,35 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('unknown on', parser, 'path <- "file" + runif(1) + ".csv"; read.csv(path)', 'file-path-validity', [
 			{ certainty: LintingResultCertainty.Uncertain, filePath: Unknown, loc: [1, 37, 1, 50] }
 		], { totalReads: 1, totalUnknown: 1, totalWritesBeforeAlways: 0, totalValid: 0 }, { includeUnknown: true, addFiles });
+
+		describe('url handling', () => {
+			const remoteUrls = [
+				'https://raw.githubusercontent.com/user/repo/main/data.csv',
+				'http://example.com/data.csv',
+				'ftp://files.example.org/data.csv',
+				'ftps://secure.ftp.example.org/data.csv',
+				's3://my-bucket/data.csv',
+				'gs://my-bucket/data.csv'
+			];
+
+			describe('checkUrls=false (default)', () => {
+				for(const url of remoteUrls) {
+					/* @ignore-in-wiki */
+					assertLinter(url, parser, `read.csv("${url}")`, 'file-path-validity', [],
+						{ totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+				}
+				assertLinter('url and missing file', parser, `read.csv("${remoteUrls[0]}")\nread.csv("missing.csv")`, 'file-path-validity', [
+					{ certainty: LintingResultCertainty.Certain, filePath: 'missing.csv', loc: [2, 1, 2, 23] }
+				], { totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+				assertLinter('url and existing file', parser, `read.csv("${remoteUrls[0]}")\nread.csv("file.csv")`, 'file-path-validity', [],
+					{ totalReads: 2, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 1 }, { addFiles });
+			});
+
+			describe.skipIf(getPlatform() === 'windows')('file:// urls (checked as local paths, ignores checkUrls)', () => {
+				assertLinter('file:// missing', parser, 'read.csv("file:///missing/file.csv")', 'file-path-validity', [
+					{ certainty: LintingResultCertainty.Certain, filePath: '/missing/file.csv', loc: [1, 1, 1, 36] }
+				], { totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0 });
+			});
+		});
 	});
 }));

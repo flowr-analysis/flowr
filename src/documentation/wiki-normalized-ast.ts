@@ -1,6 +1,6 @@
 import { codeBlock } from './doc-util/doc-code';
 import { printNormalizedAst, printNormalizedAstForCode } from './doc-util/doc-normalized-ast';
-import { FlowrGithubBaseRef, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
+import { FlowrGithubBaseRef, getFilePathMd } from './doc-util/doc-files';
 import { getReplCommand } from './doc-util/doc-cli-option';
 import { block, details } from './doc-util/doc-structure';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
@@ -66,12 +66,12 @@ ${codeBlock('r', 'x <- 2 * 3 + 1')}
 Each node in the AST contains the type, the id, and the lexeme (if applicable).
 Each edge is labeled with the type of the parent-child relationship (the "role").
 
-${await printNormalizedAstForCode(treeSitter, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n' })}
+${await printNormalizedAstForCode(treeSitter, 'x <- 2 * 3 + 1', { showCode: false, prefix: 'flowchart LR\n', ctx })}
 
 > [!TIP]
 > If you want to investigate the normalized AST, 
-> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')} 
-> command in the REPL (see the [Interface wiki page](${FlowrWikiBaseRef}/Interface) for more information).
+> you can either use the [Visual Studio Code extension](${FlowrGithubBaseRef}/vscode-flowr) or the ${getReplCommand('normalize*')}
+> command in the REPL (see the ${ctx.linkPage('wiki/Interface', 'Interface wiki page')} for more information).
 
 Indicative of the normalization is the root ${ctx.link(RProject)} node, which is present in every normalized AST
 and provides the ${ctx.link(RExpressionList)} nodes for each file in the project.
@@ -97,7 +97,7 @@ ${codeBlock('mermaid', ctx.mermaid(RNode))}
 Node types are controlled by the ${ctx.link('RType')} enum (see ${getFilePathMd('../r-bridge/lang-4.x/ast/model/type.ts')}), 
 which is used to distinguish between different types of nodes.
 Additionally, every AST node is generic with respect to the \`Info\` type which allows for arbitrary decorations (e.g., parent inforamtion or dataflow constraints).
-Most notably, the \`info\` field holds the \`id\` of the node, which is used to reference the node in the [dataflow graph](${FlowrWikiBaseRef}/Dataflow%20Graph).
+Most notably, the \`info\` field holds the \`id\` of the node, which is used to reference the node in the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')}.
 
 In summary, we have the following types:
 
@@ -117,7 +117,7 @@ The following segments intend to give you an overview of how to work with the no
 
 ## How to Get a Normalized AST
 
-As explained alongside the [Interface](${FlowrWikiBaseRef}/Interface#creating-flowr-analyses) wiki page, you can use an instance of
+As explained alongside the ${ctx.linkPage('wiki/Interface', 'Interface', 'creating-flowr-analyses')} wiki page, you can use an instance of
 ${ctx.link(FlowrAnalyzer)} to get the ${ctx.link('NormalizedAst')}:
 
 ${ctx.code(simpleNormalizedAst, { dropLinesStart: 1, dropLinesEnd: 2, hideDefinedAt: true })}

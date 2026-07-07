@@ -30,7 +30,7 @@ export class FlowrAnalyzerQmdFilePlugin extends FlowrAnalyzerFilePlugin {
 		return this.pattern.test(platformBasename(file.toString()));
 	}
 
-	protected process(_ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
-		return FlowrRMarkdownFile.from(arg);
+	protected process(ctx: FlowrAnalyzerContext, arg: FlowrFileProvider<string>): FlowrRMarkdownFile {
+		return FlowrRMarkdownFile.from(arg, ctx);
 	}
 }

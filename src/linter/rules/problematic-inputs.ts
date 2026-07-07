@@ -112,17 +112,16 @@ export interface ProblematicInputsConfig extends MergeableRecord {
 	pipeCommandFunctions?: PipeCommandFunctionSpec | PipeCommandFunctionSpec[]
 }
 
-export type ProblematicInputsMetadata = MergeableRecord;
-
 export const PROBLEMATIC_INPUTS = {
 	createSearch: config => {
 		const toQ = (name: RegExp, subkind: string) => ({ type: 'call-context', callName: name, callNameExact: false, subkind } as const);
-		return Q.fromQuery(
+		return Q.fromQuery([
 			...normalizePatternList(config?.consider, defaultConsider).map((n, i) => toQ(n, `fn-${i}`)),
 			...normalizePipeSpecs(config?.pipeCommandFunctions).map((s, i) => toQ(s.pattern, `pipe-${i}`))
-		);
+		]);
 	},
 	processSearchResult: async(elements, config, data) => {
+		const df = await data.dataflow();
 		const results: ProblematicInputsResult[] = [];
 		const seen          = new Set<NodeId>();
 		const defaultAccept = [InputType.Constant, InputType.DerivedConstant];
@@ -144,11 +143,11 @@ export const PROBLEMATIC_INPUTS = {
 			const loc = SourceLocation.fromNode(element.node) ?? SourceLocation.invalid();
 
 			if(pipeSpec !== undefined) {
-				const vertex    = data.dataflow.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
+				const vertex    = df.graph.getVertex(nid) as DataflowGraphVertexFunctionCall | undefined;
 				const fileArgId = resolveFileArgId(vertex, pipeSpec.argIdx, pipeSpec.argName);
 				if(fileArgId !== undefined) {
 					const criterion = SlicingCriterion.fromId(fileArgId);
-					const all       = await data.analyzer.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
+					const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
 					const sources   = all['input-sources']?.results?.[criterion] ?? [];
 					const r         = checkPipeInjection(nid, loc, name, sources);
 					if(r !== undefined) {
@@ -158,7 +157,7 @@ export const PROBLEMATIC_INPUTS = {
 				}
 			} else {
 				const criterion = SlicingCriterion.fromId(nid);
-				const all       = await data.analyzer.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
+				const all       = await data.query([{ type: 'input-sources', criterion, config: config.inputFns } as InputSourcesQuery]);
 				const sources   = all['input-sources']?.results?.[criterion] ?? [];
 				if(isProblematicForAllowed(sources, defaultAccept)) {
 					seen.add(nid);
@@ -166,7 +165,8 @@ export const PROBLEMATIC_INPUTS = {
 				}
 			}
 		}
-		return { results, '.meta': {} };
+
+		return { results };
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => {
@@ -194,4 +194,4 @@ export const PROBLEMATIC_INPUTS = {
 			pipeCommandFunctions: defaultPipeCommandFunctions
 		}
 	}
-} as const satisfies LintingRule<ProblematicInputsResult, ProblematicInputsMetadata, ProblematicInputsConfig>;
+} as const satisfies LintingRule<ProblematicInputsResult, never, ProblematicInputsConfig>;

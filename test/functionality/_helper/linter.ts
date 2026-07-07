@@ -27,6 +27,21 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import type { PkgDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
+import { FlowrAnalyzerPackageVersionsPkgDbPlugin, PkgDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
+import type { PkgDb } from '../../../src/project/plugins/package-version-plugins/pkgdb';
+
+/** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], pkgDb?: PkgDbSource, noPkgDb?: boolean };
+
+/** a minimal in-memory `latest`-scope package database exporting `exports` from `pkg` (so tests do not rely on the bundled one) */
+export function controlledPkgDb(pkg: string, exports: readonly string[]): PkgDb {
+	return {
+		format:  'flowr-pkgdb', schema:  4, scope:   'latest',
+		content: { version: 1, date: '2026-01-01', hash: 'x', generated: 0, packages: 1, versions: 1 },
+		strings: [], pkgs:    { [pkg]: ['1.0.0', [...exports]] }
+	};
+}
 
 
 /**
@@ -39,7 +54,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: Omit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {
 	assertLinterWithCleanup(name, parser, code, ruleName, expected, expectedMetadata, lintingRuleConfig, result => {
 		if('involvedId' in result) {
@@ -60,7 +75,7 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {
 	assertLinterWithCleanup(name, parser, code, ruleName, expected, expectedMetadata, lintingRuleConfig, (result, ast) => ({
 		...result,
@@ -83,17 +98,23 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	ruleName: Name,
 	expected: Result[] | ((df: DataflowInformation, ast: NormalizedAst) => Result[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] },
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder()
+		let builder = new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
-			.configure('solver.resolveSource.dropPaths', DropPathsOption.All)
-			.build();
+			.configure('solver.resolveSource.dropPaths', DropPathsOption.All);
+		// swap in a controlled package database (or none) so tests do not depend on the bundled collection
+		if(lintingRuleConfig?.pkgDb !== undefined) {
+			builder = builder.unregisterPlugins(PkgDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(lintingRuleConfig.pkgDb));
+		} else if(lintingRuleConfig?.noPkgDb) {
+			builder = builder.unregisterPlugins(PkgDbPluginName);
+		}
+		const analyzer = await builder.build();
 		if(lintingRuleConfig?.useAsFilePath) {
 			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
 		}

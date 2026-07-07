@@ -24,6 +24,7 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -245,6 +246,23 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 			return information;
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
+		}
+		if(textRequest.path) {
+			const dotIdx = textRequest.path.lastIndexOf('.');
+			const ext = dotIdx >= 0 ? textRequest.path.slice(dotIdx).toLowerCase() : '';
+			if(ext !== '' && ext !== '.r') {
+				expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
+		}
+		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
+		if(gasLevel >= GasLevel.Critical) {
+			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			return information;
+		} else if(gasLevel >= GasLevel.Problematic) {
+			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		const normalized = (typeof parsed !== 'string' ?

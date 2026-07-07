@@ -28,7 +28,7 @@ import { type DataflowGraph } from '../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../src/util/mermaid/dfg';
 import {
 	SlicingCriterion,
-	type SlicingCriteria,
+	SlicingCriteria,
 } from '../../../src/slicing/criterion/parse';
 import { normalizedAstToMermaidUrl } from '../../../src/util/mermaid/ast';
 import type { AutoSelectPredicate } from '../../../src/reconstruct/auto-select/auto-select-defaults';
@@ -52,7 +52,7 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
 		let shell: RShell | null = null;
 		try {
@@ -62,7 +62,7 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) =>
 			// ensure we close the shell in error cases too
 			shell?.close();
 		}
-	});
+	}, timeout);
 };
 
 
@@ -110,7 +110,7 @@ export function withTreeSitter(fn: (shell: TreeSitterExecutor) => void): () => v
 
 function removeInformation<T extends RProject<unknown> | Record<string, unknown>>(obj: T, includeTokens: boolean, ignoreColumns: boolean, ignoreMisc: boolean): T {
 	return JSON.parse(JSON.stringify(obj, (key, value) => {
-		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nesting')) {
+		if(key === 'fullRange' || ignoreMisc && (key === 'fullLexeme' || key === 'id' || key === 'parent' || key === 'index' || key === 'role' || key === 'nest')) {
 			return undefined;
 		} else if(key === 'adToks' && (!includeTokens || (Array.isArray(value) && value.length === 0))) {
 			return undefined;
@@ -167,7 +167,6 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
-	needsXmlParseData:      boolean
 	needsNetworkConnection: boolean
 }
 
@@ -179,7 +178,6 @@ export interface TestConfigurationWithOutput extends TestConfiguration {
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsXmlParseData:      false,
 	needsNetworkConnection: false
 };
 
@@ -208,14 +206,6 @@ function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean 
 }
 
 
-function skipTestBecauseXmlParseDataIsMissing(): boolean {
-	if(!globalThis.hasXmlParseData) {
-		console.warn('Skipping test because package "xmlparsedata" is not installed (install it locally to get the tests to run).');
-		return true;
-	}
-	return false;
-}
-
 
 /**
  * Automatically skip a test if the given configuration is not met
@@ -223,8 +213,7 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
-		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`)
-		|| config.needsXmlParseData && skipTestBecauseXmlParseDataIsMissing();
+		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
 /**
@@ -683,5 +672,81 @@ export function assertSliced(
 			} /* v8 ignore stop */
 		}
 		handleAssertOutput(name, shell, input, testConfig);
+	});
+}
+
+/**
+ * Options for {@link assertDiced}. At least one field should be set.
+ */
+export interface DiceTestExpect {
+	/** Exact reconstructed code expected (trimmed) */
+	code?:       string
+	/** Strings that must appear in the reconstructed output */
+	contains?:   string[]
+	/** Strings that must NOT appear in the reconstructed output */
+	excludes?:   string[]
+	/** Lower bound on the number of nodes in the dice result */
+	minSize?:    number
+	/** Upper bound on the number of nodes (0 = empty result) */
+	maxSize?:    number
+	/** Slicing criteria whose resolved ids must be present in the result */
+	hasNodes?:   SlicingCriteria
+	/** Slicing criteria whose resolved ids must be absent from the result */
+	lacksNodes?: SlicingCriteria
+}
+
+/**
+ * Assert the result of program dicing from `from` to `to` using {@link staticDice}.
+ * When `expect` is a plain string it is treated as the exact reconstructed code.
+ */
+export function assertDiced(
+	name: string | TestLabel,
+	shell: KnownParser,
+	input: string,
+	from: SlicingCriteria,
+	to: SlicingCriteria,
+	expect: string | DiceTestExpect,
+	userConfig?: Partial<TestConfiguration>
+): void {
+	const effectiveName = typeof name === 'string' ? name : decorateLabelContext(name, ['slice']);
+	test.skipIf(skipTestBecauseConfigNotMet(userConfig))(`[dice] ${effectiveName}`, async function() {
+		const { staticDice } = await import('../../../src/slicing/static/static-slicer');
+		const { reconstructToCode } = await import('../../../src/reconstruct/reconstruct');
+		const { doNotAutoSelect } = await import('../../../src/reconstruct/auto-select/auto-select-defaults');
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(shell).build();
+		analyzer.addRequest(input);
+		const ast  = await analyzer.normalize();
+		const df   = await analyzer.dataflow();
+		const startIds = SlicingCriteria.convertAll(from, ast.idMap);
+		const endIds   = SlicingCriteria.convertAll(to, ast.idMap);
+		const slice    = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds);
+		const rec      = reconstructToCode(ast, { nodes: slice.result }, doNotAutoSelect);
+		const code     = (Array.isArray(rec.code) ? rec.code.join('\n') : rec.code).trim();
+
+		const opts: DiceTestExpect = typeof expect === 'string' ? { code: expect } : expect;
+
+		if(opts.code !== undefined) {
+			assert.strictEqual(code, opts.code,
+				`dice [${from.join(',')} -> ${to.join(',')}]: expected\n${opts.code}\ngot\n${code}\nfor input:\n${input}`
+			);
+		}
+		for(const s of opts.contains ?? []) {
+			assert.include(code, s, `dice result must contain "${s}"`);
+		}
+		for(const s of opts.excludes ?? []) {
+			assert.notInclude(code, s, `dice result must NOT contain "${s}"`);
+		}
+		if(opts.minSize !== undefined) {
+			assert.isAtLeast(slice.result.size, opts.minSize, 'result set must be at least this large');
+		}
+		if(opts.maxSize !== undefined) {
+			assert.isAtMost(slice.result.size, opts.maxSize, 'result set must be at most this large');
+		}
+		for(const id of SlicingCriteria.convertAll(opts.hasNodes ?? [], ast.idMap)) {
+			assert.isTrue(slice.result.has(id), `expected node id ${id} to be in dice result`);
+		}
+		for(const id of SlicingCriteria.convertAll(opts.lacksNodes ?? [], ast.idMap)) {
+			assert.isFalse(slice.result.has(id), `expected node id ${id} NOT to be in dice result`);
+		}
 	});
 }

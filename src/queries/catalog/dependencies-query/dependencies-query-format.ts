@@ -106,7 +106,8 @@ export type DependenciesQueryResult = BaseQueryResult & { [C in DefaultDependenc
 
 export interface DependencyInfo extends Record<string, unknown>{
 	nodeId:              NodeId
-	functionName:        string
+	/** the called name; an {@link Identifier}, so a namespaced call like `maps::map` keeps its package */
+	functionName:        Identifier
 	linkedIds?:          readonly NodeId[]
 	/** the lexeme is presented whenever the specific info is of {@link Unknown} */
 	lexemeOfArgument?:   string;
@@ -123,11 +124,12 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	}
 	result.push(`   ╰ ${title}`);
 	const grouped = infos.reduce(function(groups: Map<string, DependencyInfo[]>, i) {
-		const array = groups.get(i.functionName);
+		const key = Identifier.toString(i.functionName);
+		const array = groups.get(key);
 		if(array) {
 			array.push(i);
 		} else {
-			groups.set(i.functionName, [i]);
+			groups.set(key, [i]);
 		}
 		return groups;
 	}, new Map<string, DependencyInfo[]>());

@@ -44,6 +44,7 @@ import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-
 import { isValue } from '../../../../../eval/values/r-value';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
+import { stackEnvStateFromSource } from './built-in-stack-env';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -93,9 +94,8 @@ function findRootAccess<OtherInfo>(node: RNode<OtherInfo & ParentInformation>): 
 	}
 	if(current.type === RType.Symbol) {
 		return current;
-	} else {
-		return undefined;
 	}
+	return undefined;
 }
 
 function tryReplacement<OtherInfo>(
@@ -213,7 +213,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 				...config,
@@ -238,7 +238,7 @@ export function processAssignment<OtherInfo>(
 						data,
 						reverseOrder: !config.swapSourceAndTarget,
 						forceArgs:    config.forceArgs,
-						origin:       BuiltInProcName.Assignment
+						origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 					});
 					return processAssignmentToSymbol<OtherInfo & ParentInformation>({
 						...config,
@@ -277,7 +277,7 @@ export function processAssignment<OtherInfo>(
 				data,
 				reverseOrder: !config.swapSourceAndTarget,
 				forceArgs:    config.forceArgs,
-				origin:       BuiltInProcName.Assignment
+				origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 			});
 
 			return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -299,7 +299,7 @@ export function processAssignment<OtherInfo>(
 
 	const info = processKnownFunctionCall({
 		name, args:      effectiveArgs, rootId, data, forceArgs: config.forceArgs,
-		origin:    BuiltInProcName.Assignment
+		origin:    config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	}).information;
 	handleUnknownSideEffect(info.graph, info.environment, rootId);
 	return info;
@@ -361,7 +361,7 @@ function processAssignmentToString<OtherInfo>(
 		data,
 		reverseOrder: !config.swapSourceAndTarget,
 		forceArgs:    config.forceArgs,
-		origin:       BuiltInProcName.Assignment
+		origin:       config.superAssignment ? BuiltInProcName.SuperAssignment : BuiltInProcName.Assignment
 	});
 
 	return processAssignmentToSymbol<OtherInfo & ParentInformation>({
@@ -433,16 +433,14 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 	}
 	const fieldName = (fieldNode.type === RType.String ? fieldNode.content.str : fieldNode.lexeme) as Identifier;
 
-	/* run normal $<- replacement to get correct graph structure (reads of e, x, source) */
-	const normalResult = tryReplacement(rootId, replacement, data, replacement.content,
-		[toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
+	const normalResult = tryReplacement(rootId, replacement, data, replacement.content, [toUnnamedArgument(target.accessed, data.completeAst.idMap), ...target.access, source]);
 
 	const fieldDef: InGraphIdentifierDefinition & { name: Identifier } = {
 		type:      ReferenceType.Variable,
 		name:      fieldName,
 		nodeId:    fieldNode.info.id,
 		definedAt: rootId,
-		cds:       data.cds
+		cds:       data.cds ?? (config.makeMaybe ? [] : undefined)
 	};
 	const newEnvState = define(fieldDef, false, envirResolution.envDef.envState);
 	const updatedEnvDef: InGraphIdentifierDefinition & { name: Identifier } = {
@@ -454,6 +452,7 @@ function tryRouteDollarEnvAssign<OtherInfo>(
 		current: normalResult.environment.current.removeAll([{ name: envirResolution.envDef.name }]),
 		level:   normalResult.environment.level
 	};
+	normalResult.graph.addEdge(normalResult.entryPoint, target.accessed.info.id, EdgeType.Reads);
 	return { ...normalResult, environment: define(updatedEnvDef, false, strippedEnv) };
 }
 
@@ -474,6 +473,20 @@ function tryRouteToCustomEnv<OtherInfo>(
 	const resolution = resolveEnvirArg(args, data, config.environmentArg);
 	if(!resolution) {
 		return undefined;
+	}
+
+	if(resolution.isStackEnv) {
+		/* real stack env, not a private snapshot. Route a global write as a super-assignment so it reaches global scope from inside a function. */
+		if(resolution.envirData.environment.current.globalEnv !== true) {
+			return undefined;
+		}
+		const globalResult = processAssignment(name, args, rootId, data, {
+			...config,
+			environmentArg:  undefined,   // prevent re-entry
+			superAssignment: true
+		});
+		globalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+		return globalResult;
 	}
 
 	/* run the normal assignment path to get the correct graph structure */
@@ -561,8 +574,12 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
 		let returnsEnvState: REnvironmentInformation | undefined;
+		const stackEnv = stackEnvStateFromSource(sourceArg, data);
 		if(isEnvCreatorSource(sourceArg)) {
 			envState = createFreshEnvState(data, sourceArg);
+		} else if(stackEnv !== undefined) {
+			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
+			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
 			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);
@@ -602,14 +619,21 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
-	const readTargets: readonly IdentifierReference[] = [
+	const readTargets: IdentifierReference[] = [
 		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
-	].concat(
-		sourceArg.unknownReferences,
-		sourceArg.in,
-		targetName ? targetArg.in : targetArg.in.filter(i => i.nodeId !== targetId),
-		readFromSourceWritten
-	);
+	];
+	readTargets.push(...sourceArg.unknownReferences);
+	readTargets.push(...sourceArg.in);
+	if(targetName) {
+		readTargets.push(...targetArg.in);
+	} else {
+		for(const i of targetArg.in) {
+			if(i.nodeId !== targetId) {
+				readTargets.push(i);
+			}
+		}
+	}
+	readTargets.push(...readFromSourceWritten);
 
 	information.environment = overwriteEnvironment(sourceArg.environment, targetArg.environment);
 

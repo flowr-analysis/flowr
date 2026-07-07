@@ -1,4 +1,4 @@
-import type { TaintMapper } from '../function-mapper';
+import type { TaintMapper, TaintMapping } from '../function-mapper';
 import type { AbsintVisitorConfiguration, AbstractInterpretationVisitor } from '../../abstract-interpretation/absint-visitor';
 import type { AnyStateDomain } from '../../abstract-interpretation/domains/state-domain-like';
 import type { TaintComponent, TaintProduct } from '../composite-taint-visitor';
@@ -11,7 +11,6 @@ import type { AnyAbstractDomain } from '../../abstract-interpretation/domains/ab
 
 export type TaintAnalysisName<Definition> =
 	Definition extends RunnableTaintAnalysisDefinition<infer Name> ? Name : never;
-export type TaintAnalysisDomain<Definition> = Definition extends TaintAnalysisDefinition<infer _Name, infer Domain> ? Domain : never;
 
 /**
  * The common interface of all (runnable) taint analysis definitions, i.e. single {@link TaintAnalysisDefinition|definitions}
@@ -60,13 +59,21 @@ implements RunnableTaintAnalysisDefinition<Name> {
 		this.config = config;
 	}
 
-	public through(fnMapping: TaintMapper<Domain>): this {
-		this.mapper.push(...fnMapping);
+	/** Adds source rules that determine the resulting taint of matching calls. */
+	public from(fnMapping: TaintMapper<Domain>): this {
+		this.mapper.push(...fnMapping.map(m => ({ ...m, role: 'from' } as TaintMapping<Domain>)));
 		return this;
 	}
 
+	/** Adds propagator or sanitizer rules that determine the resulting taint of matching calls. */
+	public through(fnMapping: TaintMapper<Domain>): this {
+		this.mapper.push(...fnMapping.map(m => ({ ...m, role: 'through' } as TaintMapping<Domain>)));
+		return this;
+	}
+
+	/** Adds sink rules whose conditions check argument taints and signal findings by yielding Bottom. */
 	public to(fnMapping: TaintMapper<Domain>): this {
-		this.mapper.push(...fnMapping);
+		this.mapper.push(...fnMapping.map(m => ({ ...m, role: 'to' } as TaintMapping<Domain>)));
 		return this;
 	}
 

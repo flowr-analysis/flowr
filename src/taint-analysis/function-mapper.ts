@@ -120,6 +120,7 @@ export type ResolvedTaint<Domain extends AnyAbstractDomain> =
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
 
 export type TaintMapping<Domain extends AnyAbstractDomain> = {
+	role?:      'from' | 'through' | 'to';
 	identifier: Identifier | Identifier[];
 } & (
 	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }

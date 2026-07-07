@@ -32,7 +32,7 @@ function constantAggregate(...elements: symbol[]): TaintCondition<typeof scaleDo
 export const scaleAnalysis = new TaintAnalysisDefinition('scale', scaleDomain)
 	.from([
 		{
-			identifier: Identifier.make('scale'),
+			identifier: Identifier.make('scale', 'base'),
 			condition:  {
 				argValues: [
 					{ pos: 1, name: 'center', default: true },

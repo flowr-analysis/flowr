@@ -36,13 +36,11 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	}
 
 	const functionName = node.functionName.content;
-	const mapping = mapper.find(m => {
-		if(Identifier.is(m.identifier)) {
-			return Identifier.matches(m.identifier, functionName);
-		} else {
-			return m.identifier.find(s => Identifier.matches(s, functionName));
-		}
-	});
+	const matchesCall = (id: Identifier) => Identifier.matches(id, functionName)
+		|| (Identifier.getNamespace(functionName) === undefined && Identifier.matches(functionName, id));
+	const mapping = mapper.find(m =>
+		Identifier.is(m.identifier) ? matchesCall(m.identifier) : m.identifier.some(matchesCall)
+	);
 
 	if(mapping?.taint) {
 		return { taint: mapping.taint };

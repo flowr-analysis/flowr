@@ -35,7 +35,7 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 		return;
 	}
 
-	const functionName = Identifier.getName(node.functionName.content);
+	const functionName = node.functionName.content;
 	const mapping = mapper.find(m => {
 		if(Identifier.is(m.identifier)) {
 			return Identifier.matches(m.identifier, functionName);

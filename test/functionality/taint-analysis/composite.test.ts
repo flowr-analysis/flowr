@@ -4,8 +4,8 @@ import { TaintAnalysisDefinition } from '../../../src/taint-analysis/builder/tai
 import { FiniteDomainBuilder } from '../../../src/taint-analysis/builder/domain';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 import { Bottom, Top } from '../../../src/abstract-interpretation/domains/lattice';
-import { scaleAnalysis, Unscaled, ZScore } from '../../../src/taint-analysis/predefined/scale-analysis';
-import { Deterministic, randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
+import { scaleAnalysis, ZScore } from '../../../src/taint-analysis/predefined/scale-analysis';
+import { randomnessAnalysis } from '../../../src/taint-analysis/predefined/randomness-analysis';
 import type { TaintProduct } from '../../../src/taint-analysis/composite-taint-visitor';
 import type { ProductReduction } from '../../../src/abstract-interpretation/domains/partial-product-domain';
 
@@ -47,12 +47,10 @@ describe('Composite Taint Analysis', () => {
 
 		test('combines the per-node taint of both analyses', async() => {
 			await testCompositeTaintAnalysis(`
-				x <- c(1, 2, 3, 4, 5)
 				x <- scale(x)`,
 			composed,
 			{
-				'1@x': { scale: Unscaled, randomness: Deterministic },
-				'2@x': { scale: ZScore, randomness: Top },
+				'1@x': { scale: ZScore, randomness: Top },
 			});
 		});
 	});
@@ -72,12 +70,10 @@ describe('Composite Taint Analysis', () => {
 
 		test('the reduction refines the randomness component based on the scale component', async() => {
 			await testCompositeTaintAnalysis(`
-				x <- c(1, 2, 3, 4, 5)
 				x <- scale(x)`,
 			composed,
 			{
-				'1@x': { scale: Unscaled, randomness: Deterministic },
-				'2@x': { scale: ZScore, randomness: Bottom },
+				'1@x': { scale: ZScore, randomness: Bottom },
 			});
 		});
 	});

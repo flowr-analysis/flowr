@@ -8,16 +8,13 @@ import type {
 	AnyPredefinedTaintAnalysisName
 } from '../../../taint-analysis/predefined/predefined';
 import { predefinedTaintAnalyses } from '../../../taint-analysis/predefined/predefined';
-import type { AnyAbstractDomain } from '../../../abstract-interpretation/domains/abstract-domain';
 import { Bottom, BottomSymbol } from '../../../abstract-interpretation/domains/lattice';
 import { bold } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
-import type { StateDomainLift } from '../../../abstract-interpretation/domains/state-abstract-domain';
 import type { TaintInferenceResult } from '../../../taint-analysis/builder/taint-analysis';
-import type {
-	TaintAnalysisDefinition } from '../../../taint-analysis/builder/taint-analysis-definition';
+
 
 
 
@@ -27,7 +24,7 @@ export interface TaintQuery extends BaseQueryFormat {
 }
 
 export interface TaintQueryResult<Analyses extends string[]> extends BaseQueryResult {
-	readonly results: Map<Analyses[number], TaintInferenceResult<TaintAnalysisDefinition<Analyses[number]>>>
+	readonly results: Map<Analyses[number], TaintInferenceResult>,
 }
 
 const prefix = 'definitions:';
@@ -103,7 +100,7 @@ export const TaintQueryDefinition = {
 
 		for(const [name, result] of state) {
 			resultStrings.push(`   ╰ **${name}**:`);
-			const lift = result.visitor.getEndState().value as StateDomainLift<AnyAbstractDomain>;
+			const lift = result.domains.value;
 
 			if(result.finding) {
 				resultStrings.push(`      ╰ finding: ${result.finding}`);
@@ -123,6 +120,17 @@ export const TaintQueryDefinition = {
 		}
 
 		return true;
+	},
+	jsonFormatter: (queryResults: BaseQueryResult) => {
+		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
+		const json = new Map(
+			Array.from(results, ([name, { domains, finding }]) => [name, {
+				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
+				finding: finding,
+			}])
+		);
+		const result = { results: json, ...out } as object;
+		return result;
 	},
 	completer: taintQueryCompleter,
 	fromLine:  taintQueryLineParser,

@@ -8,7 +8,7 @@ import { CfgKind } from '../../../src/project/cfg-kind';
 import type { FlowrFileProvider } from '../../../src/project/context/flowr-file';
 import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
 import { RSymbol } from '../../../src/r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, ParentInformation } from '../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../../src/r-bridge/lang-4.x/ast/model/processing/role';
 import type { RShell } from '../../../src/r-bridge/shell';
 import { type SlicingCriteria, SlicingCriterion } from '../../../src/slicing/criterion/parse';
@@ -106,6 +106,29 @@ export function getInferredValueForCriterion<Domain extends AnyAbstractDomain>(
 	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
 
 	return inference.getAbstractValue(nodeId);
+}
+
+/**
+ * Retrieves the inferred abstract value for a given slicing criterion from the state domain.
+ * @param idMap - The node ID map.
+ * @param stateDomain - The state domain from which the inferred value should be inferred.
+ * @param criterion - The slicing criterion for which to retrieve the inferred value.
+ * @returns The inferred abstract value for the given slicing criterion, or `undefined` if no value was inferred for it.
+ */
+export function getInferredValueForCriterionFromStateDomain<Domain extends AnyAbstractDomain>(
+	idMap: AstIdMap<ParentInformation>,
+	stateDomain: AnyStateDomain<Domain>,
+	criterion: SlicingCriterion
+): Domain | undefined {
+	let nodeId = SlicingCriterion.parse(criterion, idMap);
+	const node = idMap.get(nodeId);
+
+	if(node?.info.role === RoleInParent.FunctionCallName) {
+		nodeId = node.info.parent ?? nodeId;
+	}
+	guard(isNotUndefined(nodeId), `Slicing criterion ${criterion} does not refer to an AST node`);
+
+	return stateDomain.get(nodeId);
 }
 
 /**

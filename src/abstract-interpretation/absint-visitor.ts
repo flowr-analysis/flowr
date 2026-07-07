@@ -15,11 +15,7 @@ import { AbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
 
-export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>
-	& {
-		/** Whether unsupported functions should be mapped to Top */
-		ignoreUnsupportedFunctions?: boolean
-	};
+export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 /**
  * A control flow graph visitor to perform abstract interpretation.
@@ -48,8 +44,6 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 	 */
 	private readonly unassigned: Set<NodeId> = new Set();
 
-	private readonly absIntConfig: AbsintVisitorConfiguration;
-
 	/**
 	 * A map mapping assignments of replacement calls to their replacement calls for replacement calls that have already been visited but whose assignment has not yet been processed.
 	 */
@@ -57,10 +51,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 
 	constructor(config: Config, stateDomain: StateDomain) {
 		super({ ...config, defaultVisitingOrder: 'forward', defaultVisitingType: 'exit' });
-		this.absIntConfig = {
-			ignoreUnsupportedFunctions: true,
-			...config,
-		};
+
 		this.currentState = stateDomain.top();
 	}
 
@@ -205,7 +196,7 @@ export abstract class AbstractInterpretationVisitor<StateDomain extends AnyState
 			this.onVisitNode(vertexId);
 
 			// discard the inferred abstract state when encountering unsupported function calls
-			if(this.absIntConfig.ignoreUnsupportedFunctions && this.isUnsupportedFunctionCall(nodeId)) {
+			if(this.isUnsupportedFunctionCall(nodeId)) {
 				this.currentState = this.currentState.top();
 			}
 			this.trace.set(nodeId, this.currentState);

@@ -195,7 +195,7 @@ export class FiniteDomain<Top extends symbol, Bot extends symbol, Elements exten
 		return this.value.description ?? this.value.toString();
 	}
 
-	toJson(): unknown {
+	toJSON(): unknown {
 		return this.value.description ?? this.value.toString();
 	}
 

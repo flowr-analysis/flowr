@@ -84,7 +84,7 @@ export class TaintAnalysisInstrumentation {
 			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
 		if(taint) {
-			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJson() });
+			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON() });
 		} else {
 			fnCallInfo.unmappedCalls.push(callInfo);
 		}
@@ -114,7 +114,7 @@ export class TaintAnalysisInstrumentation {
 			return {
 				name:  resolveIdToArgName(resolvable, resolveInfo),
 				value: resolveIdToArgValue(resolvable, resolveInfo),
-				taint: valueId === undefined ? undefined : projectArg(valueId)?.toJson(),
+				taint: valueId === undefined ? undefined : projectArg(valueId)?.toJSON(),
 			};
 		});
 	}

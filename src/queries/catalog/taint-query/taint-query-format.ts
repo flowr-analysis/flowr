@@ -125,7 +125,7 @@ export const TaintQueryDefinition = {
 		const { results, ...out } = queryResults as QueryResults<'taint'>['taint'];
 		const json = new Map(
 			Array.from(results, ([name, { domains, finding }]) => [name, {
-				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJson() ?? null])),
+				domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
 				finding: finding,
 			}])
 		);

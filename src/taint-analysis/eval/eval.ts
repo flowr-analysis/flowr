@@ -70,7 +70,7 @@ function traceToObject(trace: TaintAnalysisInstrumentation['trace']): Record<str
 function taintResultsToObject(results: Map<string, TaintInferenceResult>) {
 	return Object.fromEntries(
 		results.entries().map(([name, { domains, finding }]) => [name, {
-			domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJson() ?? null])),
+			domains: domains.value === Bottom ? domains.value.description : Object.fromEntries(domains.value.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null])),
 			finding: finding,
 		}])
 	);

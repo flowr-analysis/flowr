@@ -7,6 +7,7 @@ WORKDIR /app
 # copy the source and build files of all modules into the workdir
 COPY ./src /app/src
 COPY ./test /app/test
+COPY ./scripts/pkgdb-compress.mjs /app/scripts/pkgdb-compress.mjs
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
 # install python and build tools for node-gyp

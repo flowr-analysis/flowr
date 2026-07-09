@@ -17,21 +17,63 @@ export interface ProjectQuery extends BaseQueryFormat {
 	readonly withDf?: boolean;
 }
 
+/** The kind of project that flowR is analyzing. */
+export enum ProjectKind {
+	/** An R package (has a `DESCRIPTION` file). */
+	Package  = 'package',
+	/** A single R script. */
+	Script   = 'script',
+	/** A Shiny application (`app.R`, or `ui.R` together with `server.R`). */
+	ShinyApp = 'shiny-app',
+	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
+	Notebook = 'notebook',
+	/** A multi-file project that is not a package. */
+	Project  = 'project',
+	/** The kind could not be determined (e.g. before the files are known). */
+	Unknown  = 'unknown'
+}
+
+/** Statistics on the project's declared dependencies, cross-referenced with the package database. */
+export interface ProjectDependencyStats {
+	/** Number of packages in the `Imports` field. */
+	readonly imports:   number;
+	/** Number of packages in the `Depends` field (excluding the `R` version pseudo-package). */
+	readonly depends:   number;
+	/** Number of packages in the `Suggests` field. */
+	readonly suggests:  number;
+	/** Number of packages in the `LinkingTo` field. */
+	readonly linkingTo: number;
+	/** Number of unique runtime dependencies (`Imports`, `Depends`, and `LinkingTo` combined). */
+	readonly runtime:   number;
+	/** How many of the runtime dependencies are base or recommended R packages. */
+	readonly base:      number;
+	/** How many of the non-base runtime dependencies are covered by the loaded package database(s). */
+	readonly covered:   number;
+	/** The first few runtime dependencies with the version the package database resolved them to, if any. */
+	readonly first:     { name: string, base: boolean, dbVersion?: string }[];
+	/** The required R version derived from the `Depends` field, if declared. */
+	readonly rVersion?: string;
+}
+
 export interface ProjectQueryResult extends BaseQueryResult {
 	/** The name of the project, if available. */
-	readonly name?:       string;
+	readonly name?:         string;
 	/** The authors of the project. */
-	readonly authors?:    RAuthorInfo[];
+	readonly authors?:      RAuthorInfo[];
 	/** The files considered part of the project. */
-	readonly files:       (string | '<inline>')[];
+	readonly files:         (string | '<inline>')[];
 	/** The counts of files by their role in the project. */
-	readonly roleCounts?: Record<FileRole, number>;
+	readonly roleCounts?:   Record<FileRole, number>;
 	/** The licenses of the project. */
-	readonly licenses?:   RLicenseElementInfo[];
+	readonly licenses?:     RLicenseElementInfo[];
 	/** The encoding of the project files. */
-	readonly encoding?:   string;
+	readonly encoding?:     string;
 	/** The version of the project, if available. */
-	readonly version?:    string;
+	readonly version?:      string;
+	/** The classified kind of the project (e.g. package, script, shiny app). */
+	readonly kind?:         ProjectKind;
+	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */
+	readonly dependencies?: ProjectDependencyStats;
 }
 
 function addSuffix(count: number, singular = '', plural = 's'): string {
@@ -45,6 +87,9 @@ export const ProjectQueryDefinition = {
 		result.push(`Query: ${bold('project', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		if(out.name) {
 			result.push(`   ╰ Project Name: ${out.name}`);
+		}
+		if(out.kind) {
+			result.push(`   ╰ Kind: ${out.kind}`);
 		}
 		if(out.version) {
 			result.push(`   ╰ Version: ${out.version}`);
@@ -78,8 +123,20 @@ export const ProjectQueryDefinition = {
 				}
 			}
 		}
+		if(out.dependencies) {
+			const d = out.dependencies;
+			result.push(`   ╰ Dependencies: ${d.runtime} runtime (${d.imports} imports, ${d.depends} depends, ${d.linkingTo} linkingTo), ${d.suggests} suggested`);
+			result.push(`      ╰ ${d.base} base/recommended, ${d.covered}/${Math.max(d.runtime - d.base, 0)} non-base covered by the package database`);
+			if(d.first.length > 0) {
+				const names = d.first.map(f => f.dbVersion ? `${f.name}@${f.dbVersion}` : f.name).join(', ');
+				result.push(`      ╰ e.g. ${names}${d.runtime > d.first.length ? ', ...' : ''}`);
+			}
+			if(d.rVersion) {
+				result.push(`      ╰ Requires R ${d.rVersion}`);
+			}
+		}
 		if(analyzer.peekDataflow() === undefined) {
-			result.push(formatter.format('   ╰ Dataflow Analysis not performed', { color: Colors.White, effect: ColorEffect.Foreground }));
+			result.push(formatter.format('   ╰ Dataflow not performed (run `:df#`, then re-run this query, or pass "withDf": true)', { color: Colors.White, effect: ColorEffect.Foreground }));
 		} else {
 			result.push(`   ╰ Dataflow Analysis considered ${out.files.length} file${out.files.length === 1 ? '' : 's'}`);
 			for(const file of out.files.slice(0, 20)) {

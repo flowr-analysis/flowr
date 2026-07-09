@@ -210,6 +210,7 @@
     "commonmark": "^0.31.2",
     "dagre": "^0.8.5",
     "gray-matter": "^4.0.3",
+    "ignore": "^7.0.5",
     "joi": "^18.0.1",
     "lz-string": "^1.5.0",
     "n-readlines": "^3.4.1",

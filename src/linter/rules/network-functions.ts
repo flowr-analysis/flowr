@@ -78,7 +78,8 @@ export const NETWORK_FUNCTIONS = {
 				'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'readLines', 'source', 'load', 'curl_download',
 				'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'read_xml', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get',
 				's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub', 'scan',
-				'socketConnection', 'request', 'curl'
+				'socketConnection', 'request', 'curl',
+				'copy_to', 'source_url', 'install_bioc', 'install_bitbucket', 'install_cran', 'install_dev', 'install_git', 'install_github', 'install_gitlab', 'install_svn', 'install_url', 'install_version', 'update_packages', 'github_pull', 'pak'
 			],
 			onlyTriggerWithArgument: /^(https?|ftps?):\/\//
 		}

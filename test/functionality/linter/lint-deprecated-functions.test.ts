@@ -2,6 +2,7 @@ import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledPkgDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import { DeprecationState } from '../../../src/linter/rules/deprecated-functions';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('deprecated functions', () => {
@@ -63,6 +64,26 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: ['recode'], noPkgDb: true }
+			);
+		});
+
+		describe('only detect deprecated args when present', () => {
+			assertLinter('deprecated arg but not present', parser, 'testFn()',
+				'deprecated-functions',
+				[],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['testFn'], whenArgs: { 'testFn': [{ argName: 'badArg', state: DeprecationState.Deprecated }] } }
+			);
+
+			assertLinter('deprecated arg present', parser, 'testFn(badArg=5)',
+				'deprecated-functions',
+				[{
+					certainty: LintingResultCertainty.Certain,
+					function:  'testFn',
+					loc:       [1, 1, 1, 16]
+				}],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['testFn'], whenArgs: { 'testFn': [{ argName: 'badArg', state: DeprecationState.Deprecated }] } }
 			);
 		});
 	});

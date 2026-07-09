@@ -1,4 +1,10 @@
-import { LintingRuleCertainty, type LintingRule } from '../linter-format';
+import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import { FunctionArgument } from '../../dataflow/graph/graph';
+import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import { isNotUndefined } from '../../util/assert';
+import { SourceLocation } from '../../util/range';
+import { LintingResultCertainty, LintingRuleCertainty, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectConfig, functionFinderUtil } from './function-finder-util';
 
@@ -43,12 +49,73 @@ export interface DeprecatedFunctionsConfig<Fns extends readonly string[] = reado
 // Little helper for constraining whenArgs to fns
 const defineConfig = <const Fns extends readonly string[]>(config: DeprecatedFunctionsConfig<Fns>) => config;
 
-
 export const DEPRECATED_FUNCTIONS = {
 	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: functionFinderUtil.processSearchResult,
-	prettyPrint:         functionFinderUtil.prettyPrint('deprecated'),
-	info:                {
+	processSearchResult: async(elements, config, data) => {
+		const dataflow = (await data.dataflow()).graph;
+		const metadata: FunctionsMetadata = {
+			totalCalls:               0,
+			totalFunctionDefinitions: 0
+		};
+
+		const results = elements.getElements().flatMap(e => {
+			metadata.totalCalls++;
+			return enrichmentContent(e, Enrichment.CallTargets).targets.map(target => {
+				metadata.totalFunctionDefinitions++;
+				return {
+					node:   e.node,
+					loc:    SourceLocation.fromNode(e.node),
+					target: target as BrandedIdentifier,
+				};
+			});
+		}).filter(e => isNotUndefined(e.loc));
+
+		// Filter out functions that are only deprecated when a certain Argument is present
+		const resultsWhenArg = results.flatMap(r => {
+			// If not provided in whenArgs, it is always deprecated
+			const whenArgs = config.whenArgs[r.target];
+			if(whenArgs === undefined) {
+				return r;
+			}
+
+			// Check if function has deprecated args
+			const deprecatedArgs = whenArgs.map(depricationInfo => {
+				const vertex = dataflow.getVertex(r.node.info.id);
+				if(vertex === undefined || !isFunctionCallVertex(vertex)) {
+					return undefined;
+				}
+
+				if(vertex.args.some((arg, idx) =>
+					FunctionArgument.isNamed(arg) && arg.name === depricationInfo.argName ||
+					FunctionArgument.isPositional(arg) && idx === depricationInfo.argIdx
+				)) {
+					return {
+						arg:        depricationInfo.argName ?? depricationInfo.argIdx,
+						state:      depricationInfo.state,
+						replacedBy: depricationInfo.replacedBy
+					};
+				}
+			}).filter(p => p !== undefined);
+
+			// Don't mark function as deprecated, if we didn't find any deprecated args
+			return deprecatedArgs.length === 0 ? undefined : {
+				...r,
+				deprecatedArgs: deprecatedArgs
+			};
+		}).filter(p => p !== undefined);
+
+		return {
+			results: resultsWhenArg.map(e => ({
+				certainty:  LintingResultCertainty.Certain,
+				involvedId: e.node.info.id,
+				function:   e.target,
+				loc:        e.loc
+			})) as FunctionsResult[],
+			'.meta': metadata
+		};
+	},
+	prettyPrint: functionFinderUtil.prettyPrint('deprecated'),
+	info:        {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		// ensures all deprecated functions found are actually deprecated through its limited config, but doesn't find all deprecated functions since the config is pre-crawled

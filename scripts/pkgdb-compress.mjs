@@ -17,8 +17,9 @@ if(!fs.existsSync(src)) {
 	console.log('no pkgdb data to compress');
 	process.exit(0);
 }
-fs.rmSync(dst, { recursive: true, force: true });   // drop stale tiers so only current ones ship
 fs.mkdirSync(dst, { recursive: true });
+
+const expected = new Set();   // the .br outputs this run should keep; anything else in dst is stale
 
 for(const file of fs.readdirSync(src)) {
 	if(!file.endsWith('.json')) {
@@ -28,14 +29,31 @@ for(const file of fs.readdirSync(src)) {
 		console.log(`  skipping ${file} (not in --tiers)`);
 		continue;
 	}
-	const json = fs.readFileSync(path.join(src, file));
+	const srcPath = path.join(src, file);
+	const outName = `${file}.br`;
+	const outPath = path.join(dst, outName);
+	expected.add(outName);
+	// reuse an existing .br when it is at least as new as its source - brotli q11 is the slow part
+	if(fs.existsSync(outPath) && fs.statSync(outPath).mtimeMs >= fs.statSync(srcPath).mtimeMs) {
+		console.log(`  ${file} -> ${outName} (up to date, skipped)`);
+		continue;
+	}
+	const json = fs.readFileSync(srcPath);
 	const br = zlib.brotliCompressSync(json, { params: {
 		[zlib.constants.BROTLI_PARAM_QUALITY]:   11,
 		[zlib.constants.BROTLI_PARAM_LGWIN]:     24,
 		[zlib.constants.BROTLI_PARAM_SIZE_HINT]: json.length
 	} });
-	fs.writeFileSync(path.join(dst, `${file}.br`), br);
-	console.log(`  ${file} -> ${file}.br (${(json.length / 1e6).toFixed(1)} -> ${(br.length / 1e6).toFixed(2)} MB)`);
+	fs.writeFileSync(outPath, br);
+	console.log(`  ${file} -> ${outName} (${(json.length / 1e6).toFixed(1)} -> ${(br.length / 1e6).toFixed(2)} MB)`);
+}
+
+// drop stale tiers (source removed or no longer wanted) so only current ones ship
+for(const out of fs.readdirSync(dst)) {
+	if(out.endsWith('.br') && !expected.has(out)) {
+		fs.rmSync(path.join(dst, out));
+		console.log(`  removed stale ${out}`);
+	}
 }
 
 // warn about requested tiers whose plain source is missing (e.g. `all` is not committed)

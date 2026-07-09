@@ -14,22 +14,24 @@ import {
 	dataflowStarCommand
 } from './repl-dataflow';
 import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import { type OutputFormatter, bold, italic } from '../../../util/text/ansi';
+import { type OutputFormatter, Colors, FontStyles, bold, color, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { queryCommand, queryStarCommand } from './repl-query';
 
+const cmd = (name: string, f: OutputFormatter): string => color(name, Colors.Cyan, f, { style: FontStyles.Bold });
+
 function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
-	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
+	let base = `  ${cmd(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
 	if(starredVersion) {
-		base += ` (star: ${starredVersion.description})`;
+		base += ` ${italic(`(star: ${starredVersion.description})`, f)}`;
 	}
 	if(script[1].aliases.length === 0) {
 		return base;
 	}
 	const aliases = script[1].aliases;
-	return `${base} (alias${aliases.length > 1 ? 'es' : ''}: ${aliases.map(a => bold(':' + a, f)).join(', ')})`;
+	return `${base} ${italic(`(alias${aliases.length > 1 ? 'es' : ''}:`, f)} ${aliases.map(a => cmd(':' + a, f)).join(', ')}${italic(')', f)}`;
 }
 
 function printCommandHelp(formatter: OutputFormatter) {
@@ -68,14 +70,14 @@ ${
 Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help', output.formatter)} after the command.
 ${
 	Array.from(Object.entries(getReplCommands())).filter(([, { script }]) => script).map(
-		([command, { description }]) => `  ${bold(padCmd(':' + command), output.formatter)}${description}`).sort().join('\n')
+		([command, { description }]) => `  ${cmd(padCmd(':' + command), output.formatter)}${description}`).sort().join('\n')
 }
 
 You can combine commands by separating them with a semicolon ${bold(';', output.formatter)}.
 
 Commands that accept a file path support two path prefixes:
-  ${bold('file://<path>', output.formatter)}   run the command once on the given file or folder
-  ${bold('watch://<path>', output.formatter)}  re-run the command whenever the file (or any file in the folder) changes
+  ${color('file://<path>', Colors.Green, output.formatter, { style: FontStyles.Bold })}   run the command once on the given file or folder
+  ${color('watch://<path>', Colors.Yellow, output.formatter, { style: FontStyles.Bold })}  re-run the command whenever the file (or any file in the folder) changes
                      Press Ctrl+C or enter any other command to leave watch mode.
 `);
 	}

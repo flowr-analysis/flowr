@@ -92,7 +92,7 @@ const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 log.info('running with options', options);
 
-if(options['no-ansi']) {
+if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
 	log.info('disabling ansi colors');
 	setFormatter(voidFormatter);
 }

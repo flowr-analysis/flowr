@@ -14,6 +14,8 @@ import { Identifier } from '../../../../../src/dataflow/environments/identifier'
 import { getOriginInDfg } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { label } from '../../../_helper/label';
+import { executeQueries } from '../../../../../src/queries/query';
+import { CallTargets } from '../../../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 
 /** in-memory database with ggplot2 exporting ggplot/aes/geom_point */
 function ggplotDb(): PkgDatabase {
@@ -73,7 +75,7 @@ describe('Link libraries from a pkgdb database', withTreeSitter(ts => {
 
 	test(label('eager mode (config) materializes every export vertex on load', ['library-loading'], ['dataflow']), async() => {
 		const eager = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.solver.eagerlyLoadPackages = true;
+			c.solver.pkgdb.eagerlyLoadExports = true;
 		});
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).setConfig(eager)
 			.unregisterPlugins(PkgDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(ggplotDb())).build();
@@ -216,6 +218,35 @@ describe('Link libraries from a pkgdb database', withTreeSitter(ts => {
 		const df = await analyze(ts, 'library(ggplot2)\nggplot()', bundled); // load the shipped file explicitly
 		expect(hasBuiltIn(df, 'ggplot2', 'ggplot')).toBe(true);
 		expect(callResolvesTo(df, 'ggplot', 'ggplot2', 'ggplot')).toBe(true);
+	});
+
+	async function analyzerWith(code: string, db: PkgDatabase) {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts)
+			.unregisterPlugins(PkgDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(db)).build();
+		analyzer.addRequest(code);
+		return analyzer;
+	}
+
+	// regression: a call resolving to a loaded-package export must be treated as global by call-context queries
+	test(label('call-context: a loaded-package export counts as a global call target', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		const analyzer = await analyzerWith('library(ggplot2)\nggplot()', ggplotDb());
+		const ggplotBuiltIn = String(NodeId.toBuiltIn(Package.funcIdentif('ggplot2', 'ggplot')));
+
+		const globalRes = await executeQueries({ analyzer }, [{ type: 'call-context', callName: 'ggplot', callNameExact: true, callTargets: CallTargets.MustIncludeGlobal }]);
+		const globalHits = globalRes['call-context'].kinds['.']?.subkinds['.'] ?? [];
+		expect(globalHits.map(h => Identifier.getName(h.name))).toContain('ggplot');
+		expect(globalHits.flatMap(h => (h.calls ?? []).map(String))).toContain(ggplotBuiltIn);
+
+		const localRes = await executeQueries({ analyzer }, [{ type: 'call-context', callName: 'ggplot', callNameExact: true, callTargets: CallTargets.OnlyLocal }]);
+		expect(localRes['call-context'].kinds['.']?.subkinds['.'] ?? []).toHaveLength(0);
+	});
+
+	// regression: R> :query @dependencies "library(ggplot2); ggplot()" dropped the ggplot visualization
+	test(label('dependencies: ggplot after library(ggplot2) is a (qualified) visualization', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		const analyzer = await analyzerWith('library(ggplot2)\nggplot()', ggplotDb());
+		const deps = (await executeQueries({ analyzer }, [{ type: 'dependencies' }]))['dependencies'];
+		expect(deps.visualize.map(v => Identifier.toString(v.functionName))).toContain('ggplot2::ggplot');
+		expect(deps.library.map(l => l.value)).toContain('ggplot2');
 	});
 
 	// exercises the full default path: default builder -> auto-discovered bundled .br -> decode -> resolve

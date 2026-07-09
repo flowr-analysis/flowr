@@ -52,7 +52,7 @@ ${pluginLink('versions:pkgdb')} extra sources (file paths, parsed objects, or \`
 ${ctx.code(usePackageDatabase, { dropLinesStart: 1 })}
 
 File sources load lazily on the first package load, so scripts without \`library()\`/\`use()\` calls never
-pay for parsing them (set \`solver.eagerlyLoadPackageDatabase\` to mount the database up front instead).
+pay for parsing them (set \`solver.pkgdb.eagerlyLoad\` to mount the database up front, or \`solver.pkgdb.enabled: false\` to switch it off entirely).
 For a URL source call ${ctx.linkM(FlowrAnalyzerPackageVersionsPkgDbPlugin, 'preload', { hideClass: true, codeFont: true })} (\`await pkgdb.preload()\`) before analysis to download it.
 
 ## Format

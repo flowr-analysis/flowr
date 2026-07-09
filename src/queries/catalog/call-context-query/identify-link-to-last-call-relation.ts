@@ -44,6 +44,15 @@ export function satisfiesCallTargets(info: DataflowGraphVertexFunctionCall, grap
 
 	let builtIn = false;
 
+	/*
+     * a resolved call target that is itself a built-in - a base builtin or a loaded-package export
+     * like `ggplot2::ggplot` (added by `library()`) - is a global resolution, so such calls count
+     * as global for every call-context query (`callTargetNamespace` then narrows down to the package).
+     */
+	if(callTargets.some(t => NodeId.isBuiltIn(t))) {
+		builtIn = true;
+	}
+
 	if(info.environment !== undefined) {
 		/*
          * for performance and scoping reasons, flowR will not identify the global linkage,

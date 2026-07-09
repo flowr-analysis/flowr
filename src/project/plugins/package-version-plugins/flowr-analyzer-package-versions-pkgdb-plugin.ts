@@ -72,10 +72,12 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		this.databases = undefined;   // reload on (re)registration so config/source changes take effect
-		ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
+		if(ctx.config.solver.pkgdb.enabled) {
+			ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
+		}
 	}
 
-	/** Mount the databases up front (see `solver.eagerlyLoadPackageDatabase`) instead of on the first library load. */
+	/** Mount the databases up front (see `solver.pkgdb.eagerlyLoad`) instead of on the first library load. */
 	public override preloadDatabasesSync(): void {
 		this.loadDatabases();
 	}

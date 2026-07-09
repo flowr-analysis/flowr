@@ -13,6 +13,8 @@ export type PackageOptions = {
 	dependencies?:       Package[];
 	namespaceInfo?:      NamespaceInfo;
 	versionConstraints?: Range[];
+	/** the concrete version the exports were resolved from (e.g. the package database entry), for information only */
+	resolvedVersion?:    string;
 };
 
 export class Package {
@@ -22,6 +24,7 @@ export class Package {
 	public dependencies?:      Package[];
 	public namespaceInfo?:     NamespaceInfo;
 	public versionConstraints: Range[] = [];
+	public resolvedVersion?:   string;
 
 	constructor(info: { name: string } & PackageOptions) {
 		this.name = info.name;
@@ -66,7 +69,8 @@ export class Package {
 				type:               other.type,
 				dependencies:       other.dependencies,
 				namespaceInfo:      other.namespaceInfo,
-				versionConstraints: other.versionConstraints
+				versionConstraints: other.versionConstraints,
+				resolvedVersion:    other.resolvedVersion
 			}
 		);
 	}
@@ -76,9 +80,13 @@ export class Package {
 			type,
 			dependencies,
 			namespaceInfo,
-			versionConstraints
+			versionConstraints,
+			resolvedVersion
 		} = info;
 
+		if(resolvedVersion !== undefined) {
+			this.resolvedVersion = resolvedVersion;
+		}
 		if(type !== undefined) {
 			this.type = type;
 		}

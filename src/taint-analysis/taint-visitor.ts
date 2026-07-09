@@ -2,14 +2,13 @@ import type { AbsintVisitorConfiguration } from '../abstract-interpretation/absi
 import { AbstractInterpretationVisitor } from '../abstract-interpretation/absint-visitor';
 import type { DataflowGraphVertexFunctionCall } from '../dataflow/graph/vertex';
 import type { AnyAbstractDomain } from '../abstract-interpretation/domains/abstract-domain';
-import type { ResolvedTaint, TaintMapper } from './function-mapper';
+import type { TaintMapper } from './function-mapper';
 import { mapFnCallToTaint, resolveTaint } from './function-mapper';
 import type { AnyStateDomain } from '../abstract-interpretation/domains/state-domain-like';
 import { StateAbstractDomain } from '../abstract-interpretation/domains/state-abstract-domain';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
-import type { RNamedFunctionCall } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { FnCallHookInfo } from './builder/taint-analysis';
 
 /**
  * Resolves the inferred abstract taint of an argument node at the current program point, independent of any mapping
@@ -24,8 +23,9 @@ export type ArgTaintProjector = (id: NodeId) => AnyAbstractDomain | undefined;
  * @param value      - The abstract domain value at this point in the analysis
  * @param projectArg - Resolves the incoming taint of any argument node, regardless of mapping rules
  * @param call       - The data flow graph vertex of the function call
+ * @param role       - The role of the matched mapping (source/propagator/sink), or `undefined` for unmapped calls
  */
-export type TaintVisitorHook = (taint: ResolvedTaint<AnyAbstractDomain>, node: RNamedFunctionCall<ParentInformation>, value: AnyAbstractDomain, projectArg: ArgTaintProjector, call: DataflowGraphVertexFunctionCall) => void;
+export type TaintVisitorHook = (info: Omit<FnCallHookInfo, 'name' | 'dfg' | 'ctx'>) => void;
 
 /**
  * Configuration for the taint inference visitor.
@@ -64,7 +64,7 @@ export class TaintInferenceVisitor<Domain extends AnyAbstractDomain> extends Abs
 		const value = resolveTaint(taint, this.domain, this.projectArg);
 		this.currentState.set(node.info.id, value);
 
-		this.config.fnCallHook(taint, node, value, this.projectArg, call);
+		this.config.fnCallHook({ taint, node, value, projectArg: this.projectArg, call, role: taint?.role });
 	}
 
 	protected isUnsupportedFunctionCall(_nodeId: NodeId): boolean {

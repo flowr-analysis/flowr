@@ -1,6 +1,7 @@
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FnCallHookInfo } from '../builder/taint-analysis';
+import type { TaintRole } from '../function-mapper';
 import { getFunctionArguments } from '../../abstract-interpretation/data-frame/mappers/arguments';
 import { resolveIdToArgName, resolveIdToArgValue } from '../../abstract-interpretation/data-frame/resolve-args';
 import { VariableResolve } from '../../config';
@@ -50,7 +51,9 @@ interface CallInfo {
 }
 
 interface MappedCallInfo extends CallInfo {
-	taint: unknown
+	taint: unknown,
+	/** The role of the matched mapping (source/propagator/sink). */
+	role?: TaintRole,
 }
 
 /**
@@ -71,7 +74,7 @@ export class TaintAnalysisInstrumentation {
 		return this._trace;
 	}
 
-	fnCallHook = ({ name, taint, node, value, projectArg, call, dfg, ctx }: FnCallHookInfo) => {
+	fnCallHook = ({ name, taint, node, value, projectArg, call, dfg, ctx, role }: FnCallHookInfo) => {
 		const fnCallInfo = this.addFile(name, node);
 		const localTargets = satisfiesCallTargets(call, dfg, CallTargets.OnlyLocal);
 		const cds = call.cds?.map(cd => resolveControlDependency(cd, dfg));
@@ -84,7 +87,7 @@ export class TaintAnalysisInstrumentation {
 			...(cds?.length ? { cds, inEveryBranch: happensInEveryBranch(call.cds) } : {}),
 		};
 		if(taint) {
-			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON() });
+			fnCallInfo.mappedCalls.push({ ...callInfo, taint: value.toJSON(), role });
 		} else {
 			fnCallInfo.unmappedCalls.push(callInfo);
 		}

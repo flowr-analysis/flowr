@@ -43,7 +43,7 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 	);
 
 	if(mapping?.taint) {
-		return { taint: mapping.taint };
+		return { role: mapping.role, taint: mapping.taint };
 	} else if(mapping?.condition) {
 		const resolveInfo = { graph: dfg, idMap: dfg.idMap, full: true, resolve: VariableResolve.Alias, ctx: ctx };
 		const allArgs = getFunctionArguments(node, dfg);
@@ -64,6 +64,7 @@ export function mapFnCallToTaint<Domain extends AnyAbstractDomain>(
 			valArgs,
 			taintArgs,
 			condition: mapping.condition.condition,
+			role:      mapping.role,
 		};
 	}
 }
@@ -107,18 +108,22 @@ export function resolveTaint<Domain extends AnyAbstractDomain>(
 
 export type ResolvedTaint<Domain extends AnyAbstractDomain> =
 	{
+		role?:     TaintRole,
 		condition: TaintConditionFunction<Domain>,
 		valArgs:   unknown[],
 		taintArgs: (PotentiallyEmptyRArgument<ParentInformation> | undefined)[]
 	}
-	| { taint: AbstractValue<Domain> }
+	| { role?: TaintRole, taint: AbstractValue<Domain> }
 	| undefined;
 
 
 export type TaintMapper<Domain extends AnyAbstractDomain> = TaintMapping<Domain>[];
 
+/** Whether a mapped call acts as a source (`from`), propagator/sanitizer (`through`), or sink (`to`). */
+export type TaintRole = 'from' | 'through' | 'to';
+
 export type TaintMapping<Domain extends AnyAbstractDomain> = {
-	role?:      'from' | 'through' | 'to';
+	role?:      TaintRole;
 	identifier: Identifier | Identifier[];
 } & (
 	| { taint: AbstractValue<Domain>; condition?: TaintCondition<Domain> }

@@ -6,6 +6,7 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { PkgDatabase, defaultPkgDbPath, type PkgDb } from './pkgdb';
 import { log } from '../../../util/log';
+import { FileRole } from '../../context/flowr-file';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default pkgdb resolver) */
 export const PkgDbPluginName = 'flowr-analyzer-package-versions-pkgdb-plugin';
@@ -64,6 +65,7 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 
 	private readonly extraSources: PkgDbSource[];
 	private databases:             PkgDatabase[] | undefined;
+	private analyzerCtx:           FlowrAnalyzerContext | undefined;
 
 	public constructor(...sources: PkgDbSource[]) {
 		super();
@@ -72,9 +74,19 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		this.databases = undefined;   // reload on (re)registration so config/source changes take effect
+		this.analyzerCtx = ctx;
 		if(ctx.config.solver.pkgdb.enabled) {
 			ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
 		}
+	}
+
+	/**
+	 * Whether the given name is the project's own package. When analyzing a package from source (e.g. ggplot2),
+	 * we already have its actual definitions, so we must not shadow them with the (possibly stale) database entry.
+	 */
+	private isSelfPackage(name: string): boolean {
+		const desc = this.analyzerCtx?.files.getFilesByRole(FileRole.Description) ?? [];
+		return desc.some(d => d.packageName() === name);
 	}
 
 	/** Mount the databases up front (see `solver.pkgdb.eagerlyLoad`) instead of on the first library load. */
@@ -161,6 +173,10 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 	}
 
 	private resolve(name: string, existing?: Package): Package | undefined {
+		if(this.isSelfPackage(name)) {
+			pkgDbLog.debug(`not resolving ${name} from the package database as it is the analyzed project itself`);
+			return undefined;
+		}
 		const pinned = existing?.derivedVersion ? minVersion(existing.derivedVersion)?.version : undefined;
 		for(const db of this.loadDatabases()) {
 			const info = db.lookup(name, pinned);
@@ -181,7 +197,7 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 				loadsWithSideEffects: false,
 				callable:             info.exported
 			};
-			return new Package({ name, namespaceInfo });
+			return new Package({ name, namespaceInfo, resolvedVersion: info.version });
 		}
 		return undefined;
 	}

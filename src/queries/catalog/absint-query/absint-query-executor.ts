@@ -48,8 +48,7 @@ export async function executeAbsintQuery<AbsintType extends AbsintQueryType>({ a
 			}
 			try {
 				const nodeId = SlicingCriterion.parse(criterion, ast.idMap);
-				const node = ast.idMap.get(nodeId);
-				const value = visitor.getAbstractValue(node?.info.id);
+				const value = visitor.getAbstractValue(nodeId);
 				result.set(criterion, value as AbsintQueryDomain<AbsintType>);
 			} catch(err) {
 				console.error(err instanceof Error ? err.message : err);

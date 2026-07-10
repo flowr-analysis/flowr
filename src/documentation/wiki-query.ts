@@ -547,8 +547,8 @@ registerQueryDocumentation('absint', {
 	functionName:     executeAbsintQuery.name,
 	functionFile:     '../queries/catalog/absint-query/absint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const criteria = ['1@df', '1@data.frame'] satisfies SlicingCriteria;
-		const inference = 'df-shape' satisfies AbsintQueryType;
+		const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
+		const inference: AbsintQueryType = 'df-shape';
 		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
 		return `
 This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:

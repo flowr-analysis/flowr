@@ -85,6 +85,7 @@ export const DEPRECATED_FUNCTIONS = {
 		);
 
 		const dataflow = (await data.dataflow()).graph;
+		const idMap = (await data.normalize()).idMap;
 
 		const metadata: FunctionsMetadata = {
 			totalCalls:               0,
@@ -127,18 +128,19 @@ export const DEPRECATED_FUNCTIONS = {
 						FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
 						FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
 					);
+					const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
 
-					if(arg !== undefined) {
+					if(argNode !== undefined) {
 						return {
 							type:         'deprecated-argument',
 							certainty:    LintingResultCertainty.Certain,
-							involvedId:   arg === EmptyArgument ? e.node.info.id : arg.nodeId,
+							involvedId:   argNode.info.id,
 							function:     e.target,
 							arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
 							state:        deprecatedArgInfo.state,
 							replacedBy:   deprecatedArgInfo.replacedBy,
 							sinceVersion: deprecatedArgInfo.sinceVersion,
-							loc:          e.sourceLocation
+							loc:          SourceLocation.fromNode(argNode) ?? e.sourceLocation
 						} satisfies DeprecatedArgumentResult;
 					}
 
@@ -168,14 +170,15 @@ export const DEPRECATED_FUNCTIONS = {
 		[LintingPrettyPrintContext.Full]:  (result: DeprecatedFunctionRuleResult) => {
 			const str: string[] = [];
 			if(result.type === 'deprecated-argument') {
-				str.push(`Argument \`${result.arg}\` of`);
+				const argStr = typeof result.arg === 'number' ? `at position \`${result.arg}\`` : result.arg;
+				str.push(`Argument \`${argStr}\` of`);
 			}
 			str.push(`Function \`${result.function}\` is ${result.state ?? 'deprecated'}`);
 			if(result.sinceVersion) {
 				str.push(`since version ${result.sinceVersion.format()}`);
 			}
 			if(result.replacedBy) {
-				str.push(`and replaced by \`${result.replacedBy}\``);
+				str.push(`and is replaced by \`${result.replacedBy}\``);
 			}
 			return str.join(' ');
 		}

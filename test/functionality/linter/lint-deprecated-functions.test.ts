@@ -86,7 +86,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					function:     'testFn',
 					state:        DeprecationState.Deprecated,
 					sinceVersion: parseRRange('>= 4.0.0'),
-					loc:          [1, 1, 1, 16]
+					loc:          [1, 8, 1, 13]
 				}],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: parseRRange('>= 4.0.0') }] } ] }

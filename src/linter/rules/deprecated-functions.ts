@@ -1,3 +1,4 @@
+import type { Range } from 'semver';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { FunctionArgument } from '../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
@@ -7,9 +8,10 @@ import { isNotUndefined } from '../../util/assert';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
-import { LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { type FunctionsMetadata, functionFinderUtil } from './function-finder-util';
+import { parseRRange } from '../../util/r-version';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -19,7 +21,7 @@ export interface DeprecatedArgumentInformation {
 	argName?:      string
 	ifValue?:      RegExp | string
 	replacedBy?:   string
-	sinceVersion?: string
+	sinceVersion?: Range
 	state?:        DeprecationState
 }
 
@@ -31,15 +33,15 @@ export interface DeprecatedFunctionInformation {
 	/** Used to mark specific arguments as deprecated */
 	whenArgs?:     DeprecatedArgumentInformation[]
 	replacedBy?:   string
-	sinceVersion?: string
+	sinceVersion?: Range
 	state?:        DeprecationState
 }
 
 export interface DeprecatedFunctionResultBase extends LintingResult {
-	type:        'deprecated-function' | 'deprecated-arg'
-	function:    BrandedIdentifier
-	replacedBy?: string
-	state?:      DeprecationState
+	function:      BrandedIdentifier
+	replacedBy?:   string
+	sinceVersion?: Range
+	state?:        DeprecationState
 }
 
 export interface DeprecatedFunctionResult extends DeprecatedFunctionResultBase {
@@ -47,38 +49,29 @@ export interface DeprecatedFunctionResult extends DeprecatedFunctionResultBase {
 }
 
 export interface DeprecatedArgumentResult extends DeprecatedFunctionResultBase {
-	type: 'deprecated-arg'
+	type: 'deprecated-argument'
 	arg:  string | number
 }
 
-export type DeprecatedFunctionLintingResult = DeprecatedFunctionResult | DeprecatedArgumentResult;
+export type DeprecatedFunctionRuleResult = DeprecatedFunctionResult | DeprecatedArgumentResult;
 
-
-export const enum DeprecationState {
-	/**
-	 * Still works, but marked for removal
-	 */
-	Deprecated,
-	/**
-	 * No longer works, and marked for removal
-	 */
-	Defunct,
-	/**
-	 * Replaced by another function but kept for compatibility
-	 */
-	Superseeded
+export enum DeprecationState {
+	/** Still works, but marked for removal */
+	Deprecated = 'deprecated',
+	/** No longer works, and marked for removal */
+	Defunct = 'defunct',
+	/** Replaced by another function but kept for compatibility */
+	Superseeded = 'superseeded'
 }
 
 export interface DeprecatedFunctionsConfig extends MergeableRecord{
-	/**
-	 * Functions to mark as deprecated
-	 */
+	/** Functions to mark as deprecated */
 	fns: (string | DeprecatedFunctionInformation)[]
 }
 
 
 const DeprecatedFunctions = [
-	{ name: 'geom_violin', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype' }] },
+	{ name: 'geom_violin', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: parseRRange('>= 4.0.0') }] },
 	'all_equal', 'arrange_all', 'distinct_all', 'filter_all', 'group_by_all', 'summarise_all', 'mutate_all', 'select_all', 'vars', 'all_vars', 'id', 'failwith', 'select_vars', 'rename_vars', 'select_var', 'current_vars', 'bench_tbls', 'compare_tbls', 'compare_tbls2', 'eval_tbls', 'eval_tbls2', 'location', 'changes', 'combine', 'do', 'funs', 'add_count_', 'add_tally_', 'arrange1_', 'count_', 'distinct_', 'do_', 'filter_', 'funs_', 'group_by_', 'group_indices_', 'mutate_', 'tally_', 'transmute_', 'rename_', 'rename_vars_', 'select_', 'select_vars_', 'slice_', 'summarise_', 'summarize_', 'summarise_each', 'src_local', 'tbl_df', 'add_rownames', 'group_nest', 'group_split', 'with_groups', 'nest_by', 'progress_estimated', 'recode', 'sample_n', 'top_n', 'transmute', 'fct_explicit_na', 'aes_', 'aes_auto', 'annotation_logticks', 'is.Coord', 'coord_flip', 'coord_map', 'is.facet', 'fortify', 'is.ggproto', 'guide_train', 'is.ggplot', 'qplot', 'is.theme', 'gg_dep', 'liply', 'isplit2', 'list_along', 'cross', 'invoke', 'at_depth', 'prepend', 'rerun', 'splice', '`%@%`', 'rbernoulli', 'rdunif', 'when', 'update_list', 'map_raw', 'accumulate', 'reduce_right', 'flatten', 'map_dfr', 'as_vector', 'transpose', 'melt_delim', 'melt_fwf', 'melt_table', 'read_table2', 'str_interp', 'as_tibble', 'data_frame', 'tibble_', 'data_frame_', 'lst_', 'as_data_frame', 'as.tibble', 'frame_data', 'trunc_mat', 'is.tibble', 'tidy_names', 'set_tidy_names', 'repair_names', 'extract_numeric', 'complete_', 'drop_na_', 'expand_', 'crossing_', 'nesting_', 'extract_', 'fill_', 'gather_', 'nest_', 'separate_rows_', 'separate_', 'spread_', 'unite_', 'unnest_', 'extract', 'gather', 'nest_legacy', 'separate_rows', 'separate', 'spread'
 ] satisfies (string | DeprecatedFunctionInformation)[];
 
@@ -137,14 +130,15 @@ export const DEPRECATED_FUNCTIONS = {
 
 					if(arg !== undefined) {
 						return {
-							type:       'deprecated-arg',
-							certainty:  LintingResultCertainty.Certain,
-							involvedId: arg === EmptyArgument ? e.node.info.id : arg.nodeId,
-							function:   e.target,
-							arg:        (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
-							state:      deprecatedArgInfo.state,
-							replacedBy: deprecatedArgInfo.replacedBy,
-							loc:        e.sourceLocation
+							type:         'deprecated-argument',
+							certainty:    LintingResultCertainty.Certain,
+							involvedId:   arg === EmptyArgument ? e.node.info.id : arg.nodeId,
+							function:     e.target,
+							arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
+							state:        deprecatedArgInfo.state,
+							replacedBy:   deprecatedArgInfo.replacedBy,
+							sinceVersion: deprecatedArgInfo.sinceVersion,
+							loc:          e.sourceLocation
 						} satisfies DeprecatedArgumentResult;
 					}
 
@@ -153,13 +147,14 @@ export const DEPRECATED_FUNCTIONS = {
 			} else {
 				// Extra Info but no whenArgs => always marked as deprecated and extra info is provided
 				return [{
-					type:       'deprecated-function',
-					certainty:  LintingResultCertainty.Certain,
-					involvedId: e.node.info.id,
-					loc:        e.sourceLocation,
-					function:   e.target,
-					state:      info?.state,
-					replacedBy: info?.replacedBy
+					type:         'deprecated-function',
+					certainty:    LintingResultCertainty.Certain,
+					involvedId:   e.node.info.id,
+					loc:          e.sourceLocation,
+					function:     e.target,
+					state:        info.state,
+					replacedBy:   info.replacedBy,
+					sinceVersion: info.sinceVersion
 				} satisfies DeprecatedFunctionResult];
 			}
 		}).flat();
@@ -168,8 +163,24 @@ export const DEPRECATED_FUNCTIONS = {
 			results, '.meta': metadata
 		};
 	},
-	prettyPrint: functionFinderUtil.prettyPrint('deprecated'),
-	info:        {
+	prettyPrint: {
+		[LintingPrettyPrintContext.Query]: (result: DeprecatedFunctionRuleResult) => `${result.type === 'deprecated-argument' ? `Argument \`${result.arg}\` of ` : ''}Function \`${result.function}\` at ${SourceLocation.format(result.loc)}`,
+		[LintingPrettyPrintContext.Full]:  (result: DeprecatedFunctionRuleResult) => {
+			const str: string[] = [];
+			if(result.type === 'deprecated-argument') {
+				str.push(`Argument \`${result.arg}\` of`);
+			}
+			str.push(`Function \`${result.function}\` is ${result.state ?? 'deprecated'}`);
+			if(result.sinceVersion) {
+				str.push(`since version ${result.sinceVersion.format()}`);
+			}
+			if(result.replacedBy) {
+				str.push(`and replaced by \`${result.replacedBy}\``);
+			}
+			return str.join(' ');
+		}
+	},
+	info: {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
 		// ensures all deprecated functions found are actually deprecated through its limited config, but doesn't find all deprecated functions since the config is pre-crawled
@@ -177,4 +188,4 @@ export const DEPRECATED_FUNCTIONS = {
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: { fns: DeprecatedFunctions }
 	}
-} as const satisfies LintingRule<DeprecatedFunctionLintingResult, FunctionsMetadata, DeprecatedFunctionsConfig>;
+} as const satisfies LintingRule<DeprecatedFunctionRuleResult, FunctionsMetadata, DeprecatedFunctionsConfig>;

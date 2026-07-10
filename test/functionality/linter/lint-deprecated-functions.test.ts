@@ -3,6 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledPkgDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DeprecationState } from '../../../src/linter/rules/deprecated-functions';
+import { parseRRange } from '../../../src/util/r-version';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('deprecated functions', () => {
@@ -78,16 +79,17 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			assertLinter('deprecated arg present', parser, 'testFn(badArg=5)',
 				'deprecated-functions',
 				[{
-					type:       'deprecated-arg',
-					certainty:  LintingResultCertainty.Certain,
-					arg:        'badArg',
-					replacedBy: 'foo',
-					state:      DeprecationState.Deprecated,
-					function:   'testFn',
-					loc:        [1, 1, 1, 16]
+					type:         'deprecated-argument',
+					certainty:    LintingResultCertainty.Certain,
+					arg:          'badArg',
+					replacedBy:   'foo',
+					function:     'testFn',
+					state:        DeprecationState.Deprecated,
+					sinceVersion: parseRRange('>= 4.0.0'),
+					loc:          [1, 1, 1, 16]
 				}],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo' }] } ] }
+				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: parseRRange('>= 4.0.0') }] } ] }
 			);
 		});
 	});

@@ -119,7 +119,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	if(name.includes('.')) {
 		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
-			if(m.map(m => `${k}.${m}`).includes(name)) {
+			if(m.some(method => `${k}.${method}` === name)) {
 				return true;
 			}
 		}

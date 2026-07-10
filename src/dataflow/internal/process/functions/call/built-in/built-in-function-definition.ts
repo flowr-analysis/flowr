@@ -137,7 +137,12 @@ export function processFunctionDefinition<OtherInfo>(
 	/* theoretically, we should just check if there is a global effect-write somewhere within */
 	if(remainingRead.length > 0) {
 		const nameIdShares = produceNameSharedIdMap(remainingRead);
-		const definedInLocalEnvironment = new Set(Array.from(bodyEnvironment.current.memory.values()).flat().map(d => d.nodeId));
+		const definedInLocalEnvironment = new Set<NodeId>();
+		for(const defs of bodyEnvironment.current.memory.values()) {
+			for(const d of defs) {
+				definedInLocalEnvironment.add(d.nodeId);
+			}
+		}
 
 		// Everything that is in body.out but not within the local environment populated for the function scope is a potential escape ~> global definition
 		const globalBodyOut = body.out.filter(d => !definedInLocalEnvironment.has(d.nodeId));

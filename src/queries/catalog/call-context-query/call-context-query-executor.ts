@@ -42,7 +42,6 @@ function makeReport(collector: TwoLayerCollector<string, string, CallContextQuer
 			if(!Array.isArray(subkinds[subkind])) {
 				subkinds[subkind] = [];
 			}
-			subkinds[subkind] ??= [];
 			const collectIn = subkinds[subkind];
 			for(const value of values) {
 				collectIn.push(value);

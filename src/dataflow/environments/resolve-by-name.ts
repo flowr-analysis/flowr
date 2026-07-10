@@ -56,9 +56,9 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 		let definition: IdentifierDefinition[] | undefined;
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
-			const infix = target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator;
+			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
 			definition = current.memory.entries()
-				.filter(([defName]) => defName.startsWith(name + infix))
+				.filter(([defName]) => defName.startsWith(prefix))
 				.flatMap(([, defs]) => defs)
 				.toArray();
 		} else {

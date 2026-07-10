@@ -118,13 +118,10 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 
 
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
-	if(configuration.selection.has(leaf.info.id)) {
-		return foldToConst(leaf);
-	} else if(operand.length === 0) {
+	if(!configuration.selection.has(leaf.info.id) && operand.length === 0) {
 		return [];
-	} else {
-		return foldToConst(leaf);
 	}
+	return foldToConst(leaf);
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {

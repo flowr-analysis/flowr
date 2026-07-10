@@ -7,7 +7,14 @@ import { isParseRequest } from '../../../r-bridge/retriever';
 import type { FlowrFile } from '../../context/flowr-file';
 import path from 'path';
 import fs from 'fs';
-import ignore from 'ignore';
+import type ignore from 'ignore';
+
+/** Lazily loaded on first use so `ignore` is only required when the gitignore plugin actually runs. */
+let ignoreFactory: typeof ignore | undefined;
+function loadIgnore(): typeof ignore {
+	// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, see above
+	return ignoreFactory ??= require('ignore') as typeof ignore;
+}
 
 /**
  * Decorator around any {@link FlowrAnalyzerProjectDiscoveryPlugin} that filters discovered files
@@ -29,7 +36,7 @@ export class FlowrAnalyzerGitignoreProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 
 	protected process(context: FlowrAnalyzerContext, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
-		const ig = ignore();
+		const ig = loadIgnore()();
 		const gitignorePath = path.join(args.content, '.gitignore');
 		if(fs.existsSync(gitignorePath)) {
 			ig.add(fs.readFileSync(gitignorePath, 'utf-8'));

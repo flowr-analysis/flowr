@@ -9,6 +9,8 @@ import { buildPkgDbFromInstalled, readInstalledPackages } from '../../../../src/
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
+import { log, LogLevel } from '../../../../src/util/log';
+import { setMinLevelOfAllLogs } from '../../_helper/log';
 import type { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import fs from 'fs';
 import os from 'os';
@@ -172,7 +174,13 @@ describe.sequential('Add a locally installed package to a pkgdb database', withT
 	});
 
 	test(label('returns nothing for a non-existent directory instead of throwing', [], ['other']), async() => {
-		const { added } = await buildPkgDbFromInstalled(FlowrConfig.default(), path.join(tmp, 'does-not-exist'), { date: '2026-07-09', generated: 0 });
-		expect(added).toEqual([]);
+		const previousMinLevel = log.settings.minLevel;
+		setMinLevelOfAllLogs(LogLevel.Fatal);
+		try {
+			const { added } = await buildPkgDbFromInstalled(FlowrConfig.default(), path.join(tmp, 'does-not-exist'), { date: '2026-07-09', generated: 0 });
+			expect(added).toEqual([]);
+		} finally {
+			setMinLevelOfAllLogs(previousMinLevel);
+		}
 	});
 }));

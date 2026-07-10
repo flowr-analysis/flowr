@@ -1,7 +1,9 @@
 import { guard } from '../../../src/util/assert';
 import semver from 'semver/preload';
 import { RShellExecutor } from '../../../src/r-bridge/shell-executor';
-import { describe, assert, test } from 'vitest';
+import { describe, assert, expect, test } from 'vitest';
+import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { requestFromInput } from '../../../src/r-bridge/retriever';
 
 describe('RShellExecutor', function() {
 	test('R version', () => {
@@ -19,5 +21,27 @@ describe('RShellExecutor', function() {
 		const error = executor.run('a', true);
 		assert.match(error, /Error.*'a'/g);
 		assert.match(error, /halted/g);
+	});
+});
+
+describe('TreeSitterExecutor', () => {
+	test('query() frees the WASM-backed query it compiles from a string', () => {
+		const ts = new TreeSitterExecutor();
+		const tree = ts.parse(requestFromInput('x <- 1'));
+		let freed = 0;
+		const original = ts.createQuery.bind(ts);
+		ts.createQuery = (source: string) => {
+			const q = original(source);
+			const del = q.delete.bind(q);
+			q.delete = () => {
+				freed++;
+				del();
+			};
+			return q;
+		};
+		ts.query('(_) @node', tree);
+		expect(freed).toBe(1);
+		tree.delete();
+		ts.close();
 	});
 });

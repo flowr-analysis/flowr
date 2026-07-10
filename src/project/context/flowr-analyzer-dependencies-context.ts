@@ -1,14 +1,13 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
-	FlowrAnalyzerPackageVersionsPlugin
+	FlowrAnalyzerPackageVersionsPlugin,
+	type PkgDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 
 /**
- * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
- * It prevents you from modifying the dependencies, but allows you to inspect them (which is probably what you want when using the {@link FlowrAnalyzer}).
- * If you are a {@link FlowrAnalyzerPackageVersionsPlugin} and want to modify the dependencies, you can use the {@link FlowrAnalyzerDependenciesContext} directly.
+ * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
  */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
@@ -32,24 +31,51 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
+
+	/**
+	 * Metadata of the package databases the version plugins currently have loaded.
+	 */
+	loadedPackageDatabases(): PkgDbLoadedInfo[];
 }
 
 /**
- * This context is responsible for managing the dependencies of the project, including their versions and interplays with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- *
- * If you are interested in inspecting these dependencies, refer to {@link ReadOnlyFlowrAnalyzerDependenciesContext}.
+ * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
  */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
-	private dependencies: Map<string, Package> = new Map();
+	private dependencies:  Map<string, Package> = new Map();
 	private staticsLoaded = false;
+	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
+	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
+	private resolvedMisses = new Set<string>();
 
 	public reset(): void {
 		this.dependencies = new Map();
 		this.staticsLoaded = false;
+		this.lazyResolvers = [];
+		this.resolvedMisses = new Set();
+	}
+
+	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */
+	public addLazyResolver(resolver: (name: string, existing?: Package) => Package | undefined): void {
+		this.lazyResolvers.push(resolver);
+	}
+
+	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
+		if(!this.ctx.config.solver.pkgdb.enabled) {
+			return [];
+		}
+		return this.plugins.flatMap(p => p.loadedDatabases());
+	}
+
+	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */
+	public eagerlyLoadPackageDatabases(): void {
+		for(const p of this.plugins) {
+			p.preloadDatabasesSync();
+		}
 	}
 
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
@@ -62,20 +88,36 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.staticsLoaded = true;
 	}
 
-	public addDependency(pkg: Package): void {
+	public addDependency(pkg: Package): this {
 		const p = this.dependencies.get(pkg.name);
 		if(p) {
 			p.mergeInPlace(pkg);
 		} else {
 			this.dependencies.set(pkg.name, pkg);
 		}
+		return this;
 	}
 
 	public getDependency(name: string): Package | undefined {
 		if(!this.staticsLoaded) {
 			this.resolveStaticDependencies();
 		}
-		return this.dependencies.get(name);
+		const existing = this.dependencies.get(name);
+		// a package already carrying exports is complete; a version-only one is still enriched below
+		if(existing?.namespaceInfo || (!existing && this.resolvedMisses.has(name))) {
+			return existing;
+		}
+		if(!this.resolvedMisses.has(name)) {
+			for(const resolve of this.lazyResolvers) {
+				const resolved = resolve(name, existing);
+				if(resolved) {
+					this.addDependency(resolved);   // merges exports into any existing version info
+					return this.dependencies.get(name);
+				}
+			}
+			this.resolvedMisses.add(name);
+		}
+		return existing;
 	}
 
 	public getDependencies(): Package[] {

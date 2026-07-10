@@ -182,7 +182,7 @@ implements Lattice<Value, Top, Bot, Lift> {
 		return this.create(merge(this.value as Value, other.value as Value));
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top) {
 			return Top.description;
 		} else if(this.value === Bottom) {

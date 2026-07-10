@@ -13,7 +13,8 @@ export const VisualizeFunctions: FunctionInfo[] =
 // plot creation
 	(GgPlotCreate.map(f => ({ package: 'ggplot2', name: f })) as FunctionInfo[]).concat(
 		TinyPlotCrate.map(f => ({ package: 'tinyplot', name: f })),
-		GraphicsPlotCreate.map(f => ({ name: f })),
+		// `map` is the maps-package plot; qualify it so it does not swallow purrr::map/dplyr::map etc.
+		GraphicsPlotCreate.map(f => f === 'map' ? { name: f, package: 'maps' } : { name: f }),
 
 		// plot modification
 		(GgPlotImplicitAddons as readonly string[]).concat(GgPlotAddons).map(f => ({ package: 'ggplot2', name: f, linkTo: LinkToPlotCreation })),

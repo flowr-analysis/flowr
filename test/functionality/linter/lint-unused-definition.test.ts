@@ -18,6 +18,11 @@ describe('flowR linter', withTreeSitter(parser => {
 				'for(i in 1:10) { 42 }; print(i)',
 				'f <- function(x) { x + 1 }\nprint(f(2))',
 				'f <- function(v) { x <<- v * 2 }\nf(2)\nprint(x)',
+				/* the super-assigned x escapes transitively (g calls f) and is then used - not unused thanks to transitive side-effect propagation */
+				'f <- function() { x <<- 1 }\ng <- function() { f() }\ng()\nprint(x)',
+				/* x is read back through the global env (globalenv()/.GlobalEnv point into the search-path stack) - so it is used, not unused */
+				'x <- 1\n.GlobalEnv$x',
+				'x <- 1\nglobalenv()$x',
 				'(function() { x <- 42; print(x) })()',
 				'f <- function() {\n function() { 42 } }\nprint(f()())',
 				'x <- list()\nx$a <- 2\nprint(x)',

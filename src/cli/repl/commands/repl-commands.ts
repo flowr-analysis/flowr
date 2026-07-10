@@ -14,36 +14,88 @@ import {
 	dataflowStarCommand
 } from './repl-dataflow';
 import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, controlflowStarCommand } from './repl-cfg';
-import { type OutputFormatter, bold, italic } from '../../../util/text/ansi';
+import { type OutputFormatter, Colors, FontStyles, bold, color, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { queryCommand, queryStarCommand } from './repl-query';
+import { pkgDbAddCommand } from './repl-pkgdb';
+import { flowrVersion } from '../../../util/version';
+
+const cmd = (name: string, f: OutputFormatter): string => color(name, Colors.Cyan, f, { style: FontStyles.Bold });
+
+const ansiSgr = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
+const visibleLength = (s: string): number => s.replace(ansiSgr, '').length;
+
+/** Appends `content` after `prefix`, word-wrapping to the terminal width with a hanging indent. */
+function wrapAfter(prefix: string, content: string): string {
+	const width = process.stdout.isTTY ? (process.stdout.columns ?? 80) : Infinity;
+	const indent = visibleLength(prefix);
+	const pad = ' '.repeat(indent);
+	const lines: string[] = [];
+	let line = '';
+	let lineLength = indent;
+	for(const word of content.split(' ')) {
+		const wordLength = visibleLength(word);
+		if(line !== '' && lineLength + 1 + wordLength > width) {
+			lines.push(line);
+			line = word;
+			lineLength = indent + wordLength;
+		} else {
+			line = line === '' ? word : `${line} ${word}`;
+			lineLength = line === word ? indent + wordLength : lineLength + 1 + wordLength;
+		}
+	}
+	if(line !== '') {
+		lines.push(line);
+	}
+	return prefix + lines.map((l, i) => i === 0 ? l : pad + l).join('\n');
+}
 
 function printHelpForScript(script: [string, ReplBaseCommand], f: OutputFormatter, starredVersion?: ReplBaseCommand): string {
-	let base = `  ${bold(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}${script[1].description}`;
+	let content = script[1].description;
 	if(starredVersion) {
-		base += ` (star: ${starredVersion.description})`;
-	}
-	if(script[1].aliases.length === 0) {
-		return base;
+		content += ` ${italic(`(star: ${starredVersion.description})`, f)}`;
 	}
 	const aliases = script[1].aliases;
-	return `${base} (alias${aliases.length > 1 ? 'es' : ''}: ${aliases.map(a => bold(':' + a, f)).join(', ')})`;
+	if(aliases.length > 0) {
+		content += ` ${italic(`(alias${aliases.length > 1 ? 'es' : ''}:`, f)} ${aliases.map(a => cmd(':' + a, f)).join(', ')}${italic(')', f)}`;
+	}
+	return wrapAfter(`  ${cmd(padCmd(':' + script[0] + (starredVersion ? '[*]' : '')), f)}`, content);
+}
+
+function printFamilyVariants(children: string[], cmds: Record<string, ReplCommand | ReplCodeCommand>, f: OutputFormatter): string {
+	const variant = (name: string) => {
+		const aliases = cmds[name].aliases;
+		const suffix = aliases.length > 0 ? ' ' + italic(`(${aliases.map(a => ':' + a).join(', ')})`, f) : '';
+		return cmd(':' + name + (cmds[name + '*'] ? '[*]' : ''), f) + suffix;
+	};
+	return wrapAfter(`     ${italic('variants:', f)} `, children.map(variant).join(', '));
 }
 
 function printCommandHelp(formatter: OutputFormatter) {
-	const scriptHelp = [];
 	const cmds = getReplCommands();
-	for(const c of Object.entries(cmds)) {
-		if(c[1].script || c[0].endsWith('*')) {
-			continue;
+	const bases = Object.entries(cmds).filter(([name, c]) => !c.script && !name.endsWith('*'));
+	const names = bases.map(([name]) => name);
+	const shortestPrefixCommand = (name: string) => names.filter(n => name.startsWith(n)).reduce((a, b) => a.length <= b.length ? a : b);
+
+	const children = new Map<string, string[]>();
+	for(const name of names) {
+		const root = shortestPrefixCommand(name);
+		if(root !== name) {
+			children.set(root, [...children.get(root) ?? [], name]);
 		}
-		const starred =  cmds[c[0] + '*'];
-		scriptHelp.push(printHelpForScript(c, formatter, starred));
 	}
 
-	return scriptHelp.sort().join('\n');
+	const lines: string[] = [];
+	for(const entry of bases.filter(([name]) => shortestPrefixCommand(name) === name).sort((a, b) => a[0].localeCompare(b[0]))) {
+		lines.push(printHelpForScript(entry, formatter, cmds[entry[0] + '*']));
+		const variants = children.get(entry[0]);
+		if(variants) {
+			lines.push(printFamilyVariants(variants.sort(), cmds, formatter));
+		}
+	}
+	return lines.join('\n');
 }
 
 export const helpCommand: ReplCommand = {
@@ -68,10 +120,18 @@ ${
 Furthermore, you can directly call the following scripts which accept arguments. If you are unsure, try to add ${italic('--help', output.formatter)} after the command.
 ${
 	Array.from(Object.entries(getReplCommands())).filter(([, { script }]) => script).map(
-		([command, { description }]) => `  ${bold(padCmd(':' + command), output.formatter)}${description}`).sort().join('\n')
+		([command, { description }]) => wrapAfter(`  ${cmd(padCmd(':' + command), output.formatter)}`, description)).sort().join('\n')
 }
 
 You can combine commands by separating them with a semicolon ${bold(';', output.formatter)}.
+
+Commands that accept a file path support two path prefixes:
+  ${color('file://<path>', Colors.Green, output.formatter, { style: FontStyles.Bold })}   run the command once on the given file or folder
+  ${color('watch://<path>', Colors.Yellow, output.formatter, { style: FontStyles.Bold })}  re-run the command whenever the file (or any file in the folder) changes
+                     Press Ctrl+C or enter any other command to leave watch mode.
+
+You are running flowR ${bold('v' + flowrVersion().toString(), output.formatter)} (use ${bold(':version', output.formatter)} for details). Check for newer releases and per-install upgrade steps (Docker, npm, source) at:
+  ${color('https://github.com/flowr-analysis/flowr/releases', Colors.Cyan, output.formatter, { style: FontStyles.Bold })}
 `);
 	}
 };
@@ -99,7 +159,8 @@ const _commands = {
 	'controlflowbb':   controlflowBbCommand,
 	'controlflowbb*':  controlflowBbStarCommand,
 	'query':           queryCommand,
-	'query*':          queryStarCommand
+	'query*':          queryStarCommand,
+	'pkgdb-add':       pkgDbAddCommand
 } as const satisfies Record<string, ReplCommand | ReplCodeCommand>;
 
 export type ReplCommandNames = keyof typeof _commands | keyof typeof scripts;

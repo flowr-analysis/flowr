@@ -13,18 +13,18 @@ and [Docker](https://hub.docker.com/r/eagleoutice/flowr).
 It offers a wide variety of features, for example:
 
 * 🐞 **code linting**\
-   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information on the currently supported linters).
+   Analyze your R scripts for common issues and potential bugs (see the [wiki page](https://github.com/flowr-analysis/flowr/wiki/linter) for more information on the currently supported linters).
 
 	    
     <details><summary>Example: Linting code with flowR</summary>
     
-    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+    To lint your code, you can use the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) or the [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
     	
     
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
+    flowR repl v2.11.0, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -33,7 +33,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (2 ms)
+    Query: linter (3 ms)
        ╰ Deprecated Functions (deprecated-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
@@ -53,9 +53,9 @@ It offers a wide variety of features, for example:
        ╰ Network Functions (network-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ Dead Code (dead-code):
-           ╰ Metadata: searchTimeMs: 1, processTimeMs: 0
+           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
            ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Problematic inputs (problematic-inputs):
@@ -74,7 +74,9 @@ It offers a wide variety of features, for example:
            ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ No Leaked Credentials (no-leaked-credentials):
            ╰ Metadata: totalChecked: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+       ╰ Undefined Symbol (undefined-symbol):
+           ╰ Metadata: totalCalls: 1, searchTimeMs: 0, processTimeMs: 0
+    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
     ```
     
     
@@ -90,13 +92,13 @@ It offers a wide variety of features, for example:
     ```
     
     
-    (This can be shortened to `@linter` when used with the REPL command <span title="Description (Repl Command): Query the given R code, start with 'file://' to indicate a file. The query is to be a valid query in json format (use 'help' to get more information).">`:query`</span>).
+    (This can be shortened to `@linter` when used with the REPL command <span title="Description (Repl Command): Query the given R code (use 'help' for more information)">`:query`</span>).
     
     
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (2 ms)\
+    Query: **linter** (4 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
@@ -112,11 +114,11 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numMatches: 0, numBreak: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
@@ -134,14 +136,16 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Software Has Tests** (software-has-tests):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No tests found in the project\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>testFilesFound: 0, testCallsFound: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalChecked: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈2 ms (1ms accuracy, total 3 ms)_
+    &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 1, searchTimeMs: 0, processTimeMs: 0</code>\
+    _All queries together required ≈4 ms (1ms accuracy, total 4 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _3.0 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _3.5 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -230,7 +234,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "numMatches": 0,
               "numBreak": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -250,7 +254,7 @@ It offers a wide variety of features, for example:
               "numAccesses": 0,
               "totalAccessed": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 1
+              "processTimeMs": 0
             }
           },
           "dead-code": {
@@ -324,7 +328,7 @@ It offers a wide variety of features, for example:
             ".meta": {
               "testFilesFound": 0,
               "testCallsFound": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -335,14 +339,22 @@ It offers a wide variety of features, for example:
               "searchTimeMs": 0,
               "processTimeMs": 0
             }
+          },
+          "undefined-symbol": {
+            "results": [],
+            ".meta": {
+              "totalCalls": 1,
+              "searchTimeMs": 0,
+              "processTimeMs": 0
+            }
           }
         },
         ".meta": {
-          "timing": 2
+          "timing": 4
         }
       },
       ".meta": {
-        "timing": 2
+        "timing": 4
       }
     }
     ```
@@ -365,7 +377,6 @@ It offers a wide variety of features, for example:
     	   
     
     </details>
-        
 
 
 * 🍕 **program slicing**\
@@ -376,8 +387,8 @@ It offers a wide variety of features, for example:
     <details><summary>Example: Slicing with flowR</summary>
     
     
-    The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr). 
-    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl) as well.
+    The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr).
+    However, you can slice using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl) as well.
     This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
     what is happening in the code.
     
@@ -407,7 +418,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
+    flowR repl v2.11.0, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -434,11 +445,10 @@ It offers a wide variety of features, for example:
        
     
     </details>
-        
 
 * 📚 **dependency analysis**\
   Given your analysis project, flowR offers a plethora of so-called [queries](https://github.com/flowr-analysis/flowr/wiki/query-api) to get more information about your code.
-  An important query is the [dependencies query](https://github.com/flowr-analysis/flowr/wiki/Query-API#dependencies-query), which shows you the library your project needs,
+  An important query is the [dependencies query](https://github.com/flowr-analysis/flowr/wiki/query-api#dependencies-query), which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   
       
@@ -451,11 +461,10 @@ It offers a wide variety of features, for example:
       
       
     
-    </details>
-         
+    </details> 
 
 * 🚀 **fast call-graph, data-, and control-flow graphs**\
-  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">101.7 ms</span></i> (as of Jun 15, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
+  Within just [<i><span title="This measurement is automatically fetched from the latest benchmark!">109.7 ms</span></i> (as of Jul 6, 2026)](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark), 
   _flowR_ can analyze the data- and control-flow of the average real-world R&nbsp;script. See the [benchmarks](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark) for more information,
   and consult the [wiki pages](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for more details on the [dataflow graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) as well as [call graphs](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph#perspectives-cg).
 
@@ -463,8 +472,8 @@ It offers a wide variety of features, for example:
     <details><summary>Example: Generating a dataflow graph with flowR</summary>
     
     
-    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/Interface#using-the-repl).
-    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph, start with 'file://' to indicate a file (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for a given R script.
+    You can investigate flowR's analyses using the [REPL](https://github.com/flowr-analysis/flowr/wiki/interface#using-the-repl).
+    Commands like <span title="Description (Repl Command, starred version): Returns the URL to mermaid.live; Base Command: Get mermaid code for the dataflow graph (aliases: :d*, :df*)">`:dataflow*`</span> allow you to view a [dataflow graph](https://github.com/flowr-analysis/flowr/wiki/dataflow-graph) for a given R script.
     
     Let's have a look at the following example:
     
@@ -491,7 +500,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl using flowR v2.10.9, R grammar v14 (tree-sitter engine)
+    flowR repl v2.11.0, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -653,6 +662,9 @@ It offers a wide variety of features, for example:
         40(["`#91;RSymbol#93; sum
           (40)
           *11.13-15*`"])
+        built-in:sum["`Built-In:
+    sum`"]
+        style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         42{{"`#91;RString#93; #34;
     #34;
           (42)
@@ -784,22 +796,24 @@ It offers a wide variety of features, for example:
         linkStyle 74 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
+        40 -.->|"reads"| built-in:sum
+        linkStyle 77 stroke:gray;
         44 -->|"argument"| 38
         44 -->|"reads, argument"| 40
         44 -->|"argument"| 42
         44 -.->|"reads, calls"| built-in:cat
-        linkStyle 80 stroke:gray;
+        linkStyle 81 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
         52 -->|"argument"| 46
         52 -->|"reads, argument"| 48
         52 -->|"argument"| 50
         52 -.->|"reads, calls"| built-in:cat
-        linkStyle 86 stroke:gray;
+        linkStyle 87 stroke:gray;
     ```
     
     	
-    (The analysis required _1.4 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _1.9 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     
@@ -810,14 +824,13 @@ It offers a wide variety of features, for example:
        
     
     </details>
-        
 
 If you want to use flowR and the features it provides, feel free to check out the:
 
 - [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=code-inspect.vscode-flowr)/[Positron](https://open-vsx.org/extension/code-inspect/vscode-flowr): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
 - [RStudio Addin](https://github.com/flowr-analysis/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
 - [R package](https://github.com/flowr-analysis/flowr-r-adapter): use flowR in your R scripts
-- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/Interface#communicating-with-the-server)
+- [Docker image](https://hub.docker.com/r/eagleoutice/flowr): run flowR in a container, this also includes [flowR's server](https://github.com/flowr-analysis/flowr/wiki/interface#communicating-with-the-server)
 - [NPM package](https://www.npmjs.com/package/@eagleoutice/flowr): include flowR in your TypeScript and JavaScript projects
  
 

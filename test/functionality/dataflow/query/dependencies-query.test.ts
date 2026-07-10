@@ -11,6 +11,7 @@ import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/proce
 import { describe } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
+import { Identifier } from '../../../../src/dataflow/environments/identifier';
 
 const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
 
@@ -359,6 +360,21 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				testQuery(f, `${f}()`, { visualize: [{ nodeId: `1@${f}`, functionName: f }] });
 			}
 		});
+		describe('Namespace disambiguation', () => {
+			// regression: an unqualified `map` plot entry used to swallow purrr::map / dplyr::map
+			testQuery('purrr::map is not a visualization', 'purrr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'purrr' }],
+				visualize: []
+			});
+			testQuery('dplyr::map is not a visualization', 'dplyr::map(x, f)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'dplyr' }],
+				visualize: []
+			});
+			testQuery('maps::map stays a visualization', 'maps::map(x)', {
+				library:   [{ nodeId: '1@map', functionName: '::', value: 'maps' }],
+				visualize: [{ nodeId: '1@maps::map', functionName: Identifier.make('map', 'maps') }]
+			});
+		});
 		describe('Modification', () => {
 			for(const f of ['coord_trans', 'scale_colour_hue', 'tinyplot_add']) {
 				testQuery(f, `plot()\n${f}(x, y, z)`, { visualize: [
@@ -481,4 +497,34 @@ describe('Dependencies Query', withTreeSitter(parser => {
 
 		testQuery('standalone checkmate assert_true is not detected', 'assert_true(x > 0)', {});
 	});
+
+	describe('Read from string', () => {
+		testQuery('read.csv text parameter', 'a <- read.csv(text="hello, world")', {
+			read:  [],
+			write: []
+		});
+
+		testQuery('read.csv file (positional) arg has priority', 'a <- read.csv("test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       7,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+
+		testQuery('read.csv file arg (named) has priority', 'a <- read.csv(file="test.csv", text="hello, world")', {
+			read: [
+				{
+					functionName: 'read.csv',
+					nodeId:       8,
+					value:        'test.csv',
+				},
+			],
+			write: []
+		});
+	});
+
 }));

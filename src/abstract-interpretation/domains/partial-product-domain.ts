@@ -130,7 +130,7 @@ export abstract class PartialProductDomain<Product extends AbstractProduct>
 	}
 
 	protected jsonify(): unknown {
-		return Record.mapProperties(this.value, entry => entry?.toJson());
+		return Record.mapProperties(this.value, entry => entry?.toJSON());
 	}
 
 	protected stringify(): string {

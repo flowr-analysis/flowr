@@ -1,22 +1,28 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/typescript-node
+//
+// This container doubles as a "safebox": flowR executes analyzed R code without any
+// sandboxing (see the interface docs), so running it here isolates that from your host.
 {
-	"name": "Node.js & TypeScript",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/typescript-node:4-24-trixie"
+	"name": "flowR",
+	"build": { "dockerfile": "Dockerfile" },
 
-	// Features to add to the dev container. More info: https://containers.dev/features.
-	// "features": {},
+	// flowR's server (`npm run flowr -- --server`) listens on 1042 by default.
+	"forwardPorts": [1042],
 
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	// Fetch LFS-backed test fixtures, install deps, and wire up the local git hooks.
+	"postCreateCommand": "git lfs pull && npm ci && git config --local core.hooksPath .githooks/",
 
-	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "yarn install",
-
-	// Configure tool-specific properties.
-	// "customizations": {},
-
-	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"dbaeumer.vscode-eslint",
+				"REditorSupport.r",
+				"code-inspect.vscode-flowr"
+			],
+			"settings": {
+				"editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" }
+			}
+		}
+	}
 }

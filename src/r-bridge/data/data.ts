@@ -136,6 +136,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 									id:          'environment-with',
 									supported:   'partially',
 									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
 								}
 							]
 						},
@@ -155,7 +161,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							name:        'Search Path',
 							id:          'search-path',
 							supported:   'partially',
-							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
+							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Attached packages and `attach`ed environments are placed below `.GlobalEnv` (so global bindings shadow package exports, matching R), attaching inside/through function calls propagates to the caller, and re-attaching is a no-op. Not yet handled: dynamic `search`/`fn_env` manipulation."
 						},
 						{
 							name:        'Namespaces',
@@ -178,7 +184,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Library Loading',
 							id:          'library-loading',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
 						},
 						{

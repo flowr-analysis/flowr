@@ -2,10 +2,11 @@ import type { FunctionInfo } from './function-info';
 
 export const ReadFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'parse',                          argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'base', name: 'read.table',          argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.csv',            argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.csv2',           argIdx: 0, argName: 'file', resolveValue: true },
-	{ package: 'utils', name: 'read.delim',          argIdx: 0, argName: 'file', resolveValue: true },
+	{ package: 'base', name: 'read.table',          argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.csv',           argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.csv2',          argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.delim',         argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
+	{ package: 'utils', name: 'read.delim2',        argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-set', additionalArgs: { argSet: { argName: 'text' } } },
 	{ package: 'base', name: 'read.dcf',            argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'base', name: 'scan',                argIdx: 0, argName: 'file', resolveValue: true },
 	{ package: 'utils', name: 'read.fwf',            argIdx: 0, argName: 'file', resolveValue: true },

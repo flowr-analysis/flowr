@@ -158,7 +158,7 @@ export class StateAbstractDomain<Domain extends AnyAbstractDomain, Value extends
 	}
 
 	protected jsonify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): unknown {
-		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJson()]));
+		return Object.fromEntries(this.value.entries().map(([key, value]) => [key, value.toJSON()]));
 	}
 
 	protected stringify(this: StateAbstractDomain<Domain, StateDomainValue<Domain>>): string {

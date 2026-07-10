@@ -3,6 +3,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { REnvironmentInformation } from './environment';
+import type { Origin } from '../origin/dfg-get-origin';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -38,8 +39,8 @@ const dotDotDotAccess = /^\.\.\d+$/;
 export const Identifier = {
 	name: 'Identifier',
 	/**
-	 * Create an identifier from its name and optional namespace.
-	 * Please note that for `internal` to count, a namespace must be provided!
+	 * Creates an identifier. Strips surrounding backticks from the name.
+	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
@@ -50,6 +51,18 @@ export const Identifier = {
 		} else {
 			return name;
 		}
+	},
+	/**
+	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
+	 * Use for static built-in config entries where name is a compile-time constant with no backticks.
+	 * @example
+	 * ```ts
+	 * Identifier.from(['map', 'purrr'])       // ['map', 'purrr']
+	 * Identifier.from(['map', 'purrr', true]) // ['map', 'purrr', true]
+	 * ```
+	 */
+	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
+		return arr;
 	},
 	/**
 	 * Verify whether an unknown element has a valid identifier shape!
@@ -190,8 +203,78 @@ export const Identifier = {
 		} else {
 			return [id, undefined, undefined];
 		}
+	},
+	/**
+	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
+	 * resolves to an export of a loaded package (the `flowr-pkgdb` info attached by `library()`/`use()`);
+	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 */
+	toQualified(this: void, origins: readonly Origin[] | undefined): Identifier | undefined {
+		for(const origin of origins ?? []) {
+			// a package-export origin carries the target builtin id `built-in:pkg:func` in `proc`
+			if('proc' in origin && origin.proc.startsWith('built-in:')) {
+				const rest = origin.proc.slice('built-in:'.length);
+				const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
+				if(sep > 0) {
+					return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
+				}
+			}
+		}
+		return undefined;
+	},
+	/** The fully qualified `package::name` of a resolved call (see {@link Identifier.toQualified}). */
+	toQualifiedName(this: void, origins: readonly Origin[] | undefined): string | undefined {
+		const qualified = Identifier.toQualified(origins);
+		return qualified === undefined ? undefined : Identifier.toString(qualified);
 	}
 } as const;
+
+/**
+ * Well-known R package names used in {@link DefaultBuiltinConfig}.
+ * Using a const enum keeps the string values inlined at compile time.
+ */
+export const enum PkgName {
+	/* R built-in / recommended packages */
+	Base        = 'base',
+	Compiler    = 'compiler',
+	Graphics    = 'graphics',
+	GrDevices   = 'grDevices',
+	Methods     = 'methods',
+	Stats       = 'stats',
+	Utils       = 'utils',
+	/* CRAN / third-party */
+	AssertThat   = 'assertthat',
+	Box          = 'box',
+	Cli          = 'cli',
+	DataTable    = 'data.table',
+	Devtools     = 'devtools',
+	Dplyr        = 'dplyr',
+	Fs           = 'fs',
+	Functools    = 'functools',
+	GgPlot2      = 'ggplot2',
+	Import       = 'import',
+	Inferference = 'inferference',
+	Janitor      = 'janitor',
+	Lattice      = 'lattice',
+	Magick       = 'magick',
+	Magrittr     = 'magrittr',
+	Msgr         = 'msgr',
+	PkgLoad      = 'pkgload',
+	Plyr         = 'plyr',
+	Purrr        = 'purrr',
+	Ragg         = 'ragg',
+	RasterPdf    = 'rasterpdf',
+	Remotes      = 'remotes',
+	Rlang        = 'rlang',
+	RmethodsS3   = 'R.methodsS3',
+	Roo          = 'R.oo',
+	Rutils       = 'R.utils',
+	S7           = 'S7',
+	Soda         = 'SoDA',
+	Testthat     = 'testthat',
+	TinyPlot     = 'tinyplot',
+	TryCatchLog  = 'tryCatchLog',
+}
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.

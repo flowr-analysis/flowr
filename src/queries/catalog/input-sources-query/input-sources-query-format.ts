@@ -8,7 +8,7 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import { InputTraceType, InputType, type InputClassifierConfig, type InputSources } from './simple-input-classifier';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 import { executeInputSourcesQuery } from './input-sources-query-executor';
 import { SourceLocation } from '../../../util/range';
 import { Q } from '../../../search/flowr-search-builder';
@@ -85,8 +85,9 @@ export const InputSourcesDefinition = {
 		}
 		return true;
 	},
-	fromLine: inputSourcesQueryLineParser,
-	schema:   Joi.object({
+	fromLine:  inputSourcesQueryLineParser,
+	completer: criteriaQueryCompleter,
+	schema:    Joi.object({
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('The slicing criterion or array of criteria to use.'),
 		config:    Joi.object({

@@ -24,7 +24,7 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
-import { getHeapStatistics } from 'v8';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
@@ -256,15 +256,13 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 				return information;
 			}
 		}
-		const resolveSource = data.ctx.config.solver.resolveSource;
-		if(resolveSource?.checkMemoryOnSource) {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			const { used_heap_size, heap_size_limit } = getHeapStatistics();
-			if(heap_size_limit > 0 && used_heap_size / heap_size_limit > (resolveSource.memoryThreshold ?? .9)) {
-				dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to memory pressure (${Math.round(used_heap_size / 1048576)}/${Math.round(heap_size_limit / 1048576)} MB used)`);
-				handleUnknownSideEffect(information.graph, information.environment, rootId);
-				return information;
-			}
+		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
+		if(gasLevel >= GasLevel.Critical) {
+			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			return information;
+		} else if(gasLevel >= GasLevel.Problematic) {
+			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
 		const normalized = (typeof parsed !== 'string' ?

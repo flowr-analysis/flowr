@@ -170,9 +170,12 @@ export function retrieveParseDataFromRCode(request: RParseRequest, shell: RShell
 	}
 
 	const suffix = request.request === 'file' ? ', encoding="utf-8"' : '';
+	/* R's `parse(text=)` (unlike reading a file) rejects a carriage return as an "invalid token", so normalize
+	 * CRLF/CR line endings to LF for text requests to match R's own file handling and stay robust to Windows sources. */
+	const content = request.request === 'text' ? request.content.replace(/\r\n?/g, '\n') : request.content;
 	/* call the function with the request */
-	const command =`flowr_get_ast(${request.request}=${JSON.stringify(
-		request.content
+	const command = `flowr_get_ast(${request.request}=${JSON.stringify(
+		content
 	)}${suffix})`;
 
 	if(shell instanceof RShellExecutor) {

@@ -28,6 +28,8 @@ export enum FileRole {
 	Data        = 'data',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */
 	License     = 'license',
+	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock` or `rv.lock`. */
+	VirtualEnv  = 'virtual-env',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files

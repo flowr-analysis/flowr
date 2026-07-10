@@ -10,6 +10,7 @@ import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-i
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';
 import type { DataflowInformation } from '../../dataflow/info';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import { Dataflow } from '../../dataflow/graph/df-helper';
 import { SliceDirection } from '../../util/slice-direction';
@@ -18,31 +19,51 @@ import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 
+/** Options for {@link staticSlice}. */
+export interface StaticSliceOptions {
+	/** The analyzer context (environments, configuration). */
+	readonly ctx:         ReadOnlyFlowrAnalyzerContext
+	/** Dataflow information including the graph to traverse. */
+	readonly info:        DataflowInformation
+	/** Normalized AST, used for id resolution and nesting info. */
+	readonly ast:         NormalizedAst
+	/** Seed node ids to start the BFS from. At least one is required. */
+	readonly ids:         readonly NodeId[]
+	/** Whether to slice forward or backward. Defaults to {@link SliceDirection.Backward}. */
+	readonly direction?:  SliceDirection
+	/**
+	 * Maximum BFS visits before the algorithm switches to over-approximation (includes everything).
+	 * Defaults to 75.
+	 */
+	readonly threshold?:  number
+	/** Memoization cache that can be shared across multiple slices on the same graph. */
+	readonly cache?:      Map<Fingerprint, Set<NodeId>>
+	/**
+	 * Pre-built graph to use for BFS traversal instead of (possibly inverting) `info.graph`.
+	 * `info.graph` is still consulted for function-call resolution, so it must remain the non-inverted original.
+	 * Used by {@link staticDice} to pass a reduced-and-inverted graph in a single allocation.
+	 */
+	readonly sliceGraph?: DataflowGraph
+}
+
 /**
- * This returns the ids to include in the static slice of the given type, when slicing with the given seed id's (must be at least one).
- * <p>
- * The returned ids can be used to {@link reconstructToCode|reconstruct the slice to R code}.
- * @param ctx  - The analyzer context used for slicing.
- * @param info      - The dataflow information used for slicing.
- * @param idMap     - The mapping from node ids to their information in the AST.
- * @param ids       - The seed ids to slice with. Must be at least one.
- * @param direction - The direction to slice in.
- * @param threshold - The maximum number of nodes to visit in the graph. If the threshold is reached, the slice will side with inclusion and drop its minimal guarantee. The limit ensures that the algorithm halts.
- * @param cache     - A cache to store the results of the slice. If provided, the slice may use this cache to speed up the slicing process.
+ * Computes the node ids to include in a static slice, starting from the given seed ids.
+ * The returned ids can be used with {@link reconstructToCode} to reproduce executable R code.
  */
-export function staticSlice(
-	ctx: ReadOnlyFlowrAnalyzerContext,
-	info: DataflowInformation,
-	{ idMap }: NormalizedAst,
-	ids: readonly NodeId[],
-	direction: SliceDirection,
-	threshold = 75,
-	cache?: Map<Fingerprint, Set<NodeId>>
-): Readonly<SliceResult> {
+export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> {
+	const { ctx, info, ids, cache, sliceGraph } = options;
+	const { idMap } = options.ast;
+	const direction = options.direction ?? SliceDirection.Backward;
+	const threshold = options.threshold ?? 75;
 	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
-	let { graph } = info;
-	if(direction === SliceDirection.Forward) {
-		graph = Dataflow.invertGraph(graph, ctx.env.makeCleanEnv());
+	let graph: DataflowGraph;
+	if(sliceGraph !== undefined) {
+		graph = sliceGraph;
+	} else {
+		graph = info.graph;
+		if(direction === SliceDirection.Forward) {
+			graph = Dataflow.invertGraph(graph, ctx.env.makeCleanEnv());
+		}
 	}
 
 	const queue = new VisitingQueue(threshold, cache);
@@ -130,6 +151,41 @@ export function staticSlice(
 	} else {
 		return { ...queue.status(), slicedFor: ids };
 	}
+}
+
+/**
+ * Computes a program dice: only those nodes reachable forward from `startIds` that are also in the backward slice of `endIds`.
+ * This effectively selects all paths from the given start nodes that lead to the given end nodes.
+ *
+ * For performance, the backward slice is computed first (typically the smaller set), then the graph is
+ * reduced to that set and its edges are inverted in a single pass via {@link Dataflow.reduceAndInvertGraph}.
+ * The forward traversal then runs only within that subgraph, avoiding nodes that cannot contribute to the dice.
+ */
+export function staticDice(
+	ctx: ReadOnlyFlowrAnalyzerContext,
+	info: DataflowInformation,
+	ast: NormalizedAst,
+	startIds: readonly NodeId[],
+	endIds: readonly NodeId[],
+	threshold = 75,
+): Readonly<SliceResult> {
+	guard(startIds.length > 0 && endIds.length > 0, 'must have at least one start and one end id for dicing');
+	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold });
+	// reduce to backward result and invert edges in one pass; original info kept for sliceForCall
+	const invertedReduced = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
+	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced });
+	// explicit intersection handles seed nodes that landed outside the reduced graph
+	const result = new Set<NodeId>();
+	for(const id of forward.result) {
+		if(backward.result.has(id)) {
+			result.add(id);
+		}
+	}
+	return {
+		timesHitThreshold: forward.timesHitThreshold + backward.timesHitThreshold,
+		result,
+		slicedFor:         [...startIds, ...endIds],
+	};
 }
 
 function extendSlices(

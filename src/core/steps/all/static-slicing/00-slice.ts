@@ -23,7 +23,7 @@ function processor(results: { dataflow?: DataflowInformation, normalize?: Normal
 	const direction = input.direction ?? SliceDirection.Backward;
 	const threshold = input.threshold ?? input.context?.config.solver.slicer?.threshold;
 	const n = results.normalize as NormalizedAst;
-	return staticSlice(input.context as ReadOnlyFlowrAnalyzerContext, (results.dataflow as DataflowInformation), n, SlicingCriteria.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold);
+	return staticSlice({ ctx: input.context as ReadOnlyFlowrAnalyzerContext, info: results.dataflow as DataflowInformation, ast: n, ids: SlicingCriteria.convertAll(input.criterion as SlicingCriteria, n.idMap), direction, threshold });
 }
 
 export const STATIC_SLICE = {

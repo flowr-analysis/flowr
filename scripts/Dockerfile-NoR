@@ -7,6 +7,7 @@ WORKDIR /app
 # copy the source and build files of all modules into the workdir
 COPY ./src /app/src
 COPY ./test /app/test
+COPY ./scripts/pkgdb-compress.mjs /app/scripts/pkgdb-compress.mjs
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
 # install python and build tools for node-gyp
@@ -22,6 +23,9 @@ LABEL author="Florian Sihler" git="https://github.com/flowr-analysis/flowr"
 
 WORKDIR /app
 
+# persist the v8 module compile cache so container startup skips recompiling the bundle
+ENV NODE_COMPILE_CACHE=/app/.compile-cache
+
 COPY ./scripts/demo.R LICENSE /app/
 COPY --from=builder /app/dist /app
 COPY ./package.json ./package-lock.json /app/
@@ -31,15 +35,19 @@ RUN npm ci --omit=dev --omit=optional && npm cache clean --force && \
     rm -rf /app/package.json /app/node_modules/**/*.md /app/node_modules/.bin  \
            /app/node_modules/**/LICENSE /app/package-lock.json \
            /app/**/tsconfig.tsbuildinfo /app/**/*.d.ts /app/test/* && \
-    addgroup -S flowr && adduser -S flowr -G flowr
+    addgroup -S flowr && adduser -S flowr -G flowr && \
+    mkdir -p /app/.compile-cache && chown -R flowr:flowr /app/.compile-cache
 USER flowr
+
+# prime the compile cache with a real analysis so the hot path is warm on first run
+RUN node /app/src/cli/flowr.min.js --engine.r-shell.disabled \
+        --execute ":dataflowsilent file://demo.R" >/dev/null
 
 # we also configure basic memory options
 ENTRYPOINT [\
    "node",\
    "--max-old-space-size=8192",\
    "--stack-size=8192",\
-   "--max-semi-space-size=8192",\
    "/app/src/cli/flowr.min.js",\
    "--engine.r-shell.disabled"\
   ]

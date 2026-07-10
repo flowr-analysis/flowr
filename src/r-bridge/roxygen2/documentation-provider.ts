@@ -38,6 +38,8 @@ const CommentRetriever: CommentRetrievers = {
 };
 
 
+const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags;
+
 /**
  * Given a normalized AST and a node ID, returns the Roxygen documentation (if any) associated with that node.
  * Please note that this does more than {@link parseRoxygenCommentsOfNode}, as it also traverses up the AST to find documentation.
@@ -52,7 +54,7 @@ export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInforma
 	} else if('doc' in node.info) {
 		return node.info.doc;
 	}
-	const retriever = CommentRetriever[node.type as RType] ?? ((c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags);
+	const retriever = CommentRetriever[node.type as RType] ?? defaultRetriever;
 	const doc = retriever(node as never, idMap);
 	if(doc) {
 		// to avoid endless recursion, we block the caching here once:
@@ -126,7 +128,7 @@ function expandInheritOfTag(tag: RoxygenTag, otherTags: readonly RoxygenTag[], i
 	} else if(tag.type === KnownRoxygenTags.InheritParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value, idMap);
 		const alreadyExplainedParams = new Set(otherTags.filter(t => t.type === KnownRoxygenTags.Param).map(t => t.value.name));
-		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag |RoxygenTag[] |undefined;
+		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag | RoxygenTag[] | undefined;
 	}
 	return tag;
 }

@@ -67,6 +67,19 @@ print(df6)
 		testInferredDataFrameShape(
 			shell,
 			`
+df1 <- data.frame(id = 1:5)
+assign(paste0("df1"), 42)
+print(df1)
+			`,
+			{
+				'1@df1': { colnames: [['id'], []], cols: [1, 1], rows: [5, 5] },
+				'3@df1': undefined
+			}
+		);
+
+		testInferredDataFrameShape(
+			shell,
+			`
 \`df1\` <- data.frame(id = 1:5)
 'df2' <- data.frame(id = 1:5)
 "df3" <- data.frame(id = 1:5)

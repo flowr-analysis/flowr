@@ -133,16 +133,20 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 	}
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
+		if(this.isTop()) {
+			return Ternary.Maybe;
+		}
+		const values = [...set];
 		switch(comparator) {
 			case SetComparator.Equal:
 			case SetComparator.SubsetOrEqual: {
-				if(this.isTop() || (this.isValue() && [...set].length <= this.value.size && [...set].every(value => this.value.has(value)))) {
+				if(this.isValue() && values.length <= this.value.size && values.every(value => this.value.has(value))) {
 					return Ternary.Maybe;
 				}
 				return Ternary.Never;
 			}
 			case SetComparator.Subset: {
-				if(this.isTop() || (this.isValue() && [...set].length < this.value.size && [...set].every(value => this.value.has(value)))) {
+				if(this.isValue() && values.length < this.value.size && values.every(value => this.value.has(value))) {
 					return Ternary.Maybe;
 				}
 				return Ternary.Never;

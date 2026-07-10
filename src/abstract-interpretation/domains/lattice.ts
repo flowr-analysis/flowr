@@ -61,7 +61,7 @@ export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value
 	/**
 	 * Converts the lattice into a JSON serializable value.
 	 */
-	toJson(): unknown;
+	toJSON(): unknown;
 
 	/**
 	 * Converts the lattice into a human-readable string.

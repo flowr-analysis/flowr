@@ -34,7 +34,7 @@ const defaultAllVariablesCollectorFolds: FoldFunctions<ParentInformation, NodeId
 		foldComment:       onLeaf,
 		foldLineDirective: onLeaf
 	},
-	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a, ...b, ...(c??[])],
+	foldIfThenElse: (_: unknown, a: NodeId[], b: NodeId[], c: NodeId[] | undefined) => [...a, ...b, ...(c ?? [])],
 	foldExprList:   (_: unknown, _grouping: unknown, a: NodeId[][]) => a.flat(),
 	functions:      {
 		foldFunctionDefinition: (_: unknown, a: NodeId[][], b: NodeId[]) => [...a.flat(), ...b],

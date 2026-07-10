@@ -326,12 +326,11 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 	}
 
 	public satisfies(set: ReadonlySet<T> | T[], comparator: SetComparator = SetComparator.Equal): Ternary {
-		const value = new this.setType(set);
 		const lower = this.lower(), upper = this.upper();
-
 		if(lower === Bottom || upper === Bottom) {
 			return Ternary.Never;
 		}
+		const value = new this.setType(set);
 		switch(comparator) {
 			case SetComparator.Equal: {
 				if(lower.isSubsetOf(value) && (upper === Top || value.isSubsetOf(upper))) {

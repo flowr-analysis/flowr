@@ -2,7 +2,7 @@ import type { RParseRequestFromText } from './retriever';
 import type { OutputCollectorConfiguration, RShell } from './shell';
 import type { RShellExecutor } from './shell-executor';
 import type { TreeSitterExecutor } from './lang-4.x/tree-sitter/tree-sitter-executor';
-import type { Query, QueryCapture, SyntaxNode } from 'web-tree-sitter';
+import type { Query, QueryCapture } from 'web-tree-sitter';
 import type { FlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 
@@ -77,14 +77,6 @@ export interface ParseStepOutput<T> {
 	readonly files: ParseStepOutputSingleFile<T>[]
 }
 
-function countChildren(node: SyntaxNode): number {
-	let ret = 1;
-	for(const child of node.children) {
-		ret += countChildren(child);
-	}
-	return ret;
-}
-
 /**
  * Takes an input program and parses it using the given parser.
  * @param _results - just a proxy for the pipeline, signifies that this function does not need prior knowledge of the pipeline
@@ -106,7 +98,7 @@ Promise<ParseStepOutput<T>> {
 				parsed,
 				filePath:      req.path,
 				'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-					tokenCount: countChildren(parsed.rootNode),
+					tokenCount: parsed.rootNode.descendantCount,
 				} : undefined
 			});
 		}
@@ -120,7 +112,7 @@ Promise<ParseStepOutput<T>> {
 					parsed,
 					filePath:      r.path,
 					'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-						tokenCount: countChildren(parsed.rootNode),
+						tokenCount: parsed.rootNode.descendantCount,
 					} : undefined
 				};
 			})

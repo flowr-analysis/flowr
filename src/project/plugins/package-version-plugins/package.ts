@@ -1,6 +1,8 @@
 import type { Range } from 'semver';
 import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
+import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { parseRRange } from '../../../util/r-version';
 
 export type PackageType = 'package' | 'system' | 'r';
@@ -11,6 +13,8 @@ export type PackageOptions = {
 	dependencies?:       Package[];
 	namespaceInfo?:      NamespaceInfo;
 	versionConstraints?: Range[];
+	/** the concrete version the exports were resolved from (e.g. the package database entry), for information only */
+	resolvedVersion?:    string;
 };
 
 export class Package {
@@ -20,10 +24,19 @@ export class Package {
 	public dependencies?:      Package[];
 	public namespaceInfo?:     NamespaceInfo;
 	public versionConstraints: Range[] = [];
+	public resolvedVersion?:   string;
 
 	constructor(info: { name: string } & PackageOptions) {
 		this.name = info.name;
 		this.addInfo(info);
+	}
+
+	/** Builds a package from a raw `NAMESPACE` body and its list of callable exports. */
+	public static fromConstants(name: string, namespace: string, callable: string[]): Package {
+		return new Package({
+			name,
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', namespace)).content().current, callable)
+		});
 	}
 
 	has(name: string, className?: string): boolean {
@@ -56,7 +69,8 @@ export class Package {
 				type:               other.type,
 				dependencies:       other.dependencies,
 				namespaceInfo:      other.namespaceInfo,
-				versionConstraints: other.versionConstraints
+				versionConstraints: other.versionConstraints,
+				resolvedVersion:    other.resolvedVersion
 			}
 		);
 	}
@@ -66,9 +80,13 @@ export class Package {
 			type,
 			dependencies,
 			namespaceInfo,
-			versionConstraints
+			versionConstraints,
+			resolvedVersion
 		} = info;
 
+		if(resolvedVersion !== undefined) {
+			this.resolvedVersion = resolvedVersion;
+		}
 		if(type !== undefined) {
 			this.type = type;
 		}
@@ -107,5 +125,9 @@ export class Package {
 		} else {
 			return undefined;
 		}
+	}
+
+	public static funcIdentif(dependency: string, func: string): string{
+		return `${dependency}:${func}`;
 	}
 }

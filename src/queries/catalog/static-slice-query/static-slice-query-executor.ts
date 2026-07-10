@@ -32,13 +32,13 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		const { criteria, noReconstruction, noMagicComments } = query;
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
-		const slice = staticSlice(analyzer.inspectContext(), await analyzer.dataflow(), n, SlicingCriteria.convertAll(criteria, n.idMap), query.direction ?? SliceDirection.Backward, analyzer.flowrConfig.solver.slicer?.threshold);
+		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: await analyzer.dataflow(), ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold });
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(await analyzer.normalize(), { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructToCode(n, { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

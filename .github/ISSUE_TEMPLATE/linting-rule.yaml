@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request. See the [Linter Wiki Page](https://github.com/flowr-analysis/flowr/wiki/Linter) for more information.
+        Thank you for suggesting a new linting rule or an improvement to an existing one. Please provide as much detail as possible to help us understand your request. See the [Linter Wiki Page](https://github.com/flowr-analysis/flowr/wiki/linter) for more information.
   - type: textarea
     id: description
     attributes:
@@ -37,6 +37,7 @@ body:
         - Software Has License
         - Software Has Tests
         - Stop without call.=False argument
+        - Undefined Symbol
         - Unused Definitions
         - Useless Loops
       default: 0

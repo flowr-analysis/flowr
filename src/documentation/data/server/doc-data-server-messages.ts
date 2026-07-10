@@ -6,6 +6,7 @@ import { getCliLongOptionOf } from '../../doc-util/doc-cli-option';
 import { codeBlock } from '../../doc-util/doc-code';
 import { analysisResponseMessage, requestAnalysisMessage } from '../../../cli/repl/server/messages/message-analysis';
 import { FlowrWikiBaseRef } from '../../doc-util/doc-files';
+import type { GeneralDocContext } from '../../wiki-mk/doc-context';
 import { cfgToMermaidUrl } from '../../../util/mermaid/cfg';
 import { getCfg } from '../../doc-util/doc-cfg';
 import { NewIssueUrl } from '../../doc-util/doc-issue';
@@ -24,7 +25,7 @@ import type { KnownParser } from '../../../r-bridge/parser';
 /**
  *
  */
-export function documentAllServerMessages() {
+export function documentAllServerMessages(ctx: GeneralDocContext) {
 
 	documentServerMessage({
 		title:                  'Hello',
@@ -87,6 +88,14 @@ Furthermore, the request must contain either a \`content\` field to directly pas
 If you add the \`id\` field, the answer will use the same \`id\` so you can match requests and the corresponding answers.
 See the implementation of the request-file-analysis message for more information.
 
+You can drop one or more stored file tokens by adding the \`invalidateToken\` field (a single token or an array of tokens).
+The server frees the corresponding analyses _after_ it has answered the request.
+
+> **Tip!**\\
+> If you only want to drop tokens, you do not need a separate message: send a \`request-file-analysis\` that contains _just_ the \`invalidateToken\` field (and no \`content\` or \`filepath\`).
+> Such a request behaves like an empty file analysis and the server replies with an empty \`results\` object.
+> Because invalidation happens after the response, you may even pass the _current_ \`filetoken\` in \`invalidateToken\` to analyze a file once and have the server forget it right after you received the results.
+
 ${
 	await documentServerMessageResponse({
 		shell,
@@ -111,8 +120,8 @@ ${
 The \`results\` field of the response effectively contains three keys of importance:
 
 - \`parse\`: which contains 1:1 the parse result in CSV format that we received from the \`${RShell.name}\` (i.e., the AST produced by the parser of the R interpreter).
-- \`normalize\`: which contains the normalized AST, including ids (see the \`info\` field and the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST) wiki page).
-- \`dataflow\`: especially important is the \`graph\` field which contains the dataflow graph as a set of root vertices (see the [Dataflow Graph](${FlowrWikiBaseRef}/Dataflow%20Graph) wiki page).
+- \`normalize\`: which contains the normalized AST, including ids (see the \`info\` field and the ${ctx.linkPage('wiki/Normalized AST', 'Normalized AST')} wiki page).
+- \`dataflow\`: especially important is the \`graph\` field which contains the dataflow graph as a set of root vertices (see the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')} wiki page).
 			`
 			}
 		]
@@ -189,7 +198,7 @@ If you are interested in a visual representation of the control flow graph, see 
 **Retrieve the Output as RDF N-Quads**
 
 The default response is formatted as JSON.
-However, by specifying \`format: "n-quads"\`, you can retrieve the individual results (e.g., the [Normalized AST](${FlowrWikiBaseRef}/Normalized%20AST)),
+However, by specifying \`format: "n-quads"\`, you can retrieve the individual results (e.g., the ${ctx.linkPage('wiki/Normalized AST', 'Normalized AST')}),
 as [RDF N-Quads](https://www.w3.org/TR/n-quads/).
 This works with and without the control flow graph as described [above](#analysis-include-cfg).
 
@@ -277,7 +286,7 @@ Please note, that the base message format is still JSON. Only the individual res
 		shortDescription: `${deprecatedByQuery} The server slices a file based on the given criteria.`,
 		text:             async(shell: KnownParser) => {
 			return `
-**We deprecated the slice request in favor of the \`static-slice\` [Query](${FlowrWikiBaseRef}/Query%20API).**
+**We deprecated the slice request in favor of the \`static-slice\` ${ctx.linkPage('wiki/Query API', 'Query')}.**
 
 To slice, you have to send a file analysis request first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly slice the same file.
 Besides that, you only need to add an array of slicing criteria, using one of the formats described on the [terminology wiki page](${FlowrWikiBaseRef}/Terminology#slicing-criterion) 
@@ -379,7 +388,7 @@ Within a document that is to be sliced, you can use magic comments to influence 
 
 
 The REPL execution message allows to send a REPL command to receive its output. 
-For more on the REPL, see the [introduction](${FlowrWikiBaseRef}/Overview#the-read-eval-print-loop-repl), or the [description below](#using-the-repl).
+For more on the REPL, see the ${ctx.linkPage('wiki/Overview', 'introduction', 'the-read-eval-print-loop-repl')}, or the [description below](#using-the-repl).
 You only have to pass the command you want to execute in the \`expression\` field. 
 Furthermore, you can set the \`ansi\` field to \`true\` if you are interested in output formatted using [ANSI escape codes](https://en.wikipedia.org/wiki/ANSI_escape_code).
 We strongly recommend you to make use of the \`id\` field to link answers with requests as you can theoretically request the execution of multiple scripts at the same time, which then happens in parallel.
@@ -452,7 +461,7 @@ ${codeBlock('text', (msg as ExecuteIntermediateResponseMessage).result)}
 		text:             async(shell: KnownParser) => {
 			return `
 To send queries, you have to send an [analysis request](#message-request-file-analysis) first. The \`filetoken\` you assign is of use here as you can re-use it to repeatedly query the same file.
-This message provides direct access to _flowR_'s Query API. Please consult the [Query API documentation](${FlowrWikiBaseRef}/Query%20API) for more information.
+This message provides direct access to _flowR_'s Query API. Please consult the ${ctx.linkPage('wiki/Query API', 'Query API documentation')} for more information.
 
 ${
 	await documentServerMessageResponse({

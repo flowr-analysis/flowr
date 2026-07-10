@@ -19,16 +19,21 @@ import { identifyLinkToLastCallRelationSync
 } from '../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import { updateNestedFunctionCalls } from './internal/process/functions/call/built-in/built-in-function-definition';
+import { propagateTransitiveSideEffects, reResolveOpenReferences, linkMaterializedExportsToLoaders } from './internal/process/functions/call/built-in/transitive-side-effects';
+import type { REnvironmentInformation } from './environments/environment';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { FlowrFile } from '../project/context/flowr-file';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraphVertexFunctionCall } from './graph/vertex';
+
+/** Round cap for the transitive-side-effect fixpoint. */
+const transitiveSideEffectRounds = 32;
 import type { LinkToLastCall } from '../queries/catalog/call-context-query/call-context-query-format';
 import { Identifier } from './environments/identifier';
 import { SourceRange } from '../util/range';
 import { dataflowLogger } from './logger';
-import { GasFeatureKey, GasLevel } from '../gas';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../gas';
 
 /**
  * The best friend of {@link produceDataFlowGraph} and {@link processDataflowFor}.
@@ -72,10 +77,10 @@ export const processors: DataflowProcessors<ParentInformation> = {
 function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx: FlowrAnalyzerContext) {
 	const gasLevel = ctx.gas.checkGas(GasFeatureKey.SideEffectLinking);
 	if(gasLevel >= GasLevel.Critical) {
-		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+		dataflowLogger.warn('Skipping side-effect link resolution due to resource pressure (gas: critical). See ' + GasWikiRef);
 		return undefined;
 	} else if(gasLevel >= GasLevel.Problematic) {
-		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard');
+		dataflowLogger.warn('Approaching resource limits during side-effect link resolution (gas: problematic). See ' + GasWikiRef);
 	}
 	let cf: ControlFlowInformation | undefined = undefined;
 	let knownCalls: Map<NodeId, Required<DataflowGraphVertexFunctionCall>> | undefined;
@@ -163,8 +168,26 @@ export function produceDataFlowGraph<OtherInfo>(
 		df = standaloneSourceFile(i, files[i], dfData, df);
 	}
 
-	// finally, resolve linkages
-	updateNestedFunctionCalls(df.graph, df.environment);
+	// resolve linkages and propagate transitive side effects across calls to a fixpoint
+	updateNestedFunctionCalls(df.graph, df.environment, ctx);
+	const escapedNames = new Set<string>();
+	for(let round = 0; round < transitiveSideEffectRounds; round++) {
+		const { environment, grew, escapedNames: roundNames } = propagateTransitiveSideEffects(df.graph, df.environment, ctx);
+		(df as { environment: REnvironmentInformation }).environment = environment;
+		for(const n of roundNames) {
+			escapedNames.add(n);
+		}
+		if(!grew) {
+			break;
+		}
+		updateNestedFunctionCalls(df.graph, df.environment, ctx);
+	}
+	// resolve top-level reads that now see the escaped `<<-` definitions folded in above
+	if(escapedNames.size > 0) {
+		reResolveOpenReferences(df.graph, df.environment, [...df.in, ...df.unknownReferences], escapedNames);
+	}
+	// link on-demand-materialized package exports back to their `library()` loaders
+	linkMaterializedExportsToLoaders(df.graph, df.environment);
 
 	(df as { cfgQuick?: ControlFlowInformation }).cfgQuick = resolveLinkToSideEffects(completeAst, df.graph, ctx);
 

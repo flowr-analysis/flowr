@@ -19,6 +19,7 @@ import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/re
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { unpackArg } from '../argument/unpack-argument';
 import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { resolveNodeToStackEnv } from './built-in-stack-env';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -85,15 +86,16 @@ export function processAccess<OtherInfo>(
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
 
-	/* for $ access on a tracked env variable, add Reads edges to the field definition in envState */
+	/* for $ access on a tracked env variable or a stack env (globalenv()/.GlobalEnv), add Reads edges to the field definition */
 	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$'
-			&& head !== EmptyArgument && head.value?.type === RType.Symbol
+			&& head !== EmptyArgument && head.value !== undefined
 			&& args.length >= 2 && args[1] !== EmptyArgument) {
-		const envirResolution = resolveSymbolToEnvir(head.value.content, head.value.info.id, data);
-		if(envirResolution) {
+		const envState = resolveNodeToStackEnv(head.value, data)
+			?? (head.value.type === RType.Symbol ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
+		if(envState) {
 			const fieldNode = unpackArg(args[1]);
 			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
-			const fieldDefs = fieldName ? envirResolution.envDef.envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
+			const fieldDefs = fieldName ? envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
 			for(const fd of fieldDefs ?? []) {
 				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
 			}

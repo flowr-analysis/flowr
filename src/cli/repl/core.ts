@@ -4,6 +4,7 @@
  */
 import { prompt } from './prompt';
 import * as readline from 'readline';
+import { installGhostHint } from './ghost-hint';
 import { tryExecuteRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
@@ -22,6 +23,7 @@ import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
+import { exitSafe } from '../../util/proc';
 
 let _replCompleterKeywords: string[] | undefined = undefined;
 function replCompleterKeywords() {
@@ -45,10 +47,7 @@ export interface CommandCompletions {
 	readonly argumentPart?: string;
 }
 
-/**
- * Used by the repl to provide automatic completions for a given (partial) input line
- */
-export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+function computeCompletions(line: string, config: FlowrConfig): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -72,9 +71,9 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
-			} else {
-				// autocomplete command arguments (specifically, autocomplete the file:// protocol)
+			} else if(cmd?.isCodeCommand) {
 				completions.push(fileProtocol);
+				completions.push(watchProtocol);
 			}
 
 			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
@@ -85,9 +84,31 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
+/**
+ * Used by the repl to provide automatic completions for a given (partial) input line. Returns every matching
+ * option, so Tab shows the full menu and only completes when a single option remains (standard readline behavior).
+ */
+export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+	return computeCompletions(line, config);
+}
+
+/**
+ * The remaining text of the best (first) completion, i.e. what the inline ghost previews as you type; empty when
+ * there is nothing to suggest. Independent of {@link replCompleter}: the ghost hints the best match even when Tab
+ * would still offer several.
+ */
+export function completionSuggestion(line: string, config: FlowrConfig): string {
+	if(line.length === 0) {
+		return '';
+	}
+	const [completions, fragment] = computeCompletions(line, config);
+	const best = completions[0];
+	return best !== undefined && best.startsWith(fragment) && best.length > fragment.length ? best.slice(fragment.length) : '';
+}
+
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
+	const queryShorts = ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
 	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
@@ -128,7 +149,56 @@ export function handleString(code: string) {
 	};
 }
 
-async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+/** Path prefix that activates watch mode; use instead of {@link fileProtocol} to re-run on every file change. */
+export const watchProtocol = 'watch://';
+
+/** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
+export function toFileStatement(statement: string): string {
+	return statement.replaceAll(watchProtocol, fileProtocol);
+}
+
+/** Return the watch path from the first `watch://<path>` token in `statement`, or `undefined` if none is present. */
+export function extractWatchPath(statement: string): string | undefined {
+	return /watch:\/\/(\S+)/.exec(statement)?.[1];
+}
+
+let activeWatcher: fs.FSWatcher | undefined;
+
+/** Stop the active watcher. Pass `notify = false` when silently switching to a new watch target. */
+export function stopWatching(output: ReplOutput, notify = true): void {
+	if(activeWatcher !== undefined) {
+		try {
+			activeWatcher.close();
+		} catch{ /* already closed */ }
+		activeWatcher = undefined;
+		if(notify) {
+			output.stdout('Watch mode stopped.');
+		}
+	}
+}
+
+/** `watchImpl` is injectable so tests can pass a fake `fs.watch`. */
+export function startWatching(
+	watchPath: string,
+	output: ReplOutput,
+	onFire: () => void,
+	watchImpl: typeof fs.watch = fs.watch
+): fs.FSWatcher {
+	const faint = (s: string) => output.formatter.format(s, { style: FontStyles.Faint });
+	const isDir = fs.existsSync(watchPath) && fs.statSync(watchPath).isDirectory();
+	let debounce: ReturnType<typeof setTimeout> | undefined;
+	const watcher = watchImpl(watchPath, { recursive: isDir }, () => {
+		clearTimeout(debounce);
+		debounce = setTimeout(() => {
+			output.stdout(faint(`\nChange detected in '${watchPath}', re-running...`));
+			onFire();
+		}, 50);
+	});
+	output.stdout(faint(`Watching ${isDir ? 'folder' : 'file'} '${watchPath}'. Press Ctrl+C or enter another command to stop.`));
+	return watcher;
+}
+
+async function executeStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
 	const time = Date.now();
 	const heatMap = new Map<RType, number>();
 	if(analyzer.inspectContext().config.repl.dfProcessorHeat) {
@@ -202,7 +272,33 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 			}));
 		}
 	}
+}
 
+async function replProcessStatement(output: ReplOutput, statement: string, analyzer: FlowrAnalyzer, allowRSessionAccess: boolean): Promise<void> {
+	stopWatching(output, !statement.includes(watchProtocol));
+
+	if(statement.includes(watchProtocol)) {
+		const watchPath = extractWatchPath(statement);
+		const effective = toFileStatement(statement);
+		await executeStatement(output, effective, analyzer, allowRSessionAccess);
+		if(watchPath) {
+			try {
+				activeWatcher = startWatching(watchPath, output, () => {
+					void executeStatement(output, effective, analyzer, allowRSessionAccess);
+				});
+				activeWatcher.unref();
+				activeWatcher.on('error', (err: Error) => {
+					output.stderr(`Watch error for '${watchPath}': ${err.message}`);
+					stopWatching(output, false);
+				});
+			} catch(e) {
+				output.stderr(`Cannot watch '${watchPath}': ${(e as Error).message}`);
+			}
+		}
+		return;
+	}
+
+	await executeStatement(output, statement, analyzer, allowRSessionAccess);
 }
 
 /**
@@ -263,18 +359,54 @@ export async function repl(
 		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }));
 	}
 
+	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
+		suggest: line => completionSuggestion(line, analyzer.flowrConfig)
+	});
+
+	let sigintCount = 0;
+	rl.on('SIGINT', () => {
+		process.stdout.write('\n');
+		if(activeWatcher !== undefined) {
+			stopWatching(output);
+			rl.setPrompt(prompt());
+			sigintCount = 0;
+		} else {
+			sigintCount++;
+			if(sigintCount >= 2) {
+				stopWatching(output, false);
+				exitSafe(0);
+			} else {
+				output.stdout('(Press Ctrl+C again or type :quit to exit)');
+				setTimeout(() => {
+					sigintCount = 0;
+				}, 2000).unref();
+			}
+		}
+		rl.prompt();
+	});
+
+	rl.on('close', () => {
+		stopWatching(output, false);
+		exitSafe(0);
+	});
+
 	// the incredible repl :D, we kill it with ':quit'
 
 	// noinspection InfiniteLoopJS
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
-			rl.question(prompt(), answer => {
+			rl.question(activeWatcher !== undefined ? '' : prompt(), answer => {
+				ghostHint.clear();
+				sigintCount = 0;
 				rl.pause();
 				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
 					rl.resume();
 					resolve();
 				}).catch(reject);
 			});
+			if(activeWatcher === undefined) {
+				ghostHint.show();
+			}
 		});
 	}
 }

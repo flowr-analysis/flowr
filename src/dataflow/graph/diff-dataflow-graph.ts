@@ -124,8 +124,8 @@ export function diffFunctionArguments(fn: NodeId, a: false | readonly FunctionAr
  */
 export function diffVertices(ctx: GraphDiffContext): void {
 	// collect vertices from both sides
-	const lVert = ctx.left.vertices(true).map(([id, info]) => ([id, info] as const)).toArray();
-	const rVert = ctx.right.vertices(true).map(([id, info]) => ([id, info] as const)).toArray();
+	const lVert = ctx.left.vertices(true).toArray();
+	const rVert = ctx.right.vertices(true).toArray();
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
 		|| lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {

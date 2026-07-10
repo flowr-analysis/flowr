@@ -4,6 +4,7 @@ import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
+import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
@@ -50,7 +51,14 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin: getOriginInDfg,
+	origin:      getOriginInDfg,
+	/**
+	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
+	 */
+	sideEffects: {
+		propagateTransitive: propagateTransitiveSideEffects,
+		callGraphSummaries:  computeCallGraphSummaries,
+	},
 	/**
 	 * Only returns the sub-part of the graph that is determined by the given selection.
 	 * In other words, this will return a graph with only vertices that are part of the selected ids,
@@ -84,6 +92,39 @@ export const Dataflow = {
 					continue;
 				}
 				df.addEdge(from, tar, types);
+			}
+		}
+		for(const u of graph.unknownSideEffects) {
+			if(typeof u === 'object' && select.has(u.id)) {
+				df.markIdForUnknownSideEffects(u.id, u.linkTo);
+			} else if(select.has(u as NodeId)) {
+				df.markIdForUnknownSideEffects(u as NodeId);
+			}
+		}
+		return df as G;
+	},
+
+	/**
+	 * Equivalent to {@link Dataflow.reduceGraph|`reduceGraph`} followed by {@link Dataflow.invertGraph|`invertGraph`}
+	 * but in a single pass over the graph, allocating only one intermediate object instead of two.
+	 * Use this when you need the reduced-and-inverted graph for a forward traversal within a restriction set.
+	 */
+	reduceAndInvertGraph<G extends DataflowGraph>(this: void, graph: G, select: ReadonlySet<NodeId>, cleanEnv: REnvironmentInformation): G {
+		const df = new DataflowGraph(graph.idMap);
+		for(const [id, vtx] of graph.vertices(true)) {
+			if(select.has(id)) {
+				df.addVertex(vtx, cleanEnv);
+			}
+		}
+		for(const [from, targets] of graph.edges()) {
+			if(!select.has(from)) {
+				continue;
+			}
+			for(const [to, { types }] of targets) {
+				if(!select.has(to)) {
+					continue;
+				}
+				df.addEdge(to, from, types);
 			}
 		}
 		for(const u of graph.unknownSideEffects) {

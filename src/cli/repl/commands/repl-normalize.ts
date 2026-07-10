@@ -1,5 +1,4 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { fileProtocol } from '../../../r-bridge/retriever';
 import { normalizedAstToMermaid, normalizedAstToMermaidUrl } from '../../../util/mermaid/ast';
 import { ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
 import type { PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
@@ -13,7 +12,7 @@ function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInfo
 }
 
 export const normalizeCommand: ReplCodeCommand = {
-	description:   `Get mermaid code for the normalized AST of R code, start with '${fileProtocol}' to indicate a file`,
+	description:   'Get mermaid code for the normalized AST of R code',
 	isCodeCommand: true,
 	usageExample:  ':normalize',
 	aliases:       [ 'n' ],

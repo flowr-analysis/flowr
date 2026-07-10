@@ -1,13 +1,4 @@
-/**
- * Shared utilities for built-in functions that interact with tracked R environments.
- *
- * - {@link bindArgs} - bind call arguments to formal parameter names using R's matching rules.
- * - {@link resolveArgToEnvir} - resolve a single already-found argument to an {@link EnvirResolution}.
- * - {@link resolveEnvirArg} / {@link resolveSymbolToEnvir} - resolve a named argument or
- *   symbol to an {@link EnvirResolution} when it holds a tracked {@link InGraphIdentifierDefinition#envState}.
- * - {@link routeWrittenToCustomEnv} - move written definitions from the caller's scope into
- *   the holder variable's `envState` after processing an expression that writes into a custom env.
- */
+/** Shared utilities for built-in functions that interact with tracked R environments. */
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -22,6 +13,12 @@ import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
+import { resolveNodeToStackEnv } from './built-in-stack-env';
+
+/** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
+function isStackEnvState(envState: REnvironmentInformation): boolean {
+	return envState.current.globalEnv === true || envState.current.builtInEnv === true;
+}
 
 /** Result type for a successful envir-argument resolution. */
 export interface EnvirResolution<OtherInfo> {
@@ -31,16 +28,11 @@ export interface EnvirResolution<OtherInfo> {
 	readonly envDef:      NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
 	/** Node ID of the USE of the envir variable (e.g. the `e` in `envir=e`). */
 	readonly envirNodeId: NodeId;
+	/** `true` when this resolves to a real stack environment (`globalenv()`/`.GlobalEnv`), not a tracked custom env. */
+	readonly isStackEnv?: boolean;
 }
 
-/**
- * Core resolver: maps a list of identifier definitions (from {@link resolveByName}) to an
- * {@link EnvirResolution}.  Accepts `undefined` so callers can pass `resolveByName` results
- * directly without an intermediate null check.
- *
- * Multiple reaching definitions (e.g. from if/else branches) are accepted only when every
- * definition carries an envState; their envStates are merged into a single combined snapshot.
- */
+/** Maps a list of identifier definitions (from {@link resolveByName}) to an {@link EnvirResolution}, merging the envStates of multiple reaching definitions. */
 function resolveDefsToEnvirResolution<OtherInfo>(
 	defs:   readonly IdentifierDefinition[] | undefined,
 	nodeId: NodeId,
@@ -56,7 +48,7 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 			return undefined;
 		}
 		const envDef = inDefs[0] as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
-		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId };
+		return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: isStackEnvState(envState) };
 	}
 	if(!inDefs.every(d => d.envState !== undefined)) {
 		return undefined;
@@ -80,14 +72,8 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 }
 
 /**
- * Binds call arguments to formal parameter names following R's standard matching rules:
- * 1. Exact name matches (named args bound to exact-matching formal params).
- * 2. Partial (pmatch) name matches via {@link findByPrefixIfUnique}.
- * 3. Remaining unnamed args fill remaining unbound formal params left-to-right.
- *
- * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous
- * prefixes are rejected correctly.  Use this when multiple formals must be found
- * simultaneously so that named-arg binding is consistent across all formals.
+ * Binds call arguments to formal parameter names using R's matching rules: exact name, then partial (pmatch) name, then remaining unnamed args left-to-right.
+ * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous prefixes are rejected.
  */
 export function bindArgs<OtherInfo>(
 	args:       readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
@@ -145,11 +131,7 @@ export function bindArgs<OtherInfo>(
 	return bound;
 }
 
-/**
- * Resolves a single already-found argument (e.g. from {@link bindArgs}) to an
- * {@link EnvirResolution} when the argument is a symbol that holds a tracked envState.
- * Returns `undefined` when the arg is empty, non-symbolic, or unresolved.
- */
+/** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */
 export function resolveArgToEnvir<OtherInfo>(
 	arg:  PotentiallyEmptyRArgument<OtherInfo & ParentInformation>,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -158,26 +140,36 @@ export function resolveArgToEnvir<OtherInfo>(
 		return undefined;
 	}
 	const node = unpackArg(arg);
+	// `.GlobalEnv`/`.BaseEnv` or a `globalenv()`/`baseenv()`/`emptyenv()` call resolves to the corresponding stack env
+	const stackEnv = resolveNodeToStackEnv(node, data);
+	if(stackEnv !== undefined && node !== undefined) {
+		return stackEnvirResolution(stackEnv, node.info.id, node.lexeme ?? '', data);
+	}
 	if(node?.type !== RType.Symbol) {
 		return undefined;
 	}
 	return resolveDefsToEnvirResolution(resolveByName(node.content, data.environment, ReferenceType.Variable), node.info.id, data);
 }
 
-/**
- * Scans `args` for an argument named `argName` (default `'envir'`), or - when
- * `positionalFallbackIndex` is given - for the arg at that positional index when
- * no named match is found.  When the resolved argument is a symbol that resolves
- * to a variable with a tracked {@link InGraphIdentifierDefinition#envState},
- * returns the resolved context; otherwise returns `undefined`.
- *
- * Named matching uses pmatch semantics: pass `allParamNames` (the full formal parameter
- * list) so ambiguous prefixes are rejected.  Defaults to `[argName]`, which allows
- * prefix matches for `argName` only.
- *
- * When multiple formals must be matched simultaneously (e.g. `data` and `expr` in `with`),
- * use {@link bindArgs} + {@link resolveArgToEnvir} instead so named binding is consistent.
- */
+/** Builds an {@link EnvirResolution} for an environment obtained directly (not via a holder variable), e.g. `globalenv()` / `.GlobalEnv`. */
+function stackEnvirResolution<OtherInfo>(
+	envState: REnvironmentInformation,
+	nodeId:   NodeId,
+	lexeme:   string,
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): EnvirResolution<OtherInfo> {
+	// no holder variable: envDef is only a carrier for envState/nodeId
+	const envDef = {
+		name:      lexeme as Identifier,
+		nodeId,
+		type:      ReferenceType.Variable,
+		definedAt: nodeId,
+		envState,
+	} as NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation };
+	return { envirData: { ...data, environment: envState }, envDef, envirNodeId: nodeId, isStackEnv: true };
+}
+
+/** Resolves the `argName` argument (default `'envir'`, pmatch against `allParamNames`), falling back to `positionalFallbackIndex`, to an {@link EnvirResolution}. */
 export function resolveEnvirArg<OtherInfo>(
 	args:                   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data:                   DataflowProcessorInformation<OtherInfo & ParentInformation>,
@@ -210,12 +202,7 @@ export function resolveEnvirArg<OtherInfo>(
 	return undefined;
 }
 
-/**
- * Resolves a symbol by name to an {@link EnvirResolution} when the symbol holds a tracked
- * environment.  Handles multiple reaching definitions (e.g. from if/else branches) by
- * merging their envStates - see {@link resolveDefsToEnvirResolution}.
- * Returns `undefined` when the name cannot be resolved or none of its definitions carry an envState.
- */
+/** Resolves a symbol by name to an {@link EnvirResolution} when it holds a tracked environment. */
 export function resolveSymbolToEnvir<OtherInfo>(
 	symbolName: Identifier,
 	nodeId:     NodeId,
@@ -224,11 +211,7 @@ export function resolveSymbolToEnvir<OtherInfo>(
 	return resolveDefsToEnvirResolution(resolveByName(symbolName, data.environment, ReferenceType.Variable), nodeId, data);
 }
 
-/**
- * After processing an expression that writes into a custom environment, moves the
- * written definitions from the caller's scope into `envDef`'s tracked `envState`
- * and re-defines the holder variable in the returned environment.
- */
+/** Moves definitions written into a custom environment from the caller's scope into `envDef`'s tracked `envState`, re-defining the holder variable. */
 export function routeWrittenToCustomEnv(
 	result:    DataflowInformation,
 	envDef:    NamedInGraphIdentifierDefinition & { envState: REnvironmentInformation },

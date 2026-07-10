@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, controlledPkgDb } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
@@ -16,6 +16,18 @@ describe('flowR linter', withTreeSitter(parser => {
 
 			assertLinter('multiple seeds', parser, 'set.seed(1);\nset.seed(2);\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 1, callsWithFunctionProducers: 1, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
 			assertLinter('multiple consumers', parser, 'set.seed(1);\nset.seed(2);\nrunif(1);\nrunif(1);', 'seeded-randomness', [], { consumerCalls: 2, callsWithFunctionProducers: 2, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 });
+		});
+
+		describe('a consumer resolved via a loaded package is still flagged', () => {
+			// regression: the loaded-package export must still count as a built-in call target
+			assertLinter('with a (controlled) package database', parser, 'library(stats)\nrunif(1)', 'seeded-randomness',
+				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }],
+				{ consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 },
+				{ pkgDb: controlledPkgDb('stats', ['runif']) });
+			assertLinter('without any package database', parser, 'library(stats)\nrunif(1)', 'seeded-randomness',
+				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }],
+				{ consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 },
+				{ noPkgDb: true });
 		});
 
 		describe('loops', () => {

@@ -423,7 +423,8 @@ to produce a new dataflow information to pass upwards in the fold. The ${ctx.lin
 * the ${ctx.link(DataflowGraph)} of the current subtree 
 * the currently active ${ctx.link('REnvironmentInformation')} as an abstraction of all active definitions linking to potential definition locations (see [Advanced R::Environments](https://adv-r.hadley.nz/environments.html))
 * control flow information in ${ctx.link('DataflowCfgInformation')} which is used to enrich the dataflow information with control flow information
-* and sets of currently ingoing (read), outgoing (write) and unknown ${ctx.link('IdentifierReference')}s.
+* sets of currently ingoing (read), outgoing (write) and unknown ${ctx.link('IdentifierReference')}s.
+* and a set of ${ctx.link('KillReference')}s which tracks variables that go out of scope within the current subtree (e.g., due to \`rm\`). Just like the reference sets above, kills are carried upwards in the fold so that the enclosing scope (expression list, branch, loop, or function body) can apply the removal (via ${ctx.link('applyKills')}) at the correct location, even when the \`rm\` happens nested within a branch or block. This also covers clearing the whole environment with \`rm(list=ls())\` and conservatively handling removals whose target cannot be resolved statically.
 
 While all of them are essentially empty when processing an “uninteresting leaf”, handling a constant is slightly more interesting with ${ctx.link(processValue)}:
 
@@ -496,7 +497,8 @@ During a large analysis, flowR may run into memory or time pressure.
 The _gas_ system provides per-feature resource guards that check the current heap usage and elapsed analysis time.
 
 Any analysis site queries the level with ${ctx.linkM(FlowrAnalyzerGasContext, 'checkGas')}, where \`key\` is a feature name.
-The call is a no-op when gas is disabled for that key.
+The call is a no-op when gas is disabled for that key and no gas plugins are registered.
+Heap statistics come from the \`v8\` module (Node.js, Electron, VS Code) or Chromium's \`performance.memory\` in browsers. If neither is available, gas skips the memory check and only the elapsed-time thresholds apply. Programmatic configs can supply a custom source via the \`heapProvider\` of the ${ctx.link('FlowrGasConfig')} (\`config.gas.heapProvider\`), and gas plugins can override levels entirely.
 
 | Level                    | Value | Description                         |
 |:-------------------------|------:|:------------------------------------|
@@ -536,6 +538,10 @@ is at 35% (= 0.7 / 2) instead of 70%.
 ### Known Feature Keys
 
 ${ctx.doc('GasFeatureKey')}
+
+| Key | Description |
+|:----|:------------|
+${Object.entries(GasFeatureKey).map(([name, key]) => `| \`${key}\` | ${ctx.doc(`GasFeatureKey::${name}`)} |`).join('\n')}
 
 You can search for \`ctx.gas.checkGas(\` in the source to locate every active check site.
 

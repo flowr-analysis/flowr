@@ -85,7 +85,7 @@ export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
  * }
  * print(x)
  * ```
- * Requesting the origin of `x` in the `print(x)` node yields two {@link SimpleOriginOrigin|variable origins} for both
+ * Requesting the origin of `x` in the `print(x)` node yields two {@link SimpleOrigin|variable origins} for both
  * definitions of `x`.
  * Similarly, requesting the origin of `print` returns a {@link BuiltInFunctionOrigin|`BuiltInFunctionOrigin`}.
  *

@@ -85,6 +85,7 @@ import {
 import type { ProvenanceQuery } from './catalog/provenance-query/provenance-query-format';
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
+import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 
 /**
@@ -116,6 +117,7 @@ export type Query = CallContextQuery
 	| LinterQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
+	| DiceQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -183,7 +185,8 @@ export const SupportedQueries = {
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
 	'origin':               OriginQueryDefinition,
-	'linter':               LinterQueryDefinition
+	'linter':               LinterQueryDefinition,
+	'dice':                 DiceQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;

@@ -56,6 +56,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
@@ -64,6 +65,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 2,
 							col:  1
@@ -78,6 +80,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
@@ -86,6 +89,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 2,
 							col:  1
@@ -100,6 +104,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 1,
 							col:  1
@@ -108,6 +113,7 @@ print(x)
 					{
 						options:  new Map<string, string>(),
 						code:     'Hello World\n',
+						header:   '',
 						startpos: {
 							line: 5,
 							col:  1
@@ -129,6 +135,7 @@ print(x)
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
 				{
+					header:   '{r}',
 					code:     'test <- 42\ncat(test)\n',
 					options:  new Map<string, string>(),
 					startpos: {
@@ -137,6 +144,7 @@ print(x)
 					},
 				},
 				{
+					header:   '{r abc}',
 					code:     'x <- "Hello World"\n',
 					options:  new Map<string, string>(),
 					startpos: {
@@ -145,6 +153,7 @@ print(x)
 					},
 				},
 				{
+					header:   '{r ops, echo=FALSE}',
 					code:     '  cat("Hi")\n',
 					options:  new Map<string, string>([['echo', 'FALSE']]),
 					startpos: {
@@ -153,6 +162,7 @@ print(x)
 					},
 				},
 				{
+					header:   '{r, echo=FALSE}',
 					code:     '#| cache=FALSE\ncat(test)\n',
 					options:  new Map<string, string>([['echo', 'FALSE'], ['cache', 'FALSE']]),
 					startpos: {
@@ -161,6 +171,7 @@ print(x)
 					},
 				},
 				{
+					header:   '{r, test}',
 					code:     'v <- c(1,2,3)\n',
 					options:  new Map<string, string>(),
 					startpos: {
@@ -188,6 +199,7 @@ print(42)
 		assert.deepEqual({ blocks: data.rmd.blocks, options: data.rmd.options }, {
 			blocks: [
 				{
+					header:   '{r}',
 					code:     'print(42)\n',
 					options:  new Map<string, string>(),
 					startpos: {
@@ -224,6 +236,7 @@ print(42)
 				{
 					code:     'print(42)\n',
 					options:  new Map<string, string>(),
+					header:   '{r}',
 					startpos: {
 						col:  0,
 						line: 3,
@@ -232,5 +245,34 @@ print(42)
 			],
 			options: {}
 		});
+	});
+
+	test('do not use block with eval=FALSE', () => {
+		const data = FlowrRMarkdownFile.from(new FlowrInlineTextFile('foo.Rmd', `
+\`\`\`{r eval=FALSE}
+print(42)
+\`\`\`
+
+
+\`\`\`{r eval=F}
+print(42)
+\`\`\`
+
+\`\`\`{r}
+print(42)
+\`\`\`
+		`), new FlowrAnalyzerContext(FlowrConfig.default(), new Map()));
+
+		assert.deepEqual(data.executableCells, [
+			{
+				header:   '{r}',
+				code:     'print(42)\n',
+				options:  new Map<string, string>(),
+				startpos: {
+					col:  0,
+					line: 12,
+				}
+			}
+		]);
 	});
 });

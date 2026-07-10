@@ -9,7 +9,7 @@ import { slicerLogger } from '../static/static-slicer';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 
 /** Either `line:column`, `line@variable-name`, or `$id` */
-export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId|number}`;
+export type SlicingCriterion = `${number}:${number}` | `${number}@${string}` | `$${NodeId | number}`;
 
 /**
  * The helper object associated with {@link SlicingCriterion} which makes it easy

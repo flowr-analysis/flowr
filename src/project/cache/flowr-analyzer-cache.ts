@@ -57,14 +57,23 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		this.callGraphCache = undefined;
 	}
 
+	/** Free the current parse trees: tree-sitter trees live on the WASM heap, which the GC does not reclaim. */
+	private disposeParse() {
+		const files = (this.peekParse() as unknown as { files?: readonly { parsed?: { delete?: () => void } }[] } | undefined)?.files;
+		for(const file of files ?? []) {
+			file.parsed?.delete?.();
+		}
+	}
+
 	public static create<Parser extends KnownParser>(data: FlowrAnalyzerCacheOptions<Parser>): FlowrAnalyzerCache<Parser> {
 		return new FlowrAnalyzerCache<Parser>(data);
 	}
 
 	public override receive(event: CacheInvalidationEvent): void {
-		super.receive(event);
 		switch(event.type) {
 			case CacheInvalidationEventType.Full:
+				this.disposeParse();
+				super.receive(event);
 				this.initCacheProviders();
 				break;
 			default:

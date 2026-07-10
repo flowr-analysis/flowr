@@ -66,9 +66,9 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
 	const hasUnderscores = identifier.includes('_');
-	const upperAfterAllScores = Array(identifier.length-1).keys().every(i =>
+	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i =>
 		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
-	const hasAnyUpperAfterLower = Array(identifier.length-1).keys().some(i =>
+	const hasAnyUpperAfterLower = Array(identifier.length - 1).keys().some(i =>
 		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
 		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
 

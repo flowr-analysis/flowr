@@ -15,7 +15,7 @@ import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
-import type { FlowrGasConfig } from './gas';
+import { type FlowrGasConfig, GasWikiRef } from './gas';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -132,12 +132,19 @@ export interface FlowrConfig extends MergeableRecord {
 		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
+		/** Whether to show dim inline hints (e.g. `:help`) on the empty prompt; automatically disabled on non-interactive terminals */
+		hints:           boolean;
 		/** Plugins to load in REPL mode */
 		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
+		/**
+		 * The packages considered part of R itself (`base` and `recommended`), used e.g. by the project query to
+		 * classify dependencies. If unset, flowR uses its built-in list ({@link RBaseAndRecommendedPackages}).
+		 */
+		basePackages?:             string[]
 	}
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
@@ -164,6 +171,15 @@ export interface FlowrConfig extends MergeableRecord {
 		 * When disabled all envir-style calls fall through to the conservative global treatment.
 		 */
 		readonly trackEnvironments: boolean
+		/** Resolving `library()`/`use()` exports from a package database (e.g. the bundled `flowr-pkgdb`). */
+		readonly pkgdb: {
+			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
+			readonly enabled:            boolean
+			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
+			readonly eagerlyLoad:        boolean
+			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
+			readonly eagerlyLoadExports: boolean
+		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -271,6 +287,9 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
+	'versions:pkgdb',
+	'versions:renv',
+	'versions:rv',
 	'loading-order:description',
 	'meta:description',
 	'files:vignette',
@@ -282,6 +301,7 @@ export const FlowrDefaultPlugins = [
 	'file:namespace',
 	'file:news',
 	'file:license',
+	'file:virtualenv',
 ] satisfies ConfigPlugin<string>[];
 
 /**
@@ -308,6 +328,7 @@ export const FlowrConfig = {
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
+				hints:           true,
 				plugins:         ['flowr:default'],
 			},
 			project: {
@@ -319,6 +340,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
+				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -370,10 +392,12 @@ export const FlowrConfig = {
 		repl:           Joi.object({
 			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
 			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			hints:           Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
-			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
+			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
+			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.')
 		}).description('Project specific configuration options.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
@@ -392,7 +416,12 @@ export const FlowrConfig = {
 			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
 			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
-			instrument:        Joi.object({
+			pkgdb:             Joi.object({
+				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a package database (default true); when false no database is consulted.'),
+				eagerlyLoad:        Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
+				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.')
+			}).description('Resolving library exports from a package database.'),
+			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
 			resolveSource: Joi.object({
@@ -429,8 +458,9 @@ export const FlowrConfig = {
 					critical:    Joi.number().min(0).optional().description('Elapsed ms above which Critical is returned.')
 				}).optional().description('Elapsed analysis time thresholds in milliseconds.')
 			}).optional().description('Shared thresholds for all gas checks (scaled by per-feature factor).'),
-			features: Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`.')
-		}).optional().description('Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard.')
+			features:     Joi.object().pattern(Joi.string(), Joi.number().min(0).optional()).optional().description('Per-feature sensitivity factors. 0 or absent disables gas checking for that feature. A factor of 2 makes the feature twice as sensitive. Recognised keys: `source`, `side-effect-linking`, `linter`.'),
+			heapProvider: Joi.function().optional().description('Custom heap statistics source (programmatic configs only), overriding the built-in v8/performance.memory detection.')
+		}).optional().description(`Resource-usage guard (gas) configuration. All feature factors default to 0 (disabled). See ${GasWikiRef}.`)
 	}).description('The configuration file format for flowR.'),
 	/**
 	 * Parses the given JSON string as a flowR config file, returning the resulting config object if the parsing and validation were successful, or `undefined` if there was an error.

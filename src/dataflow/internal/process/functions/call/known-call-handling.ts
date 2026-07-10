@@ -96,13 +96,14 @@ export function processKnownFunctionCall<OtherInfo>(
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}
 
+	const onlyBuiltin = data.builtInNoEnv === rootId;
 	finalGraph.addVertex({
 		tag:         VertexType.FunctionCall,
 		id:          rootId,
-		environment: data.environment,
+		environment: onlyBuiltin ? undefined : data.environment,
 		name:        functionCallName,
-		/* will be overwritten accordingly */
-		onlyBuiltin: false,
+		/* may still be overwritten by markAsOnlyBuiltIn */
+		onlyBuiltin,
 		cds:         data.cds,
 		args:        reverseOrder ? callArgs.toReversed() : callArgs,
 		origin:      origin === 'default' ? [BuiltInProcName.Function] : [origin]

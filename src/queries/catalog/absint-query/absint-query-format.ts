@@ -114,7 +114,7 @@ export const AbsintQueryDefinition = {
 	jsonFormatter: (queryResults: BaseQueryResult) => {
 		const { result: domains, ...out } = queryResults as QueryResults<'absint'>['absint'];
 		const state = domains instanceof AbstractDomain ? domains.value : domains;
-		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJson() ?? null]));
+		const json = state === Bottom ? state.description : Object.fromEntries(state.entries().map(([key, domain]) => [key, domain?.toJSON() ?? null]));
 		const result = { domains: json, ...out } as object;
 
 		return result;

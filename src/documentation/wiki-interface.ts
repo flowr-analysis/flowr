@@ -6,6 +6,7 @@ import { documentAllServerMessages } from './data/server/doc-data-server-message
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
+import { watchProtocol } from '../cli/repl/core';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -38,8 +39,7 @@ ${
 		type:    'NOTE',
 		content: `
 The default ${getCliLongOptionOf('flowr', 'server', false)} uses a simple [TCP](https://de.wikipedia.org/wiki/Transmission_Control_Protocol)
-connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.
-			`
+connection. If you want _flowR_ to expose a [WebSocket](https://de.wikipedia.org/wiki/WebSocket) server instead, add the ${getCliLongOptionOf('flowr', 'ws', false)} flag (i.e., ${multipleCliOptions('flowr', 'server', 'ws')}) when starting _flowR_ from the command line.`
 	})
 }
 
@@ -177,6 +177,11 @@ Many commands that allow for an R-expression (like ${ctx.replCmd('dataflow*')}) 
 if the argument starts with \`${fileProtocol}\`.
 If you are working from the root directory of the _flowR_ repository, the following gives you the parsed AST of the example file using the ${ctx.replCmd('parse')} command:
 
+> **Watch mode**: Replace \`${fileProtocol}\` with \`${watchProtocol}\` to enter watch mode.
+> flowR runs the command immediately and then re-runs it every time the file (or any file inside the folder) changes.
+> Enter any other command to leave watch mode.
+> For example: \`:df ${watchProtocol}analysis.R\`
+
 ${await documentReplSession(parser, [{
 	command:     `:parse ${fileProtocol}test/testfiles/example.R`,
 	description: `Retrieve the parsed AST of the example file.
@@ -259,6 +264,7 @@ ${codeBlock('json', JSON.stringify(
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
+				hints:           true,
 				plugins:         ['flowr:default']
 			},
 			project: {
@@ -269,6 +275,7 @@ ${codeBlock('json', JSON.stringify(
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
+				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,

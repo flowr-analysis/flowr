@@ -8,6 +8,7 @@ import {
 	, requestAnalysisMessage } from './messages/message-analysis';
 import { type SliceRequestMessage, type SliceResponseMessage, requestSliceMessage } from './messages/message-slice';
 import type { FlowrErrorMessage } from './messages/message-error';
+import type { IdMessageBase } from './messages/all-messages';
 import type { Socket } from './net';
 import { serverLog } from './server';
 import type { ILogObj, Logger } from 'tslog';
@@ -79,6 +80,8 @@ export class FlowRServerConnection {
 	}
 
 	private currentMessageBuffer = '';
+	/* requests of a single client share one analyzer, so we handle them one after another to avoid racing on it */
+	private requestQueue: Promise<void> = Promise.resolve();
 	private handleData(message: string) {
 		if(!message.endsWith('\n')) {
 			this.currentMessageBuffer += message;
@@ -96,27 +99,32 @@ export class FlowRServerConnection {
 			answerForValidationError(this.socket, request);
 			return;
 		}
-		switch(request.message.type) {
+		this.requestQueue = this.requestQueue
+			.then(() => this.dispatch(request.message))
+			.catch(e => {
+				this.logger.error(`[${this.name}] Error while handling request: ${String(e)}`);
+			});
+	}
+
+	private dispatch(message: IdMessageBase): Promise<void> {
+		switch(message.type) {
 			case 'request-file-analysis':
-				void this.handleFileAnalysisRequest(request.message as FileAnalysisRequestMessage);
-				break;
+				return this.handleFileAnalysisRequest(message as FileAnalysisRequestMessage);
 			case 'request-slice':
-				this.handleSliceRequest(request.message as SliceRequestMessage);
-				break;
+				return this.handleSliceRequest(message as SliceRequestMessage);
 			case 'request-repl-execution':
-				this.handleRepl(request.message as ExecuteRequestMessage);
-				break;
+				return this.handleRepl(message as ExecuteRequestMessage);
 			case 'request-query':
-				this.handleQueryRequest(request.message as QueryRequestMessage);
-				break;
+				return this.handleQueryRequest(message as QueryRequestMessage);
 			default:
 				sendMessage<FlowrErrorMessage>(this.socket, {
-					id:     request.message.id,
+					id:     message.id,
 					type:   'error',
 					fatal:  true,
-					reason: `The message type ${JSON.stringify(request.message.type as string | undefined ?? 'undefined')} is not supported.`
+					reason: `The message type ${JSON.stringify(message.type as string | undefined ?? 'undefined')} is not supported.`
 				});
 				this.socket.end();
+				return Promise.resolve();
 		}
 	}
 
@@ -187,7 +195,6 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -200,22 +207,25 @@ export class FlowRServerConnection {
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
 			});
-		} else if(message.format === 'compact') {
-			sendMessage<FileAnalysisResponseMessageCompact>(this.socket, {
-				type:    'response-file-analysis',
-				format:  'compact',
-				id:      message.id,
-				cfg:     cfg ? compact(cfg) : undefined,
-				results: compact(sanitizedResults)
-			});
 		} else {
-			sendMessage(this.socket, {
-				type:    'response-file-analysis',
-				format:  'json',
-				id:      message.id,
-				cfg,
-				results: sanitizedResults
-			});
+			const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
+			if(message.format === 'compact') {
+				sendMessage<FileAnalysisResponseMessageCompact>(this.socket, {
+					type:    'response-file-analysis',
+					format:  'compact',
+					id:      message.id,
+					cfg:     cfg ? compact(cfg) : undefined,
+					results: compact(sanitizedResults)
+				});
+			} else {
+				sendMessage(this.socket, {
+					type:    'response-file-analysis',
+					format:  'json',
+					id:      message.id,
+					cfg,
+					results: sanitizedResults
+				});
+			}
 		}
 	}
 
@@ -251,7 +261,7 @@ export class FlowRServerConnection {
 		return analyzer;
 	}
 
-	private handleSliceRequest(base: SliceRequestMessage) {
+	private async handleSliceRequest(base: SliceRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestSliceMessage);
 		if(requestResult.type === 'error') {
 			answerForValidationError(this.socket, requestResult, base.id);
@@ -272,12 +282,13 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		void fileInformation.analyzer.query([{
-			type:            'static-slice',
-			criteria:        request.criterion,
-			noMagicComments: request.noMagicComments,
-			direction:       request.direction
-		}]).then(result => {
+		try {
+			const result = await fileInformation.analyzer.query([{
+				type:            'static-slice',
+				criteria:        request.criterion,
+				noMagicComments: request.noMagicComments,
+				direction:       request.direction
+			}]);
 			sendMessage<SliceResponseMessage>(this.socket, {
 				type:    'response-slice',
 				id:      request.id,
@@ -286,7 +297,7 @@ export class FlowRServerConnection {
 						.filter(([k]) => DEFAULT_SLICING_PIPELINE.steps.get(k)?.executed === PipelineStepStage.OncePerRequest)
 				) as SliceResponseMessage['results']
 			});
-		}).catch(e => {
+		} catch(e) {
 			this.logger.error(`[${this.name}] Error while analyzing file for token ${request.filetoken}: ${String(e)}`);
 			sendMessage<FlowrErrorMessage>(this.socket, {
 				id:     request.id,
@@ -294,11 +305,11 @@ export class FlowRServerConnection {
 				fatal:  false,
 				reason: `Error while analyzing file for token ${request.filetoken}: ${String(e)}`
 			});
-		});
+		}
 	}
 
 
-	private handleRepl(base: ExecuteRequestMessage) {
+	private async handleRepl(base: ExecuteRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestExecuteReplExpressionMessage);
 
 		if(requestResult.type === 'error') {
@@ -322,21 +333,20 @@ export class FlowRServerConnection {
 			.setParser(this.parser)
 			.buildSync();
 
-		void replProcessAnswer(analyzer, {
+		await replProcessAnswer(analyzer, {
 			formatter: request.ansi ? ansiFormatter : voidFormatter,
 			stdout:    msg => out('stdout', msg),
 			stderr:    msg => out('stderr', msg)
 		}, request.expression,
 		this.allowRSessionAccess
-		).then(() => {
-			sendMessage<ExecuteEndMessage>(this.socket, {
-				type: 'end-repl-execution',
-				id:   request.id
-			});
+		);
+		sendMessage<ExecuteEndMessage>(this.socket, {
+			type: 'end-repl-execution',
+			id:   request.id
 		});
 	}
 
-	private handleQueryRequest(base: QueryRequestMessage) {
+	private async handleQueryRequest(base: QueryRequestMessage): Promise<void> {
 		const requestResult = validateMessage(base, requestQueryMessage);
 
 		if(requestResult.type === 'error') {
@@ -358,13 +368,14 @@ export class FlowRServerConnection {
 			return;
 		}
 
-		void Promise.resolve(fileInformation.analyzer.query(request.query)).then(results => {
+		try {
+			const results = await fileInformation.analyzer.query(request.query);
 			sendMessage<QueryResponseMessage>(this.socket, {
 				type: 'response-query',
 				id:   request.id,
 				results
 			});
-		}).catch(e => {
+		} catch(e) {
 			this.logger.error(`[${this.name}] Error while executing query: ${String(e)}`);
 			sendMessage<FlowrErrorMessage>(this.socket, {
 				id:     request.id,
@@ -372,7 +383,7 @@ export class FlowRServerConnection {
 				fatal:  false,
 				reason: `Error while executing query: ${String(e)}`
 			});
-		});
+		}
 	}
 }
 

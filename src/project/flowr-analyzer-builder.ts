@@ -184,6 +184,9 @@ export class FlowrAnalyzerBuilder {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
+		if(this.flowrConfig.solver.pkgdb.enabled && this.flowrConfig.solver.pkgdb.eagerlyLoad) {
+			context.deps.eagerlyLoadPackageDatabases();
+		}
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,
 			context,

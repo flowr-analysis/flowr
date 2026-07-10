@@ -63,6 +63,14 @@ To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
 	;
 
 	wikiFaq.withTopic('flowr.use')
+		.addFaq('How to *watch* a file for changes in the REPL?', `
+Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
+flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
+Press Ctrl+C or enter any other command to leave watch mode.
+${codeBlock('shell', ':df watch://path/to/analysis.R')}
+For a folder, flowR uses the same project discovery as with \`file://\`:
+${codeBlock('shell', ':query @linter watch://path/to/project')}
+`)
 		.addFaq('How to *query* an R project?', `
 For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
 If you want to create your own project using flowR as a library, check out the
@@ -90,6 +98,9 @@ relevant documentation. If you don't know the origin of the package, you can use
 🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
+`)
+		.addFaq('How does flowR know a *package\'s exports*?', `
+See the ${ctx.linkPage('wiki/Package Database', 'Package Database')} wiki page.
 `)
 	;
 

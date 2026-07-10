@@ -150,7 +150,7 @@ export class BoundedSetDomain<T, Value extends BoundedSetLift<T> = BoundedSetLif
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
+	public toJSON(): unknown {
 		if(this.value === Top) {
 			return this.value.description;
 		}

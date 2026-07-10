@@ -77,7 +77,7 @@ export function diffEnvironment<Report extends WriteableDifferenceReport>(a: IEn
 		});
 	}
 	diffMemory(a, b, { ...info, position: `${info.position}[at level: ${depth}] ` });
-	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth--);
+	diffEnvironment(a.parent, b.parent, { ...info, position: `${info.position}Parents of ${a.id} & ${b.id}. ` }, depth - 1);
 }
 
 /**

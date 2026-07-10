@@ -26,7 +26,7 @@ const protocolTaint = (path: unknown) =>
 	typeof path === 'string' && NetworkProtocolRegex.test(path) ? NetworkInput : FileInput;
 
 export const securityAnalysis = new TaintAnalysisDefinition('security', securityDomain)
-	.through([
+	.from([
 		{
 			identifier: UserFunctions,
 			taint:      UserInput

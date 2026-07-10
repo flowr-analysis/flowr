@@ -132,12 +132,19 @@ export interface FlowrConfig extends MergeableRecord {
 		quickStats:      boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
 		dfProcessorHeat: boolean;
+		/** Whether to show dim inline hints (e.g. `:help`) on the empty prompt; automatically disabled on non-interactive terminals */
+		hints:           boolean;
 		/** Plugins to load in REPL mode */
 		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
+		/**
+		 * The packages considered part of R itself (`base` and `recommended`), used e.g. by the project query to
+		 * classify dependencies. If unset, flowR uses its built-in list ({@link RBaseAndRecommendedPackages}).
+		 */
+		basePackages?:             string[]
 	}
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
@@ -321,6 +328,7 @@ export const FlowrConfig = {
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
+				hints:           true,
 				plugins:         ['flowr:default'],
 			},
 			project: {
@@ -384,10 +392,12 @@ export const FlowrConfig = {
 		repl:           Joi.object({
 			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
 			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			hints:           Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
-			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.')
+			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
+			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.')
 		}).description('Project specific configuration options.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({

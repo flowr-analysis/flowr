@@ -264,6 +264,7 @@ ${codeBlock('json', JSON.stringify(
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
+				hints:           true,
 				plugins:         ['flowr:default']
 			},
 			project: {

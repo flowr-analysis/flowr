@@ -75,9 +75,6 @@ export const ROXYGEN_ARGS = {
 						const functionParamNames = getParameters(element.node).map(p => p.name.content.toString());
 						const inheritedParams = params.filter(tag => tag.inherited).map(tag => tag.value.name);
 						const roxygenParamNames = params.map(tag => tag.value.name);
-						if(functionParamNames === null || roxygenParamNames == null){
-							return false;
-						}
 						const result = calculateArgumentDiff(inheritedParams ?? [], functionParamNames, roxygenParamNames);
 						if(result === false){
 							return false;

@@ -811,6 +811,12 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 	 * @see {@link ControlFlowGraph#removeEdge|removeEdge()} - to remove a specific edge
 	 */
 	removeVertex(id: NodeId): this {
+		for(const to of this.edgeInfos.get(id)?.keys() ?? []) {
+			this.revEdgeInfos.get(to)?.delete(id);
+		}
+		for(const from of this.revEdgeInfos.get(id)?.keys() ?? []) {
+			this.edgeInfos.get(from)?.delete(id);
+		}
 		this.vtxInfos.delete(id);
 		this.edgeInfos.delete(id);
 		this.revEdgeInfos.delete(id);
@@ -820,12 +826,6 @@ export class ControlFlowGraph<Vertex extends CfgVertex = CfgVertex> implements R
 			if(b === id) {
 				this.bbChildren.delete(a);
 			}
-		}
-		for(const edges of this.edgeInfos.values()) {
-			edges.delete(id);
-		}
-		for(const edges of this.revEdgeInfos.values()) {
-			edges.delete(id);
 		}
 		this.roots.delete(id);
 		return this;

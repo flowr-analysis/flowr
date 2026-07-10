@@ -249,8 +249,7 @@ export class Environment implements IEnvironment {
 				const updated: IdentifierDefinition[] = old?.slice() ?? [];
 				for(const v of values) {
 					const { nodeId, definedAt } = v;
-					const index = updated.find(o => o.nodeId === nodeId && o.definedAt === definedAt);
-					if(index) {
+					if(updated.some(o => o.nodeId === nodeId && o.definedAt === definedAt)) {
 						continue;
 					}
 					if(applyCds === undefined) {

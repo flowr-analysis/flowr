@@ -267,10 +267,11 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 			// walk the directory and find the first match
 			const dir = path.dirname(p);
+			const dirLower = dir.toLowerCase();
 			const file = path.basename(p).toLowerCase();
 			// try to find in local known files first
 			for(const f of this.files.keys()) {
-				if(path.dirname(f).toLowerCase() !== dir.toLowerCase()) {
+				if(path.dirname(f).toLowerCase() !== dirLower) {
 					continue;
 				}
 				const lf = path.basename(f).toLowerCase();

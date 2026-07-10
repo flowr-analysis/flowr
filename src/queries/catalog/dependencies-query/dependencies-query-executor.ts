@@ -76,7 +76,7 @@ export async function executeDependenciesQuery({
 		}
 	}
 
-	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
+	const queryResults = !functions.values().toArray().some(f => f.length > 0) ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().flatMap(makeCallContextQuery).toArray());
 	const g = getAllCategories(queries);
 	const enabled = query.enabledCategories;

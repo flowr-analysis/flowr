@@ -195,7 +195,6 @@ export class FlowRServerConnection {
 		}
 
 		const config = (): QuadSerializationConfiguration => ({ context: message.filename ?? 'unknown', getId: defaultQuadIdGenerator() });
-		const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
 		if(message.format === 'n-quads') {
 			sendMessage<FileAnalysisResponseMessageNQuads>(this.socket, {
 				type:    'response-file-analysis',
@@ -208,22 +207,25 @@ export class FlowRServerConnection {
 					dataflow:  await printStepResult(STATIC_DATAFLOW, await analyzer.dataflow(), StepOutputFormat.RdfQuads, config())
 				}
 			});
-		} else if(message.format === 'compact') {
-			sendMessage<FileAnalysisResponseMessageCompact>(this.socket, {
-				type:    'response-file-analysis',
-				format:  'compact',
-				id:      message.id,
-				cfg:     cfg ? compact(cfg) : undefined,
-				results: compact(sanitizedResults)
-			});
 		} else {
-			sendMessage(this.socket, {
-				type:    'response-file-analysis',
-				format:  'json',
-				id:      message.id,
-				cfg,
-				results: sanitizedResults
-			});
+			const sanitizedResults = sanitizeAnalysisResults(await analyzer.parse(), await analyzer.normalize(), await analyzer.dataflow());
+			if(message.format === 'compact') {
+				sendMessage<FileAnalysisResponseMessageCompact>(this.socket, {
+					type:    'response-file-analysis',
+					format:  'compact',
+					id:      message.id,
+					cfg:     cfg ? compact(cfg) : undefined,
+					results: compact(sanitizedResults)
+				});
+			} else {
+				sendMessage(this.socket, {
+					type:    'response-file-analysis',
+					format:  'json',
+					id:      message.id,
+					cfg,
+					results: sanitizedResults
+				});
+			}
 		}
 	}
 

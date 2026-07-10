@@ -136,5 +136,7 @@ export enum NumericalComparator {
 export enum SetComparator {
 	Equal,
 	Subset,
-	SubsetOrEqual
+	SubsetOrEqual,
+	Intersect,
+	NoIntersect
 }

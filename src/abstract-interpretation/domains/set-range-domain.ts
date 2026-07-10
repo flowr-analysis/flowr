@@ -1,6 +1,6 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
-import { Ternary } from '../../util/logic';
+import { Ternary, TernaryLogic } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top, TopSymbol } from './lattice';
 import { SetComparator, type SetDomain } from './value-abstract-domain';
@@ -351,6 +351,15 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 				}
 				return Ternary.Never;
 			}
+			case SetComparator.Intersect: {
+				if(this.isInfinite() || (this.isFinite() && [...set].some(value => this.may.has(value)))) {
+					return (this.isValue() && [...set].some(value => this.must.has(value))) ? Ternary.Always : Ternary.Maybe;
+				}
+				return Ternary.Never;
+			}
+			case SetComparator.NoIntersect: {
+				return TernaryLogic.negate(this.satisfies(set, SetComparator.Intersect));
+			}
 			default: {
 				assertUnreachable(comparator);
 			}
@@ -409,5 +418,9 @@ export class SetRangeDomain<T, Value extends SetRangeLift<T> = SetRangeLift<T>>
 
 	public isFinite(): this is this & SetRangeDomain<T, SetRangeFinite<T>> {
 		return this.isValue() && this.may !== Top;
+	}
+
+	public isInfinite(): this is this & SetRangeDomain<T, { readonly must: ReadonlySet<T>, readonly may: typeof Top }> {
+		return this.isValue() && this.may === Top;
 	}
 }

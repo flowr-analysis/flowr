@@ -1,6 +1,6 @@
 import { assertUnreachable } from '../../util/assert';
 import { setEquals } from '../../util/collections/set';
-import { Ternary } from '../../util/logic';
+import { Ternary, TernaryLogic } from '../../util/logic';
 import { AbstractDomain, DEFAULT_INFERENCE_LIMIT } from './abstract-domain';
 import { Bottom, Top } from './lattice';
 import { type SetDomain, SetComparator } from './value-abstract-domain';
@@ -146,6 +146,15 @@ export class SetUpperBoundDomain<T, Value extends SetUpperBoundLift<T> = SetUppe
 					return Ternary.Maybe;
 				}
 				return Ternary.Never;
+			}
+			case SetComparator.Intersect: {
+				if(this.isTop() || this.isValue() && [...set].some(value => this.value.has(value))) {
+					return Ternary.Maybe;
+				}
+				return Ternary.Never;
+			}
+			case SetComparator.NoIntersect: {
+				return TernaryLogic.negate(this.satisfies(set, SetComparator.Intersect));
 			}
 			default: {
 				assertUnreachable(comparator);

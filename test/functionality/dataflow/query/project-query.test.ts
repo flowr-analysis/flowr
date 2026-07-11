@@ -138,8 +138,14 @@ describe.sequential('Add a locally installed package to a pkgdb database', withT
 		fs.rmSync(tmp, { recursive: true, force: true });
 	});
 
-	function installPackage(root: string, name: string, description: string, namespace: string): string {
-		const dir = fs.mkdtempSync(path.join(root, name + '-'));
+	function installPackage(root: string, name: string, description: string, namespace: string, dirName?: string): string {
+		let dir: string;
+		if(dirName !== undefined) {
+			dir = path.join(root, dirName);
+			fs.mkdirSync(dir, { recursive: true });
+		} else {
+			dir = fs.mkdtempSync(path.join(root, name + '-'));
+		}
 		fs.writeFileSync(path.join(dir, 'DESCRIPTION'), `Package: ${name}\n${description}`);
 		fs.writeFileSync(path.join(dir, 'NAMESPACE'), namespace);
 		return dir;
@@ -164,7 +170,9 @@ describe.sequential('Add a locally installed package to a pkgdb database', withT
 
 	test(label('reads every package in a library folder and skips a broken one', [], ['other']), async() => {
 		const lib = fs.mkdtempSync(path.join(tmp, 'lib-'));
-		installPackage(lib, 'pkgA', 'Version: 1.0.0\n', 'export(a)\n');
+		// pkgA lives in a folder whose name merely *contains* "rv": it must still be discovered (only folders
+		// named exactly rv/renv/node_modules/... are ignored). This used to be dropped intermittently.
+		installPackage(lib, 'pkgA', 'Version: 1.0.0\n', 'export(a)\n', 'pkgA.survey-1.0.0');
 		installPackage(lib, 'pkgB', 'Version: 2.0.0\n', 'export(b1)\nexport(b2)\n');
 		// a directory without a DESCRIPTION must not abort the run
 		fs.mkdirSync(path.join(lib, 'not-a-package'));

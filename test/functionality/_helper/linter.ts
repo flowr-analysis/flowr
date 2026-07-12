@@ -34,12 +34,15 @@ import type { PkgDb } from '../../../src/project/plugins/package-version-plugins
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
 export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], pkgDb?: PkgDbSource, noPkgDb?: boolean };
 
-/** a minimal in-memory `latest`-scope package database exporting `exports` from `pkg` (so tests do not rely on the bundled one) */
-export function controlledPkgDb(pkg: string, exports: readonly string[]): PkgDb {
+/** a minimal in-memory `latest`-scope package database exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
+export function controlledPkgDb(pkgs: Record<string, readonly string[]>): PkgDb;
+export function controlledPkgDb(pkg: string, exports: readonly string[]): PkgDb;
+export function controlledPkgDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PkgDb {
+	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
 	return {
 		format:  'flowr-pkgdb', schema:  4, scope:   'latest',
-		content: { version: 1, date: '2026-01-01', hash: 'x', generated: 0, packages: 1, versions: 1 },
-		strings: [], pkgs:    { [pkg]: ['1.0.0', [...exports]] }
+		content: { version: 1, date: '2026-01-01', hash: 'x', generated: 0, packages: Object.keys(pkgs).length, versions: 1 },
+		strings: [], pkgs:    Object.fromEntries(Object.entries(pkgs).map(([n, e]) => [n, ['1.0.0', [...e]]]))
 	};
 }
 

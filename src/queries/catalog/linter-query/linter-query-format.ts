@@ -186,5 +186,14 @@ function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, res
 }
 
 function renderMetaData(metadata: object): string {
-	return Object.entries(metadata).map(r => `${r[0]}: ${JSON.stringify(r[1])}`).join(', ');
+	return Object.entries(metadata).map(([k, v]) => `${k}: ${renderMetaValue(v)}`).join(', ');
+}
+
+/** Render a metadata value; a nested object (e.g. suppression counts) becomes `(key=value, ...)`, omitting zero counts (`0` if all zero). */
+function renderMetaValue(value: unknown): string {
+	if(value !== null && typeof value === 'object' && !Array.isArray(value)) {
+		const nonZero = Object.entries(value).filter(([, v]) => v !== 0);
+		return nonZero.length === 0 ? '0' : `(${nonZero.map(([k, v]) => `${k}=${renderMetaValue(v)}`).join(', ')})`;
+	}
+	return JSON.stringify(value);
 }

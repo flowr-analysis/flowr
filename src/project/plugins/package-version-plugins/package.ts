@@ -3,7 +3,7 @@ import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../context/flowr-file';
-import { parseRRange } from '../../../util/r-version';
+import { RRange } from '../../../util/r-version';
 
 export type PackageType = 'package' | 'system' | 'r';
 
@@ -44,18 +44,26 @@ export class Package {
 			return false;
 		}
 
-		if(name.includes('.')) {
-			const [genericSplit, classSplit] = name.split('.');
-			const classes = this.namespaceInfo.exportS3Generics.get(genericSplit);
-			return classes ? classes.includes(classSplit) : false;
-		}
-
+		// an explicit `generic`/`className` pair -> S3 method lookup
 		if(className) {
 			const classes = this.namespaceInfo.exportS3Generics.get(name);
 			return classes ? classes.includes(className) : false;
 		}
 
-		return this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name);
+		// a directly exported symbol/function - this also covers dotted plain exports such as
+		// `solve.QP`, `as.Date` or `read.csv` that are not S3 methods
+		if(this.namespaceInfo.exportedFunctions.includes(name) || this.namespaceInfo.exportedSymbols.includes(name)) {
+			return true;
+		}
+
+		// otherwise it may be an S3 method `generic.class` whose exported generic reconstructs it
+		if(name.includes('.')) {
+			const dot = name.indexOf('.');
+			const classes = this.namespaceInfo.exportS3Generics.get(name.slice(0, dot));
+			return classes ? classes.includes(name.slice(dot + 1)) : false;
+		}
+
+		return false;
 	}
 
 	s3For(generic: string): string[] {
@@ -115,13 +123,13 @@ export class Package {
 
 	public deriveVersion(): Range | undefined {
 		return this.versionConstraints.length > 0
-			? parseRRange(this.versionConstraints.map(c => c.raw).join(' '))
+			? RRange.parse(this.versionConstraints.map(c => c.raw).join(' '))
 			: undefined;
 	}
 
 	public static parsePackageVersionRange(constraint?: string, version?: string): Range | undefined {
 		if(version) {
-			return constraint ? parseRRange(constraint + version) : parseRRange(version);
+			return constraint ? RRange.parse(constraint + version) : RRange.parse(version);
 		} else {
 			return undefined;
 		}

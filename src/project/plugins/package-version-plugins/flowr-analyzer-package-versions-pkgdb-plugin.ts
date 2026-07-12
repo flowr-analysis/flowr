@@ -7,6 +7,7 @@ import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { PkgDatabase, defaultPkgDbPath, type PkgDb } from './pkgdb';
 import { log } from '../../../util/log';
 import { FileRole } from '../../context/flowr-file';
+import { isPkgDbEnabled } from '../../../config';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default pkgdb resolver) */
 export const PkgDbPluginName = 'flowr-analyzer-package-versions-pkgdb-plugin';
@@ -75,7 +76,7 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 	public process(ctx: FlowrAnalyzerContext): void {
 		this.databases = undefined;   // reload on (re)registration so config/source changes take effect
 		this.analyzerCtx = ctx;
-		if(ctx.config.solver.pkgdb.enabled) {
+		if(isPkgDbEnabled(ctx.config)) {
 			ctx.deps.addLazyResolver((name, existing) => this.resolve(name, existing));
 		}
 	}
@@ -97,6 +98,22 @@ export class FlowrAnalyzerPackageVersionsPkgDbPlugin extends FlowrAnalyzerPackag
 	/** metadata of the databases currently loaded (the synchronously available, non-URL sources) */
 	public override loadedDatabases(): PkgDbLoadedInfo[] {
 		return this.loadDatabases().map(db => ({ scope: db.scope, version: db.content.version, date: db.content.date }));
+	}
+
+	/** Packages in the loaded databases (respecting `self`-package exclusion) that export `name`. */
+	public override packagesExporting(name: string): readonly string[] {
+		if(!isPkgDbEnabled(this.analyzerCtx?.config)) {
+			return [];
+		}
+		const out = new Set<string>();
+		for(const db of this.loadDatabases()) {
+			for(const pkg of db.packagesExporting(name)) {
+				if(!this.isSelfPackage(pkg)) {
+					out.add(pkg);
+				}
+			}
+		}
+		return [...out];
 	}
 
 	/**

@@ -54,6 +54,42 @@ export interface ProcessKnownFunctionCallResult {
 }
 
 /**
+ * Which arguments of a call {@link markArgumentsAsNonStandardEvaluation|are non-standardly evaluated}:
+ * every argument, all but the (data) first one, or only the first one.
+ */
+export enum NseArguments {
+	/** every argument, e.g. the operands of a formula `~` or `aes(x, y)` */
+	All         = 'all',
+	/** all but the first, e.g. `subset(data, col > 1)` where the first argument is the data object */
+	AllButFirst = 'all-but-first',
+	/** only the first, e.g. the native routine name in `.C(routine, ...)` */
+	First       = 'first'
+}
+
+/**
+ * Marks the selected arguments - and everything within them - as {@link EdgeType.NonStandardEvaluation}
+ * (as `quote` does), so their nested symbols are recognised as non-standardly evaluated too.
+ */
+export function markArgumentsAsNonStandardEvaluation(
+	graph:              DataflowGraph,
+	rootId:             NodeId,
+	processedArguments: readonly (DataflowInformation | undefined)[],
+	which:              NseArguments
+): void {
+	const end = which === NseArguments.First ? 1 : processedArguments.length;
+	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
+		const arg = processedArguments[i];
+		if(arg === undefined) {
+			continue;
+		}
+		graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
+		for(const [vtx] of arg.graph.vertices(true)) {
+			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
+		}
+	}
+}
+
+/**
  * Marks the given arguments as being involved in R's non-standard evaluation.
  */
 export function markNonStandardEvaluationEdges(

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import zlib from 'zlib';
 import path from 'path';
+import { RVersion } from '../../../util/r-version';
 
 /*
  * Reader/writer for the `flowr-pkgdb` database (schema 4) produced by crawlr's `dump`.
@@ -351,6 +352,8 @@ export class PkgDatabase {
 	private readonly db:       PkgDb;
 	private readonly archived: Set<string>;
 	private readonly noncran:  Set<string>;
+	/** lazily-built reverse index `exported name -> packages exporting it` (of the latest version), see {@link packagesExporting} */
+	private reverseIndex?:     Map<string, string[]>;
 
 	public constructor(db: PkgDb) {
 		this.db = db;
@@ -395,6 +398,53 @@ export class PkgDatabase {
 
 	public has(pkg: string): boolean {
 		return this.db.pkgs[pkg] !== undefined;
+	}
+
+	/**
+	 * The latest version among `versions`: the one whose string equals the package's declared `latest` (the
+	 * CRAN-authoritative newest), or - if that is missing - the highest by {@link RVersion.compare|R's version
+	 * scheme} rather than array order. (The schema carries no per-version dates to sort by directly.)
+	 */
+	private latestVersion(versions: readonly PkgDbAllVersion[], latest: string): PkgDbAllVersion | undefined {
+		return versions.find(v => v[0] === latest)
+			?? versions.reduce<PkgDbAllVersion | undefined>((best, v) => best === undefined || RVersion.compare(v[0], best[0]) > 0 ? v : best, undefined);
+	}
+
+	/** The latest-version exported names of `pkg`, decoding the string pool (empty if unknown). */
+	private latestExports(pkg: string): string[] {
+		const entry = this.db.pkgs[pkg];
+		if(!entry) {
+			return [];
+		}
+		if(this.db.scope === 'latest') {
+			return this.decode((entry as PkgDbLatestEntry)[1]);
+		}
+		const [latest, versions] = entry as PkgDbAllEntry;
+		const vt = this.latestVersion(versions, latest);
+		return vt ? this.decode(this.db.lists[vt[1]]) : [];
+	}
+
+	/**
+	 * The packages that export `name` in their latest version, using a lazily-built and cached reverse index.
+	 * Used to hint which `library()` call might be missing for an otherwise-undefined symbol. The first call
+	 * builds the index over the whole database (~one pass); subsequent calls are O(1).
+	 */
+	public packagesExporting(name: string): readonly string[] {
+		if(this.reverseIndex === undefined) {
+			const index = new Map<string, string[]>();
+			for(const pkg in this.db.pkgs) {
+				for(const exported of this.latestExports(pkg)) {
+					const list = index.get(exported);
+					if(list === undefined) {
+						index.set(exported, [pkg]);
+					} else {
+						list.push(pkg);
+					}
+				}
+			}
+			this.reverseIndex = index;
+		}
+		return this.reverseIndex.get(name) ?? [];
 	}
 
 	private decode(list: readonly PkgDbItem[] | undefined): string[] {
@@ -443,7 +493,7 @@ export class PkgDatabase {
 		}
 		const [latest, versions, nc] = entry;
 		const vt = (version ? versions.find(v => v[0] === version) : undefined)
-			?? versions.find(v => v[0] === latest) ?? versions[versions.length - 1];
+			?? this.latestVersion(versions, latest);
 		if(!vt) {
 			return undefined;
 		}

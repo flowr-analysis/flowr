@@ -21,6 +21,11 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 		return [];
 	}
 
+	/** Packages known to this plugin that export `name` (empty for plugins without a database). */
+	public packagesExporting(_name: string): readonly string[] {
+		return [];
+	}
+
 	/** Eagerly parse and mount this plugin's databases up front (no-op for plugins without any). */
 	public preloadDatabasesSync(): void {}
 }

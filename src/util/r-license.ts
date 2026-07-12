@@ -1,7 +1,7 @@
 import type { Range } from 'semver';
 import { assertUnreachable, guard } from './assert';
 import { compactRecord } from './objects';
-import { parseRRange } from './r-version';
+import { RRange } from './r-version';
 
 export interface RLicenseInfo {
 	type:               'license',
@@ -130,7 +130,7 @@ function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 
 function makeRange(rangeStr: string): Range | undefined {
 	try {
-		return parseRRange(rangeStr);
+		return RRange.parse(rangeStr);
 	} catch{
 		return undefined;
 	}

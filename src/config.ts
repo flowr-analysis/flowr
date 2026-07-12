@@ -252,6 +252,11 @@ export interface FlowrConfig extends MergeableRecord {
 
 export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
 
+/** Whether library exports should be resolved from a package database (`solver.pkgdb.enabled`). */
+export function isPkgDbEnabled(config: FlowrConfig | undefined): boolean {
+	return config?.solver.pkgdb.enabled === true;
+}
+
 export interface TreeSitterEngineConfig extends MergeableRecord {
 	readonly type:                'tree-sitter'
 	/**
@@ -294,6 +299,7 @@ export const FlowrDefaultPlugins = [
 	'meta:description',
 	'files:vignette',
 	'files:test',
+	'files:inst',
 	'file:rmd',
 	'file:qmd',
 	'file:rnw',

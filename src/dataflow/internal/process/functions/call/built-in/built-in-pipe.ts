@@ -4,6 +4,8 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import { guard } from '../../../../../../util/assert';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { DataMaskingFunctionNames } from '../../../../../environments/data-masking-functions';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
@@ -131,6 +133,21 @@ export function processPipe<OtherInfo>(
 				type:   ReferenceType.Function
 			});
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
+		}
+
+		// when piping into a data-masking verb (`df %>% mutate(z = col)`) the data arrives through the pipe,
+		// so every *explicit* rhs argument names a column of the data: mark those subtrees NSE like the direct
+		// call would (the direct-call config skips arg 0 as the data, which the pipe supplies instead).
+		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
+			for(const arg of rhs.arguments) {
+				if(arg === EmptyArgument) {
+					continue;
+				}
+				RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
+					information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+					return false;
+				});
+			}
 		}
 
 	} else {

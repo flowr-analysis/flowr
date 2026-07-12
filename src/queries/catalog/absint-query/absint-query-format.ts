@@ -73,10 +73,6 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	}
 	const code = criteria ? line[2] : line[1];
 
-	if(code === undefined || code.length === 0) {
-		output.stderr(output.formatter.format('Missing R code to analyze', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
-		return { query: [] };
-	}
 	return {
 		query: {
 			type:      'absint',

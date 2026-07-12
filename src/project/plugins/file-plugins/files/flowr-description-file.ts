@@ -8,7 +8,7 @@ import { parseRLicense } from '../../../../util/r-license';
 import { Package, type PackageType } from '../../package-version-plugins/package';
 import { removeRQuotes } from '../../../../r-bridge/retriever';
 import type { SemVer } from 'semver';
-import { parseRVersion } from '../../../../util/r-version';
+import { RVersion } from '../../../../util/r-version';
 
 export type DCF = Map<string, string[]>;
 
@@ -79,7 +79,7 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 			return undefined;
 		}
 		const verStr = v[0].trim();
-		return parseRVersion(verStr);
+		return RVersion.parse(verStr);
 	}
 
 	/**

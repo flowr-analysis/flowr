@@ -5,6 +5,7 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { isPkgDbEnabled } from '../../config';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -36,6 +37,13 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Metadata of the package databases the version plugins currently have loaded.
 	 */
 	loadedPackageDatabases(): PkgDbLoadedInfo[];
+
+	/**
+	 * The names of known packages that export `name` (from the version plugins' package databases). Used to
+	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
+	 * available or the package db is disabled.
+	 */
+	packagesExporting(name: string): readonly string[];
 }
 
 /**
@@ -65,10 +73,23 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	}
 
 	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
-		if(!this.ctx.config.solver.pkgdb.enabled) {
+		if(!isPkgDbEnabled(this.ctx.config)) {
 			return [];
 		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
+	}
+
+	public packagesExporting(name: string): readonly string[] {
+		if(!isPkgDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		const out = new Set<string>();
+		for(const p of this.plugins) {
+			for(const pkg of p.packagesExporting(name)) {
+				out.add(pkg);
+			}
+		}
+		return [...out];
 	}
 
 	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */

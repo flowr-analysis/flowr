@@ -10,6 +10,8 @@ import { UnnamedFunctionCallPrefix } from '../internal/process/functions/call/un
 import { KnownHooks } from '../hooks';
 import { Identifier, PkgName } from './identifier';
 import { BuiltInProcName } from './built-in-proc-name';
+import { NseArguments } from '../internal/process/functions/call/known-call-handling';
+import { DataMaskingFunctionIdentifiers } from './data-masking-functions';
 
 /** Which stack environment an env-returning/-transforming builtin denotes (see {@link StackEnvBuiltins}). */
 export enum StackEnvKind {
@@ -151,11 +153,34 @@ export const DefaultBuiltinConfig = [
 		value:           ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], assumePrimitive: true },
 	{ type:            'constant', names:           [Identifier.from(['month.name', PkgName.Base])],
 		value:           ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'], assumePrimitive: true },
+	/* formula: operands are model terms/columns, not variables (NSE) */
+	{
+		type:            'function',
+		names:           [Identifier.from(['~', PkgName.Base])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { markArgsAsNSE: NseArguments.All },
+		assumePrimitive: false
+	},
+	/* data-masking: the non-data arguments name columns of the (first) data object, not variables (NSE) */
+	{
+		type:            'function',
+		names:           DataMaskingFunctionIdentifiers,
+		processor:       BuiltInProcName.Default,
+		config:          { markArgsAsNSE: NseArguments.AllButFirst },
+		assumePrimitive: false
+	},
+	/* data-masking without a data argument, e.g. `aes(x, y)` */
+	{
+		type:            'function',
+		names:           [Identifier.from(['aes', PkgName.GgPlot2]), Identifier.from(['aes_string', PkgName.GgPlot2]), Identifier.from(['vars', PkgName.GgPlot2])],
+		processor:       BuiltInProcName.DefaultReadAllArgs,
+		config:          { markArgsAsNSE: NseArguments.All },
+		assumePrimitive: false
+	},
 	{
 		type:  'function',
 		names: [
 			/* arithmetic & comparison operators (base) */
-			Identifier.from(['~', PkgName.Base]),
 			Identifier.from(['+', PkgName.Base]),   Identifier.from(['-', PkgName.Base]),
 			Identifier.from(['*', PkgName.Base]),   Identifier.from(['/', PkgName.Base]),
 			Identifier.from(['^', PkgName.Base]),   Identifier.from(['**', PkgName.Base]),
@@ -189,7 +214,7 @@ export const DefaultBuiltinConfig = [
 			Identifier.from(['as.data.frame', PkgName.Base]),
 			/* collections & data (base) */
 			Identifier.from(['unique', PkgName.Base]),     Identifier.from(['intersect', PkgName.Base]),
-			Identifier.from(['subset', PkgName.Base]),     Identifier.from(['match', PkgName.Base]),
+			Identifier.from(['match', PkgName.Base]),
 			Identifier.from(['which', PkgName.Base]),      Identifier.from(['any', PkgName.Base]),
 			Identifier.from(['length', PkgName.Base]),     Identifier.from(['expression', PkgName.Base]),
 			Identifier.from(['factor', PkgName.Base]),     Identifier.from(['missing', PkgName.Base]),
@@ -338,6 +363,8 @@ export const DefaultBuiltinConfig = [
 		config:    {
 			hasUnknownSideEffects: true,
 			forceArgs:             [true],
+			/* first arg names a native routine (useDynLib), not a variable */
+			markArgsAsNSE:         NseArguments.First,
 			treatAsFnCall:         {
 				'.Call':     ['.NAME'],
 				'.External': ['.NAME'],
@@ -566,13 +593,6 @@ export const DefaultBuiltinConfig = [
 		},
 		'.f':   { index: 1, name: '.fns' },
 		ignore: ['.names', '.unpack']
-	} },
-	{ type:      'function', names:     [Identifier.from(['filter', PkgName.Dplyr]), Identifier.from(['filter_out', PkgName.Janitor])], processor: BuiltInProcName.PurrrFormula, config:    {
-		args: {
-			'.x': { index: 0, name: '.data' },
-		},
-		'.f':   { index: 1, name: '...' },
-		ignore: ['.by', '.preserve']
 	} },
 	{ type:      'function', names:     [Identifier.from(['rename_with', PkgName.Dplyr])], processor: BuiltInProcName.PurrrFormula, config:    {
 		args: {

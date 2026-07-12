@@ -272,6 +272,7 @@ export const enum PkgName {
 	S7           = 'S7',
 	Soda         = 'SoDA',
 	Testthat     = 'testthat',
+	TidyR        = 'tidyr',
 	TinyPlot     = 'tinyplot',
 	TryCatchLog  = 'tryCatchLog',
 }

@@ -4,6 +4,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { PkgDatabase, PkgDbBuilder, cranBlobUrl, validatePkgDb, DefaultCranBase, type PkgDbAll } from '../../../../../src/project/plugins/package-version-plugins/pkgdb';
+import { RVersion } from '../../../../../src/util/r-version';
 
 const header = { format: 'flowr-pkgdb', schema: 4, content: { version: 1, date: '2026-05-23', hash: 'x', generated: 0, packages: 3, versions: 3 } };
 
@@ -84,6 +85,24 @@ describe('pkgdb database (schema 4)', () => {
 
 		test('unknown version falls back to latest', () => {
 			expect(db.lookup('p', '9.9.9')?.version).toBe('2.0');
+		});
+
+		test('compareRVersions follows R\'s numeric_version scheme', () => {
+			expect(RVersion.compare('0.4-9', '0.4.10')).toBeLessThan(0);
+			expect(RVersion.compare('1.10', '1.9')).toBeGreaterThan(0);
+			expect(RVersion.compare('1.0', '0.9-9')).toBeGreaterThan(0);
+			expect(RVersion.compare('1.2.3', '1.2.3')).toBe(0);
+		});
+
+		test('the latest version is picked by version scheme, not array order, when the latest field is stale', () => {
+			const b = new PkgDbBuilder();
+			b.addPackage('vp', { latest: 'bogus' });   // latest field matches no stored version
+			b.addVersion('vp', '2.0', { exported: ['new'], internal: [], deprecated: [], cran: true });
+			b.addVersion('vp', '10.0', { exported: ['newest'], internal: [], deprecated: [], cran: true });
+			b.addVersion('vp', '1.5', { exported: ['old'], internal: [], deprecated: [], cran: true });
+			const built = PkgDatabase.fromObject(b.build('all', { version: 1, date: '2026-05-23', generated: 0 }));
+			expect(built.lookup('vp')?.version).toBe('10.0');   // not '1.5' (the last array element)
+			expect(built.lookup('vp')?.exported).toEqual(['newest']);
 		});
 
 		test('optional definition locations round-trip for the latest version, absent otherwise', () => {

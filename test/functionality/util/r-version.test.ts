@@ -1,12 +1,12 @@
 import { assert, describe, test } from 'vitest';
 import { Range, SemVer } from 'semver';
-import { parseRRange, parseRVersion } from '../../../src/util/r-version';
+import { RVersion, RRange } from '../../../src/util/r-version';
 
 describe('R Version Utility', () => {
 	describe('Version', () => {
 		function check(...tests: readonly [give: string, want: string][]) {
 			test.each(tests)('parse %s', (version, expect) => {
-				const parsed = parseRVersion(version);
+				const parsed = RVersion.parse(version);
 				assert.strictEqual(parsed.str, version, `Original version string mismatch for input "${version}"`);
 				const other = new SemVer(expect);
 				assert.strictEqual(parsed.compare(other), 0, `Parsed version ${parsed.version} does not match expected ${other.format()}`);
@@ -35,7 +35,7 @@ describe('R Version Utility', () => {
 	describe('Range', () => {
 		function check(...tests: readonly [give: string, want: string][]) {
 			test.each(tests)('parse %s', (versionRange, expect) => {
-				const parsed = parseRRange(versionRange);
+				const parsed = RRange.parse(versionRange);
 				assert.strictEqual(parsed.str, versionRange, `Original version string mismatch for input "${versionRange}"`);
 				const other = new Range(expect);
 				assert.isTrue(parsed.intersects(other), `Parsed range ${parsed.raw} does not match expected ${other.raw}`);

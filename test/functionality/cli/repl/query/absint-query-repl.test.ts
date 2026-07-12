@@ -15,7 +15,12 @@ describe('Abstract Interpretation Query REPL Parser', () => {
 		label:         'only type',
 		line:          ['df-shape'],
 		expectedParse: {
-			query: []
+			query: {
+				type:      'absint',
+				inference: 'df-shape',
+				criteria:  undefined
+			},
+			rCode: undefined
 		},
 	});
 	assertReplParser({ parser,

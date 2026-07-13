@@ -348,9 +348,10 @@ export class RandomRCodeGenerator {
 	generateMatrix(maxNestingLevel: number): { value: string, type: string, len: number } {
 		const rows = this.rnd.int(3) + 1;
 		const cols = this.rnd.int(3) + 1;
-		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel, rows);
+		const len = rows * cols;
+		const elements = Array.from({ length: len }, () => this.generateObject(0, maxNestingLevel).value);
 		const byRow = this.rnd.pick(['TRUE', 'FALSE']);
-		return { value: `matrix(c(${elements.value}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len: elements.len };
+		return { value: `matrix(c(${elements.join(', ')}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len };
 	}
 
 	/**

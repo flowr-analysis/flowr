@@ -229,7 +229,7 @@ export class RandomRCodeGenerator {
 	 * @returns The generated R source code (`value`), the type 'promise' (`type`) and a length of 1 (`len`).
 	 */
 	generatePromise(): { value: string, type: string, len: number } {
-		return { value: 'delayedAssign("x", msg)', type: 'promise', len: 1 };
+		return { value: 'delayedAssign("x", 1L)', type: 'promise', len: 1 };
 	}
 
 	/**

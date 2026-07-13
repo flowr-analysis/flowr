@@ -32,7 +32,7 @@ describe('rda-files', () => {
 			'none'
 		];
 
-		const tempFolder = fs.mkdtempSync(path.resolve(os.tmpdir(), '/tmp/flowr-load-pipeline-test'));
+		const tempFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-load-pipeline-test-'));
 
 		for(let i = 0; i < runs; i++) {
 			const file = `${tempFolder}/test_${i}.rda`;

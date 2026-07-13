@@ -321,7 +321,20 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 
 	// wildcard search: a glob in the package/function name, or a version spec matching more than one release
 	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && isMultiVersion(q.version))) {
-		return { ...meta(), ...searchSources(sources, packages, q) };
+		const found = searchSources(sources, packages, q);
+		// a version glob against a single concrete, known package that matched no release: point at the available versions
+		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
+		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
+			const src = sources.find(s => s.has(q.package as string));
+			if(src) {
+				const avail = availableVersions(src, q.package);
+				const hint = !src.isBaseR(q.package) && avail.length <= 1
+					? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
+					: '';
+				return { ...meta(), message: `no release of '${q.package}' matches '${q.version}'.${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}` };
+			}
+		}
+		return { ...meta(), ...found };
 	}
 
 	const src = sources.find(s => s.has(q.package as string));

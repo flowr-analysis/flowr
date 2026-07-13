@@ -265,6 +265,13 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		expect(res.signature.message).toContain('1.0.0');
 	});
 
+	test(label('a version glob matching no release lists the available ones instead of an empty result', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '9.*' }]);
+		expect(res.signature.message).toContain('no release of \'multi\' matches \'9.*\'');
+		expect(res.signature.message).toContain('1.0.0');
+		expect(res.signature.matches ?? res.signature.packages).toBeUndefined();
+	});
+
 	test(label('a versioned function search reports the matching version', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: 'multi', function: 'm21', version: '2.*' }]);
 		expect(res.signature.matches?.map(m => `${m.name}@${m.version}`)).toEqual(['m21@2.1.0']);

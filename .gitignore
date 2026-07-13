@@ -702,11 +702,11 @@ test-results.xml
 /test_perf/*.json
 .vscode/settings.json
 
-# sigdb bundles are generated locally + shipped via the npm build; never commit them (keep git history clean)
-src/data/sigdb/
+# the compressed sigdb bundles + manifest in src/data/sigdb/ ARE committed (they ship with flowR);
+# only the build-copied duplicate is generated
 dist/src/data/sigdb/
 
-# decompressed sigdb archives (the reader materializes these locally into a cache); never commit them anywhere
+# decompressed sigdb archives (the reader materializes these into a hash-keyed cache); never commit them anywhere
 *.sigs.ndjson
 *.sigs.ndjson.idx
 

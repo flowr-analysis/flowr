@@ -98,9 +98,11 @@ describe('REPL ghost hint', () => {
 		expect(replCompleter(':bench', cfg)).toEqual([[':benchmark '], ':bench']);
 	});
 
-	test(label('only code commands suggest a file path argument', [], ['other']), () => {
+	test(label('the file path protocol is offered by Tab completion but never ghosted', [], ['other']), () => {
 		const cfg = config(true);
-		expect(completionSuggestion(':dataflow ', cfg)).toBe('file://');
+		// `file://` is highlighted as a URL by terminals, so ghosting it is misleading -- suppressed
+		expect(completionSuggestion(':dataflow ', cfg)).toBe('');
+		expect(replCompleter(':dataflow ', cfg)[0]).toContain('file://');   // ...but Tab still offers it
 		expect(completionSuggestion(':help ', cfg)).toBe('');
 		expect(completionSuggestion(':version ', cfg)).toBe('');
 	});

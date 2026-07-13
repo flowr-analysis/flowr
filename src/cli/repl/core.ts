@@ -103,7 +103,12 @@ export function completionSuggestion(line: string, config: FlowrConfig): string 
 	}
 	const [completions, fragment] = computeCompletions(line, config);
 	const best = completions[0];
-	return best !== undefined && best.startsWith(fragment) && best.length > fragment.length ? best.slice(fragment.length) : '';
+	if(best === undefined || !best.startsWith(fragment) || best.length <= fragment.length) {
+		return '';
+	} else if(best === fileProtocol || best === watchProtocol) {
+		return '';
+	}
+	return best.slice(fragment.length);
 }
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {

@@ -29,6 +29,11 @@ export interface StaticSliceQuery extends BaseQueryFormat {
 	readonly noMagicComments?:  boolean
 	/** The direction to slice in. Defaults to backward slicing if unset. */
 	readonly direction?:        SliceDirection
+	/**
+	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
+	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
+	 */
+	readonly inlineSources?:    boolean
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -106,7 +111,8 @@ export const StaticSliceQueryDefinition = {
 		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
 		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
 		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
-		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.')
+		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.'),
+		inlineSources:    Joi.boolean().optional().description('Inline resolvable source() calls into the reconstruction so the result is a single self-contained R text.')
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const flattened: NodeId[] = [];

@@ -228,11 +228,24 @@ function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefi
 	};
 }
 
+/** the versions of a package across every loaded source that holds it (current + history + any mounted extra) */
+function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: string): string[] {
+	const set = new Set<string>();
+	for(const s of sources) {
+		if(s.has(pkg)) {
+			for(const v of availableVersions(s, pkg)) {
+				set.add(v);
+			}
+		}
+	}
+	return [...set].sort((a, b) => RVersion.compare(a, b));
+}
+
 /** the message shown when a known package has no release matching the requested version, listing what is available */
-function versionNotFoundMessage(src: PackageSignatureSource, pkg: string, lead: string): string {
-	const avail = availableVersions(src, pkg);
-	const hint = !src.isBaseR(pkg) && avail.length <= 1
-		? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
+function versionNotFoundMessage(pkg: string, lead: string, avail: readonly string[], base: boolean): string {
+	// only nudge towards a full-history bundle when one is *not* already mounted (a single known version)
+	const hint = !base && avail.length <= 1
+		? ' Only the latest CRAN version is loaded; download the full history with `:signature download` (or mount one with `:signature add <path>`).'
 		: '';
 	return `${lead}${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}`;
 }
@@ -243,18 +256,22 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
 	const verMatch = q.version ? versionMatcher(q.version) : undefined;
-	const sourceOf = (pkg: string) => sources.find(s => s.has(pkg));
+	// every source holding a package (its latest lives in `current`, its older releases in `history`)
+	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
 
 	if(!q.function) {
 		const packages: SignaturePackageMatch[] = [];
 		let truncated = false;
 		for(const pkg of matchedPkgs) {
-			const src = sourceOf(pkg);
-			if(!src) {
+			const owners = owningOf(pkg);
+			if(owners.length === 0) {
 				continue;
 			}
-			const base = src.isBaseR(pkg);
-			const versions = verMatch ? availableVersions(src, pkg).filter(verMatch) : undefined;
+			const base = owners[0].isBaseR(pkg);
+			// with a version filter, union the matching versions across all sources (so a `3.*` reaches history)
+			const versions = verMatch
+				? [...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(verMatch)))].sort((a, b) => RVersion.compare(a, b))
+				: undefined;
 			if(versions !== undefined && versions.length === 0) {
 				continue;
 			}
@@ -263,8 +280,8 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 				truncated = true;
 				break;
 			}
-			const cran = (src.lookup(pkg)?.cran ?? false) && !base;
-			const latest = src.latestVersion(pkg)?.str;
+			const cran = (owners[0].lookup(pkg)?.cran ?? false) && !base;
+			const latest = owners[0].latestVersion(pkg)?.str;
 			packages.push({ name: pkg, base, cran, ...(latest ? { latest } : {}), ...(versions ? { versions } : {}), ...(cran ? { cranPage: cranPageUrl(pkg) } : {}) });
 		}
 		return { packages, truncated };
@@ -274,16 +291,22 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const matches: SignatureMatchView[] = [];
 	let truncated = false;
 	for(const pkg of matchedPkgs) {
-		const src = sourceOf(pkg);
-		if(!src) {
+		const owners = owningOf(pkg);
+		if(owners.length === 0) {
 			continue;
 		}
-		const base = src.isBaseR(pkg);
-		const versionsToScan = verMatch ? availableVersions(src, pkg).filter(verMatch) : [undefined];
-		for(const ver of versionsToScan) {
-			const exports = src.lookup(pkg, ver) ?? src.lookup(pkg);
+		const base = owners[0].isBaseR(pkg);
+		// versions to scan: with a filter, the union of matching releases across all sources (so `3.*` reaches
+		// history); without one, just the latest. Each version is scanned in a single source (the first that has
+		// it), so a release present in more than one source is not double-counted
+		const versionsToScan: (string | undefined)[] = verMatch
+			? [...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(verMatch)))]
+			: [undefined];
+		for(const v of versionsToScan) {
+			const s = v === undefined ? owners[0] : owners.find(o => availableVersions(o, pkg).includes(v)) ?? owners[0];
+			const exports = s.lookup(pkg, v) ?? s.lookup(pkg);
 			const cran = (exports?.cran ?? false) && !base;
-			for(const fn of src.functions(pkg, ver) ?? src.functions(pkg) ?? []) {
+			for(const fn of s.functions(pkg, v) ?? s.functions(pkg) ?? []) {
 				if(fnMatch(fn.name)) {
 					// stop before adding a match beyond the cap, so the flag reflects a real cut, not an exact fill
 					if(matches.length >= cap) {
@@ -416,21 +439,31 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
-			const src = sources.find(s => s.has(q.package as string));
-			if(src) {
-				return { ...meta(), message: versionNotFoundMessage(src, q.package, `no release of '${q.package}' matches '${q.version}'.`) };
+			const owning = sources.filter(s => s.has(q.package as string));
+			if(owning.length > 0) {
+				const avail = allAvailableVersions(owning, q.package);
+				return { ...meta(), message: versionNotFoundMessage(q.package, `no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
 			}
 		}
 		return { ...meta(), ...found };
 	}
 
-	const src = sources.find(s => s.has(q.package as string));
-	if(!src) {
+	// every source holding the package: `current` keeps the latest, `history` the older releases, so an exact
+	// version must be resolved against whichever source actually has it (not just the first one found)
+	const owning = sources.filter(s => s.has(q.package as string));
+	if(owning.length === 0) {
 		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
 	}
-	if(q.version !== undefined && !availableVersions(src, q.package).includes(q.version)) {
-		return { ...meta(), message: versionNotFoundMessage(src, q.package, `'${q.package}@${q.version}' is not in the loaded database.`) };
+	if(q.version !== undefined) {
+		const avail = allAvailableVersions(owning, q.package);
+		if(!avail.includes(q.version)) {
+			return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
+		}
 	}
+	// pick the source that actually holds the requested version; without one, the first (the latest-keeping source)
+	const src = q.version !== undefined
+		? owning.find(s => availableVersions(s, q.package as string).includes(q.version as string)) ?? owning[0]
+		: owning[0];
 	const version = q.version ?? deps.getDependency(q.package)?.resolvedVersion;
 	if(q.function) {
 		const fn = signatureFunctionInfo(src, q.package, q.function, version);

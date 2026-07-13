@@ -298,6 +298,41 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		expect(after.signature.function?.sourceUrl).toBe('https://github.com/cran/runtimepkg/blob/0.1.0/R/a.R#L3');
 		fs.rmSync(extraDir, { recursive: true, force: true });
 	});
+
+	test(label('an exact old version resolves from a second (history) source, not just the first', [], ['other']), async() => {
+		// mirror the shipped layout: one source keeps the latest release, another the older ones
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-hist-'));
+		const cur = new SigDbBuilder();
+		cur.addPackage('splitpkg', { latest: '2.0.0' });
+		cur.addVersion('splitpkg', '2.0.0', { cran: true, functions: [fn('f_new', { file: 'R/n.R', line: 1 })] });
+		await writeSignatureDb(path.join(dir, 'current'), cur.build({ date: '2026-07-01', generated: 0 }));
+		const hist = new SigDbBuilder();
+		hist.addPackage('splitpkg', { latest: '1.0.0' });
+		hist.addVersion('splitpkg', '1.0.0', { cran: true, functions: [fn('f_old', { file: 'R/o.R', line: 1 })] });
+		await writeSignatureDb(path.join(dir, 'history'), hist.build({ date: '2020-01-01', generated: 0 }));
+
+		const currentDb = await SigDatabase.open(path.join(dir, `current${SigDbExt}`));
+		const historyDb = await SigDatabase.open(path.join(dir, `history${SigDbExt}`));
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
+			.unregisterPlugins(SigDbPluginName)
+			.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(currentDb, historyDb))
+			.build();
+
+		// the old version lives only in the second source -- it must still resolve
+		const old = await executeQueries({ analyzer }, [{ type: 'signature', package: 'splitpkg', version: '1.0.0', function: 'f_old' }]);
+		expect(old.signature.function?.name).toBe('f_old');
+		// the latest still resolves from the first source
+		const cur2 = await executeQueries({ analyzer }, [{ type: 'signature', package: 'splitpkg', version: '2.0.0' }]);
+		expect(cur2.signature.package?.version).toBe('2.0.0');
+		// an unavailable version lists BOTH sources' releases
+		const none = await executeQueries({ analyzer }, [{ type: 'signature', package: 'splitpkg', version: '9.9.9' }]);
+		expect(none.signature.message).toContain('1.0.0');
+		expect(none.signature.message).toContain('2.0.0');
+
+		currentDb.close();
+		historyDb.close();
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
 }));
 
 describe.sequential('SigDb additionalPaths config', withTreeSitter(parser => {

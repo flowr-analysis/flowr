@@ -1,10 +1,6 @@
-// Runs the checkup jobs (lint, functionality + system tests without watch, wiki, docker build/smoke) concurrently,
-// captures each job's output to a log file, prints intermediate progress, and a structured summary at the end.
-// Exits non-zero if any job fails.
-//
-//   npm run checkup                    run every job
-//   npm run checkup -- --no-docker     skip the (slow) docker job
-//   npm run checkup -- lint tests      run only the named jobs
+// Run the checkup jobs (lint, functionality + system tests, wiki, docker) concurrently, each to a log file,
+// with live progress and a structured summary. Exits non-zero if any fails.
+//   npm run checkup [-- --no-docker | lint tests ...]
 
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';

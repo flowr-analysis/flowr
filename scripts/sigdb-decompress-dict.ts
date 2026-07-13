@@ -1,9 +1,6 @@
-// Materializes the bundled sigdb *dictionary* (`*.dict.sigs.ndjson.br`) into its plain form so the reader
-// uses it directly (see `resolveSource`/`ensurePlainSync` in sigdb.ts) instead of brotli-decompressing it on
-// the first lookup. The dictionary is the one file every shard needs, so shipping it uncompressed removes the
-// largest startup decompression; the shards stay compressed and decompress lazily, only the ones a script
-// actually touches. Used by the Docker images (which want fast first-lookup); npm keeps the compressed form to
-// stay small. Pass the sigdb data directory (default: dist/src/data/sigdb).
+// Expand the sigdb dictionary (`*.dict.sigs.ndjson.br`) to plain form so the reader skips brotli on the first
+// lookup (used by the Docker images). Only the hot current/base dicts are expanded; the archival history/full
+// dicts stay compressed (halves the image) unless FLOWR_DECOMPRESS_ALL_DICTS=1. Pass the data dir (default dist).
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -14,9 +11,16 @@ if(!fs.existsSync(dir)) {
 	process.exit(0);
 }
 
+const decompressAll = process.env.FLOWR_DECOMPRESS_ALL_DICTS === '1';
+const coldScope = /^(history|full)\./;
+
 let done = 0;
 for(const file of fs.readdirSync(dir)) {
 	if(!file.endsWith('.dict.sigs.ndjson.br')) {
+		continue;
+	}
+	if(!decompressAll && coldScope.test(file)) {
+		console.log(`  keep ${file} compressed (cold scope; decompresses lazily on an old-version lookup)`);
 		continue;
 	}
 	const from = path.join(dir, file);

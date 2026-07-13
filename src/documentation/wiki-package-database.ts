@@ -223,9 +223,17 @@ You can also analyze a package straight off disk and ${ctx.linkM(FlowrAnalyzerPa
 as a resolvable source: flowR runs over the package's \`R/\` sources to extract each function's signature
 (parameters, defaults, callees) together with its \`DESCRIPTION\` and \`NAMESPACE\` metadata.
 
-\`:signature download\` pulls the full-history database (every CRAN release) from the \`solver.sigdb.downloadRepo\`
-GitHub release and mounts it. Any path in \`solver.sigdb.additionalPaths\` (or \`$FLOWR_SIGDB_DIR\`) is searched
-alongside the default, so pointing it at that cache keeps the full database mounted on every start.
+Only a tiny **base floor** ships inside flowR (in git and on npm): the \`base.*\` scope -- self-contained base-R
+signatures across every R release, a few hundred KB, always available offline. The large CRAN bundles are **not**
+committed: \`current.*\` (every package's latest version) and \`history.*\` (every older version) live as assets on
+the free \`solver.sigdb.downloadRepo\` GitHub release. A committed **link file**, \`src/data/sigdb/sigdb.remote.json\`,
+records the release tag and each downloadable shard's sha256 and size, so \`:signature download\` builds the direct
+release-CDN URL (no API rate limit), verifies every shard by content hash, and skips any already cached. Because
+the link file is versioned, a \`git pull\` that updates it re-syncs only the shards whose hash changed -- and with
+\`solver.sigdb.autoSync\` that check runs on startup and re-downloads in the background. When no richer bundle is
+present flowR falls back to the base floor (the scope order is \`full\` > \`current\` > \`base\`), so \`library(stats)\`
+still resolves on a plain clone. Any path in \`solver.sigdb.additionalPaths\` (or \`$FLOWR_SIGDB_DIR\`) is searched
+alongside the default, so a downloaded bundle stays mounted on every start.
 ${databases ? `
 ## Bundled Databases
 

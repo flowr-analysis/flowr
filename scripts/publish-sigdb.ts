@@ -1,18 +1,8 @@
-// Publisher for the flowr-sigdb bundles.
-//
-// The big signature-database shards are NOT committed (see .gitignore) -- they are generated locally and published,
-// harmonised to the flowR version in package.json, to two places:
-//   1. a GitHub Release  (tag `sigdb-v<version>`) with the downloadable `.br` shards as assets, and
-//   2. a GHCR data image (`<image>:<version>` and `:latest`) carrying the bundle at /data/sigdb for mounting.
-// It also regenerates the committed `sigdb.remote.json` link file (via `writeRemotePointer`) so its hashes match
-// what is uploaded -- commit that pointer afterwards so clients auto-sync.
-//
-// DRY RUN by default; pass --confirm to actually publish.
-//   npm run publish:sigdb                                     # dry run: show what would be published
-//   ts-node scripts/publish-sigdb.ts --confirm                # publish to both targets
-//   ts-node scripts/publish-sigdb.ts --confirm --target=release   # only the GitHub Release
-//   ts-node scripts/publish-sigdb.ts --confirm --target=ghcr      # only the GHCR data image
-// Env overrides: FLOWR_SIGDB_IMAGE (default ghcr.io/flowr-analysis/flowr-sigdb), GH_REPO (gh --repo).
+// Publish the sigdb shards to the GitHub Release `sigdb-v<version>` and/or the GHCR data image, then regenerate
+// the committed `sigdb.remote.json` so its hashes match the upload (commit it afterwards). DRY RUN by default.
+//   npm run publish:sigdb                          # dry run
+//   npm run publish:sigdb -- --confirm             # publish both (--target=release|ghcr for one)
+// Env: FLOWR_SIGDB_IMAGE (default ghcr.io/flowr-analysis/flowr-sigdb), GH_REPO.
 
 import fs from 'node:fs';
 import os from 'node:os';

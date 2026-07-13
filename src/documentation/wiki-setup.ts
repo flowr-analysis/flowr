@@ -116,8 +116,9 @@ tool, which analyzes the whole of CRAN with _flowR_ itself and serializes the re
 ${ctx.linkPage('wiki/Package Database')} page for the format and how to point _flowR_ at your own database).
 
 For development this means:
-- the bundle under \`src/data/sigdb/\` is **generated, not committed** (it is git-ignored to keep history small); a fresh
-  checkout has none, and _flowR_ then simply resolves nothing from the database until you provide one.
+- only the tiny \`base.*\` **floor** (self-contained base-R signatures) is committed under \`src/data/sigdb/\`, so a fresh
+  checkout resolves base R offline. The large CRAN shards (\`current.*\`/\`history.*\`) are git-ignored and fetched on
+  demand from the release with \`:signature download\` (see the ${ctx.linkPage('wiki/Package Database')} page).
 - everything derived from it that _flowR_ needs at runtime is **precomputed when you build** (\`npm run build\`): e.g. the
   set of R-core / base packages per R version is regenerated into \`src/data/r-base-packages.generated.ts\`, so no
   hardcoded package lists drift out of date.

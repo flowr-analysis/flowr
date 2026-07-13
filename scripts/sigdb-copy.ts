@@ -1,7 +1,5 @@
-// Copies the bundled (already-brotli-compressed) sigdb into the build output so it ships with the npm
-// package. The default npm bundle is the small `base` scope (base R only); richer `current`/`full` scopes
-// are shipped via the Docker images, not npm. Discovered at runtime by `defaultSigDbPath` (which searches
-// `dist/src/data/sigdb`). Any `<scope>.manifest.json(.br)` + its `<scope>.*.sigs.ndjson.br` shards are copied.
+// Copy the committed sigdb (`.br` shards, manifests, `sigdb.remote.json`) into dist so it ships with npm;
+// discovered at runtime by `defaultSigDbPath`. Skips plain/`.gz`/`.idx` files and drops stale copies.
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,7 +12,7 @@ if(!fs.existsSync(src)) {
 }
 fs.mkdirSync(dst, { recursive: true });
 
-const keep = new Set();
+const keep = new Set<string>();
 let bytes = 0;
 for(const file of fs.readdirSync(src)) {
 	// ship the compressed artefacts (.br), the manifests, and the `sigdb.remote.json` link file (so the

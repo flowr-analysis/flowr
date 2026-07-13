@@ -428,12 +428,14 @@ export class RandomRCodeGenerator {
 		const total = weights.reduce((a, b) => a + b, 0);
 
 		const pickIndex = () => {
-			const r = this.rnd.int(total);
+			let r = this.rnd.int(total);
 			for(let i = 0; i < weights.length; i++) {
-				if(r < weights[i]) {
+				r -= weights[i];
+				if(r < 0) {
 					return i;
 				}
 			}
+			return weights.length - 1;
 		};
 
 		const elements = Array.from({ length: len }, () =>

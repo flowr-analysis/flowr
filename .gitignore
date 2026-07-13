@@ -702,13 +702,15 @@ test-results.xml
 /test_perf/*.json
 .vscode/settings.json
 
-# the compressed sigdb bundles + manifest in src/data/sigdb/ ARE committed (they ship with flowR);
-# only the build-copied duplicate is generated
+# sigdb bundles in src/data/sigdb/: only the tiny self-contained `base.*` floor is committed. The big CRAN
+# shards (current.*/full.*/history.*) churn ~24 MB per rebuild and brotli never deltas, so they are NOT
+# versioned -- they are published to the free GitHub Release (scripts/publish-sigdb.ts) and pulled on demand by
+# `:signature download` (sigdb-download.ts). flowR falls back to the committed base floor when they are absent.
+src/data/sigdb/current.*
+src/data/sigdb/full.*
+src/data/sigdb/history.*
 dist/src/data/sigdb/
 
 # decompressed sigdb archives (the reader materializes these into a hash-keyed cache); never commit them anywhere
 *.sigs.ndjson
 *.sigs.ndjson.idx
-
-# local-only operator tool for publishing the sigdb bundles; must never be versioned
-scripts/publish-sigdb.mjs

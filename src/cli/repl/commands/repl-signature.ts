@@ -4,6 +4,7 @@ import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
+import { downloadFullSigDb } from '../../../project/plugins/package-version-plugins/sigdb-download';
 
 /** treat the whole line as arguments, no R code to separate */
 function parseArgs(line: string) {
@@ -25,6 +26,8 @@ function printHelp(output: ReplOutput): void {
 	output.stdout(`      ${italic('analyze installed R package(s) on disk with flowR and add their signatures as a source', f)}`);
 	output.stdout(`  ${bold(':signature add', f)} ${italic('<path-to-.sigs.ndjson|.br|.manifest.json>', f)}`);
 	output.stdout(`      ${italic('mount an additional signature database/source (dictionaries + shards); takes precedence over the bundle', f)}`);
+	output.stdout(`  ${bold(':signature download', f)} ${italic('[<version>]', f)}`);
+	output.stdout(`      ${italic('download the full-history database (all CRAN versions) from the release and mount it', f)}`);
 }
 
 async function runQuery(output: ReplOutput, analyzer: Parameters<ReplCodeCommand['fn']>[0]['analyzer'], args: readonly string[]): Promise<void> {
@@ -39,9 +42,9 @@ async function runQuery(output: ReplOutput, analyzer: Parameters<ReplCodeCommand
 }
 
 export const signatureCommand: ReplCodeCommand = {
-	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `analyze <dir>` to add packages from disk, `add <path>` to mount another database/source.',
+	description:   'Inspect and extend the signature database: `query` (identical to :query @signature), `analyze <dir>` to add packages from disk, `add <path>` to mount another database/source, `download` to fetch the full-history database.',
 	isCodeCommand: true,
-	usageExample:  ':signature <query|analyze|add> ...',
+	usageExample:  ':signature <query|analyze|add|download> ...',
 	aliases:       ['sig'],
 	script:        false,
 	argsParser:    parseArgs,
@@ -82,6 +85,26 @@ export const signatureCommand: ReplCodeCommand = {
 				analyzer.reset();
 				output.stdout(`Mounted signature source ${bold(source, f)} (takes precedence over the bundled default).`);
 				output.stdout(italic('Inspect it with :signature query.', f));
+				return;
+			}
+			case 'download': {
+				const sigdb = analyzer.flowrConfig.solver.sigdb;
+				try {
+					const { dir, manifest, files } = await downloadFullSigDb({
+						version:    rest.find(a => a.length > 0),
+						repo:       sigdb.downloadRepo,
+						onProgress: msg => output.stdout(italic(`  ${msg}`, f))
+					});
+					output.stdout(`Downloaded ${bold(String(files.length), f)} file(s) to ${bold(dir, f)}.`);
+					if(manifest) {
+						await analyzer.context().deps.addDatabaseSource(manifest);
+						analyzer.reset();
+						output.stdout(`Mounted ${bold(manifest, f)}.`);
+					}
+					output.stdout(italic(`Add "${dir}" to solver.sigdb.additionalPaths to keep it mounted on every start.`, f));
+				} catch(e) {
+					output.stderr(`Download failed: ${(e as Error).message}`);
+				}
 				return;
 			}
 			default:

@@ -33,8 +33,8 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 		return [];
 	}
 
-	/** The signature sources this plugin currently has loaded (empty for plugins without any). */
-	public signatureSources(): readonly PackageSignatureSource[] {
+	/** The signature sources this plugin currently has loaded (empty for plugins without any). `config` lets a query resolve config-driven sources before any analysis has set the plugin's context. */
+	public signatureSources(_config?: FlowrConfig): readonly PackageSignatureSource[] {
 		return [];
 	}
 

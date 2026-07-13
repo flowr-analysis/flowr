@@ -5,10 +5,11 @@ import type {
 	SignatureMatchView, SignaturePackageMatch
 } from './signature-query-format';
 import {
-	DepTypeNames,
+	DepTypeNames, defaultSigDbPaths, getSharedSigSourceSync,
 	type DecodedFunction, type PackageSignatureSource
 } from '../../../project/plugins/package-version-plugins/sigdb';
 import { RVersion } from '../../../util/r-version';
+import type { CommandCompletions } from '../../../cli/repl/core';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
 export function cranPageUrl(pkg: string): string {
@@ -16,12 +17,12 @@ export function cranPageUrl(pkg: string): string {
 }
 
 /** whether a pattern uses glob wildcards (`*`, `?`) */
-export function hasGlob(pattern: string | undefined): boolean {
+function hasGlob(pattern: string | undefined): boolean {
 	return pattern !== undefined && /[*?]/.test(pattern);
 }
 
 /** compile a glob (`*` matches any run, `?` matches one char) into an anchored, case-sensitive RegExp */
-export function globToRegExp(glob: string): RegExp {
+function globToRegExp(glob: string): RegExp {
 	const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
 	return new RegExp(`^${escaped}$`);
 }
@@ -36,7 +37,7 @@ function nameMatcher(pattern: string): (name: string) => boolean {
 }
 
 /** whether a version spec can match more than one release (a glob or a semver range, not a single exact version) */
-export function isMultiVersion(spec: string): boolean {
+function isMultiVersion(spec: string): boolean {
 	return /[*?xX]/.test(spec) || /[<>~^=]/.test(spec) || spec.includes('||') || spec.includes(' - ');
 }
 
@@ -73,10 +74,10 @@ function availableVersions(src: PackageSignatureSource, pkg: string): string[] {
 }
 
 /** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
-export const CranGithubMirror = 'https://github.com/cran';
+const CranGithubMirror = 'https://github.com/cran';
 
 /** the mirror repository of a CRAN package */
-export function cranMirrorRepoUrl(pkg: string): string {
+function cranMirrorRepoUrl(pkg: string): string {
 	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
 }
 
@@ -91,7 +92,7 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._]*$/;
 
 /** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
-export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
@@ -186,7 +187,7 @@ export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, r
 		constants,
 		internalCount: exports.internal.length,
 		deprecated:    exports.deprecated,
-		...(base ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
+		...(base && src.coreVersions(pkg) ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
 		dependencies:  deps,
 		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
 	};
@@ -227,6 +228,15 @@ function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefi
 	};
 }
 
+/** the message shown when a known package has no release matching the requested version, listing what is available */
+function versionNotFoundMessage(src: PackageSignatureSource, pkg: string, lead: string): string {
+	const avail = availableVersions(src, pkg);
+	const hint = !src.isBaseR(pkg) && avail.length <= 1
+		? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
+		: '';
+	return `${lead}${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}`;
+}
+
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
 function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery): Partial<SignatureQueryResult> {
 	const cap = q.full ? MaxMatchesFull : MaxMatches;
@@ -248,13 +258,14 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			if(versions !== undefined && versions.length === 0) {
 				continue;
 			}
-			const cran = (src.lookup(pkg)?.cran ?? false) && !base;
-			const latest = src.latestVersion(pkg)?.str;
-			packages.push({ name: pkg, base, cran, ...(latest ? { latest } : {}), ...(versions ? { versions } : {}), ...(cran ? { cranPage: cranPageUrl(pkg) } : {}) });
+			// stop before adding an eligible match beyond the cap, so the flag reflects a real cut, not an exact fill
 			if(packages.length >= cap) {
 				truncated = true;
 				break;
 			}
+			const cran = (src.lookup(pkg)?.cran ?? false) && !base;
+			const latest = src.latestVersion(pkg)?.str;
+			packages.push({ name: pkg, base, cran, ...(latest ? { latest } : {}), ...(versions ? { versions } : {}), ...(cran ? { cranPage: cranPageUrl(pkg) } : {}) });
 		}
 		return { packages, truncated };
 	}
@@ -271,14 +282,15 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		const versionsToScan = verMatch ? availableVersions(src, pkg).filter(verMatch) : [undefined];
 		for(const ver of versionsToScan) {
 			const exports = src.lookup(pkg, ver) ?? src.lookup(pkg);
-			const cran = exports?.cran ?? false;
+			const cran = (exports?.cran ?? false) && !base;
 			for(const fn of src.functions(pkg, ver) ?? src.functions(pkg) ?? []) {
 				if(fnMatch(fn.name)) {
-					matches.push(compactMatch(pkg, fn, exports?.version, base, cran));
+					// stop before adding a match beyond the cap, so the flag reflects a real cut, not an exact fill
 					if(matches.length >= cap) {
 						truncated = true;
 						break;
 					}
+					matches.push(compactMatch(pkg, fn, exports?.version, base, cran));
 				}
 			}
 			if(truncated) {
@@ -292,8 +304,87 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	return { matches, matchCount: matches.length, truncated };
 }
 
+/** the discoverable bundle sources for Tab completion (process-wide cached; opening the manifest reads no shard) */
+function completionSources(): PackageSignatureSource[] {
+	if(typeof process !== 'undefined' && process.env?.FLOWR_DISABLE_DEFAULT_SIGDB) {
+		return [];
+	}
+	const out: PackageSignatureSource[] = [];
+	for(const p of defaultSigDbPaths()) {
+		const src = getSharedSigSourceSync(p);
+		if(src) {
+			out.push(src);
+		}
+	}
+	return out;
+}
+
+/** the package part of a spec token, dropping any `@version` and `::function` suffix */
+function packageOf(spec: string): string {
+	return spec.split('::')[0].split('@')[0];
+}
+
+/** cap on offered names, so an empty fragment does not dump the whole 24k-package set at the terminal */
+const MaxCompletions = 200;
+
 /**
- * Executes the sigdb query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
+ * Tab-completer for `:query \@signature` / `:signature query`: package names in the first position, a package's
+ * function names in the second (and after `pkg::`). Version specs and flags are left alone. Enumerating functions
+ * decompresses the package's shard once (then cached); enumerating packages reads only the manifest.
+ */
+export function signatureQueryCompleter(line: readonly string[], startingNewArg: boolean): CommandCompletions {
+	const sources = completionSources();
+	if(sources.length === 0) {
+		return { completions: [] };
+	}
+	const capped = (names: Iterable<string>, prefix: string, decorate: (n: string) => string): string[] => {
+		const all: string[] = [];
+		for(const n of names) {
+			const d = decorate(n);   // filter on the offered text (e.g. `pkg::fn`), not the bare name
+			if(d.startsWith(prefix)) {
+				all.push(d);
+			}
+		}
+		if(all.length <= MaxCompletions) {
+			return all;
+		}
+		// too many to show: sample evenly across the sorted set so the offered names span the alphabet, not just
+		// its head; index 0 stays first so the ghost hint still previews the true best (alphabetically first) match
+		const stride = all.length / MaxCompletions;
+		return Array.from({ length: MaxCompletions }, (_, i) => all[Math.floor(i * stride)]);
+	};
+	const packageNames = (): string[] => [...new Set(sources.flatMap(s => s.packageNames()))].sort();
+	const functionsOf = (pkg: string): string[] => {
+		const src = sources.find(s => s.has(pkg));
+		return src ? [...new Set((src.functions(pkg) ?? []).map(f => f.name))].sort() : [];
+	};
+
+	// first token: a package spec (`pkg`, `pkg::fn`, `pkg@ver`)
+	if(line.length === 0 || (line.length === 1 && !startingNewArg)) {
+		const token = line[0] ?? '';
+		const dbl = token.indexOf('::');
+		if(dbl >= 0) {
+			const pkg = packageOf(token), frag = token.slice(0, dbl + 2);
+			return { completions: capped(functionsOf(pkg), token, fn => `${frag}${fn} `), argumentPart: token };
+		}
+		if(token.includes('@')) {
+			return { completions: [] };   // typing a version, nothing to offer
+		}
+		return { completions: capped(packageNames(), token, p => `${p} `), argumentPart: token };
+	}
+	// second token: the function within the first token's package (or a flag)
+	if((line.length === 1 && startingNewArg) || (line.length === 2 && !startingNewArg)) {
+		const frag = line.length === 2 ? line[1] : '';
+		if(frag.startsWith('-')) {
+			return { completions: ['--all ', '--full '] };
+		}
+		return { completions: capped(functionsOf(packageOf(line[0])), frag, fn => `${fn} `), argumentPart: frag };
+	}
+	return { completions: ['--all ', '--full '] };
+}
+
+/**
+ * Executes the signature query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
  * or a multi-version `version` triggers a wildcard search (matching packages or functions). Otherwise a single
  * exact package (optionally at an exact `version`) yields its full view, or the detailed function view.
  */
@@ -327,11 +418,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		if((found.matchCount === 0 || found.packages?.length === 0) && !hasGlob(q.package) && q.version !== undefined) {
 			const src = sources.find(s => s.has(q.package as string));
 			if(src) {
-				const avail = availableVersions(src, q.package);
-				const hint = !src.isBaseR(q.package) && avail.length <= 1
-					? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
-					: '';
-				return { ...meta(), message: `no release of '${q.package}' matches '${q.version}'.${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}` };
+				return { ...meta(), message: versionNotFoundMessage(src, q.package, `no release of '${q.package}' matches '${q.version}'.`) };
 			}
 		}
 		return { ...meta(), ...found };
@@ -341,13 +428,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	if(!src) {
 		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
 	}
-	const avail = availableVersions(src, q.package);
-	if(q.version !== undefined && !avail.includes(q.version)) {
-		// the shipped bundle keeps only the latest version per CRAN package; point the user at a full-history bundle
-		const hint = !src.isBaseR(q.package) && avail.length <= 1
-			? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
-			: '';
-		return { ...meta(), message: `'${q.package}@${q.version}' is not in the loaded database.${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}` };
+	if(q.version !== undefined && !availableVersions(src, q.package).includes(q.version)) {
+		return { ...meta(), message: versionNotFoundMessage(src, q.package, `'${q.package}@${q.version}' is not in the loaded database.`) };
 	}
 	const version = q.version ?? deps.getDependency(q.package)?.resolvedVersion;
 	if(q.function) {

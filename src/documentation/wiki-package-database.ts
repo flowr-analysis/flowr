@@ -222,6 +222,10 @@ dataflow edges.
 You can also analyze a package straight off disk and ${ctx.linkM(FlowrAnalyzerPackageVersionsSigDbPlugin, 'addLocalPackages', { hideClass: true })}
 as a resolvable source: flowR runs over the package's \`R/\` sources to extract each function's signature
 (parameters, defaults, callees) together with its \`DESCRIPTION\` and \`NAMESPACE\` metadata.
+
+\`:signature download\` pulls the full-history database (every CRAN release) from the \`solver.sigdb.downloadRepo\`
+GitHub release and mounts it. Any path in \`solver.sigdb.additionalPaths\` (or \`$FLOWR_SIGDB_DIR\`) is searched
+alongside the default, so pointing it at that cache keeps the full database mounted on every start.
 ${databases ? `
 ## Bundled Databases
 

@@ -3,12 +3,12 @@ import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
-import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/plugins/package-version-plugins/sigdb';
+import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, MaxDefaultLength, defaultSigDbPath, type SigFunctionInfo } from '../../../../src/project/plugins/package-version-plugins/sigdb';
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { SignatureQueryDefinition } from '../../../../src/queries/catalog/signature-query/signature-query-format';
-import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
+import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, signatureQueryCompleter } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -299,3 +299,93 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		fs.rmSync(extraDir, { recursive: true, force: true });
 	});
 }));
+
+describe.sequential('SigDb additionalPaths config', withTreeSitter(parser => {
+	test(label('a database in solver.sigdb.additionalPaths is discovered and queryable', [], ['other']), async() => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-addpath-'));
+		const b = new SigDbBuilder();
+		b.addPackage('cfgpkg', { latest: '0.2.0' });
+		b.addVersion('cfgpkg', '0.2.0', { cran: true, functions: [fn('cfg_fn', { file: 'R/c.R', line: 7 })] });
+		await writeSignatureDb(path.join(dir, 'extra'), b.build({ date: '2026-07-01', generated: 0 }));
+		// additionalPaths group with the default discovery, so clear the hermetic disable flag around this test
+		// (in the test body, not a hook, so it is immune to sibling describes racing on these env vars); a sibling
+		// describe can also leave FLOWR_SIGDB pointing at a now-deleted temp db, so clear that too
+		const prevDisable = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		const prevSigDb = process.env.FLOWR_SIGDB;
+		delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		delete process.env.FLOWR_SIGDB;
+		try {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
+				.amendConfig(c => {
+					c.solver.sigdb.additionalPaths = [dir];
+				})
+				.build();
+			const res = await executeQueries({ analyzer }, [{ type: 'signature', package: 'cfgpkg', function: 'cfg_fn' }]);
+			expect(res.signature.function?.name).toBe('cfg_fn');
+			expect(res.signature.function?.sourceUrl).toBe('https://github.com/cran/cfgpkg/blob/0.2.0/R/c.R#L7');
+		} finally {
+			if(prevDisable === undefined) {
+				delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+			} else {
+				process.env.FLOWR_DISABLE_DEFAULT_SIGDB = prevDisable;
+			}
+			if(prevSigDb === undefined) {
+				delete process.env.FLOWR_SIGDB;
+			} else {
+				process.env.FLOWR_SIGDB = prevSigDb;
+			}
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
+}));
+
+describe('signature query completer', () => {
+	// the completer reads the discoverable bundle (not a synthetic db), so it only runs on a checkout that ships one
+	const manifest = defaultSigDbPath();
+	const bundled = manifest !== undefined && /\.manifest\.json(\.br)?$/.test(manifest);
+	// the shared test setup disables the default bundle for hermetic runs; the completer honors that flag, so
+	// clear it here (the completer is exactly the case that wants the shipped bundle) and restore it afterwards
+	let prevDisable: string | undefined;
+	beforeAll(() => {
+		prevDisable = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+	});
+	afterAll(() => {
+		if(prevDisable === undefined) {
+			delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		} else {
+			process.env.FLOWR_DISABLE_DEFAULT_SIGDB = prevDisable;
+		}
+	});
+
+	test.runIf(bundled)(label('completes package names in the first position', [], ['other']), () => {
+		const { completions } = signatureQueryCompleter(['ggplot'], false);
+		expect(completions).toContain('ggplot2 ');
+		expect(completions.every(c => c.startsWith('ggplot'))).toBe(true);
+	});
+
+	test.runIf(bundled)(label('completes a package\'s functions in the second position and via pkg::', [], ['other']), () => {
+		const spaced = signatureQueryCompleter(['ggplot2', 'aes'], false).completions;
+		expect(spaced).toContain('aes ');
+		expect(spaced).toContain('aes_string ');
+		const dbl = signatureQueryCompleter(['ggplot2::aes'], false).completions;
+		expect(dbl).toContain('ggplot2::aes ');
+		expect(dbl.every(c => c.startsWith('ggplot2::aes'))).toBe(true);
+	});
+
+	test.runIf(bundled)(label('caps a broad set at 200 but spreads them across the alphabet', [], ['other']), () => {
+		const { completions } = signatureQueryCompleter(['ggplot2'], true);   // every ggplot2 function
+		expect(completions.length).toBe(200);
+		const letters = new Set(completions.map(c => c.trim()[0]?.toLowerCase()));
+		expect(letters.size).toBeGreaterThan(10);   // not just the alphabetical head
+	});
+
+	test.runIf(bundled)(label('offers nothing for a version fragment or an unknown package', [], ['other']), () => {
+		expect(signatureQueryCompleter(['ggplot2@4'], false).completions).toEqual([]);
+		expect(signatureQueryCompleter(['nope', 'x'], false).completions).toEqual([]);
+	});
+
+	test.runIf(bundled)(label('offers flags after a function argument', [], ['other']), () => {
+		expect(signatureQueryCompleter(['ggplot2', 'aes', '-'], false).completions).toEqual(['--all ', '--full ']);
+	});
+});

@@ -106,4 +106,20 @@ describe('REPL ghost hint', () => {
 		expect(completionSuggestion(':help ', cfg)).toBe('');
 		expect(completionSuggestion(':version ', cfg)).toBe('');
 	});
+
+	test(label('completes :signature subcommands, then a path for analyze/add', [], ['other']), () => {
+		const cfg = config(true);
+		// the bare command offers every subcommand (via the :sig alias too)
+		for(const kw of [':signature ', ':sig ']) {
+			const subs = replCompleter(kw, cfg)[0];
+			expect(subs).toEqual(expect.arrayContaining(['query ', 'analyze ', 'add ', 'help ']));
+		}
+		// a unique prefix ghosts the rest
+		expect(completionSuggestion(':signature qu', cfg)).toBe('ery ');
+		expect(completionSuggestion(':signature ana', cfg)).toBe('lyze ');
+		// analyze/add take a path: Tab offers file:// but it is never ghosted; watch:// makes no sense (ingest once)
+		expect(replCompleter(':signature analyze ', cfg)[0]).toEqual(['file://']);
+		expect(replCompleter(':signature add ', cfg)[0]).toEqual(['file://']);
+		expect(completionSuggestion(':signature add ', cfg)).toBe('');
+	});
 });

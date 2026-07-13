@@ -100,7 +100,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
-		return this.plugins.flatMap(p => [...p.signatureSources()]);
+		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
 	}
 
 	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */

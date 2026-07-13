@@ -69,6 +69,8 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 
 	private readonly extraSources: SigDbSource[];
 	private sources:               PackageSignatureSource[] | undefined;
+	/** the `additionalPaths` the current {@link sources} were assembled with, so a later config resolves a rebuild */
+	private sourcesKey:            string | undefined;
 	private analyzerCtx:           FlowrAnalyzerContext | undefined;
 	/** cached reverse index `export name -> packages exporting it`, built once per source set (see {@link packagesExporting}) */
 	private exportIndex:           Map<string, string[]> | undefined;
@@ -78,6 +80,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	/** invalidate the assembled source list and derived caches (after a source or config change) */
 	private resetAssembled(): void {
 		this.sources = undefined;
+		this.sourcesKey = undefined;
 		this.exportIndex = undefined;
 	}
 
@@ -125,7 +128,41 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			if(ctx.config.solver.sigdb.warmInBackground) {
 				this.startBackgroundWarm();
 			}
+			if(ctx.config.solver.sigdb.autoSync) {
+				this.startBackgroundSync(ctx);
+			}
 		}
+	}
+
+	private syncPromise: Promise<void> | undefined;
+
+	/**
+	 * Opt-in (`solver.sigdb.autoSync`) startup re-sync: if the committed `sigdb.remote.json` link file lists shards
+	 * whose cached copies are missing or hash-mismatched (e.g. a `git pull` updated the pointer), download the
+	 * changed shards from the release in the background and mount the freshly-synced bundle. Fire-and-forget,
+	 * idempotent, and failure-tolerant -- offline or a bad release just leaves the committed base floor in place.
+	 */
+	private startBackgroundSync(ctx: FlowrAnalyzerContext): void {
+		if(this.syncPromise !== undefined) {
+			return;
+		}
+		this.syncPromise = (async() => {
+			// dynamic import: sigdb-download pulls in node http/https, keep it off the hot load path
+			const dl = await import('./sigdb-download');
+			if(!dl.sigDbNeedsSync()) {
+				return;
+			}
+			sigDbLog.info('sigdb: committed link file changed -- re-syncing shards in the background');
+			const { files } = await dl.downloadFullSigDb({
+				repo:       ctx.config.solver.sigdb.downloadRepo,
+				onProgress: msg => sigDbLog.info(`sigdb sync: ${msg}`)
+			});
+			for(const manifest of files.filter(f => /\.manifest\.json(\.br)?$/.test(f))) {
+				await ctx.deps.addDatabaseSource(manifest);
+			}
+		})().catch((e: unknown) => {
+			sigDbLog.warn(`background sigdb sync failed (keeping the committed base floor): ${(e as Error).message}`);
+		});
 	}
 
 	private warmPromise: Promise<void> | undefined;
@@ -161,8 +198,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return this.loadSources().some(src => base.some(p => src.has(p) && src.isBaseR(p)));
 	}
 
-	public override signatureSources(): readonly PackageSignatureSource[] {
-		return this.loadSources();
+	public override signatureSources(config?: FlowrConfig): readonly PackageSignatureSource[] {
+		// a query can run before any analysis has set `analyzerCtx`, so the caller (the deps context) passes the
+		// config through -- otherwise `additionalPaths` would be invisible until the first analysis
+		return this.loadSources(config);
 	}
 
 	public override loadedDatabases(): SigDbLoadedInfo[] {
@@ -182,7 +221,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return this.exportIndex.get(name) ?? [];
 	}
 
-	/** one pass over every loaded source building `export name -> packages`, honouring self-package exclusion */
+	/** one pass over every loaded source building `export name -> packages`, honoring self-package exclusion */
 	private buildExportIndex(): Map<string, string[]> {
 		const index = new Map<string, string[]>();
 		for(const src of this.loadSources()) {
@@ -209,19 +248,27 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 	 * the default (e.g. a downloaded full-history one) is mounted automatically. All bundled defaults are skipped
 	 * when `$FLOWR_DISABLE_DEFAULT_SIGDB` is set; explicit sources are always honored.
 	 */
-	private rawSources(): SigDbSource[] {
+	private rawSources(config?: FlowrConfig): SigDbSource[] {
 		const sources = [...this.extraSources, ...envSources()];
 		const disableBundled = typeof process !== 'undefined' && process.env?.FLOWR_DISABLE_DEFAULT_SIGDB;
 		if(!disableBundled) {
-			sources.push(...defaultSigDbPaths());
+			// `additionalPaths` from the config are searched first (so a downloaded full-history bundle wins): a
+			// directory is discovered like any search root, a direct bundle/manifest file is mounted as-is
+			const extra = (config ?? this.analyzerCtx?.config)?.solver.sigdb.additionalPaths ?? [];
+			sources.push(...defaultSigDbPaths(extra));
+			sources.push(...extra.filter(p => /\.(manifest\.json|sigs\.ndjson)(\.br|\.gz)?$/.test(p)));
 		}
 		return sources;
 	}
 
 	/** synchronously openable sources (instances + plain `.sigs.ndjson`); `.br`/manifests are added by {@link preload}. */
-	private loadSources(): PackageSignatureSource[] {
-		if(this.sources === undefined) {
-			this.sources = this.rawSources()
+	private loadSources(config?: FlowrConfig): PackageSignatureSource[] {
+		// a query may run before an analysis has set `analyzerCtx`, memoizing sources without the config's
+		// `additionalPaths`; re-key on them so the config-aware call rebuilds rather than reusing the stale set
+		const key = ((config ?? this.analyzerCtx?.config)?.solver.sigdb.additionalPaths ?? []).join('\0');
+		if(this.sources === undefined || this.sourcesKey !== key) {
+			this.sourcesKey = key;
+			this.sources = this.rawSources(config)
 				.map(s => this.loadSync(s))
 				.filter((s): s is PackageSignatureSource => s !== undefined);
 		}

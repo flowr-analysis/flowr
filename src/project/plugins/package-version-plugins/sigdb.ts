@@ -83,7 +83,7 @@ export type RPackageVersionLike = string | RPackageVersion;
 function versionKey(v: RPackageVersionLike | undefined): string | undefined {
 	return v === undefined ? undefined : typeof v === 'string' ? v : v.str;
 }
-/** parse a stored version string into the informative {@link RPackageVersion} (never throws — a truly un-coercible version sorts as `0.0.0` but keeps its original `.str`) */
+/** parse a stored version string into the informative {@link RPackageVersion} (never throws -- a truly un-coercible version sorts as `0.0.0` but keeps its original `.str`) */
 export function toRVersion(version: string): RPackageVersion {
 	const parsed = RVersion.parse(version);
 	if(parsed !== undefined) {
@@ -108,8 +108,8 @@ export function toRVersion(version: string): RPackageVersion {
  *    everything else references it by integer. Within a package, identical signatures, call graphs and
  *    whole function records are pooled across versions, sorted index lists are delta-encoded, and
  *    identical packages are deduplicated to a single blob.
- *  - **Fast, partial loading.** The on-disk form is NDJSON — line 1 a header, then the dictionary, then
- *    one self-contained blob per package — and a sidecar `.idx` records the byte offset of the
+ *  - **Fast, partial loading.** The on-disk form is NDJSON -- line 1 a header, then the dictionary, then
+ *    one self-contained blob per package -- and a sidecar `.idx` records the byte offset of the
  *    dictionary and of every package. {@link SigDatabase} loads the dictionary once (~hundreds of ms
  *    for all of CRAN) and then seeks straight to just the packages asked for (sub-millisecond each),
  *    never materializing the whole (multi-hundred-MB) file.
@@ -206,14 +206,14 @@ export type SigDbPkgMeta = [latest: string, archived: number, downloads: number,
 
 /**
  * Temporal tier of a bundle's packages:
- * - `current` — only each package's latest version.
- * - `full`    — every version (self-contained history).
- * - `history` — every version EXCEPT the latest. This is the delta a `current` bundle already carries, so a
+ * - `current` -- only each package's latest version.
+ * - `full`    -- every version (self-contained history).
+ * - `history` -- every version EXCEPT the latest. This is the delta a `current` bundle already carries, so a
  *   `history` bundle mounts beside a `current`/slim one to add the older versions with **zero duplication**
  *   (a single-version package has no non-latest version and is dropped entirely, not routed empty).
  *   Specific-version `lookup` routes correctly across the two; whole-history helpers ({@link SigDatabaseSet.versions},
  *   {@link SigDatabaseSet.releaseDates}, {@link SigDatabaseSet.latestVersion}) read a single shard, so with a
- *   `history` bundle they see the older versions but not the latest — mount a `full` bundle if you need both in one.
+ *   `history` bundle they see the older versions but not the latest -- mount a `full` bundle if you need both in one.
  */
 export type SigDbTier = 'full' | 'current' | 'history';
 /** popularity shard: `top` keeps the most-downloaded packages, `rest` the remainder (undefined = all) */
@@ -256,7 +256,7 @@ export interface SigDb {
 }
 
 /* -------------------------------------------------------------------------------------------------
- * Builder input: what an analyser (e.g. crawlr) feeds in per function/version/package.
+ * Builder input: what an analyzer (e.g. crawlr) feeds in per function/version/package.
  * ---------------------------------------------------------------------------------------------- */
 
 export interface SigParamInfo {
@@ -294,17 +294,17 @@ export interface SigVersionInfo {
 
 /**
  * Which information to store in a bundle (default: everything). Turning a feature off shrinks the
- * database — e.g. an exports-and-dependencies-only bundle omits the (largest) call graphs and signatures.
+ * database -- e.g. an exports-and-dependencies-only bundle omits the (largest) call graphs and signatures.
  * The export view (exported/internal/deprecated) is always available.
  */
 export interface SigDbFeatures {
-	/** parameter lists (names, forced/optional, defaults) — default true */
+	/** parameter lists (names, forced/optional, defaults) -- default true */
 	signatures?:   boolean;
-	/** per-function call graphs (named callees) — default true */
+	/** per-function call graphs (named callees) -- default true */
 	callGraphs?:   boolean;
-	/** definition locations (file + line) — default true */
+	/** definition locations (file + line) -- default true */
 	locations?:    boolean;
-	/** per-version declared dependencies — default true */
+	/** per-version declared dependencies -- default true */
 	dependencies?: boolean;
 }
 
@@ -469,7 +469,7 @@ export class SigDbBuilder {
 		return { blob: { sigs, cgs, fns, versions, noncran, deps, depsByVersion, dates }, versionCount, functionCount };
 	}
 
-	/** the package names to include, in build (sorted) order, honouring the R-core policy and popularity shard */
+	/** the package names to include, in build (sorted) order, honoring the R-core policy and popularity shard */
 	private selectPackages(opts: Pick<SigDbBuildOptions, 'topN' | 'shard' | 'core'>): string[] {
 		let names = [...this.raw.keys()].sort();
 		if(opts.core === 'only') {
@@ -804,7 +804,7 @@ export function shardHash(blobs: readonly PkgBlob[], pkgs: Record<string, number
 }
 
 /* -------------------------------------------------------------------------------------------------
- * Serialization: NDJSON with short tags — "d" dictionary, "b" blob, "m" meta, "p" pkgs.
+ * Serialization: NDJSON with short tags -- "d" dictionary, "b" blob, "m" meta, "p" pkgs.
  * ---------------------------------------------------------------------------------------------- */
 
 /** flush a batch line once its serialized size reaches roughly this many bytes (keeps lines under the string cap) */
@@ -866,7 +866,7 @@ export type ByteRange = [startByte: number, bytes: number];
 /**
  * Everything a reader needs to seek into a plain `.ndjson`: the dictionary's byte range, each package
  * blob's byte range, the package to blob-index map, and per-package metadata. (Line numbers and section
- * bookkeeping the writer used are intentionally not kept — they bloat the index and are never read.)
+ * bookkeeping the writer used are intentionally not kept -- they bloat the index and are never read.)
  */
 export interface SigDbIndex {
 	/** total byte size of the plain `.ndjson` */
@@ -955,7 +955,7 @@ class LineWriter {
 	}
 }
 
-/** Write `<outBase>.sigs.ndjson` (+ `.gz`, `.br`, `.idx`) — a single self-contained bundle (its own dictionary). */
+/** Write `<outBase>.sigs.ndjson` (+ `.gz`, `.br`, `.idx`) -- a single self-contained bundle (its own dictionary). */
 export async function writeSignatureDb(outBase: string, db: SigDb, compress: CompressOptions = {}): Promise<SigDbIndex> {
 	const plain = `${outBase}${SigDbExt}`;
 	const w = new LineWriter(plain, compress);
@@ -1043,7 +1043,7 @@ export interface ShardedWriteOptions extends CompressOptions {
  * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a
  * {@link SigDbManifest} that embeds each shard's index and references the shared dictionary by id. Every
  * shard reindexes into that single dictionary (stored once, not per shard). A reader needs only the `.br`
- * files plus the manifest — no `.idx` sidecars. With `pack`, also assembles a clean copy-into-flowR folder.
+ * files plus the manifest -- no `.idx` sidecars. With `pack`, also assembles a clean copy-into-flowR folder.
  */
 export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, manifestFile: string, opts: ShardedWriteOptions = {}): Promise<SigDbManifest> {
 	const compress: CompressOptions = { brotliQuality: opts.brotliQuality, brotliLgwin: opts.brotliLgwin };
@@ -1371,7 +1371,7 @@ function parseHeader(text: string): Record<string, unknown> | undefined {
 /**
  * Directory for decompressed, hash-keyed caches. Honours `$FLOWR_SIGDB_CACHE` / `$FLOWR_CACHE_DIR` /
  * `$XDG_CACHE_HOME`, then `~/.cache/flowr`, falling back to the OS temp dir (so it works in a read-only
- * Docker image where only `/tmp` is writable — mount a volume at the cache dir to persist it).
+ * Docker image where only `/tmp` is writable -- mount a volume at the cache dir to persist it).
  */
 export function sigDbCacheDir(override?: string): string {
 	const base = override
@@ -1409,23 +1409,26 @@ async function readHeaderOf(source: string): Promise<Record<string, unknown> | u
 			fs.closeSync(fd);
 		}
 	}
-	const rl = readline.createInterface({ input: decompressStream(source), crlfDelay: Infinity });
+	const input = decompressStream(source);
+	const rl = readline.createInterface({ input, crlfDelay: Infinity });
 	try {
 		for await (const line of rl) {
 			return JSON.parse(line) as Record<string, unknown>;
 		}
 	} finally {
+		// closing the readline alone leaves the source stream (and its fd) open when we bail on the first line
 		rl.close();
+		input.destroy();
 	}
 	return undefined;
 }
 
-/** where an index for a decompressed source comes from — a caller-supplied one (e.g. a manifest) or the sibling `.idx` */
+/** where an index for a decompressed source comes from -- a caller-supplied one (e.g. a manifest) or the sibling `.idx` */
 interface EnsureOptions {
 	cacheDir?:  string;
 	hash?:      string;
 	index?:     SigDbIndex;
-	/** the source is not a seekable bundle (e.g. a shared dictionary file) — decompress only, write no `.idx` */
+	/** the source is not a seekable bundle (e.g. a shared dictionary file) -- decompress only, write no `.idx` */
 	indexless?: boolean;
 }
 
@@ -1435,7 +1438,7 @@ function cachePaths(hash: string, cacheDir?: string): { plain: string, idx: stri
 	return { plain, idx: `${plain}.idx` };
 }
 
-/** materialize the `.idx` for a freshly decompressed cache file — from the supplied index or the source's sibling */
+/** materialize the `.idx` for a freshly decompressed cache file -- from the supplied index or the source's sibling */
 function writeCacheIndex(source: string, idx: string, index?: SigDbIndex): void {
 	if(index) {
 		fs.writeFileSync(idx, JSON.stringify(encodeIndex(index)));
@@ -1475,7 +1478,7 @@ async function ensurePlain(source: string, opts: EnsureOptions = {}): Promise<st
 	return plain;
 }
 
-/** synchronous {@link ensurePlain} (blocking brotli/gunzip) — a `hash` must be supplied to key the cache */
+/** synchronous {@link ensurePlain} (blocking brotli/gunzip) -- a `hash` must be supplied to key the cache */
 function ensurePlainSync(source: string, opts: EnsureOptions & { hash: string }): string {
 	if(!isCompressed(source)) {
 		return source;
@@ -1499,7 +1502,7 @@ function ensurePlainSync(source: string, opts: EnsureOptions & { hash: string })
 
 /**
  * Fast, partial reader for a single bundle. `open()`/`openSync()` load the string dictionary + `.idx`
- * once (a single ranged read of the dictionary section — no full parse), then every query seeks straight
+ * once (a single ranged read of the dictionary section -- no full parse), then every query seeks straight
  * to one package blob on demand. `open()` additionally decompresses a `.br`/`.gz` source into a
  * hash-keyed cache and reuses it on later startups. Implements {@link PackageSignatureSource}.
  */
@@ -1519,7 +1522,7 @@ export class SigDatabase implements PackageSignatureSource {
 	/**
 	 * Open a plain, seekable `.sigs.ndjson` synchronously. Pass `index` to skip reading the `.idx` sidecar,
 	 * and `strings` to use an already-loaded shared dictionary instead of the file's own `d` section (for a
-	 * blob-only shard). One ranged read loads the dictionary — no readline overhead.
+	 * blob-only shard). One ranged read loads the dictionary -- no readline overhead.
 	 */
 	public static openSync(plainFile: string, opts: { index?: SigDbIndex, strings?: string[] } = {}): SigDatabase {
 		if(isCompressed(plainFile)) {
@@ -1608,7 +1611,7 @@ export class SigDatabase implements PackageSignatureSource {
 
 	/** recompute this bundle's self-contained content hash from its re-read data (matches {@link writeSignatureDb}) */
 	public contentHash(blobs = this.allBlobs()): string {
-		// use only this bundle's own package metadata, in package-index order — a shared manifest may hoist a
+		// use only this bundle's own package metadata, in package-index order -- a shared manifest may hoist a
 		// superset of metadata that the self-contained bundle was NOT hashed over
 		const meta: Record<string, SigDbPkgMeta> = {};
 		for(const pkg of Object.keys(this.index.pkgs)) {
@@ -1726,7 +1729,7 @@ export interface SigDbShardRef {
 	/** id of the shared dictionary this shard's blobs reindex into (see {@link SigDbManifest.dicts}) */
 	dict?:    string;
 	/**
-	 * the shard's compact index embedded in the manifest (without its own `meta`/`d` — those are shared). A
+	 * the shard's compact index embedded in the manifest (without its own `meta`/`d` -- those are shared). A
 	 * reader routes and seeks from the manifest alone, needing only the `.br` files (no `.idx` sidecars).
 	 */
 	idx?:     SigDbIndexWire | SigShardIndexWire;
@@ -1760,7 +1763,7 @@ export function writeManifest(file: string, manifest: SigDbManifest): void {
 export type SigDbScope = 'base' | 'current' | 'full';
 /** richest first: a container shipping the full set uses it, else the slim `current`, else the npm-bundled `base` */
 const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
-/** layouts a bundled sigdb may sit in, relative to a search root — the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
+/** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
 
 /** roots to search for a bundled sigdb; extendable via `$FLOWR_SIGDB_DIR` (path-delimiter separated) */
@@ -1891,7 +1894,7 @@ function tierRank(ref: SigDbShardRef): number {
 	return ref.tier === 'current' ? 0 : 1;
 }
 
-/** options for {@link SigDatabaseSet.openManifest} — the base cache options plus per-shard enable/disable */
+/** options for {@link SigDatabaseSet.openManifest} -- the base cache options plus per-shard enable/disable */
 export interface SigDbSetOpenOptions extends SigDbOpenOptions {
 	/** only load these shard ids (e.g. `['base-current','current-top']`); omit to load all */
 	includeShards?: readonly string[];
@@ -1911,7 +1914,7 @@ function selectShards(shards: readonly SigDbShardRef[], include?: readonly strin
 /**
  * A transparent, read-only view over several {@link SigDatabase} shards described by a {@link SigDbManifest}.
  * When the manifest embeds each shard's index (the default), `openManifest()` reads only that small file to
- * build the package to shard routing table — **no shard is decompressed up front**. A shard's `.br` is
+ * build the package to shard routing table -- **no shard is decompressed up front**. A shard's `.br` is
  * decompressed into the hash-keyed cache and opened only the first time a package it holds is queried (or
  * eagerly via {@link preload}, which runs in the background). Queries prefer the smallest shard that can
  * serve them (a `current` shard for the latest version, falling back to a `full` shard for a pinned older
@@ -1973,7 +1976,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/**
-	 * Synchronous {@link openManifest} — needs every shard to embed its index (the default for the bundles
+	 * Synchronous {@link openManifest} -- needs every shard to embed its index (the default for the bundles
 	 * flowR ships, so no `.idx` sidecar to read). Shards and dictionaries still decompress lazily (and
 	 * synchronously) on first access, so opening stays cheap. Lets the manifest be loaded from a purely
 	 * synchronous context (e.g. the package-version plugin's sync source path).
@@ -1982,7 +1985,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		const { baseDir, manifest } = SigDatabaseSet.prepManifest(manifestFile, opts);
 		const indices = manifest.shards.map(s => {
 			if(!s.idx) {
-				throw new Error(`openManifestSync needs every shard to embed its index; shard '${s.id}' does not — use openManifest`);
+				throw new Error(`openManifestSync needs every shard to embed its index; shard '${s.id}' does not -- use openManifest`);
 			}
 			return decodeIndex(s.idx, manifest.meta);
 		});
@@ -2017,7 +2020,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return strings;
 	}
 
-	/** lazily open a shard — decompressing its `.br` (and its shared dictionary) into the cache on first access */
+	/** lazily open a shard -- decompressing its `.br` (and its shared dictionary) into the cache on first access */
 	private shard(i: number): SigDatabase {
 		const existing = this.opened[i];
 		if(existing) {
@@ -2101,7 +2104,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return candidates.filter(i => this.shard(i).hasVersion(pkg, version));
 	}
 
-	/** read (once) the blob from the shard with the most complete history — a `full` or `history` tier if present */
+	/** read (once) the blob from the shard with the most complete history -- a `full` or `history` tier if present */
 	private historyBlob(pkg: string): PkgBlob | undefined {
 		const candidates = this.routes.get(pkg);
 		if(!candidates || candidates.length === 0) {
@@ -2124,12 +2127,12 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return [...this.routes.keys()];
 	}
 
-	/** open (blocking) and return every shard database with its manifest ref — used for whole-set verification */
+	/** open (blocking) and return every shard database with its manifest ref -- used for whole-set verification */
 	public allShards(): { ref: SigDbShardRef, db: SigDatabase }[] {
 		return this.manifest.shards.map((ref, i) => ({ ref, db: this.shard(i) }));
 	}
 
-	/** load (and cache) a shared dictionary's strings by id — for verification/inspection */
+	/** load (and cache) a shared dictionary's strings by id -- for verification/inspection */
 	public sharedDictionary(id: string): string[] {
 		return this.dictionaryStrings(id);
 	}
@@ -2184,7 +2187,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(toRVersion).sort((a, b) => RVersion.compare(a.str, b.str));
 	}
 
-	/** every known release of a package (version + date), ascending — read once from the most complete shard */
+	/** every known release of a package (version + date), ascending -- read once from the most complete shard */
 	public releaseDates(pkg: string): VersionRelease[] {
 		return releasesOf(this.historyBlob(pkg));
 	}

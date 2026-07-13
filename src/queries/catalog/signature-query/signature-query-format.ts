@@ -7,7 +7,7 @@ import { bold, italic, color, hyperlink, Colors, FontStyles } from '../../../uti
 import { printAsMs } from '../../../util/text/time';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { executeSignatureQuery, cranPageUrl } from './signature-query-executor';
+import { executeSignatureQuery, cranPageUrl, signatureQueryCompleter } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 
 /**
@@ -254,10 +254,10 @@ function pushPackage(result: string[], f: OutputFormatter, p: SignaturePackageVi
 	if(p.releaseDate) {
 		result.push(`      ╰ ${italic(`released ${p.releaseDate}`, f)}`);
 	}
-	const links: string[] = [];
 	if(p.cranPage) {
-		links.push(hyperlink('CRAN', p.cranPage, f));
+		result.push(`      ╰ ${italic('docs', f)}    ${hyperlink(p.cranPage, p.cranPage, f)}`);
 	}
+	const links: string[] = [];
 	if(p.repoUrl) {
 		links.push(hyperlink('mirror', p.repoUrl, f));
 	}
@@ -355,12 +355,14 @@ export const SignatureQueryDefinition = {
 			pushSummary(result, formatter, out);
 		}
 		if(out.message) {
-			result.push(`   ╰ ${out.message}${out.suggestions?.length ? ` Did you mean: ${out.suggestions.join(', ')}?` : ''}`);
+			const hint = out.suggestions?.length ? ` ${italic('Did you mean:', formatter)} ${out.suggestions.join(', ')}?` : '';
+			result.push(`   ╰ ${color(out.message, Colors.Red, formatter)}${hint}`);
 		}
 		return true;
 	},
-	fromLine: signatureQueryLineParser,
-	schema:   Joi.object({
+	fromLine:  signatureQueryLineParser,
+	completer: signatureQueryCompleter,
+	schema:    Joi.object({
 		type:     Joi.string().valid('signature').required().description('The type of the query.'),
 		package:  Joi.string().optional().description('The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases.'),
 		function: Joi.string().optional().description('A function/symbol to inspect (glob wildcards allowed).'),

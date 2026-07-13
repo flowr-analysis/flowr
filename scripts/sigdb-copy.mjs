@@ -17,8 +17,9 @@ fs.mkdirSync(dst, { recursive: true });
 const keep = new Set();
 let bytes = 0;
 for(const file of fs.readdirSync(src)) {
-	// ship only the compressed artefacts (.br) and the manifests; skip any plain .sigs.ndjson/.gz/.idx
-	if(!(file.endsWith('.br') || file.endsWith('.manifest.json'))) {
+	// ship the compressed artefacts (.br), the manifests, and the `sigdb.remote.json` link file (so the
+	// runtime downloader/autoSync finds it under dist); skip any plain .sigs.ndjson/.gz/.idx
+	if(!(file.endsWith('.br') || file.endsWith('.manifest.json') || file === 'sigdb.remote.json')) {
 		continue;
 	}
 	const from = path.join(src, file), to = path.join(dst, file);

@@ -1,5 +1,12 @@
 # syntax=docker/dockerfile:1
 
+# optional full-history signature database. The default is a tiny image with no data (image stays small);
+# bake the full bundle in by overriding with the published data image:
+#   docker build --build-arg SIGDB_IMAGE=ghcr.io/flowr-analysis/flowr-sigdb:latest ...
+ARG SIGDB_IMAGE=busybox:stable
+FROM ${SIGDB_IMAGE} AS sigdb-full
+RUN mkdir -p /data/sigdb
+
 FROM node:25.3-alpine3.23 AS builder
 
 WORKDIR /app
@@ -16,6 +23,13 @@ RUN apk add --no-cache python3 make g++
 # install and build all modules, then ship the sigdb dictionary uncompressed so the first package
 # lookup skips its brotli decompression (the shards stay compressed and decompress lazily)
 RUN npm ci && npm run build:bundle-flowr && node scripts/sigdb-decompress-dict.mjs dist/src/data/sigdb
+
+# merge in the full-history database when one was provided via SIGDB_IMAGE (the default busybox ships none),
+# then re-decompress the dictionaries so the added shards are ready too
+COPY --from=sigdb-full /data/sigdb/ /tmp/sigdb-full/
+RUN if ls /tmp/sigdb-full/*.br >/dev/null 2>&1; then \
+      cp /tmp/sigdb-full/* dist/src/data/sigdb/ && node scripts/sigdb-decompress-dict.mjs dist/src/data/sigdb; \
+    fi; rm -rf /tmp/sigdb-full
 
 
 FROM node:25.3-alpine3.23 AS flowr

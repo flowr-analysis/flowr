@@ -1,0 +1,48 @@
+{
+	"format": "flowr-sigdb-remote",
+	"schema": 1,
+	"tag": "sigdb-v2.11.1",
+	"repo": "flowr-analysis/flowr",
+	"shards": {
+		"current.base-current.sigs.ndjson.br": {
+			"sha256": "075907a7a839fe6348e54a73ef3d27e4a3590d1d80042bd80f1435795233c733",
+			"bytes": 97450
+		},
+		"current.base-full.sigs.ndjson.br": {
+			"sha256": "67fdf17991c0929726ab2c53bbf21f748cfd82ecbd2d18cead61f612281b86b2",
+			"bytes": 427751
+		},
+		"current.current-rest.sigs.ndjson.br": {
+			"sha256": "4fa862ffab29cfcd5873259def33b321b2c35b4c2fb87eb4053c30bb677005ab",
+			"bytes": 14698884
+		},
+		"current.current-top.sigs.ndjson.br": {
+			"sha256": "4566fffc038fc70eb5102a85315c880c52e328b60fb037d474902c6593383649",
+			"bytes": 2038147
+		},
+		"current.dict.sigs.ndjson.br": {
+			"sha256": "2918d69a78938fc14793f0942d0767aeddb2228216f56b38bc2f905e288523b5",
+			"bytes": 6528828
+		},
+		"current.manifest.json.br": {
+			"sha256": "d101a0ab6de73b2a72140909b7b4ef742bdc8957384b4d0a83eabc8703171a34",
+			"bytes": 419333
+		},
+		"history.dict.sigs.ndjson.br": {
+			"sha256": "d910bcf40d1d3f85df5aa201128fc32f995db249fa1a77ae5a8b5224f442af53",
+			"bytes": 6803331
+		},
+		"history.history-rest.sigs.ndjson.br": {
+			"sha256": "3bf55d0be115f081fe8c828993fb91df61f8fef400598ba00cc05bc8efd9f92b",
+			"bytes": 22889606
+		},
+		"history.history-top.sigs.ndjson.br": {
+			"sha256": "1d3a5c852740c0cddbed7f43fde638925c2efdf0e2490a6983fd7e52e8084712",
+			"bytes": 6130733
+		},
+		"history.manifest.json.br": {
+			"sha256": "00ed86f2bfa7396b0c08dea9459add92eee25e7a894aa4c8f462a41e7cd87a1a",
+			"bytes": 338369
+		}
+	}
+}

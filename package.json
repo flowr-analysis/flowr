@@ -29,6 +29,8 @@
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "gen:base-packages": "ts-node scripts/gen-base-packages.ts",
+    "sync:sigdb": "ts-node scripts/sigdb-remote.ts",
+    "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
     "build:copy-data": "node scripts/sigdb-copy.mjs",
     "build-dev": "npm run build && npm run build:copy-wasm",
     "build:bundle-flowr": "npm run build && esbuild --bundle dist/src/cli/flowr.js --platform=node --tree-shaking=true --minify --external:clipboardy --target=node22 --outfile=dist/src/cli/flowr.min.js && npm run build:copy-wasm",
@@ -48,7 +50,7 @@
     "test:performance": "npm run performance-test --",
     "test:docker": "func() { for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; docker build -t flowr-docker-test -f \"$df\" . || return 1; echo \"=== smoke-testing $df ===\"; docker run --rm flowr-docker-test --version || return 1; done; }; func",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
-    "checkup": "npm run flowr -- --execute \":version\" && npm run lint && npm run test-full -- --allowOnly=false && npm run test:system -- --no-watch && docker build -t test-flowr -f scripts/Dockerfile . && npm run doc && npm run wiki"
+    "checkup": "ts-node scripts/checkup-parallel.ts"
   },
   "keywords": [
     "static code analysis",

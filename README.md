@@ -24,7 +24,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.11.1, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
+    flowR repl v2.11.1, R grammar v14 (tree-sitter engine)
     R> :query @linter "read.csv(\"/root/x.txt\")"
     ```
     
@@ -33,13 +33,13 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (2 ms)
+    Query: linter (431 ms)
        ╰ Deprecated Functions (deprecated-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 39, processTimeMs: 0
        ╰ Seeded Randomness (seeded-randomness):
            ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Absolute Paths (absolute-file-paths):
@@ -47,13 +47,13 @@ It offers a wide variety of features, for example:
                ╰ Path `/root/x.txt` at 1.1-23
            ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Unused Definitions (unused-definitions):
-           ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 1
+           ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Naming Convention (naming-convention):
            ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Network Functions (network-functions):
            ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
        ╰ Dead Code (dead-code):
            ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
        ╰ Useless Loops (useless-loop):
@@ -71,12 +71,12 @@ It offers a wide variety of features, for example:
        ╰ Software Has Tests (software-has-tests):
            ╰ certain:
                ╰ No tests found in the project
-           ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 1, processTimeMs: 0
        ╰ No Leaked Credentials (no-leaked-credentials):
            ╰ Metadata: totalChecked: 0, searchTimeMs: 0, processTimeMs: 0
        ╰ Undefined Symbol (undefined-symbol):
-           ╰ Metadata: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 0
-    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
+           ╰ Metadata: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 388
+    All queries together required ≈431 ms (1ms accuracy, total 431 ms)
     ```
     
     
@@ -98,15 +98,15 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (3 ms)\
+    Query: **linter** (386 ms)\
     &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 32, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
@@ -126,7 +126,7 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 1, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Software Has License** (software-has-license):\
@@ -140,12 +140,12 @@ It offers a wide variety of features, for example:
     &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalChecked: 0, searchTimeMs: 0, processTimeMs: 0</code>\
     &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    _All queries together required ≈3 ms (1ms accuracy, total 3 ms)_
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 350</code>\
+    _All queries together required ≈386 ms (1ms accuracy, total 387 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _3.4 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _386.7 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -185,7 +185,7 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 32,
               "processTimeMs": 0
             }
           },
@@ -197,7 +197,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -283,7 +283,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "consideredNodes": 0,
-              "searchTimeMs": 0,
+              "searchTimeMs": 1,
               "processTimeMs": 0
             }
           },
@@ -353,16 +353,16 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 350
             }
           }
         },
         ".meta": {
-          "timing": 3
+          "timing": 386
         }
       },
       ".meta": {
-        "timing": 3
+        "timing": 386
       }
     }
     ```
@@ -426,7 +426,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.11.1, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
+    flowR repl v2.11.1, R grammar v14 (tree-sitter engine)
     R> :query @static-slice (11@sum) file://test/testfiles/example.R
     ```
     
@@ -508,7 +508,7 @@ It offers a wide variety of features, for example:
     
     ```shell
     $ docker run -it --rm eagleoutice/flowr # or npm run flowr 
-    flowR repl v2.11.1, R grammar v14 (tree-sitter engine, pkg-db: latest/2026-05-23)
+    flowR repl v2.11.1, R grammar v14 (tree-sitter engine)
     R> :dataflow* test/testfiles/example.R
     ```
     
@@ -517,7 +517,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgIzkxO1JTeW1ib2wjOTM7IHRlc3RcbiAgICAgICgwKVxuICAgICAgKjEuMS00KmBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMFxuICAgIDEoW1wiYCM5MTtSU3ltYm9sIzkzOyB0ZXN0ZmlsZXNcbiAgICAgICgxKVxuICAgICAgKjEuNi0xNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDFcbiAgICAyW1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoMilcbiAgICAgICoxLjEtMTQqXG4gICAgKDAsIDEpYFwiXV1cbiAgICBidWlsdC1pbjpfW1wiYEJ1aWx0LUluOlxuL2BcIl1cbiAgICBzdHlsZSBidWlsdC1pbjpfIHN0cm9rZTpncmF5LGZpbGw6Z3JheSxzdHJva2Utd2lkdGg6MnB4LG9wYWNpdHk6Ljg7XG4gICAgMyhbXCJgIzkxO1JTeW1ib2wjOTM7IGV4YW1wbGUuUlxuICAgICAgKDMpXG4gICAgICAqMS4xNi0yNCpgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAjOTE7UkJpbmFyeU9wIzkzOyAvXG4gICAgICAoNClcbiAgICAgICoxLjEtMjQqXG4gICAgKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip0ZXN0KipcbiAgICAgICoxLjEtNCogKCoqaWQ6IDAqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDBcbiAgICAxKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnRlc3RmaWxlcyoqXG4gICAgICAqMS42LTE0KiAoKippZDogMSoqKWBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogKiovKipcbiAgICAgICoxLjEtMTQqICgqKmlkOiAyKiopXG4gICAgYXJnOiAoMCwgMSlgXCJdXVxuICAgIGJ1aWx0LWluOl9bXCJgQnVpbHQtSW46XG4vYFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl8gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAzKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmV4YW1wbGUuUioqXG4gICAgICAqMS4xNi0yNCogKCoqaWQ6IDMqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqICoqLyoqXG4gICAgICAqMS4xLTI0KiAoKippZDogNCoqKVxuICAgIGFyZzogKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
     ```
     
     
@@ -529,178 +529,137 @@ It offers a wide variety of features, for example:
     
     ```mermaid
     flowchart LR
-        1{{"`#91;RNumber#93; 0
-          (1)
-          *1.8*`"}}
+        1{{"`*#91;RNumber#93;* **0**
+          *1.8* (**id: 1**)`"}}
        %% No edges found for 1
-        0["`#91;RSymbol#93; sum
-          (0, sources: [1])
-          *1.1-3*`"]
-        2[["`#91;RBinaryOp#93; #60;#45;
-          (2)
-          *1.1-8*
-        (0, 1)`"]]
+        0["`*#91;RSymbol#93;* **sum**
+          *1.1-3* (**id: 0**, sources: [1])`"]
+        2[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *1.1-8* (**id: 2**)
+        arg: (0, 1)`"]]
         built-in:_-["`Built-In:
     #60;#45;`"]
         style built-in:_- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        4{{"`#91;RNumber#93; 1
-          (4)
-          *2.12*`"}}
+        4{{"`*#91;RNumber#93;* **1**
+          *2.12* (**id: 4**)`"}}
        %% No edges found for 4
-        3["`#91;RSymbol#93; product
-          (3, sources: [4])
-          *2.1-7*`"]
-        5[["`#91;RBinaryOp#93; #60;#45;
-          (5)
-          *2.1-12*
-        (3, 4)`"]]
-        7{{"`#91;RNumber#93; 7
-          (7)
-          *3.6*`"}}
+        3["`*#91;RSymbol#93;* **product**
+          *2.1-7* (**id: 3**, sources: [4])`"]
+        5[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *2.1-12* (**id: 5**)
+        arg: (3, 4)`"]]
+        7{{"`*#91;RNumber#93;* **7**
+          *3.6* (**id: 7**)`"}}
        %% No edges found for 7
-        6["`#91;RSymbol#93; w
-          (6, sources: [7])
-          *3.1*`"]
-        8[["`#91;RBinaryOp#93; #60;#45;
-          (8)
-          *3.1-6*
-        (6, 7)`"]]
-        10{{"`#91;RNumber#93; 10
-          (10)
-          *4.6-7*`"}}
+        6["`*#91;RSymbol#93;* **w**
+          *3.1* (**id: 6**, sources: [7])`"]
+        8[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *3.1-6* (**id: 8**)
+        arg: (6, 7)`"]]
+        10{{"`*#91;RNumber#93;* **10**
+          *4.6-7* (**id: 10**)`"}}
        %% No edges found for 10
-        9["`#91;RSymbol#93; N
-          (9, sources: [10])
-          *4.1*`"]
-        11[["`#91;RBinaryOp#93; #60;#45;
-          (11)
-          *4.1-7*
-        (9, 10)`"]]
-        12["`#91;RSymbol#93; i
-          (12, sources: [20])
-          *6.6*`"]
-        13{{"`#91;RNumber#93; 1
-          (13)
-          *6.11*`"}}
+        9["`*#91;RSymbol#93;* **N**
+          *4.1* (**id: 9**, sources: [10])`"]
+        11[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *4.1-7* (**id: 11**)
+        arg: (9, 10)`"]]
+        12["`*#91;RSymbol#93;* **i**
+          *6.6* (**id: 12**, sources: [20])`"]
+        13{{"`*#91;RNumber#93;* **1**
+          *6.11* (**id: 13**)`"}}
        %% No edges found for 13
-        16(["`#91;RSymbol#93; N
-          (16)
-          *6.14*`"])
-        17{{"`#91;RNumber#93; 1
-          (17)
-          *6.16*`"}}
+        16(["`*#91;RSymbol#93;* **N**
+          *6.14* (**id: 16**)`"])
+        17{{"`*#91;RNumber#93;* **1**
+          *6.16* (**id: 17**)`"}}
        %% No edges found for 17
-        18[["`#91;RBinaryOp#93; #45;
-          (18)
-          *6.14-16*
-        (16, 17)`"]]
+        18[["`*#91;RBinaryOp#93;* **#45;**
+          *6.14-16* (**id: 18**)
+        arg: (16, 17)`"]]
         built-in:-["`Built-In:
     #45;`"]
         style built-in:- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        19[["`#91;RExpressionList#93; (
-          (19)
-          *6.13*
-        (18)`"]]
-        20[["`#91;RBinaryOp#93; #58;
-          (20)
-          *6.11-17*
-        (13, 19)`"]]
+        19[["`*#91;RExpressionList#93;* **(**
+          *6.13* (**id: 19**)
+        arg: (18)`"]]
+        20[["`*#91;RBinaryOp#93;* **#58;**
+          *6.11-17* (**id: 20**)
+        arg: (13, 19)`"]]
         built-in::["`Built-In:
     #58;`"]
         style built-in:: stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        24(["`#91;RSymbol#93; sum
-          (24, :may:36+)
-          *7.10-12*`"])
-        25(["`#91;RSymbol#93; i
-          (25, :may:36+)
-          *7.16*`"])
-        26[["`#91;RBinaryOp#93; #43;
-          (26, :may:36+)
-          *7.10-16*
-        (24, 25)`"]]
+        24(["`*#91;RSymbol#93;* **sum**
+          *7.10-12* (**id: 24**, :may:36+)`"])
+        25(["`*#91;RSymbol#93;* **i**
+          *7.16* (**id: 25**, :may:36+)`"])
+        26[["`*#91;RBinaryOp#93;* **#43;**
+          *7.10-16* (**id: 26**, :may:36+)
+        arg: (24, 25)`"]]
         built-in:_["`Built-In:
     #43;`"]
         style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        27(["`#91;RSymbol#93; w
-          (27, :may:36+)
-          *7.20*`"])
-        28[["`#91;RBinaryOp#93; #43;
-          (28, :may:36+)
-          *7.10-20*
-        (26, 27)`"]]
-        23["`#91;RSymbol#93; sum
-          (23, :may:36+, sources: [28])
-          *7.3-5*`"]
-        29[["`#91;RBinaryOp#93; #60;#45;
-          (29, :may:36+)
-          *7.3-20*
-        (23, 28)`"]]
-        31(["`#91;RSymbol#93; product
-          (31, :may:36+)
-          *8.14-20*`"])
-        32(["`#91;RSymbol#93; i
-          (32, :may:36+)
-          *8.24*`"])
-        33[["`#91;RBinaryOp#93; #42;
-          (33, :may:36+)
-          *8.14-24*
-        (31, 32)`"]]
-        30["`#91;RSymbol#93; product
-          (30, :may:36+, sources: [33])
-          *8.3-9*`"]
-        34[["`#91;RBinaryOp#93; #60;#45;
-          (34, :may:36+)
-          *8.3-24*
-        (30, 33)`"]]
-        35[["`#91;RExpressionList#93; #123;
-          (35, :may:36+)
-          *6.20*
-        (29, 34)`"]]
-        36[["`#91;RForLoop#93; for
-          (36)
-          *6.1-9.1*
-        (12, 20, 35)`"]]
+        27(["`*#91;RSymbol#93;* **w**
+          *7.20* (**id: 27**, :may:36+)`"])
+        28[["`*#91;RBinaryOp#93;* **#43;**
+          *7.10-20* (**id: 28**, :may:36+)
+        arg: (26, 27)`"]]
+        23["`*#91;RSymbol#93;* **sum**
+          *7.3-5* (**id: 23**, :may:36+, sources: [28])`"]
+        29[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *7.3-20* (**id: 29**, :may:36+)
+        arg: (23, 28)`"]]
+        31(["`*#91;RSymbol#93;* **product**
+          *8.14-20* (**id: 31**, :may:36+)`"])
+        32(["`*#91;RSymbol#93;* **i**
+          *8.24* (**id: 32**, :may:36+)`"])
+        33[["`*#91;RBinaryOp#93;* **#42;**
+          *8.14-24* (**id: 33**, :may:36+)
+        arg: (31, 32)`"]]
+        30["`*#91;RSymbol#93;* **product**
+          *8.3-9* (**id: 30**, :may:36+, sources: [33])`"]
+        34[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *8.3-24* (**id: 34**, :may:36+)
+        arg: (30, 33)`"]]
+        35[["`*#91;RExpressionList#93;* **#123;**
+          *6.20* (**id: 35**, :may:36+)
+        arg: (29, 34)`"]]
+        36[["`*#91;RForLoop#93;* **for**
+          *6.1-9.1* (**id: 36**)
+        arg: (12, 20, 35)`"]]
         built-in:for["`Built-In:
     for`"]
         style built-in:for stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        38{{"`#91;RString#93; #34;Sum#58;#34;
-          (38)
-          *11.5-10*`"}}
+        38{{"`*#91;RString#93;* **#34;Sum#58;#34;**
+          *11.5-10* (**id: 38**)`"}}
        %% No edges found for 38
-        40(["`#91;RSymbol#93; sum
-          (40)
-          *11.13-15*`"])
+        40(["`*#91;RSymbol#93;* **sum**
+          *11.13-15* (**id: 40**)`"])
         built-in:sum["`Built-In:
     sum`"]
         style built-in:sum stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        42{{"`#91;RString#93; #34;
-    #34;
-          (42)
-          *11.18-21*`"}}
+        42{{"`*#91;RString#93;* **#34;
+    #34;**
+          *11.18-21* (**id: 42**)`"}}
        %% No edges found for 42
-        44[["`#91;RFunctionCall#93; cat
-          (44)
-          *11.1-22*
-        (38, 40, 42)`"]]
+        44[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
+          *11.1-22* (**id: 44**)
+        arg: (38, 40, 42)`"]]
         built-in:cat["`Built-In:
     cat`"]
         style built-in:cat stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        46{{"`#91;RString#93; #34;Product#58;#34;
-          (46)
-          *12.5-14*`"}}
+        46{{"`*#91;RString#93;* **#34;Product#58;#34;**
+          *12.5-14* (**id: 46**)`"}}
        %% No edges found for 46
-        48(["`#91;RSymbol#93; product
-          (48)
-          *12.17-23*`"])
-        50{{"`#91;RString#93; #34;
-    #34;
-          (50)
-          *12.26-29*`"}}
+        48(["`*#91;RSymbol#93;* **product**
+          *12.17-23* (**id: 48**)`"])
+        50{{"`*#91;RString#93;* **#34;
+    #34;**
+          *12.26-29* (**id: 50**)`"}}
        %% No edges found for 50
-        52[["`#91;RFunctionCall#93; cat
-          (52)
-          *12.1-30*
-        (46, 48, 50)`"]]
+        52[["`*#91;RFunctionCall#93;* base#58;#58;**cat**
+          *12.1-30* (**id: 52**)
+        arg: (46, 48, 50)`"]]
         0 -->|"defined-by"| 1
         0 -->|"defined-by"| 2
         2 -->|"reads, argument"| 1
@@ -821,7 +780,7 @@ It offers a wide variety of features, for example:
     ```
     
     	
-    (The analysis required _1.8 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
     
     
     

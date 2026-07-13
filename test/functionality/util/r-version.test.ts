@@ -7,6 +7,9 @@ describe('R Version Utility', () => {
 		function check(...tests: readonly [give: string, want: string][]) {
 			test.each(tests)('parse %s', (version, expect) => {
 				const parsed = RVersion.parse(version);
+				if(parsed === undefined) {
+					assert.fail(`expected "${version}" to parse into a version`);
+				}
 				assert.strictEqual(parsed.str, version, `Original version string mismatch for input "${version}"`);
 				const other = new SemVer(expect);
 				assert.strictEqual(parsed.compare(other), 0, `Parsed version ${parsed.version} does not match expected ${other.format()}`);
@@ -30,12 +33,26 @@ describe('R Version Utility', () => {
 			['4.00', '4.0.0'],
 			['12.01', '12.1.0']
 		);
+
+		describe('un-coercible versions yield undefined (never throw)', () => {
+			test.each([
+				'',            // an empty `Version:` field
+				'   ',
+				'not-a-version'
+			])('parse %j -> undefined', bad => {
+				assert.doesNotThrow(() => RVersion.parse(bad));
+				assert.isUndefined(RVersion.parse(bad));
+			});
+		});
 	});
 
 	describe('Range', () => {
 		function check(...tests: readonly [give: string, want: string][]) {
 			test.each(tests)('parse %s', (versionRange, expect) => {
 				const parsed = RRange.parse(versionRange);
+				if(parsed === undefined) {
+					assert.fail(`expected "${versionRange}" to parse into a range`);
+				}
 				assert.strictEqual(parsed.str, versionRange, `Original version string mismatch for input "${versionRange}"`);
 				const other = new Range(expect);
 				assert.isTrue(parsed.intersects(other), `Parsed range ${parsed.raw} does not match expected ${other.raw}`);
@@ -69,5 +86,17 @@ describe('R Version Utility', () => {
 			['>=2018.0.0-07.10', '>=2018.0.0-7.10'],
 			['>=0.6.0-00', '>=0.6.0-0']
 		);
+
+		describe('unparseable constraints yield undefined (never throw)', () => {
+			test.each([
+				'>= abc',            // a non-numeric bound (e.g. a typo'd DESCRIPTION constraint)
+				'GitHub (123.0.0)',  // a lockfile git/URL "version"
+				'not a version',
+				'>=>=1.0'
+			])('parse %j -> undefined', bad => {
+				assert.doesNotThrow(() => RRange.parse(bad));
+				assert.isUndefined(RRange.parse(bad));
+			});
+		});
 	});
 });

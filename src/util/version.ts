@@ -61,14 +61,25 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	const faint = (s: string) => output.formatter.format(s, { style: FontStyles.Faint });
-	output.stdout(`Engine: ${engine}`);
-	output.stdout(` flowR: ${flowr}`);
-	// gray out R when it is not actually available
-	output.stdout((r === 'none' || r === 'unknown') ? faint(` R: ${r}`) : ` R: ${r}`);
+	const rReason = r === 'none' ? ' (no R interpreter available)'
+		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
+			: '';
+	const rows: [string, string, boolean?][] = [
+		['engine', engine],
+		['flowR', flowr],
+		['R', `${r}${rReason}`, r === 'none' || r === 'unknown']
+	];
 	if(typeof input !== 'function' && 'inspectContext' in input) {
 		// reads the current analyzer, so it reflects the databases in use (and adapts to config changes)
-		const dbs = input.inspectContext().deps.loadedPackageDatabases();
-		const line = ` package databases: ${dbs.length === 0 ? 'none' : dbs.map(d => `${d.scope} (v${d.version}, ${d.date})`).join(', ')}`;
-		output.stdout(dbs.length === 0 ? faint(line) : line);
+		const ctx = input.inspectContext();
+		const setting = ctx.config.solver.sigdb.assumedRVersion ?? 'auto';
+		rows.push(['assumed R', `${ctx.resolvedRVersion} ${faint(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
+		const dbs = ctx.deps.loadedPackageDatabases();
+		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(d => `${d.scope} (v${d.version}, ${d.date})`).join(', '), dbs.length === 0]);
+	}
+	const width = Math.max(...rows.map(([label]) => label.length));
+	for(const [label, value, faded] of rows) {
+		const line = `${label.padEnd(width)} : ${value}`;
+		output.stdout(faded ? faint(line) : line);
 	}
 }

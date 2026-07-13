@@ -7,14 +7,15 @@ WORKDIR /app
 # copy the source and build files of all modules into the workdir
 COPY ./src /app/src
 COPY ./test /app/test
-COPY ./scripts/pkgdb-compress.mjs /app/scripts/pkgdb-compress.mjs
+COPY ./scripts /app/scripts
 COPY ./package.json ./package-lock.json ./tsconfig.json /app/
 
 # install python and build tools for node-gyp
 RUN apk add --no-cache python3 make g++
 
-# install and build all modules
-RUN npm ci && npm run build:bundle-flowr
+# install and build all modules, then ship the sigdb dictionary uncompressed so the first package
+# lookup skips its brotli decompression (the shards stay compressed and decompress lazily)
+RUN npm ci && npm run build:bundle-flowr && node scripts/sigdb-decompress-dict.mjs dist/src/data/sigdb
 
 
 FROM node:25.3-alpine3.23 AS flowr

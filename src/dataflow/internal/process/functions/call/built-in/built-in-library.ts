@@ -30,6 +30,7 @@ import { pMatch } from '../../../../linker';
 import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
+import { baseRPackages } from '../../../../../../util/r-base-packages';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig {
@@ -356,7 +357,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	}
 	// by default only the environment carries the exports; their built-in vertices are materialized on
 	// demand when a call resolves to one (see attachExportVertex). Eager mode registers them all upfront.
-	if(data.ctx.config.solver.pkgdb.eagerlyLoadExports){
+	if(data.ctx.config.solver.sigdb.eagerlyLoadExports){
 		for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
 			const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
 			attachExportVertex(info.graph, builtInId, info.environment, data.ctx, data.cds);
@@ -441,6 +442,54 @@ function isAttached(env: Environment, pack: string, namespaceOnly?: boolean): bo
 		}
 	}
 	return false;
+}
+
+/**
+ * The base search path is identical for a given built-in environment, assumed R version, base-package set and
+ * loaded database, but building it is expensive (each export `define`s into a growing namespace layer, so a
+ * package with N exports costs O(N^2)). We therefore build the immutable base-layer chain once and cache it,
+ * keyed by exactly those inputs; every later analysis just drops its fresh global on top -- an O(1) reparent.
+ * The layers are safe to share: `define`/`defineInNamespace` clone before mutating, so no analysis can alter
+ * them, and the global is identified by a boolean flag (not a pointer), so a new global on top resolves right.
+ */
+const baseNamespaceLayerCache = new Map<string, REnvironmentInformation['current']>();
+
+/** the exact inputs the base search path depends on: built-in env, assumed R version, base packages and loaded database (content hash) */
+function baseNamespaceCacheKey(ctx: FlowrAnalyzerContext, basePackages: readonly string[]): string {
+	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${JSON.stringify(ctx.deps.loadedPackageDatabases())}`;
+}
+
+/**
+ * Attach the {@link baseRPackages|base-R} exports below the global environment so bare base calls resolve
+ * without an explicit `library()`. Names with a registered built-in (e.g. `paste`, `c`) are skipped so the
+ * base namespace never shadows flowR's built-in processors, and it is a no-op when no database resolves a base
+ * package. The result is cached per unique input (see {@link baseNamespaceLayerCache}).
+ */
+export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	if(!ctx.config.solver.sigdb.linkBaseR || !ctx.deps.hasBaseRSource()){
+		return env;
+	}
+	const basePackages = ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion);
+	const key = baseNamespaceCacheKey(ctx, basePackages);
+	const cached = baseNamespaceLayerCache.get(key);
+	if(cached !== undefined){
+		env.current.parent = cached;   // reuse the precomputed base search path below this analysis's global
+		return env;
+	}
+	let built = env;
+	let builtinNames: ReadonlySet<string> | undefined;
+	for(const pkg of basePackages){
+		const dependency = ctx.deps.getDependency(pkg);
+		if(dependency?.namespaceInfo === undefined){
+			continue;
+		}
+		builtinNames ??= new Set([...ctx.env.builtInEnvironment.memory.keys()].map(String));
+		built = attachDependencyToEnvironment(dependency, built, ctx, { exclude: builtinNames }, NodeId.toBuiltIn(pkg));
+	}
+	if(built.current.parent !== env.current.parent){   // at least one base package was actually attached
+		baseNamespaceLayerCache.set(key, built.current.parent);
+	}
+	return built;
 }
 
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){

@@ -4,8 +4,8 @@ import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
 import {
-	FlowrAnalyzerPackageVersionsPkgDbPlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
+	FlowrAnalyzerPackageVersionsSigDbPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import {
 	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
@@ -35,7 +35,7 @@ import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discover
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
-	['versions:pkgdb', FlowrAnalyzerPackageVersionsPkgDbPlugin],
+	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],

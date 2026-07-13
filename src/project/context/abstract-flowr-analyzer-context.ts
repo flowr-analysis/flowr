@@ -37,7 +37,12 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
 	protected applyPlugins(args: Parameters<Plugin['processor']>[1]): Out[] {
 		const res: (Out | undefined)[] = [];
 		for(const plugin of this.plugins) {
-			res.push(plugin.processor(this.ctx, args));
+			// isolate each plugin: a single plugin that throws (e.g. on a malformed DESCRIPTION/renv.lock or a
+			// non-intersecting version constraint) must degrade to "no contribution" rather than abort the whole
+			// analysis for every other plugin. The failure is already logged by `processor`.
+			try {
+				res.push(plugin.processor(this.ctx, args));
+			} catch{ /* skip this plugin's contribution, keep the rest */ }
 		}
 		return res.filter(isNotUndefined);
 	}

@@ -43,6 +43,7 @@ import {
 	DataflowLensQueryDefinition
 } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { type ProjectQuery, ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import { type SignatureQuery, SignatureQueryDefinition } from './catalog/signature-query/signature-query-format';
 import { type OriginQuery, OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
 import { type LinterQuery, LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -113,6 +114,7 @@ export type Query = CallContextQuery
 	| InspectRecursionQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| SignatureQuery
 	| OriginQuery
 	| LinterQuery
 	| ProvenanceQuery
@@ -184,6 +186,7 @@ export const SupportedQueries = {
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
+	'signature':            SignatureQueryDefinition,
 	'origin':               OriginQueryDefinition,
 	'linter':               LinterQueryDefinition,
 	'dice':                 DiceQueryDefinition

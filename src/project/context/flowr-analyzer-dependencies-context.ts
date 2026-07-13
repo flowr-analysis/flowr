@@ -1,11 +1,12 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
 	FlowrAnalyzerPackageVersionsPlugin,
-	type PkgDbLoadedInfo
+	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
+import type { PackageSignatureSource } from '../plugins/package-version-plugins/sigdb';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
-import { isPkgDbEnabled } from '../../config';
+import { isSigDbEnabled } from '../../config';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -36,7 +37,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
 	 * Metadata of the package databases the version plugins currently have loaded.
 	 */
-	loadedPackageDatabases(): PkgDbLoadedInfo[];
+	loadedPackageDatabases(): SigDbLoadedInfo[];
 
 	/**
 	 * The names of known packages that export `name` (from the version plugins' package databases). Used to
@@ -44,6 +45,9 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * available or the package db is disabled.
 	 */
 	packagesExporting(name: string): readonly string[];
+
+	/** The signature sources the version plugins currently have loaded (backs the signature query). */
+	signatureSources(): readonly PackageSignatureSource[];
 }
 
 /**
@@ -72,15 +76,15 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.lazyResolvers.push(resolver);
 	}
 
-	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
-		if(!isPkgDbEnabled(this.ctx.config)) {
+	public loadedPackageDatabases(): SigDbLoadedInfo[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
 	public packagesExporting(name: string): readonly string[] {
-		if(!isPkgDbEnabled(this.ctx.config)) {
+		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
 		const out = new Set<string>();
@@ -92,7 +96,39 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return [...out];
 	}
 
-	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */
+	public signatureSources(): readonly PackageSignatureSource[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		return this.plugins.flatMap(p => [...p.signatureSources()]);
+	}
+
+	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */
+	public hasBaseRSource(): boolean {
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
+	}
+
+	/**
+	 * Analyze installed R packages on disk (a package directory or a library folder) with flowR and add the
+	 * extracted signatures as resolvable sources. Returns the names of the packages added.
+	 */
+	public async addLocalPackages(dir: string): Promise<string[]> {
+		const added: string[] = [];
+		for(const p of this.plugins) {
+			// pass the config explicitly -- a plugin's own context is only wired up on the first analysis
+			added.push(...await p.addLocalPackages(dir, this.ctx.config));
+		}
+		return added;
+	}
+
+	/** Mount an additional signature database/source by path (a plain `.sigs.ndjson`, a `.br`, or a manifest). */
+	public async addDatabaseSource(source: string): Promise<void> {
+		for(const p of this.plugins) {
+			await p.addDatabaseSource(source);
+		}
+	}
+
+	/** Eagerly mount every version plugin's package database up front (see `solver.sigdb.eagerlyLoad`). */
 	public eagerlyLoadPackageDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();

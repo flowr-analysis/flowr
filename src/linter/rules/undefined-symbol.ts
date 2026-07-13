@@ -90,7 +90,7 @@ const MaxHintPackages = 5;
 /**
  * Flags function calls (`sd()`) and, opt-in, variable reads (`x`) that are neither defined locally, a
  * builtin, nor exported by a package in scope - the DESCRIPTION/`library()` packages plus the default-attached
- * base packages, all resolved from the `flowr-pkgdb` database. To stay precise it consults flowR's dataflow:
+ * base packages, all resolved from the `flowr-sigdb` database. To stay precise it consults flowR's dataflow:
  * non-standard evaluation (quoting) is not reported, and an unloaded package that exports the name is offered
  * as a hint. Over-approximative: NSE beyond what flowR models can still cause false positives.
  */

@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledPkgDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { NETWORK_FUNCTIONS } from '../../../src/linter/rules/network-functions';
 
@@ -116,13 +116,13 @@ describe('flowR linter', withTreeSitter(parser => {
 				'network-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['GET'], pkgDb: controlledPkgDb('httr', ['GET', 'POST']) }
+				{ fns: ['GET'], sigDb: controlledSigDb('httr', ['GET', 'POST']) }
 			);
 			assertLinter('without any package database', parser, 'library(httr)\nGET("http://example.com")',
 				'network-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['GET'], noPkgDb: true }
+				{ fns: ['GET'], noSigDb: true }
 			);
 		});
 	});

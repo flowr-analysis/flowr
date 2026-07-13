@@ -1,5 +1,4 @@
 import { coerce, Range, SemVer } from 'semver';
-import { guard } from './assert';
 
 
 function makeVersion(version: string, original: string) {
@@ -78,18 +77,20 @@ function makeRange(range: string, original: string) {
 export const RVersion = {
 	/**
 	 * Parse an R version string into a {@link SemVer}, normalizing R's freer scheme (e.g. `0.4-9`). Unlike
-	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`.
+	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`. Returns
+	 * undefined (never throws) when the string cannot be coerced to a version at all.
 	 */
-	parse(this: void, version: string): SemVer & { str: string } {
+	parse(this: void, version: string): (SemVer & { str: string }) | undefined {
 		try {
 			return makeVersion(version, version);
 		} catch{ /* try to normalize */ }
 		try {
 			return makeVersion(normalizeVersions(version), version);
 		} catch{ /* fall back to coercion */ }
+		// like {@link RRange.parse}, this never throws: a truly un-coercible version (e.g. an empty `Version:`
+		// field or pure text) yields undefined so the caller can detect it rather than crashing
 		const coerced = coerce(version, { loose: true, includePrerelease: true });
-		guard(coerced !== null, `Could not coerce R version "${version}" to SemVer`);
-		return makeVersion(coerced.version, version);
+		return coerced === null ? undefined : makeVersion(coerced.version, version);
 	},
 
 	/**
@@ -114,11 +115,18 @@ export const RRange = {
 	/**
 	 * Parse an R version range string into a {@link Range}, normalizing R's freer scheme. The original range
 	 * string is available via `.str`.
+	 *
+	 * This never throws: an unparseable constraint (e.g. `>= abc`, or a git/URL "version" from a lockfile) yields
+	 * `undefined` rather than aborting the caller, so a malformed constraint is *detectable* and simply contributes
+	 * no version bound. Parsing is attempted first verbatim, then after normalizing R's scheme to SemVer.
 	 */
-	parse(this: void, range: string): Range & { str: string } {
+	parse(this: void, range: string): (Range & { str: string }) | undefined {
 		try {
 			return makeRange(range, range);
 		} catch{ /* try to normalize R range to SemVer */ }
-		return makeRange(normalizeVersions(range), range);
+		try {
+			return makeRange(normalizeVersions(range), range);
+		} catch{ /* unparseable even after normalization -> report as "no constraint" */ }
+		return undefined;
 	}
 } as const;

@@ -107,6 +107,22 @@ At the time of writing this, there is currently no page for frequently encounter
 If you want to develop for _flowR_, explore the wiki.
 For details on _how_ to contribute, please refer to the [CONTRIBUTING.md](https://github.com/flowr-analysis/flowr/blob/main/.github/CONTRIBUTING.md) in the repository.
 
+### 📦 The Signature Database
+
+To resolve \`library(pkg)\` and \`pkg::fn\` calls, _flowR_ ships a **signature database** (\`flowr-sigdb\`): a compact,
+per-package record of every version's exports, function signatures, call graphs, and declared dependencies. It is
+**not** authored by hand -- it is produced by [crawlr](https://github.com/flowr-analysis/flowr), _flowR_'s companion
+tool, which analyzes the whole of CRAN with _flowR_ itself and serializes the result into the bundle (see the
+${ctx.linkPage('wiki/Package Database')} page for the format and how to point _flowR_ at your own database).
+
+For development this means:
+- the bundle under \`src/data/sigdb/\` is **generated, not committed** (it is git-ignored to keep history small); a fresh
+  checkout has none, and _flowR_ then simply resolves nothing from the database until you provide one.
+- everything derived from it that _flowR_ needs at runtime is **precomputed when you build** (\`npm run build\`): e.g. the
+  set of R-core / base packages per R version is regenerated into \`src/data/r-base-packages.generated.ts\`, so no
+  hardcoded package lists drift out of date.
+- you can inspect a loaded database from the REPL with the ${ctx.replCmd('query')} command, e.g. \`:query @signature <package> [<function>]\`.
+
 -----
 <a id="note1" href="#note1ref">&lt;1&gt;</a>: Currently, _flowR_ is only tested with R versions \`4.x\` and \`3.6.x\`.
 

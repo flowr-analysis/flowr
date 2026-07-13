@@ -190,7 +190,10 @@ function parseDCF(file: FlowrFileProvider): Map<string, string[]> {
 	const indentRegex = new RegExp(/^\s/);
 	const firstColonRegex = new RegExp(/:(.*)/s);
 
-	const fileContent = file.content().toString().split(/\r?\n/);
+	// strip a leading UTF-8 BOM (U+FEFF): it matches `indentRegex` (JS `\s` includes U+FEFF), so without this
+	// the first field (typically `Package:`) would be misread as a continuation line and silently dropped
+	const raw = file.content().toString();
+	const fileContent = (raw.charCodeAt(0) === 0xFEFF ? raw.slice(1) : raw).split(/\r?\n/);
 
 	for(const line of fileContent) {
 		if(indentRegex.test(line)) {

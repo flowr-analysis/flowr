@@ -702,6 +702,13 @@ test-results.xml
 /test_perf/*.json
 .vscode/settings.json
 
-# pkgdb: track only the plain JSON tiers; compressed copies are build output
-src/data/pkgdb/*.br
-src/data/pkgdb/*.gz
+# sigdb bundles are generated locally + shipped via the npm build; never commit them (keep git history clean)
+src/data/sigdb/
+dist/src/data/sigdb/
+
+# decompressed sigdb archives (the reader materializes these locally into a cache); never commit them anywhere
+*.sigs.ndjson
+*.sigs.ndjson.idx
+
+# local-only operator tool for publishing the sigdb bundles; must never be versioned
+scripts/publish-sigdb.mjs

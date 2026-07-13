@@ -1,0 +1,294 @@
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { withTreeSitter } from '../../_helper/shell';
+import { label } from '../../_helper/label';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/plugins/package-version-plugins/sigdb';
+import { executeQueries } from '../../../../src/queries/query';
+import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
+import { ansiFormatter } from '../../../../src/util/text/ansi';
+import { SignatureQueryDefinition } from '../../../../src/queries/catalog/signature-query/signature-query-format';
+import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+
+const fn = (name: string, opts: Partial<SigFunctionInfo> = {}): SigFunctionInfo => ({
+	name, props: FnProp.Exported, params: [], callees: [], line: 1, ...opts
+});
+
+/** an in-memory database: a CRAN package `mypkg` with a located function, and a base package `base` */
+async function buildDb(dir: string): Promise<SigDatabase> {
+	const b = new SigDbBuilder();
+	b.addPackage('mypkg', { latest: '1.0.0', downloads: 5 });
+	b.addVersion('mypkg', '1.0.0', {
+		cran:         true,
+		dependencies: [{ name: 'rlang', type: 1 /* Imports */, constraint: '>= 1.0.0' }],
+		functions:    [fn('foo', {
+			params:  [{ name: 'a', missing: true, forced: true }, { name: 'b', default: '2' }],
+			callees: ['bar'],
+			file:    'R/foo.R',
+			line:    5
+		}), fn('bar', { file: 'R/foo.R', line: 20 }),
+		// `print` is an S3 generic (its dispatch target `print.myclass` lives in the same package)
+		fn('print', { callees: ['UseMethod'], file: 'R/print.R', line: 1 }),
+		fn('print.myclass', { file: 'R/print.R', line: 8 })]
+	});
+	b.addPackage('base', { latest: '4.5.3', core: true });
+	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 })] });
+	// a multi-version CRAN package (dated, so every version is enumerable) for version exact/glob/range tests
+	b.addPackage('multi', { latest: '2.1.0', downloads: 3 });
+	b.addVersion('multi', '1.0.0', { cran: true, date: Date.UTC(2020, 0, 1), functions: [fn('m1')] });
+	b.addVersion('multi', '2.0.0', { cran: true, date: Date.UTC(2021, 0, 1), functions: [fn('m2')] });
+	// `trunc_fn`'s default is longer than MaxDefaultLength (10), so it is stored truncated with a `…` marker
+	const multi21 = [fn('m2'), fn('m21'), fn('trunc_fn', { params: [{ name: 'cfg', default: 'list(a=1,b=2,c=3)' }] })];
+	b.addVersion('multi', '2.1.0', { cran: true, date: Date.UTC(2022, 0, 1), functions: multi21 });
+	await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+}
+
+describe.sequential('SigDb Query', withTreeSitter(parser => {
+	let tmp: string;
+	let db: SigDatabase;
+	let prevSigDb: string | undefined;
+	let prevDisable: string | undefined;
+
+	beforeAll(async() => {
+		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sigdb-query-'));
+		db = await buildDb(tmp);
+		// point the query's source resolution at just our temp database
+		prevSigDb = process.env.FLOWR_SIGDB;
+		prevDisable = process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		process.env.FLOWR_SIGDB = path.join(tmp, `db${SigDbExt}`);
+		process.env.FLOWR_DISABLE_DEFAULT_SIGDB = '1';
+	});
+	afterAll(() => {
+		db?.close();
+		process.env.FLOWR_SIGDB = prevSigDb;
+		if(prevDisable === undefined) {
+			delete process.env.FLOWR_DISABLE_DEFAULT_SIGDB;
+		} else {
+			process.env.FLOWR_DISABLE_DEFAULT_SIGDB = prevDisable;
+		}
+		fs.rmSync(tmp, { recursive: true, force: true });
+	});
+
+	describe('capability: individual function info', () => {
+		test('a located CRAN function yields its signature, location and CRAN-mirror link', () => {
+			const info = signatureFunctionInfo(db, 'mypkg', 'foo');
+			expect(info).toBeDefined();
+			expect(info?.exported).toBe(true);
+			expect(info?.version).toBe('1.0.0');
+			expect(info?.parameters).toEqual([
+				{ name: 'a', required: true, forced: true },
+				{ name: 'b', required: false, forced: false, default: '2' }
+			]);
+			expect(info?.callees).toEqual(['bar']);
+			expect(info?.file).toBe('R/foo.R');
+			expect(info?.line).toBe(5);
+			expect(info?.sourceUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
+		});
+
+		test('an unknown function yields undefined', () => {
+			expect(signatureFunctionInfo(db, 'mypkg', 'nope')).toBeUndefined();
+		});
+
+		test('a CRAN function carries an rdrr.io documentation link', () => {
+			expect(signatureFunctionInfo(db, 'mypkg', 'foo')?.docUrl).toBe('https://rdrr.io/cran/mypkg/man/foo.html');
+		});
+
+		test('a base-R function has a location, base-R doc link, and no CRAN-mirror source link', () => {
+			const info = signatureFunctionInfo(db, 'base', 'paste2');
+			expect(info?.file).toBe('R/paste.R');
+			expect(info?.sourceUrl).toBeUndefined();
+			expect(info?.docUrl).toBe('https://rdrr.io/r/base/paste2.html');
+		});
+
+		test('an S3 generic lists its same-package dispatch targets by name', () => {
+			const info = signatureFunctionInfo(db, 'mypkg', 'print');
+			expect(info?.s3generic).toBe(true);
+			expect(info?.s3methods).toEqual(['print.myclass']);
+			// a non-generic is not flagged even though the bundled call graphs reach `UseMethod` transitively
+			expect(signatureFunctionInfo(db, 'mypkg', 'foo')?.s3generic).toBeUndefined();
+		});
+
+		test('a parameter default longer than the cap is stored (and returned) truncated', () => {
+			const info = signatureFunctionInfo(db, 'multi', 'trunc_fn');
+			const cfg = info?.parameters.find(p => p.name === 'cfg');
+			const full = 'list(a=1,b=2,c=3)';
+			expect(full.length).toBeGreaterThan(MaxDefaultLength);
+			expect(cfg?.default).toBe(full.slice(0, MaxDefaultLength) + '…');
+		});
+
+		test('the package view reports version, kind, mirror and dependencies', () => {
+			const view = signaturePackageInfo(db, 'mypkg');
+			expect(view?.version).toBe('1.0.0');
+			expect(view?.cran).toBe(true);
+			expect(view?.repoUrl).toBe('https://github.com/cran/mypkg');
+			expect(view?.functionCount).toBe(4);
+			expect(view?.dependencies).toEqual([{ type: 'imports', name: 'rlang', constraint: '>= 1.0.0' }]);
+		});
+	});
+
+	describe('cranMirrorSourceUrl', () => {
+		test('links to the version tag with a line anchor', () => {
+			expect(cranMirrorSourceUrl('gg.plot', '1.2-3', 'R/a.R', 5)).toBe('https://github.com/cran/gg.plot/blob/1.2-3/R/a.R#L5');
+		});
+		test('falls back to HEAD without a version and omits the anchor without a line', () => {
+			expect(cranMirrorSourceUrl('pkg', undefined, 'R/a.R')).toBe('https://github.com/cran/pkg/blob/HEAD/R/a.R');
+		});
+	});
+
+	describe('fromLine parser', () => {
+		const parse = (line: string[]) => SignatureQueryDefinition.fromLine?.({} as never, line, {} as never).query;
+		test('parses package and function positionals', () => {
+			expect(parse(['mypkg', 'foo'])).toEqual([{ type: 'signature', package: 'mypkg', function: 'foo' }]);
+		});
+		test('parses the --all flag', () => {
+			expect(parse(['mypkg', '--all'])).toEqual([{ type: 'signature', package: 'mypkg', all: true }]);
+		});
+		test('an empty line yields a bare summary query', () => {
+			expect(parse([])).toEqual([{ type: 'signature' }]);
+		});
+		test('parses the `pkg::fn` shorthand', () => {
+			expect(parse(['ggplot2::ggplot'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'ggplot' }]);
+		});
+		test('parses `pkg@version`', () => {
+			expect(parse(['ggplot2@3.5.0'])).toEqual([{ type: 'signature', package: 'ggplot2', version: '3.5.0' }]);
+		});
+		test('parses `pkg@version::fn` together', () => {
+			expect(parse(['ggplot2@3.5.0::aes'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'aes', version: '3.5.0' }]);
+		});
+		test('an explicit second positional wins over the `::` function', () => {
+			expect(parse(['ggplot2::ggplot', 'aes'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'aes' }]);
+		});
+		test('keeps glob wildcards in package/function/version', () => {
+			expect(parse(['gg*@3.*', 'geom_*'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*', version: '3.*' }]);
+		});
+		test('parses the --full flag', () => {
+			expect(parse(['gg*', 'geom_*', '--full'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*', full: true }]);
+		});
+	});
+
+	async function runQuery(query: Parameters<typeof executeQueries>[1]) {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
+			.unregisterPlugins(SigDbPluginName)
+			.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(db))
+			.build();
+		const res = await executeQueries({ analyzer }, query);
+		return { analyzer, res };
+	}
+
+	test(label('the function query returns the located function with its mirror link', [], ['other']), async() => {
+		const { analyzer, res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'foo' }]);
+		const out = res.signature;
+		expect(out.function?.name).toBe('foo');
+		expect(out.function?.sourceUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
+		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg', function: 'foo' }]);
+		expect(ascii).toContain('R/foo.R:5');
+		expect(ascii).toContain('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
+	});
+
+	test(label('the package query reports the package view', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'mypkg' }]);
+		expect(res.signature.package?.name).toBe('mypkg');
+		expect(res.signature.package?.functionCount).toBe(4);
+	});
+
+	test(label('an unknown function reports a not-found message with suggestions', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'fo' }]);
+		expect(res.signature.function).toBeUndefined();
+		expect(res.signature.message).toContain('does not define');
+		expect(res.signature.suggestions).toContain('foo');
+	});
+
+	test(label('the summary lists the loaded packages', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature' }]);
+		expect(res.signature.packageCount).toBeGreaterThanOrEqual(2);
+		expect(res.signature.package).toBeUndefined();
+	});
+
+	test(label('a CRAN package view carries the CRAN page, mirror and grouped dependencies', [], ['other']), async() => {
+		const { analyzer, res } = await runQuery([{ type: 'signature', package: 'mypkg' }]);
+		expect(res.signature.package?.cranPage).toBe('https://cran.r-project.org/package=mypkg');
+		expect(res.signature.package?.repoUrl).toBe('https://github.com/cran/mypkg');
+		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg' }]);
+		// OSC 8 terminal hyperlinks are emitted for the CRAN page and the dependency
+		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=mypkg\x1b\\');
+		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=rlang\x1b\\');
+		expect(ascii).toContain('imports');   // grouped dependency section
+	});
+
+	test(label('a base-R package has no CRAN page and reports an R-version range', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'base' }]);
+		expect(res.signature.package?.base).toBe(true);
+		expect(res.signature.package?.cranPage).toBeUndefined();
+		expect(res.signature.package?.repoUrl).toBeUndefined();
+	});
+
+	test(label('a glob package + function search returns matches, not a single view', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'my*', function: 'foo' }]);
+		expect(res.signature.function).toBeUndefined();
+		expect(res.signature.matches?.map(m => `${m.package}::${m.name}`)).toEqual(['mypkg::foo']);
+	});
+
+	test(label('a glob function matches several functions in a package', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'print*' }]);
+		const names = res.signature.matches?.map(m => m.name).sort();
+		expect(names).toEqual(['print', 'print.myclass']);
+	});
+
+	test(label('a glob package with no function lists matching packages', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'm*' }]);
+		expect(res.signature.matches).toBeUndefined();
+		expect(res.signature.packages?.map(p => p.name).sort()).toEqual(['multi', 'mypkg']);
+	});
+
+	test(label('an exact version selects that release', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '2.0.0' }]);
+		expect(res.signature.package?.version).toBe('2.0.0');
+	});
+
+	test(label('a version glob matches multiple releases', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '2.*' }]);
+		expect(res.signature.packages?.[0]?.versions).toEqual(['2.0.0', '2.1.0']);
+	});
+
+	test(label('a semver range matches multiple releases', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '>=2.0.0' }]);
+		expect(res.signature.packages?.[0]?.versions).toEqual(['2.0.0', '2.1.0']);
+	});
+
+	test(label('an unavailable exact version is reported with the available ones', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '9.9.9' }]);
+		expect(res.signature.message).toContain('is not in the loaded database');
+		expect(res.signature.message).toContain('1.0.0');
+	});
+
+	test(label('a versioned function search reports the matching version', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', function: 'm21', version: '2.*' }]);
+		expect(res.signature.matches?.map(m => `${m.name}@${m.version}`)).toEqual(['m21@2.1.0']);
+	});
+
+	test(label('a database mounted at runtime (:signature add) is reflected by the query', [], ['other']), async() => {
+		const extraDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-extra-'));
+		const b = new SigDbBuilder();
+		b.addPackage('runtimepkg', { latest: '0.1.0' });
+		b.addVersion('runtimepkg', '0.1.0', { cran: true, functions: [fn('added_fn', { file: 'R/a.R', line: 3 })] });
+		await writeSignatureDb(path.join(extraDir, 'extra'), b.build({ date: '2026-07-01', generated: 0 }));
+
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(parser)
+			.unregisterPlugins(SigDbPluginName)
+			.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(db))
+			.build();
+		// before mounting: unknown
+		const before = await executeQueries({ analyzer }, [{ type: 'signature', package: 'runtimepkg' }]);
+		expect(before.signature.package).toBeUndefined();
+		// mount at runtime, then the query resolves it
+		await analyzer.context().deps.addDatabaseSource(path.join(extraDir, `extra${SigDbExt}`));
+		const after = await executeQueries({ analyzer }, [{ type: 'signature', package: 'runtimepkg', function: 'added_fn' }]);
+		expect(after.signature.function?.name).toBe('added_fn');
+		expect(after.signature.function?.sourceUrl).toBe('https://github.com/cran/runtimepkg/blob/0.1.0/R/a.R#L3');
+		fs.rmSync(extraDir, { recursive: true, force: true });
+	});
+}));

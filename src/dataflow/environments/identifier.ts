@@ -2,6 +2,7 @@ import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './b
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
+import { baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
 
@@ -206,25 +207,44 @@ export const Identifier = {
 	},
 	/**
 	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
-	 * resolves to an export of a loaded package (the `flowr-pkgdb` info attached by `library()`/`use()`);
+	 * resolves to an export of a loaded package (the signature-database info attached by `library()`/`use()`);
 	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 *
+	 * Pass the call's `name` to additionally get *edge-free* base-R qualification: a bare base call is qualified
+	 * from the base package that exports it (`sd` yields `stats::sd`, `plot` yields `base::plot`) via the
+	 * precomputed {@link baseRExportOwner} store -- no loaded database, no graph edges. This is suppressed when
+	 * the call resolves to a user definition or is already namespaced, so a local `sd()` is never `stats::sd`.
 	 */
-	toQualified(this: void, origins: readonly Origin[] | undefined): Identifier | undefined {
+	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier): Identifier | undefined {
+		let sawUserDefinition = false;
 		for(const origin of origins ?? []) {
-			// a package-export origin carries the target builtin id `built-in:pkg:func` in `proc`
-			if('proc' in origin && origin.proc.startsWith('built-in:')) {
-				const rest = origin.proc.slice('built-in:'.length);
-				const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
-				if(sep > 0) {
-					return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
+			// an attached package export carries the target builtin id `built-in:pkg:func` in `proc`
+			if('proc' in origin) {
+				if(origin.proc.startsWith('built-in:')) {
+					const rest = origin.proc.slice('built-in:'.length);
+					const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
+					if(sep > 0) {
+						return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
+					}
 				}
+				// a processor-level builtin (e.g. `plot` -> `builtin:default`) is not a user definition
+			} else {
+				sawUserDefinition = true;   // a function-call/variable origin: resolves to a user definition
+			}
+		}
+		// only qualify a bare base call: never override a user definition, nor an explicitly namespaced call
+		if(name !== undefined && !sawUserDefinition && Identifier.getNamespace(name) === undefined) {
+			const bare = Identifier.getName(name);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				return Identifier.make(bare, owner as BrandedNamespace);
 			}
 		}
 		return undefined;
 	},
 	/** The fully qualified `package::name` of a resolved call (see {@link Identifier.toQualified}). */
-	toQualifiedName(this: void, origins: readonly Origin[] | undefined): string | undefined {
-		const qualified = Identifier.toQualified(origins);
+	toQualifiedName(this: void, origins: readonly Origin[] | undefined, name?: Identifier): string | undefined {
+		const qualified = Identifier.toQualified(origins, name);
 		return qualified === undefined ? undefined : Identifier.toString(qualified);
 	}
 } as const;

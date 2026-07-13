@@ -9,7 +9,8 @@ import {
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType, isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
@@ -102,10 +103,24 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	for(const arg of argMapping) {
 		result.push(Mermaid.escape(printArg(arg)));
 	}
-	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
+	return result.length === 0 ? '' : `\n    arg: (${result.join(', ')})`;
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
 	return `${from}->${to}["${Array.from(types).join(':')}"]`;
+}
+
+/**
+ * Renders the (mermaid-escaped) node name with only the *lexeme* -- what the source actually wrote -- in bold.
+ * When the displayed name was extended by package qualification (e.g. the code wrote `acf` but we show
+ * `stats::acf`), the added `stats::` prefix stays non-bold so it is visually distinct from the written token. A
+ * namespace written in the source (`stats::acf` verbatim) is part of the lexeme and is therefore bold as a whole.
+ */
+function boldLexeme(lexeme: string, display: string): string {
+	if(display !== lexeme && display.endsWith(lexeme)) {
+		const addedPrefix = display.slice(0, display.length - lexeme.length);   // the qualification we added, e.g. `stats::`
+		return `${Mermaid.escape(addedPrefix)}**${Mermaid.escape(lexeme)}**`;
+	}
+	return `**${Mermaid.escape(display)}**`;
 }
 
 
@@ -170,17 +185,33 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const node = mermaid.rootGraph.idMap?.get(info.id);
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
+	// for a call, show the package-qualified name it resolves to *in place of* the bare name (e.g. `acf` becomes
+	// `stats::acf`) -- compact, and avoids printing the name twice
+	let display = lexeme;
+	if(fCall && isFunctionCallVertex(info)) {
+		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), info.name);
+		const qs = q !== undefined ? Identifier.toString(q) : undefined;
+		if(qs !== undefined && qs !== lexeme) {
+			display = qs;
+		}
+	}
+
 	if(mermaid.simplified) {
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
-		const escapedName = '**' + Mermaid.escape(node ? `${lexeme}` : '??') + '**' + location + (node ? `\n*${node.type}*` : '');
+		const escapedName = (node ? boldLexeme(lexeme, display) : '**??**') + location + (node ? `\n*${node.type}*` : '');
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
-		const escapedName = Mermaid.escape(node ? `[${node.type}] ${lexeme}` : '??');
+		// give the label a visual hierarchy that survives everywhere mermaid markdown strings render (GitHub, mermaid.live):
+		// the syntactic type is de-emphasized in italics and the (written) lexeme is bold. mermaid markdown labels do
+		// not support per-token font color, so a true gray is only reachable via a whole-node `style` directive
+		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
 		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
 		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
 		const sources = info.source ? ', sources: ' + JSON.stringify(info.source) : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks}${sources})\n      *${SourceRange.format(n)}*${
+		// keep the label compact: the node id (and its dependency/link/source annotations) share the location line
+		// instead of occupying a line of their own -- the `id:` prefix keeps it unambiguous next to the location
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}

@@ -141,8 +141,8 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
 		/**
-		 * The packages considered part of R itself (`base` and `recommended`), used e.g. by the project query to
-		 * classify dependencies. If unset, flowR uses its built-in list ({@link RBaseAndRecommendedPackages}).
+		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
+		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
 		 */
 		basePackages?:             string[]
 	}
@@ -171,14 +171,24 @@ export interface FlowrConfig extends MergeableRecord {
 		 * When disabled all envir-style calls fall through to the conservative global treatment.
 		 */
 		readonly trackEnvironments: boolean
-		/** Resolving `library()`/`use()` exports from a package database (e.g. the bundled `flowr-pkgdb`). */
-		readonly pkgdb: {
+		/** Resolving `library()`/`use()` exports from a signature database (e.g. the bundled `flowr-sigdb`). */
+		readonly sigdb: {
 			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
 			readonly enabled:            boolean
 			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
 			readonly eagerlyLoad:        boolean
 			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
 			readonly eagerlyLoadExports: boolean
+			/**
+			 * The R version analysis assumes when resolving versioned (base-R) package exports: a pin like `"4.5"`,
+			 * or `"auto"` to detect the locally installed R (falling back to {@link DefaultAssumedRVersion} when the
+			 * engine reports none, e.g. the tree-sitter engine). Resolve it with {@link resolveAssumedRVersion}.
+			 */
+			readonly assumedRVersion?:   string
+			/** Eagerly attach base-R namespaces (from a signature database) so bare base calls resolve without `library()` (default `false`; changes every analysis; needs a base-R signature database). */
+			readonly linkBaseR:          boolean
+			/** Decompress the hot shards (base + most-downloaded) in a background task on startup, so the first `library()` lookup is warm (default `false`; useful for long-running servers/REPLs, not one-shot runs). */
+			readonly warmInBackground?:  boolean
 		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
@@ -252,9 +262,32 @@ export interface FlowrConfig extends MergeableRecord {
 
 export type ValidFlowrConfigPaths = Paths<FlowrConfig, { depth: 9 }>;
 
-/** Whether library exports should be resolved from a package database (`solver.pkgdb.enabled`). */
-export function isPkgDbEnabled(config: FlowrConfig | undefined): boolean {
-	return config?.solver.pkgdb.enabled === true;
+/** Whether library exports should be resolved from a signature database (`solver.sigdb.enabled`). */
+export function isSigDbEnabled(config: FlowrConfig | undefined): boolean {
+	return config?.solver.sigdb.enabled === true;
+}
+
+/**
+ * R version assumed for analysis when `solver.sigdb.assumedRVersion` is `"auto"` and none could be detected.
+ * Kept in step with the newest base-R release in the bundled sigdb (see `newestRVersion` in the generated
+ * base-package cache) so the default hits the precomputed base-package fast path.
+ */
+export const DefaultAssumedRVersion = '4.5.3';
+
+/**
+ * The R version analysis should assume when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`):
+ * an explicit pin wins, otherwise a real `detected` version (from the engine's `rVersion()`, ignoring `none`/`unknown`),
+ * otherwise {@link DefaultAssumedRVersion}. Pure and synchronous, so a resolver can call it per lookup.
+ */
+export function resolveAssumedRVersion(config: FlowrConfig | undefined, detected?: string): string {
+	const assumed = config?.solver.sigdb.assumedRVersion;
+	if(assumed && assumed !== 'auto') {
+		return assumed;
+	}
+	if(detected && detected !== 'none' && detected !== 'unknown') {
+		return detected;
+	}
+	return DefaultAssumedRVersion;
 }
 
 export interface TreeSitterEngineConfig extends MergeableRecord {
@@ -292,7 +325,7 @@ const defaultEngineConfigs: { [T in EngineConfig['type']]: EngineConfig & { type
 export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
-	'versions:pkgdb',
+	'versions:sigdb',
 	'versions:renv',
 	'versions:rv',
 	'loading-order:description',
@@ -346,7 +379,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				sigdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, warmInBackground: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -422,11 +455,14 @@ export const FlowrConfig = {
 			variables:         Joi.string().valid(...Object.values(VariableResolve)).description('How to resolve variables and their values.'),
 			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
-			pkgdb:             Joi.object({
-				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a package database (default true); when false no database is consulted.'),
+			sigdb:             Joi.object({
+				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
 				eagerlyLoad:        Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
-				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.')
-			}).description('Resolving library exports from a package database.'),
+				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
+				assumedRVersion:    Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
+				linkBaseR:          Joi.boolean().optional().description('Eagerly attach base-R namespaces so bare base calls resolve without library() (default false).'),
+				warmInBackground:   Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).')
+			}).description('Resolving library exports from a signature database.'),
 			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),

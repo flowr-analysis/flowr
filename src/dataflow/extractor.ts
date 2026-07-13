@@ -12,6 +12,7 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
+import { attachBaseRNamespaces } from './internal/process/functions/call/built-in/built-in-library';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
@@ -143,11 +144,13 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	const env = ctx.env.makeCleanEnv();
 	env.current.n = ctx.meta.getNamespace();
+	// eagerly attach the always-available base-R namespaces
+	const environment = attachBaseRNamespaces(env, ctx);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,
 		completeAst,
-		environment:    env,
+		environment,
 		processors:     ctx.config.solver.instrument.dataflowExtractors?.(processors, ctx) ?? processors,
 		cds:            undefined,
 		referenceChain: [files[0].filePath],

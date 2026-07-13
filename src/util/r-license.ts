@@ -128,14 +128,6 @@ function consumeLicenseName(info: ParserInfo): ParserResult<string>  {
 	return { ...newInfo, element: licenseName?.trim() ?? '' };
 }
 
-function makeRange(rangeStr: string): Range | undefined {
-	try {
-		return RRange.parse(rangeStr);
-	} catch{
-		return undefined;
-	}
-}
-
 function parseLicenseElement(info: ParserInfo): ParserResult {
 	const licenseName = consumeLicenseName(info);
 	info = skipWhitespace(licenseName);
@@ -149,14 +141,14 @@ function parseLicenseElement(info: ParserInfo): ParserResult {
 			info = skipWhitespace(openParen);
 			// consume until closing parenthesis
 			const versionStr = consumeUntilString(info, ')');
-			versionConstraint = makeRange(versionStr.element);
+			versionConstraint = RRange.parse(versionStr.element);
 			const closeParen = consumeString(versionStr, ')');
 			guard(closeParen.element, `Expected ), but found ${versionStr.remInput[0]} at position ${versionStr.position}`);
 			info = skipWhitespace(closeParen);
 		} else {
 			// consume until whitespace or special character
 			const versionStr = consumeRegexp(info, /^[\d<>=!~.\s]+/);
-			versionConstraint = versionStr.element ? makeRange(versionStr.element) : undefined;
+			versionConstraint = versionStr.element ? RRange.parse(versionStr.element) : undefined;
 			info = skipWhitespace(versionStr);
 		}
 	}

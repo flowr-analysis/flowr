@@ -1,0 +1,358 @@
+import { satisfies as semverSatisfies, validRange } from 'semver';
+import type { BasicQueryData } from '../../base-query-format';
+import type {
+	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
+	SignatureMatchView, SignaturePackageMatch
+} from './signature-query-format';
+import {
+	DepTypeNames,
+	type DecodedFunction, type PackageSignatureSource
+} from '../../../project/plugins/package-version-plugins/sigdb';
+import { RVersion } from '../../../util/r-version';
+
+/** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
+export function cranPageUrl(pkg: string): string {
+	return `https://cran.r-project.org/package=${encodeURIComponent(pkg)}`;
+}
+
+/** whether a pattern uses glob wildcards (`*`, `?`) */
+export function hasGlob(pattern: string | undefined): boolean {
+	return pattern !== undefined && /[*?]/.test(pattern);
+}
+
+/** compile a glob (`*` matches any run, `?` matches one char) into an anchored, case-sensitive RegExp */
+export function globToRegExp(glob: string): RegExp {
+	const escaped = glob.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.');
+	return new RegExp(`^${escaped}$`);
+}
+
+/** a name matcher: exact equality, or a glob test when the pattern uses wildcards */
+function nameMatcher(pattern: string): (name: string) => boolean {
+	if(hasGlob(pattern)) {
+		const re = globToRegExp(pattern);
+		return name => re.test(name);
+	}
+	return name => name === pattern;
+}
+
+/** whether a version spec can match more than one release (a glob or a semver range, not a single exact version) */
+export function isMultiVersion(spec: string): boolean {
+	return /[*?xX]/.test(spec) || /[<>~^=]/.test(spec) || spec.includes('||') || spec.includes(' - ');
+}
+
+/** a version matcher for a spec: glob (`3.*`), semver range (`>=3.0.0`, `3.x`), or an exact version */
+function versionMatcher(spec: string): (v: string) => boolean {
+	if(hasGlob(spec)) {
+		const re = globToRegExp(spec);
+		return v => re.test(v);
+	}
+	const range = validRange(spec, { loose: true });
+	if(range !== null) {
+		return v => {
+			const parsed = RVersion.parse(v);
+			return parsed !== undefined ? semverSatisfies(parsed, range, { loose: true, includePrerelease: true }) : v === spec;
+		};
+	}
+	return v => v === spec;
+}
+
+/** the versions of a package the loaded source can answer (dated releases, base-R core releases, and the latest) */
+function availableVersions(src: PackageSignatureSource, pkg: string): string[] {
+	const set = new Set<string>();
+	for(const r of src.releaseDates(pkg)) {
+		set.add(r.version.str);
+	}
+	for(const v of src.coreVersions(pkg) ?? []) {
+		set.add(v.str);
+	}
+	const latest = src.latestVersion(pkg);
+	if(latest) {
+		set.add(latest.str);
+	}
+	return [...set].sort((a, b) => RVersion.compare(a, b));
+}
+
+/** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
+export const CranGithubMirror = 'https://github.com/cran';
+
+/** the mirror repository of a CRAN package */
+export function cranMirrorRepoUrl(pkg: string): string {
+	return `${CranGithubMirror}/${encodeURIComponent(pkg)}`;
+}
+
+/** deep-link a definition into the CRAN mirror at the package's version tag (falling back to `HEAD`) */
+export function cranMirrorSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+	const ref = version ? encodeURIComponent(version) : 'HEAD';
+	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
+	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
+}
+
+/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`) */
+const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._]*$/;
+
+/** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
+export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+	if(!RdrrTopicName.test(fn)) {
+		return undefined;
+	}
+	if(opts.base) {
+		return `https://rdrr.io/r/${pkg}/${fn}.html`;
+	}
+	if(opts.cran) {
+		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
+	}
+	return undefined;
+}
+
+/** the decoded view of one function, adding the CRAN-mirror source link and rdrr.io documentation link */
+function decodedToView(pkg: string, fn: DecodedFunction, version: string | undefined, opts: { cran: boolean, base: boolean }): SignatureFunctionView {
+	const doc = rdrrDocUrl(pkg, fn.name, opts);
+	return {
+		name:       fn.name,
+		package:    pkg,
+		...(version !== undefined ? { version } : {}),
+		exported:   fn.exported,
+		properties: fn.props,
+		parameters: fn.signature.map(p => ({
+			name:     p.name,
+			required: !p.optional,
+			forced:   p.forced,
+			...(p.default !== undefined ? { default: p.default } : {})
+		})),
+		callees: fn.callees,
+		...(fn.file ? { file: fn.file } : {}),
+		...(fn.line >= 0 ? { line: fn.line } : {}),
+		...(opts.cran && !opts.base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
+		...(doc ? { docUrl: doc } : {})
+	};
+}
+
+/**
+ * The detailed view of a single function within a package: its signature (parameters, forced/optional,
+ * defaults), properties, definition location, call graph, and -- for a CRAN package -- a deep link into the
+ * read-only CRAN GitHub mirror. `undefined` when the source does not carry that function.
+ *
+ * This is the tested capability for obtaining individual function info from the signature database.
+ * @param src     - a signature source (as opened by {@link openSigSources})
+ * @param pkg     - the package name
+ * @param fnName  - the function/symbol name to look up
+ * @param version - the version to resolve against (defaults to the source's latest)
+ */
+export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string): SignatureFunctionView | undefined {
+	const fns = src.functions(pkg, version) ?? src.functions(pkg);
+	const fn = fns?.find(f => f.name === fnName);
+	if(fn === undefined) {
+		return undefined;
+	}
+	const exports = src.lookup(pkg, version) ?? src.lookup(pkg);
+	const view = decodedToView(pkg, fn, exports?.version, { cran: exports?.cran ?? false, base: src.isBaseR(pkg) });
+	// S3 dispatch targets are the `<generic>.<class>` functions in the same package (name-based, matching flowR's
+	// own S3 handling). We use this rather than the stored `UseMethod` callee, which the bundled call graphs
+	// aggregate transitively and so cannot distinguish a real generic from one that merely reaches a dispatch.
+	const methods = (fns ?? [])
+		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.'))
+		.map(f => f.name)
+		.sort();
+	if(methods.length > 0) {
+		return { ...view, s3generic: true, s3methods: methods };
+	}
+	return view;
+}
+
+/** the full view of a package: version, kind, export breakdown, dependencies, and every function's view */
+export function signaturePackageInfo(src: PackageSignatureSource, pkg: string, resolved?: string): SignaturePackageView | undefined {
+	const exports = src.lookup(pkg, resolved) ?? src.lookup(pkg);
+	if(exports === undefined) {
+		return undefined;
+	}
+	const base = src.isBaseR(pkg);
+	const fns = src.functions(pkg, resolved) ?? src.functions(pkg) ?? [];
+	const fnNames = new Set(fns.map(f => f.name));
+	const constants = exports.exported.filter(n => !fnNames.has(n));
+	const deps = (src.dependencies(pkg, resolved) ?? src.dependencies(pkg) ?? [])
+		.map(d => ({ type: DepTypeNames[d.type], name: d.name, ...(d.constraint ? { constraint: d.constraint } : {}) }));
+	const release = src.releaseDate(pkg, resolved);
+	return {
+		name:          pkg,
+		version:       exports.version,
+		...(resolved && resolved !== exports.version ? { resolved } : {}),
+		base,
+		cran:          exports.cran,
+		...(exports.cranUrl ? { cranUrl: exports.cranUrl } : {}),
+		...(exports.cran && !base ? { cranPage: cranPageUrl(pkg), repoUrl: cranMirrorRepoUrl(pkg) } : {}),
+		...(release && !Number.isNaN(release.getTime()) ? { releaseDate: release.toISOString().slice(0, 10) } : {}),
+		exportsTotal:  exports.exported.length,
+		functionCount: exports.exported.length - constants.length,
+		constants,
+		internalCount: exports.internal.length,
+		deprecated:    exports.deprecated,
+		...(base ? { coreVersions: src.coreVersions(pkg)?.map(v => v.str) } : {}),
+		dependencies:  deps,
+		functions:     fns.map(f => decodedToView(pkg, f, exports.version, { cran: exports.cran, base }))
+	};
+}
+
+/** a few near matches for a mistyped package/symbol (case-insensitive substring), for a friendly hint */
+function suggest(candidates: Iterable<string>, query: string, limit = 6): string[] {
+	const needle = query.toLowerCase();
+	const out: string[] = [];
+	for(const c of candidates) {
+		if(c.toLowerCase().includes(needle)) {
+			out.push(c);
+			if(out.length >= limit) {
+				break;
+			}
+		}
+	}
+	return out;
+}
+
+/** default cap on wildcard-search hits (raise with `--full`, or get the whole set from the `:query*` JSON) */
+const MaxMatches = 50;
+/** hard ceiling even with `--full`, so a `* *` search cannot exhaust memory */
+const MaxMatchesFull = 5000;
+
+/** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
+function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): SignatureMatchView {
+	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
+	return {
+		package:  pkg,
+		name:     fn.name,
+		exported: fn.exported,
+		...(version !== undefined ? { version } : {}),
+		...(fn.file ? { file: fn.file } : {}),
+		...(fn.line >= 0 ? { line: fn.line } : {}),
+		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
+		...(doc ? { docUrl: doc } : {})
+	};
+}
+
+/** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
+function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery): Partial<SignatureQueryResult> {
+	const cap = q.full ? MaxMatchesFull : MaxMatches;
+	const pkgMatch = nameMatcher(q.package as string);
+	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
+	const verMatch = q.version ? versionMatcher(q.version) : undefined;
+	const sourceOf = (pkg: string) => sources.find(s => s.has(pkg));
+
+	if(!q.function) {
+		const packages: SignaturePackageMatch[] = [];
+		let truncated = false;
+		for(const pkg of matchedPkgs) {
+			const src = sourceOf(pkg);
+			if(!src) {
+				continue;
+			}
+			const base = src.isBaseR(pkg);
+			const versions = verMatch ? availableVersions(src, pkg).filter(verMatch) : undefined;
+			if(versions !== undefined && versions.length === 0) {
+				continue;
+			}
+			const cran = (src.lookup(pkg)?.cran ?? false) && !base;
+			const latest = src.latestVersion(pkg)?.str;
+			packages.push({ name: pkg, base, cran, ...(latest ? { latest } : {}), ...(versions ? { versions } : {}), ...(cran ? { cranPage: cranPageUrl(pkg) } : {}) });
+			if(packages.length >= cap) {
+				truncated = true;
+				break;
+			}
+		}
+		return { packages, truncated };
+	}
+
+	const fnMatch = nameMatcher(q.function);
+	const matches: SignatureMatchView[] = [];
+	let truncated = false;
+	for(const pkg of matchedPkgs) {
+		const src = sourceOf(pkg);
+		if(!src) {
+			continue;
+		}
+		const base = src.isBaseR(pkg);
+		const versionsToScan = verMatch ? availableVersions(src, pkg).filter(verMatch) : [undefined];
+		for(const ver of versionsToScan) {
+			const exports = src.lookup(pkg, ver) ?? src.lookup(pkg);
+			const cran = exports?.cran ?? false;
+			for(const fn of src.functions(pkg, ver) ?? src.functions(pkg) ?? []) {
+				if(fnMatch(fn.name)) {
+					matches.push(compactMatch(pkg, fn, exports?.version, base, cran));
+					if(matches.length >= cap) {
+						truncated = true;
+						break;
+					}
+				}
+			}
+			if(truncated) {
+				break;
+			}
+		}
+		if(truncated) {
+			break;
+		}
+	}
+	return { matches, matchCount: matches.length, truncated };
+}
+
+/**
+ * Executes the sigdb query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
+ * or a multi-version `version` triggers a wildcard search (matching packages or functions). Otherwise a single
+ * exact package (optionally at an exact `version`) yields its full view, or the detailed function view.
+ */
+// eslint-disable-next-line @typescript-eslint/require-await -- executor contract returns a Promise; the work is synchronous
+export async function executeSignatureQuery({ analyzer }: BasicQueryData, queries: readonly SignatureQuery[]): Promise<SignatureQueryResult> {
+	const start = Date.now();
+	const q = queries[queries.length - 1] ?? { type: 'signature' };
+	const deps = analyzer.inspectContext().deps;
+	const databases: SignatureDatabaseView[] = deps.loadedPackageDatabases()
+		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));
+	// the plugin's loaded sources (bundled default + $FLOWR_SIGDB + anything added at runtime), so the query
+	// reflects dynamically-mounted sources
+	const sources = deps.signatureSources();
+	const packages = new Set<string>();
+	for(const s of sources) {
+		for(const n of s.packageNames()) {
+			packages.add(n);
+		}
+	}
+	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
+
+	if(!q.package) {
+		return meta();
+	}
+
+	// wildcard search: a glob in the package/function name, or a version spec matching more than one release
+	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && isMultiVersion(q.version))) {
+		return { ...meta(), ...searchSources(sources, packages, q) };
+	}
+
+	const src = sources.find(s => s.has(q.package as string));
+	if(!src) {
+		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
+	}
+	const avail = availableVersions(src, q.package);
+	if(q.version !== undefined && !avail.includes(q.version)) {
+		// the shipped bundle keeps only the latest version per CRAN package; point the user at a full-history bundle
+		const hint = !src.isBaseR(q.package) && avail.length <= 1
+			? ' The bundled database keeps only the latest CRAN version per package; mount a full-history bundle with `:signature add <path>`.'
+			: '';
+		return { ...meta(), message: `'${q.package}@${q.version}' is not in the loaded database.${avail.length ? ` Available: ${avail.join(', ')}.` : ''}${hint}` };
+	}
+	const version = q.version ?? deps.getDependency(q.package)?.resolvedVersion;
+	if(q.function) {
+		const fn = signatureFunctionInfo(src, q.package, q.function, version);
+		if(fn) {
+			return { ...meta(), function: fn };
+		}
+		const exports = src.lookup(q.package, version) ?? src.lookup(q.package);
+		const universe = new Set<string>([
+			...(exports?.exported ?? []),
+			...(src.functions(q.package, version) ?? src.functions(q.package) ?? []).map(f => f.name)
+		]);
+		return {
+			...meta(),
+			package:     signaturePackageInfo(src, q.package, version),
+			message:     `'${q.package}' does not define '${q.function}'.`,
+			suggestions: suggest(universe, q.function)
+		};
+	}
+	return { ...meta(), package: signaturePackageInfo(src, q.package, version) };
+}

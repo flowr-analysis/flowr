@@ -72,6 +72,8 @@ export enum BuiltInProcName {
 	S7NewGeneric = 'builtin:s7-new-generic',
 	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
 	S7Dispatch = 'builtin:s7-dispatch',
+	/** for `make_constructor(class)` calls that return a class constructor function, see {@link processMakeConstructor} */
+	S7MakeConstructor = 'builtin:s7-make-constructor',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */

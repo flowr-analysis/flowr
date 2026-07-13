@@ -647,6 +647,21 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.S7NewGeneric, config:          { args: { name: 'name', dispatchArg: undefined, fun: 'fun' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['S7_dispatch', PkgName.S7])],
 		processor:       BuiltInProcName.S7Dispatch, config:          { libFn: true }, assumePrimitive: true },
+	/* Constructor-returning S7 factories: `geom_point <- make_constructor(GeomPoint)` (ggplot2 4.0) and
+	   `Foo <- new_class("Foo")` (S7) both return a callable class constructor, so we model the result as a
+	   function definition -- the assigned symbol (`geom_point`, `Foo`, …) is then recognised as callable */
+	{ type:  'function', names: [
+		Identifier.from(['make_constructor', PkgName.GgPlot2]),   // ggplot2 4.0 (S7 itself has no make_constructor)
+		Identifier.from(['new_class', PkgName.S7]),
+		/* S4 `Foo <- setClass("Foo")` also returns a directly-callable generator (`Foo(x = 1)` constructs) */
+		Identifier.from(['setClass', PkgName.Methods])
+	], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'] }, assumePrimitive: true },
+	/* generic function factories: `f <- Negate(is.null)` / `Vectorize(fn)` / `partial(g, …)` return a new
+	   function, so the assigned symbol is recognised as callable (no S4/S7 dispatch mode) */
+	{ type:  'function', names: [
+		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base]),
+		Identifier.from(['partial', PkgName.Purrr])
+	], processor: BuiltInProcName.S7MakeConstructor, config: {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['.Primitive', PkgName.Base]), Identifier.from(['.Internal', PkgName.Base])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['interference', PkgName.Inferference])],

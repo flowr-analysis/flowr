@@ -60,7 +60,7 @@ import { processRegisterHook } from '../internal/process/functions/call/built-in
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
 import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
-import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
+import { processS7NewGeneric, processMakeConstructor } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
@@ -241,6 +241,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Rm]:                 processRm,
 	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
 	[BuiltInProcName.S7NewGeneric]:       processS7NewGeneric,
+	[BuiltInProcName.S7MakeConstructor]:  processMakeConstructor,
 	[BuiltInProcName.S7Dispatch]:         processS7Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,

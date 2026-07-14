@@ -12,6 +12,14 @@ import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/pack
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
 import type { KnownParser } from '../r-bridge/parser';
 
+/**
+ * Whether a CRAN sigdb (a `current` or `full` scope bundle) is discoverable. Only the tiny base-R floor is
+ * committed; the CRAN shards are gitignored and pulled from the release, so a fresh checkout/CI has base only.
+ */
+function cranDatabaseAvailable(): boolean {
+	return defaultSigDbPath('current') !== undefined || defaultSigDbPath('full') !== undefined;
+}
+
 /** point the resolver at your own database (a file path or manifest) */
 function usePackageDatabase(parser: KnownParser) {
 	const sigdb = new FlowrAnalyzerPackageVersionsSigDbPlugin('/path/to/sigs.manifest.json.br');
@@ -180,6 +188,20 @@ function pluginLink(key: string): string {
 export class WikiPackageDatabase extends DocMaker<'wiki/Package Database.md'> {
 	constructor() {
 		super('wiki/Package Database.md', module.filename, 'bundled CRAN package database that resolves `library()` calls');
+	}
+
+	/**
+	 * Regenerate only when the CRAN shards are actually present. A fresh checkout (and every CI run) ships just
+	 * the committed base-R floor, and this page documents the *CRAN* database: regenerating from the base floor
+	 * alone would replace the shard table and figures with base-only numbers and publish that over the real
+	 * page. Skipping leaves the committed page untouched, so the workflow reports no change and publishes nothing.
+	 */
+	public override async make(args: Parameters<DocMaker<'wiki/Package Database.md'>['make']>[0]): Promise<boolean> {
+		if(!cranDatabaseAvailable()) {
+			console.log('  [wiki/Package Database.md] skipped: no CRAN sigdb present (only the base floor); keeping the committed page');
+			return false;
+		}
+		return super.make(args);
 	}
 
 	public async text({ ctx }: DocMakerArgs): Promise<string> {

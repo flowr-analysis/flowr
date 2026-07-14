@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { label } from '../../../_helper/label';
-import { SigDatabaseSet, defaultSigDbPath, defaultSigDbPaths } from '../../../../../src/project/plugins/package-version-plugins/sigdb';
+import { SigDatabaseSet } from '../../../../../src/project/sigdb/reader';
+import { defaultSigDbPath, defaultSigDbPaths } from '../../../../../src/project/sigdb/manifest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';

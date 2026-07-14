@@ -67,4 +67,43 @@ describe('Static Slice Query REPL Parser', () => {
 			rCode: 'someCode',
 		},
 	});
+	assertReplParser({ parser,
+		label:         'with inline flag',
+		line:          ['(3@print)i'],
+		expectedParse: {
+			query: [{
+				type:          'static-slice',
+				criteria:      ['3@print'],
+				direction:     SliceDirection.Backward,
+				inlineSources: true
+			}],
+			rCode: undefined
+		},
+	});
+	assertReplParser({ parser,
+		label:         'forward slice with inline flag',
+		line:          ['(1@var)fi', 'someCode'],
+		expectedParse: {
+			query: [{
+				type:          'static-slice',
+				criteria:      ['1@var'],
+				direction:     SliceDirection.Forward,
+				inlineSources: true
+			}],
+			rCode: 'someCode',
+		},
+	});
+	assertReplParser({ parser,
+		label:         'inline flag before direction',
+		line:          ['(1@var)if'],
+		expectedParse: {
+			query: [{
+				type:          'static-slice',
+				criteria:      ['1@var'],
+				direction:     SliceDirection.Forward,
+				inlineSources: true
+			}],
+			rCode: undefined
+		},
+	});
 });

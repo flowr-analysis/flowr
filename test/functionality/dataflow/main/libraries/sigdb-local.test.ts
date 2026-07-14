@@ -1,21 +1,14 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
 import { withTreeSitter } from '../../../_helper/shell';
+import { sigTmpDir, cleanupSigTmpDirs, hasBuiltInVertex as attachedExport } from '../../../_helper/sigdb';
+
+afterAll(cleanupSigTmpDirs);
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { FlowrConfig } from '../../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { readLocalSignatureSource, LocalSignatureSource } from '../../../../../src/project/plugins/package-version-plugins/sigdb-local';
-import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
-import type { DataflowInformation } from '../../../../../src/dataflow/info';
-
-/** whether `library()` resolution attached the export `pkg::fn` (its built-in vertex is present in the graph) */
-function attachedExport(df: DataflowInformation, pkg: string, fn: string): boolean {
-	const target = String(NodeId.toBuiltIn(Package.funcIdentif(pkg, fn)));
-	return [...df.graph.vertices(true)].some(([id]) => String(id) === target);
-}
 
 /** materialise an installed-package directory (`DESCRIPTION` + `NAMESPACE`, plus optional `R/` sources) below `root` */
 function writePackage(root: string, name: string, version: string, namespace: string, opts: { description?: string, rSources?: Record<string, string> } = {}): string {
@@ -36,7 +29,7 @@ const mypkgNamespace = 'export(foo)\nexport(bar)\nS3method(print, myclass)\nexpo
 
 describe('sigdb on-disk package analysis (LocalSignatureSource)', withTreeSitter(() => {
 	test('LocalSignatureSource answers the export view (S3 flattened, exportPattern not expanded); not base R', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'mypkg', '1.2.3', mypkgNamespace);
 		const src = await readLocalSignatureSource(FlowrConfig.default(), path.join(root, 'mypkg'));
 		expect(src).toBeInstanceOf(LocalSignatureSource);
@@ -53,11 +46,10 @@ describe('sigdb on-disk package analysis (LocalSignatureSource)', withTreeSitter
 		expect(src.coreVersions('mypkg')).toBeUndefined();
 		expect(src.latestVersion('mypkg')?.str).toBe('1.2.3');
 		expect(src.lookup('nope')).toBeUndefined();
-		fs.rmSync(root, { recursive: true, force: true });
 	});
 
 	test('running flowR over the R/ sources extracts full signatures (params, forced, defaults, callees)', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'mypkg', '1.2.3', 'export(greet)\n', { rSources: { 'funcs.R':
 			'greet <- function(name, greeting = "hi", ...) {\n  msg <- paste(greeting, name)\n  cat(msg)\n  toupper(msg)\n}\n'
 			+ 'internal_helper <- function(x) x * 2\n' } });
@@ -88,11 +80,10 @@ describe('sigdb on-disk package analysis (LocalSignatureSource)', withTreeSitter
 		// the export view still reports the NAMESPACE exports; internal names land in `internal`
 		expect(src.lookup('mypkg')?.exported).toEqual(['greet']);
 		expect(src.lookup('mypkg')?.internal).toEqual(['internal_helper']);
-		fs.rmSync(root, { recursive: true, force: true });
 	});
 
 	test('declared DESCRIPTION dependencies are parsed (name, type, constraint), skipping the R clause', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'mypkg', '1.2.3', 'export(foo)\n', {
 			description: 'Package: mypkg\nVersion: 1.2.3\nDepends: R (>= 4.0)\nImports: utils (>= 2.0), methods\n'
 		});
@@ -101,23 +92,21 @@ describe('sigdb on-disk package analysis (LocalSignatureSource)', withTreeSitter
 		expect(deps.map(d => d.name).sort()).toEqual(['methods', 'utils']);   // the `R` version clause is skipped
 		const utils = deps.find(d => d.name === 'utils');
 		expect(utils?.constraint).toContain('2.0');
-		fs.rmSync(root, { recursive: true, force: true });
 	});
 
 	test('a whole library folder adds every package it contains', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'aa', '0.1.0', 'export(a1)\n');
 		writePackage(root, 'bb', '2.0.0', 'export(b1)\nexport(b2)\n');
 		const src = await readLocalSignatureSource(FlowrConfig.default(), root);   // the folder, not one package
 		expect(src.packageNames().sort()).toEqual(['aa', 'bb']);
-		expect(src.lookup('bb')?.exported.sort()).toEqual(['b1', 'b2']);
-		fs.rmSync(root, { recursive: true, force: true });
+		expect(src.lookup('bb')?.exported.toSorted()).toEqual(['b1', 'b2']);
 	});
 }));
 
 describe('sigdb on-disk package resolution end-to-end', withTreeSitter(ts => {
 	test('addLocalPackages (a single package folder) makes library(mypkg) resolve its exports', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'mypkg', '1.2.3', mypkgNamespace);
 		const plugin = new FlowrAnalyzerPackageVersionsSigDbPlugin();
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts)
@@ -132,13 +121,12 @@ describe('sigdb on-disk package resolution end-to-end', withTreeSitter(ts => {
 		expect(attachedExport(df, 'mypkg', 'foo')).toBe(true);   // library(mypkg) attaches the analysed exports
 		expect(attachedExport(df, 'mypkg', 'bar')).toBe(true);
 		expect(attachedExport(df, 'mypkg', 'nope')).toBe(false);
-		fs.rmSync(root, { recursive: true, force: true });
 	});
 
 	test('explicit sources take precedence over later sources for the same package', async() => {
-		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-'));
+		const root = sigTmpDir('sigdb-local-');
 		writePackage(root, 'dup', '9.9.9', 'export(fresh)\n');
-		const staleRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-local-stale-'));
+		const staleRoot = sigTmpDir('sigdb-local-stale-');
 		writePackage(staleRoot, 'dup', '0.0.1', 'export(old)\n');
 		const onDisk = await readLocalSignatureSource(FlowrConfig.default(), path.join(root, 'dup'));
 		const stale = await readLocalSignatureSource(FlowrConfig.default(), path.join(staleRoot, 'dup'));
@@ -150,7 +138,5 @@ describe('sigdb on-disk package resolution end-to-end', withTreeSitter(ts => {
 		const df = await analyzer.dataflow();
 		expect(attachedExport(df, 'dup', 'fresh')).toBe(true);   // the first source wins
 		expect(attachedExport(df, 'dup', 'old')).toBe(false);    // the shadowed stale source is not used
-		fs.rmSync(root, { recursive: true, force: true });
-		fs.rmSync(staleRoot, { recursive: true, force: true });
 	});
 }));

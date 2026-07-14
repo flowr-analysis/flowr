@@ -92,18 +92,11 @@ export class Package {
 			resolvedVersion
 		} = info;
 
-		if(resolvedVersion !== undefined) {
-			this.resolvedVersion = resolvedVersion;
-		}
-		if(type !== undefined) {
-			this.type = type;
-		}
-		if(dependencies !== undefined) {
-			this.dependencies = dependencies;
-		}
-		if(namespaceInfo !== undefined) {
-			this.namespaceInfo = namespaceInfo;
-		}
+		this.resolvedVersion = resolvedVersion ?? this.resolvedVersion;
+		this.type = type ?? this.type;
+		this.dependencies = dependencies ?? this.dependencies;
+		this.namespaceInfo = namespaceInfo ?? this.namespaceInfo;
+
 		if(versionConstraints !== undefined) {
 			this.derivedVersion ??= versionConstraints[0];
 
@@ -117,17 +110,13 @@ export class Package {
 		}
 	}
 
-	public getInfo(): this {
-		return this;
-	}
-
 	public deriveVersion(): Range | undefined {
 		return this.versionConstraints.length > 0
 			? RRange.parse(this.versionConstraints.map(c => c.raw).join(' '))
 			: undefined;
 	}
 
-	public static parsePackageVersionRange(constraint?: string, version?: string): Range | undefined {
+	public static parsePkgVersionRange(constraint?: string, version?: string): Range | undefined {
 		if(version) {
 			return constraint ? RRange.parse(constraint + version) : RRange.parse(version);
 		} else {
@@ -135,7 +124,7 @@ export class Package {
 		}
 	}
 
-	public static funcIdentif(dependency: string, func: string): string{
+	public static functionIdentifier(dependency: string, func: string): string{
 		return `${dependency}:${func}`;
 	}
 }

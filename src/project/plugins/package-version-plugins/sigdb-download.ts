@@ -3,7 +3,7 @@ import path from 'path';
 import https from 'https';
 import crypto from 'crypto';
 import type { IncomingMessage } from 'http';
-import { sigDbCacheDir } from './sigdb';
+import { sigDbCacheDir } from '../../sigdb/decompress';
 import { flowrVersion } from '../../../util/version';
 
 /** the GitHub `owner/repo` the full-history bundle is published to (see `scripts/publish-sigdb.mjs`) */

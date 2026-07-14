@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { sha256File, SigDbRemoteFileName, type SigDbRemote } from '../src/project/plugins/package-version-plugins/sigdb-download';
+import { info } from './script-log';
 
 const RepoRoot = path.resolve(__dirname, '..');
 
@@ -28,18 +29,65 @@ export interface WriteRemotePointerResult {
 	readonly shards:       SigDbRemote['shards']
 }
 
+/** the bundle dir a call resolves to (default `<repo>/src/data/sigdb`) */
+function resolveBundleDir(opts: WriteRemotePointerOptions): string {
+	return opts.bundleDir ?? path.join(RepoRoot, 'src', 'data', 'sigdb');
+}
+
+/** the release tag + repo a call resolves to (defaults: `sigdb-v<package.json version>`, `$GH_REPO`/flowr) */
+function resolveTagRepo(opts: WriteRemotePointerOptions): { tag: string, repo: string } {
+	const version = (JSON.parse(fs.readFileSync(path.join(RepoRoot, 'package.json'), 'utf8')) as { version: string }).version;
+	return {
+		tag:  opts.tag ?? `sigdb-v${version}`,
+		repo: opts.repo ?? process.env.GH_REPO ?? 'flowr-analysis/flowr'
+	};
+}
+
+/** the downloadable (non-`base.*`) `.br` shards in a bundle dir, sorted */
+function downloadableShards(bundleDir: string): string[] {
+	return fs.existsSync(bundleDir)
+		? fs.readdirSync(bundleDir).filter(f => f.endsWith('.br') && !f.startsWith('base.')).sort()
+		: [];
+}
+
+/**
+ * Whether the committed link file already matches the local shards, so `sync:sigdb` can skip re-hashing the
+ * (large) shards on every build. Cheap check only: same tag/repo, same shard set + byte sizes, and the pointer
+ * is at least as new as every shard (mtime). Any mismatch re-hashes and rewrites via {@link writeRemotePointer}.
+ */
+export function remotePointerUpToDate(opts: WriteRemotePointerOptions = {}): boolean {
+	const bundleDir = resolveBundleDir(opts);
+	const out = path.join(bundleDir, SigDbRemoteFileName);
+	const downloadable = downloadableShards(bundleDir);
+	if(downloadable.length === 0 || !fs.existsSync(out)) {
+		return false;
+	}
+	let remote: SigDbRemote;
+	try {
+		remote = JSON.parse(fs.readFileSync(out, 'utf8')) as SigDbRemote;
+	} catch{
+		return false;
+	}
+	const { tag, repo } = resolveTagRepo(opts);
+	const recorded = Object.keys(remote.shards ?? {}).sort();
+	if(remote.tag !== tag || remote.repo !== repo || recorded.length !== downloadable.length || recorded.some((f, i) => f !== downloadable[i])) {
+		return false;
+	}
+	const pointerMtime = fs.statSync(out).mtimeMs;
+	return downloadable.every(f => {
+		const st = fs.statSync(path.join(bundleDir, f));
+		return remote.shards[f].bytes === st.size && st.mtimeMs <= pointerMtime;
+	});
+}
+
 /** (Re)write the link file for the downloadable (non-`base.*`) shards in the bundle dir. Shared by `sync:sigdb`
  *  and `publish-sigdb.ts` so the pointer and the uploaded assets can never drift. */
 export function writeRemotePointer(opts: WriteRemotePointerOptions = {}): WriteRemotePointerResult {
-	const bundleDir = opts.bundleDir ?? path.join(RepoRoot, 'src', 'data', 'sigdb');
-	const version = (JSON.parse(fs.readFileSync(path.join(RepoRoot, 'package.json'), 'utf8')) as { version: string }).version;
-	const tag = opts.tag ?? `sigdb-v${version}`;
-	const repo = opts.repo ?? process.env.GH_REPO ?? 'flowr-analysis/flowr';
+	const bundleDir = resolveBundleDir(opts);
+	const { tag, repo } = resolveTagRepo(opts);
 
 	// downloadable = every .br shard that is NOT the committed `base.*` floor
-	const downloadable = fs.existsSync(bundleDir)
-		? fs.readdirSync(bundleDir).filter(f => f.endsWith('.br') && !f.startsWith('base.')).sort()
-		: [];
+	const downloadable = downloadableShards(bundleDir);
 	if(downloadable.length === 0) {
 		throw new Error(`no downloadable shards in ${bundleDir} (expected current.*.br / history.*.br etc.) -- copy a bundle in first`);
 	}
@@ -66,16 +114,16 @@ function parseArgs(argv: readonly string[]): WriteRemotePointerOptions {
 	};
 }
 
-// CLI (skipped when imported). Runs on every build to keep the pointer in step with the local shards;
-// non-fatal, so a base-floor-only checkout just leaves it untouched.
+// CLI (skipped when imported). Runs on every build to keep the pointer in step with the local shards; a no-op
+// (no re-hashing, no output) when nothing changed, and non-fatal so a base-floor-only checkout is left untouched.
 if(require.main === module) {
 	try {
-		const { out, downloadable, totalBytes, shards } = writeRemotePointer(parseArgs(process.argv.slice(2)));
-		console.log(`wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
-		for(const f of downloadable) {
-			console.log(`   - ${f}  ${shards[f].sha256.slice(0, 12)}…  ${(shards[f].bytes / 1e6).toFixed(2)} MB`);
+		const opts = parseArgs(process.argv.slice(2));
+		if(!remotePointerUpToDate(opts)) {
+			const { out, downloadable, totalBytes } = writeRemotePointer(opts);
+			info(`sync:sigdb: wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
 		}
 	} catch(e) {
-		console.log(`sync:sigdb: skipped -- ${(e as Error).message}`);
+		info(`sync:sigdb: skipped -- ${(e as Error).message}`);
 	}
 }

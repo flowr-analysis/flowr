@@ -4,7 +4,7 @@ import {
 	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
-import type { PackageSignatureSource } from '../plugins/package-version-plugins/sigdb';
+import type { PackageSignatureSource } from '../sigdb/reader';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { isSigDbEnabled } from '../../config';
 

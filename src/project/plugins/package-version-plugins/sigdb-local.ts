@@ -9,11 +9,11 @@ import type { Package } from './package';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { TreeSitterExecutor } from '../../../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { log } from '../../../util/log';
-import { toRVersion, DepType } from './sigdb';
-import type {
-	DecodedFunction, LibraryExports, PackageSignatureSource, ResolvedDependency,
-	RPackageVersion, RPackageVersionLike, VersionRelease
-} from './sigdb';
+import { toRVersion, type VersionRelease } from '../../sigdb/version';
+import { DepType, type LibraryExports } from '../../sigdb/schema';
+import type { DecodedFunction, ResolvedDependency } from '../../sigdb/decode';
+import type { PackageSignatureSource } from '../../sigdb/reader';
+import type { RVersion } from '../../../util/r-version';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
@@ -236,7 +236,7 @@ export class LocalSignatureSource implements PackageSignatureSource {
 		return [...this.pkgs.keys()];
 	}
 
-	public lookup(pkg: string, _version?: RPackageVersionLike): LibraryExports | undefined {
+	public lookup(pkg: string, _version?: string): LibraryExports | undefined {
 		const info = this.pkgs.get(pkg);   // a single analyzed version; the on-disk copy is authoritative
 		if(info === undefined) {
 			return undefined;
@@ -245,11 +245,11 @@ export class LocalSignatureSource implements PackageSignatureSource {
 		return { version: info.version, exported: info.exported, internal, deprecated: [], cran: false };
 	}
 
-	public functions(pkg: string, _version?: RPackageVersionLike): DecodedFunction[] | undefined {
+	public functions(pkg: string, _version?: string): DecodedFunction[] | undefined {
 		return this.pkgs.get(pkg)?.functions;
 	}
 
-	public dependencies(pkg: string, _version?: RPackageVersionLike): ResolvedDependency[] | undefined {
+	public dependencies(pkg: string, _version?: string): ResolvedDependency[] | undefined {
 		return this.pkgs.get(pkg)?.dependencies;
 	}
 
@@ -257,11 +257,11 @@ export class LocalSignatureSource implements PackageSignatureSource {
 		return false;
 	}
 
-	public coreVersions(_pkg: string): RPackageVersion[] | undefined {
+	public coreVersions(_pkg: string): RVersion[] | undefined {
 		return undefined;
 	}
 
-	public releaseDate(_pkg: string, _version?: RPackageVersionLike): Date | undefined {
+	public releaseDate(_pkg: string, _version?: string): Date | undefined {
 		return undefined;
 	}
 
@@ -269,7 +269,7 @@ export class LocalSignatureSource implements PackageSignatureSource {
 		return [];
 	}
 
-	public latestVersion(pkg: string): RPackageVersion | undefined {
+	public latestVersion(pkg: string): RVersion | undefined {
 		const info = this.pkgs.get(pkg);
 		return info === undefined ? undefined : toRVersion(info.version);
 	}

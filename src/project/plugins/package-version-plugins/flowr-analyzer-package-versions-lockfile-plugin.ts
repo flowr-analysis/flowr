@@ -14,7 +14,7 @@ function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProv
 }
 
 function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
-	const range = Package.parsePackageVersionRange(undefined, version);
+	const range = Package.parsePkgVersionRange(undefined, version);
 	ctx.deps.addDependency(new Package({ name, versionConstraints: range ? [range] : undefined }));
 }
 

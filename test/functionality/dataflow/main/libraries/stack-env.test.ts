@@ -63,11 +63,11 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 
 	assertDataflow(label('as.environment("package:pkgA")$fa resolves to the package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nas.environment("package:pkgA")$fa',
-		emptyGraph().addEdge('2@$', NodeId.toBuiltIn(Package.funcIdentif('pkgA', 'fa')), EdgeType.Reads),
+		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 
 	assertDataflow(label('parent.env(globalenv())$fa reaches the attached package export', ['search-path', 'dynamic-environment-resolution']), ts,
 		'library(pkgA)\nparent.env(globalenv())$fa',
-		emptyGraph().addEdge('2@$', NodeId.toBuiltIn(Package.funcIdentif('pkgA', 'fa')), EdgeType.Reads),
+		emptyGraph().addEdge('2@$', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads),
 		withPkgA);
 }));

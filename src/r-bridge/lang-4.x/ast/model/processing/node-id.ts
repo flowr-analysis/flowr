@@ -57,6 +57,13 @@ export const NodeId = {
 		return `built-in:${name}`;
 	},
 	/**
+	 * The built-in id of a package's exported function, e.g. `fromPkgFn('ggplot2', 'ggplot')` yields
+	 * `built-in:ggplot2:ggplot`. Combines the `pkg:fn` form (mirrors `Package.functionIdentifier`) with {@link toBuiltIn}.
+	 */
+	fromPkgFn<P extends string, F extends string>(this: void, pkg: P, fn: F): BuiltIn<`${P}:${F}`> {
+		return NodeId.toBuiltIn(`${pkg}:${fn}`);
+	},
+	/**
 	 * Converts a built-in function or operator name or id to a built-in id by prefixing it with the built-in prefix if it is not already a built-in id.
 	 * This allows us to accept both built-in names and ids in contexts where we want to work with built-in ids.
 	 */

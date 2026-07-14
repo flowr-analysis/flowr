@@ -12,6 +12,7 @@ import type { SlicingCriteria } from '../../../../../src/slicing/criterion/parse
 import type { ParentInformation } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { executeStaticSliceQuery } from '../../../../../src/queries/catalog/static-slice-query/static-slice-query-executor';
+import { SliceDirection } from '../../../../../src/util/slice-direction';
 
 /** force-select every named `source()` call so the inlining recursion is exercised regardless of what the slice pulls in */
 function selectSourceCalls(node: RNode<ParentInformation>): boolean {
@@ -34,6 +35,22 @@ async function run(input: string, files: FlowrInlineTextFile[], criteria: Slicin
 		sourceMap:     map
 	}, selectSourceCalls);
 	return { res, map, inlined };
+}
+
+/** run the full slice pipeline with the `inlineSources` input, exercising the reconstruct step's own inlining */
+async function runViaPipeline(input: string, files: FlowrInlineTextFile[], criteria: SlicingCriteria, direction?: SliceDirection) {
+	const parser = new TreeSitterExecutor();
+	const context = contextFromInput(input);
+	context.addFiles(files);
+	const res = await createSlicePipeline(parser, {
+		getId:         deterministicCountingIdGenerator(0),
+		context,
+		criterion:     criteria,
+		direction,
+		inlineSources: true,
+		autoSelectIf:  selectSourceCalls
+	}).allRemainingSteps();
+	return res.reconstruct;
 }
 
 describe.sequential('inline source()', () => {
@@ -146,6 +163,25 @@ describe.sequential('inline source()', () => {
 		], ['3@cat']);
 		assert.strictEqual(inlined.code, 'K <- 5\nM <- K + 1\ny <- M * 2\ncat(y)');
 		expect(inlined.inlineWarnings).toEqual([]);
+	});
+
+	test('the reconstruct pipeline step inlines sources when the inlineSources input is set (backward)', async() => {
+		const reconstruct = await runViaPipeline('source("a")\ncat(N)', [ new FlowrInlineTextFile('a', 'N <- 9') ], ['2@N']);
+		const code = reconstruct.code as string;
+		expect(code).toContain('N <- 9');
+		expect(code).not.toContain('source(');
+		expect(reconstruct.inlineWarnings).toEqual([]);
+	});
+
+	test('inline reconstruction works for a forward slice direction', async() => {
+		// forward slice from `x`: it flows into the sourced `y <- x + 1` and on into `cat(y)`
+		const reconstruct = await runViaPipeline('x <- 5\nsource("a")\ncat(y)', [
+			new FlowrInlineTextFile('a', 'y <- x + 1')
+		], ['1@x'], SliceDirection.Forward);
+		const code = reconstruct.code as string;
+		expect(code).toContain('y <- x + 1');
+		expect(code).not.toContain('source(');
+		expect(reconstruct.inlineWarnings).toEqual([]);
 	});
 
 	test('the static-slice query surfaces inlineSources through its public flag', async() => {

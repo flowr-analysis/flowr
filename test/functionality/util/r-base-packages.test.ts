@@ -68,9 +68,9 @@ describe('generated base-R export list (structural invariants)', () => {
 
 	test('first-owner-wins: every export is claimed by exactly one package', () => {
 		const seen = new Map<string, string>();
-		// each package's exports are a single whitespace-separated string in the generated store
+		// each package's exports are a string[] in the generated store
 		for(const [pkg, names] of Object.entries(RBasePackageStore.exportsByPackage)) {
-			for(const name of names.split(/\s+/).filter(Boolean)) {
+			for(const name of names) {
 				expect(seen.has(name), `${name} is listed once (also in ${seen.get(name)} and ${pkg})`).toBe(false);
 				seen.set(name, pkg);
 			}

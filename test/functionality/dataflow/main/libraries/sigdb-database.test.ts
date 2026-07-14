@@ -1,14 +1,15 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, describe, expect, test } from 'vitest';
 import fs from 'fs';
-import os from 'os';
 import path from 'path';
-import {
-	SigDbBuilder, SigDatabase, SigDatabaseSet, writeSignatureDb, writeManifest, writeShardedDatabase, verifyShardedDatabase,
-	readSignatureDb, readSigDbIndex,
-	deriveLibraryExports, encodeIndex, FnProp, ParamFlag, DepType, SigDbMagic, SigDbManifestMagic, SigDbManifestSchema, SigDbSchema, SigDbExt, MaxDefaultLength,
-	type SigVersionInfo, type SigDbManifest, type ShardSpec
-} from '../../../../../src/project/plugins/package-version-plugins/sigdb';
-import { DefaultCranBase } from '../../../../../src/project/plugins/package-version-plugins/sigdb';
+import { SigDatabase, SigDatabaseSet, readSignatureDb, verifyShardedDatabase } from '../../../../../src/project/sigdb/reader';
+import { SigDbBuilder, writeSignatureDb, writeShardedDatabase, type ShardSpec } from '../../../../../src/project/sigdb/build';
+import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManifest } from '../../../../../src/project/sigdb/manifest';
+import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
+import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
+import { FnProp, ParamFlag, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase, type SigVersionInfo } from '../../../../../src/project/sigdb/schema';
+import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen } from '../../../_helper/sigdb';
+
+afterAll(cleanupSigTmpDirs);
 
 const meta = { date: '2026-05-23', generated: 0 };
 
@@ -32,8 +33,8 @@ describe('sigdb database (schema 4)', () => {
 		expect(db.content.functions).toBe(2);
 		expect(db.content.hash).toMatch(/^[0-9a-f]{16}$/);
 
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-'));
-		const { writeSignatureDb } = await import('../../../../../src/project/plugins/package-version-plugins/sigdb');
+		const dir = sigTmpDir('sigdb-');
+		const { writeSignatureDb } = await import('../../../../../src/project/sigdb/build');
 		await writeSignatureDb(path.join(dir, 'db'), db);
 		const plain = path.join(dir, `db${SigDbExt}`);
 		for(const ext of [SigDbExt, `${SigDbExt}.gz`, `${SigDbExt}.br`, `${SigDbExt}.idx`]) {
@@ -46,7 +47,6 @@ describe('sigdb database (schema 4)', () => {
 			expect(back.pkgs).toEqual(db.pkgs);
 			expect(back.meta).toEqual(db.meta);
 		}
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test('lookup(): backwards-compatible LibraryExports (exported/internal/deprecated/locations/cranUrl)', () => {
@@ -60,7 +60,7 @@ describe('sigdb database (schema 4)', () => {
 		const db = b.build(meta);
 		const info = deriveLibraryExports(db.strings, db.blobs[db.pkgs['p']], db.meta['p'], 'p');
 		expect(info?.version).toBe('2.0');
-		expect(info?.exported.sort()).toEqual(['dep', 'pub']);
+		expect(info?.exported.toSorted()).toEqual(['dep', 'pub']);
 		expect(info?.internal).toEqual(['priv']);
 		expect(info?.deprecated).toEqual(['dep']);
 		expect(info?.cran).toBe(true);
@@ -117,8 +117,8 @@ describe('sigdb database (schema 4)', () => {
 		b.addVersion('beta', '2.0', ver([{ name: 'b1', props: 0, params: [], callees: [], file: 'R/b.R', line: 1 }]));
 		const db = b.build(meta);
 
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-p-'));
-		const { writeSignatureDb } = await import('../../../../../src/project/plugins/package-version-plugins/sigdb');
+		const dir = sigTmpDir('sigdb-p-');
+		const { writeSignatureDb } = await import('../../../../../src/project/sigdb/build');
 		await writeSignatureDb(path.join(dir, 'db'), db);
 		const plain = path.join(dir, `db${SigDbExt}`);
 
@@ -139,9 +139,8 @@ describe('sigdb database (schema 4)', () => {
 		expect(fns?.[0].signature.map(p => p.name)).toEqual(['z', 'w']);
 		expect(fns?.[0].signature[0].optional).toBe(false); // missing -> not optional
 		expect(fns?.[0].signature[1].default).toBe('NULL');
-		expect(fns?.[0].callees.sort()).toEqual(['c', 'helper']);
+		expect(fns?.[0].callees.toSorted()).toEqual(['c', 'helper']);
 		rd.close();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test('ParamFlag packing: forced + missing', () => {
@@ -226,7 +225,7 @@ describe('sigdb tiers, shards and federation', () => {
 	});
 
 	test('federation: a manifest routes packages to the right shard; current preferred, full fallback for old versions', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-fed-'));
+		const dir = sigTmpDir('sigdb-fed-');
 		const b = builder();
 		// four shards: current/full x top/rest
 		const shards: SigDbManifest['shards'] = [];
@@ -253,12 +252,11 @@ describe('sigdb tiers, shards and federation', () => {
 		expect(set.lookup('hot', '1.0')?.exported).toEqual(['h_old']);
 		expect(set.lookup('cold', '1.0')?.exported).toEqual(['c_old']);
 		set.close();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test('manifest embeds indices: reads from .br-only shards (no .idx), lazily, with preload', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-embed-'));
-		const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-embed-cache-'));
+		const dir = sigTmpDir('sigdb-embed-');
+		const cacheDir = sigTmpDir('sigdb-embed-cache-');
 		const b = builder();
 		const shards: SigDbManifest['shards'] = [];
 		let globalMeta: SigDbManifest['meta'] = {};
@@ -283,15 +281,13 @@ describe('sigdb tiers, shards and federation', () => {
 		expect(set.lookup('hot')?.exported).toEqual(['h_new']);   // from the current shard
 		expect(set.lookup('hot', '1.0')?.exported).toEqual(['h_old']); // from the full shard (lazy decompress)
 		set.close();
-		fs.rmSync(dir, { recursive: true, force: true });
-		fs.rmSync(cacheDir, { recursive: true, force: true });
 	});
 
 	test('cache: SigDatabase.open decompresses a .br into the cache and answers lookups', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-cache-'));
+		const dir = sigTmpDir('sigdb-cache-');
 		const db = builder().build(meta);
 		await writeSignatureDb(path.join(dir, 'db'), db);
-		const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-cachedir-'));
+		const cacheDir = sigTmpDir('sigdb-cachedir-');
 		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}.br`), { cacheDir });
 		expect(rd.lookup('hot')?.exported).toEqual(['h_new']);
 		rd.close();
@@ -300,8 +296,6 @@ describe('sigdb tiers, shards and federation', () => {
 		const rd2 = await SigDatabase.open(path.join(dir, `db${SigDbExt}.br`), { cacheDir });
 		expect(rd2.has('cold')).toBe(true);
 		rd2.close();
-		fs.rmSync(dir, { recursive: true, force: true });
-		fs.rmSync(cacheDir, { recursive: true, force: true });
 	});
 });
 
@@ -347,8 +341,8 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 	});
 
 	test('writeShardedDatabase + SigDatabaseSet: shared dict loads once, routes across shards, verifies clean', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-shared-'));
-		const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-shared-cache-'));
+		const dir = sigTmpDir('sigdb-shared-');
+		const cacheDir = sigTmpDir('sigdb-shared-cache-');
 		const sharded = builder().buildSharded(meta, specs);
 		const manifestFile = path.join(dir, 'sigs.manifest.json');
 		const manifest = await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
@@ -368,7 +362,7 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		expect(set.coreVersions('mva')?.map(v => v.str)).toEqual(['1.8.0', '1.9.1']); // from the full-history shard
 		expect(set.coreVersions('hot')).toBeUndefined();
 
-		// release dates (informative RPackageVersion, not bare strings)
+		// release dates (informative RVersion, not bare strings)
 		expect(set.latestVersion('hot')?.str).toBe('2.0');
 		expect(set.releaseDate('hot')?.getUTCFullYear()).toBe(2021);
 		expect(set.releaseDate('hot', '1.0')?.getUTCFullYear()).toBe(2020);
@@ -381,13 +375,11 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		expect(report.ok).toBe(true);
 		expect(report.dictsOk).toBe(true);
 		expect(report.shards.every(s => s.hashOk)).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
-		fs.rmSync(cacheDir, { recursive: true, force: true });
 	});
 
 	test('shards are individually enable/disable-able: include/exclude by id', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-toggle-'));
-		const cacheDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-toggle-cache-'));
+		const dir = sigTmpDir('sigdb-toggle-');
+		const cacheDir = sigTmpDir('sigdb-toggle-cache-');
 		const sharded = builder().buildSharded(meta, specs);
 		const manifestFile = path.join(dir, 'sigs.manifest.json');
 		await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
@@ -408,12 +400,10 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		// filtering everything away is an error, not a silent empty set
 		await expect(SigDatabaseSet.openManifest(manifestFile, { cacheDir, includeShards: ['nope'] }))
 			.rejects.toThrow(/no shards left/);
-		fs.rmSync(dir, { recursive: true, force: true });
-		fs.rmSync(cacheDir, { recursive: true, force: true });
 	});
 
 	test('verification catches a tampered shard hash', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-tamper-'));
+		const dir = sigTmpDir('sigdb-tamper-');
 		const sharded = builder().buildSharded(meta, specs);
 		const manifestFile = path.join(dir, 'sigs.manifest.json');
 		const manifest = await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
@@ -423,20 +413,17 @@ describe('sigdb shared-dictionary shards, verification, R-core markers and relea
 		const report = await verifyShardedDatabase(manifestFile);
 		expect(report.ok).toBe(false);
 		expect(report.errors.some(e => e.includes('recomputed hash'))).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test('release dates survive a full write/read round-trip on a single bundle', async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-dates-'));
+		const dir = sigTmpDir('sigdb-dates-');
 		const db = builder().build(meta);
-		await writeSignatureDb(path.join(dir, 'db'), db);
-		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		const rd = await writeAndOpen(dir, db);
 		expect(rd.isBaseR('mva')).toBe(true);
 		expect(rd.coreVersions('mva')?.map(v => v.str)).toEqual(['1.8.0', '1.9.1']);
 		expect(rd.latestVersion('hot')?.str).toBe('2.0');
 		expect(rd.releaseDate('mva', '1.9.1')?.getUTCFullYear()).toBe(2004);
 		rd.close();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 });
 
@@ -456,9 +443,8 @@ describe('sigdb dependencies and feature selection', () => {
 		const blob = db.blobs[db.pkgs['p']];
 		// round-trip via a written bundle + the reader
 		return (async() => {
-			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sigdb-deps-'));
-			await writeSignatureDb(path.join(dir, 'db'), db);
-			const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			const dir = sigTmpDir('sigdb-deps-');
+			const rd = await writeAndOpen(dir, db);
 			const v2 = rd.dependencies('p');           // latest
 			expect(v2).toEqual([
 				{ name: 'R6', type: DepType.Imports },
@@ -467,7 +453,6 @@ describe('sigdb dependencies and feature selection', () => {
 			const v1 = rd.dependencies('p', '1.0');
 			expect(v1).toContainEqual({ name: 'R', type: DepType.Depends, constraint: '>= 3.5.0' });
 			rd.close();
-			fs.rmSync(dir, { recursive: true, force: true });
 			// unchanged-across-versions dep lists would pool; here they differ, so two entries
 			expect(blob.deps.length).toBe(2);
 		})();

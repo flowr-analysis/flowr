@@ -54,11 +54,8 @@ export function baseRExportOwner(name: string): string | undefined {
 	if(exportOwners === undefined) {
 		exportOwners = new Map();
 		for(const [pkg, names] of Object.entries(RBasePackageStore.exportsByPackage)) {
-			// names is a single whitespace-separated string (see the generated store); split once, here, lazily
-			for(const exported of names.split(/\s+/)) {
-				if(exported.length > 0) {
-					exportOwners.set(exported, pkg);
-				}
+			for(const exported of names) {
+				exportOwners.set(exported, pkg);
 			}
 		}
 	}
@@ -67,7 +64,8 @@ export function baseRExportOwner(name: string): string | undefined {
 
 /** whether `name` is an R-core / base package at the assumed R version (see {@link baseRPackages}). */
 export function isBaseRPackage(name: string, rVersion?: string): boolean {
-	const range = RBasePackageStore.packages[name];
+	// the store is `as const`, so it carries no string index signature; read it as a record for the dynamic lookup
+	const range = (RBasePackageStore.packages as Record<string, readonly [first: string, last: string] | undefined>)[name];
 	if(range === undefined) {
 		return false;
 	}

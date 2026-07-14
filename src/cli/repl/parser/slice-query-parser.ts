@@ -3,12 +3,25 @@ import { SliceDirection } from '../../../util/slice-direction';
 import type { CommandCompletions } from '../core';
 import type { FlowrConfig } from '../../../config';
 
+/** the single-char flag suffix after the closing `)` of a criteria list (e.g. `f` forward, `i` inline sources) */
+function sliceFlagSuffix(argument: string): string {
+	const endBracket = argument.indexOf(')');
+	return endBracket >= 0 ? argument.slice(endBracket + 1) : '';
+}
+
 /**
- * Checks whether the given argument represents a slicing direction with an `f` suffix.
+ * Checks whether the given argument represents a slicing direction with an `f` suffix (in any flag order).
  */
 export function sliceDirectionParser(argument: string): SliceDirection {
-	const endBracket = argument.indexOf(')');
-	return argument[endBracket + 1] === 'f' ? SliceDirection.Forward : SliceDirection.Backward;
+	return sliceFlagSuffix(argument).includes('f') ? SliceDirection.Forward : SliceDirection.Backward;
+}
+
+/**
+ * Whether the argument requests inline slicing via an `i` suffix (e.g. `(12@x)i`, `(12@x)fi`), which inlines
+ * resolvable `source()` calls into the reconstruction so the slice is a single self-contained R text.
+ */
+export function sliceInlineParser(argument: string): boolean {
+	return sliceFlagSuffix(argument).includes('i');
 }
 
 /**

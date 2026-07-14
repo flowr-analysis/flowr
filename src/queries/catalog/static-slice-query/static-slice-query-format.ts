@@ -15,7 +15,7 @@ import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { criteriaQueryCompleter, sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser, sliceDirectionParser, sliceInlineParser } from '../../../cli/repl/parser/slice-query-parser';
 import { SliceDirection } from '../../../util/slice-direction';
 
 /** Calculates and returns the static backward or forward slice from the given criteria */
@@ -53,6 +53,7 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'static-slice'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	const direction = sliceDirectionParser(line[0]);
+	const inlineSources = sliceInlineParser(line[0]);
 	if(!criteria || criteria.length === 0) {
 		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
@@ -64,6 +65,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 			type:      'static-slice',
 			criteria:  criteria,
 			direction: direction,
+			...(inlineSources ? { inlineSources: true } : {})
 		}], rCode: line[1] } ;
 }
 

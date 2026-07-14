@@ -3,7 +3,10 @@ import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
-import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, MaxDefaultLength, defaultSigDbPath, type SigFunctionInfo } from '../../../../src/project/plugins/package-version-plugins/sigdb';
+import { SigDatabase, getSharedSigSourceSync } from '../../../../src/project/sigdb/reader';
+import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/build';
+import { defaultSigDbPaths } from '../../../../src/project/sigdb/manifest';
+import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
@@ -375,9 +378,9 @@ describe.sequential('SigDb additionalPaths config', withTreeSitter(parser => {
 }));
 
 describe('signature query completer', () => {
-	// the completer reads the discoverable bundle (not a synthetic db), so it only runs on a checkout that ships one
-	const manifest = defaultSigDbPath();
-	const bundled = manifest !== undefined && /\.manifest\.json(\.br)?$/.test(manifest);
+	// the completer reads the discoverable bundle (not a synthetic db) and these cases query CRAN packages, so
+	// only run when the full bundle is present -- CI ships just the base-R floor (no ggplot2), so it skips there
+	const bundled = defaultSigDbPaths().some(p => getSharedSigSourceSync(p)?.has('ggplot2'));
 	// the shared test setup disables the default bundle for hermetic runs; the completer honors that flag, so
 	// clear it here (the completer is exactly the case that wants the shipped bundle) and restore it afterwards
 	let prevDisable: string | undefined;

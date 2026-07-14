@@ -1,6 +1,6 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
-import type { PackageSignatureSource } from './sigdb';
+import type { PackageSignatureSource } from '../../sigdb/reader';
 import type { FlowrConfig } from '../../../config';
 
 /** metadata of a package database a plugin currently has loaded */

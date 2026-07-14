@@ -25,7 +25,7 @@ function sourceArg(ast: NormalizedAst, callId: NodeId): string | undefined {
 /**
  * Sourced files receive ids of the form `[<repeat>::]<path>-<sl>:<sc>-<el>:<ec>-<counter>`
  * (see {@link sourcedDeterministicCountingIdGenerator}). This strips the trailing `-<location>-<counter>`
- * and the optional leading `<repeat>::` repeat marker, leaving just the **sourced file `<path>`** — which
+ * and the optional leading `<repeat>::` repeat marker, leaving just the **sourced file `<path>`** -- which
  * is the same for every `source()` *call site* of that file (the location is the call site, not the file).
  * Keying on the path is what lets a file sourced from several call sites map to its single stored copy.
  */
@@ -71,7 +71,7 @@ export const SourceInlineMap = {
 	 * identifies the sourced file, independent of the call site.
 	 *
 	 * A file sourced from several call sites is stored only once in `ast.ast.files`, but each call site's block
-	 * carries its own (call-site) location in its node ids while sharing the same `<path>` — so keying on the
+	 * carries its own (call-site) location in its node ids while sharing the same `<path>` -- so keying on the
 	 * path (not `path+location`) maps *every* call site to that single stored file. This also underpins cycle
 	 * detection during reconstruction (a re-sourcing call resolves to an already-visited file index).
 	 *

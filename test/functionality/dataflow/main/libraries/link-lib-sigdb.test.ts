@@ -1,18 +1,18 @@
-import { describe, expect, test, vi } from 'vitest';
-import fs from 'fs';
-import os from 'os';
+import { afterAll, describe, expect, test, vi } from 'vitest';
 import path from 'path';
 import { withTreeSitter } from '../../../_helper/shell';
+import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen, sigdbAnalyzer, expFn, ver, hasBuiltInVertex as hasBuiltIn } from '../../../_helper/sigdb';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
 import { DefaultAssumedRVersion, FlowrConfig } from '../../../../../src/config';
-import { Package } from '../../../../../src/project/plugins/package-version-plugins/package';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName, sigDbLog } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { getOriginInDfg } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
 import { executeCallContextQueries } from '../../../../../src/queries/catalog/call-context-query/call-context-query-executor';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
-import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, DepType, type PackageSignatureSource, type SigVersionInfo } from '../../../../../src/project/plugins/package-version-plugins/sigdb';
+import { type SigDatabase, type PackageSignatureSource } from '../../../../../src/project/sigdb/reader';
+import { SigDbBuilder, writeSignatureDb } from '../../../../../src/project/sigdb/build';
+import { SigDbExt, FnProp, DepType } from '../../../../../src/project/sigdb/schema';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { Environment } from '../../../../../src/dataflow/environments/environment';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
@@ -23,6 +23,8 @@ import { FlowrAnalyzerPackageVersionsPlugin } from '../../../../../src/project/p
 import { SemVer } from 'semver';
 import { label } from '../../../_helper/label';
 
+afterAll(cleanupSigTmpDirs);
+
 /** a version plugin that always throws -- stands in for a plugin choking on a malformed project file */
 class ThrowingVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'throwing-versions-plugin';
@@ -32,10 +34,6 @@ class ThrowingVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 		throw new Error('boom: simulated malformed project file');
 	}
 }
-
-/** an exported, side-effect-free function record */
-const expFn = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
-const ver = (functions: SigVersionInfo['functions']): SigVersionInfo => ({ cran: true, functions });
 
 /**
  * A tiny in-memory signature database: base R (`paste` — a registered built-in — and `Reduce`), the base package
@@ -51,8 +49,7 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 	b.addVersion('stats', '4.5.0', ver([expFn('arima'), expFn('newfn')])); // R 4.5: arima + newfn
 	b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 	b.addVersion('cranpkg', '1.0.0', ver([expFn('cranfn')]));
-	await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+	return writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 }
 
 /** a config that opts into eager base-R namespace attachment (`solver.sigdb.linkBaseR`) */
@@ -63,28 +60,17 @@ function linkBaseRConfig(): FlowrConfig {
 }
 
 async function analyze(ts: TreeSitterExecutor, code: string, db: PackageSignatureSource, config?: FlowrConfig) {
-	let builder = new FlowrAnalyzerBuilder().setParser(ts);
-	if(config) {
-		builder = builder.setConfig(config);
-	}
-	// give our sigdb the sole (deterministic) resolver precedence
-	const analyzer = await builder.unregisterPlugins(SigDbPluginName)
-		.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(db)).build();
+	const analyzer = await sigdbAnalyzer(ts, db, config);
 	analyzer.addRequest(code);
 	return { df: await analyzer.dataflow(), analyzer };
 }
 
-function hasBuiltIn(df: { graph: { vertices(b: boolean): Iterable<[unknown, unknown]> } }, pkg: string, fn: string): boolean {
-	const target = String(NodeId.toBuiltIn(Package.funcIdentif(pkg, fn)));
-	return [...df.graph.vertices(true)].some(([id]) => String(id) === target);
-}
-
 /** whether the call `callName` resolves via a `Calls` edge to the export `pkg::fn`'s built-in vertex */
 function callResolvesTo(df: Awaited<ReturnType<typeof analyze>>['df'], callName: string, pkg: string, fn: string): boolean {
-	const target = String(NodeId.toBuiltIn(Package.funcIdentif(pkg, fn)));
-	const call = [...df.graph.vertices(true)].find(([, v]) => isFunctionCallVertex(v) && Identifier.getName(v.name) === callName);
+	const target = String(NodeId.fromPkgFn(pkg, fn));
+	const call = df.graph.vertices(true).find(([, v]) => isFunctionCallVertex(v) && Identifier.getName(v.name) === callName);
 	const edges = call ? df.graph.outgoingEdges(call[0]) : undefined;
-	return edges !== undefined && [...edges].some(([to, e]) => String(to) === target && DfEdge.includesType(e, EdgeType.Calls));
+	return edges !== undefined && edges.entries().some(([to, e]) => String(to) === target && DfEdge.includesType(e, EdgeType.Calls));
 }
 
 /** the edge-free qualified name of the call `callName` via {@link Identifier.toQualified} + the base-export index */
@@ -128,25 +114,23 @@ function namespaceEnv(df: Awaited<ReturnType<typeof analyze>>['df'], pkg: string
 
 describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts => {
 	test(label('library(stats) attaches the base package exports for the assumed R version', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const { df } = await analyze(ts, 'library(stats)\narima()', await buildDb(dir));
 		expect(hasBuiltIn(df, 'stats', 'arima')).toBe(true);                 // the export links (not an unknown side effect)
 		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
 		expect(namespaceEnv(df, 'stats')?.memory.has('arima')).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('a bare base call not in the built-in config resolves to the base package export', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		// eager base attach is opt-in (solver.sigdb.linkBaseR); no library() call needed once enabled
 		const { df } = await analyze(ts, 'Reduce(f, xs)', await buildDb(dir), linkBaseRConfig());
 		expect(hasBuiltIn(df, 'base', 'Reduce')).toBe(true);
 		expect(callResolvesTo(df, 'Reduce', 'base', 'Reduce')).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('pinning an older assumedRVersion selects that R release\'s exports', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);
 		const pinned = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.solver.sigdb.assumedRVersion = '4.4.0';
@@ -161,36 +145,32 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		const latest = await analyze(ts, 'library(stats)\nnewfn()', db);
 		expect(latest.analyzer.inspectContext().resolvedRVersion).toBe(DefaultAssumedRVersion);
 		expect(callResolvesTo(latest.df, 'newfn', 'stats', 'newfn')).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('a name that is a registered built-in (paste) is not shadowed by a base export', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const { df } = await analyze(ts, 'paste("a", "b")\nReduce(f, xs)', await buildDb(dir), linkBaseRConfig());
 		// Reduce (no built-in) is attached from base; paste (a built-in) is skipped, so it stays the built-in
 		expect(namespaceEnv(df, 'base')?.memory.has('Reduce')).toBe(true);
 		expect(namespaceEnv(df, 'base')?.memory.has('paste')).toBe(false);
 		expect(hasBuiltIn(df, 'base', 'paste')).toBe(false);
 		expect(callResolvesTo(df, 'paste', 'base', 'paste')).toBe(false);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('a plain CRAN package resolves at its latest version', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const { df } = await analyze(ts, 'library(cranpkg)\ncranfn()', await buildDb(dir));
 		expect(hasBuiltIn(df, 'cranpkg', 'cranfn')).toBe(true);
 		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('the resolved (assumed) R version is reported for analysis', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const pinned = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.solver.sigdb.assumedRVersion = '4.3.2';
 		});
 		const { analyzer } = await analyze(ts, 'x <- 1', await buildDb(dir), pinned);
 		expect(analyzer.inspectContext().resolvedRVersion).toBe('4.3.2');
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
@@ -205,25 +185,23 @@ describe('edge-free base-R qualification (linkBaseR off: no namespaces, no dataf
 	});
 
 	test(label('a bare base call is qualified by name without attaching a namespace or adding an edge', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const res = await analyze(ts, 'arima(x)', await buildDb(dir));   // no library(), linkBaseR off
 		expect(qualifiedName(res, 'arima')).toBe('stats::arima');        // qualified purely by lookup
 		// ...and NOTHING was attached: no namespace env, no built-in vertex, no Calls edge
 		expect(namespaceEnv(res.df, 'stats')).toBeUndefined();
 		expect(hasBuiltIn(res.df, 'stats', 'arima')).toBe(false);
 		expect(callResolvesTo(res.df, 'arima', 'stats', 'arima')).toBe(false);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('a locally defined function shadowing a base name is NOT mistaken for the base export', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const res = await analyze(ts, 'arima <- function(v) 1\narima(x)', await buildDb(dir));
 		expect(qualifiedName(res, 'arima')).toBeUndefined();   // resolves to the user definition, so no base qualification
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('R call-position semantics: a non-function binding is skipped, a function binding shadows', ['library-loading', 'call-normal'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);
 		// `acf <- 3; acf(x <- 2)` -- R skips the non-function `acf` in call position and calls stats::acf, so we qualify
 		const value = await analyze(ts, 'acf <- 3\nacf(x <- 2)', db);
@@ -231,24 +209,21 @@ describe('edge-free base-R qualification (linkBaseR off: no namespaces, no dataf
 		// `acf <- function(...)` IS callable, so (like R) it shadows the base function and we do NOT qualify
 		const fn = await analyze(ts, 'acf <- function(z) z\nacf(x <- 2)', db);
 		expect(qualifiedName(fn, 'acf')).toBeUndefined();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('an explicitly namespaced call is left as written (not re-qualified)', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const res = await analyze(ts, 'utils::arima(x)', await buildDb(dir));
 		expect(qualifiedName(res, 'arima')).toBeUndefined();   // toQualified yields nothing; the caller keeps utils::arima
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 
 	test(label('a call-context query with callTargetNamespace finds a bare base call (its real consumer)', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const { analyzer } = await analyze(ts, 'arima(x)\ncranfn()', await buildDb(dir));   // no library(), linkBaseR off
 		// `callTargetNamespace: 'stats'` resolves the bare base call `arima()` to stats (documented query semantics)
 		expect(await callTargets(analyzer, 'arima', 'stats')).toHaveLength(1);
 		expect(await callTargets(analyzer, 'arima', 'graphics')).toHaveLength(0);   // not that namespace
 		expect(await callTargets(analyzer, 'cranfn', 'stats')).toHaveLength(0);     // a non-base call is not base-qualified
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
@@ -256,7 +231,7 @@ describe('base-R origin: correct with linkBaseR off (edge-free) and on (real edg
 	// `arima` is a real `stats` export in the generated base-package store *and* in our tiny db, so both the
 	// edge-free lookup (off) and the eager-attach edge (on) have something to resolve to.
 	test(label('a bare base call qualifies to the same package with the option off and on', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);
 
 		// OFF (default): nothing is attached, there is NO Calls edge and NO built-in:stats:arima origin,
@@ -272,7 +247,6 @@ describe('base-R origin: correct with linkBaseR off (edge-free) and on (real edg
 		expect(qualifiedName(on, 'arima')).toBe('stats::arima');
 		expect(callResolvesTo(on.df, 'arima', 'stats', 'arima')).toBe(true);
 		expect(originProcs(on, 'arima')).toContain('built-in:stats:arima');         // the link option wired the origin
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
@@ -280,7 +254,7 @@ describe('sigdb system: real base exports from the generated list qualify end-to
 	// a system-level check that drives the *generated* base-export list through a full analysis: none of these
 	// names are in a loaded db (linkBaseR off), so every qualification comes from `baseRExportOwner`
 	test(label('a mix of real base calls each resolve to their true owning package', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);   // db only knows cranpkg/base/stats fixtures -- these names are NOT in it
 		const cases: readonly [call: string, owner: string][] = [
 			['sd', 'stats'], ['glm', 'stats'],           // stats
@@ -294,13 +268,12 @@ describe('sigdb system: real base exports from the generated list qualify end-to
 			expect(qualifiedName(res, call), `${call} qualifies end-to-end`).toBe(`${owner}::${call}`);
 			expect(callResolvesTo(res.df, call, owner, call)).toBe(false);   // still nothing attached (linkBaseR off)
 		}
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
 describe('plugin robustness: a throwing version plugin does not abort the analysis', withTreeSitter(ts => {
 	test(label('a plugin that throws is isolated; the other plugins still resolve the library', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);
 		// register a plugin that always throws ALONGSIDE the working sigdb plugin
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts)
@@ -311,13 +284,12 @@ describe('plugin robustness: a throwing version plugin does not abort the analys
 		// the whole analysis still completes and stats still resolves -- the throw was contained to its plugin
 		const df = await analyzer.dataflow();
 		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
 describe('sigdb source mounting: preload survives re-registration', withTreeSitter(ts => {
 	test(label('a preloaded .br bundle is not lost when the plugin is re-registered (process)', ['library-loading'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const b = new SigDbBuilder();
 		b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 		b.addVersion('cranpkg', '1.0.0', ver([expFn('cranfn')]));
@@ -336,7 +308,6 @@ describe('sigdb source mounting: preload survives re-registration', withTreeSitt
 		analyzer.addRequest('library(cranpkg)\ncranfn()');
 		const df = await analyzer.dataflow();
 		expect(hasBuiltIn(df, 'cranpkg', 'cranfn')).toBe(true);   // preloaded bundle survived process()
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
@@ -346,8 +317,7 @@ describe('sigdb system: the assumed R version gates which base packages are atta
 		const b = new SigDbBuilder();
 		b.addPackage('parallel', { latest: '4.5.0', core: true });
 		b.addVersion('parallel', '4.5.0', ver([expFn('mclapply')]));
-		await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-		return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		return writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 	}
 
 	function linkBaseAt(rVersion: string): FlowrConfig {
@@ -358,7 +328,7 @@ describe('sigdb system: the assumed R version gates which base packages are atta
 	}
 
 	test(label('parallel attaches for R 4.5 but not for R 2.10 (it predates the package in core)', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await dbWithParallel(dir);
 		// R 4.5.0: `parallel` is a base package -> its export is attached and the bare call resolves
 		const modern = await analyze(ts, 'mclapply(x)', db, linkBaseAt('4.5.0'));
@@ -368,13 +338,12 @@ describe('sigdb system: the assumed R version gates which base packages are atta
 		const ancient = await analyze(ts, 'mclapply(x)', db, linkBaseAt('2.10.0'));
 		expect(ancient.analyzer.inspectContext().resolvedRVersion).toBe('2.10.0');
 		expect(hasBuiltIn(ancient.df, 'parallel', 'mclapply')).toBe(false);
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
 describe('assumed-R fallback when the version predates every recorded core release', withTreeSitter(ts => {
 	test(label('falls back to the closest supported version and logs it once as info', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await buildDb(dir);   // stats shipped in R 4.4.0 and 4.5.0
 		const ancient = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.solver.sigdb.assumedRVersion = '3.0.0';   // older than the earliest recorded (4.4.0)
@@ -386,7 +355,6 @@ describe('assumed-R fallback when the version predates every recorded core relea
 		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
 		expect(infoSpy).toHaveBeenCalledWith(expect.stringContaining('predates the earliest recorded core release of stats'));
 		infoSpy.mockRestore();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));
 
@@ -410,12 +378,11 @@ describe('sigdb system: rich package information is available end-to-end', withT
 				{ name: 'methods', type: DepType.Depends }
 			]
 		});
-		await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-		return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		return writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
 	}
 
 	test(label('the analyzer resolves library() from the database, which also exposes signatures, call graphs and dependencies', ['library-loading', 'search-path'], ['dataflow']), async() => {
-		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'link-sigdb-'));
+		const dir = sigTmpDir('link-sigdb-');
 		const db = await richDb(dir);
 
 		// (1) end-to-end through the analyzer: library(richpkg) attaches the exported function, not the internal helper
@@ -443,6 +410,5 @@ describe('sigdb system: rich package information is available end-to-end', withT
 			{ name: 'utils', type: DepType.Imports, constraint: '>= 2.0' }
 		]);
 		db.close();
-		fs.rmSync(dir, { recursive: true, force: true });
 	});
 }));

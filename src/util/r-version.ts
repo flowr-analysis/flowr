@@ -73,6 +73,9 @@ function makeRange(range: string, original: string) {
 	return semverRange;
 }
 
+/** A parsed R package version: a comparable {@link SemVer} that also keeps its original string as `.str`. */
+export type RVersion = SemVer & { str: string };
+
 /** Helpers for R package versions (`1.2-3` style), which are freer than SemVer. */
 export const RVersion = {
 	/**
@@ -80,7 +83,7 @@ export const RVersion = {
 	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`. Returns
 	 * undefined (never throws) when the string cannot be coerced to a version at all.
 	 */
-	parse(this: void, version: string): (SemVer & { str: string }) | undefined {
+	parse(this: void, version: string): RVersion | undefined {
 		try {
 			return makeVersion(version, version);
 		} catch{ /* try to normalize */ }

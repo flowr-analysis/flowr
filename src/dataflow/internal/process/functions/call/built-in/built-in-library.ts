@@ -359,7 +359,7 @@ function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, 
 	// demand when a call resolves to one (see attachExportVertex). Eager mode registers them all upfront.
 	if(data.ctx.config.solver.sigdb.eagerlyLoadExports){
 		for(const { exported: func } of selectExports(getCallables(dependency.namespaceInfo), spec)){
-			const builtInId = NodeId.toBuiltIn(Package.funcIdentif(pack, func));
+			const builtInId = NodeId.fromPkgFn(pack, func);
 			attachExportVertex(info.graph, builtInId, info.environment, data.ctx, data.cds);
 			info.graph.addEdge(builtInId, rootId, EdgeType.Reads | EdgeType.Calls);
 		}
@@ -387,7 +387,7 @@ function exportDefinition(pack: string, exp: AttachedExport, definedAt: NodeId =
 	return {
 		name:   Identifier.make(exp.as, pack),
 		type:   ReferenceType.Function,
-		nodeId: NodeId.toBuiltIn(Package.funcIdentif(pack, exp.exported)),
+		nodeId: NodeId.fromPkgFn(pack, exp.exported),
 		definedAt,
 	} as const;
 }
@@ -508,13 +508,13 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 			continue;
 		}
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(Package.funcIdentif(importedDependency.name, func))){
+			if(importsEnv.memory.has(Package.functionIdentifier(importedDependency.name, func))){
 				continue;
 			}
 			importsEnv = importsEnv.define({
-				name:      Identifier.make(Package.funcIdentif(importedDependency.name, func), importsEnv.n),
+				name:      Identifier.make(Package.functionIdentifier(importedDependency.name, func), importsEnv.n),
 				type:      ReferenceType.Function,
-				nodeId:    NodeId.toBuiltIn(Package.funcIdentif(importedDependency.name, func)),
+				nodeId:    NodeId.fromPkgFn(importedDependency.name, func),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)
 			});
 		}

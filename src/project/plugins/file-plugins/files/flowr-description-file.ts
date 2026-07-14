@@ -235,7 +235,7 @@ export function parsePackagesWithVersions(packageStrings: readonly string[], typ
 	while((match = VersionRegex.exec(str)) !== null) {
 		const [, name, operator, version] = match;
 
-		const range = Package.parsePackageVersionRange(operator, version);
+		const range = Package.parsePkgVersionRange(operator, version);
 		packages.push(new Package(
 			{
 				name:               name,

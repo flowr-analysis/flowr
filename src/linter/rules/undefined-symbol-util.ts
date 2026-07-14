@@ -37,8 +37,8 @@ export function useResolvesToDefinitionOrBuiltin(graph: DataflowGraph, id: NodeI
 
 /** Whether any edge incident to `id` marks it as non-standard-evaluated (quoted), e.g. `quote`/`substitute`. */
 export function isNonStandardEvaluated(graph: DataflowGraph, id: NodeId): boolean {
-	const nse = ([, edge]: [NodeId, DfEdge]): boolean => DfEdge.includesType(edge, EdgeType.NonStandardEvaluation);
-	return [...(graph.outgoingEdges(id) ?? [])].some(nse) || [...(graph.ingoingEdges(id) ?? [])].some(nse);
+	const nse = (edge: DfEdge): boolean => DfEdge.includesType(edge, EdgeType.NonStandardEvaluation);
+	return (graph.outgoingEdges(id)?.values().some(nse) ?? false) || (graph.ingoingEdges(id)?.values().some(nse) ?? false);
 }
 
 /**

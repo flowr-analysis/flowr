@@ -677,6 +677,13 @@ ${
 	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
 }
 
+If your program pulls in other files with \`source(...)\`, the \`inlineSources\` flag splices the reconstruction
+of each resolvable sourced file into the place of its \`source()\` call, so the slice becomes a single
+self-contained R text (cyclic or unresolvable \`source()\` calls are kept verbatim and reported via
+\`reconstruct.inlineWarnings\`). With the ${getReplCommand('query')} REPL command you append an \`i\` to the
+criteria (and may combine it with the forward \`f\` as \`fi\`), for example:
+${codeBlock('shell', ':query @static-slice (3@print)i "source(\\"library.R\\"); print(1)"')}
+
 You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
 This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 'message-request-slice')} message.
 		`;

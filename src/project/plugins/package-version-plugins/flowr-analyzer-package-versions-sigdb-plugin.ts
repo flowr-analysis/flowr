@@ -4,7 +4,9 @@ import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { SigDatabase, SigDatabaseSet, SigDbExt, defaultSigDbPaths, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource, type RPackageVersion } from './sigdb';
+import { SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
+import { SigDbExt, type LibraryExports } from '../../sigdb/schema';
+import { defaultSigDbPaths } from '../../sigdb/manifest';
 import { log } from '../../../util/log';
 import { FileRole } from '../../context/flowr-file';
 import { isSigDbEnabled, resolveAssumedRVersion, type FlowrConfig } from '../../../config';
@@ -335,7 +337,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			return undefined;
 		}
 		const target = this.analyzerCtx?.resolvedRVersion ?? resolveAssumedRVersion(undefined);
-		let chosen: RPackageVersion | undefined;   // versions are ascending; keep the newest core release <= target
+		let chosen: RVersion | undefined;   // versions are ascending; keep the newest core release <= target
 		for(const v of versions) {
 			if(RVersion.compare(v.str, target) <= 0) {
 				chosen = v;
@@ -358,6 +360,10 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 			return undefined;
 		}
 		const pinned = existing?.derivedVersion ? minVersion(existing.derivedVersion)?.version : undefined;
+		// a pinned version may live only in a `history` shard while `current` carries just the latest, and
+		// `lookup` silently falls back to a source's latest when it lacks the exact version -- so on a pinned
+		// query we keep scanning for a source that truly has it, remembering the first owner as the fallback
+		let fallback: LibraryExports | undefined;
 		for(const src of this.loadSources()) {
 			if(!src.has(name)) {
 				continue;
@@ -368,19 +374,30 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 				continue;
 			}
 			if(pinned !== undefined && info.version !== pinned) {
-				sigDbLog.warn(`project pins ${name}@${pinned} but the signature database only has ${info.version}; analyzing with ${info.version}`);
+				fallback ??= info;   // this source only had its latest; look for one carrying the pinned version
+				continue;
 			}
-			const namespaceInfo: NamespaceInfo = {
-				exportedSymbols:      info.exported,
-				exportedFunctions:    [],
-				exportS3Generics:     reconstructS3Generics(info.exported),
-				exportedPatterns:     [],
-				importedPackages:     new Map(),
-				loadsWithSideEffects: false,
-				callable:             info.exported
-			};
-			return new Package({ name, namespaceInfo, resolvedVersion: info.version });
+			return this.toResolvedPackage(name, info);
+		}
+		if(pinned !== undefined && fallback !== undefined) {
+			sigDbLog.warn(`project pins ${name}@${pinned} but the signature database only has ${fallback.version}; analyzing with ${fallback.version}`);
+			return this.toResolvedPackage(name, fallback);
 		}
 		return undefined;
+	}
+
+	/** build the resolved {@link Package} (namespace + version) from a source's export view */
+	private toResolvedPackage(name: string, info: LibraryExports): Package {
+		const exported = [...info.exported];   // own the array: NamespaceInfo takes mutable lists, the source view is read-only
+		const namespaceInfo: NamespaceInfo = {
+			exportedSymbols:      exported,
+			exportedFunctions:    [],
+			exportS3Generics:     reconstructS3Generics(exported),
+			exportedPatterns:     [],
+			importedPackages:     new Map(),
+			loadsWithSideEffects: false,
+			callable:             exported
+		};
+		return new Package({ name, namespaceInfo, resolvedVersion: info.version });
 	}
 }

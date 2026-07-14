@@ -235,16 +235,15 @@ function pushFunction(result: string[], f: OutputFormatter, fn: SignatureFunctio
 	if(fn.docUrl) {
 		result.push(`      ╰ ${italic('docs', f)}    ${hyperlink(fn.docUrl, fn.docUrl, f)}`);
 	}
-	if(fn.s3methods?.length) {
-		const shown = fn.s3methods.slice(0, MaxMethods).join(', ');
-		const more = fn.s3methods.length > MaxMethods ? italic(` (+${fn.s3methods.length - MaxMethods} more)`, f) : '';
-		result.push(`      ╰ ${italic('dispatches to', f)} (${fn.s3methods.length}): ${shown}${more}`);
-	}
-	if(fn.callees.length) {
-		const shown = fn.callees.slice(0, MaxCallees).join(', ');
-		const more = fn.callees.length > MaxCallees ? italic(` (+${fn.callees.length - MaxCallees} more)`, f) : '';
-		result.push(`      ╰ ${italic('calls', f)} (${fn.callees.length}): ${shown}${more}`);
-	}
+	const listLine = (label: string, items: readonly string[], max: number): void => {
+		if(!items.length) {
+			return;
+		}
+		const more = items.length > max ? italic(` (+${items.length - max} more)`, f) : '';
+		result.push(`      ╰ ${italic(label, f)} (${items.length}): ${items.slice(0, max).join(', ')}${more}`);
+	};
+	listLine('dispatches to', fn.s3methods ?? [], MaxMethods);
+	listLine('calls', fn.callees, MaxCallees);
 }
 
 function pushPackage(result: string[], f: OutputFormatter, p: SignaturePackageView, all: boolean): void {

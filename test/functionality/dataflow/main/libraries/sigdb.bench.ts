@@ -2,7 +2,9 @@ import { bench, describe } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { SigDbBuilder, SigDatabase, writeSignatureDb, SigDbExt, FnProp, type SigVersionInfo } from '../../../../../src/project/plugins/package-version-plugins/sigdb';
+import { SigDatabase } from '../../../../../src/project/sigdb/reader';
+import { SigDbBuilder, writeSignatureDb } from '../../../../../src/project/sigdb/build';
+import { SigDbExt, FnProp, type SigVersionInfo } from '../../../../../src/project/sigdb/schema';
 
 /**
  * The runtime cost of "having the signature database loaded" is dominated by two things: opening the bundle

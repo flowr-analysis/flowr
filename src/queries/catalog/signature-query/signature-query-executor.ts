@@ -4,10 +4,10 @@ import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch
 } from './signature-query-format';
-import {
-	DepTypeNames, defaultSigDbPaths, getSharedSigSourceSync,
-	type DecodedFunction, type PackageSignatureSource
-} from '../../../project/plugins/package-version-plugins/sigdb';
+import { getSharedSigSourceSync, type PackageSignatureSource } from '../../../project/sigdb/reader';
+import { DepTypeNames } from '../../../project/sigdb/schema';
+import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
+import type { DecodedFunction } from '../../../project/sigdb/decode';
 import { RVersion } from '../../../util/r-version';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
@@ -105,9 +105,19 @@ function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolea
 	return undefined;
 }
 
+/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, rdrr.io doc link */
+function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
+	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
+	return {
+		...(fn.file ? { file: fn.file } : {}),
+		...(fn.line >= 0 ? { line: fn.line } : {}),
+		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
+		...(doc ? { docUrl: doc } : {})
+	};
+}
+
 /** the decoded view of one function, adding the CRAN-mirror source link and rdrr.io documentation link */
 function decodedToView(pkg: string, fn: DecodedFunction, version: string | undefined, opts: { cran: boolean, base: boolean }): SignatureFunctionView {
-	const doc = rdrrDocUrl(pkg, fn.name, opts);
 	return {
 		name:       fn.name,
 		package:    pkg,
@@ -121,23 +131,15 @@ function decodedToView(pkg: string, fn: DecodedFunction, version: string | undef
 			...(p.default !== undefined ? { default: p.default } : {})
 		})),
 		callees: fn.callees,
-		...(fn.file ? { file: fn.file } : {}),
-		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(opts.cran && !opts.base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...locationFields(pkg, fn, version, opts.base, opts.cran)
 	};
 }
 
 /**
  * The detailed view of a single function within a package: its signature (parameters, forced/optional,
  * defaults), properties, definition location, call graph, and -- for a CRAN package -- a deep link into the
- * read-only CRAN GitHub mirror. `undefined` when the source does not carry that function.
- *
- * This is the tested capability for obtaining individual function info from the signature database.
- * @param src     - a signature source (as opened by {@link openSigSources})
- * @param pkg     - the package name
- * @param fnName  - the function/symbol name to look up
- * @param version - the version to resolve against (defaults to the source's latest)
+ * read-only CRAN GitHub mirror. `version` defaults to the source's latest; `undefined` when the source does
+ * not carry that function.
  */
 export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, fnName: string, version?: string): SignatureFunctionView | undefined {
 	const fns = src.functions(pkg, version) ?? src.functions(pkg);
@@ -258,6 +260,9 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const verMatch = q.version ? versionMatcher(q.version) : undefined;
 	// every source holding a package (its latest lives in `current`, its older releases in `history`)
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
+	// the versions of `pkg` matching `m`, unioned across all owning sources (so a `3.*` filter reaches history)
+	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (v: string) => boolean) =>
+		[...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(m)))];
 
 	if(!q.function) {
 		const packages: SignaturePackageMatch[] = [];
@@ -270,7 +275,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			const base = owners[0].isBaseR(pkg);
 			// with a version filter, union the matching versions across all sources (so a `3.*` reaches history)
 			const versions = verMatch
-				? [...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(verMatch)))].sort((a, b) => RVersion.compare(a, b))
+				? matchingVersions(owners, pkg, verMatch).sort((a, b) => RVersion.compare(a, b))
 				: undefined;
 			if(versions !== undefined && versions.length === 0) {
 				continue;
@@ -300,7 +305,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		// history); without one, just the latest. Each version is scanned in a single source (the first that has
 		// it), so a release present in more than one source is not double-counted
 		const versionsToScan: (string | undefined)[] = verMatch
-			? [...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(verMatch)))]
+			? matchingVersions(owners, pkg, verMatch)
 			: [undefined];
 		for(const v of versionsToScan) {
 			const s = v === undefined ? owners[0] : owners.find(o => availableVersions(o, pkg).includes(v)) ?? owners[0];
@@ -308,7 +313,6 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			const cran = (exports?.cran ?? false) && !base;
 			for(const fn of s.functions(pkg, v) ?? s.functions(pkg) ?? []) {
 				if(fnMatch(fn.name)) {
-					// stop before adding a match beyond the cap, so the flag reflects a real cut, not an exact fill
 					if(matches.length >= cap) {
 						truncated = true;
 						break;
@@ -448,39 +452,43 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		return { ...meta(), ...found };
 	}
 
-	// every source holding the package: `current` keeps the latest, `history` the older releases, so an exact
-	// version must be resolved against whichever source actually has it (not just the first one found)
+	// every source holding the package: `current` keeps the latest, `history` the older releases, so the resolved
+	// version must be looked up in whichever source actually has it (not just the first one found)
 	const owning = sources.filter(s => s.has(q.package as string));
 	if(owning.length === 0) {
 		return { ...meta(), message: `The signature database does not know the package '${q.package}'.`, suggestions: suggest(packages, q.package) };
 	}
-	if(q.version !== undefined) {
-		const avail = allAvailableVersions(owning, q.package);
-		if(!avail.includes(q.version)) {
-			return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
-		}
-	}
-	// pick the source that actually holds the requested version; without one, the first (the latest-keeping source)
-	const src = q.version !== undefined
-		? owning.find(s => availableVersions(s, q.package as string).includes(q.version as string)) ?? owning[0]
-		: owning[0];
+	// the version to resolve against: an explicit `@version`, else the version flowR inferred for the script's
+	// dependency (which may be an older release that only `history` carries)
 	const version = q.version ?? deps.getDependency(q.package)?.resolvedVersion;
+	// resolve the source that holds that version -- `current` is checked before `history`, so a latest-version
+	// query never decompresses the (large) history shard; only build the full cross-source version union for the
+	// not-found message (the slow path a wrong version would hit anyway). An inferred (non-explicit) version that
+	// no source carries falls back to the first owner's latest rather than erroring.
+	const src = version === undefined
+		? owning[0]
+		: owning.find(s => availableVersions(s, q.package as string).includes(version));
+	if(q.version !== undefined && src === undefined) {
+		const avail = allAvailableVersions(owning, q.package);
+		return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };
+	}
+	const resolvedSrc = src ?? owning[0];
 	if(q.function) {
-		const fn = signatureFunctionInfo(src, q.package, q.function, version);
+		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
 		if(fn) {
 			return { ...meta(), function: fn };
 		}
-		const exports = src.lookup(q.package, version) ?? src.lookup(q.package);
+		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<string>([
 			...(exports?.exported ?? []),
-			...(src.functions(q.package, version) ?? src.functions(q.package) ?? []).map(f => f.name)
+			...(resolvedSrc.functions(q.package, version) ?? resolvedSrc.functions(q.package) ?? []).map(f => f.name)
 		]);
 		return {
 			...meta(),
-			package:     signaturePackageInfo(src, q.package, version),
+			package:     signaturePackageInfo(resolvedSrc, q.package, version),
 			message:     `'${q.package}' does not define '${q.function}'.`,
 			suggestions: suggest(universe, q.function)
 		};
 	}
-	return { ...meta(), package: signaturePackageInfo(src, q.package, version) };
+	return { ...meta(), package: signaturePackageInfo(resolvedSrc, q.package, version) };
 }

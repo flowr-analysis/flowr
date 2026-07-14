@@ -64,7 +64,7 @@ sample(42)
 			const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
 			analyzer.addRequest(code);
 			const g = (await analyzer.dataflow()).graph;
-			const call = [...g.vertices(true)].find(([, v]) => isFunctionCallVertex(v) && Identifier.getName(v.name) === callName);
+			const call = g.vertices(true).find(([, v]) => isFunctionCallVertex(v) && Identifier.getName(v.name) === callName);
 			if(call === undefined) {
 				throw new Error(`${callName} call vertex not found`);
 			}

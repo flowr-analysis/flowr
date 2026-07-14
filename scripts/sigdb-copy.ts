@@ -2,12 +2,13 @@
 // discovered at runtime by `defaultSigDbPath`. Skips plain/`.gz`/`.idx` files and drops stale copies.
 import fs from 'node:fs';
 import path from 'node:path';
+import { info } from './script-log';
 
 const src = 'src/data/sigdb';
 const dst = 'dist/src/data/sigdb';
 
 if(!fs.existsSync(src)) {
-	console.log('no sigdb data to copy');
+	info('no sigdb data to copy');
 	process.exit(0);
 }
 fs.mkdirSync(dst, { recursive: true });
@@ -27,13 +28,13 @@ for(const file of fs.readdirSync(src)) {
 	}
 	fs.copyFileSync(from, to);
 	bytes += fs.statSync(from).size;
-	console.log(`  sigdb ${file} (${(fs.statSync(from).size / 1e6).toFixed(2)} MB)`);
+	info(`  sigdb ${file} (${(fs.statSync(from).size / 1e6).toFixed(2)} MB)`);
 }
 // drop stale files so only the current bundle ships
 for(const out of fs.readdirSync(dst)) {
 	if(!keep.has(out)) {
 		fs.rmSync(path.join(dst, out));
-		console.log(`  removed stale ${out}`);
+		info(`  removed stale ${out}`);
 	}
 }
-console.log(`sigdb: copied ${keep.size} files (${(bytes / 1e6).toFixed(2)} MB) -> ${dst}`);
+info(`sigdb: copied ${keep.size} files (${(bytes / 1e6).toFixed(2)} MB) -> ${dst}`);

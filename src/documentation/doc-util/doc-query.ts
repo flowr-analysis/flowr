@@ -120,10 +120,11 @@ export function registerQueryDocumentation(query: SupportedQueryTypes | Supporte
 }
 
 /**
- * Creates a REPL shorthand for the given slicing criteria and R code.
+ * Creates a REPL shorthand for the given slicing criteria and R code (`f` requests a forward slice,
+ * `i` inlines resolvable `source()` calls into the reconstruction; the flags may be combined as `fi`).
  */
-export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean) {
-	return `(${(criteria.join(';'))})${forward ? 'f' : ''} "${code}"`;
+export function sliceQueryShorthand(criteria: SlicingCriteria, code: string, forward?: boolean, inline?: boolean) {
+	return `(${(criteria.join(';'))})${forward ? 'f' : ''}${inline ? 'i' : ''} "${code}"`;
 }
 
 function linkify(name: string) {

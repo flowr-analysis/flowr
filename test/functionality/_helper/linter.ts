@@ -29,7 +29,8 @@ import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
-import type { PackageSignatureSource, LibraryExports } from '../../../src/project/plugins/package-version-plugins/sigdb';
+import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
+import type { LibraryExports } from '../../../src/project/sigdb/schema';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
 export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };

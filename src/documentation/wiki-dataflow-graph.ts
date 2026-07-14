@@ -592,7 +592,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 

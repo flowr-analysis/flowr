@@ -9,6 +9,7 @@ import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/no
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
 import { Identifier, ReferenceType } from '../../../../environments/identifier';
+import { baseRExportOwner } from '../../../../../util/r-base-packages';
 import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
 import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
@@ -98,6 +99,7 @@ export function processNamedCall<OtherInfo>(
 	// already know the loading call here, link to it (a function-local export is invisible to the later
 	// top-level linkMaterializedExportsToLoaders pass, so we must catch it at the call site)
 	if(information) {
+		const sigdb = data.ctx.config.solver.sigdb;
 		for(const r of resolved) {
 			if(r.type === ReferenceType.Function && r.nodeId !== undefined && NodeId.isBuiltIn(r.nodeId)) {
 				attachExportVertex(information.graph, r.nodeId, data.environment, data.ctx, data.cds);
@@ -107,13 +109,28 @@ export function processNamedCall<OtherInfo>(
 					// the call itself reads the library() load that made this export resolvable
 					information.graph.addEdge(rootId, definedAt, EdgeType.Reads);
 				}
+				// opt-in: a lightweight ref edge from the call to its sigdb-backed package function vertex
+				if(sigdb.linkPackageCalls && NodeId.toPkgFn(r.nodeId) !== undefined) {
+					information.graph.addEdge(rootId, r.nodeId, EdgeType.Reads);
+				}
 			}
 		}
-		// an explicit `pkg::fn` links to a database-unresolved `library(pkg)` recorded below the global env
 		const ns = Identifier.getNamespace(name.content);
+		// an explicit `pkg::fn` links to a database-unresolved `library(pkg)` recorded below the global env
 		if(ns !== undefined) {
 			for(const loadNode of loadNodesForNamespace(data.environment, ns)) {
 				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
+			}
+		}
+		// opt-in: link a bare base-R call to its sigdb function vertex (base-R qualification is edge-free otherwise);
+		// same guards as Identifier.toQualified -- not namespaced, not resolving to a user definition
+		if(sigdb.linkBaseRCalls && ns === undefined && !resolved.some(r => r.nodeId !== undefined && !NodeId.isBuiltIn(r.nodeId))) {
+			const bare = Identifier.getName(name.content);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				const builtInId = NodeId.fromPkgFn(owner, bare);
+				attachExportVertex(information.graph, builtInId, data.environment, data.ctx, data.cds);
+				information.graph.addEdge(rootId, builtInId, EdgeType.Reads);
 			}
 		}
 	}

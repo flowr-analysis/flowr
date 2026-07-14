@@ -204,6 +204,10 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly linkBaseR:                   boolean
 			/** Eagerly attach the namespaces of the project's declared `DESCRIPTION` dependencies (Imports/Depends) so their exports resolve without an explicit `library()` (default `false`; changes every analysis; needs a signature database resolving the declared packages). */
 			readonly linkDescriptionDependencies: boolean
+			/** Add a lightweight `Reads` edge from a bare base-R call to its signature-database function vertex (`built-in:pkg:fn`); base-R qualification stays edge-free unless this is on (default `false`; adds edges to every base call). */
+			readonly linkBaseRCalls?:             boolean
+			/** Add a lightweight `Reads` edge from a resolved package call (`pkg::fn`/attached export) to its signature-database function vertex (default `false`). */
+			readonly linkPackageCalls?:           boolean
 			/** Decompress the hot shards (base + most-downloaded) in a background task on startup, so the first `library()` lookup is warm (default `false`; useful for long-running servers/REPLs, not one-shot runs). */
 			readonly warmInBackground?:           boolean
 			/** Extra directories (or bundle/manifest files) searched for signature databases, alongside the shipped default and `$FLOWR_SIGDB_DIR`. A downloaded full-history bundle placed here is mounted automatically. */
@@ -406,7 +410,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -489,6 +493,8 @@ export const FlowrConfig = {
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
 				linkBaseR:                   Joi.boolean().optional().description('Eagerly attach base-R namespaces so bare base calls resolve without library() (default false).'),
+				linkBaseRCalls:              Joi.boolean().optional().description('Add a lightweight Reads edge from a bare base-R call to its signature-database function vertex (default false; base-R qualification is edge-free otherwise).'),
+				linkPackageCalls:            Joi.boolean().optional().description('Add a lightweight Reads edge from a resolved package call to its signature-database function vertex (default false).'),
 				linkDescriptionDependencies: Joi.boolean().optional().description('Eagerly attach the namespaces of the project\'s declared DESCRIPTION dependencies (Imports/Depends) so their exports resolve without an explicit library() (default false).'),
 				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
 				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),

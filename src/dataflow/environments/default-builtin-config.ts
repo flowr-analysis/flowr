@@ -454,6 +454,8 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.Assignment, config:          { swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
 	{ type:            'function', names:           ['->>'],
 		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['data', PkgName.Utils]), Identifier.from(['getHdata', PkgName.Hmisc])],
+		processor:       BuiltInProcName.DefineArgument, config:          { superAssignment: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['&&', PkgName.Base]), Identifier.from(['&', PkgName.Base])],
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['||', PkgName.Base]), Identifier.from(['|', PkgName.Base])],
@@ -647,17 +649,12 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.S7NewGeneric, config:          { args: { name: 'name', dispatchArg: undefined, fun: 'fun' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['S7_dispatch', PkgName.S7])],
 		processor:       BuiltInProcName.S7Dispatch, config:          { libFn: true }, assumePrimitive: true },
-	/* Constructor-returning S7 factories: `geom_point <- make_constructor(GeomPoint)` (ggplot2 4.0) and
-	   `Foo <- new_class("Foo")` (S7) both return a callable class constructor, so we model the result as a
-	   function definition -- the assigned symbol (`geom_point`, `Foo`, …) is then recognised as callable */
 	{ type:  'function', names: [
-		Identifier.from(['make_constructor', PkgName.GgPlot2]),   // ggplot2 4.0 (S7 itself has no make_constructor)
-		Identifier.from(['new_class', PkgName.S7]),
-		/* S4 `Foo <- setClass("Foo")` also returns a directly-callable generator (`Foo(x = 1)` constructs) */
-		Identifier.from(['setClass', PkgName.Methods])
+		Identifier.from(['make_constructor', PkgName.GgPlot2]),
+		Identifier.from(['new_class', PkgName.S7])
 	], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'] }, assumePrimitive: true },
-	/* generic function factories: `f <- Negate(is.null)` / `Vectorize(fn)` / `partial(g, …)` return a new
-	   function, so the assigned symbol is recognised as callable (no S4/S7 dispatch mode) */
+	{ type:            'function', names:           [Identifier.from(['setClass', PkgName.Methods])],
+		processor:       BuiltInProcName.S7MakeConstructor, config:          { mode: ['s4'] }, assumePrimitive: true },
 	{ type:  'function', names: [
 		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base]),
 		Identifier.from(['partial', PkgName.Purrr])
@@ -702,7 +699,7 @@ export const DefaultBuiltinConfig = [
 			/* library/require/(require|load|attach)Namespace/use are handled above */
 			Identifier.from(['asNamespace', PkgName.Base]),
 			/* env attachment */
-			Identifier.from(['unname', PkgName.Base]), Identifier.from(['data', PkgName.Utils]),
+			Identifier.from(['unname', PkgName.Base]),
 			/* file creation/removal (base) */
 			Identifier.from(['dir.create', PkgName.Base]),  Identifier.from(['dir_create', PkgName.Fs]),
 			Identifier.from(['Sys.chmod', PkgName.Base]),   Identifier.from(['unlink', PkgName.Base]),

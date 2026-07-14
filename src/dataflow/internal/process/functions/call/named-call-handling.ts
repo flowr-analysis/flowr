@@ -8,10 +8,10 @@ import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r
 import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
-import { ReferenceType } from '../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../environments/identifier';
 import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
 import { EdgeType } from '../../../../graph/edge';
-import { attachExportVertex } from './built-in/built-in-library';
+import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
 
 
@@ -104,7 +104,16 @@ export function processNamedCall<OtherInfo>(
 				const definedAt = (r as Partial<InGraphIdentifierDefinition>).definedAt;
 				if(definedAt !== undefined && !NodeId.isBuiltIn(definedAt)) {
 					information.graph.addEdge(r.nodeId, definedAt, EdgeType.Reads | EdgeType.Calls);
+					// the call itself reads the library() load that made this export resolvable
+					information.graph.addEdge(rootId, definedAt, EdgeType.Reads);
 				}
+			}
+		}
+		// an explicit `pkg::fn` links to a database-unresolved `library(pkg)` recorded below the global env
+		const ns = Identifier.getNamespace(name.content);
+		if(ns !== undefined) {
+			for(const loadNode of loadNodesForNamespace(data.environment, ns)) {
+				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
 			}
 		}
 	}

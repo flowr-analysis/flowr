@@ -58,6 +58,14 @@ export interface DecodedFunction {
 	readonly callees:   readonly string[];
 }
 
+/**
+ * The formal parameter names of a known signature, ready for `RFunctionCall.matchArgumentsToParameters`: the
+ * `...` parameter is excluded so partial (`pmatch`) matches against the remaining names stay unambiguous.
+ */
+export function signatureParameterNames(signature: readonly SigParameter[]): string[] {
+	return signature.map(p => p.name).filter(n => n !== '...');
+}
+
 /** decode one of a blob's function records against the global string dictionary */
 export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
 	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line] = blob.fns[fnIdx];

@@ -57,11 +57,31 @@ export const NodeId = {
 		return `built-in:${name}`;
 	},
 	/**
+	 * The canonical `pkg:fn` identifier of a package's exported function (e.g. `ggplot2:ggplot`). The single
+	 * source of this form: `Package.functionIdentifier` delegates here, and {@link fromPkgFn} wraps it.
+	 */
+	pkgFnName<P extends string, F extends string>(this: void, pkg: P, fn: F): `${P}:${F}` {
+		return `${pkg}:${fn}`;
+	},
+	/**
 	 * The built-in id of a package's exported function, e.g. `fromPkgFn('ggplot2', 'ggplot')` yields
-	 * `built-in:ggplot2:ggplot`. Combines the `pkg:fn` form (mirrors `Package.functionIdentifier`) with {@link toBuiltIn}.
+	 * `built-in:ggplot2:ggplot` -- {@link toBuiltIn} over the {@link pkgFnName} `pkg:fn` form.
 	 */
 	fromPkgFn<P extends string, F extends string>(this: void, pkg: P, fn: F): BuiltIn<`${P}:${F}`> {
-		return NodeId.toBuiltIn(`${pkg}:${fn}`);
+		return NodeId.toBuiltIn(NodeId.pkgFnName(pkg, fn));
+	},
+	/**
+	 * Inverse of {@link fromPkgFn}: split a package-function built-in id (`built-in:pkg:fn`) into its `[pkg, fn]`
+	 * parts, or `undefined` when `id` is not one (a non-builtin id, or a bare builtin without a package such as
+	 * `built-in:print`). A package name never contains a `:`, so the first one separates it from the function.
+	 */
+	toPkgFn(this: void, id: BuiltIn | NodeId | undefined): readonly [pkg: string, fn: string] | undefined {
+		if(!NodeId.isBuiltIn(id)) {
+			return undefined;
+		}
+		const rest = NodeId.fromBuiltIn(id);
+		const sep = rest.indexOf(':');
+		return sep > 0 ? [rest.slice(0, sep), rest.slice(sep + 1)] : undefined;
 	},
 	/**
 	 * Converts a built-in function or operator name or id to a built-in id by prefixing it with the built-in prefix if it is not already a built-in id.

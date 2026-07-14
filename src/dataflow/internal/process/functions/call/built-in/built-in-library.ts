@@ -14,6 +14,7 @@ import type { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { wrapArgumentsUnnamed } from '../argument/make-argument';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import type { BrandedIdentifier, InGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { Environment, EnvType, REnvironment } from '../../../../../environments/environment';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
@@ -187,6 +188,12 @@ export function processLibrary<OtherInfo>(
 			linkLibrary(dependency, info, rootId, data, spec);
 		} else {
 			info.graph.markIdForUnknownSideEffects(rootId);
+			// no database resolves the package, but the load is syntactically known: record it so an explicit
+			// `p::fn` can still link back to this call. requireNamespace/loadNamespace are recorded too, since
+			// they equally make `p::fn` valid.
+			if(info.environment.level >= 0){
+				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, data.cds);
+			}
 		}
 	}
 	if(packetName.length === 0){
@@ -346,6 +353,46 @@ export function attachExportVertex(graph: DataflowGraph, builtInId: NodeId, envi
 	}, ctx.env.makeCleanEnv());
 }
 
+/** Reserved marker binding recording an unresolved `library()`/`require()` load; the leading space cannot collide with a real export name. */
+const libraryLoadMarker = ' library-load' as BrandedIdentifier;
+
+/**
+ * Record a syntactically known but database-unresolved package load below the global environment: a bare
+ * {@link EnvType.LoadedNamespace} layer for `pack` carrying only the reserved {@link libraryLoadMarker} whose
+ * `definedAt` is the load call. This lets an explicit `pack::fn` link back via {@link loadNodesForNamespace}
+ * even without a signature database.
+ */
+function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: string, rootId: NodeId, cds?: readonly ControlDependency[]): REnvironmentInformation {
+	const layer = new Environment(envInfo.current).asLibrary(pack, EnvType.LoadedNamespace).define({
+		name:      Identifier.make(libraryLoadMarker, pack),
+		type:      ReferenceType.Function,
+		nodeId:    rootId,
+		definedAt: rootId,
+		cds:       cds?.slice()
+	});
+	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
+}
+
+/**
+ * The load calls (`library()`/`require()`) that brought package `pack` into scope without a database, collected from
+ * the {@link libraryLoadMarker} of every matching {@link EnvType.LoadedNamespace} layer below the global environment.
+ */
+export function loadNodesForNamespace(env: REnvironmentInformation, pack: string): NodeId[] {
+	const nodes: NodeId[] = [];
+	for(let e: Environment = REnvironment.findGlobal(env.current).parent; e.t !== undefined && !e.builtInEnv; e = e.parent){
+		if(e.n !== pack){
+			continue;
+		}
+		for(const def of e.memory.get(libraryLoadMarker) ?? []){
+			const definedAt = (def as Partial<InGraphIdentifierDefinition>).definedAt;
+			if(definedAt !== undefined){
+				nodes.push(definedAt);
+			}
+		}
+	}
+	return nodes;
+}
+
 function linkLibrary<OtherInfo>(dependency: Package, info: DataflowInformation, rootId: NodeId, data: DataflowProcessorInformation<OtherInfo & ParentInformation>, spec: AttachSpec = {}) {
 	if(info.environment.level < 0 || isUndefined(dependency.namespaceInfo)){
 		return;
@@ -444,26 +491,17 @@ function isAttached(env: Environment, pack: string, namespaceOnly?: boolean): bo
 	return false;
 }
 
-/**
- * The base search path is identical for a given built-in environment, assumed R version, base-package set and
- * loaded database, but building it is expensive (each export `define`s into a growing namespace layer, so a
- * package with N exports costs O(N^2)). We therefore build the immutable base-layer chain once and cache it,
- * keyed by exactly those inputs; every later analysis just drops its fresh global on top -- an O(1) reparent.
- * The layers are safe to share: `define`/`defineInNamespace` clone before mutating, so no analysis can alter
- * them, and the global is identified by a boolean flag (not a pointer), so a new global on top resolves right.
- */
+/** Immutable base-layer chains, shared across analyses (layers clone before mutating); building one is O(N^2) in exports, so cache and reparent. */
 const baseNamespaceLayerCache = new Map<string, REnvironmentInformation['current']>();
 
-/** the exact inputs the base search path depends on: built-in env, assumed R version, base packages and loaded database (content hash) */
 function baseNamespaceCacheKey(ctx: FlowrAnalyzerContext, basePackages: readonly string[]): string {
-	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${JSON.stringify(ctx.deps.loadedPackageDatabases())}`;
+	return `${String(ctx.env.getCleanEnvFingerprint())}|${ctx.resolvedRVersion}|${basePackages.join(',')}|${ctx.deps.baseRSourceFingerprint()}`;
 }
 
 /**
- * Attach the {@link baseRPackages|base-R} exports below the global environment so bare base calls resolve
- * without an explicit `library()`. Names with a registered built-in (e.g. `paste`, `c`) are skipped so the
- * base namespace never shadows flowR's built-in processors, and it is a no-op when no database resolves a base
- * package. The result is cached per unique input (see {@link baseNamespaceLayerCache}).
+ * Attach the {@link baseRPackages|base-R} exports below the global so bare base calls resolve without `library()`.
+ * Names with a registered built-in are skipped, it is a no-op when no database resolves a base package, and the
+ * built layer is cached per {@link baseNamespaceCacheKey}.
  */
 export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
 	if(!ctx.config.solver.sigdb.linkBaseR || !ctx.deps.hasBaseRSource()){
@@ -473,7 +511,7 @@ export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAn
 	const key = baseNamespaceCacheKey(ctx, basePackages);
 	const cached = baseNamespaceLayerCache.get(key);
 	if(cached !== undefined){
-		env.current.parent = cached;   // reuse the precomputed base search path below this analysis's global
+		env.current.parent = cached;
 		return env;
 	}
 	let built = env;
@@ -486,8 +524,31 @@ export function attachBaseRNamespaces(env: REnvironmentInformation, ctx: FlowrAn
 		builtinNames ??= new Set([...ctx.env.builtInEnvironment.memory.keys()].map(String));
 		built = attachDependencyToEnvironment(dependency, built, ctx, { exclude: builtinNames }, NodeId.toBuiltIn(pkg));
 	}
-	if(built.current.parent !== env.current.parent){   // at least one base package was actually attached
+	if(built.current.parent !== env.current.parent){
 		baseNamespaceLayerCache.set(key, built.current.parent);
+	}
+	return built;
+}
+
+/**
+ * Attach the exports of the project's declared `DESCRIPTION` dependencies (Imports/Depends, registered by the
+ * package-version plugins into {@link FlowrAnalyzerContext.deps|deps}) below the global so their bare calls resolve
+ * without an explicit `library()`, mirroring base-R auto-attach. A dependency whose {@link Package.namespaceInfo|
+ * namespaceInfo} no database resolves is skipped, and a package base-R or an earlier iteration already attached is a
+ * no-op via the {@link isAttached} guard inside {@link attachDependencyToEnvironment}.
+ */
+export function attachDeclaredDependencies(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	if(!ctx.config.solver.sigdb.linkDescriptionDependencies){
+		return env;
+	}
+	let built = env;
+	for(const declared of ctx.deps.getDependencies()){
+		// getDependency triggers lazy export resolution the raw declared record may still be missing
+		const dependency = ctx.deps.getDependency(declared.name);
+		if(dependency?.namespaceInfo === undefined){
+			continue;
+		}
+		built = attachDependencyToEnvironment(dependency, built, ctx, {}, NodeId.toBuiltIn(dependency.name));
 	}
 	return built;
 }

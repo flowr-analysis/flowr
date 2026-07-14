@@ -12,6 +12,8 @@ export enum BuiltInProcName {
 	AssignmentLike = 'builtin:assign-l',
 	/** for super-assignments like `<<-` and `->>`, see {@link processAssignment} */
 	SuperAssignment = 'builtin:s-assign',
+	/** for calls like `Hmisc::getHdata(x)` that define the variable they are given while also reading it, see {@link processDefineArgument} */
+	DefineArgument = 'builtin:define-arg',
 	/** for `break` calls */
 	Break = 'builtin:break',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */

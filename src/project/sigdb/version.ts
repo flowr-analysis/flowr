@@ -11,20 +11,6 @@ export function dayToMillis(day: number): number {
 	return day * 86_400_000;
 }
 
-/**
- * Parse a stored version string into an {@link RVersion}; never throws -- a truly un-coercible version sorts
- * as `0.0.0` but keeps its original `.str`.
- */
-export function toRVersion(version: string): RVersion {
-	const parsed = RVersion.parse(version);
-	if(parsed !== undefined) {
-		return parsed;
-	}
-	const fallback = RVersion.parse('0.0.0') as RVersion;   // `0.0.0` always parses
-	fallback.str = version;
-	return fallback;
-}
-
 /** one release: a parsed version paired with its release date */
 export interface VersionRelease { readonly version: RVersion; readonly date: Date }
 
@@ -34,19 +20,8 @@ export function releasesOf(blob: Readonly<PkgBlob> | undefined): VersionRelease[
 		return [];
 	}
 	return Object.entries(blob.dates)
-		.map(([ver, day]) => ({ version: toRVersion(ver), date: new Date(dayToMillis(day)) }))
+		.map(([ver, day]) => ({ version: RVersion.parseOrZero(ver), date: new Date(dayToMillis(day)) }))
 		.sort((a, b) => RVersion.compare(a.version.str, b.version.str));
-}
-
-/** the highest of some version strings by R's `numeric_version` order (`0.9.0 < 0.10.0`); undefined if none */
-export function highestVersion(versions: Iterable<string>): string | undefined {
-	let best: string | undefined;
-	for(const v of versions) {
-		if(best === undefined || RVersion.compare(v, best) > 0) {
-			best = v;
-		}
-	}
-	return best;
 }
 
 /** the version with the newest release date (falling back to `latest`, then the highest by R-version order) */
@@ -66,7 +41,7 @@ export function newestVersion(blob: Readonly<PkgBlob>, latest: string): string |
 		return latest;
 	}
 	// no dates and no recorded latest: pick the highest by R's numeric-version order (not string order)
-	return highestVersion(Object.keys(blob.versions));
+	return RVersion.highest(Object.keys(blob.versions));
 }
 
 /** pick the version tuple: requested, else the package's latest, else the highest present by R-version order */
@@ -77,5 +52,5 @@ export function resolveVersion(blob: Readonly<PkgBlob>, latest: string, version?
 	if(blob.versions[latest]) {
 		return latest;
 	}
-	return highestVersion(Object.keys(blob.versions));
+	return RVersion.highest(Object.keys(blob.versions));
 }

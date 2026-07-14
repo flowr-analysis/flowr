@@ -637,6 +637,8 @@ registerQueryDocumentation('static-slice', {
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criteria = ['3@z', '4@x'] as SlicingCriteria;
+		const sourceExample = 'source("library.R")\nprint(greeting)';
+		const sourceCriteria = ['2@print'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
@@ -681,8 +683,19 @@ If your program pulls in other files with \`source(...)\`, the \`inlineSources\`
 of each resolvable sourced file into the place of its \`source()\` call, so the slice becomes a single
 self-contained R text (cyclic or unresolvable \`source()\` calls are kept verbatim and reported via
 \`reconstruct.inlineWarnings\`). With the ${getReplCommand('query')} REPL command you append an \`i\` to the
-criteria (and may combine it with the forward \`f\` as \`fi\`), for example:
-${codeBlock('shell', ':query @static-slice (3@print)i "source(\\"library.R\\"); print(1)"')}
+criteria (and may combine it with the forward \`f\` as \`fi\`), for example (with a faked \`library.R\` providing \`greeting\`):
+${
+	await showQuery(shell, sourceExample, [{
+		type:          'static-slice',
+		criteria:      sourceCriteria,
+		inlineSources: true
+	}], {
+		showCode:  false,
+		shorthand: sliceQueryShorthand(sourceCriteria, escapeNewline(sourceExample), false, true),
+		ctx,
+		files:     [{ name: 'library.R', content: 'greeting <- "hello"\nunused <- 123' }]
+	})
+}
 
 You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
 This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 'message-request-slice')} message.
@@ -771,7 +784,7 @@ print("hello world!")
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
-Loaded libraries are resolved against the ${ctx.linkPage('wiki/Package Database', 'package database')}.
+Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${

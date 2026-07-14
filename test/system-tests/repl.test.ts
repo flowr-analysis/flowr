@@ -69,7 +69,6 @@ describe('repl', () => {
 	});
 
 	test('reports the loaded package database', async() => {
-		// :version lists the signature databases in use on a `databases` row (reads the bundled default database)
 		const output = await flowrRepl([':version', ':quit']);
 		try {
 			assert.include(output, 'databases');

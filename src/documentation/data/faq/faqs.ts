@@ -100,7 +100,7 @@ or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package 
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)
 		.addFaq('How does flowR know a *package\'s exports*?', `
-See the ${ctx.linkPage('wiki/Package Database', 'Package Database')} wiki page.
+See the ${ctx.linkPage('wiki/Signature Database', 'Signature Database')} wiki page.
 `)
 	;
 

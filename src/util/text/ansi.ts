@@ -122,15 +122,6 @@ export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts
 }
 
 /**
- * Render `text` as a clickable link to `url` when the output supports it: an OSC 8 terminal hyperlink for the
- * ANSI formatter, a markdown link for the markdown/wiki formatter, and plain `text` when formatting is disabled
- * (the void formatter) so no escape codes leak into non-terminal output.
- */
-export function hyperlink(text: string, url: string, f: OutputFormatter = formatter): string {
-	return f.hyperlink(text, url);
-}
-
-/**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
  */
 export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
@@ -145,7 +136,8 @@ export const ansiFormatter = {
 	},
 
 	hyperlink(text: string, url: string): string {
-		return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
+		// OSC 8 hyperlink, BEL-terminated (\x07) -- more widely supported than the ST form (Konsole, tmux, ...)
+		return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
 	},
 
 	format(input: string, options?: FormatOptions): string {

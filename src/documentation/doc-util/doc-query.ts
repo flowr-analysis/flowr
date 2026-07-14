@@ -10,6 +10,7 @@ import { codeBlock, jsonWithLimit } from './doc-code';
 import { printAsMs } from '../../util/text/time';
 import { asciiSummaryOfQueryResult } from '../../queries/query-print';
 import { FlowrAnalyzerBuilder } from '../../project/flowr-analyzer-builder';
+import { FlowrInlineTextFile } from '../../project/context/flowr-file';
 import { getReplCommand } from './doc-cli-option';
 import type { SlicingCriteria } from '../../slicing/criterion/parse';
 import type { GeneralDocContext } from '../wiki-mk/doc-context';
@@ -21,6 +22,8 @@ export interface ShowQueryOptions {
 	readonly collapseQuery?:  boolean;
 	readonly shorthand?:      string;
 	readonly ctx?:            GeneralDocContext;
+	/** additional in-memory files registered before the request, e.g. the targets of `source(...)` calls */
+	readonly files?:          readonly { readonly name: string, readonly content: string }[];
 }
 
 /**
@@ -32,10 +35,13 @@ export async function showQuery<
 >(
 	parser: KnownParser, code: string,
 	queries: Queries<Base, VirtualArguments>,
-	{ showCode, collapseResult, collapseQuery, shorthand, ctx }: ShowQueryOptions = {}
+	{ showCode, collapseResult, collapseQuery, shorthand, ctx, files }: ShowQueryOptions = {}
 ): Promise<string> {
 	const now = performance.now();
 	const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+	for(const file of files ?? []) {
+		analyzer.addFile(new FlowrInlineTextFile(file.name, file.content));
+	}
 	analyzer.addRequest(code);
 	const results = await analyzer.query(queries);
 	const duration = performance.now() - now;

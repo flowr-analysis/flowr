@@ -4,7 +4,7 @@
  * with {@link digest}. Used for content/update detection where a stable, fast digest is enough; browser-safe
  * (no node `crypto`, so it also works in the bundled/web build).
  *
- * cyrb53 is a public-domain hash by `bryc`; the constants and mixing steps are the reference implementation.
+ * cyrb53 is a public-domain hash by `bryc`.
  */
 export class Hash53 {
 	private h1 = 0xdeadbeef;

@@ -363,6 +363,20 @@ describe('Link libraries', withTreeSitter(ts => {
 		resolvesTo({ call: '2@fa', pkg: 'pkgA', fn: 'fa', lib: '1@library' }),
 		abc);
 
+	// the call node itself reads the library() load, in addition to the export -> library link
+	assertDataflow(label('A package call reads its library() load directly', ['library-loading', 'search-path']), ts,
+		'library(pkgA)\nfa()',
+		emptyGraph()
+			.addEdge('2@fa', NodeId.fromPkgFn('pkgA', 'fa'), EdgeType.Reads | EdgeType.Calls)
+			.addEdge('2@fa', '1@library', EdgeType.Reads),
+		abc);
+
+	// with no database, the load is still known syntactically, so an explicit pkgA::fa links back to it
+	assertDataflow(label('An explicit pkg::fn links to library() without a database', ['library-loading', 'search-path']), ts,
+		'library(pkgA)\npkgA::fa(x)',
+		emptyGraph().addEdge('2@pkgA::fa', '1@library', EdgeType.Reads),
+		{ expectIsSubgraph: true, resolveIdsAsCriterion: true });
+
 	// regression: below-global markers must survive JSON serialization
 	test('serialization preserves the global marker and attached-package layers', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();

@@ -4,6 +4,7 @@ import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../context/flowr-file';
 import { RRange } from '../../../util/r-version';
+import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export type PackageType = 'package' | 'system' | 'r';
 
@@ -125,6 +126,6 @@ export class Package {
 	}
 
 	public static functionIdentifier(dependency: string, func: string): string{
-		return `${dependency}:${func}`;
+		return NodeId.pkgFnName(dependency, func);
 	}
 }

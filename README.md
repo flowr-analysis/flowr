@@ -33,37 +33,25 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    Query: linter (431 ms)
-       ╰ Deprecated Functions (deprecated-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0
+    Query: linter (7 ms)
+       ╰ Deprecated Functions (deprecated-functions): no findings
        ╰ File Path Validity (file-path-validity):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
-           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 39, processTimeMs: 0
-       ╰ Seeded Randomness (seeded-randomness):
-           ╰ Metadata: consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 0, processTimeMs: 0
+           ╰ Metadata: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 1, processTimeMs: 1
+       ╰ Seeded Randomness (seeded-randomness): no findings
        ╰ Absolute Paths (absolute-file-paths):
            ╰ certain:
                ╰ Path `/root/x.txt` at 1.1-23
            ╰ Metadata: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Unused Definitions (unused-definitions):
-           ╰ Metadata: totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Naming Convention (naming-convention):
-           ╰ Metadata: numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Network Functions (network-functions):
-           ╰ Metadata: totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Dataframe Access Validation (dataframe-access-validation):
-           ╰ Metadata: numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1
-       ╰ Dead Code (dead-code):
-           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
-       ╰ Useless Loops (useless-loop):
-           ╰ Metadata: numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Problematic inputs (problematic-inputs):
-           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
-       ╰ Stop without call.=False argument (stop-call):
-           ╰ Metadata: consideredNodes: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Roxygen Arguments (roxygen-arguments):
-           ╰ Metadata: searchTimeMs: 0, processTimeMs: 0
+       ╰ Unused Definitions (unused-definitions): no findings
+       ╰ Network Functions (network-functions): no findings
+       ╰ Dataframe Access Validation (dataframe-access-validation): no findings
+       ╰ Dead Code (dead-code): no findings
+       ╰ Useless Loops (useless-loop): no findings
+       ╰ Problematic inputs (problematic-inputs): no findings
+       ╰ Stop without call.=False argument (stop-call): no findings
+       ╰ Roxygen Arguments (roxygen-arguments): no findings
        ╰ Software Has License (software-has-license):
            ╰ certain:
                ╰ No license found in the project
@@ -71,12 +59,10 @@ It offers a wide variety of features, for example:
        ╰ Software Has Tests (software-has-tests):
            ╰ certain:
                ╰ No tests found in the project
-           ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 1, processTimeMs: 0
-       ╰ No Leaked Credentials (no-leaked-credentials):
-           ╰ Metadata: totalChecked: 0, searchTimeMs: 0, processTimeMs: 0
-       ╰ Undefined Symbol (undefined-symbol):
-           ╰ Metadata: totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 388
-    All queries together required ≈431 ms (1ms accuracy, total 431 ms)
+           ╰ Metadata: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0
+       ╰ No Leaked Credentials (no-leaked-credentials): no findings
+       ╰ Undefined Symbol (undefined-symbol): no findings
+    All queries together required ≈7 ms (1ms accuracy, total 7 ms)
     ```
     
     
@@ -98,54 +84,40 @@ It offers a wide variety of features, for example:
     
     _Results (prettified and summarized):_
     
-    Query: **linter** (386 ms)\
-    &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    Query: **linter** (9 ms)\
+    &nbsp;&nbsp;&nbsp;╰ **Deprecated Functions** (deprecated-functions): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **File Path Validity** (file-path-validity):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 32, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consumerCalls: 0, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0, searchTimeMs: 1, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalReads: 1, totalUnknown: 0, totalWritesBeforeAlways: 0, totalValid: 0, searchTimeMs: 2, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;╰ **Seeded Randomness** (seeded-randomness): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Absolute Paths** (absolute-file-paths):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ Path `/root/x.txt` at 1.1-23\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalConsidered: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Naming Convention** (naming-convention):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numMatches: 0, numBreak: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalCalls: 0, totalFunctionDefinitions: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOperations: 0, numAccesses: 0, totalAccessed: 0, searchTimeMs: 0, processTimeMs: 1</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>numOfUselessLoops: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>consideredNodes: 0, searchTimeMs: 1, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: totalConsidered: 1, totalUnknown: 0, searchTimeMs: 0, processTimeMs: 1\
+    &nbsp;&nbsp;&nbsp;╰ **Unused Definitions** (unused-definitions): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Network Functions** (network-functions): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Dataframe Access Validation** (dataframe-access-validation): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Dead Code** (dead-code): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Useless Loops** (useless-loop): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Problematic inputs** (problematic-inputs): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Stop without call.=False argument** (stop-call): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Roxygen Arguments** (roxygen-arguments): _no findings_\
     &nbsp;&nbsp;&nbsp;╰ **Software Has License** (software-has-license):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No license found in the project\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>searchTimeMs: 0, processTimeMs: 0</code>\
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: searchTimeMs: 0, processTimeMs: 0\
     &nbsp;&nbsp;&nbsp;╰ **Software Has Tests** (software-has-tests):\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ certain:\
     &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ No tests found in the project\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalChecked: 0, searchTimeMs: 0, processTimeMs: 0</code>\
-    &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol):\
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: <code>totalFunctionCalls: 1, totalVariableUses: 0, suppressed: 0, searchTimeMs: 0, processTimeMs: 350</code>\
-    _All queries together required ≈386 ms (1ms accuracy, total 387 ms)_
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;╰ _Metadata_: testFilesFound: 0, testCallsFound: 0, searchTimeMs: 0, processTimeMs: 0\
+    &nbsp;&nbsp;&nbsp;╰ **No Leaked Credentials** (no-leaked-credentials): _no findings_\
+    &nbsp;&nbsp;&nbsp;╰ **Undefined Symbol** (undefined-symbol): _no findings_\
+    _All queries together required ≈9 ms (1ms accuracy, total 10 ms)_
     
     <details> <summary style="color:gray">Show Detailed Results as Json</summary>
     
-    The analysis required _386.7 ms_ (including parsing and normalization and the query) within the generation environment.
+    The analysis required _9.6 ms_ (including parsing and normalization and the query) within the generation environment.
     
     In general, the JSON contains the Ids of the nodes in question as they are present in the normalized AST or the dataflow graph of flowR.
     Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/Interface) wiki page for more information on how to get those.
@@ -185,8 +157,8 @@ It offers a wide variety of features, for example:
               "totalUnknown": 0,
               "totalWritesBeforeAlways": 0,
               "totalValid": 0,
-              "searchTimeMs": 32,
-              "processTimeMs": 0
+              "searchTimeMs": 2,
+              "processTimeMs": 1
             }
           },
           "seeded-randomness": {
@@ -197,7 +169,7 @@ It offers a wide variety of features, for example:
               "callsWithAssignmentProducers": 0,
               "callsWithNonConstantProducers": 0,
               "callsWithOtherBranchProducers": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -218,22 +190,13 @@ It offers a wide variety of features, for example:
               "totalConsidered": 1,
               "totalUnknown": 0,
               "searchTimeMs": 0,
-              "processTimeMs": 0
+              "processTimeMs": 1
             }
           },
           "unused-definitions": {
             "results": [],
             ".meta": {
               "totalConsidered": 0,
-              "searchTimeMs": 0,
-              "processTimeMs": 0
-            }
-          },
-          "naming-convention": {
-            "results": [],
-            ".meta": {
-              "numMatches": 0,
-              "numBreak": 0,
               "searchTimeMs": 0,
               "processTimeMs": 0
             }
@@ -283,7 +246,7 @@ It offers a wide variety of features, for example:
             "results": [],
             ".meta": {
               "consideredNodes": 0,
-              "searchTimeMs": 1,
+              "searchTimeMs": 0,
               "processTimeMs": 0
             }
           },
@@ -353,16 +316,16 @@ It offers a wide variety of features, for example:
                 "subscript": 0
               },
               "searchTimeMs": 0,
-              "processTimeMs": 350
+              "processTimeMs": 2
             }
           }
         },
         ".meta": {
-          "timing": 386
+          "timing": 9
         }
       },
       ".meta": {
-        "timing": 386
+        "timing": 9
       }
     }
     ```
@@ -440,7 +403,7 @@ It offers a wide variety of features, for example:
     N <- 10
     for(i in 1:(N-1)) sum <- sum + i + w
     sum
-    All queries together required ≈3 ms (1ms accuracy, total 3 ms)
+    All queries together required ≈2 ms (1ms accuracy, total 2 ms)
     ```
     
     
@@ -517,7 +480,7 @@ It offers a wide variety of features, for example:
     
     
     ```text
-    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip0ZXN0KipcbiAgICAgICoxLjEtNCogKCoqaWQ6IDAqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDBcbiAgICAxKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnRlc3RmaWxlcyoqXG4gICAgICAqMS42LTE0KiAoKippZDogMSoqKWBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogKiovKipcbiAgICAgICoxLjEtMTQqICgqKmlkOiAyKiopXG4gICAgYXJnOiAoMCwgMSlgXCJdXVxuICAgIGJ1aWx0LWluOl9bXCJgQnVpbHQtSW46XG4vYFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl8gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAzKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmV4YW1wbGUuUioqXG4gICAgICAqMS4xNi0yNCogKCoqaWQ6IDMqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqICoqLyoqXG4gICAgICAqMS4xLTI0KiAoKippZDogNCoqKVxuICAgIGFyZzogKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmd1bWVudFwifCAwXG4gICAgMiAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMVxuICAgIDIgLS4tPnxcInJlYWRzLCBjYWxsc1wifCBidWlsdC1pbjpfXG4gICAgbGlua1N0eWxlIDIgc3Ryb2tlOmdyYXk7XG4gICAgNCAtLT58XCJyZWFkcywgYXJndW1lbnRcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ3VtZW50XCJ8IDNcbiAgICA0IC0uLT58XCJyZWFkcywgY2FsbHNcInwgYnVpbHQtaW46X1xuICAgIGxpbmtTdHlsZSA1IHN0cm9rZTpncmF5OyIsIm1lcm1haWQiOnsiYXV0b1N5bmMiOnRydWV9fQ==
+    https://mermaid.live/view#base64:eyJjb2RlIjoiZmxvd2NoYXJ0IEJUXG4gICAgMChbXCJgKiM5MTtSU3ltYm9sIzkzOyogKip0ZXN0KipcbiAgICAgICoxLjEtNCogKCoqaWQ6IDAqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDBcbiAgICAxKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKnRlc3RmaWxlcyoqXG4gICAgICAqMS42LTE0KiAoKippZDogMSoqKWBcIl0pXG4gICAlJSBObyBlZGdlcyBmb3VuZCBmb3IgMVxuICAgIDJbW1wiYCojOTE7UkJpbmFyeU9wIzkzOyogYmFzZSM1ODsjNTg7KiovKipcbiAgICAgICoxLjEtMTQqICgqKmlkOiAyKiopXG4gICAgYXJnOiAoMCwgMSlgXCJdXVxuICAgIGJ1aWx0LWluOl9bXCJgQnVpbHQtSW46XG4vYFwiXVxuICAgIHN0eWxlIGJ1aWx0LWluOl8gc3Ryb2tlOmdyYXksZmlsbDpncmF5LHN0cm9rZS13aWR0aDoycHgsb3BhY2l0eTouODtcbiAgICAzKFtcImAqIzkxO1JTeW1ib2wjOTM7KiAqKmV4YW1wbGUuUioqXG4gICAgICAqMS4xNi0yNCogKCoqaWQ6IDMqKilgXCJdKVxuICAgJSUgTm8gZWRnZXMgZm91bmQgZm9yIDNcbiAgICA0W1tcImAqIzkxO1JCaW5hcnlPcCM5MzsqIGJhc2UjNTg7IzU4OyoqLyoqXG4gICAgICAqMS4xLTI0KiAoKippZDogNCoqKVxuICAgIGFyZzogKDIsIDMpYFwiXV1cbiAgICAyIC0tPnxcInJlYWRzLCBhcmdcInwgMFxuICAgIDIgLS0+fFwicmVhZHMsIGFyZ1wifCAxXG4gICAgMiAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgMiBzdHJva2U6Z3JheTtcbiAgICA0IC0tPnxcInJlYWRzLCBhcmdcInwgMlxuICAgIDQgLS0+fFwicmVhZHMsIGFyZ1wifCAzXG4gICAgNCAtLi0+fFwicmVhZHMsIGNhbGxzXCJ8IGJ1aWx0LWluOl9cbiAgICBsaW5rU3R5bGUgNSBzdHJva2U6Z3JheTsiLCJtZXJtYWlkIjp7ImF1dG9TeW5jIjp0cnVlfX0=
     ```
     
     
@@ -533,8 +496,8 @@ It offers a wide variety of features, for example:
           *1.8* (**id: 1**)`"}}
        %% No edges found for 1
         0["`*#91;RSymbol#93;* **sum**
-          *1.1-3* (**id: 0**, sources: [1])`"]
-        2[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *1.1-3* (**id: 0**, v: [1])`"]
+        2[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *1.1-8* (**id: 2**)
         arg: (0, 1)`"]]
         built-in:_-["`Built-In:
@@ -544,28 +507,28 @@ It offers a wide variety of features, for example:
           *2.12* (**id: 4**)`"}}
        %% No edges found for 4
         3["`*#91;RSymbol#93;* **product**
-          *2.1-7* (**id: 3**, sources: [4])`"]
-        5[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *2.1-7* (**id: 3**, v: [4])`"]
+        5[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *2.1-12* (**id: 5**)
         arg: (3, 4)`"]]
         7{{"`*#91;RNumber#93;* **7**
           *3.6* (**id: 7**)`"}}
        %% No edges found for 7
         6["`*#91;RSymbol#93;* **w**
-          *3.1* (**id: 6**, sources: [7])`"]
-        8[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *3.1* (**id: 6**, v: [7])`"]
+        8[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *3.1-6* (**id: 8**)
         arg: (6, 7)`"]]
         10{{"`*#91;RNumber#93;* **10**
           *4.6-7* (**id: 10**)`"}}
        %% No edges found for 10
         9["`*#91;RSymbol#93;* **N**
-          *4.1* (**id: 9**, sources: [10])`"]
-        11[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *4.1* (**id: 9**, v: [10])`"]
+        11[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *4.1-7* (**id: 11**)
         arg: (9, 10)`"]]
         12["`*#91;RSymbol#93;* **i**
-          *6.6* (**id: 12**, sources: [20])`"]
+          *6.6* (**id: 12**, v: [20])`"]
         13{{"`*#91;RNumber#93;* **1**
           *6.11* (**id: 13**)`"}}
        %% No edges found for 13
@@ -574,16 +537,16 @@ It offers a wide variety of features, for example:
         17{{"`*#91;RNumber#93;* **1**
           *6.16* (**id: 17**)`"}}
        %% No edges found for 17
-        18[["`*#91;RBinaryOp#93;* **#45;**
+        18[["`*#91;RBinaryOp#93;* base#58;#58;**#45;**
           *6.14-16* (**id: 18**)
         arg: (16, 17)`"]]
         built-in:-["`Built-In:
     #45;`"]
         style built-in:- stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
-        19[["`*#91;RExpressionList#93;* **(**
+        19[["`*#91;RExpressionList#93;* base#58;#58;**(**
           *6.13* (**id: 19**)
         arg: (18)`"]]
-        20[["`*#91;RBinaryOp#93;* **#58;**
+        20[["`*#91;RBinaryOp#93;* base#58;#58;**#58;**
           *6.11-17* (**id: 20**)
         arg: (13, 19)`"]]
         built-in::["`Built-In:
@@ -593,7 +556,7 @@ It offers a wide variety of features, for example:
           *7.10-12* (**id: 24**, :may:36+)`"])
         25(["`*#91;RSymbol#93;* **i**
           *7.16* (**id: 25**, :may:36+)`"])
-        26[["`*#91;RBinaryOp#93;* **#43;**
+        26[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
           *7.10-16* (**id: 26**, :may:36+)
         arg: (24, 25)`"]]
         built-in:_["`Built-In:
@@ -601,30 +564,30 @@ It offers a wide variety of features, for example:
         style built-in:_ stroke:gray,fill:gray,stroke-width:2px,opacity:.8;
         27(["`*#91;RSymbol#93;* **w**
           *7.20* (**id: 27**, :may:36+)`"])
-        28[["`*#91;RBinaryOp#93;* **#43;**
+        28[["`*#91;RBinaryOp#93;* base#58;#58;**#43;**
           *7.10-20* (**id: 28**, :may:36+)
         arg: (26, 27)`"]]
         23["`*#91;RSymbol#93;* **sum**
-          *7.3-5* (**id: 23**, :may:36+, sources: [28])`"]
-        29[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *7.3-5* (**id: 23**, :may:36+, v: [28])`"]
+        29[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *7.3-20* (**id: 29**, :may:36+)
         arg: (23, 28)`"]]
         31(["`*#91;RSymbol#93;* **product**
           *8.14-20* (**id: 31**, :may:36+)`"])
         32(["`*#91;RSymbol#93;* **i**
           *8.24* (**id: 32**, :may:36+)`"])
-        33[["`*#91;RBinaryOp#93;* **#42;**
+        33[["`*#91;RBinaryOp#93;* base#58;#58;**#42;**
           *8.14-24* (**id: 33**, :may:36+)
         arg: (31, 32)`"]]
         30["`*#91;RSymbol#93;* **product**
-          *8.3-9* (**id: 30**, :may:36+, sources: [33])`"]
-        34[["`*#91;RBinaryOp#93;* **#60;#45;**
+          *8.3-9* (**id: 30**, :may:36+, v: [33])`"]
+        34[["`*#91;RBinaryOp#93;* base#58;#58;**#60;#45;**
           *8.3-24* (**id: 34**, :may:36+)
         arg: (30, 33)`"]]
-        35[["`*#91;RExpressionList#93;* **#123;**
+        35[["`*#91;RExpressionList#93;* base#58;#58;**#123;**
           *6.20* (**id: 35**, :may:36+)
         arg: (29, 34)`"]]
-        36[["`*#91;RForLoop#93;* **for**
+        36[["`*#91;RForLoop#93;* base#58;#58;**for**
           *6.1-9.1* (**id: 36**)
         arg: (12, 20, 35)`"]]
         built-in:for["`Built-In:
@@ -662,37 +625,37 @@ It offers a wide variety of features, for example:
         arg: (46, 48, 50)`"]]
         0 -->|"defined-by"| 1
         0 -->|"defined-by"| 2
-        2 -->|"reads, argument"| 1
-        2 -->|"returns, argument"| 0
+        2 -->|"reads, arg"| 1
+        2 -->|"returns, arg"| 0
         2 -.->|"reads, calls"| built-in:_-
         linkStyle 4 stroke:gray;
         3 -->|"defined-by"| 4
         3 -->|"defined-by"| 5
-        5 -->|"reads, argument"| 4
-        5 -->|"returns, argument"| 3
+        5 -->|"reads, arg"| 4
+        5 -->|"returns, arg"| 3
         5 -.->|"reads, calls"| built-in:_-
         linkStyle 9 stroke:gray;
         6 -->|"defined-by"| 7
         6 -->|"defined-by"| 8
-        8 -->|"reads, argument"| 7
-        8 -->|"returns, argument"| 6
+        8 -->|"reads, arg"| 7
+        8 -->|"returns, arg"| 6
         8 -.->|"reads, calls"| built-in:_-
         linkStyle 14 stroke:gray;
         9 -->|"defined-by"| 10
         9 -->|"defined-by"| 11
-        11 -->|"reads, argument"| 10
-        11 -->|"returns, argument"| 9
+        11 -->|"reads, arg"| 10
+        11 -->|"returns, arg"| 9
         11 -.->|"reads, calls"| built-in:_-
         linkStyle 19 stroke:gray;
         12 -->|"defined-by"| 20
         16 -->|"reads"| 9
-        18 -->|"reads, argument"| 16
-        18 -->|"reads, argument"| 17
+        18 -->|"reads, arg"| 16
+        18 -->|"reads, arg"| 17
         18 -.->|"reads, calls"| built-in:-
         linkStyle 24 stroke:gray;
-        19 -->|"returns, argument"| 18
-        20 -->|"reads, argument"| 13
-        20 -->|"reads, argument"| 19
+        19 -->|"returns, arg"| 18
+        20 -->|"reads, arg"| 13
+        20 -->|"reads, arg"| 19
         20 -.->|"reads, calls"| built-in::
         linkStyle 28 stroke:gray;
         24 -->|"reads"| 0
@@ -702,8 +665,8 @@ It offers a wide variety of features, for example:
         25 -->|"reads"| 12
         25 -->|"CD-True"| 36
         linkStyle 33 stroke:gray,color:gray;
-        26 -->|"reads, argument"| 24
-        26 -->|"reads, argument"| 25
+        26 -->|"reads, arg"| 24
+        26 -->|"reads, arg"| 25
         26 -.->|"reads, calls"| built-in:_
         linkStyle 36 stroke:gray;
         26 -->|"CD-True"| 36
@@ -711,8 +674,8 @@ It offers a wide variety of features, for example:
         27 -->|"reads"| 6
         27 -->|"CD-True"| 36
         linkStyle 39 stroke:gray,color:gray;
-        28 -->|"reads, argument"| 26
-        28 -->|"reads, argument"| 27
+        28 -->|"reads, arg"| 26
+        28 -->|"reads, arg"| 27
         28 -.->|"reads, calls"| built-in:_
         linkStyle 42 stroke:gray;
         28 -->|"CD-True"| 36
@@ -721,8 +684,8 @@ It offers a wide variety of features, for example:
         23 -->|"defined-by"| 29
         23 -->|"CD-True"| 36
         linkStyle 46 stroke:gray,color:gray;
-        29 -->|"reads, argument"| 28
-        29 -->|"returns, argument"| 23
+        29 -->|"reads, arg"| 28
+        29 -->|"returns, arg"| 23
         29 -.->|"reads, calls"| built-in:_-
         linkStyle 49 stroke:gray;
         29 -->|"CD-True"| 36
@@ -734,8 +697,8 @@ It offers a wide variety of features, for example:
         32 -->|"reads"| 12
         32 -->|"CD-True"| 36
         linkStyle 55 stroke:gray,color:gray;
-        33 -->|"reads, argument"| 31
-        33 -->|"reads, argument"| 32
+        33 -->|"reads, arg"| 31
+        33 -->|"reads, arg"| 32
         33 -.->|"reads, calls"| built-in:_
         linkStyle 58 stroke:gray;
         33 -->|"CD-True"| 36
@@ -744,43 +707,43 @@ It offers a wide variety of features, for example:
         30 -->|"defined-by"| 34
         30 -->|"CD-True"| 36
         linkStyle 62 stroke:gray,color:gray;
-        34 -->|"reads, argument"| 33
-        34 -->|"returns, argument"| 30
+        34 -->|"reads, arg"| 33
+        34 -->|"returns, arg"| 30
         34 -.->|"reads, calls"| built-in:_-
         linkStyle 65 stroke:gray;
         34 -->|"CD-True"| 36
         linkStyle 66 stroke:gray,color:gray;
-        35 -->|"argument"| 29
-        35 -->|"returns, argument"| 34
+        35 -->|"arg"| 29
+        35 -->|"returns, arg"| 34
         35 -.->|"reads, calls"| built-in:_
         linkStyle 69 stroke:gray;
         35 -->|"CD-True"| 36
         linkStyle 70 stroke:gray,color:gray;
-        36 -->|"argument"| 12
-        36 -->|"reads, argument"| 20
-        36 -->|"argument, non-standard-evaluation"| 35
+        36 -->|"arg"| 12
+        36 -->|"reads, arg"| 20
+        36 -->|"arg, non-standard-evaluation"| 35
         36 -.->|"reads, calls"| built-in:for
         linkStyle 74 stroke:gray;
         40 -->|"reads"| 0
         40 -->|"reads"| 23
         40 -.->|"reads"| built-in:sum
         linkStyle 77 stroke:gray;
-        44 -->|"argument"| 38
-        44 -->|"reads, argument"| 40
-        44 -->|"argument"| 42
+        44 -->|"arg"| 38
+        44 -->|"reads, arg"| 40
+        44 -->|"arg"| 42
         44 -.->|"reads, calls"| built-in:cat
         linkStyle 81 stroke:gray;
         48 -->|"reads"| 3
         48 -->|"reads"| 30
-        52 -->|"argument"| 46
-        52 -->|"reads, argument"| 48
-        52 -->|"argument"| 50
+        52 -->|"arg"| 46
+        52 -->|"reads, arg"| 48
+        52 -->|"arg"| 50
         52 -.->|"reads, calls"| built-in:cat
         linkStyle 87 stroke:gray;
     ```
     
     	
-    (The analysis required _1.7 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment.)
+    (The analysis required _2.2 ms_ (including parse and normalize, using the [tree-sitter](https://github.com/flowr-analysis/flowr/wiki/Engines) engine) within the generation environment. No [signature database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database) is mounted for these generated graphs, so `library()` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. `acf` as `stats::acf`).)
     
     
     

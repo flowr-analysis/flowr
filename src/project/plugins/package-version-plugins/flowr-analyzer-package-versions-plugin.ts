@@ -38,11 +38,6 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 		return [];
 	}
 
-	/** Analyze installed R package(s) on disk into signature sources and add them; returns the package names added. */
-	public addLocalPackages(_dir: string, _config?: FlowrConfig): Promise<string[]> {
-		return Promise.resolve([]);
-	}
-
 	/** Mount an extra signature source by path (a `.sigs.ndjson`, `.br`, or `*.manifest.json(.br)`); no-op by default. */
 	public addDatabaseSource(_source: string): Promise<void> {
 		return Promise.resolve();

@@ -4,6 +4,26 @@
 	"tag": "sigdb-v2.11.1",
 	"repo": "flowr-analysis/flowr",
 	"shards": {
+		"base.base-current.sigs.ndjson.br": {
+			"sha256": "7f286f58a0d7392c5ccaf6ac3c2bdf6ede1a110494e16a54785726f7e3ad82e0",
+			"bytes": 90026
+		},
+		"base.base-full.sigs.ndjson.br": {
+			"sha256": "2511f0f5359b6311bdc84039ae369303fcaa5fa6994a26d17ebef39eaa508051",
+			"bytes": 413427
+		},
+		"base.dict.sigs.ndjson.br": {
+			"sha256": "c0c56f235e188b2c5fc8da0b14a5e65001c07e84545b43b0e5e6dde81478809b",
+			"bytes": 49594
+		},
+		"base.dict.sigs.ndjson.zst": {
+			"sha256": "a0ed8c80dc11f47b5d56d2d50069d9f7ef5e5bbd8ee3282b2ad6872fd3aa75a5",
+			"bytes": 51020
+		},
+		"base.manifest.json.br": {
+			"sha256": "e16a304fbd7b2683c14366fe327a2b5f70df8492105063027a5a6f2f99faca3b",
+			"bytes": 806
+		},
 		"current.base-current.sigs.ndjson.br": {
 			"sha256": "075907a7a839fe6348e54a73ef3d27e4a3590d1d80042bd80f1435795233c733",
 			"bytes": 97450
@@ -24,6 +44,10 @@
 			"sha256": "2918d69a78938fc14793f0942d0767aeddb2228216f56b38bc2f905e288523b5",
 			"bytes": 6528828
 		},
+		"current.dict.sigs.ndjson.zst": {
+			"sha256": "1ace15643727bef4ded7df21a3df18205e672d6f83e62c2f1d5822c8cf0ef048",
+			"bytes": 6664857
+		},
 		"current.manifest.json.br": {
 			"sha256": "7c1f7553773c8096cd21a75c7be784600ae4b43ca8d0265ca1ae0a9e6cc48d26",
 			"bytes": 419290
@@ -31,6 +55,10 @@
 		"history.dict.sigs.ndjson.br": {
 			"sha256": "e52d71c9143b6a6a7943dc625082d4590901aa7db6fc3ae1db5c816cb5cbeab0",
 			"bytes": 6804901
+		},
+		"history.dict.sigs.ndjson.zst": {
+			"sha256": "8c4565d5bec609117bfb45bca3bd21606415c0315eb26345f275966a79177d7d",
+			"bytes": 6935498
 		},
 		"history.history-rest.sigs.ndjson.br": {
 			"sha256": "08127837136fb9bd51757149153df0056fce36e7a93ac92948149189ec689f47",

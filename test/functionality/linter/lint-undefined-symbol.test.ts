@@ -38,6 +38,12 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd(x)',
 				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: false });
 
+			// primitives/internals (`is.na`) and base data constants (`.Machine`) are absent from the sigdb
+			// export list but must still be recognised as defined base-R names (both calls and variable reads)
+			assertLinter('base primitives and constants are not flagged', parser,
+				'x <- 1\nis.na(x)\nis.finite(x)\ntcrossprod(x)\nunclass(x)\nrange(x)\ncumsum(x)\ny <- .Machine$double.eps',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb });
+
 			// parallel is base-priority but not attached by default -> flagged, with a hint from the database
 			assertLinter('non-attached base package function is flagged with a hint', parser, 'mclapply(x, f)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'mclapply', kind: 'function', loc: [1, 1, 1, 14], availableInPackages: ['parallel'] }],

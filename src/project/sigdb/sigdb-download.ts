@@ -3,8 +3,9 @@ import path from 'path';
 import https from 'https';
 import crypto from 'crypto';
 import type { IncomingMessage } from 'http';
-import { sigDbCacheDir } from '../../sigdb/decompress';
-import { flowrVersion } from '../../../util/version';
+import { sigDbCacheDir } from './decompress';
+import { CompressedExtPattern, compressedExtOf, readableExtsPreferred, stripCompressedExt } from './codec';
+import { flowrVersion } from '../../util/version';
 
 /** the GitHub `owner/repo` the full-history bundle is published to (see `scripts/publish-sigdb.mjs`) */
 const DefaultRepo = 'flowr-analysis/flowr';
@@ -15,20 +16,24 @@ interface ReleaseAsset {
 	size:                 number
 }
 
-/** the GitHub request headers, picking up a token from the environment when present (higher rate limit / private repos) */
-function ghHeaders(accept: string): Record<string, string> {
-	const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
+/** GitHub request headers; the token (used only for the API's rate limit and private repos) is attached only when `withAuth` */
+function ghHeaders(accept: string, withAuth: boolean): Record<string, string> {
+	const token = withAuth ? (process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN) : undefined;
 	return { 'User-Agent': 'flowr', Accept: accept, ...(token ? { Authorization: `Bearer ${token}` } : {}) };
 }
 
 /** GET following redirects (GitHub asset URLs redirect to a storage host); resolves the final response for streaming */
-function httpGet(url: string, accept: string, redirects = 5): Promise<IncomingMessage> {
+function httpGet(url: string, accept: string, redirects = 5, withAuth = true): Promise<IncomingMessage> {
 	return new Promise((resolve, reject) => {
-		https.get(url, { headers: ghHeaders(accept) }, res => {
+		https.get(url, { headers: ghHeaders(accept, withAuth) }, res => {
 			const status = res.statusCode ?? 0;
 			if(status >= 300 && status < 400 && res.headers.location && redirects > 0) {
 				res.resume();
-				httpGet(new URL(res.headers.location, url).toString(), accept, redirects - 1).then(resolve, reject);
+				const next = new URL(res.headers.location, url);
+				// GitHub redirects a release-asset download to a pre-signed storage host: never forward the token
+				// across hosts (it is unnecessary there, leaks the token, and the signed URL rejects a second auth header)
+				const keepAuth = withAuth && next.host === new URL(url).host;
+				httpGet(next.toString(), accept, redirects - 1, keepAuth).then(resolve, reject);
 			} else if(status >= 200 && status < 300) {
 				resolve(res);
 			} else {
@@ -61,7 +66,7 @@ async function downloadTo(url: string, dest: string): Promise<void> {
 /** hex sha256 of a file's contents (shared by the runtime verify and the `sigdb-remote` pointer generator) */
 export const sha256File = (p: string): string => crypto.createHash('sha256').update(fs.readFileSync(p)).digest('hex');
 
-/** the committed link file naming the downloadable shards; `base.*` ships in git and is excluded from it */
+/** the committed link file naming every downloadable shard (base floor + CRAN sets); only this pointer is committed */
 export const SigDbRemoteFileName = 'sigdb.remote.json';
 
 /** one downloadable shard as recorded in the committed {@link SigDbRemoteFileName} link file */
@@ -78,10 +83,10 @@ export interface SigDbRemote {
 	shards:  Record<string, RemoteShard>
 }
 
-/** locate the committed `sigdb.remote.json` link file next to the bundled base floor (dev `src`, built `dist`) */
+/** locate the committed `sigdb.remote.json` link file in the sigdb data dir (dev `src`, built `dist`) */
 function findRemotePointer(): string | undefined {
 	const candidates = [
-		path.join(__dirname, '../../../data/sigdb', SigDbRemoteFileName),   // src/ and dist/src/ layouts (same depth)
+		path.join(__dirname, '../../data/sigdb', SigDbRemoteFileName),   // src/ and dist/src/ layouts (same depth)
 		path.join(process.cwd(), 'src/data/sigdb', SigDbRemoteFileName),
 		path.join(process.cwd(), 'dist/src/data/sigdb', SigDbRemoteFileName),
 	];
@@ -100,9 +105,44 @@ const readPointer = (p: string): SigDbRemote => JSON.parse(fs.readFileSync(p, 'u
 const assetUrl = (repo: string, tag: string, name: string): string =>
 	`https://github.com/${repo}/releases/download/${tag}/${encodeURIComponent(name)}`;
 
+/** runtime-decodable variant extensions, most-preferred first, ending in plain (`''`) as a last resort */
+function downloadVariantOrder(): readonly string[] {
+	return [...readableExtsPreferred(), ''];
+}
+
+/**
+ * Group physical asset names by their logical (compression-ext-stripped) name and pick, per logical shard, the
+ * single best variant this runtime can use: `.zst` when zstd is supported, otherwise `.br` (then `.gz`/plain).
+ * On a Node without zstd, a `.zst`-only logical shard is skipped entirely (it could not be decompressed). So the
+ * downloader fetches exactly one variant per shard/dictionary -- never both -- matching what the reader resolves.
+ */
+export function selectDownloadVariants(names: Iterable<string>): string[] {
+	const groups = new Map<string, Map<string, string>>();   // logical name -> (ext -> physical name)
+	for(const name of names) {
+		const logical = stripCompressedExt(name);
+		const ext = compressedExtOf(name) ?? '';
+		let byExt = groups.get(logical);
+		if(!byExt) {
+			byExt = new Map();
+			groups.set(logical, byExt);
+		}
+		byExt.set(ext, name);
+	}
+	const order = downloadVariantOrder();
+	const picked: string[] = [];
+	for(const byExt of groups.values()) {
+		const ext = order.find(e => byExt.has(e));
+		if(ext !== undefined) {
+			picked.push(byExt.get(ext) as string);
+		}
+	}
+	return picked;
+}
+
 /** pick the richest manifest among downloaded files (a `full`/scope manifest first, else any) */
 const pickManifest = (files: readonly string[]): string | undefined =>
-	files.find(f => /full\.manifest\.json(\.br)?$/.test(f)) ?? files.find(f => /\.manifest\.json(\.br)?$/.test(f));
+	files.find(f => new RegExp(`full\\.manifest\\.json${CompressedExtPattern}$`).test(f))
+	?? files.find(f => new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(f));
 
 export interface SigDbDownloadOptions {
 	/** GitHub `owner/repo` (default `flowr-analysis/flowr`) */
@@ -124,11 +164,9 @@ export interface SigDbDownloadResult {
 
 /**
  * Download the signature-database shards into the cache directory and return where they landed. Prefers the
- * committed `sigdb.remote.json` link file: it names the release tag + repo and every shard's sha256, so we build
- * a direct CDN URL (no REST API, no rate limit), verify each download by content hash, and **skip shards already
- * present with the right hash** -- which is exactly the re-sync after a `git pull` changes the link file (only
- * changed shards re-download). Without a pointer we fall back to listing the release via the API. Mount the
- * returned {@link SigDbDownloadResult.manifest}, or point `solver.sigdb.additionalPaths` at the dir.
+ * committed `sigdb.remote.json`, we verify each download by content hash, and **skip shards already
+ * present with the right hash**.
+ * Use the returned {@link SigDbDownloadResult.manifest}, or point `solver.sigdb.additionalPaths` at the dir.
  */
 export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promise<SigDbDownloadResult> {
 	const progress = opts.onProgress ?? (() => {});
@@ -140,10 +178,12 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
 		const tag = opts.version ? `sigdb-v${opts.version}` : remote.tag;
 		const dir = path.join(sigDbCacheDir(), 'bundles', tag);
 		fs.mkdirSync(dir, { recursive: true });
-		const entries = Object.entries(remote.shards);
-		progress(`syncing ${entries.length} shards for ${tag} from ${repo}`);
+		// one variant per logical shard/dictionary -- the best this runtime can decompress (never both codecs)
+		const picked = selectDownloadVariants(Object.keys(remote.shards));
+		progress(`syncing ${picked.length} shards for ${tag} from ${repo}`);
 		const files: string[] = [];
-		for(const [name, meta] of entries) {
+		for(const name of picked) {
+			const meta = remote.shards[name];
 			const dest = path.join(dir, name);
 			if(fs.existsSync(dest) && sha256File(dest) === meta.sha256) {
 				progress(`have ${name}`);
@@ -166,19 +206,21 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
 	progress(`fetching release ${tag} from ${repo}`);
 	const release = await readJson(`https://api.github.com/repos/${repo}/releases/tags/${tag}`);
 	const assets = ((release.assets as ReleaseAsset[] | undefined) ?? [])
-		.filter(a => a.name.endsWith('.br') || a.name.endsWith('.manifest.json'));
+		.filter(a => a.name.endsWith('.br') || a.name.endsWith('.zst') || a.name.endsWith('.manifest.json'));
 	if(assets.length === 0) {
 		throw new Error(`release ${tag} in ${repo} has no signature-database assets${typeof release.message === 'string' ? ` (${release.message})` : ''}`);
 	}
 	const dir = path.join(sigDbCacheDir(), 'bundles', tag);
 	fs.mkdirSync(dir, { recursive: true });
+	const byName = new Map(assets.map(a => [a.name, a]));
 	const files: string[] = [];
-	for(const a of assets) {
-		const dest = path.join(dir, a.name);
+	for(const name of selectDownloadVariants(byName.keys())) {
+		const a = byName.get(name) as ReleaseAsset;
+		const dest = path.join(dir, name);
 		if(fs.existsSync(dest) && fs.statSync(dest).size === a.size) {
-			progress(`have ${a.name}`);
+			progress(`have ${name}`);
 		} else {
-			progress(`downloading ${a.name} (${(a.size / 1e6).toFixed(1)} MB)`);
+			progress(`downloading ${name} (${(a.size / 1e6).toFixed(1)} MB)`);
 			await downloadTo(a.browser_download_url, dest);
 		}
 		files.push(dest);
@@ -200,11 +242,22 @@ export function syncedSigDbDir(opts: { version?: string } = {}): string | undefi
 	return path.join(sigDbCacheDir(), 'bundles', tag);
 }
 
-/**
- * Startup check: `true` when a committed link file lists shards whose cached copies are missing or hash-mismatched
- * -- i.e. a `git pull` changed the pointer and a re-sync ({@link downloadFullSigDb}) is due. Purely local (no
- * network), so it is safe to call on every start before deciding whether to sync in the background.
- */
+/** the GitHub release (`{repo, tag, url}`) the committed pointer downloads from, or `undefined` when no pointer is committed */
+export function sigDbRemoteRelease(): { repo: string, tag: string, url: string } | undefined {
+	const pointerPath = findRemotePointer();
+	if(!pointerPath) {
+		return undefined;
+	}
+	try {
+		const remote = readPointer(pointerPath);
+		const repo = remote.repo ?? DefaultRepo;
+		return { repo, tag: remote.tag, url: `https://github.com/${repo}/releases/tag/${remote.tag}` };
+	} catch{
+		return undefined;
+	}
+}
+
+/** Startup check: `true` when a committed link file lists shards whose cached copies are missing or hash-mismatched */
 export function sigDbNeedsSync(opts: { version?: string } = {}): boolean {
 	const pointerPath = findRemotePointer();
 	if(!pointerPath) {

@@ -6,7 +6,8 @@ import { processAccess } from '../internal/process/functions/call/built-in/built
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import {
 	processAssignment,
-	processAssignmentLike
+	processAssignmentLike,
+	processDefineArgument
 } from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
@@ -219,6 +220,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Apply]:              processApply,
 	[BuiltInProcName.Assignment]:         processAssignment,
 	[BuiltInProcName.AssignmentLike]:     processAssignmentLike,
+	[BuiltInProcName.DefineArgument]:     processDefineArgument,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
 	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
 	[BuiltInProcName.Eval]:               processEvalCall,

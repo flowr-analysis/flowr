@@ -100,10 +100,8 @@ export function processS7NewGeneric<OtherInfo>(
 /**
  * Process a call that **returns a function**: S7/S4 constructor factories (`make_constructor`, `new_class`,
  * `setClass`) and generic function factories (`Negate`, `Vectorize`, `partial`, …). We model the result as a
- * synthetic function definition so the assigned symbol is recognised as a **function** rather than a plain
- * constant -- e.g. `geom_point <- make_constructor(GeomPoint)` or `f <- Negate(is.null)` -- which lets the
- * undefined-symbol resolution and the signature database treat the symbol as a callable definition.
- * `config.mode` optionally tags the synthetic definition (e.g. `['s7']` for the S7/S4 constructors).
+ * synthetic function definition so the assigned symbol is recognized as a **function** rather than a plain
+ * constant.
  */
 export function processMakeConstructor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
@@ -119,7 +117,7 @@ export function processMakeConstructor<OtherInfo>(
 	info.entryPoint = funId;
 	const fArg = info.graph.getVertex(funId);
 	if(fArg?.tag === VertexType.FunctionDefinition && config?.mode) {
-		fArg.mode ??= [...config.mode];
+		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
 	}
 	return info;
 }

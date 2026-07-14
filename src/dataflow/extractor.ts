@@ -12,7 +12,7 @@ import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
-import { attachBaseRNamespaces } from './internal/process/functions/call/built-in/built-in-library';
+import { attachBaseRNamespaces, attachDeclaredDependencies } from './internal/process/functions/call/built-in/built-in-library';
 import type { DataflowGraph } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
@@ -144,8 +144,8 @@ export function produceDataFlowGraph<OtherInfo>(
 
 	const env = ctx.env.makeCleanEnv();
 	env.current.n = ctx.meta.getNamespace();
-	// eagerly attach the always-available base-R namespaces
-	const environment = attachBaseRNamespaces(env, ctx);
+	// eagerly attach the always-available base-R namespaces, then the project's declared DESCRIPTION dependencies
+	const environment = attachDeclaredDependencies(attachBaseRNamespaces(env, ctx), ctx);
 
 	const dfData: DataflowProcessorInformation<OtherInfo & ParentInformation> = {
 		parser,

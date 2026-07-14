@@ -123,11 +123,7 @@ export type SigDbPkgMeta = [latest: string, archived: number, downloads: number,
  * - `current` -- only each package's latest version.
  * - `full`    -- every version (self-contained history).
  * - `history` -- every version EXCEPT the latest. This is the delta a `current` bundle already carries, so a
- *   `history` bundle mounts beside a `current`/slim one to add the older versions with **zero duplication**
- *   (a single-version package has no non-latest version and is dropped entirely, not routed empty).
- *   Specific-version `lookup` routes correctly across the two; whole-history helpers ({@link SigDatabaseSet.versions},
- *   {@link SigDatabaseSet.releaseDates}, {@link SigDatabaseSet.latestVersion}) read a single shard, so with a
- *   `history` bundle they see the older versions but not the latest -- mount a `full` bundle if you need both in one.
+ *                `history` bundle mounts beside a `current`/slim one to add the older versions with no duplicate
  */
 export type SigDbTier = 'full' | 'current' | 'history';
 /** popularity shard: `top` keeps the most-downloaded packages, `rest` the remainder (undefined = all) */

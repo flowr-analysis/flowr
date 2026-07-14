@@ -522,6 +522,32 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param data               - The dataflow analysis fold backpack
  * @param assignmentConfig   - configuration for the assignment processing
  */
+/**
+ * Model a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: the argument symbol
+ * `x` is both **read** (as the call's argument, its value comes from outside the code) and **defined** by the call.
+ * Unlike {@link markAsAssignment} we keep the read edge -- the symbol is used *and* (re)defined here.
+ */
+export function processDefineArgument<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
+	const res = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.DefineArgument });
+	const info = res.information;
+	const targetArg = res.processedArguments[0];   // the read argument, e.g. `prostate`
+	if(targetArg !== undefined) {
+		for(const node of produceWrittenNodes(rootId, targetArg, ReferenceType.Variable, data, false, undefined)) {
+			info.environment = define(node, config.superAssignment, info.environment);
+			info.graph.setDefinitionOfVertex(node, [rootId]);
+			info.graph.addEdge(node.nodeId, rootId, EdgeType.DefinedBy);   // defined by the call; the read edge is left intact
+		}
+	}
+	return info;
+}
+
+/** Define `nodeToDefine` in the environment and wire the `DefinedBy` edges from it to its sources and the assignment root (dropping the child-added read edges). */
 export function markAsAssignment<OtherInfo>(
 	information: {
 		environment: REnvironmentInformation,

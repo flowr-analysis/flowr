@@ -1,10 +1,10 @@
 // Regenerate the committed link file `src/data/sigdb/sigdb.remote.json`: the release tag + repo + each
-// downloadable (non-`base.*`) shard's sha256 + size, which the runtime uses to fetch and verify them.
+// downloadable shard's sha256 + size, which the runtime uses to fetch and verify them.
 //   npm run sync:sigdb [-- --tag=sigdb-v2.11.2 --repo=flowr-analysis/flowr]
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { sha256File, SigDbRemoteFileName, type SigDbRemote } from '../src/project/plugins/package-version-plugins/sigdb-download';
+import { sha256File, SigDbRemoteFileName, type SigDbRemote } from '../src/project/sigdb/sigdb-download';
 import { info } from './script-log';
 
 const RepoRoot = path.resolve(__dirname, '..');
@@ -21,11 +21,11 @@ export interface WriteRemotePointerOptions {
 export interface WriteRemotePointerResult {
 	/** where the link file was written */
 	readonly out:          string
-	/** the downloadable (non-`base.*`) shard file names, sorted */
+	/** the downloadable shard file names, sorted */
 	readonly downloadable: readonly string[]
 	/** total bytes across the downloadable shards */
 	readonly totalBytes:   number
-	/** the recorded shards (name -> sha256 + size) */
+	/** the recorded shards (name to sha256 + size) */
 	readonly shards:       SigDbRemote['shards']
 }
 
@@ -43,10 +43,13 @@ function resolveTagRepo(opts: WriteRemotePointerOptions): { tag: string, repo: s
 	};
 }
 
-/** the downloadable (non-`base.*`) `.br` shards in a bundle dir, sorted */
+// persisted compressed shard codecs (brotli/zstd); a bundle is written in one of them
+const ShardExts = ['.br', '.zst'] as const;
+
+/** every downloadable compressed shard in a bundle dir (all scopes, including the base floor), sorted */
 function downloadableShards(bundleDir: string): string[] {
 	return fs.existsSync(bundleDir)
-		? fs.readdirSync(bundleDir).filter(f => f.endsWith('.br') && !f.startsWith('base.')).sort()
+		? fs.readdirSync(bundleDir).filter(f => ShardExts.some(e => f.endsWith(e))).sort()
 		: [];
 }
 
@@ -80,16 +83,18 @@ export function remotePointerUpToDate(opts: WriteRemotePointerOptions = {}): boo
 	});
 }
 
-/** (Re)write the link file for the downloadable (non-`base.*`) shards in the bundle dir. Shared by `sync:sigdb`
- *  and `publish-sigdb.ts` so the pointer and the uploaded assets can never drift. */
+/**
+ * (Re)write the link file for the downloadable shards in the bundle dir. Shared by `sync:sigdb`
+ * and `publish-sigdb.ts` so the pointer and the uploaded assets can never drift.
+ */
 export function writeRemotePointer(opts: WriteRemotePointerOptions = {}): WriteRemotePointerResult {
 	const bundleDir = resolveBundleDir(opts);
 	const { tag, repo } = resolveTagRepo(opts);
 
-	// downloadable = every .br shard that is NOT the committed `base.*` floor
+	// downloadable = every compressed shard (base floor + CRAN sets); none are committed, all are pulled from the release
 	const downloadable = downloadableShards(bundleDir);
 	if(downloadable.length === 0) {
-		throw new Error(`no downloadable shards in ${bundleDir} (expected current.*.br / history.*.br etc.) -- copy a bundle in first`);
+		throw new Error(`no downloadable shards in ${bundleDir} (expected current.*.br / current.*.zst etc.) -- copy a bundle in first`);
 	}
 
 	const shards: SigDbRemote['shards'] = {};

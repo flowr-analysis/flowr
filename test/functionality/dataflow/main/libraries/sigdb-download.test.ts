@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from 'vitest';
 import { label } from '../../../_helper/label';
-import { sha256File, syncedSigDbDir, sigDbNeedsSync, type SigDbRemote } from '../../../../../src/project/plugins/package-version-plugins/sigdb-download';
+import { sha256File, syncedSigDbDir, sigDbNeedsSync, type SigDbRemote } from '../../../../../src/project/sigdb/sigdb-download';
 import { writeRemotePointer } from '../../../../../scripts/sigdb-remote';
 import fs from 'fs';
 import os from 'os';
@@ -19,25 +19,25 @@ describe('SigDb auto-sync (pointer)', () => {
 		}
 	});
 
-	test(label('writeRemotePointer records the downloadable shards (sha256 + size) and excludes the base floor', [], ['other']), () => {
+	test(label('writeRemotePointer records every `.br` shard (base floor + CRAN sets), skipping non-shard files', [], ['other']), () => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-remote-'));
 		cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
-		// a downloadable shard, a base-floor shard (excluded), and a non-shard file (ignored)
+		// two `.br` shards (base floor + a CRAN shard, both downloadable) and a non-shard file (ignored)
 		fs.writeFileSync(path.join(dir, 'current.current-top.sigs.ndjson.br'), 'HOTSHARD');
 		fs.writeFileSync(path.join(dir, 'base.dict.sigs.ndjson.br'), 'FLOOR');
 		fs.writeFileSync(path.join(dir, 'current.manifest.json'), '{}');
 
 		const res = writeRemotePointer({ bundleDir: dir, tag: 'sigdb-v9.9.9', repo: 'acme/flowr' });
-		expect(res.downloadable).toEqual(['current.current-top.sigs.ndjson.br']);
+		expect(res.downloadable).toEqual(['base.dict.sigs.ndjson.br', 'current.current-top.sigs.ndjson.br']);
 
 		const written = JSON.parse(fs.readFileSync(path.join(dir, 'sigdb.remote.json'), 'utf8')) as SigDbRemote;
 		expect(written.tag).toBe('sigdb-v9.9.9');
 		expect(written.repo).toBe('acme/flowr');
-		// the base floor is never listed (it ships in git)
-		expect(Object.keys(written.shards)).toEqual(['current.current-top.sigs.ndjson.br']);
-		const shard = written.shards['current.current-top.sigs.ndjson.br'];
-		expect(shard.sha256).toBe(sha256File(path.join(dir, 'current.current-top.sigs.ndjson.br')));
-		expect(shard.bytes).toBe('HOTSHARD'.length);
+		// nothing is committed anymore: the base floor is listed for download alongside the CRAN shards
+		expect(Object.keys(written.shards).sort()).toEqual(['base.dict.sigs.ndjson.br', 'current.current-top.sigs.ndjson.br']);
+		const shard = written.shards['base.dict.sigs.ndjson.br'];
+		expect(shard.sha256).toBe(sha256File(path.join(dir, 'base.dict.sigs.ndjson.br')));
+		expect(shard.bytes).toBe('FLOOR'.length);
 	});
 
 	test(label('sigDbNeedsSync is true and syncedSigDbDir points into an empty cache', [], ['other']), () => {

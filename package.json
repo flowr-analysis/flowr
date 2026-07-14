@@ -28,7 +28,7 @@
     "wiki": "ts-node src/cli/wiki.ts",
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
-    "gen:base-packages": "ts-node scripts/gen-base-packages.ts",
+    "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
     "sync:sigdb": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
     "build:copy-data": "npm run sync:sigdb && ts-node --transpile-only scripts/sigdb-copy.ts",

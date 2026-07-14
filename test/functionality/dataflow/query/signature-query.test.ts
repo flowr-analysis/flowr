@@ -147,8 +147,8 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		test('parses package and function positionals', () => {
 			expect(parse(['mypkg', 'foo'])).toEqual([{ type: 'signature', package: 'mypkg', function: 'foo' }]);
 		});
-		test('parses the --all flag', () => {
-			expect(parse(['mypkg', '--all'])).toEqual([{ type: 'signature', package: 'mypkg', all: true }]);
+		test('ignores unknown --flags (positional-only)', () => {
+			expect(parse(['mypkg', '--all'])).toEqual([{ type: 'signature', package: 'mypkg' }]);
 		});
 		test('an empty line yields a bare summary query', () => {
 			expect(parse([])).toEqual([{ type: 'signature' }]);
@@ -168,8 +168,8 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		test('keeps glob wildcards in package/function/version', () => {
 			expect(parse(['gg*@3.*', 'geom_*'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*', version: '3.*' }]);
 		});
-		test('parses the --full flag', () => {
-			expect(parse(['gg*', 'geom_*', '--full'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*', full: true }]);
+		test('keeps positionals when a stray --flag is present', () => {
+			expect(parse(['gg*', 'geom_*', '--full'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*' }]);
 		});
 	});
 
@@ -217,8 +217,8 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		expect(res.signature.package?.repoUrl).toBe('https://github.com/cran/mypkg');
 		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg' }]);
 		// OSC 8 terminal hyperlinks are emitted for the CRAN page and the dependency
-		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=mypkg\x1b\\');
-		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=rlang\x1b\\');
+		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=mypkg\x07');
+		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=rlang\x07');
 		expect(ascii).toContain('imports');   // grouped dependency section
 	});
 
@@ -423,7 +423,7 @@ describe('signature query completer', () => {
 		expect(signatureQueryCompleter(['nope', 'x'], false).completions).toEqual([]);
 	});
 
-	test.runIf(bundled)(label('offers flags after a function argument', [], ['other']), () => {
-		expect(signatureQueryCompleter(['ggplot2', 'aes', '-'], false).completions).toEqual(['--all ', '--full ']);
+	test.runIf(bundled)(label('offers nothing past the function argument', [], ['other']), () => {
+		expect(signatureQueryCompleter(['ggplot2', 'aes', '-'], false).completions).toEqual([]);
 	});
 });

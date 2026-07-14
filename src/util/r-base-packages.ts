@@ -1,13 +1,6 @@
 import { RBasePackageStore } from '../data/r-base-packages.generated';
+import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { RVersion } from './r-version';
-
-/**
- * The R-core / base packages -- those that ship with R and are attached on the search path without an
- * explicit `library()` (`base`, `stats`, `graphics`, `utils`, `Reduce`/`arima`/`outer` live here). This
- * knowledge is NOT hardcoded: it is read from a store recomputed from the signature database whenever flowR
- * is bundled (see `scripts/gen-base-packages.ts`), so it stays in sync with the database (its single source
- * of truth, hence the `current-base` shard) and needs no maintenance.
- */
 
 /** clamp `rVersion` to the newest R release the store knows about (so a future R version stays answerable) */
 function effective(rVersion: string): string {
@@ -22,8 +15,8 @@ const cache = new Map<string, readonly string[]>();
  * available when that R release lies within the range it was part of core; e.g. `parallel` (added in R
  * 2.14.0) is absent for an assumed R 2.10, and long-merged packages like `ctest` are absent for modern R.
  *
- * The newest release is served from the precomputed {@link RBasePackageStore.current} array in O(1); every
- * other version is computed once and memoized, so this never recomputes on repeated calls.
+ * The newest release is served from the precomputed {@link RBasePackageStore.current} array.
+ * Every other version is computed once and memoized, so this never recomputes on repeated calls.
  */
 export function baseRPackages(rVersion?: string): readonly string[] {
 	// fast path: no version, or the exact newest-release string, avoids the (regex-based) version compare entirely
@@ -49,6 +42,8 @@ let exportOwners: Map<string, string> | undefined;
  * The base-R package that exports `name` (e.g. `sd` yields `stats`, `plot` yields `base`), or `undefined`.
  * Backed by the bundle-time store, so it needs no loaded database and no runtime resolution: the
  * export-to-package index is inverted from {@link RBasePackageStore.exportsByPackage} once on first use.
+ * Base primitives/internals and base data constants (`is.na`, `.Machine`, ...) are not in the sigdb
+ * export list, so they are answered from {@link RBasePrimitives} and owned by `base`.
  */
 export function baseRExportOwner(name: string): string | undefined {
 	if(exportOwners === undefined) {
@@ -59,7 +54,7 @@ export function baseRExportOwner(name: string): string | undefined {
 			}
 		}
 	}
-	return exportOwners.get(name);
+	return exportOwners.get(name) ?? (RBasePrimitives.has(name) ? 'base' : undefined);
 }
 
 /** whether `name` is an R-core / base package at the assumed R version (see {@link baseRPackages}). */

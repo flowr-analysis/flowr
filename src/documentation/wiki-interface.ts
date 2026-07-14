@@ -276,7 +276,7 @@ ${codeBlock('json', JSON.stringify(
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false, linkBaseR: false },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, linkBaseR: false, linkDescriptionDependencies: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,

@@ -1,10 +1,11 @@
 import { afterAll, describe, expect, test, vi } from 'vitest';
+import fs from 'fs';
 import path from 'path';
 import { withTreeSitter } from '../../../_helper/shell';
 import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen, sigdbAnalyzer, expFn, ver, hasBuiltInVertex as hasBuiltIn } from '../../../_helper/sigdb';
 import type { TreeSitterExecutor } from '../../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-builder';
-import { DefaultAssumedRVersion, FlowrConfig } from '../../../../../src/config';
+import { DefaultAssumedRVersion, FlowrConfig, VersionSelection } from '../../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName, sigDbLog } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { getOriginInDfg } from '../../../../../src/dataflow/origin/dfg-get-origin';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
@@ -164,6 +165,16 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(true);
 	});
 
+	test(label('solver.sigdb.enabled: false disables resolution and unloads the database', ['library-loading'], ['dataflow']), async() => {
+		const dir = sigTmpDir('link-sigdb-');
+		const off = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.solver.sigdb.enabled = false;
+		});
+		const { df, analyzer } = await analyze(ts, 'library(cranpkg)\ncranfn()', await buildDb(dir), off);
+		expect(hasBuiltIn(df, 'cranpkg', 'cranfn')).toBe(false);
+		expect(analyzer.inspectContext().deps.loadedPackageDatabases()).toHaveLength(0);
+	});
+
 	test(label('the resolved (assumed) R version is reported for analysis', ['library-loading'], ['dataflow']), async() => {
 		const dir = sigTmpDir('link-sigdb-');
 		const pinned = FlowrConfig.amend(FlowrConfig.default(), c => {
@@ -294,7 +305,7 @@ describe('sigdb source mounting: preload survives re-registration', withTreeSitt
 		b.addPackage('cranpkg', { latest: '1.0.0', downloads: 5 });
 		b.addVersion('cranpkg', '1.0.0', ver([expFn('cranfn')]));
 		await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
-		const brPath = path.join(dir, `db${SigDbExt}.br`);   // only preload() can open a `.br` shard (loadSync cannot)
+		const brPath = path.join(dir, `db${SigDbExt}.br`);   // the `.br` fallback is always written; only preload() can open a `.br` shard (loadSync cannot)
 
 		// control: WITHOUT preload the .br cannot be mounted synchronously, so cranpkg does not resolve
 		const noPreload = await analyze(ts, 'library(cranpkg)\ncranfn()', brPath as unknown as PackageSignatureSource);
@@ -410,5 +421,118 @@ describe('sigdb system: rich package information is available end-to-end', withT
 			{ name: 'utils', type: DepType.Imports, constraint: '>= 2.0' }
 		]);
 		db.close();
+	});
+}));
+
+describe('version selection for a constrained CRAN dependency (solver.sigdb.versionSelection / versionOverrides)', withTreeSitter(ts => {
+	/** a CRAN package `multi` stored in three dated releases (1.0.0, 1.5.0, 2.0.0) so versions can be enumerated */
+	async function multiVersionDb(dir: string): Promise<SigDatabase> {
+		const b = new SigDbBuilder();
+		const day = (d: string) => new Date(d).getTime();
+		b.addPackage('multi', { latest: '2.0.0', downloads: 7 });
+		b.addVersion('multi', '1.0.0', { cran: true, functions: [expFn('mfn')], date: day('2020-01-01') });
+		b.addVersion('multi', '1.5.0', { cran: true, functions: [expFn('mfn')], date: day('2021-01-01') });
+		b.addVersion('multi', '2.0.0', { cran: true, functions: [expFn('mfn')], date: day('2022-01-01') });
+		return writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
+	}
+
+	/** write a minimal package project (DESCRIPTION constraining `multi` + a script that loads it) */
+	function writeConstrainedProject(constraint: string): string {
+		const dir = sigTmpDir('link-vsel-');
+		fs.writeFileSync(path.join(dir, 'DESCRIPTION'), `Package: mypkg\nVersion: 1.0.0\nImports: multi (${constraint})\n`);
+		fs.mkdirSync(path.join(dir, 'R'));
+		fs.writeFileSync(path.join(dir, 'R', 'foo.R'), 'library(multi)\nmfn()\n');
+		return dir;
+	}
+
+	async function resolvedMultiVersion(constraint: string, config?: FlowrConfig): Promise<string | undefined> {
+		const analyzer = await sigdbAnalyzer(ts, await multiVersionDb(sigTmpDir('link-vsel-db-')), config);
+		analyzer.addRequest('file://' + writeConstrainedProject(constraint));
+		await analyzer.dataflow();
+		return analyzer.inspectContext().deps.getDependency('multi')?.resolvedVersion;
+	}
+
+	function selectionConfig(selection: VersionSelection, overrides?: Record<string, string>): FlowrConfig {
+		return FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.solver.sigdb.versionSelection = selection;
+			if(overrides) {
+				c.solver.sigdb.versionOverrides = overrides;
+			}
+		});
+	}
+
+	test(label('the default (newest) resolves a `>=` constraint to the latest satisfying version', ['library-loading'], ['dataflow']), async() => {
+		expect(await resolvedMultiVersion('>= 1.2.0')).toBe('2.0.0');                                   // default config
+		expect(await resolvedMultiVersion('>= 1.2.0', selectionConfig(VersionSelection.Newest))).toBe('2.0.0');
+	});
+
+	test(label('oldest resolves a `>=` constraint to the lowest satisfying version', ['library-loading'], ['dataflow']), async() => {
+		expect(await resolvedMultiVersion('>= 1.2.0', selectionConfig(VersionSelection.Oldest))).toBe('1.5.0');
+		expect(await resolvedMultiVersion('>= 0.5.0', selectionConfig(VersionSelection.Oldest))).toBe('1.0.0');
+	});
+
+	test(label('a per-package override forces an exact version, ignoring the constraint and the policy', ['library-loading'], ['dataflow']), async() => {
+		// 1.0.0 does NOT satisfy `>= 1.2.0`, yet the override wins over both the constraint and newest/oldest
+		expect(await resolvedMultiVersion('>= 1.2.0', selectionConfig(VersionSelection.Newest, { multi: '1.0.0' }))).toBe('1.0.0');
+		expect(await resolvedMultiVersion('>= 1.2.0', selectionConfig(VersionSelection.Oldest, { multi: '2.0.0' }))).toBe('2.0.0');
+	});
+
+	test(label('system selection with no R available falls back to newest-satisfying', ['library-loading'], ['dataflow']), async() => {
+		// the tree-sitter parser exposes no installedPackageVersions, so `system` gracefully falls back to newest
+		expect(await resolvedMultiVersion('>= 1.2.0', selectionConfig(VersionSelection.System))).toBe('2.0.0');
+	});
+}));
+
+describe('auto-attach the project\'s declared DESCRIPTION dependencies (solver.sigdb.linkDescriptionDependencies)', withTreeSitter(ts => {
+	/** write a minimal package project (DESCRIPTION + a single R script) into a fresh temp dir */
+	function writePackage(description: string, code: string): string {
+		const dir = sigTmpDir('link-desc-');
+		fs.writeFileSync(path.join(dir, 'DESCRIPTION'), `Package: mypkg\nVersion: 1.0.0\n${description}`);
+		fs.mkdirSync(path.join(dir, 'R'));
+		fs.writeFileSync(path.join(dir, 'R', 'foo.R'), code);
+		return dir;
+	}
+
+	async function analyzeProject(dir: string, config?: FlowrConfig) {
+		const analyzer = await sigdbAnalyzer(ts, await buildDb(sigTmpDir('link-desc-db-')), config);
+		analyzer.addRequest('file://' + dir);
+		return { df: await analyzer.dataflow(), analyzer };
+	}
+
+	function linkDescConfig(loadProjectDependencies = true): FlowrConfig {
+		return FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.solver.sigdb.linkDescriptionDependencies = true;
+			c.solver.sigdb.loadProjectDependencies = loadProjectDependencies;
+		});
+	}
+
+	test(label('a bare call to a DESCRIPTION-imported package export resolves to its namespace without library()', ['library-loading', 'search-path'], ['dataflow']), async() => {
+		// mypkg Imports cranpkg (which the db resolves, exporting cranfn); foo.R calls cranfn() with NO library()
+		const dir = writePackage('Imports: cranpkg\n', 'cranfn()\n');
+		const { df } = await analyzeProject(dir, linkDescConfig());
+		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(true);
+		expect(namespaceEnv(df, 'cranpkg')?.memory.has('cranfn')).toBe(true);
+	});
+
+	test(label('the attach is off by default: the same bare call does not resolve to the namespace', ['library-loading'], ['dataflow']), async() => {
+		const dir = writePackage('Imports: cranpkg\n', 'cranfn()\n');
+		const { df } = await analyzeProject(dir);   // default config: linkDescriptionDependencies off
+		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(false);
+		expect(namespaceEnv(df, 'cranpkg')).toBeUndefined();
+	});
+
+	test(label('solver.sigdb.loadProjectDependencies: false stops the declared dependency from being loaded or attached', ['library-loading'], ['dataflow']), async() => {
+		const dir = writePackage('Imports: cranpkg\n', 'cranfn()\n');
+		// even with the attach flag on, disabling loading means cranpkg is never read from the DESCRIPTION
+		const { df, analyzer } = await analyzeProject(dir, linkDescConfig(false));
+		expect(analyzer.inspectContext().deps.getDependencies().map(d => d.name)).not.toContain('cranpkg');
+		expect(callResolvesTo(df, 'cranfn', 'cranpkg', 'cranfn')).toBe(false);
+		expect(namespaceEnv(df, 'cranpkg')).toBeUndefined();
+	});
+
+	test(label('with loading enabled the declared dependency is present in the dependency context', ['library-loading'], ['dataflow']), async() => {
+		const dir = writePackage('Imports: cranpkg\n', 'cranfn()\n');
+		const { analyzer } = await analyzeProject(dir, linkDescConfig());
+		expect(analyzer.inspectContext().deps.getDependencies().map(d => d.name)).toContain('cranpkg');
 	});
 }));

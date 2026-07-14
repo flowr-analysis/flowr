@@ -702,10 +702,9 @@ test-results.xml
 /test_perf/*.json
 .vscode/settings.json
 
-# sigdb bundles in src/data/sigdb/: only the tiny self-contained `base.*` floor is committed. The big CRAN
-# shards (current.*/full.*/history.*) churn ~24 MB per rebuild and brotli never deltas, so they are NOT
-# versioned -- they are published to the free GitHub Release (scripts/publish-sigdb.ts) and pulled on demand by
-# `:signature download` (sigdb-download.ts). flowR falls back to the committed base floor when they are absent.
+# sigdb bundles in src/data/sigdb/: NONE of the `.br` shards are versioned (they churn and brotli never deltas).
+# Only `sigdb.remote.json` is committed use :signature download
+src/data/sigdb/base.*
 src/data/sigdb/current.*
 src/data/sigdb/full.*
 src/data/sigdb/history.*

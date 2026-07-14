@@ -6,14 +6,13 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { once } from 'node:events';
 import {
 	DefaultCranBase, MaxDefaultLength, ParamFlag, SigDbExt, SigDbMagic, SigDbSchema,
 	type PkgBlob, type Sig, type SigDb, type SigDbFeatures, type SigDbPkgMeta, type SigDbShard, type SigDbTier,
 	type SigDep, type SigDependencyInfo, type SigFn, type SigFunctionInfo, type SigParamInfo, type SigVersionInfo
 } from './schema';
-import { highestVersion } from './version';
+import { RVersion } from '../../util/r-version';
 import { blobTuple } from './decode';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { encodeIndex, type ByteRange, type SigDbIndex, type SigShardIndexWire } from './index-format';
@@ -21,6 +20,17 @@ import {
 	writeManifest, SigDbManifestMagic, SigDbManifestSchema,
 	type SigDbManifest, type SigDbShardRef, type SigDbDictRef
 } from './manifest';
+import { writeCodecs, zstdSupported, type CodecCompressOptions, type SigDbCodecSpec } from './codec';
+import { log } from '../../util/log';
+
+// warn once (build-time) when this Node cannot produce `.zst`, so only the brotli `.br` fallback is written
+let zstdSkipLogged = false;
+function noteZstdSupport(): void {
+	if(!zstdSupported() && !zstdSkipLogged) {
+		zstdSkipLogged = true;
+		log.warn('sigdb: this Node lacks zstd (node:zlib); writing only the brotli .br fallback (upgrade to Node >= 22.15 for smaller .zst bundles)');
+	}
+}
 
 /** resolve the effective features (everything defaults to on) */
 function resolveFeatures(f: SigDbFeatures | undefined): Required<SigDbFeatures> {
@@ -109,7 +119,7 @@ function keptVersions(p: Readonly<RawPkg>, tier: SigDbTier): string[] {
 		return all;
 	}
 	// fall back to the highest by R-version order (not lexical) when the recorded latest is absent
-	const latest = p.versions.has(p.latest) ? p.latest : highestVersion(all);
+	const latest = p.versions.has(p.latest) ? p.latest : RVersion.highest(all);
 	return tier === 'current'
 		? (latest !== undefined ? [latest] : [])
 		: all.filter(v => v !== latest);
@@ -520,7 +530,7 @@ const NdjsonBatchBytes = 8_000_000;
  * Batch the string dictionary into `["d", startIdx, "s1\ns2\n…"]` lines: the strings are joined into ONE
  * newline-delimited blob per line rather than a JSON array of quoted strings. On load this parses as a single
  * string and `split('\n')` -- far faster than `JSON.parse`-ing an array of ~1.4M elements, and a touch smaller
- * (no per-string quotes/commas). Safe because no dictionary string contains a newline (defaults are normalized).
+ * Safe because no dictionary string contains a newline (defaults are normalized).
  */
 function* dictLines(strings: readonly string[]): Generator<string> {
 	let start = 0;
@@ -562,6 +572,8 @@ function* batchLines(tag: string, arr: readonly unknown[]): Generator<string> {
 }
 
 export interface CompressOptions {
+	/** zstd compression level (1..22) for the `.zst` output (default 19) */
+	level?:         number;
 	/** brotli quality for the `.br` output; 11 is smallest but slow, lower is much faster for a small size cost */
 	brotliQuality?: number;
 	/** brotli window bits (10..30); above 24 enables the non-standard large-window mode (reader must opt in) */
@@ -569,31 +581,38 @@ export interface CompressOptions {
 }
 // large window (30) shaves ~15% off the `.br`; every {@link SigDatabase} read path decodes with
 // `BROTLI_DECODER_PARAM_LARGE_WINDOW` enabled, so this is always safe for bundles flowR reads back.
-const DefaultCompress: Required<CompressOptions> = { brotliQuality: 11, brotliLgwin: 30 };
+const DefaultBrotliLgwin = 30;
 
-/** streams NDJSON lines to `<plain>` + `.gz` + `.br` at once, tracking the plain byte offset for seek indexes */
+/** codec-appropriate compression options: brotli takes the quality/window, zstd its own level */
+function codecOptions(spec: SigDbCodecSpec, compress: CompressOptions): CodecCompressOptions {
+	return spec.codec === 'zstd'
+		? { level: compress.level }
+		: { level: compress.brotliQuality, lgwin: compress.brotliLgwin ?? DefaultBrotliLgwin };
+}
+
+/** one compressed sink: the codec transform piped into its `<plain><ext>` file */
+interface CodecSink { stream: NodeJS.ReadWriteStream; file: fs.WriteStream }
+
+/**
+ * Streams NDJSON lines to `<plain>` plus every codec {@link writeCodecs} yields (`.br` always, `.zst` when this
+ * Node supports it) at once, tracking the plain byte offset for seek indexes. A `.br` fallback is thus always
+ * produced beside any `.zst`.
+ */
 class LineWriter {
 	private readonly plainOut: fs.WriteStream;
-	private readonly gzFile:   fs.WriteStream;
-	private readonly brFile:   fs.WriteStream;
-	private readonly gzip:     zlib.Gzip;
-	private readonly brot:     zlib.BrotliCompress;
+	private readonly sinks:    CodecSink[] = [];
 	public byteOff = 0;
 
 	public constructor(plain: string, compress: CompressOptions) {
-		const lgwin = compress.brotliLgwin ?? DefaultCompress.brotliLgwin;
+		noteZstdSupport();
 		fs.mkdirSync(path.dirname(path.resolve(plain)), { recursive: true });
 		this.plainOut = fs.createWriteStream(plain);
-		this.gzFile = fs.createWriteStream(`${plain}.gz`);
-		this.brFile = fs.createWriteStream(`${plain}.br`);
-		this.gzip = zlib.createGzip({ level: 9 });
-		this.brot = zlib.createBrotliCompress({ params: {
-			[zlib.constants.BROTLI_PARAM_QUALITY]:      compress.brotliQuality ?? DefaultCompress.brotliQuality,
-			[zlib.constants.BROTLI_PARAM_LGWIN]:        lgwin,
-			[zlib.constants.BROTLI_PARAM_LARGE_WINDOW]: lgwin > 24 ? 1 : 0
-		} });
-		this.gzip.pipe(this.gzFile);
-		this.brot.pipe(this.brFile);
+		for(const spec of writeCodecs()) {
+			const file = fs.createWriteStream(`${plain}${spec.ext}`);
+			const stream = spec.createCompress(codecOptions(spec, compress));
+			stream.pipe(file);
+			this.sinks.push({ stream, file });
+		}
 	}
 
 	public async write(text: string): Promise<void> {
@@ -602,11 +621,10 @@ class LineWriter {
 		if(!this.plainOut.write(chunk)) {
 			back.push(once(this.plainOut, 'drain'));
 		}
-		if(!this.gzip.write(chunk)) {
-			back.push(once(this.gzip, 'drain'));
-		}
-		if(!this.brot.write(chunk)) {
-			back.push(once(this.brot, 'drain'));
+		for(const { stream } of this.sinks) {
+			if(!stream.write(chunk)) {
+				back.push(once(stream, 'drain'));
+			}
 		}
 		if(back.length > 0) {
 			await Promise.all(back);
@@ -616,13 +634,14 @@ class LineWriter {
 
 	public async close(): Promise<void> {
 		this.plainOut.end();
-		this.gzip.end();
-		this.brot.end();
-		await Promise.all([once(this.plainOut, 'close'), once(this.gzFile, 'close'), once(this.brFile, 'close')]);
+		for(const { stream } of this.sinks) {
+			stream.end();
+		}
+		await Promise.all([once(this.plainOut, 'close'), ...this.sinks.map(s => once(s.file, 'close'))]);
 	}
 }
 
-/** Write `<outBase>.sigs.ndjson` (+ `.gz`, `.br`, `.idx`) -- a single self-contained bundle (its own dictionary). */
+/** Write `<outBase>.sigs.ndjson` (+ `.br`, `.zst` when supported, `.idx`) -- a single self-contained bundle (its own dictionary). */
 export async function writeSignatureDb(outBase: string, db: SigDb, compress: CompressOptions = {}): Promise<SigDbIndex> {
 	const plain = `${outBase}${SigDbExt}`;
 	const w = new LineWriter(plain, compress);
@@ -656,7 +675,7 @@ export async function writeSignatureDb(outBase: string, db: SigDb, compress: Com
 /** the extension of a standalone shared-dictionary file */
 export const SigDbDictExt = '.dict.sigs.ndjson' as const;
 
-/** Write a shared string dictionary to `<outBase>.dict.sigs.ndjson` (+ `.gz`/`.br`). Returns where its lines sit. */
+/** Write a shared string dictionary to `<outBase>.dict.sigs.ndjson` (+ `.br`/`.zst`). Returns where its lines sit. */
 export async function writeDictionary(outBase: string, id: string, strings: readonly string[], compress: CompressOptions = {}): Promise<SigDbDictRef> {
 	const plain = `${outBase}${SigDbDictExt}`;
 	const w = new LineWriter(plain, compress);
@@ -670,7 +689,7 @@ export async function writeDictionary(outBase: string, id: string, strings: read
 	return { id, path: `${path.basename(outBase)}${SigDbDictExt}`, hash: dictionaryHash(strings), range, byteCount: w.byteOff, strings: strings.length };
 }
 
-/** Write one blob-only shard (references a shared dictionary) to `<outBase>.<id>.sigs.ndjson` (+ `.gz`/`.br`). */
+/** Write one blob-only shard (references a shared dictionary) to `<outBase>.<id>.sigs.ndjson` (+ `.br`/`.zst`). */
 export async function writeShardBundle(outBase: string, shard: SigShard, cranBase: string | undefined, compress: CompressOptions = {}): Promise<SigShardIndexWire> {
 	const plain = `${outBase}.${shard.id}${SigDbExt}`;
 	const w = new LineWriter(plain, compress);
@@ -694,7 +713,7 @@ export async function writeShardBundle(outBase: string, shard: SigShard, cranBas
 
 /** options for {@link writeShardedDatabase} */
 export interface ShardedWriteOptions extends CompressOptions {
-	/** assemble a clean copy-into-flowR folder holding just the `.br` shards, the `.br` dictionary and the manifest */
+	/** assemble a clean copy-into-flowR folder holding just the compressed shards, the dictionary and the manifest */
 	pack?:    string;
 	/** invoked after each shard file is written (for progress logging) */
 	onShard?: (shard: SigShard, ref: SigDbShardRef) => void;
@@ -703,11 +722,12 @@ export interface ShardedWriteOptions extends CompressOptions {
 /**
  * Write a {@link ShardedSigDb}: one shared dictionary file, one blob-only file per shard, and a
  * {@link SigDbManifest} that embeds each shard's index and references the shared dictionary by id. Every
- * shard reindexes into that single dictionary (stored once, not per shard). A reader needs only the `.br`
+ * shard reindexes into that single dictionary (stored once, not per shard). A reader needs only the compressed
  * files plus the manifest -- no `.idx` sidecars. With `pack`, also assembles a clean copy-into-flowR folder.
  */
 export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, manifestFile: string, opts: ShardedWriteOptions = {}): Promise<SigDbManifest> {
-	const compress: CompressOptions = { brotliQuality: opts.brotliQuality, brotliLgwin: opts.brotliLgwin };
+	const compress: CompressOptions = { level: opts.level, brotliQuality: opts.brotliQuality, brotliLgwin: opts.brotliLgwin };
+	const exts = writeCodecs().map(c => c.ext);   // every compressed variant produced (`.br` always, `.zst` when supported)
 	const base = path.basename(outBase);
 	const dictRef = await writeDictionary(outBase, 'shared', db.strings, compress);
 	const shardRefs: SigDbShardRef[] = [];
@@ -727,15 +747,15 @@ export async function writeShardedDatabase(outBase: string, db: ShardedSigDb, ma
 	};
 	writeManifest(manifestFile, manifest);
 	if(opts.pack) {
-		// a self-contained folder to copy into flowR: just the .br dictionary + .br shards + the (index-embedding) manifest
+		// a self-contained folder to copy into flowR: every compressed variant of the dictionary + shards + the (index-embedding) manifest
 		fs.mkdirSync(opts.pack, { recursive: true });
-		fs.copyFileSync(`${outBase}${SigDbDictExt}.br`, path.join(opts.pack, `${dictRef.path}.br`));
-		for(const ref of shardRefs) {
-			fs.copyFileSync(`${outBase}.${ref.id}${SigDbExt}.br`, path.join(opts.pack, `${ref.path}.br`));
+		for(const ext of exts) {
+			fs.copyFileSync(`${outBase}${SigDbDictExt}${ext}`, path.join(opts.pack, `${dictRef.path}${ext}`));
+			for(const ref of shardRefs) {
+				fs.copyFileSync(`${outBase}.${ref.id}${SigDbExt}${ext}`, path.join(opts.pack, `${ref.path}${ext}`));
+			}
 		}
 		writeManifest(path.join(opts.pack, `${base}.manifest.json`), manifest);
 	}
 	return manifest;
 }
-
-/** parse a buffer of `["d",start,[...]]` dictionary lines into `strings` (in place) */

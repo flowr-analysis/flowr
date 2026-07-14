@@ -1,4 +1,4 @@
-import { coerce, Range, SemVer } from 'semver';
+import { coerce, Range, SemVer, satisfies as semverSatisfies } from 'semver';
 
 
 function makeVersion(version: string, original: string) {
@@ -82,6 +82,7 @@ export const RVersion = {
 	 * Parse an R version string into a {@link SemVer}, normalizing R's freer scheme (e.g. `0.4-9`). Unlike
 	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`. Returns
 	 * undefined (never throws) when the string cannot be coerced to a version at all.
+	 * @see {@link RVersion.parseOrZero}
 	 */
 	parse(this: void, version: string): RVersion | undefined {
 		try {
@@ -110,6 +111,32 @@ export const RVersion = {
 			}
 		}
 		return 0;
+	},
+
+	/**
+	 * Like {@link parse} but never undefined: a truly un-coercible version sorts as `0.0.0` while keeping its
+	 * original string as `.str`, so it stays usable as a sort key.
+	 * @see {@link RVersion.parse}
+	 */
+	parseOrZero(this: void, version: string): RVersion {
+		const parsed = RVersion.parse(version);
+		if(parsed !== undefined) {
+			return parsed;
+		}
+		const fallback = RVersion.parse('0.0.0') as RVersion;   // `0.0.0` always parses
+		fallback.str = version;
+		return fallback;
+	},
+
+	/** The highest of some version strings by R's `numeric_version` order (`0.9.0 < 0.10.0`); undefined if none. */
+	highest(this: void, versions: Iterable<string>): string | undefined {
+		let best: string | undefined;
+		for(const v of versions) {
+			if(best === undefined || RVersion.compare(v, best) > 0) {
+				best = v;
+			}
+		}
+		return best;
 	}
 } as const;
 
@@ -131,5 +158,19 @@ export const RRange = {
 			return makeRange(normalizeVersions(range), range);
 		} catch{ /* unparseable even after normalization -> report as "no constraint" */ }
 		return undefined;
+	},
+
+	/**
+	 * Whether an R version string satisfies a range constraint, normalizing R's freer scheme on both sides.
+	 * `range` may be a parsed {@link Range} or a raw constraint string. Returns `false` if either is unparseable
+	 * (never throws), so a malformed version/constraint simply does not match.
+	 */
+	satisfies(this: void, version: string, range: Range | string): boolean {
+		const v = RVersion.parse(version);
+		if(v === undefined) {
+			return false;
+		}
+		const r = typeof range === 'string' ? RRange.parse(range) : range;
+		return r !== undefined && semverSatisfies(v, r, { loose: true, includePrerelease: true });
 	}
 } as const;

@@ -333,8 +333,6 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				}
 			}
 			if(query.callTargetNamespace !== undefined) {
-				// the package the call resolves to: a loaded-library export, a base-R export (edge-free, so a bare
-				// `sd()` matches `stats`), or the call's own explicit namespace
 				const pkg = Identifier.getNamespace(Identifier.toQualified(getOriginInDfg(dataflow.graph, nodeId), info.name) ?? info.name);
 				if(pkg !== query.callTargetNamespace) {
 					continue;

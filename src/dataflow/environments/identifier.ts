@@ -1,5 +1,5 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
 import { baseRExportOwner } from '../../util/r-base-packages';
@@ -220,14 +220,10 @@ export const Identifier = {
 		for(const origin of origins ?? []) {
 			// an attached package export carries the target builtin id `built-in:pkg:func` in `proc`
 			if('proc' in origin) {
-				if(origin.proc.startsWith('built-in:')) {
-					const rest = origin.proc.slice('built-in:'.length);
-					const sep = rest.indexOf(':');   // base builtins (`built-in:print`) have no separator
-					if(sep > 0) {
-						return Identifier.make(rest.slice(sep + 1), rest.slice(0, sep));
-					}
+				const pkgFn = NodeId.toPkgFn(origin.proc);   // [pkg, func], or undefined for a bare/processor-level builtin
+				if(pkgFn) {
+					return Identifier.make(pkgFn[1], pkgFn[0]);
 				}
-				// a processor-level builtin (e.g. `plot` -> `builtin:default`) is not a user definition
 			} else {
 				sawUserDefinition = true;   // a function-call/variable origin: resolves to a user definition
 			}
@@ -272,6 +268,7 @@ export const enum PkgName {
 	Fs           = 'fs',
 	Functools    = 'functools',
 	GgPlot2      = 'ggplot2',
+	Hmisc        = 'Hmisc',
 	Import       = 'import',
 	Inferference = 'inferference',
 	Janitor      = 'janitor',

@@ -3,13 +3,12 @@
  * bundled (see `build:copy-data`). For every base package it records the R-version range it was part of
  * core, so at runtime flowR can list the base packages available at the assumed R version without touching
  * the (large) signature database. Writes `src/data/r-base-packages.generated.ts`.
- *
- * Run: `npx ts-node scripts/gen-base-packages.ts`. A no-op (keeps the committed store) if no bundle is found.
  */
 import fs from 'fs';
 import path from 'path';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../src/project/sigdb/reader';
 import { defaultSigDbPath } from '../src/project/sigdb/manifest';
+import { stripCompressedExt } from '../src/project/sigdb/codec';
 import { RVersion } from '../src/util/r-version';
 import { info } from './script-log';
 
@@ -22,7 +21,7 @@ async function openDefault(): Promise<PackageSignatureSource | undefined> {
 	if(!src) {
 		return undefined;
 	}
-	return src.endsWith('.manifest.json') || src.endsWith('.manifest.json.br')
+	return stripCompressedExt(src).endsWith('.manifest.json')
 		? SigDatabaseSet.openManifest(src)
 		: SigDatabase.open(src);
 }
@@ -93,12 +92,12 @@ async function main(): Promise<void> {
 
 	// all packages on one line: `"pkg": ["first", "last"], ...`
 	const packagesInline = Object.keys(packages).sort()
-		.map(pkg => `${JSON.stringify(pkg)}: [${JSON.stringify(packages[pkg][0])}, ${JSON.stringify(packages[pkg][1])}]`)
-		.join(', ');
+		.map(pkg => `${JSON.stringify(pkg)}:[${JSON.stringify(packages[pkg][0])},${JSON.stringify(packages[pkg][1])}]`)
+		.join(',');
 	// one line per package: its exports as a string[] (the loader inverts these to an export -> owner map on
 	// first use, with no per-name splitting)
 	const exportLines = current
-		.map(pkg => `\t\t${JSON.stringify(pkg)}: [${exportsByPackage[pkg].map(n => JSON.stringify(n)).join(', ')}],`)
+		.map(pkg => `\t\t${JSON.stringify(pkg)}:[${exportsByPackage[pkg].map(n => JSON.stringify(n)).join(',')}],`)
 		.join('\n');
 	const body = '/* eslint-disable */\n'
 		+ '/*\n'
@@ -110,8 +109,8 @@ async function main(): Promise<void> {
 		+ ' */\n'
 		+ 'export const RBasePackageStore = {\n'
 		+ `\tnewestRVersion: ${JSON.stringify(newest)},\n`
-		+ `\tcurrent: [${current.map(n => JSON.stringify(n)).join(', ')}],\n`
-		+ `\tpackages: { ${packagesInline} },\n`
+		+ `\tcurrent: [${current.map(n => JSON.stringify(n)).join(',')}],\n`
+		+ `\tpackages: {${packagesInline}},\n`
 		+ '\texportsByPackage: {\n'
 		+ exportLines + '\n'
 		+ '\t}\n'

@@ -75,7 +75,8 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { c
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment.`;
+	const sigDbNote = `No ${ctx ? ctx.linkPage('wiki/Signature Database', 'signature database') : `[signature database](${FlowrWikiBaseRef}/Signature-Database)`} is mounted for these generated graphs, so \`library()\` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. \`acf\` as \`stats::acf\`).`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment. ${sigDbNote}`;
 	const graph = callGraph ? CallGraph.compute(result.dataflow.graph) : result.dataflow.graph;
 	const dfGraph = printDfGraph(graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';

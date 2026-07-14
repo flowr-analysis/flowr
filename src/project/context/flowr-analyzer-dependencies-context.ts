@@ -108,17 +108,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
 	}
 
-	/**
-	 * Analyze installed R packages on disk (a package directory or a library folder) with flowR and add the
-	 * extracted signatures as resolvable sources. Returns the names of the packages added.
-	 */
-	public async addLocalPackages(dir: string): Promise<string[]> {
-		const added: string[] = [];
-		for(const p of this.plugins) {
-			// pass the config explicitly -- a plugin's own context is only wired up on the first analysis
-			added.push(...await p.addLocalPackages(dir, this.ctx.config));
+	/** Cheap fingerprint of only the base-R-providing databases, so base-R-derived caches survive unrelated database changes. */
+	public baseRSourceFingerprint(): string {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return '';
 		}
-		return added;
+		return this.plugins.filter(p => p.providesBaseRPackages())
+			.flatMap(p => p.loadedDatabases()).map(d => d.hash).join(',');
 	}
 
 	/** Mount an additional signature database/source by path (a plain `.sigs.ndjson`, a `.br`, or a manifest). */
@@ -143,6 +139,19 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public resolveStaticDependencies(): void {
 		this.applyPlugins(undefined);
 		this.staticsLoaded = true;
+	}
+
+	/**
+	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
+	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the
+	 * declared deps never enter the context (unlike {@link addDependency}, used for on-demand signature-database
+	 * resolution).
+	 */
+	public addDeclaredDependency(pkg: Package): this {
+		if(!this.ctx.config.solver.sigdb.loadProjectDependencies) {
+			return this;
+		}
+		return this.addDependency(pkg);
 	}
 
 	public addDependency(pkg: Package): this {

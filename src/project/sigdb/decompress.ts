@@ -1,23 +1,24 @@
 /**
- * On-disk (de)compression + the hash-keyed decompress cache: turn a `.br`/`.gz` bundle into a seekable plain
- * `.sigs.ndjson` (materialized once, reused on later startups), read a bundle's header cheaply, and resolve the
- * cache directory. Split out of `../sigdb` so the reader there only consumes plain, seekable files.
+ * On-disk (de)compression + the hash-keyed decompress cache: turn a `.br`/`.zst`/`.gz` bundle into a seekable
+ * plain `.sigs.ndjson` (materialized once, reused on later startups), read a bundle's header cheaply, and resolve
+ * the cache directory. Split out of `../sigdb` so the reader there only consumes plain, seekable files. The codec
+ * is detected by extension (see `./codec`), so existing `.br` and new `.zst` bundles read transparently.
  */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import readline from 'node:readline';
 import { pipeline } from 'node:stream/promises';
 import type { Readable } from 'node:stream';
 import { SigDbExt, type SigDbContent } from './schema';
 import { encodeIndex, type SigDbIndex } from './index-format';
 import { Hash53 } from '../../util/hash';
+import { createDecompressFor, decompressSyncFor, isCompressedExt, readableExtsPreferred } from './codec';
 
-/** whether a bundle path is a compressed (`.br`/`.gz`) source that must be decompressed to be seekable */
-export const isCompressed = (f: string): boolean => f.endsWith('.br') || f.endsWith('.gz');
+/** whether a bundle path is a compressed (`.br`/`.zst`/`.gz`) source that must be decompressed to be seekable */
+export const isCompressed = (f: string): boolean => isCompressedExt(f);
 
-/** read and parse just the header (line 1) from a buffer/string of NDJSON */
+/** read and parse the header (line 1) from a buffer/string of NDJSON */
 export function parseHeader(text: string): Record<string, unknown> | undefined {
 	const nl = text.indexOf('\n');
 	try {
@@ -28,33 +29,45 @@ export function parseHeader(text: string): Record<string, unknown> | undefined {
 }
 
 function decompressStream(file: string): Readable {
-	const raw = fs.createReadStream(file);
-	return file.endsWith('.br')
-		? raw.pipe(zlib.createBrotliDecompress({ params: { [zlib.constants.BROTLI_DECODER_PARAM_LARGE_WINDOW]: 1 } }))
-		: raw.pipe(zlib.createGunzip());
+	return fs.createReadStream(file).pipe(createDecompressFor(file));
 }
 
-/** a readable stream of the bundle's plain NDJSON, transparently decompressing `.gz`/`.br` inputs */
+/** a readable stream of the bundle's plain NDJSON, transparently decompressing `.gz`/`.br`/`.zst` inputs */
 export function sigDbStream(file: string): Readable {
 	return isCompressed(file) ? decompressStream(file) : fs.createReadStream(file);
 }
 
-/** resolve a manifest-relative file to a compressed (`.br`) source when present, else the plain path */
+/**
+ * Resolve a manifest-relative file to the best source this runtime can read: a plain (already seekable) file
+ * if present, else the most-preferred compressed variant that exists AND is decompressible here -- `.zst` first
+ * when this Node supports zstd, otherwise `.br` (then `.gz`). A `.zst` is never returned on a Node without zstd
+ * (it could not be decompressed), so `.br`-only bundles read on any Node. Falls back to the plain path.
+ */
 export function resolveSource(baseDir: string, relPath: string): string {
 	const plain = path.resolve(baseDir, relPath);
-	const br = `${plain}.br`;
-	return fs.existsSync(plain) ? plain : fs.existsSync(br) ? br : plain;
+	if(fs.existsSync(plain)) {
+		return plain;
+	}
+	for(const ext of readableExtsPreferred()) {
+		const compressed = `${plain}${ext}`;
+		if(fs.existsSync(compressed)) {
+			return compressed;
+		}
+	}
+	return plain;
 }
 
 /**
- * Directory for decompressed, hash-keyed caches. Honours `$FLOWR_SIGDB_CACHE` / `$FLOWR_CACHE_DIR` /
- * `$XDG_CACHE_HOME`, then `~/.cache/flowr`, falling back to the OS temp dir (so it works in a read-only
- * Docker image where only `/tmp` is writable -- mount a volume at the cache dir to persist it).
+ * Directory for decompressed, hash-keyed caches. Honours `$FLOWR_SIGDB_CACHE` / `$FLOWR_CACHE_DIR`, then the
+ * platform cache home (`$XDG_CACHE_HOME` on Linux, `%LOCALAPPDATA%` on Windows), then `~/.cache/flowr`, falling
+ * back to the OS temp dir (so it works in a read-only Docker image where only `/tmp` is writable -- mount a
+ * volume at the cache dir to persist it).
  */
 export function sigDbCacheDir(override?: string): string {
 	const base = override
 		?? process.env.FLOWR_SIGDB_CACHE ?? process.env.FLOWR_CACHE_DIR
 		?? (process.env.XDG_CACHE_HOME ? path.join(process.env.XDG_CACHE_HOME, 'flowr') : undefined)
+		?? (process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'flowr', 'cache') : undefined)
 		?? path.join(os.homedir?.() || os.tmpdir(), '.cache', 'flowr');
 	const dir = path.join(base, 'sigdb');
 	try {
@@ -85,7 +98,6 @@ export async function readHeaderOf(source: string): Promise<Record<string, unkno
 		const line = (await rl[Symbol.asyncIterator]().next()).value as string | undefined;   // just the first line (the header)
 		return line !== undefined ? JSON.parse(line) as Record<string, unknown> : undefined;
 	} finally {
-		// closing the readline alone leaves the source stream (and its fd) open when we bail on the first line
 		rl.close();
 		input.destroy();
 	}
@@ -113,7 +125,7 @@ function writeCacheIndex(source: string, idx: string, index?: SigDbIndex): void 
 		fs.writeFileSync(idx, JSON.stringify(encodeIndex(index)));
 		return;
 	}
-	const srcIdx = source.replace(/\.(br|gz)$/, '') + '.idx';
+	const srcIdx = source.replace(/\.(br|zst|gz)$/, '') + '.idx';
 	if(!fs.existsSync(srcIdx)) {
 		throw new Error(`missing sidecar index next to ${source} (expected ${srcIdx}), and none was supplied`);
 	}
@@ -121,7 +133,7 @@ function writeCacheIndex(source: string, idx: string, index?: SigDbIndex): void 
 }
 
 /**
- * Ensure a seekable plain `.sigs.ndjson` (+ its `.idx`) exists for `source`, decompressing a `.br`/`.gz`
+ * Ensure a seekable plain `.sigs.ndjson` (+ its `.idx`) exists for `source`, decompressing a `.br`/`.zst`/`.gz`
  * once into a hash-keyed cache the first time and reusing it on every later startup. The index may be
  * supplied by the caller (e.g. embedded in a manifest) so no separate `.idx` file needs to ship.
  */
@@ -147,9 +159,9 @@ export async function ensurePlain(source: string, opts: EnsureOptions = {}): Pro
 	return plain;
 }
 
-/** synchronous {@link ensurePlain} (blocking brotli/gunzip) -- a `hash` must be supplied to key the cache */
+/** synchronous {@link ensurePlain} (blocking decompression) -- a `hash` must be supplied to key the cache */
 export interface EnsurePlainSyncOptions extends EnsureOptions { hash: string }
-/** synchronous {@link ensurePlain} (blocking brotli/gunzip); the supplied `hash` keys the decompress cache */
+/** synchronous {@link ensurePlain} (blocking decompression); the supplied `hash` keys the decompress cache */
 export function ensurePlainSync(source: string, opts: EnsurePlainSyncOptions): string {
 	if(!isCompressed(source)) {
 		return source;
@@ -159,9 +171,7 @@ export function ensurePlainSync(source: string, opts: EnsurePlainSyncOptions): s
 		return plain;
 	}
 	const raw = fs.readFileSync(source);
-	const out = source.endsWith('.br')
-		? zlib.brotliDecompressSync(raw, { params: { [zlib.constants.BROTLI_DECODER_PARAM_LARGE_WINDOW]: 1 } })
-		: zlib.gunzipSync(raw);
+	const out = decompressSyncFor(source, raw);
 	const tmp = `${plain}.${process.pid}.tmp`;
 	fs.writeFileSync(tmp, out);
 	fs.renameSync(tmp, plain);

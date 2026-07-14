@@ -1,6 +1,7 @@
 import type { FlowrAnalyzerPlugin } from '../plugins/flowr-analyzer-plugin';
 import { isNotUndefined } from '../../util/assert';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import { log } from '../../util/log';
 
 /**
  * Abstract class representing the context, a context may be modified and enriched by plugins (see {@link FlowrAnalyzerPlugin}).
@@ -37,12 +38,11 @@ export abstract class AbstractFlowrAnalyzerContext<In, Out, Plugin extends Flowr
 	protected applyPlugins(args: Parameters<Plugin['processor']>[1]): Out[] {
 		const res: (Out | undefined)[] = [];
 		for(const plugin of this.plugins) {
-			// isolate each plugin: a single plugin that throws (e.g. on a malformed DESCRIPTION/renv.lock or a
-			// non-intersecting version constraint) must degrade to "no contribution" rather than abort the whole
-			// analysis for every other plugin. The failure is already logged by `processor`.
 			try {
 				res.push(plugin.processor(this.ctx, args));
-			} catch{ /* skip this plugin's contribution, keep the rest */ }
+			} catch(e) {
+				log.warn(`Plugin ${plugin.name} fail in ctx ${this.name}: ${e instanceof Error ? e.message : String(e)}`);
+			}
 		}
 		return res.filter(isNotUndefined);
 	}

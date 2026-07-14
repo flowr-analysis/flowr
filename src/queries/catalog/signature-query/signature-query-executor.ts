@@ -210,10 +210,8 @@ function suggest(candidates: Iterable<string>, query: string, limit = 6): string
 	return out;
 }
 
-/** default cap on wildcard-search hits (raise with `--full`, or get the whole set from the `:query*` JSON) */
-const MaxMatches = 50;
-/** hard ceiling even with `--full`, so a `* *` search cannot exhaust memory */
-const MaxMatchesFull = 5000;
+/** cap on wildcard-search hits, so a `* *` search cannot exhaust memory */
+const MaxMatches = 500;
 
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
 function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): SignatureMatchView {
@@ -243,6 +241,18 @@ function allAvailableVersions(sources: readonly PackageSignatureSource[], pkg: s
 	return [...set].sort((a, b) => RVersion.compare(a, b));
 }
 
+/**
+ * The owning source that actually carries `version` -- `current` is checked before `history`, so a
+ * latest-version query never decompresses the (large) history shard. Returns the first owner when no version
+ * was asked, or `undefined` when an explicit version is carried by none of them.
+ */
+function sourceForVersion(owning: readonly PackageSignatureSource[], pkg: string, version: string | undefined): PackageSignatureSource | undefined {
+	if(version === undefined) {
+		return owning[0];
+	}
+	return owning.find(s => availableVersions(s, pkg).includes(version));
+}
+
 /** the message shown when a known package has no release matching the requested version, listing what is available */
 function versionNotFoundMessage(pkg: string, lead: string, avail: readonly string[], base: boolean): string {
 	// only nudge towards a full-history bundle when one is *not* already mounted (a single known version)
@@ -254,7 +264,7 @@ function versionNotFoundMessage(pkg: string, lead: string, avail: readonly strin
 
 /** run a wildcard search across the loaded sources: matching packages (no function), or matching functions */
 function searchSources(sources: readonly PackageSignatureSource[], allNames: ReadonlySet<string>, q: SignatureQuery): Partial<SignatureQueryResult> {
-	const cap = q.full ? MaxMatchesFull : MaxMatches;
+	const cap = MaxMatches;
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
 	const verMatch = q.version ? versionMatcher(q.version) : undefined;
@@ -280,7 +290,6 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			if(versions !== undefined && versions.length === 0) {
 				continue;
 			}
-			// stop before adding an eligible match beyond the cap, so the flag reflects a real cut, not an exact fill
 			if(packages.length >= cap) {
 				truncated = true;
 				break;
@@ -399,15 +408,12 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 		}
 		return { completions: capped(packageNames(), token, p => `${p} `), argumentPart: token };
 	}
-	// second token: the function within the first token's package (or a flag)
+	// second token: the function within the first token's package
 	if((line.length === 1 && startingNewArg) || (line.length === 2 && !startingNewArg)) {
 		const frag = line.length === 2 ? line[1] : '';
-		if(frag.startsWith('-')) {
-			return { completions: ['--all ', '--full '] };
-		}
 		return { completions: capped(functionsOf(packageOf(line[0])), frag, fn => `${fn} `), argumentPart: frag };
 	}
-	return { completions: ['--all ', '--full '] };
+	return { completions: [] };
 }
 
 /**
@@ -461,13 +467,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	// the version to resolve against: an explicit `@version`, else the version flowR inferred for the script's
 	// dependency (which may be an older release that only `history` carries)
 	const version = q.version ?? deps.getDependency(q.package)?.resolvedVersion;
-	// resolve the source that holds that version -- `current` is checked before `history`, so a latest-version
-	// query never decompresses the (large) history shard; only build the full cross-source version union for the
-	// not-found message (the slow path a wrong version would hit anyway). An inferred (non-explicit) version that
-	// no source carries falls back to the first owner's latest rather than erroring.
-	const src = version === undefined
-		? owning[0]
-		: owning.find(s => availableVersions(s, q.package as string).includes(version));
+	const src = sourceForVersion(owning, q.package, version);
 	if(q.version !== undefined && src === undefined) {
 		const avail = allAvailableVersions(owning, q.package);
 		return { ...meta(), message: versionNotFoundMessage(q.package, `'${q.package}@${q.version}' is not in the loaded database.`, avail, owning[0].isBaseR(q.package)) };

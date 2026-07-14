@@ -49,8 +49,7 @@ type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, 
 /**
  * R's `getParseData` escapes the lexeme `text` with `encodeString`, whose escaping is locale-dependent: under a
  * non-UTF-8 locale (a common CI setup) non-ASCII bytes come out as octal (`\303\264`) or hex (`\xc3`) escapes that
- * are not valid JSON. This rewrites those escapes into raw UTF-8 so the parse data reads correctly regardless of
- * the R session's locale. Valid JSON escapes (`\n`, `\"`, `\uXXXX`, ...) are left untouched.
+ * are not valid JSON. Valid JSON escapes (`\n`, `\"`, `\uXXXX`, ...) are left untouched.
  */
 function jsonSafeRParseData(data: string): string {
 	let out = '';
@@ -61,8 +60,6 @@ function jsonSafeRParseData(data: string): string {
 		}
 		const next = data[i + 1];
 		if(next !== undefined && (next === '\\' || next === '"' || next === '/' || next === 'b' || next === 'f' || next === 'n' || next === 'r' || next === 't' || next === 'u')) {
-			// a backslash-escape that JSON also understands (crucially `\\` consumes both, so digits after an
-			// escaped backslash are never misread as an octal escape); keep it verbatim
 			out += data[i] + next;
 			i += 2;
 			continue;
@@ -83,7 +80,6 @@ function jsonSafeRParseData(data: string): string {
 			out += data[i];
 			i += 1;
 		} else {
-			// some other, non-JSON escape (e.g. \a, \v): emit as a unicode escape by its byte value
 			out += `\\u${next.charCodeAt(0).toString(16).padStart(4, '0')}`;
 			i += 2;
 		}

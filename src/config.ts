@@ -27,6 +27,19 @@ export enum VariableResolve {
 }
 
 /**
+ * How a constrained dependency (e.g. `Imports: quantmod (>= 0.4-9)`) is resolved to a concrete version
+ * against the signature database (see `solver.sigdb.versionSelection`).
+ */
+export enum VersionSelection {
+	/** Resolve to the newest version satisfying the constraint (default; preserves the historic behavior). */
+	Newest = 'newest',
+	/** Resolve to the oldest version satisfying the constraint. */
+	Oldest = 'oldest',
+	/** Resolve to the version installed on the analyzing system (needs R; falls back to `newest` when unavailable). */
+	System = 'system'
+}
+
+/**
  * How to infer the working directory from a script
  */
 export enum InferWorkingDirectory {
@@ -174,27 +187,35 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Resolving `library()`/`use()` exports from a signature database (e.g. the bundled `flowr-sigdb`). */
 		readonly sigdb: {
 			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
-			readonly enabled:            boolean
+			readonly enabled:                     boolean
+			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
+			readonly loadProjectDependencies:     boolean
 			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
-			readonly eagerlyLoad:        boolean
+			readonly eagerlyLoad:                 boolean
 			/** Add a vertex for every export on load rather than on demand (default `false`); keeps the graph small. */
-			readonly eagerlyLoadExports: boolean
+			readonly eagerlyLoadExports:          boolean
 			/**
 			 * The R version analysis assumes when resolving versioned (base-R) package exports: a pin like `"4.5"`,
 			 * or `"auto"` to detect the locally installed R (falling back to {@link DefaultAssumedRVersion} when the
 			 * engine reports none, e.g. the tree-sitter engine). Resolve it with {@link resolveAssumedRVersion}.
 			 */
-			readonly assumedRVersion?:   string
+			readonly assumedRVersion?:            string
 			/** Eagerly attach base-R namespaces (from a signature database) so bare base calls resolve without `library()` (default `false`; changes every analysis; needs a base-R signature database). */
-			readonly linkBaseR:          boolean
+			readonly linkBaseR:                   boolean
+			/** Eagerly attach the namespaces of the project's declared `DESCRIPTION` dependencies (Imports/Depends) so their exports resolve without an explicit `library()` (default `false`; changes every analysis; needs a signature database resolving the declared packages). */
+			readonly linkDescriptionDependencies: boolean
 			/** Decompress the hot shards (base + most-downloaded) in a background task on startup, so the first `library()` lookup is warm (default `false`; useful for long-running servers/REPLs, not one-shot runs). */
-			readonly warmInBackground?:  boolean
+			readonly warmInBackground?:           boolean
 			/** Extra directories (or bundle/manifest files) searched for signature databases, alongside the shipped default and `$FLOWR_SIGDB_DIR`. A downloaded full-history bundle placed here is mounted automatically. */
-			readonly additionalPaths?:   string[]
+			readonly additionalPaths?:            string[]
 			/** GitHub `owner/repo` the full-history bundle is downloaded from (`:signature download`); default `flowr-analysis/flowr`, release tag `sigdb-v<flowR-version>`. */
-			readonly downloadRepo?:      string
+			readonly downloadRepo?:               string
 			/** On startup, compare the cache against the committed `sigdb.remote.json` link file and re-download changed shards in the background (default `false`; needs network, so opt-in — a `git pull` that updates the pointer then re-syncs automatically). */
-			readonly autoSync?:          boolean
+			readonly autoSync?:                   boolean
+			/** When a project constrains a dependency, resolve to the `newest` (default) or `oldest` version satisfying the constraint, or the `system`-installed version (needs R; falls back to `newest` when unavailable). Base-R packages always resolve against the assumed R version. */
+			readonly versionSelection?:           VersionSelection
+			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
+			readonly versionOverrides?:           Record<string, string>
 		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
@@ -385,7 +406,7 @@ export const FlowrConfig = {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				sigdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, warmInBackground: false, additionalPaths: [], autoSync: false },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -462,15 +483,19 @@ export const FlowrConfig = {
 			evalStrings:       Joi.boolean().description('Should we include eval(parse(text="...")) calls in the dataflow graph?'),
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
-				enabled:            Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				eagerlyLoad:        Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
-				eagerlyLoadExports: Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
-				assumedRVersion:    Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
-				linkBaseR:          Joi.boolean().optional().description('Eagerly attach base-R namespaces so bare base calls resolve without library() (default false).'),
-				warmInBackground:   Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
-				additionalPaths:    Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
-				downloadRepo:       Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
-				autoSync:           Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).')
+				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, renv.lock, rv.lock) (default true); when false these files are not read for dependencies.'),
+				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
+				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
+				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
+				linkBaseR:                   Joi.boolean().optional().description('Eagerly attach base-R namespaces so bare base calls resolve without library() (default false).'),
+				linkDescriptionDependencies: Joi.boolean().optional().description('Eagerly attach the namespaces of the project\'s declared DESCRIPTION dependencies (Imports/Depends) so their exports resolve without an explicit library() (default false).'),
+				warmInBackground:            Joi.boolean().optional().description('Decompress the hot shards (base + most-downloaded) in a background task on startup so the first library() lookup is warm (default false; for long-running servers/REPLs).'),
+				additionalPaths:             Joi.array().items(Joi.string()).optional().description('Extra directories or bundle/manifest files searched for signature databases (alongside the shipped default and $FLOWR_SIGDB_DIR); a downloaded full-history bundle placed here is mounted automatically.'),
+				downloadRepo:                Joi.string().optional().description('GitHub owner/repo the full-history bundle is downloaded from via ":signature download" (default "flowr-analysis/flowr", release tag "sigdb-v<flowR-version>").'),
+				autoSync:                    Joi.boolean().optional().description('On startup, re-download shards whose committed sigdb.remote.json hash no longer matches the cache, in the background (default false; opt-in network sync after a git pull).'),
+				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
+				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
 			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')

@@ -1,12 +1,11 @@
-// Docker build step: download any shards the committed `sigdb.remote.json` lists but the dir lacks (a fresh
-// clone ships only the base floor), reusing the runtime downloader, and copy them in. Skips when already
-// present; never fails the build (offline -> base floor).
+// Docker build step: download any shards the committed `sigdb.remote.json` lists but the dir lacks, reusing the runtime downloader, and copy them in.
+// Skips when already present, may silently use only what is already present (offline -> no CRAN, and no base floor unless previously fetched).
 //   ts-node scripts/sigdb-bake.ts [dist/src/data/sigdb]
 
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import type { SigDbRemote } from '../src/project/plugins/package-version-plugins/sigdb-download';
+import type { SigDbRemote } from '../src/project/sigdb/sigdb-download';
 
 /** the compiled runtime downloader (imported from dist so this step needs no src transpile at bake time) */
 interface DownloaderModule {
@@ -37,13 +36,13 @@ void (async() => {
 	}
 	console.log(`sigdb-bake: ${missing.length} shard(s) missing -- downloading from ${remote.tag}`);
 	try {
-		const dl = await import(path.resolve('dist/src/project/plugins/package-version-plugins/sigdb-download.js')) as DownloaderModule;
+		const dl = await import(path.resolve('dist/src/project/sigdb/sigdb-download.js')) as DownloaderModule;
 		const { files } = await dl.downloadFullSigDb({ onProgress: m => console.log(`  ${m}`) });
 		for(const f of files) {
 			fs.copyFileSync(f, path.join(dir, path.basename(f)));
 		}
 		console.log(`sigdb-bake: baked ${files.length} downloaded shard(s) into ${dir}`);
 	} catch(e) {
-		console.warn(`sigdb-bake: download skipped (${(e as Error).message}) -- shipping the base floor only`);
+		console.warn(`sigdb-bake: download skipped (${(e as Error).message}) -- shipping only what is already present`);
 	}
 })();

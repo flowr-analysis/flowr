@@ -9,16 +9,21 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { RVersion } from '../../util/r-version';
 import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDb, type SigDbContent, type SigDbPkgMeta } from './schema';
-import { toRVersion, dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './version';
-import { decodeIndex, readSigDbIndex, type SigDbIndex } from './index-format';
+import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './version';
+import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
 import { tupleToBlob, decodeFunction, decodeDependencies, deriveLibraryExports, versionFnIndices, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
+import { stripCompressedExt } from './codec';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
 
-/** decode a `d` line's payload (the new newline-blob form, or the legacy `string[]` form) into a batch of strings */
-function decodeDictBatch(payload: string | string[]): string[] {
-	return typeof payload === 'string' ? payload.split('\n') : payload;
+/** apply one `d` line (`["d", start, payload]`, new newline-blob or legacy `string[]` form) to the dictionary in place */
+function applyDictLine(json: string, strings: string[]): void {
+	const [, start, payload] = JSON.parse(json) as [string, number, string | string[]];
+	const batch = typeof payload === 'string' ? payload.split('\n') : payload;
+	for(let k = 0; k < batch.length; k++) {
+		strings[start + k] = batch[k];
+	}
 }
 
 function readDictSection(buf: Buffer, strings: string[]): void {
@@ -29,11 +34,7 @@ function readDictSection(buf: Buffer, strings: string[]): void {
 			nl = buf.length;
 		}
 		if(nl > off) {
-			const [, start, payload] = JSON.parse(buf.toString('utf8', off, nl)) as [string, number, string | string[]];
-			const batch = decodeDictBatch(payload);
-			for(let k = 0; k < batch.length; k++) {
-				strings[start + k] = batch[k];
-			}
+			applyDictLine(buf.toString('utf8', off, nl), strings);
 		}
 		off = nl + 1;
 	}
@@ -58,11 +59,7 @@ export async function readSignatureDb(file: string): Promise<SigDb> {
 		}
 		const tag = line.charCodeAt(2); // '["X",...' -> the tag char
 		if(tag === 100 /* d */) {
-			const [, start, payload] = JSON.parse(line) as [string, number, string | string[]];
-			const batch = decodeDictBatch(payload);
-			for(let k = 0; k < batch.length; k++) {
-				strings[start + k] = batch[k];
-			}
+			applyDictLine(line, strings);
 		} else if(tag === 98 /* b */) {
 			const [, i, tuple] = JSON.parse(line) as [string, number, PkgBlobTuple];
 			blobs[i] = tupleToBlob(tuple);
@@ -151,13 +148,13 @@ export class SigDatabase implements PackageSignatureSource {
 	) {}
 
 	/**
-	 * Open a plain, seekable `.sigs.ndjson` synchronously. Pass `index` to skip reading the `.idx` sidecar,
+	 * Open a plain, seekable `.sigs.ndjson` synchronously. Pass `index` to skip reading the `.idx`,
 	 * and `strings` to use an already-loaded shared dictionary instead of the file's own `d` section (for a
 	 * blob-only shard). One ranged read loads the dictionary -- no readline overhead.
 	 */
 	public static openSync(plainFile: string, opts: OpenSyncOptions = {}): SigDatabase {
 		if(isCompressed(plainFile)) {
-			throw new Error('SigDatabase.openSync needs the plain .sigs.ndjson; use open() for .br/.gz');
+			throw new Error('SigDatabase.openSync needs the plain .sigs.ndjson; use open() for .br/.zst/.gz');
 		}
 		const index = opts.index ?? readSigDbIndex(plainFile);
 		const fd = fs.openSync(plainFile, 'r');
@@ -215,11 +212,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(cached !== undefined) {
 			return cached;
 		}
-		const [locStart, locBytes] = this.index.blobs[blobIdx];
-		const buf = Buffer.allocUnsafe(locBytes);
-		fs.readSync(this.fd, buf, 0, locBytes, locStart);
-		const [, , tuple] = JSON.parse(buf.toString('utf8')) as [string, number, PkgBlobTuple];
-		const blob = tupleToBlob(tuple);
+		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
 		if(this.blobCache.size >= SigDatabase.BlobCacheCap) {
 			const oldest = this.blobCache.keys().next().value;
 			if(oldest !== undefined) {
@@ -230,14 +223,17 @@ export class SigDatabase implements PackageSignatureSource {
 		return blob;
 	}
 
+	/** seek to a byte range, read + decode the package blob there (no caching) */
+	private readBlobAt([start, bytes]: ByteRange): PkgBlob {
+		const buf = Buffer.allocUnsafe(bytes);
+		fs.readSync(this.fd, buf, 0, bytes, start);
+		const [, , tuple] = JSON.parse(buf.toString('utf8')) as [string, number, PkgBlobTuple];
+		return tupleToBlob(tuple);
+	}
+
 	/** read every unique package blob in index order (used to re-hash a whole shard during verification) */
 	public allBlobs(): PkgBlob[] {
-		return this.index.blobs.map(([start, bytes]) => {
-			const buf = Buffer.allocUnsafe(bytes);
-			fs.readSync(this.fd, buf, 0, bytes, start);
-			const [, , tuple] = JSON.parse(buf.toString('utf8')) as [string, number, PkgBlobTuple];
-			return tupleToBlob(tuple);
-		});
+		return this.index.blobs.map(range => this.readBlobAt(range));
 	}
 
 	/** recompute this bundle's self-contained content hash from its re-read data (matches {@link writeSignatureDb}) */
@@ -299,7 +295,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(!this.isBaseR(pkg)) {
 			return undefined;
 		}
-		return Object.keys(this.blob(pkg)?.versions ?? {}).map(toRVersion).sort((a, b) => RVersion.compare(a.str, b.str));
+		return Object.keys(this.blob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
 	}
 
 	/** the release date of a package version (defaulting to the newest release), or `undefined` if unknown */
@@ -324,7 +320,7 @@ export class SigDatabase implements PackageSignatureSource {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
 		const ver = blob && meta ? newestVersion(blob, meta[0]) : undefined;
-		return ver !== undefined ? toRVersion(ver) : undefined;
+		return ver !== undefined ? RVersion.parseOrZero(ver) : undefined;
 	}
 
 	/** close the underlying file descriptor (idempotent; safe to call more than once) */
@@ -373,11 +369,7 @@ interface MountedShard {
 /**
  * A transparent, read-only view over several {@link SigDatabase} shards described by a {@link SigDbManifest}.
  * When the manifest embeds each shard's index (the default), `openManifest()` reads only that small file to
- * build the package to shard routing table -- **no shard is decompressed up front**. A shard's `.br` is
- * decompressed into the hash-keyed cache and opened only the first time a package it holds is queried (or
- * eagerly via {@link preload}, which runs in the background). Queries prefer the smallest shard that can
- * serve them (a `current` shard for the latest version, falling back to a `full` shard for a pinned older
- * version). Implements {@link PackageSignatureSource}.
+ * build the package to shard routing table.
  */
 export class SigDatabaseSet implements PackageSignatureSource {
 	private readonly opened: (SigDatabase | undefined)[];
@@ -400,8 +392,6 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(full.format !== SigDbManifestMagic) {
 			throw new Error(`not a ${SigDbManifestMagic} (got ${String(full.format)})`);
 		}
-		// enable/disable shards by id: e.g. `{ excludeShards: ['full-top','full-rest'] }` for a current-only
-		// (latest-version) view that never opens the history shards. The shared dictionary + hoisted meta stay.
 		const active = selectShards(full.shards, opts.includeShards, opts.excludeShards);
 		if(active.length === 0) {
 			throw new Error('openManifest: no shards left after include/exclude filtering');
@@ -428,7 +418,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	public static async openManifest(manifestFile: string, opts: SigDbSetOpenOptions = {}): Promise<SigDatabaseSet> {
 		const { baseDir, manifest } = SigDatabaseSet.prepManifest(manifestFile, opts);
-		// prefer the embedded (compact) index with hoisted meta; only fall back to a shard's own .idx if absent
+		// prefer the embedded (compact) index with hoisted meta
 		const indices = await Promise.all(manifest.shards.map(async s =>
 			s.idx ? decodeIndex(s.idx, manifest.meta) : readSigDbIndex(await ensurePlain(resolveSource(baseDir, s.path), { cacheDir: opts.cacheDir, hash: s.hash }))));
 		return SigDatabaseSet.assemble(manifest, baseDir, indices, opts.cacheDir);
@@ -436,9 +426,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	/**
 	 * Synchronous {@link openManifest} -- needs every shard to embed its index (the default for the bundles
-	 * flowR ships, so no `.idx` sidecar to read). Shards and dictionaries still decompress lazily (and
-	 * synchronously) on first access, so opening stays cheap. Lets the manifest be loaded from a purely
-	 * synchronous context (e.g. the package-version plugin's sync source path).
+	 * flowR ships). Shards and dictionaries still decompress lazily.
 	 */
 	public static openManifestSync(manifestFile: string, opts: SigDbSetOpenOptions = {}): SigDatabaseSet {
 		const { baseDir, manifest } = SigDatabaseSet.prepManifest(manifestFile, opts);
@@ -494,12 +482,8 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/**
-	 * Warm the shards (and their shared dictionaries) needed for `pkgs`, or **everything** when omitted -- which
-	 * is how you make history (pinned older versions, served by the `full` shards) fast: it decompresses every
-	 * needed shard and dictionary `.br` **concurrently** (stream brotli runs on the libuv threadpool, so this
-	 * parallelizes across cores instead of the serial per-query decompression), then opens each shard from the
-	 * decompressed cache (parsing each shared dictionary once). Afterwards the synchronous query methods -- for
-	 * the latest *and* historical versions -- do no I/O or decompression.
+	 * Warm the shards (and their shared dictionaries) needed for `pkgs`, or **everything** when omitted.
+	 * Afterward, the synchronous query methods, for the latest *and* historical versions, do no I/O or decompression.
 	 */
 	public async preload(pkgs?: readonly string[]): Promise<void> {
 		const need = new Set<number>();
@@ -516,7 +500,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	}
 
 	/**
-	 * Warm just the shards matching `include` -- e.g. only the current-tier top shards (the base + most-downloaded
+	 * Warm just the shards matching `include`, e.g., only the current-tier top shards (the base + most-downloaded
 	 * packages) to speed up common lookups without paying for the long tail or the history shards. See {@link preload}.
 	 */
 	public async preloadShards(include: (shard: SigDbShardRef) => boolean): Promise<void> {
@@ -595,37 +579,27 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return this.dictionaryStrings(id);
 	}
 
-	public lookup(pkg: string, version?: string): LibraryExports | undefined {
-		const key = version;
-		for(const i of this.route(pkg, key)) {
-			const r = this.shard(i).lookup(pkg, key);
+	/** the first non-empty result from the shards that can serve `pkg` (in preferred order: current before full) */
+	private firstOf<T>(pkg: string, version: string | undefined, read: (db: SigDatabase) => T | undefined): T | undefined {
+		for(const i of this.route(pkg, version)) {
+			const r = read(this.shard(i));
 			if(r) {
 				return r;
 			}
 		}
 		return undefined;
+	}
+
+	public lookup(pkg: string, version?: string): LibraryExports | undefined {
+		return this.firstOf(pkg, version, db => db.lookup(pkg, version));
 	}
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
-		const key = version;
-		for(const i of this.route(pkg, key)) {
-			const r = this.shard(i).functions(pkg, key);
-			if(r) {
-				return r;
-			}
-		}
-		return undefined;
+		return this.firstOf(pkg, version, db => db.functions(pkg, version));
 	}
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
-		const key = version;
-		for(const i of this.route(pkg, key)) {
-			const r = this.shard(i).dependencies(pkg, key);
-			if(r) {
-				return r;
-			}
-		}
-		return undefined;
+		return this.firstOf(pkg, version, db => db.dependencies(pkg, version));
 	}
 
 	/** whether this is an R-core / base package (see {@link SigDatabase.isBaseR}); O(1) via the hoisted metadata */
@@ -642,7 +616,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(!this.isBaseR(pkg)) {
 			return undefined;
 		}
-		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(toRVersion).sort((a, b) => RVersion.compare(a.str, b.str));
+		return Object.keys(this.historyBlob(pkg)?.versions ?? {}).map(RVersion.parseOrZero).sort((a, b) => RVersion.compare(a.str, b.str));
 	}
 
 	/** every known release of a package (version + date), ascending -- read once from the most complete shard */
@@ -665,7 +639,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	public latestVersion(pkg: string): RVersion | undefined {
 		const blob = this.historyBlob(pkg);
 		const ver = blob ? newestVersion(blob, this.manifest.meta?.[pkg]?.[0] ?? '') : undefined;
-		return ver !== undefined ? toRVersion(ver) : undefined;
+		return ver !== undefined ? RVersion.parseOrZero(ver) : undefined;
 	}
 
 	/**
@@ -685,7 +659,7 @@ const sharedSources = new Map<string, PackageSignatureSource>();
 
 /** whether a bundle path can be opened synchronously (a plain `.sigs.ndjson` or an index-embedding manifest) */
 function isSyncOpenable(source: string): boolean {
-	return source.endsWith('.manifest.json') || source.endsWith('.manifest.json.br') || source.endsWith(SigDbExt);
+	return stripCompressedExt(source).endsWith('.manifest.json') || source.endsWith(SigDbExt);
 }
 
 /**
@@ -706,13 +680,13 @@ export function getSharedSigSourceSync(source: string): PackageSignatureSource |
 	return opened;
 }
 
-/** Open a path-based source once, process-wide (async: also handles `.br`/`.gz` bundles and non-embedded manifests). */
+/** Open a path-based source once, process-wide (async: also handles `.br`/`.zst`/`.gz` bundles and non-embedded manifests). */
 export async function getSharedSigSource(source: string): Promise<PackageSignatureSource | undefined> {
 	const cached = sharedSources.get(source);
 	if(cached) {
 		return cached;
 	}
-	const opened = source.endsWith('.manifest.json') || source.endsWith('.manifest.json.br')
+	const opened = stripCompressedExt(source).endsWith('.manifest.json')
 		? await SigDatabaseSet.openManifest(source)
 		: await SigDatabase.open(source);
 	const raced = sharedSources.get(source);   // a concurrent opener may have won the race

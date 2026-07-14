@@ -5,6 +5,7 @@ import { handleString } from '../core';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import { dfgToAscii } from '../../../util/simple-df/dfg-ascii';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { isSigDbEnabled } from '../../../config';
 
 function formatInfo(out: ReplOutput, type: string, meta: PipelinePerStepMetaInformation ): string {
 	return out.formatter.format(`Copied ${type} to clipboard (dataflow: ${meta['.meta'].timing + 'ms'}).`,
@@ -20,7 +21,7 @@ export const dataflowCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
 		output.stdout(mermaid);
 		if(output.allowClipboard !== false) {
 			try {
@@ -42,7 +43,7 @@ export const dataflowStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, false, isSigDbEnabled(analyzer.flowrConfig));
 		output.stdout(mermaid);
 		if(output.allowClipboard !== false) {
 			try {
@@ -106,7 +107,7 @@ export const dataflowSimplifiedCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true }).string;
+		const mermaid = Dataflow.visualize.mermaid.convert({ graph: result.graph, includeEnvironments: false, simplified: true, qualifyBaseR: isSigDbEnabled(analyzer.flowrConfig) }).string;
 		output.stdout(mermaid);
 		if(output.allowClipboard !== false) {
 			try {
@@ -127,7 +128,7 @@ export const dataflowSimpleStarCommand: ReplCodeCommand = {
 	argsParser:    (args: string) => handleString(args),
 	fn:            async({ output, analyzer }) => {
 		const result = await analyzer.dataflow();
-		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true);
+		const mermaid = Dataflow.visualize.mermaid.url(result.graph, false, undefined, true, isSigDbEnabled(analyzer.flowrConfig));
 		output.stdout(mermaid);
 		if(output.allowClipboard !== false) {
 			try {

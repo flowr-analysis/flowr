@@ -19,7 +19,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
-import { signatureQueryCompleter } from '../../queries/catalog/signature-query/signature-query-executor';
+import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -72,7 +72,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
-			} else if(commandName === 'signature' || commandName === 'sig') {
+			} else if(cmd === signatureCommand) {
 				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
 				if(splitArg !== undefined) {
 					currentArg = splitArg;
@@ -116,27 +116,6 @@ export function completionSuggestion(line: string, config: FlowrConfig): string 
 		return '';
 	}
 	return best.slice(fragment.length);
-}
-
-/** the `:signature` subcommands, offered as completions for its first argument */
-const signatureSubcommands = ['query', 'analyze', 'add', 'download', 'help'];
-
-/** completes `:signature`: its subcommands, then a file path for `analyze`/`add` (query args are freeform names) */
-function replSignatureCompleter(splitLine: readonly string[], startingNewArg: boolean): CommandCompletions {
-	const subArgs = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const inSubArgs = subArgs.length >= 2 || (subArgs.length === 1 && startingNewArg);
-	if(!inSubArgs) {
-		return { completions: signatureSubcommands.map(s => `${s} `) };
-	}
-	if(subArgs[0] === 'analyze' || subArgs[0] === 'add') {
-		// these ingest a path once (no re-run), so `watch://` makes no sense here
-		return { completions: [fileProtocol] };
-	}
-	if(subArgs[0] === 'query') {
-		// the query subcommand behaves exactly like `:query @signature`, so reuse its completer (packages, functions)
-		return signatureQueryCompleter(subArgs.slice(1), startingNewArg);
-	}
-	return { completions: [] };
 }
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {

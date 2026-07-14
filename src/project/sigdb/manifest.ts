@@ -5,9 +5,9 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import zlib from 'node:zlib';
 import { SigDbExt, type SigDbPkgMeta, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
+import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
 
 export const SigDbManifestMagic = 'flowr-sigdb-manifest';
 export const SigDbManifestSchema = 2;
@@ -50,26 +50,26 @@ export interface SigDbManifest {
 	shards:    SigDbShardRef[];
 }
 
-/** write a {@link SigDbManifest} (compact JSON) plus a brotli-compressed `.br` beside it */
+/** write a {@link SigDbManifest} (compact JSON) plus a compressed copy per available codec (`.br` always, `.zst` when supported) beside it */
 export function writeManifest(file: string, manifest: SigDbManifest): void {
 	fs.mkdirSync(path.dirname(path.resolve(file)), { recursive: true });
 	const json = JSON.stringify(manifest);
 	fs.writeFileSync(file, json);
-	fs.writeFileSync(`${file}.br`, zlib.brotliCompressSync(json, { params: {
-		[zlib.constants.BROTLI_PARAM_QUALITY]: 11, [zlib.constants.BROTLI_PARAM_SIZE_HINT]: json.length
-	} }));
+	for(const spec of writeCodecs()) {
+		fs.writeFileSync(`${file}${spec.ext}`, spec.compressSync(json, { level: 11, sizeHint: json.length }));
+	}
 }
 
-/** read a manifest file (transparently decompressing a `.br`) */
+/** read a manifest file (transparently decompressing a `.br`/`.zst`/`.gz`) */
 export function readManifestFile(manifestFile: string): SigDbManifest {
 	const raw = fs.readFileSync(manifestFile);
-	const text = manifestFile.endsWith('.br') ? zlib.brotliDecompressSync(raw).toString('utf8') : raw.toString('utf8');
+	const text = compressedExtOf(manifestFile) ? decompressSyncFor(manifestFile, raw).toString('utf8') : raw.toString('utf8');
 	return JSON.parse(text) as SigDbManifest;
 }
 
 /** breadth/temporal scope of a bundled sigdb: base R only, `current` (latest CRAN + base R), or the `full` history */
 export type SigDbScope = 'base' | 'current' | 'full';
-/** richest first: a container shipping the full set uses it, else the slim `current`, else the npm-bundled `base` */
+/** richest first: a container shipping the full set uses it, else the slim `current`, else the `base` floor */
 const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
 /** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
@@ -106,7 +106,7 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 		for(let dir = root, i = 0; i < 10; i++) {
 			for(const sub of SigDbSubDirs) {
 				for(const s of scopes) {
-					for(const suffix of ['', '.br']) {
+					for(const suffix of ['', ...readableExtsPreferred()]) {
 						const candidate = path.join(dir, sub, `${s}.manifest.json${suffix}`);
 						if(fs.existsSync(candidate)) {
 							return candidate;
@@ -135,8 +135,8 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	if(typeof fs?.readdirSync !== 'function') {
 		return [];
 	}
-	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring `.br`) -> first-found path
-	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring `.br`) -> first-found path
+	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring compression ext) -> first-found path
+	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring compression ext) -> first-found path
 	for(const root of sigDbSearchRoots(searchRoots)) {
 		for(let dir = root, i = 0; i < 10; i++) {
 			for(const sub of SigDbSubDirs) {
@@ -148,10 +148,12 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 				}
 				for(const file of entries) {
 					const full = path.join(dir, sub, file);
-					if(/\.manifest\.json(\.br)?$/.test(file)) {
-						manifests.set(file.replace(/\.br$/, ''), manifests.get(file.replace(/\.br$/, '')) ?? full);
-					} else if(new RegExp(`${SigDbExt.replace('.', '\\.')}(\\.br)?$`).test(file) && !file.includes('.dict' + SigDbExt)) {
-						standalones.set(file.replace(/\.br$/, ''), standalones.get(file.replace(/\.br$/, '')) ?? full);
+					if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
+						const key = stripCompressedExt(file);
+						manifests.set(key, manifests.get(key) ?? full);
+					} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
+						const key = stripCompressedExt(file);
+						standalones.set(key, standalones.get(key) ?? full);
 					}
 				}
 			}

@@ -29,6 +29,8 @@ export interface RShellInformation extends BaseRShellInformation {
 	 * @param addonConfig - Additional configuration for the output collector.
 	 */
 	sendCommandWithOutput(command: string, addonConfig?: Partial<OutputCollectorConfiguration>): Promise<string[]>;
+	/** Map of every package installed on the system to its version (`installed.packages()`); see `solver.sigdb.versionSelection: 'system'`. */
+	installedPackageVersions(): Promise<Map<string, string>>;
 }
 
 export interface TreeSitterInformation extends BaseParserInformation {

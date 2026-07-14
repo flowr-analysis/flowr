@@ -18,7 +18,7 @@ import { linkInputs } from '../../../../linker';
 const withParams = ['data', 'expr'] as const;
 
 /** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE. */
-function maskedFallback<OtherInfo>(
+function markAsMaskedFallback<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
 	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
@@ -61,14 +61,14 @@ export function processWithEnv<OtherInfo>(
 
 	// when we cannot resolve the data to a tracked environment, `expr` is still data-masked: its symbols name
 	// columns of `data`, not variables in scope, so mark the non-data arguments as non-standard-evaluated
-	if(dataArg === undefined || dataArg === EmptyArgument || dataArg.value === undefined ||
-	   exprArg === undefined || exprArg === EmptyArgument || exprArg.value === undefined) {
-		return maskedFallback(name, args, rootId, data);
+	if(dataArg === EmptyArgument || dataArg?.value === undefined ||
+	   exprArg === EmptyArgument || exprArg?.value === undefined) {
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	const envirResolution = resolveArgToEnvir(dataArg, data);
 	if(!envirResolution) {
-		return maskedFallback(name, args, rootId, data);
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	/* evaluate data arg in the caller's scope (it is just read) */

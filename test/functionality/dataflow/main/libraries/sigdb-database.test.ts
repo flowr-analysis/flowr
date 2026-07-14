@@ -7,6 +7,9 @@ import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManif
 import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
 import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
 import { FnProp, ParamFlag, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase, type SigVersionInfo } from '../../../../../src/project/sigdb/schema';
+import { zstdSupported } from '../../../../../src/project/sigdb/codec';
+import { resolveSource } from '../../../../../src/project/sigdb/decompress';
+import { selectDownloadVariants } from '../../../../../src/project/sigdb/sigdb-download';
 import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen } from '../../../_helper/sigdb';
 
 afterAll(cleanupSigTmpDirs);
@@ -33,20 +36,39 @@ describe('sigdb database (schema 4)', () => {
 		expect(db.content.functions).toBe(2);
 		expect(db.content.hash).toMatch(/^[0-9a-f]{16}$/);
 
-		const dir = sigTmpDir('sigdb-');
-		const { writeSignatureDb } = await import('../../../../../src/project/sigdb/build');
+		// every produced variant round-trips identically: the plain file, the always-written `.br` fallback,
+		// and the `.zst` written additionally when this Node supports zstd
+		const dir = sigTmpDir('sigdb-codecs-');
 		await writeSignatureDb(path.join(dir, 'db'), db);
 		const plain = path.join(dir, `db${SigDbExt}`);
-		for(const ext of [SigDbExt, `${SigDbExt}.gz`, `${SigDbExt}.br`, `${SigDbExt}.idx`]) {
-			expect(fs.existsSync(path.join(dir, `db${ext}`))).toBe(true);
+		const producedExts = zstdSupported() ? ['.br', '.zst'] : ['.br'];
+		for(const suffix of [SigDbExt, `${SigDbExt}.idx`, ...producedExts.map(e => `${SigDbExt}${e}`)]) {
+			expect(fs.existsSync(path.join(dir, `db${suffix}`))).toBe(true);
 		}
-		for(const f of [plain, `${plain}.br`, `${plain}.gz`]) {
+		expect(fs.existsSync(`${plain}.gz`)).toBe(false);   // `.gz` is legacy read-only, no longer written
+		for(const f of [plain, ...producedExts.map(e => `${plain}${e}`)]) {
 			const back = await readSignatureDb(f);
 			expect(back.content.hash).toBe(db.content.hash);
 			expect(back.strings).toEqual(db.strings);
 			expect(back.pkgs).toEqual(db.pkgs);
 			expect(back.meta).toEqual(db.meta);
 		}
+	});
+
+	test('writing a bundle always produces the brotli `.br` fallback plus the `.zst` when zstd is supported', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		b.addVersion('p', '1.0', ver([{ name: 'f', props: FnProp.Exported, params: [], callees: [], line: 1 }]));
+		const db = b.build(meta);
+		const dir = sigTmpDir('sigdb-default-');
+		await writeSignatureDb(path.join(dir, 'db'), db);
+		// `.br` is always written (universal fallback); `.zst` only when this Node can produce/read it
+		expect(fs.existsSync(path.join(dir, `db${SigDbExt}.br`))).toBe(true);
+		expect(fs.existsSync(path.join(dir, `db${SigDbExt}.zst`))).toBe(zstdSupported());
+		// the reader prefers `.zst` when available; the `.br` fallback always opens on any Node
+		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}.br`));
+		expect(rd.has('p')).toBe(true);
+		rd.close();
 	});
 
 	test('lookup(): backwards-compatible LibraryExports (exported/internal/deprecated/locations/cranUrl)', () => {
@@ -264,16 +286,15 @@ describe('sigdb tiers, shards and federation', () => {
 			const db = b.build({ ...meta, tier });
 			const id = tier;
 			const index = await writeSignatureDb(path.join(dir, id), db); // returns the SigDbIndex
-			// keep ONLY the .br (as a shipped package would); embed the compact index + hoist meta in the manifest
+			// keep ONLY the compressed shards (as a shipped package would); embed the compact index + hoist meta in the manifest
 			fs.rmSync(path.join(dir, `${id}${SigDbExt}`));
 			fs.rmSync(path.join(dir, `${id}${SigDbExt}.idx`));
-			fs.rmSync(path.join(dir, `${id}${SigDbExt}.gz`));
 			globalMeta = { ...globalMeta, ...index.meta };
 			shards.push({ id, tier, path: `${id}${SigDbExt}`, hash: db.content.hash, packages: db.content.packages, versions: db.content.versions, idx: encodeIndex(index, false) });
 		}
 		const manifest: SigDbManifest = { format: SigDbManifestMagic, schema: SigDbManifestSchema, date: meta.date, generated: 0, meta: globalMeta, shards };
 		writeManifest(path.join(dir, 'm.json'), manifest);
-		// only .br files + manifest remain
+		// no plain or `.idx` sidecars remain, only the compressed shard variants + manifest
 		expect(fs.readdirSync(dir).filter(f => f.endsWith(SigDbExt) || f.endsWith('.idx'))).toEqual([]);
 
 		const set = await SigDatabaseSet.openManifest(path.join(dir, 'm.json'), { cacheDir });
@@ -283,10 +304,10 @@ describe('sigdb tiers, shards and federation', () => {
 		set.close();
 	});
 
-	test('cache: SigDatabase.open decompresses a .br into the cache and answers lookups', async() => {
+	test('cache: SigDatabase.open decompresses a legacy .br into the cache and answers lookups', async() => {
 		const dir = sigTmpDir('sigdb-cache-');
 		const db = builder().build(meta);
-		await writeSignatureDb(path.join(dir, 'db'), db);
+		await writeSignatureDb(path.join(dir, 'db'), db); // the `.br` fallback is always written (legacy shipped bundles are `.br`)
 		const cacheDir = sigTmpDir('sigdb-cachedir-');
 		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}.br`), { cacheDir });
 		expect(rd.lookup('hot')?.exported).toEqual(['h_new']);
@@ -296,6 +317,17 @@ describe('sigdb tiers, shards and federation', () => {
 		const rd2 = await SigDatabase.open(path.join(dir, `db${SigDbExt}.br`), { cacheDir });
 		expect(rd2.has('cold')).toBe(true);
 		rd2.close();
+	});
+
+	test.skipIf(!zstdSupported())('cache: SigDatabase.open decompresses a new .zst into the cache and answers lookups', async() => {
+		const dir = sigTmpDir('sigdb-cache-zst-');
+		const db = builder().build(meta);
+		await writeSignatureDb(path.join(dir, 'db'), db); // writes both, incl. the `.zst`
+		const cacheDir = sigTmpDir('sigdb-cachedir-zst-');
+		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}.zst`), { cacheDir });
+		expect(rd.lookup('hot')?.exported).toEqual(['h_new']);
+		rd.close();
+		expect(fs.readdirSync(path.join(cacheDir, 'sigdb')).some(f => f.endsWith(SigDbExt))).toBe(true);
 	});
 });
 
@@ -504,5 +536,72 @@ describe('sigdb dependency string indices survive the frequency-sort remap', () 
 		const dep = blob.deps[0][0];
 		expect(db.strings[dep[0]]).toBe('a_very_rare_pkg_name');
 		expect(db.strings[(dep as [number, number, number])[2]]).toBe('>= 9.9.9-rare');
+	});
+});
+
+describe('sigdb dual-codec output + runtime-availability source selection', () => {
+	const exp = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
+	function shardedBuilder(): SigDbBuilder {
+		const b = new SigDbBuilder();
+		b.addPackage('hot', { latest: '1.0', downloads: 100 });
+		b.addVersion('hot', '1.0', ver([exp('h')]));
+		b.addPackage('cold', { latest: '1.0', downloads: 1 });
+		b.addVersion('cold', '1.0', ver([exp('c')]));
+		return b;
+	}
+	const specs: ShardSpec[] = [{ tier: 'current', shard: 'top', topN: 1 }, { tier: 'current', shard: 'rest', topN: 1 }];
+
+	test('a sharded write emits the `.br` fallback beside every `.zst` for shards, dictionary and manifest', async() => {
+		const dir = sigTmpDir('sigdb-dual-');
+		const sharded = shardedBuilder().buildSharded(meta, specs);
+		const manifestFile = path.join(dir, 'sigs.manifest.json');
+		const manifest = await writeShardedDatabase(path.join(dir, 'sigs'), sharded, manifestFile);
+		// the brotli fallback exists for the manifest, the shared dictionary and every shard...
+		expect(fs.existsSync(`${manifestFile}.br`)).toBe(true);
+		expect(fs.existsSync(path.join(dir, `${manifest.dicts?.[0].path}.br`))).toBe(true);
+		for(const s of manifest.shards) {
+			expect(fs.existsSync(path.join(dir, `${s.path}.br`))).toBe(true);
+			expect(fs.existsSync(path.join(dir, `${s.path}.zst`))).toBe(zstdSupported());   // `.zst` only when supported
+		}
+		expect(fs.existsSync(`${manifestFile}.zst`)).toBe(zstdSupported());
+		// no legacy `.gz` is produced anymore
+		expect(fs.readdirSync(dir).some(f => f.endsWith('.gz'))).toBe(false);
+	});
+
+	test('resolveSource prefers `.zst` when this Node supports it, and falls back to `.br` when only `.br` exists', async() => {
+		const dir = sigTmpDir('sigdb-resolve-');
+		const sharded = shardedBuilder().buildSharded(meta, specs);
+		const manifest = await writeShardedDatabase(path.join(dir, 'sigs'), sharded, path.join(dir, 'sigs.manifest.json'));
+		const rel = manifest.shards[0].path;   // e.g. `sigs.current-top.sigs.ndjson`
+
+		// a shipped bundle has only the compressed variants (no plain sidecar): copy just `.br` + `.zst` across
+		const shipped = sigTmpDir('sigdb-shipped-');
+		for(const e of zstdSupported() ? ['.br', '.zst'] : ['.br']) {
+			fs.copyFileSync(path.join(dir, `${rel}${e}`), path.join(shipped, `${rel}${e}`));
+		}
+		// both variants present -> the preferred one is `.zst` when supported, else the `.br` fallback
+		expect(resolveSource(shipped, rel)).toBe(path.join(shipped, `${rel}${zstdSupported() ? '.zst' : '.br'}`));
+
+		// simulate a runtime that cannot use `.zst` (or a `.br`-only bundle): a dir holding only the `.br`
+		const brOnly = sigTmpDir('sigdb-br-only-');
+		fs.copyFileSync(path.join(dir, `${rel}.br`), path.join(brOnly, `${rel}.br`));
+		expect(resolveSource(brOnly, rel)).toBe(path.join(brOnly, `${rel}.br`));   // never a missing/undecodable `.zst`
+	});
+
+	test('selectDownloadVariants picks exactly one variant per logical shard: `.zst` when supported, else `.br`', () => {
+		// the release hosts both variants of two logical shards plus a `.br`-only legacy shard
+		const listed = [
+			'current.dict.sigs.ndjson.br', 'current.dict.sigs.ndjson.zst',
+			'current.current-top.sigs.ndjson.br', 'current.current-top.sigs.ndjson.zst',
+			'legacy.base-current.sigs.ndjson.br'   // only `.br` published -> always chosen regardless of zstd
+		];
+		const picked = selectDownloadVariants(listed).sort();
+		const preferred = zstdSupported() ? '.zst' : '.br';
+		expect(picked).toEqual([
+			`current.current-top.sigs.ndjson${preferred}`,
+			`current.dict.sigs.ndjson${preferred}`,
+			'legacy.base-current.sigs.ndjson.br'
+		].sort());
+		expect(picked.length).toBe(3);   // one per logical shard, never both variants of the same one
 	});
 });

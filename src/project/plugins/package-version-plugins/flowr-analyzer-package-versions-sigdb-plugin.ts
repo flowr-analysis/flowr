@@ -7,6 +7,8 @@ import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
 import { SigDbExt, type LibraryExports } from '../../sigdb/schema';
 import { defaultSigDbPaths } from '../../sigdb/manifest';
+import { resolveSource } from '../../sigdb/decompress';
+import { compressedExtOf } from '../../sigdb/codec';
 import { log } from '../../../util/log';
 import { FileRole } from '../../context/flowr-file';
 import { isSigDbEnabled, resolveAssumedRVersion, VersionSelection, type FlowrConfig } from '../../../config';
@@ -15,6 +17,26 @@ import { baseRPackages } from '../../../util/r-base-packages';
 
 /** the plugin's instance name (pass to `unregisterPlugins` to disable the default sigdb resolver) */
 export const SigDbPluginName = 'flowr-analyzer-package-versions-sigdb-plugin';
+
+/** map a resolved source's compressed extension to a codec name for display (`undefined` extension is a plain file) */
+function codecNameOf(ext: string | undefined): string {
+	switch(ext) {
+		case '.zst': return 'zstd';
+		case '.br':  return 'brotli';
+		case '.gz':  return 'gzip';
+		default:     return 'plain';
+	}
+}
+
+/** the codec name of a manifest's resolved shard + dict sources, or `mixed` when they do not all agree */
+function manifestFormat(set: SigDatabaseSet): string {
+	const paths = [
+		...set.manifest.shards.map(s => s.path),
+		...(set.manifest.dicts?.map(d => d.path) ?? [])
+	];
+	const codecs = new Set(paths.map(p => codecNameOf(compressedExtOf(resolveSource(set.baseDir, p)))));
+	return codecs.size === 1 ? [...codecs][0] : 'mixed';
+}
 
 /** describe one loaded source for `:version` / diagnostics: a single bundle, a sharded set, or an in-memory source */
 function describeLoadedDatabase(src: PackageSignatureSource): SigDbLoadedInfo {
@@ -25,7 +47,7 @@ function describeLoadedDatabase(src: PackageSignatureSource): SigDbLoadedInfo {
 		// the scope (base/current/history) is the leading segment of the manifest's own shard/dict filenames
 		const file = src.manifest.dicts?.[0]?.path ?? src.manifest.shards[0]?.path ?? '';
 		const scope = file.split('.')[0] || 'signatures';
-		return { scope, version: src.manifest.schema, date: src.manifest.date, hash: src.manifest.shards.map(s => s.hash).join(',') };
+		return { scope, version: src.manifest.schema, date: src.manifest.date, hash: src.manifest.shards.map(s => s.hash).join(','), format: manifestFormat(src) };
 	}
 	// an in-memory source carries no bundle version/date
 	return { scope: 'signatures', version: 0, date: '', hash: src.packageNames().join(',') };

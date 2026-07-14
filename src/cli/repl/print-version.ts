@@ -1,7 +1,7 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import { retrieveVersionInformation } from '../../util/version';
 import { defaultSigDbPath, readManifestFile, type SigDbScope } from '../../project/sigdb/manifest';
-import { color, Colors, FontStyles, formatter } from '../../util/text/ansi';
+import { formatter, italic } from '../../util/text/ansi';
 import { pathToFileURL } from 'node:url';
 
 /**
@@ -20,7 +20,7 @@ export async function versionReplString(parser: KnownParser): Promise<string> {
  * The full history is on disk as `history.*` (mounted alongside `current.*`), or a merged `full.*` in a baked container.
  */
 function sigDbSummaryString(): string {
-	const dim = (s: string) => color(s, Colors.White, formatter, { style: FontStyles.Faint });
+	const it = (s: string) => italic(s, formatter);
 	const entries: { label: string, file: string, date?: string }[] = [];
 	const add = (label: string, file: string | undefined): void => {
 		if(file === undefined) {
@@ -38,14 +38,14 @@ function sigDbSummaryString(): string {
 		add('base', defaultSigDbPath('base'));
 	}
 	if(entries.length === 0) {
-		return dim('no sigdb');
+		return it('no sigdb');
 	}
 	// keep the color escapes outside the OSC 8 region (link text stays clean) for wider terminal support
-	const link = (text: string, file: string): string => dim(formatter.hyperlink(text, pathToFileURL(file).href));
+	const link = (text: string, file: string): string => it(formatter.hyperlink(text, pathToFileURL(file).href));
 	// if every ref shares the same date, print it once at the end instead of after each label
 	const shared = entries.every(e => e.date !== undefined && e.date === entries[0].date) ? entries[0].date : undefined;
 	const refs = entries.map(e => link(shared === undefined && e.date !== undefined ? `${e.label} ${e.date}` : e.label, e.file));
-	return dim('sigdb: ') + refs.join(dim(', ')) + (shared !== undefined ? dim(` ${shared}`) : '');
+	return it('sigdb: ') + refs.join(it(', ')) + (shared !== undefined ? it(` ${shared}`) : '');
 }
 
 /**

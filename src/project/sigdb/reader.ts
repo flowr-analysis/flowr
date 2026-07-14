@@ -139,13 +139,18 @@ export class SigDatabase implements PackageSignatureSource {
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */
 	private readonly blobCache = new Map<number, PkgBlob>();
 	private static readonly BlobCacheCap = 2048;
-	private constructor(
-		private readonly fd: number,
-		readonly strings: string[],
-		readonly index: SigDbIndex,
-		readonly content: SigDbContent | undefined,
-		private readonly cranBase: string
-	) {}
+	private readonly fd:       number;
+	readonly strings:          string[];
+	readonly index:            SigDbIndex;
+	readonly content:          SigDbContent | undefined;
+	private readonly cranBase: string;
+	private constructor(fd: number, strings: string[], index: SigDbIndex, content: SigDbContent | undefined, cranBase: string) {
+		this.fd = fd;
+		this.strings = strings;
+		this.index = index;
+		this.content = content;
+		this.cranBase = cranBase;
+	}
 
 	/**
 	 * Open a plain, seekable `.sigs.ndjson` synchronously. Pass `index` to skip reading the `.idx`,
@@ -372,16 +377,21 @@ interface MountedShard {
  * build the package to shard routing table.
  */
 export class SigDatabaseSet implements PackageSignatureSource {
-	private readonly opened: (SigDatabase | undefined)[];
+	private readonly opened:    (SigDatabase | undefined)[];
+	readonly manifest:          SigDbManifest;
+	/** the directory the manifest's shard/dict paths are relative to */
+	readonly baseDir:           string;
+	private readonly indices:   SigDbIndex[];
+	/** package name to shard indices, ordered by preference (current before full) */
+	private readonly routes:    Map<string, number[]>;
+	private readonly cacheDir?: string;
 
-	private constructor(
-		readonly manifest: SigDbManifest,
-		private readonly baseDir: string,
-		private readonly indices: SigDbIndex[],
-		/** package name to shard indices, ordered by preference (current before full) */
-		private readonly routes: Map<string, number[]>,
-		private readonly cacheDir?: string
-	) {
+	private constructor(manifest: SigDbManifest, baseDir: string, indices: SigDbIndex[], routes: Map<string, number[]>, cacheDir?: string) {
+		this.manifest = manifest;
+		this.baseDir = baseDir;
+		this.indices = indices;
+		this.routes = routes;
+		this.cacheDir = cacheDir;
 		this.opened = new Array<SigDatabase | undefined>(manifest.shards.length).fill(undefined);
 	}
 

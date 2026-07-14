@@ -29,7 +29,7 @@ interface JobState {
 const npm = process.platform === 'win32' ? 'npm.cmd' : 'npm';
 
 /** every job: a stable id, a label, and the argv to run (all forced into no-watch / one-shot mode) */
-const ALL_JOBS: Job[] = [
+const allJobs: Job[] = [
 	{ id: 'lint',   label: 'lint',                 argv: [npm, 'run', 'lint'] },
 	{ id: 'tests',  label: 'functionality tests',  argv: [npm, 'run', 'test', '--', '--run', '--allowOnly=false'] },
 	{ id: 'system', label: 'system tests',         argv: [npm, 'run', 'test:system', '--', '--run'] },
@@ -40,16 +40,25 @@ const ALL_JOBS: Job[] = [
 const args = process.argv.slice(2);
 const noDocker = args.includes('--no-docker');
 const picked = args.filter(a => !a.startsWith('--'));
-let jobs = ALL_JOBS;
+let jobs = allJobs;
 if(picked.length > 0) {
-	jobs = ALL_JOBS.filter(j => picked.includes(j.id));
+	jobs = allJobs.filter(j => picked.includes(j.id));
 } else if(noDocker) {
-	jobs = ALL_JOBS.filter(j => j.id !== 'docker');
+	jobs = allJobs.filter(j => j.id !== 'docker');
 }
 if(jobs.length === 0) {
-	console.error(`no matching jobs; known ids: ${ALL_JOBS.map(j => j.id).join(', ')}`);
+	console.error(`no matching jobs; known ids: ${allJobs.map(j => j.id).join(', ')}`);
 	process.exit(2);
 }
+
+// the jobs run concurrently and the vitest ones (tests, system) would each spawn a worker per core, so the
+// combined pools would heavily oversubscribe the machine. Split the cores across the concurrently-running
+// vitest jobs (keeping ~1 core of headroom for lint/wiki/docker + this orchestrator) via `--maxWorkers`.
+const vitestIds = new Set(['tests', 'system']);
+const cores = Math.max(1, os.availableParallelism?.() ?? os.cpus().length);
+const runningVitest = Math.max(1, jobs.filter(j => vitestIds.has(j.id)).length);
+const perVitest = Math.max(1, Math.floor((cores - 1) / runningVitest));
+jobs = jobs.map(j => vitestIds.has(j.id) ? { ...j, argv: [...j.argv, `--maxWorkers=${perVitest}`] } : j);
 
 const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-checkup-'));
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;

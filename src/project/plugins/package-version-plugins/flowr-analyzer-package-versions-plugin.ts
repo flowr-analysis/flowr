@@ -5,10 +5,12 @@ import type { FlowrConfig } from '../../../config';
 
 /** metadata of a package database a plugin currently has loaded */
 export interface SigDbLoadedInfo {
-	scope:   string;
-	version: number;
-	date:    string;
-	hash:    string;
+	scope:            string;
+	version:          number;
+	date:             string;
+	hash:             string;
+	/** the on-disk compression codec of the resolved source(s): `zstd`, `brotli`, `gzip`, `plain`, or `mixed` for a set spanning several */
+	readonly format?: string;
 }
 
 /**

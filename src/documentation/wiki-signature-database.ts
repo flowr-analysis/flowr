@@ -273,6 +273,8 @@ an older, pinned version is requested, so a normal analysis never decompresses t
 shared dictionary that its shards depend on, so it is decompressed the first time any of its packages is looked up and then reused.
 The flowR Docker images ship this dictionary already decompressed, so a container reads it in place and skips
 that step (the load column above is the cost a plain npm install pays).
+
+Every shard, dictionary, and manifest is published in both brotli (\`.br\`) and zstd (\`.zst\`, faster to decompress) compression, and flowR uses whichever the runtime supports: \`.zst\` when the Node version exposes [zstd](https://nodejs.org/api/zlib.html#zstd) (Node &ge; 22.15), otherwise \`.br\`. \`:signature download\` fetches only that one variant per file, and \`:version\` reports the format each loaded database resolved to.
 ` : ''}
 ## Format
 

@@ -4,9 +4,12 @@ import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 
 // this is automatically replaced with the current version by release-it
 const version = '2.11.1';
+// this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
+const versionDate = '2026-07-14';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.
@@ -64,9 +67,10 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 	const rReason = r === 'none' ? ' (no R interpreter available)'
 		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
 			: '';
+	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
 	const rows: [string, string, boolean?][] = [
 		['engine', engine],
-		['flowR', flowr],
+		['flowR', `${flowrValue} ${faint(`(${versionDate})`)}`],
 		['R', `${r}${rReason}`, r === 'none' || r === 'unknown']
 	];
 	if(typeof input !== 'function' && 'inspectContext' in input) {
@@ -75,7 +79,12 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const setting = ctx.config.solver.sigdb.assumedRVersion ?? 'auto';
 		rows.push(['assumed R', `${ctx.resolvedRVersion} ${faint(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
 		const dbs = ctx.deps.loadedPackageDatabases();
-		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(d => `${d.scope} (v${d.version}, ${d.date})`).join(', '), dbs.length === 0]);
+		const sigDbUrl = sigDbRemoteRelease()?.url;
+		const describe = (d: typeof dbs[number]) => {
+			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
+			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl) : entry;
+		};
+		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
 	}
 	const width = Math.max(...rows.map(([label]) => label.length));
 	for(const [label, value, faded] of rows) {

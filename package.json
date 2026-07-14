@@ -161,11 +161,19 @@
     },
     "plugins": {
       "@j-ulrich/release-it-regex-bumper": {
-        "out": {
-          "file": "src/util/version.ts",
-          "search": "const version = '[\\d.]+'",
-          "replace": "const version = '{{version}}'"
-        }
+        "out": [
+          {
+            "file": "src/util/version.ts",
+            "search": "const version = '[\\d.]+'",
+            "replace": "const version = '{{version}}'"
+          },
+          {
+            "file": "src/util/version.ts",
+            "search": "const versionDate = '[\\d-]+'",
+            "replace": "const versionDate = '{{now}}'",
+            "dateFormat": "yyyy-MM-dd"
+          }
+        ]
       }
     }
   },

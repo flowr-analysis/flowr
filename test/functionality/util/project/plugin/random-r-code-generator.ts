@@ -343,20 +343,20 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates a Matrix.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'matrix' (`type`) and the amount of elements in it (`len`).
+	 * @returns The generated R source code (`value`), the type 'matrix' (`type`) and the number of elements in it (`len`).
 	 */
 	generateMatrix(maxNestingLevel: number): { value: string, type: string, len: number } {
 		const rows = this.rnd.int(3) + 1;
 		const cols = this.rnd.int(3) + 1;
 		const len = rows * cols;
-		const elements = Array.from({ length: len }, () => this.generateObject(0, maxNestingLevel).value);
+		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel, rows);
 		const byRow = this.rnd.pick(['TRUE', 'FALSE']);
-		return { value: `matrix(c(${elements.join(', ')}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len };
+		return { value: `matrix(c(${elements.value}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len };
 	}
 
 	/**
 	 * Generates a data frame.
-	 * @returns The generated R source code (`value`), the type 'dataframe' (`type`) and the amount of columns (`len`).
+	 * @returns The generated R source code (`value`), the type 'dataframe' (`type`) and the number of columns (`len`).
 	 */
 	generateDataFrame(): { value: string, type: string, len: number } {
 		const nRows = this.rnd.int(10);
@@ -440,7 +440,7 @@ export class RandomRCodeGenerator {
 		};
 
 		const elements = Array.from({ length: len }, () =>
-			randomString(1, validStringSymbols[pickIndex() as number])
+			randomString(1, validStringSymbols[pickIndex()])
 				.replaceAll('\\', '\\\\')
 				.replaceAll('"', String.raw`\"`)
 		).join('');

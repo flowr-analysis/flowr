@@ -56,6 +56,16 @@ describe('Env builtins point into the search-path stack', withTreeSitter(ts => {
 		emptyGraph().addEdge('2@"x"', '1@x', EdgeType.Reads),
 		opts);
 
+	assertDataflow(label('get(envir = baseenv()) does not crash and does not leak into the global scope', ['search-path', 'dynamic-environment-resolution']), ts,
+		'.type <- "should not be read"\nget(".type", envir = baseenv())',
+		emptyGraph(),
+		{ ...opts, mustNotHaveEdges: [['2@".type"', '1@.type']] });
+
+	assertDataflow(label('get(envir = emptyenv()) does not crash and does not leak into the global scope', ['search-path', 'dynamic-environment-resolution']), ts,
+		'x <- 1\nget("x", envir = emptyenv())',
+		emptyGraph(),
+		{ ...opts, mustNotHaveEdges: [['2@"x"', '1@x']] });
+
 	assertDataflow(label('environment() resolves $ into the current (global) env', ['search-path', 'dynamic-environment-resolution']), ts,
 		'x <- 1\nenvironment()$x',
 		emptyGraph().addEdge('2@$', '1@x', EdgeType.Reads),

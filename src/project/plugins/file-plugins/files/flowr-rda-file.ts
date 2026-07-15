@@ -6,7 +6,7 @@ import * as bzip2 from 'bzip2';
 import * as zlib from 'node:zlib';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
-import { decompress } from 'lzma1';
+import { unxzSync } from 'node-liblzma';
 
 /**
  * This decorates a text file and provides access to its content in the format of an {@link RObject}.
@@ -341,7 +341,7 @@ export class RDAParser{
 
 			case CompressionType.CompXz:
 			case CompressionType.CompLzma: {
-				buffer = Buffer.from(decompress(fileContent));
+				buffer = Buffer.from(unxzSync(fileContent));
 				break;
 			}
 
@@ -856,11 +856,29 @@ export class RDAParser{
 
 		switch(type) {
 			case SexpType.NilValueSxp:
+				s.value = RValues.NilValue;
+				s.type = SexpType.NilSxp;
+				return s;
 			case SexpType.EmptyEnvSxp:
+				s.value = RValues.EmptyEnv;
+				s.type = SexpType.EnvSxp;
+				return s;
 			case SexpType.BaseEnvSxp:
+				s.value = RValues.BaseEnv;
+				s.type = SexpType.EnvSxp;
+				return s;
 			case SexpType.GlobalEnvSxp:
+				s.value = RValues.GlobalEnv;
+				s.type = SexpType.EnvSxp;
+				return s;
 			case SexpType.UnboundValueSxp:
+				s.value = RValues.UnboundValue;
+				s.type = SexpType.EnvSxp;
+				return s;
 			case SexpType.MissingArgSxp:
+				s.value = RValues.MissingArg;
+				s.type = SexpType.EnvSxp;
+				return s;
 			case SexpType.BaseNamespaceSxp:
 				s.value = RValues.BaseNamespace;
 				s.type = SexpType.EnvSxp;
@@ -952,7 +970,11 @@ export class RDAParser{
 						break;
 					}
 					case SexpType.WeakRefSxp:
-						s.value = this.R_MakeWeakRef(RValues.NilValue, RValues.NilValue, RValues.NilValue, false);
+						s.value = this.R_MakeWeakRef(
+							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							RValues.NilValue,
+							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							false);
 						this.addReadRef(s);
 						break;
 					case SexpType.SpecialSxp:
@@ -965,7 +987,7 @@ export class RDAParser{
 							const name = this.inString(len);
 							const index = (RFunTabOffsets as Record<string, string | number>)[name] as number;
 							if(name in RFunTabOffsets) {
-								s = this.mkPrimSxp(index, SexpType.BuiltInSxp);
+								s = this.mkPrimSxp(index, type === SexpType.BuiltInSxp ? 1 : 0);
 							} else {
 								s.value = RValues.NilValue;
 								throw new Error(`unrecognized internal function name "${name}"`);
@@ -1167,7 +1189,11 @@ export class RDAParser{
 						break;
 					}
 					case SexpType.WeakRefSxp:
-						s.value = this.R_MakeWeakRef(RValues.NilValue, RValues.NilValue, RValues.NilValue, false);
+						s.value = this.R_MakeWeakRef(
+							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							RValues.NilValue,
+							{ type: SexpType.NilSxp, value: RValues.NilValue } as RObjectData,
+							false);
 						this.addReadRef(s);
 						break;
 					case SexpType.SpecialSxp:
@@ -1531,8 +1557,8 @@ export class RDAParser{
 	 * @throws Error if the finalizer type is invalid.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1424-L1435 | R source: R_MakeWeakRef}
 	 */
-	R_MakeWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType | RValues.NilValue, onexit: boolean): RObject {
-		switch(fin) {
+	R_MakeWeakRef(key: RObjectData, val: RObject, fin: RObjectData, onexit: boolean): RObject {
+		switch(fin.type) {
 			case SexpType.NilSxp:
 			case SexpType.CloSxp:
 			case SexpType.BuiltInSxp:
@@ -1554,8 +1580,8 @@ export class RDAParser{
 	 * @throws Error if the key type is invalid.
 	 * @see {@link https://github.com/wch/r-source/blob/2196e6982a8f49082ee5c3d3521f6dd6596ea72c/src/main/memory.c#L1388-L1422 | R source: NewWeakRef}
 	 */
-	newWeakRef(key: SexpType | RValues.NilValue, val: RObject, fin: SexpType, onexit: boolean): RObject{
-		switch(key) {
+	newWeakRef(key: RObjectData, val: RObject, fin: RObjectData, onexit: boolean): RObject{
+		switch(key.type) {
 			case SexpType.NilSxp:
 			case SexpType.EnvSxp:
 			case SexpType.ExtPtrSxp:
@@ -1572,7 +1598,7 @@ export class RDAParser{
 
 		w.type = SexpType.WeakRefSxp;
 
-		if(!key){ //|| key !== RValues.NilValue
+		if(key.value !== RValues.NilValue){
 			w.key = key;
 			w.value = val;
 			w.finalizer = fin;
@@ -1614,7 +1640,7 @@ export class RDAParser{
 
 			primCache = {};
 			primCache.type = SexpType.VecSxp;
-			primCache.value = funTabSize;
+			primCache.value = new Array(funTabSize);
 		}
 
 		if(index < 0 || index >= funTabSize) {
@@ -2288,14 +2314,14 @@ export class RDAParser{
 		}
 		// (long long)i, (long long)XLENGTH(x));
 		if(x.altRep) {
-			const ans = (x as RObject[])[i];
+			const ans = (x.value as RObject[])[i];
 			/* the element is marked as not mutable since complex
 			   assignment can't see reference counts on any intermediate
 			   containers in an ALTREP */
 			// MARK_NOT_MUTABLE(ans);
 			return ans;
 		} else {
-			return (x as RObject[])[i];
+			return (x.value as RObject[])[i];
 		}
 	}
 

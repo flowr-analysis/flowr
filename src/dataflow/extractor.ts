@@ -5,7 +5,7 @@ import { processSymbol } from './internal/process/process-symbol';
 import { processFunctionCall } from './internal/process/functions/call/default-call-handling';
 import { processFunctionParameter } from './internal/process/functions/process-parameter';
 import { processFunctionArgument } from './internal/process/functions/process-argument';
-import { processAsNamedCall } from './internal/process/process-named-call';
+import { processAsNamedCall, processChainedCall } from './internal/process/process-named-call';
 import { processValue } from './internal/process/process-value';
 import { processNamedCall } from './internal/process/functions/call/named-call-handling';
 import { wrapArgumentsUnnamed } from './internal/process/functions/call/argument/make-argument';
@@ -48,8 +48,8 @@ export const processors: DataflowProcessors<ParentInformation> = {
 	[RType.LineDirective]:      processUninterestingLeaf,
 	[RType.Symbol]:             processSymbol,
 	[RType.Access]:             (n, d) => processAsNamedCall(n, d, n.operator, [n.accessed, ...n.access]),
-	[RType.BinaryOp]:           (n, d) => processAsNamedCall(n, d, n.operator, [n.lhs, n.rhs]),
-	[RType.Pipe]:               (n, d) => processAsNamedCall(n, d, n.lexeme, [n.lhs, n.rhs]),
+	[RType.BinaryOp]:           processChainedCall,
+	[RType.Pipe]:               processChainedCall,
 	[RType.UnaryOp]:            (n, d) => processAsNamedCall(n, d, n.operator, [n.operand]),
 	[RType.ForLoop]:            (n, d) => processAsNamedCall(n, d, n.lexeme, [n.variable, n.vector, n.body]),
 	[RType.WhileLoop]:          (n, d) => processAsNamedCall(n, d, n.lexeme, [n.condition, n.body]),

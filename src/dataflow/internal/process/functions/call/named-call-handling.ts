@@ -33,19 +33,6 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 	};
 }
 
-function processDefaultFunctionProcessor<OtherInfo>(
-	information: DataflowInformation | undefined,
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-) {
-	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
-	/* if we do not know where we land, we force! */
-	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all', origin: 'default' });
-	return mergeInformation(information, call.information);
-}
-
 /**
  * Marks the given function call node as only calling built-in functions.
  */
@@ -89,7 +76,9 @@ export function processNamedCall<OtherInfo>(
 	}
 
 	if(defaultProcessor) {
-		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
+		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
+		const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: resolved.length > 0 ? undefined : 'all', origin: 'default' });
+		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
 		markAsOnlyBuiltIn(information.graph, rootId);

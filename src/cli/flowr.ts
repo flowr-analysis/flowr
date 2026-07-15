@@ -191,8 +191,15 @@ async function mainRepl() {
 	const defaultEngine = engines.engines[engines.default] as KnownParser;
 
 	if(options.version) {
-		for(const engine of Object.values(engines.engines)) {
-			await printVersionInformation(standardReplOutput, engine);
+		const enginesList = Object.values(engines.engines);
+		if(enginesList.length > 0) {
+			await printVersionInformation(standardReplOutput, enginesList[0]);
+			for(const engine of enginesList.slice(1)) {
+				console.log('');
+				await printVersionInformation(standardReplOutput, engine, true);
+			}
+		}
+		for(const engine of enginesList) {
 			engine?.close();
 		}
 		return exitSafe(0);

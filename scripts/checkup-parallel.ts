@@ -85,6 +85,7 @@ function run(job: Job): Promise<JobResult> {
 	const note = (chunk: Buffer | string) => {
 		log.write(chunk);
 		// keep the last non-empty line for the heartbeat (strip ansi so the ticker stays tidy)
+		// eslint-disable-next-line no-control-regex
 		const line = chunk.toString().replace(/\x1b\[[0-9;]*m/g, '').split('\n').map(l => l.trim()).filter(Boolean).pop();
 		if(line) {
 			state.last = line.length > 80 ? line.slice(0, 79) + '…' : line;

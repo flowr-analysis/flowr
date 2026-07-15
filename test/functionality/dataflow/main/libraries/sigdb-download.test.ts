@@ -19,7 +19,7 @@ describe('SigDb auto-sync (pointer)', () => {
 		}
 	});
 
-	test(label('writeRemotePointer records every `.br` shard (base floor + CRAN sets), skipping non-shard files', [], ['other']), () => {
+	test(label('writeRemotePointer records every `.br` shard (base floor + CRAN sets), skipping non-shard files', [], ['other']), async() => {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-remote-'));
 		cleanups.push(() => fs.rmSync(dir, { recursive: true, force: true }));
 		// two `.br` shards (base floor + a CRAN shard, both downloadable) and a non-shard file (ignored)
@@ -27,7 +27,7 @@ describe('SigDb auto-sync (pointer)', () => {
 		fs.writeFileSync(path.join(dir, 'base.dict.sigs.ndjson.br'), 'FLOOR');
 		fs.writeFileSync(path.join(dir, 'current.manifest.json'), '{}');
 
-		const res = writeRemotePointer({ bundleDir: dir, tag: 'sigdb-v9.9.9', repo: 'acme/flowr' });
+		const res = await writeRemotePointer({ bundleDir: dir, tag: 'sigdb-v9.9.9', repo: 'acme/flowr', skipVerification: true });
 		expect(res.downloadable).toEqual(['base.dict.sigs.ndjson.br', 'current.current-top.sigs.ndjson.br']);
 
 		const written = JSON.parse(fs.readFileSync(path.join(dir, 'sigdb.remote.json'), 'utf8')) as SigDbRemote;

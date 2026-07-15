@@ -124,4 +124,7 @@ async function main(): Promise<void> {
 	info(`gen-base-packages: wrote ${Object.keys(packages).length} base packages (${current.length} current, ${exportCount} exports) to ${path.relative(process.cwd(), out)}`);
 }
 
-void main();
+main().catch(e => {
+	console.error(`gen-base-packages failed: ${(e as Error).message}`);
+	process.exitCode = 1;
+});

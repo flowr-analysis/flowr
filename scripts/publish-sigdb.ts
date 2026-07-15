@@ -40,13 +40,13 @@ function haveTool(cmd: string): boolean {
 }
 
 /** regenerate the committed link file (hashes match the upload) and return the downloadable shard paths */
-function bundleAssets(): string[] {
+async function bundleAssets(): Promise<string[]> {
 	if(!fs.existsSync(bundleDir)) {
 		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first (crawlr dump:sigs, then copy into src/data/sigdb)`);
 	}
-	const { downloadable } = writeRemotePointer({ bundleDir });
+	const { downloadable } = await writeRemotePointer({ bundleDir, skipVerification: true });
 	console.log(`regenerated sigdb.remote.json (${downloadable.length} shards) -- commit it so clients auto-sync`);
-	return downloadable.map(f => path.join(bundleDir, f));
+	return downloadable.map((f: string) => path.join(bundleDir, f));
 }
 
 function publishRelease(version: string, assets: string[]): void {
@@ -103,9 +103,9 @@ function publishGhcr(version: string): void {
 	}
 }
 
-function main(): void {
+async function main(): Promise<void> {
 	const version = (JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { version: string }).version;
-	const assets = bundleAssets();
+	const assets = await bundleAssets();
 	const totalMb = (assets.reduce((n, f) => n + fs.statSync(f).size, 0) / 1e6).toFixed(1);
 	console.log(`flowr-sigdb publisher -- version ${version}, ${assets.length} shards (${totalMb} MB)${confirm ? '' : '  [DRY RUN: pass --confirm to publish]'}`);
 	console.log(assets.map(a => `   - ${path.basename(a)}`).join('\n'));
@@ -122,9 +122,11 @@ function main(): void {
 	console.log(confirm ? 'done.' : 'dry run complete -- re-run with --confirm to publish.');
 }
 
-try {
-	main();
-} catch(e) {
-	console.error(`publish-sigdb: ${(e as Error).message}`);
-	process.exit(1);
-}
+void (async() => {
+	try {
+		await main();
+	} catch(e) {
+		console.error(`publish-sigdb: ${(e as Error).message}`);
+		process.exit(1);
+	}
+})();

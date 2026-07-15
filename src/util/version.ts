@@ -61,18 +61,21 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 /**
  * Displays the version information to the given output.
  */
-export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
+export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider, engineOnly = false) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
 	const faint = (s: string) => output.formatter.format(s, { style: FontStyles.Faint });
 	const rReason = r === 'none' ? ' (no R interpreter available)'
 		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
 			: '';
 	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
-	const rows: [string, string, boolean?][] = [
+	const rows: [string, string, boolean?][] = [];
+	if(!engineOnly) {
+		rows.push(['flowR', `${flowrValue} ${faint(`(${versionDate})`)}`]);
+	}
+	rows.push(
 		['engine', engine],
-		['flowR', `${flowrValue} ${faint(`(${versionDate})`)}`],
 		['R', `${r}${rReason}`, r === 'none' || r === 'unknown']
-	];
+	);
 	if(typeof input !== 'function' && 'inspectContext' in input) {
 		// reads the current analyzer, so it reflects the databases in use (and adapts to config changes)
 		const ctx = input.inspectContext();
@@ -88,7 +91,8 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 	}
 	const width = Math.max(...rows.map(([label]) => label.length));
 	for(const [label, value, faded] of rows) {
-		const line = `${label.padEnd(width)} : ${value}`;
+		const padding = ' '.repeat(width - label.length);
+		const line = `${label}:${padding} ${value}`;
 		output.stdout(faded ? faint(line) : line);
 	}
 }

@@ -74,9 +74,8 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 		if(manifest) {
 			await analyzer.context().deps.addDatabaseSource(manifest);
 			analyzer.reset();
-			output.stdout(`Mounted ${bold(manifest, f)}.`);
+			output.stdout(`Mounted ${bold(manifest, f)} (will be available on next startup from the cache).`);
 		}
-		output.stdout(italic(`Add "${dir}" to solver.sigdb.additionalPaths to keep it mounted on every start.`, f));
 	} catch(e) {
 		output.stderr(`Download failed: ${(e as Error).message}`);
 	}

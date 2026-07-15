@@ -233,10 +233,14 @@ jobs:
             ARTIFACT_NAME="full"
           fi
           VERSION="$(date '+%Y%m%d')"
-          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
-          docker tag flowr "${TAG}":"date-$VERSION"
-          docker tag flowr "${TAG}":"$FLOWR_VERSION"
-          docker tag flowr "${TAG}":latest
+          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR\s*:\s*\K[^ ]+' | head -n1)"
+          if [[ -z "$FLOWR_VERSION" ]]; then
+            echo "ERROR: failed to extract flowR version from docker image"
+            exit 1
+          fi
+          docker tag flowr "${TAG}:date-$VERSION"
+          docker tag flowr "${TAG}:$FLOWR_VERSION"
+          docker tag flowr "${TAG}:latest"
           docker images "$TAG"
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags

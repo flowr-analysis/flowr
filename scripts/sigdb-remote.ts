@@ -4,18 +4,31 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import https from 'node:https';
 import { sha256File, SigDbRemoteFileName, type SigDbRemote } from '../src/project/sigdb/sigdb-download';
 import { info } from './script-log';
 
 const RepoRoot = path.resolve(__dirname, '..');
 
+/** verify that a GitHub release tag exists (returns true if it exists, false if not found, throws on network error) */
+async function tagExistsOnGitHub(owner: string, repo: string, tag: string): Promise<boolean> {
+	return new Promise((resolve, reject) => {
+		const url = `https://api.github.com/repos/${owner}/${repo}/releases/tags/${tag}`;
+		https.get(url, { headers: { 'User-Agent': 'flowr-sigdb-remote' } }, (res) => {
+			resolve(res.statusCode === 200);
+		}).on('error', reject);
+	});
+}
+
 export interface WriteRemotePointerOptions {
 	/** the sigdb bundle directory (default `<repo>/src/data/sigdb`) */
-	readonly bundleDir?: string
-	/** the release tag (default `sigdb-v<package.json version>`) */
-	readonly tag?:       string
+	readonly bundleDir?:        string
+	/** the release tag (must be explicitly provided; auto-generation from package.json is disabled for safety) */
+	readonly tag?:              string
 	/** the GitHub `owner/repo` (default `$GH_REPO` or `flowr-analysis/flowr`) */
-	readonly repo?:      string
+	readonly repo?:             string
+	/** skip GitHub tag existence verification (for testing only) */
+	readonly skipVerification?: boolean
 }
 
 export interface WriteRemotePointerResult {
@@ -34,11 +47,13 @@ function resolveBundleDir(opts: WriteRemotePointerOptions): string {
 	return opts.bundleDir ?? path.join(RepoRoot, 'src', 'data', 'sigdb');
 }
 
-/** the release tag + repo a call resolves to (defaults: `sigdb-v<package.json version>`, `$GH_REPO`/flowr) */
+/** the release tag + repo a call resolves to (requires explicit tag, defaults repo to `$GH_REPO`/flowr) */
 function resolveTagRepo(opts: WriteRemotePointerOptions): { tag: string, repo: string } {
-	const version = (JSON.parse(fs.readFileSync(path.join(RepoRoot, 'package.json'), 'utf8')) as { version: string }).version;
+	if(!opts.tag) {
+		throw new Error('tag must be explicitly provided via --tag=<tag> (auto-generation from package.json is disabled for safety)');
+	}
 	return {
-		tag:  opts.tag ?? `sigdb-v${version}`,
+		tag:  opts.tag,
 		repo: opts.repo ?? process.env.GH_REPO ?? 'flowr-analysis/flowr'
 	};
 }
@@ -87,9 +102,17 @@ export function remotePointerUpToDate(opts: WriteRemotePointerOptions = {}): boo
  * (Re)write the link file for the downloadable shards in the bundle dir. Shared by `sync:sigdb`
  * and `publish-sigdb.ts` so the pointer and the uploaded assets can never drift.
  */
-export function writeRemotePointer(opts: WriteRemotePointerOptions = {}): WriteRemotePointerResult {
+export async function writeRemotePointer(opts: WriteRemotePointerOptions = {}): Promise<WriteRemotePointerResult> {
 	const bundleDir = resolveBundleDir(opts);
 	const { tag, repo } = resolveTagRepo(opts);
+
+	if(!opts.skipVerification) {
+		const [owner, repoName] = repo.split('/');
+		const exists = await tagExistsOnGitHub(owner, repoName, tag);
+		if(!exists) {
+			throw new Error(`GitHub release tag "${tag}" does not exist in ${repo}`);
+		}
+	}
 
 	// downloadable = every compressed shard (base floor + CRAN sets); none are committed, all are pulled from the release
 	const downloadable = downloadableShards(bundleDir);
@@ -122,13 +145,15 @@ function parseArgs(argv: readonly string[]): WriteRemotePointerOptions {
 // CLI (skipped when imported). Runs on every build to keep the pointer in step with the local shards; a no-op
 // (no re-hashing, no output) when nothing changed, and non-fatal so a base-floor-only checkout is left untouched.
 if(require.main === module) {
-	try {
-		const opts = parseArgs(process.argv.slice(2));
-		if(!remotePointerUpToDate(opts)) {
-			const { out, downloadable, totalBytes } = writeRemotePointer(opts);
-			info(`sync:sigdb: wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
+	void (async() => {
+		try {
+			const opts = parseArgs(process.argv.slice(2));
+			if(!remotePointerUpToDate(opts)) {
+				const { out, downloadable, totalBytes } = await writeRemotePointer(opts);
+				info(`sync:sigdb: wrote ${path.relative(RepoRoot, out)} -- ${downloadable.length} shards (${(totalBytes / 1e6).toFixed(1)} MB)`);
+			}
+		} catch(e) {
+			info(`sync:sigdb: skipped -- ${(e as Error).message}`);
 		}
-	} catch(e) {
-		info(`sync:sigdb: skipped -- ${(e as Error).message}`);
-	}
+	})();
 }

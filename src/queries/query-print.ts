@@ -106,6 +106,12 @@ export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 			continue;
 		}
 
+		if(queryResults === undefined || (typeof queryResults === 'object' && queryResults !== null && 'error' in queryResults)) {
+			const message = (queryResults as { error?: string } | undefined)?.error ?? 'unknown error';
+			result.push(`Query: ${bold(query, formatter)} ${bold('failed', formatter)}: ${message}`);
+			continue;
+		}
+
 		const queryType = SupportedQueries[query as SupportedQueryTypes];
 		const relevantQueries = queries.filter(q => q.type === query as SupportedQueryTypes) as Query[];
 		if(await queryType.asciiSummarizer(formatter, analyzer, queryResults as BaseQueryResult, result, relevantQueries)) {

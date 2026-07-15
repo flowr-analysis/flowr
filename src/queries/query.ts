@@ -276,8 +276,9 @@ export async function executeQueries<
 			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			log.warn(e);
-			results.push([type, undefined]);
+			const message = e instanceof Error ? e.message : String(e);
+			log.error(`query of type '${type}' failed: ${message}`, e);
+			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}
 

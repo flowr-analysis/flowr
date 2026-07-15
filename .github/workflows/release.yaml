@@ -218,7 +218,15 @@ jobs:
       - name: "🚀 Deploy the Image"
         run: |
           # add -slim suffix if no R
-          TAG="eagleoutice/${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' ? 'flowr-slim' : 'flowr' }}"
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            TAG="eagleoutice/flowr-slim"
+            ARTIFACT_SUFFIX="-slim"
+            ARTIFACT_NAME="slim"
+          else
+            TAG="eagleoutice/flowr"
+            ARTIFACT_SUFFIX=""
+            ARTIFACT_NAME="full"
+          fi
           VERSION="$(date '+%Y%m%d')"
           FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
           docker tag flowr "${TAG}":"date-$VERSION"
@@ -228,18 +236,25 @@ jobs:
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags
           echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SUFFIX=$ARTIFACT_SUFFIX" >> "$GITHUB_ENV"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
 
       - name: "🗃️ Compress the image"
         run: |
-          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' ? '-slim' : '' }}.tar.gz"
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            SUFFIX="-slim"
+          else
+            SUFFIX=""
+          fi
+          docker save flowr | gzip > "./flowr-${{ env.THE_FLOWR_VERSION }}$SUFFIX.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v6
         with:
-          name: "flowr-image-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' ? 'slim' : 'full' }}"
-          path: "flowr-${{ env.THE_FLOWR_VERSION }}-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' ? '-slim' : '' }}.tar.gz"
+          name: "flowr-image-${{ env.ARTIFACT_NAME }}"
+          path: "flowr-${{ env.THE_FLOWR_VERSION }}${{ env.ARTIFACT_SUFFIX }}.tar.gz"
 
   performance-test:
     name: "⏱️ Performance Test"

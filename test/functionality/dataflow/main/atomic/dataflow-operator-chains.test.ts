@@ -52,7 +52,7 @@ describe('Left-associative operator chains', withTreeSitter(ts => {
 		emptyGraph()
 			.addEdge('2@x', '1@x', EdgeType.Reads)
 			.addEdge('4@x', '3@x', EdgeType.Reads)
-			.addEdge('4:10', '3@x', EdgeType.Reads),
+			.addEdge('4@[2]x', '3@x', EdgeType.Reads),
 		{ ...opts, mustNotHaveEdges: [['4@x', '1@x']] });
 
 	test.each([

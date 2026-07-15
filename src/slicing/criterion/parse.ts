@@ -67,12 +67,11 @@ export const SlicingCriterion = {
 			if(line === undefined || name.length === 0) {
 				return undefined;
 			}
-			/* an optional `[n]` prefix picks the n-th occurrence within the line (`2@[2]a`, `2@[-1]a` for the last
-			 * one); without it we keep the historic behavior, which prefers a call over the symbol it refers to */
-			const nth = /^\[(-?\d+)\](.+)$/.exec(name);
+			// an optional `[n]` prefix picks the n-th occurrence within the line (`2@[2]a`, `2@[-1]a` for the last one)
+			const nth = /^\[(-?\d+)](.+)$/.exec(name);
 			return nth ?
 				nthOccurrenceToId(line, nth[2], idMap, parseInt(nth[1]), file) :
-				conventionalCriteriaToId(line, name, idMap, file);
+				nthOccurrenceToId(line, name, idMap, 1, file);
 		} else if(base.includes(':')) {
 			const location = parseLocation(base, ':', idMap, file);
 			return location && locationToId(location, idMap, file);
@@ -253,20 +252,4 @@ function nthOccurrenceToId<OtherInfo>(line: number, name: string, dataflowIdMap:
 	return index >= 0 && index < columns.length ? byColumn.get(columns[index])?.info.id : undefined;
 }
 
-function conventionalCriteriaToId<OtherInfo>(line: number, name: string, dataflowIdMap: AstIdMap<OtherInfo>, file?: RegExp): NodeId | undefined {
-	let candidate: RNodeWithParent<OtherInfo> | undefined;
-
-	for(const nodeInfo of dataflowIdMap.values()) {
-		if(nodeInfo.location === undefined || nodeInfo.location[0] !== line || nodeInfo.lexeme !== name || !matchesFile(nodeInfo, file)) {
-			continue;
-		}
-
-		// function calls have the same location as the symbol they refer to, so we need to prefer the function call
-		if(candidate !== undefined && nodeInfo.type !== RType.FunctionCall || nodeInfo.type === RType.Argument || nodeInfo.type === RType.ExpressionList) {
-			continue;
-		}
-		candidate = nodeInfo;
-	}
-	return candidate?.info.id;
-}
 

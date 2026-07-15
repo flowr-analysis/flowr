@@ -3,10 +3,29 @@ import { SliceDirection } from '../../../util/slice-direction';
 import type { CommandCompletions } from '../core';
 import type { FlowrConfig } from '../../../config';
 
+/**
+ * Splits `(criteria)flags` into its two parts, matching the closing bracket by depth: a criterion may well
+ * carry brackets of its own (the `(file-regex)` suffix of e.g. `2@x(tmp/.*)`), so the first `)` is not it.
+ * Returns `undefined` if the argument does not start with a bracket, or if that bracket is never closed.
+ */
+function splitCriteriaArgument(argument: string | undefined): { criteria: string, flags: string } | undefined {
+	if(!argument?.startsWith('(')) {
+		return undefined;
+	}
+	let depth = 0;
+	for(let i = 0; i < argument.length; i++) {
+		if(argument[i] === '(') {
+			depth++;
+		} else if(argument[i] === ')' && --depth === 0) {
+			return { criteria: argument.slice(1, i), flags: argument.slice(i + 1) };
+		}
+	}
+	return undefined;
+}
+
 /** the single-char flag suffix after the closing `)` of a criteria list (e.g. `f` forward, `i` inline sources) */
 function sliceFlagSuffix(argument: string | undefined): string {
-	const endBracket = argument?.indexOf(')') ?? -1;
-	return endBracket >= 0 ? (argument as string).slice(endBracket + 1) : '';
+	return splitCriteriaArgument(argument)?.flags ?? '';
 }
 
 /**
@@ -36,23 +55,14 @@ export function sliceIncludeCalleesParser(argument: string): boolean {
  * Parses a single slicing criterion from the given argument.
  */
 export function sliceCriterionParser(argument: string | undefined): SlicingCriterion | undefined {
-	if(argument?.startsWith('(') && argument.includes(')')) {
-		const endBracket = argument.indexOf(')');
-		return argument.slice(1, endBracket) as SlicingCriterion;
-	}
+	return splitCriteriaArgument(argument)?.criteria as SlicingCriterion | undefined;
 }
 
 /**
  * Parses multiple slicing criteria from the given argument.
  */
 export function sliceCriteriaParser(argument: string | undefined): SlicingCriteria | undefined {
-	if(argument?.startsWith('(') && argument.includes(')')) {
-		const endBracket = argument.indexOf(')');
-		const criteriaPart = argument.slice(1, endBracket);
-		const criteria = criteriaPart.split(';');
-
-		return criteria as SlicingCriteria;
-	}
+	return splitCriteriaArgument(argument)?.criteria.split(';') as SlicingCriteria | undefined;
 }
 
 /** Last partial criterion fragment after the most recent `;` or after `(`. */
@@ -91,11 +101,10 @@ export function criteriaQueryCompleter(line: readonly string[], startingNewArg: 
  * Each side is a semicolon-separated list of slicing criteria; a single criterion needs no semicolon.
  */
 export function diceCriteriaParser(argument: string | undefined): { from: SlicingCriteria; to: SlicingCriteria } | undefined {
-	if(!argument?.startsWith('(') || !argument.includes(')')) {
+	const inner = splitCriteriaArgument(argument)?.criteria;
+	if(inner === undefined) {
 		return undefined;
 	}
-	const endBracket = argument.indexOf(')');
-	const inner = argument.slice(1, endBracket);
 	const arrowIdx = inner.indexOf('->');
 	if(arrowIdx < 0) {
 		return undefined;

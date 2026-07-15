@@ -104,6 +104,11 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
+	/**
+	 * Propagate the `out` references produced by the arguments instead of dropping them.
+	 * Set this for functions that are transparent about their arguments, like `(`.
+	 */
+	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
@@ -131,11 +136,14 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse }: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(nse !== undefined) {
 		markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
+	}
+	if(keepArgumentOut) {
+		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
 	if(returnsNthArgument !== undefined) {
 		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];

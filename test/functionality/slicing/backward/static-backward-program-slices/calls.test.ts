@@ -28,7 +28,7 @@ a(i)`);
 		/* nothing of the function-content is required */
 		assertSliced(label('Slice function definition', constCapabilities),
 			shell, constFunction, ['2@a'], 'a <- function(x) { }');
-		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2:20'], 'x <- 2');
+		assertSliced(label('Slice within function', constCapabilities), shell, constFunction, ['2@[2]x'], 'x <- 2');
 		assertSliced(label('Multiple unknown calls', ['name-normal', 'resolve-arguments', 'unnamed-arguments', 'numbers', 'call-normal', 'newlines']),
 			shell, `
 foo(x, y)

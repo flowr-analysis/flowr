@@ -21,20 +21,26 @@ async function idMapOf(ts: TreeSitterExecutor, code: string): Promise<AstIdMap> 
 
 describe('Slicing criteria', withTreeSitter(ts => {
 	describe('line@name', () => {
-		test('picks the call over the symbol it refers to (the historic default)', async() => {
-			// `h` is both defined and called in line 2; the default has always preferred the call
+		test('prefers the call over the symbol naming it, which share a position', async() => {
 			const idMap = await idMapOf(ts, 'h <- function() 1\nh <- h()');
-			expect(nodeOf('2@h', idMap)?.type).toBe(RType.FunctionCall);
+			const call = nodeOf('2@[2]h', idMap);
+			expect(call?.type).toBe(RType.FunctionCall);
+			expect(call?.location?.[1]).toBe(6);
+		});
+
+		test('the bare form is exactly [1]', async() => {
+			const idMap = await idMapOf(ts, 'h <- function() 1\nh <- h()');
+			expect(nodeOf('2@h', idMap)?.info.id).toBe(nodeOf('2@[1]h', idMap)?.info.id);
+			// i.e. the leftmost occurrence, here the assignment target in column 1
+			expect(nodeOf('2@h', idMap)?.location?.[1]).toBe(1);
 		});
 
 		test('an [n] prefix picks the n-th occurrence in the line, [1] being the first', async() => {
 			const idMap = await idMapOf(ts, 'a <- 1\nb <- a + a + a');
-			// all three share the lexeme, so only the column can tell them apart
 			const columnOf = (criterion: SlicingCriterion) => nodeOf(criterion, idMap)?.location?.[1];
 			const columns = [columnOf('2@[1]a'), columnOf('2@[2]a'), columnOf('2@[3]a')];
 			expect(columns.every(c => c !== undefined)).toBe(true);
 			expect(new Set(columns).size).toBe(3);
-			// ascending, i.e. the n-th really is the n-th from the left
 			expect(columns).toStrictEqual([...columns].sort((x = 0, y = 0) => x - y));
 			// [-1] is the last one, and going past either end resolves to nothing rather than to a wrong node
 			expect(columnOf('2@[-1]a')).toBe(columns[2]);

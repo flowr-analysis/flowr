@@ -25,6 +25,14 @@ export function sliceInlineParser(argument: string): boolean {
 }
 
 /**
+ * Whether the argument requests to slice past function-definition boundaries via a `c` suffix
+ * (e.g. `(12@x)c`, `(12@x)ic`), including the definition's binding and call sites in a backward slice.
+ */
+export function sliceIncludeCalleesParser(argument: string): boolean {
+	return sliceFlagSuffix(argument).includes('c');
+}
+
+/**
  * Parses a single slicing criterion from the given argument.
  */
 export function sliceCriterionParser(argument: string | undefined): SlicingCriterion | undefined {

@@ -27,6 +27,7 @@ export interface SlicerCliOptions {
 	api:                 boolean
 	'no-magic-comments': boolean
 	inline:              boolean
+	'include-callees':   boolean
 }
 
 
@@ -56,7 +57,8 @@ async function getSlice() {
 		config,
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect),
 		undefined,
-		options.inline
+		options.inline,
+		options['include-callees']
 	);
 
 	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];

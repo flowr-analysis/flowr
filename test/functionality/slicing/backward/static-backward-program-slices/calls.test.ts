@@ -979,4 +979,82 @@ bar <- foo(l=x, c=y)`, ['8@bar'], `foo <- function(l, c) {
     }
 bar <- foo(l=x, c=y)`);
 	});
+	describe('Include Callees', () => {
+		const capabilities: SupportedFlowrCapabilityId[] = [
+			'function-definitions', 'formals-named', 'name-normal', 'numbers', 'call-normal', 'newlines',
+			'unnamed-arguments', ...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['*'].capabilities
+		];
+		const code = `f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)`;
+		assertSliced(label('default stops at the function-definition boundary', capabilities),
+			shell, code, ['3@print'], `function(x) {
+    y <- x * 2
+    print(y)
+}`
+		);
+		assertSliced(label('includeCallees continues past the boundary', capabilities),
+			shell, code, ['3@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
+		const codeMultipleCallSites = `f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)
+f(99)`;
+		assertSliced(label('includeCallees includes all call sites', capabilities),
+			shell, codeMultipleCallSites, ['3@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)
+f(99)`, { includeCallees: true }
+		);
+		const codeWithUnrelatedStatement = `g <- 3
+f <- function(x) {
+  y <- x * 2
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees does not pull in unrelated code', capabilities),
+			shell, codeWithUnrelatedStatement, ['4@print'], `f <- function(x) {
+        y <- x * 2
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
+		// gate: a self-contained body (no parameter, no captured variable) must not pull in the callers
+		const codeSelfContained = `f <- function(x) {
+  y <- 5
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees is a no-op when the body does not depend on the interface', capabilities),
+			shell, codeSelfContained, ['3@print'], 'y <- 5\nprint(y)', { includeCallees: true }
+		);
+		assertSliced(label('self-contained body slices identically without the flag', capabilities),
+			shell, codeSelfContained, ['3@print'], 'y <- 5\nprint(y)'
+		);
+		// gate: a captured variable from the enclosing scope does let the callers (and the capture) in
+		const codeCapture = `z <- 10
+f <- function(x) {
+  y <- z
+  print(y)
+}
+f(21)`;
+		assertSliced(label('includeCallees follows a captured enclosing-scope variable', capabilities),
+			shell, codeCapture, ['4@print'], `z <- 10
+f <- function(x) {
+        y <- z
+        print(y)
+    }
+f(21)`, { includeCallees: true }
+		);
+	});
 }));

@@ -106,4 +106,31 @@ describe('Static Slice Query REPL Parser', () => {
 			rCode: undefined
 		},
 	});
+	assertReplParser({ parser,
+		label:         'with include-callees flag',
+		line:          ['(3@print)c'],
+		expectedParse: {
+			query: [{
+				type:           'static-slice',
+				criteria:       ['3@print'],
+				direction:      SliceDirection.Backward,
+				includeCallees: true
+			}],
+			rCode: undefined
+		},
+	});
+	assertReplParser({ parser,
+		label:         'include-callees flag combined with inline and direction',
+		line:          ['(1@var)fic', 'someCode'],
+		expectedParse: {
+			query: [{
+				type:           'static-slice',
+				criteria:       ['1@var'],
+				direction:      SliceDirection.Forward,
+				inlineSources:  true,
+				includeCallees: true
+			}],
+			rCode: 'someCode',
+		},
+	});
 });

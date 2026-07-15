@@ -30,11 +30,11 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		if(results[key]) {
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
-		const { criteria, noReconstruction, noMagicComments, inlineSources } = query;
+		const { criteria, noReconstruction, noMagicComments, inlineSources, includeCallees } = query;
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
 		const df = await analyzer.dataflow();
-		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold });
+		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold, includeCallees });
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };

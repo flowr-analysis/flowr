@@ -273,7 +273,7 @@ export class RDAParser{
 		if(buf.length >= 2 && buf[0] == 0x1f && buf[1] == 0x8b) {
 			return CompressionType.CompGz;
 		}
-		if(with_zlib && buf.length>=2 && buf[0] == 0x78 && buf[1] == 0x9c){
+		if(with_zlib && buf.length >= 2 && buf[0] == 0x78 && buf[1] == 0x9c){
 			return CompressionType.CompGz;
 		}
 		if(buf.length >= 10 && buf[0] === 0x42 && buf[1] === 0x5a && buf[2] === 0x68) {
@@ -289,7 +289,7 @@ export class RDAParser{
 			}
 		}
 
-		if(buf.length >=4){
+		if(buf.length >= 4){
 			if(buf.length >= 4 && buf[0] == 0x89 && buf[1] === 0x4c && buf[2] === 0x5a && buf[3] === 0x4f) {
 				throw new Error('this is a lzop-compressed file which this build of R does not support');
 			} else if(buf.length >= 4 && buf[0] === 0x28 && buf[1] === 0xB5 && buf[2] === 0x2F && buf[3] === 0xFD) {
@@ -2486,7 +2486,7 @@ export class RDAParser{
 			const table = s.hashTab as RObjectData;
 			const size = (table.value as RObject[]).length;
 			let _count = 0;
-			for(let i= 0; i < size; i++) {
+			for(let i = 0; i < size; i++) {
 				if(this.VECTOR_ELT(table, i) !== RValues.NilValue) {
 					_count++;
 				}
@@ -2519,7 +2519,7 @@ export class RDAParser{
 						type: (n.car as RObjectData).type,
 					};
 				} else {
-					copy= {
+					copy = {
 						name:         (n.tag as RObjectData).name,
 						value:        (n.car as RObjectData).value,
 						hasAttribute: !!n.hasAttribute,

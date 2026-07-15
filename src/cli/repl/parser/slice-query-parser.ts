@@ -23,7 +23,6 @@ function splitCriteriaArgument(argument: string | undefined): { criteria: string
 	return undefined;
 }
 
-/** the single-char flag suffix after the closing `)` of a criteria list (e.g. `f` forward, `i` inline sources) */
 function sliceFlagSuffix(argument: string | undefined): string {
 	return splitCriteriaArgument(argument)?.flags ?? '';
 }

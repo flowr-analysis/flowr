@@ -40,9 +40,8 @@ function sigDbSummaryString(): string {
 	if(entries.length === 0) {
 		return it('no sigdb');
 	}
-	// keep the color escapes outside the OSC 8 region (link text stays clean) for wider terminal support
 	const link = (text: string, file: string): string => it(formatter.hyperlink(text, pathToFileURL(file).href));
-	// if every ref shares the same date, print it once at the end instead of after each label
+	// if every ref shares the same date, print it once
 	const shared = entries.every(e => e.date !== undefined && e.date === entries[0].date) ? entries[0].date : undefined;
 	const refs = entries.map(e => link(shared === undefined && e.date !== undefined ? `${e.label} ${e.date}` : e.label, e.file));
 	return it('sigdb: ') + refs.join(it(', ')) + (shared !== undefined ? it(` ${shared}`) : '');
@@ -53,6 +52,5 @@ function sigDbSummaryString(): string {
  */
 export async function printVersionRepl(parser: KnownParser): Promise<void> {
 	const sigdb = sigDbSummaryString();
-	// merge the sigdb note into the trailing engine parenthesis: `(... engine, sigdb: ...)`
 	console.log((await versionReplString(parser)).replace(/\)$/, () => `, ${sigdb})`));
 }

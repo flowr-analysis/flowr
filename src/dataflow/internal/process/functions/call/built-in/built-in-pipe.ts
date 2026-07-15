@@ -142,6 +142,7 @@ export function processPipe<OtherInfo>(
 				}
 				RNode.visitAst<OtherInfo & ParentInformation>(arg, node => {
 					information.graph.addEdge(rhs.info.id, node.info.id, EdgeType.NonStandardEvaluation);
+					return false;
 				});
 			}
 		}

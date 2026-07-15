@@ -44,6 +44,20 @@ describe('R Version Utility', () => {
 				assert.isUndefined(RVersion.parse(bad));
 			});
 		});
+
+		describe('compare follows R\'s numeric_version scheme', () => {
+			// `.` and `-` separate equally, and each part compares numerically rather than as text
+			test.each([
+				['0.4-9', '0.4.10', -1],   // 9 < 10, even though "9" sorts after "1" as text
+				['1.10', '1.9', 1],
+				['1.0', '0.9-9', 1],
+				['1.2.3', '1.2.3', 0],
+				['1.2', '1.2.0', 0]        // a missing part counts as zero
+			] as const)('compare %s %s', (a, b, want) => {
+				assert.strictEqual(Math.sign(RVersion.compare(a, b)), want);
+				assert.strictEqual(Math.sign(RVersion.compare(b, a)), -want, 'comparison must be symmetric');
+			});
+		});
 	});
 
 	describe('Range', () => {

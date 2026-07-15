@@ -15,7 +15,7 @@ import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 
 describe('load real-world', withTreeSitter(parser => {
-	const dir = 'test/functionality/project/plugin/load-pipeline/_zenodo/files';
+	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
 	if(!(fs.existsSync(dir) && fs.readdirSync(dir).length > 0)) {
 		it.skip('skipped - no RDA files found', () => {});
 		return;
@@ -168,7 +168,7 @@ describe('load random', withTreeSitter(parser => {
 	const rng = seedrandom(seed.toString());
 	const rnd = new SeededRandom(rng);
 	const rcg = new RandomRCodeGenerator(rnd);
-	const tempFolder = fs.mkdtempSync(path.resolve(os.tmpdir(), '/tmp/flowr-load-test'));
+	const tempFolder = fs.mkdtempSync(path.resolve(os.tmpdir(), 'flowr-load-test-'));
 
 	const createRda = (types: RObjectType[], filename: string): { file: string, vars: string[] } => {
 		const { rCode, vars } = rcg.generateRCodeWithTypes(types);

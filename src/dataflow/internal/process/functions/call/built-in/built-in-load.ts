@@ -94,9 +94,15 @@ export function processLoadCall<OtherInfo>(
 				continue;
 			}
 
-			const variables = new RDAParser(new FlowrTextFile(filepath), true).parseRDA();
-			if(!variables) {
+			let variables: RObjectData[] | null;
+			try {
+				variables = new RDAParser(new FlowrTextFile(filepath), true).parseRDA();
+			} catch(e) {
+				expensiveTrace(dataflowLogger, () => `Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
 				continue;
+			}
+			if(variables === null || variables.length === 0) {
+				return fn.information;
 			}
 
 			let envir = envirResolution ? envirResolution.envirData.environment : fn.information.environment;

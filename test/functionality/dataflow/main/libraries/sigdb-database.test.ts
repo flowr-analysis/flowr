@@ -6,20 +6,15 @@ import { SigDbBuilder, writeSignatureDb, writeShardedDatabase, type ShardSpec } 
 import { writeManifest, SigDbManifestMagic, SigDbManifestSchema, type SigDbManifest } from '../../../../../src/project/sigdb/manifest';
 import { readSigDbIndex, encodeIndex } from '../../../../../src/project/sigdb/index-format';
 import { deriveLibraryExports } from '../../../../../src/project/sigdb/decode';
-import { FnProp, ParamFlag, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase, type SigVersionInfo } from '../../../../../src/project/sigdb/schema';
+import { FnProp, ParamFlag, DepType, SigDbMagic, SigDbSchema, SigDbExt, MaxDefaultLength, DefaultCranBase } from '../../../../../src/project/sigdb/schema';
 import { zstdSupported } from '../../../../../src/project/sigdb/codec';
 import { resolveSource } from '../../../../../src/project/sigdb/decompress';
 import { selectDownloadVariants } from '../../../../../src/project/sigdb/sigdb-download';
-import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen } from '../../../_helper/sigdb';
+import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen, ver } from '../../../_helper/sigdb';
 
 afterAll(cleanupSigTmpDirs);
 
 const meta = { date: '2026-05-23', generated: 0 };
-
-/** a version with a handful of functions */
-function ver(functions: SigVersionInfo['functions'], cran = true): SigVersionInfo {
-	return { cran, functions };
-}
 
 describe('sigdb database (schema 4)', () => {
 	test('builder + full read: dictionary/blobs/pkgs/meta round-trip, deterministic hash', async() => {

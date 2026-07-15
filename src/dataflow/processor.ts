@@ -47,21 +47,15 @@ export interface DataflowProcessorInformation<OtherInfo> {
 	 */
 	readonly builtInNoEnv?:        NodeId
 	/**
-	 * Escape hatch for hot recursive paths (currently: long left-associative binary-op / pipe chains).
-	 * When set and its `rootId` matches the function call currently being processed by {@link processAllArguments}
-	 * (see the common argument processing shared by all function-call-shaped processors), its `info` is used as the
-	 * already-processed first argument instead of processing that argument again. This lets a caller pre-compute
-	 * a left-associative operator spine with an explicit loop instead of recursing into it one call stack frame
-	 * per nesting level.
+	 * Escape hatch for hot recursive paths.
+	 * When set and its `rootId` matches the function call currently being processed by {@link processAllArguments},
+	 * its `info` is used as the already-processed first argument instead of processing that argument again.
 	 */
 	readonly precomputedFirstArg?: { readonly rootId: NodeId, readonly info: DataflowInformation }
 	/**
 	 * Companion to {@link precomputedFirstArg}: when set and its `nodeId` matches the node
 	 * {@link processFunctionArgument} is about to process as an argument's value, its `info` is used instead of
-	 * processing (and recursing into) that node again. Needed because the "first argument" of a chained call is
-	 * itself wrapped in an {@link RArgument} that still goes through the normal argument processing; without this,
-	 * that processing would recurse into the (already processed) value once more per spine level, turning the
-	 * linear iterative fold into a quadratic one.
+	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
 	 */
 	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
 }

@@ -35,14 +35,10 @@ export function processFunctionArgument<OtherInfo>(
 	if(argument.value === undefined) {
 		value = undefined;
 	} else if(data.precomputedValue?.nodeId === argument.value.info.id) {
-		// the caller already processed this value iteratively (see processChainedCall) and is folding it in as
-		// an argument here (exactly what a chain's first argument -- e.g. the lhs of `a %>% b %>% c` -- is), so
-		// reuse it instead of processing (and, since it is itself chained, recursing all the way down) it again
+		// the caller already processed this value iteratively (e.g., processChainedCall)
 		value = data.precomputedValue.info;
 	} else {
-		// call the value's processor directly instead of going through processDataflowFor: an argument's value is
-		// on the hot recursive path for long binary-op / pipe chains (their lhs is unwrapped through here on every
-		// nesting level), so skipping the extra dispatch frame here raises the safe nesting depth of such chains
+		// call the value's processor directly instead of going through processDataflowFor, safes one stack frame
 		value = (data.processors[argument.value.type] as DataflowProcessor<OtherInfo & ParentInformation, typeof argument.value>)(argument.value, data);
 	}
 	// we do not keep the graph of the name, as this is no node that should ever exist

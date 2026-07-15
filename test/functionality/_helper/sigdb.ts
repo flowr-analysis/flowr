@@ -47,7 +47,7 @@ export async function sigdbAnalyzer(ts: TreeSitterExecutor, db: PackageSignature
 export const expFn = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
 
 /** a CRAN version carrying the given functions */
-export const ver = (functions: SigVersionInfo['functions']): SigVersionInfo => ({ cran: true, functions });
+export const ver = (functions: SigVersionInfo['functions'], cran = true): SigVersionInfo => ({ cran, functions });
 
 /** whether the export `pkg::fn`'s built-in vertex is present in the graph (i.e. `library()` attached it) */
 export function hasBuiltInVertex(df: Pick<DataflowInformation, 'graph'>, pkg: string, fn: string): boolean {

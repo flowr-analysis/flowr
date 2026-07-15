@@ -23,6 +23,8 @@ import { DfEdge, EdgeType } from '../../../../../src/dataflow/graph/edge';
 import { FlowrAnalyzerPackageVersionsPlugin } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import { SemVer } from 'semver';
 import { label } from '../../../_helper/label';
+import { setMinLevelOfAllLogs } from '../../../_helper/log';
+import { LogLevel } from '../../../../../src/util/log';
 
 afterAll(cleanupSigTmpDirs);
 
@@ -292,9 +294,19 @@ describe('plugin robustness: a throwing version plugin does not abort the analys
 			.registerPlugins(new ThrowingVersionsPlugin(), new FlowrAnalyzerPackageVersionsSigDbPlugin(db))
 			.build();
 		analyzer.addRequest('library(stats)\narima()');
-		// the whole analysis still completes and stats still resolves -- the throw was contained to its plugin
-		const df = await analyzer.dataflow();
-		expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
+		const verbose = process.env['FLOWR_VERBOSE'] === 'true';
+		if(!verbose) {
+			setMinLevelOfAllLogs(LogLevel.Fatal);
+		}
+		try {
+			// the whole analysis still completes and stats still resolves -- the throw was contained to its plugin
+			const df = await analyzer.dataflow();
+			expect(callResolvesTo(df, 'arima', 'stats', 'arima')).toBe(true);
+		} finally {
+			if(!verbose) {
+				setMinLevelOfAllLogs(LogLevel.Error);
+			}
+		}
 	});
 }));
 

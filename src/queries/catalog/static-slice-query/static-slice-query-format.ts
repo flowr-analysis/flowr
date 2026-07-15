@@ -55,6 +55,17 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	>
 }
 
+const SliceCriterionHelp = [
+	'Each criterion picks one element of the program, separate multiple ones with ";":',
+	'  <line>@<name>       the first occurrence of <name> in line <line> (e.g. 2@x)',
+	'  <line>@[<n>]<name>  the n-th occurrence of <name> in line <line> (e.g. 2@[2]x)',
+	'  <line>:<col>        the element starting at line <line>, column <col> (e.g. 2:5)',
+	'  <line>~<col>        the innermost element containing line <line>, column <col> (e.g. 2~5)',
+	'  $<id>               the normalized node with the id <id> (e.g. $42)',
+	'Append flags after the ")": f (slice forward), i (inline sources), c (include callees).',
+	'Example: :query @static-slice (2@x;3:1)fc'
+].join('\n');
+
 function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'static-slice'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	const direction = sliceDirectionParser(line[0]);
@@ -63,6 +74,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 	if(!criteria || criteria.length === 0) {
 		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		output.stderr(SliceCriterionHelp);
 		return { query: [] };
 	}
 

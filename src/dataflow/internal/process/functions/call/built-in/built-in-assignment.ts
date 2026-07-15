@@ -525,7 +525,7 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
 /**
  * Model a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: the argument symbol
  * `x` is both **read** (as the call's argument, its value comes from outside the code) and **defined** by the call.
- * Unlike {@link markAsAssignment} we keep the read edge -- the symbol is used *and* (re)defined here.
+ * Unlike {@link markAsAssignment} we keep the read edge.
  */
 export function processDefineArgument<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,

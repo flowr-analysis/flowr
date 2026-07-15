@@ -4,9 +4,9 @@ import type { CommandCompletions } from '../core';
 import type { FlowrConfig } from '../../../config';
 
 /** the single-char flag suffix after the closing `)` of a criteria list (e.g. `f` forward, `i` inline sources) */
-function sliceFlagSuffix(argument: string): string {
-	const endBracket = argument.indexOf(')');
-	return endBracket >= 0 ? argument.slice(endBracket + 1) : '';
+function sliceFlagSuffix(argument: string | undefined): string {
+	const endBracket = argument?.indexOf(')') ?? -1;
+	return endBracket >= 0 ? (argument as string).slice(endBracket + 1) : '';
 }
 
 /**

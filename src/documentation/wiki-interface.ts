@@ -170,6 +170,7 @@ ${await documentReplSession(parser, [{
 }], { openOutput: true })}
 
 For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
+Pass \`--inline\` to splice resolvable \`source()\` calls into the reconstruction so the slice is a single self-contained R text (the same as the static slice query's \`inlineSources\` flag).
 
 ### Example: Interfacing with the File System
 
@@ -203,7 +204,7 @@ As _flowR_ directly transforms this AST the output focuses on being human-readab
 You can run any query supported by _flowR_ using the ${ctx.replCmd('query')} command.
 For example, to obtain the shapes of all data frames in a given piece of code, you can run:
 ${await documentReplSession(parser, [{
-	command:     ':query @df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
+	command:     ':query @absint df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
 	description: 'Retrieve the shapes of all data frames in the given code.'
 }], { openOutput: true })}
 To run the linter on a file, you can use (in this example, we just issue the \`dead-code\` linter on a small piece of code):
@@ -275,7 +276,7 @@ ${codeBlock('json', JSON.stringify(
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, linkBaseR: false, linkDescriptionDependencies: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,

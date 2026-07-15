@@ -15,6 +15,7 @@ import {
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
+import { processFunctionArgument } from '../process-argument';
 import {
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
@@ -134,7 +135,12 @@ export function processAllArguments<OtherInfo>(
 			continue;
 		}
 
-		const processed = processDataflowFor(arg, data);
+		let processed: DataflowInformation;
+		if(i === 0 && data.precomputedFirstArg?.rootId === functionRootId) {
+			processed = data.precomputedFirstArg.info;
+		} else {
+			processed = arg.type === RType.Argument ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
+		}
 		if(RArgument.isWithValue(arg) && (forceArgs === 'all' || forceArgs[i]) && !RConstant.is(arg.value)) {
 			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
 		}

@@ -1,10 +1,12 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
 	FlowrAnalyzerPackageVersionsPlugin,
-	type PkgDbLoadedInfo
+	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
+import type { PackageSignatureSource } from '../sigdb/reader';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { isSigDbEnabled } from '../../config';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -35,7 +37,17 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
 	 * Metadata of the package databases the version plugins currently have loaded.
 	 */
-	loadedPackageDatabases(): PkgDbLoadedInfo[];
+	loadedPackageDatabases(): SigDbLoadedInfo[];
+
+	/**
+	 * The names of known packages that export `name` (from the version plugins' package databases). Used to
+	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
+	 * available or the package db is disabled.
+	 */
+	packagesExporting(name: string): readonly string[];
+
+	/** The signature sources the version plugins currently have loaded (backs the signature query). */
+	signatureSources(): readonly PackageSignatureSource[];
 }
 
 /**
@@ -64,14 +76,55 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.lazyResolvers.push(resolver);
 	}
 
-	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
-		if(!this.ctx.config.solver.pkgdb.enabled) {
+	public loadedPackageDatabases(): SigDbLoadedInfo[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
-	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */
+	public packagesExporting(name: string): readonly string[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		const out = new Set<string>();
+		for(const p of this.plugins) {
+			for(const pkg of p.packagesExporting(name)) {
+				out.add(pkg);
+			}
+		}
+		return [...out];
+	}
+
+	public signatureSources(): readonly PackageSignatureSource[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
+	}
+
+	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */
+	public hasBaseRSource(): boolean {
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
+	}
+
+	/** Cheap fingerprint of only the base-R-providing databases, so base-R-derived caches survive unrelated database changes. */
+	public baseRSourceFingerprint(): string {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return '';
+		}
+		return this.plugins.filter(p => p.providesBaseRPackages())
+			.flatMap(p => p.loadedDatabases()).map(d => d.hash).join(',');
+	}
+
+	/** Mount an additional signature database/source by path (a plain `.sigs.ndjson`, a `.br`, or a manifest). */
+	public async addDatabaseSource(source: string): Promise<void> {
+		for(const p of this.plugins) {
+			await p.addDatabaseSource(source);
+		}
+	}
+
+	/** Eagerly mount every version plugin's package database up front (see `solver.sigdb.eagerlyLoad`). */
 	public eagerlyLoadPackageDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();
@@ -86,6 +139,19 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public resolveStaticDependencies(): void {
 		this.applyPlugins(undefined);
 		this.staticsLoaded = true;
+	}
+
+	/**
+	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
+	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the
+	 * declared deps never enter the context (unlike {@link addDependency}, used for on-demand signature-database
+	 * resolution).
+	 */
+	public addDeclaredDependency(pkg: Package): this {
+		if(!this.ctx.config.solver.sigdb.loadProjectDependencies) {
+			return this;
+		}
+		return this.addDependency(pkg);
 	}
 
 	public addDependency(pkg: Package): this {

@@ -16,6 +16,7 @@ export class FlowrAnalyzerPackageVersionsNamespaceFilePlugin extends FlowrAnalyz
 		const nmspcFiles = ctx.files.getFilesByRole(FileRole.Namespace);
 		if(nmspcFiles.length === 0) {
 			namespaceFileLog.debug('No namespace file found, cannot extract package versions.');
+			return;
 		} else if(nmspcFiles.length > 1) {
 			namespaceFileLog.warn(`Found ${nmspcFiles.length} namespace files, expected exactly one.`);
 		}

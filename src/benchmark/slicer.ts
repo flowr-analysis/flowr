@@ -137,7 +137,7 @@ export class BenchmarkSlicer {
 	 * Can only be called once for each instance.
 	 */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
-		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
+		autoSelectIf?: AutoSelectPredicate, threshold?: number, inlineSources?: boolean, includeCallees?: boolean) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
@@ -157,6 +157,8 @@ export class BenchmarkSlicer {
 			criterion: [],
 			autoSelectIf,
 			threshold,
+			inlineSources,
+			includeCallees,
 		});
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);

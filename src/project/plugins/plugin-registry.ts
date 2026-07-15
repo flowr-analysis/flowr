@@ -4,8 +4,8 @@ import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
 import {
-	FlowrAnalyzerPackageVersionsPkgDbPlugin
-} from './package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
+	FlowrAnalyzerPackageVersionsSigDbPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import {
 	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
@@ -20,6 +20,7 @@ import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
+import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
 import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
 import {
@@ -34,13 +35,14 @@ import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discover
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
-	['versions:pkgdb', FlowrAnalyzerPackageVersionsPkgDbPlugin],
+	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
 	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
+	['files:inst', FlowrAnalyzerMetaInstFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:rnw', FlowrAnalyzerSweaveFilePlugin],

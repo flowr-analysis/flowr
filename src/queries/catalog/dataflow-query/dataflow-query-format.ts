@@ -8,6 +8,9 @@ import type { QueryResults, SupportedQuery } from '../../query';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 
+/** Above this many characters, the mermaid.live link is dropped from the REPL output (large graphs produce megabyte-sized base64 urls). */
+const MaxMermaidUrlLength = 8000;
+
 /**
  * Simple re-returns the dataflow graph of the analysis.
  */
@@ -25,7 +28,14 @@ export const DataflowQueryDefinition = {
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];
 		result.push(`Query: ${bold('dataflow', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(`   ╰ [Dataflow Graph](${Dataflow.visualize.mermaid.url(out.graph)})`);
+		const url = Dataflow.visualize.mermaid.url(out.graph);
+		if(url.length <= MaxMermaidUrlLength) {
+			result.push(`   ╰ [Dataflow Graph](${url})`);
+		} else {
+			const vertices = Array.from(out.graph.vertices(true)).length;
+			const edges = Array.from(out.graph.edges()).length;
+			result.push(`   ╰ Dataflow Graph too large to link (${vertices} vertices, ${edges} edges, url would be ${url.length} chars); use ':df#' for more detail.`);
+		}
 		return true;
 	},
 	schema: Joi.object({

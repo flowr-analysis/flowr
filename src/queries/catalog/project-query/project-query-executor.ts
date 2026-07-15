@@ -6,7 +6,7 @@ import { FileRole } from '../../../project/context/flowr-file';
 import type { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 import type { ReadOnlyFlowrAnalyzerFilesContext } from '../../../project/context/flowr-analyzer-files-context';
-import { RBaseAndRecommendedPackages } from '../../../util/r-base-packages';
+import { baseRPackages } from '../../../util/r-base-packages';
 import path from 'path';
 
 /**
@@ -110,7 +110,7 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 	}
 
 	const ctx = analyzer.inspectContext();
-	const basePackages = ctx.config.project.basePackages ? new Set(ctx.config.project.basePackages) : RBaseAndRecommendedPackages;
+	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
 	const descFile = ctx.files.getFilesByRole(FileRole.Description);
 	const desc: FlowrDescriptionFile | undefined = descFile[0];
 	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;

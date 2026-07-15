@@ -42,6 +42,8 @@ export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
+	/** render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text) */
+	hyperlink(text: string, url: string): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -55,6 +57,10 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 
 	public reset(): string {
 		return '';
+	}
+
+	public hyperlink(text: string, _url: string): string {
+		return text;
 	}
 }();
 
@@ -87,6 +93,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 
 	public reset(): string {
 		return '';
+	}
+
+	public hyperlink(text: string, url: string): string {
+		return `[${text}](${url})`;
 	}
 }();
 
@@ -123,6 +133,11 @@ const colorSuffix = 'm';
 export const ansiFormatter = {
 	reset(): string {
 		return `${escape}0${colorSuffix}`;
+	},
+
+	hyperlink(text: string, url: string): string {
+		// OSC 8 hyperlink, BEL-terminated (\x07) -- more widely supported than the ST form (Konsole, tmux, ...)
+		return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
 	},
 
 	format(input: string, options?: FormatOptions): string {

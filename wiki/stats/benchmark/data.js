@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1784112391015,
+  "lastUpdate": 1784112392763,
   "repoUrl": "https://github.com/flowr-analysis/flowr",
   "entries": {
     "\"artificial\" Benchmark Suite": [
@@ -10933,109 +10933,6 @@ window.BENCHMARK_DATA = {
             "username": "EagleoutIce"
           },
           "distinct": true,
-          "id": "2ba4d77877fe53239f726a488ec64a2875a2d054",
-          "message": "[release:patch] Fix: Use of Replacement Functions in Function Definitions (Release v2.0.19)",
-          "timestamp": "2024-09-03T22:40:53+02:00",
-          "tree_id": "484c952218196a6640f5665649fadc168fcefb30",
-          "url": "https://github.com/flowr-analysis/flowr/commit/2ba4d77877fe53239f726a488ec64a2875a2d054"
-        },
-        "date": 1725397132358,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "Retrieve AST from R code",
-            "value": 243.98377468,
-            "unit": "ms",
-            "range": 44.65454208073405,
-            "extra": "median: 221.23ms"
-          },
-          {
-            "name": "Normalize R AST",
-            "value": 22.16135236,
-            "unit": "ms",
-            "range": 16.672667480590608,
-            "extra": "median: 13.26ms"
-          },
-          {
-            "name": "Produce dataflow information",
-            "value": 72.23525608,
-            "unit": "ms",
-            "range": 86.60187300046161,
-            "extra": "median: 30.20ms"
-          },
-          {
-            "name": "Total per-file",
-            "value": 4031.8785642,
-            "unit": "ms",
-            "range": 8285.555073707617,
-            "extra": "median: 833.83ms"
-          },
-          {
-            "name": "Static slicing",
-            "value": 8.512326865448639,
-            "unit": "ms",
-            "range": 20.852034679315373,
-            "extra": "median: 2.03ms"
-          },
-          {
-            "name": "Reconstruct code",
-            "value": 0.23621496079457663,
-            "unit": "ms",
-            "range": 0.15042289859405333,
-            "extra": "median: 0.15ms"
-          },
-          {
-            "name": "Total per-slice",
-            "value": 8.756647337180182,
-            "unit": "ms",
-            "range": 20.88345286926803,
-            "extra": "median: 2.30ms"
-          },
-          {
-            "name": "failed to reconstruct/re-parse",
-            "value": 0,
-            "unit": "#",
-            "extra": "out of 12710 slices"
-          },
-          {
-            "name": "times hit threshold",
-            "value": 0,
-            "unit": "#"
-          },
-          {
-            "name": "reduction (characters)",
-            "value": 0.9038287698156573,
-            "unit": "#",
-            "extra": "std: 0.09278162591666926"
-          },
-          {
-            "name": "reduction (normalized tokens)",
-            "value": 0.8715309581660212,
-            "unit": "#",
-            "extra": "std: 0.1344210870113287"
-          },
-          {
-            "name": "memory (df-graph)",
-            "value": 142.5441796875,
-            "unit": "KiB",
-            "range": 146.66042171252732,
-            "extra": "median: 70.15"
-          }
-        ]
-      },
-      {
-        "commit": {
-          "author": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "committer": {
-            "email": "florian.sihler@uni-ulm.de",
-            "name": "EagleoutIce",
-            "username": "EagleoutIce"
-          },
-          "distinct": true,
           "id": "d6d97d3fea33e517ba14715d9fc2fbf476969926",
           "message": "[release:patch] Fix: Overshadow Built-Ins in Loops (Release v2.0.20)",
           "timestamp": "2024-09-09T10:17:42+02:00",
@@ -21778,6 +21675,128 @@ window.BENCHMARK_DATA = {
             "range": "5.146625222538142",
             "unit": "ms",
             "extra": "median: 0.44ms"
+          },
+          {
+            "name": "number of files",
+            "value": 141,
+            "unit": "#"
+          },
+          {
+            "name": "failed to reconstruct/re-parse",
+            "value": 77,
+            "unit": "#",
+            "extra": "out of 30545 slices"
+          },
+          {
+            "name": "times hit threshold",
+            "value": 0,
+            "unit": "#"
+          },
+          {
+            "name": "reduction (characters)",
+            "value": 0.8829473365144113,
+            "unit": "#",
+            "extra": "std: 0.10499623458099885"
+          },
+          {
+            "name": "reduction (normalized tokens)",
+            "value": 0.8448949774123339,
+            "unit": "#",
+            "extra": "std: 0.13364416890061254"
+          },
+          {
+            "name": "memory (df-graph)",
+            "value": 85.37984125664893,
+            "range": "97.42815344800184",
+            "unit": "KiB",
+            "extra": "median: 51.92"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "committer": {
+            "email": "florian.sihler@uni-ulm.de",
+            "name": "Florian Sihler",
+            "username": "EagleoutIce"
+          },
+          "distinct": true,
+          "id": "b8e94b5c23d0ec7612abd9b6263c775027796c9c",
+          "message": "[release:patch] 2.12.3 Sanitize Version in Docker Releases",
+          "timestamp": "2026-07-15T12:12:37+02:00",
+          "tree_id": "5fc18cb9df1ecf8a2690a5308eb740419bfc9769",
+          "url": "https://github.com/flowr-analysis/flowr/commit/b8e94b5c23d0ec7612abd9b6263c775027796c9c"
+        },
+        "date": 1784112392756,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "Retrieve AST from R code",
+            "value": 247.48423961347518,
+            "range": "39.16360840902533",
+            "unit": "ms",
+            "extra": "median: 235.72ms"
+          },
+          {
+            "name": "Normalize R AST",
+            "value": 16.42133775886525,
+            "range": "10.328847576656932",
+            "unit": "ms",
+            "extra": "median: 12.84ms"
+          },
+          {
+            "name": "Produce dataflow information",
+            "value": 52.405985726950355,
+            "range": "34.439690226401765",
+            "unit": "ms",
+            "extra": "median: 43.62ms"
+          },
+          {
+            "name": "Total per-file",
+            "value": 1727.3967936879433,
+            "range": "6052.739335634977",
+            "unit": "ms",
+            "extra": "median: 488.16ms"
+          },
+          {
+            "name": "Extract control flow graph",
+            "value": 8.246780333333334,
+            "range": "6.249841676253832",
+            "unit": "ms",
+            "extra": "median: 7.02ms"
+          },
+          {
+            "name": "Extract call graph",
+            "value": 2.5579657659574466,
+            "range": "2.188644290900211",
+            "unit": "ms",
+            "extra": "median: 1.88ms"
+          },
+          {
+            "name": "Static slicing",
+            "value": 2.8347851216696145,
+            "range": "7.689849390292573",
+            "unit": "ms",
+            "extra": "median: 0.51ms"
+          },
+          {
+            "name": "Reconstruct code",
+            "value": 0.2198463490612518,
+            "range": "0.15741205176161344",
+            "unit": "ms",
+            "extra": "median: 0.15ms"
+          },
+          {
+            "name": "Total per-slice",
+            "value": 3.0651086935122067,
+            "range": "7.724111317815379",
+            "unit": "ms",
+            "extra": "median: 0.71ms"
           },
           {
             "name": "number of files",

@@ -51,7 +51,6 @@ import {
 	type ControlFlowQuery,
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
-import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfig } from '../config';
 import {
@@ -88,6 +87,7 @@ import type { ProvenanceQuery } from './catalog/provenance-query/provenance-quer
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
+import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -101,7 +101,7 @@ export type Query = CallContextQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
 	| FilesQuery
-	| DfShapeQuery
+	| AbsintQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -169,7 +169,7 @@ export const SupportedQueries = {
 	'dataflow':             DataflowQueryDefinition,
 	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
-	'df-shape':             DfShapeQueryDefinition,
+	'absint':               AbsintQueryDefinition,
 	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,

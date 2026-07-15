@@ -23,7 +23,7 @@ import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-contex
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { FlowrConfig } from '../../config';
+import { FlowrConfig, resolveAssumedRVersion } from '../../config';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
@@ -44,22 +44,24 @@ import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyz
  */
 export interface ReadOnlyFlowrAnalyzerContext {
 	/** Project metadata such as name, version, and namespace. */
-	readonly meta:   ReadOnlyFlowrAnalyzerMetaContext;
+	readonly meta:             ReadOnlyFlowrAnalyzerMetaContext;
 	/** Files to be analyzed and their loading order. */
-	readonly files:  ReadOnlyFlowrAnalyzerFilesContext;
+	readonly files:            ReadOnlyFlowrAnalyzerFilesContext;
 	/** Identified dependencies and their versions. */
-	readonly deps:   ReadOnlyFlowrAnalyzerDependenciesContext;
+	readonly deps:             ReadOnlyFlowrAnalyzerDependenciesContext;
 	/** Environment information used during analysis. */
-	readonly env:    ReadOnlyFlowrAnalyzerEnvironmentContext;
+	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/** The configuration options used by the analyzer. */
-	readonly config: FlowrConfig;
+	readonly config:           FlowrConfig;
+	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
+	readonly resolvedRVersion: string;
 	/**
 	 * Resource-usage guard (gas).
 	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
 	 * Returns `GasLevel.Normal` with zero overhead when gas is disabled for `key`.
 	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
 	 */
-	readonly gas:    ReadOnlyFlowrAnalyzerGasContext;
+	readonly gas:              ReadOnlyFlowrAnalyzerGasContext;
 }
 
 /**
@@ -80,6 +82,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
+	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
+	private _detectedR:    string | undefined;
 
 	public readonly config: FlowrConfig;
 
@@ -106,6 +110,16 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 
 	setAnalyzer(analyzer: FlowrAnalyzer) {
 		this._analyzer = analyzer;
+	}
+
+	/** Record the engine's auto-detected R version (used when `solver.sigdb.assumedRVersion` is `"auto"`). */
+	public setDetectedRVersion(version: string): void {
+		this._detectedR = version;
+	}
+
+	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
+	public get resolvedRVersion(): string {
+		return resolveAssumedRVersion(this.config, this._detectedR);
 	}
 
 	/** delegate request addition */

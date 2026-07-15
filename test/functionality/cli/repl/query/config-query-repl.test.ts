@@ -49,7 +49,7 @@ describe('Config Query REPL Completions', () => {
 		label:               'empty arguments',
 		startingNewArg:      true,
 		splitLine:           [],
-		expectedCompletions: ['+']
+		expectedCompletions: ['+', '?']
 	});
 	assertReplCompletions({ completer,
 		label:               'all root nodes',
@@ -103,6 +103,48 @@ describe('Config Query REPL Completions', () => {
 		label:               'no completions after config update string',
 		startingNewArg:      true,
 		splitLine:           ['+someConfigThing', 'abc'],
+		expectedCompletions: [],
+	});
+	assertReplCompletions({ completer,
+		label:               'offers both booleans for a boolean field',
+		startingNewArg:      false,
+		splitLine:           ['+solver.sigdb.enabled'],
+		expectedCompletions: ['+solver.sigdb.enabled=true', '+solver.sigdb.enabled=false'],
+	});
+	assertReplCompletions({ completer,
+		label:               'still offers the booleans right after the equals sign',
+		startingNewArg:      false,
+		splitLine:           ['+solver.sigdb.enabled='],
+		expectedCompletions: ['+solver.sigdb.enabled=true', '+solver.sigdb.enabled=false'],
+	});
+	assertReplCompletions({ completer,
+		label:               'filters the value by what is already typed',
+		startingNewArg:      false,
+		splitLine:           ['+solver.sigdb.enabled=t'],
+		expectedCompletions: ['+solver.sigdb.enabled=true'],
+	});
+	assertReplCompletions({ completer,
+		label:               'inspecting a boolean field never assigns a value',
+		startingNewArg:      false,
+		splitLine:           ['?solver.sigdb.enabled'],
+		expectedCompletions: ['?solver.sigdb.enabled'],
+	});
+	assertReplCompletions({ completer,
+		label:               'does not re-complete a fully typed boolean value',
+		startingNewArg:      false,
+		splitLine:           ['+solver.sigdb.enabled=true'],
+		expectedCompletions: [],
+	});
+	assertReplCompletions({ completer,
+		label:               'offers an enum member and stops once it is fully typed',
+		startingNewArg:      false,
+		splitLine:           ['+solver.variables='],
+		expectedCompletions: ['+solver.variables="disabled"', '+solver.variables="alias"', '+solver.variables="builtin"'],
+	});
+	assertReplCompletions({ completer,
+		label:               'does not re-complete a fully typed enum value',
+		startingNewArg:      false,
+		splitLine:           ['+solver.variables="disabled"'],
 		expectedCompletions: [],
 	});
 });

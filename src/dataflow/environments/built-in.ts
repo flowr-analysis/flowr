@@ -6,7 +6,8 @@ import { processAccess } from '../internal/process/functions/call/built-in/built
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import {
 	processAssignment,
-	processAssignmentLike
+	processAssignmentLike,
+	processDefineArgument
 } from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
@@ -60,7 +61,7 @@ import { processRegisterHook } from '../internal/process/functions/call/built-in
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
 import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
-import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
+import { processS7NewGeneric, processMakeConstructor } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
 import { BuiltInProcName } from './built-in-proc-name';
@@ -103,6 +104,11 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
+	/**
+	 * Propagate the `out` references produced by the arguments instead of dropping them.
+	 * Set this for functions that are transparent about their arguments, like `(`.
+	 */
+	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
@@ -130,11 +136,14 @@ function defaultBuiltInProcessor<OtherInfo>(
 	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse }: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	if(nse !== undefined) {
 		markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
+	}
+	if(keepArgumentOut) {
+		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
 	}
 	if(returnsNthArgument !== undefined) {
 		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];
@@ -219,6 +228,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Apply]:              processApply,
 	[BuiltInProcName.Assignment]:         processAssignment,
 	[BuiltInProcName.AssignmentLike]:     processAssignmentLike,
+	[BuiltInProcName.DefineArgument]:     processDefineArgument,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
 	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
 	[BuiltInProcName.Eval]:               processEvalCall,
@@ -241,6 +251,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Rm]:                 processRm,
 	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
 	[BuiltInProcName.S7NewGeneric]:       processS7NewGeneric,
+	[BuiltInProcName.S7MakeConstructor]:  processMakeConstructor,
 	[BuiltInProcName.S7Dispatch]:         processS7Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,

@@ -21,7 +21,9 @@ import {
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import type { FlowrConfig } from '../../config';
+import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
@@ -310,6 +312,19 @@ export interface GeneralDocContext {
 	 * @see {@link getReplCommand} - for the underlying impl.
 	 */
 	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
+
+	/**
+	 * Generates a link to a flowR configuration option, resolving its schema type and description as a hover tooltip.
+	 * @example
+	 * ```ts
+	 * linkConfig('solver.sigdb.enabled')
+	 * ```
+	 * Returns a link to the configuration section of the Interface wiki page, showing `solver.sigdb.enabled` with its documentation on hover.
+	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
+	 * @param quote - Whether to render the path as inline code. Default is `false`.
+	 * @see {@link getConfigOption} - for the underlying impl.
+	 */
+	linkConfig<K extends AutocompletablePaths<FlowrConfig>>(path: K, quote?: boolean): string
 }
 
 /**
@@ -418,6 +433,9 @@ export function makeDocContextForTypes(
 		},
 		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
+		},
+		linkConfig(this: void, path: AutocompletablePaths<FlowrConfig>, quote = false): string {
+			return getConfigOption(path, quote);
 		}
 	};
 }

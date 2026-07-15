@@ -302,6 +302,8 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.DefineArgument:
 				return this.onDefaultFunctionCall({ call });
 			default:
 				assertUnreachable(origin);

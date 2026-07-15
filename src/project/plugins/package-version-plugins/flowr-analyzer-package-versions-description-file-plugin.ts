@@ -35,7 +35,7 @@ export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnal
 
 	private retrieveVersionsFromField(ctx: FlowrAnalyzerContext, pkgs: readonly Package[]): void {
 		for(const pkg of pkgs) {
-			ctx.deps.addDependency(pkg);
+			ctx.deps.addDeclaredDependency(pkg);
 		}
 	}
 }

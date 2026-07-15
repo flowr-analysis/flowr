@@ -135,9 +135,6 @@ export function processPipe<OtherInfo>(
 			information.graph.addEdge(functionCallNode.id, argId, EdgeType.Argument | EdgeType.Reads);
 		}
 
-		// when piping into a data-masking verb (`df %>% mutate(z = col)`) the data arrives through the pipe,
-		// so every *explicit* rhs argument names a column of the data: mark those subtrees NSE like the direct
-		// call would (the direct-call config skips arg 0 as the data, which the pipe supplies instead).
 		if(RFunctionCall.isNamed(rhs) && DataMaskingFunctionNames.has(Identifier.getName(rhs.functionName.content))) {
 			for(const arg of rhs.arguments) {
 				if(arg === EmptyArgument) {

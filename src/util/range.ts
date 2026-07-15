@@ -1,5 +1,6 @@
 import { guard, isNotUndefined } from './assert';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
+import type { RNodeWithParent } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 
 /**
  * A source position in a file.
@@ -216,6 +217,44 @@ export const SourceRange = {
 	},
 	fromNode<OtherInfo>(this: void, node: RNode<OtherInfo> | undefined): SourceRange | undefined {
 		return node?.info.fullRange ?? node?.location;
+	},
+	/**
+	 * "Fuzzy" position match, as opposed to requiring a node to *start* exactly at the position.
+	 * @see {@link SourceRange.innermostNodes} to narrow the result down to the deepest matches
+	 */
+	nodesContaining<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], line: number, column?: number): RNodeWithParent<OtherInfo>[] {
+		return nodes.filter(node => {
+			const range = SourceRange.fromNode(node);
+			if(range === undefined) {
+				return false;
+			}
+			return column === undefined ? range[0] <= line && line <= range[2] : SourceRange.containsPosition(range, line, column);
+		});
+	},
+	/**
+	 * Collects all nodes satisfying the innermost condition: those containing no other of the given nodes.
+	 *
+	 * Nodes may share a range (a function call and the symbol naming it do), so `treatChildAsInner` decides that
+	 * tie: with it, a node sharing its parent's range counts as the inner one and the parent drops out; without
+	 * it, both are kept and the caller may pick between them (e.g. by node type).
+	 * @see {@link SourceRange.nodesContaining} which this usually narrows down
+	 */
+	innermostNodes<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], treatChildAsInner = true): RNodeWithParent<OtherInfo>[] {
+		if(nodes.length <= 1) {
+			return [...nodes];
+		}
+		return nodes.filter(node => {
+			const range = SourceRange.fromNode(node);
+			return range !== undefined && !nodes.some(other => {
+				if(other === node) {
+					return false;
+				} else if(treatChildAsInner && other.info.parent === node.info.id) {
+					return true;
+				}
+				const otherRange = SourceRange.fromNode(other);
+				return otherRange !== undefined && SourceRange.isStrictSubsetOf(otherRange, range);
+			});
+		});
 	}
 } as const;
 

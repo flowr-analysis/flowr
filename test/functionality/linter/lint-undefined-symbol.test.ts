@@ -1,10 +1,10 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledPkgDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 /** base package exports the tests rely on (base R is resolved through the package database) */
-const basePkgDb = controlledPkgDb({
+const baseSigDb = controlledSigDb({
 	base:  ['double', 'length', 'sum', 'format', 'match.arg', 'colnames', 'deparse', 'NCOL', 'optimize'],
 	stats: ['sd'],
 	utils: ['person', 'bibentry']
@@ -33,27 +33,33 @@ describe('flowR linter', withTreeSitter(parser => {
 		describe('base R packages resolve via the package database', () => {
 			assertLinter('default-attached base functions are not flagged', parser,
 				'sd(x)\nformat(y)\nmatch.arg(z)\ncolnames(m)\ndeparse(q)\nperson("a")\nbibentry()\nNCOL(d)',
-				'undefined-symbol', [], undefined, { pkgDb: basePkgDb, checkVariables: false });
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: false });
 
 			assertLinter('namespace-qualified base function is not flagged', parser, 'stats::sd(x)',
-				'undefined-symbol', [], undefined, { pkgDb: basePkgDb, checkVariables: false });
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb, checkVariables: false });
+
+			// primitives/internals (`is.na`) and base data constants (`.Machine`) are absent from the sigdb
+			// export list but must still be recognised as defined base-R names (both calls and variable reads)
+			assertLinter('base primitives and constants are not flagged', parser,
+				'x <- 1\nis.na(x)\nis.finite(x)\ntcrossprod(x)\nunclass(x)\nrange(x)\ncumsum(x)\ny <- .Machine$double.eps',
+				'undefined-symbol', [], undefined, { sigDb: baseSigDb });
 
 			// parallel is base-priority but not attached by default -> flagged, with a hint from the database
 			assertLinter('non-attached base package function is flagged with a hint', parser, 'mclapply(x, f)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'mclapply', kind: 'function', loc: [1, 1, 1, 14], availableInPackages: ['parallel'] }],
-				undefined, { pkgDb: controlledPkgDb('parallel', ['mclapply']), checkVariables: false });
+				undefined, { sigDb: controlledSigDb('parallel', ['mclapply']), checkVariables: false });
 		});
 
 		describe('package hints from the database', () => {
 			assertLinter('suggests loading a package that exports the symbol', parser, 'ggahh()',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'ggahh', kind: 'function', loc: [1, 1, 1, 7], availableInPackages: ['ggPkg'] }],
-				undefined, { pkgDb: controlledPkgDb('ggPkg', ['ggahh']) });
+				undefined, { sigDb: controlledSigDb('ggPkg', ['ggahh']) });
 
 			// a loaded package's (dotted) export resolves, but a typo is still flagged
 			assertLinter('resolves a loaded dotted export yet still flags a typo', parser,
 				'library(quadprog)\nsolve.QP(a, b)\nsol.QP(a, b)',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'sol.QP', kind: 'function', loc: [3, 1, 3, 12] }],
-				undefined, { pkgDb: controlledPkgDb('quadprog', ['solve.QP']), checkVariables: false });
+				undefined, { sigDb: controlledSigDb('quadprog', ['solve.QP']), checkVariables: false });
 		});
 
 		describe('variables', () => {

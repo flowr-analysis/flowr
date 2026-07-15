@@ -262,9 +262,11 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['apply', PkgName.Base]), Identifier.from(['tapply', PkgName.Base]), Identifier.from(['Tapply', PkgName.Functools])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 2, nameOfFunctionArgument: 'FUN' }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['print', PkgName.Base]), Identifier.from(['message', PkgName.Base]), Identifier.from(['warning', PkgName.Base]), Identifier.from(['warn', PkgName.Rlang]), Identifier.from(['warn', PkgName.Rutils]), Identifier.from(['info', PkgName.Msgr])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true, hasUnknownSideEffects: { type: 'link-to-last-call', callName: /^sink$/ } }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['invisible', PkgName.Base])],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all' }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['force', PkgName.Base]), Identifier.from(['identity', PkgName.Base])],
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, forceArgs: 'all', keepArgumentOut: true }, assumePrimitive: false },
 	// graphics base
 	{ type:      'function', names:     PlotCreate,
 		processor: BuiltInProcName.Default,
@@ -351,7 +353,7 @@ export const DefaultBuiltinConfig = [
 			}
 		}, assumePrimitive: true },
 	{ type:            'function', names:           ['('],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0 }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, keepArgumentOut: true }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['load_all', PkgName.PkgLoad]), Identifier.from(['load_all', PkgName.Devtools]), Identifier.from(['setwd', PkgName.Base]), Identifier.from(['set.seed', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { hasUnknownSideEffects: true, forceArgs: [true] }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['body', PkgName.Base]), Identifier.from(['formals', PkgName.Base]), Identifier.from(['environment', PkgName.Base])],
@@ -383,7 +385,7 @@ export const DefaultBuiltinConfig = [
 	{ type:            'function', names:           [Identifier.from(['switch', PkgName.Base])],
 		processor:       BuiltInProcName.Default, config:          { forceArgs: [true] }, assumePrimitive: false },
 	{ type:            'function', names:           ['return'],
-		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
+		processor:       BuiltInProcName.Default, config:          { returnsNthArgument: 0, cfg: ExitPointType.Return, keepArgumentOut: true, useAsProcessor: BuiltInProcName.Return }, assumePrimitive: true },
 	{
 		type:  'function',
 		names: [
@@ -454,6 +456,8 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.Assignment, config:          { swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
 	{ type:            'function', names:           ['->>'],
 		processor:       BuiltInProcName.Assignment, config:          { superAssignment: true, swapSourceAndTarget: true, canBeReplacement: true }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['data', PkgName.Utils]), Identifier.from(['getHdata', PkgName.Hmisc])],
+		processor:       BuiltInProcName.DefineArgument, config:          { superAssignment: true }, assumePrimitive: false },
 	{ type:            'function', names:           [Identifier.from(['&&', PkgName.Base]), Identifier.from(['&', PkgName.Base])],
 		processor:       BuiltInProcName.SpecialBinOp, config:          { lazy: true, evalRhsWhen: true }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['||', PkgName.Base]), Identifier.from(['|', PkgName.Base])],
@@ -647,6 +651,16 @@ export const DefaultBuiltinConfig = [
 		processor:       BuiltInProcName.S7NewGeneric, config:          { args: { name: 'name', dispatchArg: undefined, fun: 'fun' } }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['S7_dispatch', PkgName.S7])],
 		processor:       BuiltInProcName.S7Dispatch, config:          { libFn: true }, assumePrimitive: true },
+	{ type:  'function', names: [
+		Identifier.from(['make_constructor', PkgName.GgPlot2]),
+		Identifier.from(['new_class', PkgName.S7])
+	], processor: BuiltInProcName.S7MakeConstructor, config: { mode: ['s7'] }, assumePrimitive: true },
+	{ type:            'function', names:           [Identifier.from(['setClass', PkgName.Methods])],
+		processor:       BuiltInProcName.S7MakeConstructor, config:          { mode: ['s4'] }, assumePrimitive: true },
+	{ type:  'function', names: [
+		Identifier.from(['Negate', PkgName.Base]), Identifier.from(['Vectorize', PkgName.Base]),
+		Identifier.from(['partial', PkgName.Purrr])
+	], processor: BuiltInProcName.S7MakeConstructor, config: {}, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['.Primitive', PkgName.Base]), Identifier.from(['.Internal', PkgName.Base])],
 		processor:       BuiltInProcName.Apply, config:          { indexOfFunction: 0, unquoteFunction: true, resolveInEnvironment: 'global' }, assumePrimitive: true },
 	{ type:            'function', names:           [Identifier.from(['interference', PkgName.Inferference])],
@@ -687,7 +701,7 @@ export const DefaultBuiltinConfig = [
 			/* library/require/(require|load|attach)Namespace/use are handled above */
 			Identifier.from(['asNamespace', PkgName.Base]),
 			/* env attachment */
-			Identifier.from(['unname', PkgName.Base]), Identifier.from(['data', PkgName.Utils]),
+			Identifier.from(['unname', PkgName.Base]),
 			/* file creation/removal (base) */
 			Identifier.from(['dir.create', PkgName.Base]),  Identifier.from(['dir_create', PkgName.Fs]),
 			Identifier.from(['Sys.chmod', PkgName.Base]),   Identifier.from(['unlink', PkgName.Base]),

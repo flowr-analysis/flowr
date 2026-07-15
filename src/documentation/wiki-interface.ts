@@ -170,6 +170,7 @@ ${await documentReplSession(parser, [{
 }], { openOutput: true })}
 
 For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
+Pass \`--inline\` to splice resolvable \`source()\` calls into the reconstruction so the slice is a single self-contained R text (the same as the static slice query's \`inlineSources\` flag).
 
 ### Example: Interfacing with the File System
 
@@ -275,7 +276,7 @@ ${codeBlock('json', JSON.stringify(
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, linkBaseR: false, linkDescriptionDependencies: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,

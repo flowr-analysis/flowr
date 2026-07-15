@@ -55,7 +55,7 @@ print(2)
 
 		describe('if-elif-else', () => {
 			assertLinterWithIds('TRUE FALSE', parser, 'if(TRUE) 1 else if (FALSE) 2 else 3', 'dead-code', [
-				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 35], involvedId: ['1@if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9'] }
+				{ certainty: LintingResultCertainty.Certain, loc: [1, 17, 1, 35], involvedId: ['1@[2]if', '1@FALSE', '1@2', '1@3', '$5', '$7', '$9'] }
 			]);
 			assertLinterWithIds('FALSE FALSE', parser, 'if(FALSE) 1 else if (FALSE) 2 else 3', 'dead-code', [
 				{ certainty: LintingResultCertainty.Certain, loc: [1, 11, 1, 11], involvedId: ['1@1', '$2'] },

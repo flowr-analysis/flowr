@@ -8,6 +8,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { RBasePrimitives } from '../../data/r-base-primitives.generated';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -90,7 +91,7 @@ const MaxHintPackages = 5;
 /**
  * Flags function calls (`sd()`) and, opt-in, variable reads (`x`) that are neither defined locally, a
  * builtin, nor exported by a package in scope - the DESCRIPTION/`library()` packages plus the default-attached
- * base packages, all resolved from the `flowr-pkgdb` database. To stay precise it consults flowR's dataflow:
+ * base packages, all resolved from the `flowr-sigdb` database. To stay precise it consults flowR's dataflow:
  * non-standard evaluation (quoting) is not reported, and an unloaded package that exports the name is offered
  * as a hint. Over-approximative: NSE beyond what flowR models can still cause false positives.
  */
@@ -183,6 +184,17 @@ export const UNDEFINED_SYMBOL = {
 		function check(element: FlowrSearchElement<ParentInformation>, id: NodeId, name: string, namespace: string | undefined, kind: UndefinedSymbolKind): UndefinedSymbolResult | undefined {
 			// resolved by flowR itself (local/param/builtin) - never a candidate, so not counted as suppressed
 			if(kind === 'variable' ? useResolvesToDefinitionOrBuiltin(graph, id) : (getOriginInDfg(graph, id)?.length ?? 0) > 0) {
+				return undefined;
+			}
+			// a bare call to a registered flowR builtin whose dataflow origin was rewritten away from its
+			// builtin marker (e.g. a fully-resolved `UseMethod` dispatch is re-tagged as a plain function
+			// call) is still defined, so recognise it directly from the built-in environment
+			if(kind === 'function' && namespace === undefined && ctx.env.builtInEnvironment.memory.has(name)) {
+				return undefined;
+			}
+			// a bare base-R primitive/internal (`is.na`) or base data constant (`.Machine`) is defined but
+			// missing from the sigdb export list, so recognise it directly (covers calls and variable reads)
+			if(namespace === undefined && RBasePrimitives.has(name)) {
 				return undefined;
 			}
 			// exported by a package in scope (`pkg::fn`, a loaded package, or a default-attached base package)

@@ -46,6 +46,11 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	}
 	const [name, ns, internal] = Identifier.toArray(id);
 	let current: Environment = environment.current;
+	/* `current` can already be the built-in environment itself (e.g. `get(x, envir=baseenv())`);
+	 * it has no parent to walk to, so resolve directly instead of entering the loop below. */
+	if(current.builtInEnv) {
+		return current.memory.get(name);
+	}
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
@@ -104,6 +109,16 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 		}
 	}
 	const [name, ns, internal] = Identifier.toArray(id);
+
+	/* `current` can already be the built-in environment itself */
+	if(current.builtInEnv) {
+		const ret = current.memory.get(name);
+		if(ret && cacheable) {
+			current.cache ??= new Map();
+			current.cache.set(id, ret);
+		}
+		return ret;
+	}
 
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{

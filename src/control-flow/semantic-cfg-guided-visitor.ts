@@ -730,5 +730,5 @@ export class SemanticCfgGuidedVisitor<
 		return { target: undefined, source: undefined };
 	}
 
-	private onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
+	protected onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

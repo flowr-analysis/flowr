@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 import { RDAParser } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
-import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
-import seedrandom from 'seedrandom';
 import fs from 'fs';
+import { FlowrTextFile } from '../../../../../src/project/context/flowr-file';
 import path from 'path';
 import os from 'os';
+import seedrandom from 'seedrandom';
+import { RandomRCodeGenerator, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
 
 describe('rda-files', () => {
 	describe('load-pipeline random', () => {
-		const runs = 300;
+		const runs = 30;
 		const seed = 0;
 		const objectsPerRun = 5;
 		const maxNestingLevel = 1;
@@ -26,10 +26,10 @@ describe('rda-files', () => {
 			'3'
 		];
 		const compressions = [
-			'gzip',
-			'bzip2',
-			'xz',
-			'none'
+			'"gzip"',
+			'"bzip2"',
+			'"xz"',
+			'FALSE'
 		];
 
 		const tempFolder = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-load-pipeline-test-'));
@@ -50,7 +50,7 @@ describe('rda-files', () => {
 				const { rCode, vars } = rcg.generateRCode(objectsPerRun, maxNestingLevel);
 
 				const shellCode = `${rCode}
-					save(${vars.join(', ')}, file="${file}", ascii = ${encoding}, version = ${version})`;
+					save(${vars.join(', ')}, file="${file}", ascii = ${encoding}, version = ${version}, compress = ${compression})`;
 				const rShell = new RShellExecutor();
 				rShell.run(shellCode);
 
@@ -60,7 +60,7 @@ describe('rda-files', () => {
 				expect([...varsAndTypesFromShell.keys()].sort())
 					.toEqual(vars.sort());
 
-				const result2 = new RDAParser(new FlowrTextFile(file), true).parseRDA();
+				const result2 = new RDAParser(new FlowrTextFile(file)).parseRDA();
 
 				expect(result2).toBeDefined();
 

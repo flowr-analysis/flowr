@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter, controlledPkgDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -56,13 +56,13 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['recode'], pkgDb: controlledPkgDb('dplyr', ['recode', 'filter']) }
+				{ fns: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
 			);
 			assertLinter('without any package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['recode'], noPkgDb: true }
+				{ fns: ['recode'], noSigDb: true }
 			);
 		});
 	});

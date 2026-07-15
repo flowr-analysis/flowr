@@ -19,6 +19,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
+import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -71,6 +72,12 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
+			} else if(cmd === signatureCommand) {
+				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions = completions.concat(sigCompletions);
 			} else if(cmd?.isCodeCommand) {
 				completions.push(fileProtocol);
 				completions.push(watchProtocol);
@@ -103,7 +110,12 @@ export function completionSuggestion(line: string, config: FlowrConfig): string 
 	}
 	const [completions, fragment] = computeCompletions(line, config);
 	const best = completions[0];
-	return best !== undefined && best.startsWith(fragment) && best.length > fragment.length ? best.slice(fragment.length) : '';
+	if(best === undefined || !best.startsWith(fragment) || best.length <= fragment.length) {
+		return '';
+	} else if(best === fileProtocol || best === watchProtocol) {
+		return '';
+	}
+	return best.slice(fragment.length);
 }
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {

@@ -6,6 +6,8 @@ import { collectAllSlicingCriteria } from '../../../../../src/slicing/criterion/
 import { DefaultAllVariablesFilter } from '../../../../../src/slicing/criterion/filters/all-variables';
 import { contextFromInput } from '../../../../../src/project/context/flowr-analyzer-context';
 import type { RShell } from '../../../../../src/r-bridge/shell';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
+import * as semver from 'semver';
 
 /**
  * Guards that reconstruction always emits valid, re-parseable R: for representative constructs seen in the
@@ -43,7 +45,8 @@ describe.sequential('Reconstruction re-parse round-trip', withShell(shell => {
 	};
 
 	for(const [name, program] of Object.entries(samples)) {
-		test(label(`${name} re-parses for every slice`, [], ['other']), () => assertEverySliceReparses(shell, program));
-		test(label(`${name} (CRLF) re-parses for every slice`, [], ['other']), () => assertEverySliceReparses(shell, program.replaceAll('\n', '\r\n')));
+		const skipNativePipe = name === 'native pipe chain' && (!globalThis.rVersion || !semver.satisfies(globalThis.rVersion, `>=${MIN_VERSION_PIPE}`));
+		test.skipIf(skipNativePipe)(label(`${name} re-parses for every slice`, [], ['other']), () => assertEverySliceReparses(shell, program));
+		test.skipIf(skipNativePipe)(label(`${name} (CRLF) re-parses for every slice`, [], ['other']), () => assertEverySliceReparses(shell, program.replaceAll('\n', '\r\n')));
 	}
 }));

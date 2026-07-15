@@ -24,6 +24,11 @@ export enum FileRole {
 	Vignette    = 'vignette',
 	/** Test source files, e.g., files in the `tests/` folder */
 	Test        = 'test',
+	/**
+	 * Files below an `inst/` folder, which R installs verbatim into the package root (resources/scripts, e.g., `inst/REFERENCES.R`, `inst/CITATION`, `inst/extdata/...`).
+	 * These are not part of the package namespace source, so tooling may want to treat them separately.
+	 */
+	Install     = 'install',
 	/** Data files, e.g., `R/sysdata.rda`, currently not specially supported. */
 	Data        = 'data',
 	/** Signals separate license files, but please note, that DESCRIPTION files may contain license info too */

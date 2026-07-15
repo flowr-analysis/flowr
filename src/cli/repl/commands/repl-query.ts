@@ -16,7 +16,7 @@ import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
-import { fileProtocol } from '../../../r-bridge/retriever';
+import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
 import { watchProtocol } from '../core';
 import fs from 'fs';
 
@@ -30,6 +30,16 @@ function looksLikePath(s: string): boolean {
 	}
 	// a single path-like token (a separator, no R-code punctuation) that actually exists on disk
 	return /^[^\s()]+\/[^\s()]+$/.test(s) && fs.existsSync(s);
+}
+
+/**
+ * Whether the analyzer already holds exactly `input` as its sole request, so a prior analysis (e.g. a
+ * dataflow computed via `:df#`) can be reused instead of being discarded by a reset.
+ */
+function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: string): boolean {
+	const requested = requestFromInput(input);
+	const current = analyzer.inspectContext().files.loadingOrder.getUnorderedRequests();
+	return current.length === 1 && current[0].request === requested.request && current[0].content === requested.content;
 }
 
 
@@ -122,8 +132,11 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 		if(looksLikePath(input)) {
 			output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(fileProtocol + input, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes). Use ${bold(':help', output.formatter)} for more.`));
 		}
-		analyzer.reset();
-		analyzer.addRequest(input);
+		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
+		if(!analyzerHasTarget(analyzer, input)) {
+			analyzer.reset();
+			analyzer.addRequest(input);
+		}
 	}
 
 	return {

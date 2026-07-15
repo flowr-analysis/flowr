@@ -19,7 +19,7 @@ import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
 import { scripts } from '../../common/scripts-info';
 import { queryCommand, queryStarCommand } from './repl-query';
-import { pkgDbAddCommand } from './repl-pkgdb';
+import { signatureCommand } from './repl-signature';
 import { flowrVersion } from '../../../util/version';
 
 const cmd = (name: string, f: OutputFormatter): string => color(name, Colors.Cyan, f, { style: FontStyles.Bold });
@@ -160,7 +160,7 @@ const _commands = {
 	'controlflowbb*':  controlflowBbStarCommand,
 	'query':           queryCommand,
 	'query*':          queryStarCommand,
-	'pkgdb-add':       pkgDbAddCommand
+	'signature':       signatureCommand
 } as const satisfies Record<string, ReplCommand | ReplCodeCommand>;
 
 export type ReplCommandNames = keyof typeof _commands | keyof typeof scripts;

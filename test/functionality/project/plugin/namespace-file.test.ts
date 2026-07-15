@@ -8,7 +8,7 @@ import {
 import {
 	FlowrAnalyzerPackageVersionsNamespaceFilePlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
-import { isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrNamespaceFile, isExportedInInfo } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrConfig } from '../../../../src/config';
 
 
@@ -132,6 +132,29 @@ importFrom(stats,setNames)`));
 			assert.strictEqual(deps.namespaceInfo?.importedPackages?.get('rlang'), 'all');
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('scales'), ['alpha']);
 			assert.deepEqual(deps.namespaceInfo?.importedPackages?.get('stats'), ['setNames']);
+		});
+	});
+
+	describe('Simple parser (no analyzer context): multi-symbol directives', function() {
+		/** parse a NAMESPACE string with the regex-based fallback (`parseNamespaceSimple`, used when no ctx is present) */
+		const simple = (content: string) => new FlowrNamespaceFile(new FlowrInlineTextFile('NAMESPACE', content)).content();
+
+		test('export(a, b) exports both symbols, not the literal "a, b"', () => {
+			const info = simple('export(alpha, beta, gamma)').current;
+			assert.deepEqual(info.exportedSymbols, ['alpha', 'beta', 'gamma']);
+			assert.isFalse(info.exportedSymbols.includes('alpha, beta, gamma'));
+		});
+
+		test('exportMethods / exportClasses split their arguments too', () => {
+			const info = simple('exportMethods(show, summary)\nexportClasses("A", "B")').current;
+			assert.includeMembers(info.exportedFunctions, ['show', 'summary', 'A', 'B']);
+			assert.strictEqual(info.exportedFunctions.length, 4);
+		});
+
+		test('single-symbol and quoted exports still parse (no regression)', () => {
+			const info = simple('export("+")\nexport(ggplot)').current;
+			assert.includeMembers(info.exportedSymbols, ['+', 'ggplot']);
+			assert.isFalse(info.exportedSymbols.includes('"+"'));
 		});
 	});
 

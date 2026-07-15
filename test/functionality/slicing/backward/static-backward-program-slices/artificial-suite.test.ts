@@ -1,5 +1,6 @@
 import { assertSliced, withShell } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
+import { MIN_VERSION_PIPE } from '../../../../../src/r-bridge/lang-4.x/ast/model/versions';
 import { describe } from 'vitest';
 
 /**
@@ -53,7 +54,8 @@ describe.sequential('Artificial performance suite', withShell(shell => {
 		shell,
 		'result <- c(1, 2, 3, 4, 5) |>\n  rev() |>\n  cumsum() |>\n  sqrt() |>\n  round(2) |>\n  sum()\nprint(result)',
 		['7@result'],
-		'result <- c(1, 2, 3, 4, 5) |> rev() |> cumsum() |> sqrt() |> round(2) |> sum()\nresult'
+		'result <- c(1, 2, 3, 4, 5) |> rev() |> cumsum() |> sqrt() |> round(2) |> sum()\nresult',
+		{ minRVersion: MIN_VERSION_PIPE }
 	);
 
 	assertSliced(label('recursive-function: fib keeps its own definition', []),

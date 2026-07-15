@@ -3,10 +3,11 @@ import type { VisitingQueue } from './visiting-queue';
 import { guard } from '../../util/assert';
 import { envFingerprint, type Fingerprint } from './fingerprint';
 import { getAllLinkedFunctionDefinitions } from '../../dataflow/internal/linker';
-import type {
-	DataflowGraphVertexFunctionCall,
-	DataflowGraphVertexFunctionDefinition,
-	DataflowGraphVertexInfo
+import {
+	type DataflowGraphVertexFunctionCall,
+	type DataflowGraphVertexFunctionDefinition,
+	type DataflowGraphVertexInfo,
+	VertexType
 } from '../../dataflow/graph/vertex';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import {
@@ -24,6 +25,9 @@ import {
 import { updatePotentialAddition } from './static-slicer';
 import type { DataflowInformation } from '../../dataflow/info';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 
 /**
  * Returns the function call targets (definitions) by the given caller
@@ -106,6 +110,94 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 	}
 	const activeEnvironmentFingerprint = envFingerprint(activeEnvironment);
 	linkCallTargets(current.onlyForSideEffects, functionCallTargets, activeEnvironment, activeEnvironmentFingerprint, queue);
+}
+
+/**
+ * Finds the nearest enclosing function-definition node for the given id by walking up the AST parent chain.
+ * Used by `includeCallees` to detect the function-definition boundary a node sits inside, as backward slicing
+ * does not otherwise visit the function-definition vertex itself (nothing within the body links to it).
+ */
+export function findEnclosingFunctionDefinition(id: NodeId, idMap: AstIdMap): NodeId | undefined {
+	let node = idMap.get(id);
+	while(node !== undefined) {
+		if(node.type === RType.FunctionDefinition) {
+			return node.info.id;
+		}
+		node = node.info.parent !== undefined ? idMap.get(node.info.parent) : undefined;
+	}
+	return undefined;
+}
+
+/**
+ * For `includeCallees`: decides whether the current slice of a function definition's body actually depends on
+ * the function's interface, i.e., whether the callers can influence the sliced result at all. This is the case iff
+ * the slice reaches one of the definition's parameters, or it reads a free reference captured from the enclosing
+ * scope. If the sliced body is self-contained (only locally-defined variables, no parameter and no captured
+ * variable), the callers are irrelevant and the boundary must not be crossed.
+ */
+export function sliceReachesFunctionInterface(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, idMap: AstIdMap, ctx: ReadOnlyFlowrAnalyzerContext): boolean {
+	const vertex = graph.getVertex(fnDefId);
+	if(vertex === undefined || vertex.tag !== VertexType.FunctionDefinition) {
+		return false;
+	}
+	// (a) the slice reaches a parameter of this definition
+	for(const paramId of Object.keys(vertex.params)) {
+		if(queue.hasId(NodeId.normalize(paramId))) {
+			return true;
+		}
+	}
+	// (b) a sliced body node captures a variable from the enclosing scope: it links (via `defined-by-on-call`, the
+	// closure/argument binding resolved at the call site) to a non-builtin definition that lives outside this body.
+	const fnNode = idMap.get(fnDefId);
+	const bodyIds = fnNode ? new Set(RNode.collectAllIds(fnNode)) : new Set<NodeId>();
+	for(const bodyId of bodyIds) {
+		if(!queue.hasId(bodyId)) {
+			continue;
+		}
+		const outgoing = graph.outgoingEdges(bodyId);
+		if(outgoing === undefined) {
+			continue;
+		}
+		for(const [target, edge] of outgoing) {
+			if(DfEdge.includesType(edge, EdgeType.DefinedByOnCall) && !NodeId.isBuiltIn(target) && !bodyIds.has(target)) {
+				return true;
+			}
+		}
+	}
+	// (c) fallback for captures that could not be resolved at definition time: an open in-reference that is in the
+	// slice and resolves to a non-builtin definition in the enclosing scope.
+	const definitionEnvironment = vertex.environment ?? ctx.env.makeCleanEnv();
+	for(const open of vertex.subflow.in) {
+		if(open.name === undefined || !queue.hasId(open.nodeId)) {
+			continue;
+		}
+		const resolved = resolveByName(open.name, definitionEnvironment, open.type ?? ReferenceType.Unknown);
+		if(resolved?.some(d => !NodeId.isBuiltIn(d.nodeId))) {
+			return true;
+		}
+	}
+	return false;
+}
+
+const CalleeBoundaryEdges = EdgeType.DefinedBy | EdgeType.Calls;
+
+/**
+ * For `includeCallees`: given the id of a function-definition vertex, enqueues the vertex that binds/defines
+ * the function (e.g. `f <- function...`, via the `defined-by` edge) as well as all of its call sites (via
+ * `calls` edges). Call site arguments are picked up automatically once the call vertex is processed normally,
+ * as `argument` edges are always traversed.
+ * This is the reverse of what {@link sliceForCall} does for call -\> definition linking.
+ */
+export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph, queue: VisitingQueue, baseEnvironment: REnvironmentInformation, baseEnvFingerprint: Fingerprint): void {
+	const ingoing = graph.ingoingEdges(fnDefId);
+	if(ingoing === undefined) {
+		return;
+	}
+	for(const [source, edge] of ingoing) {
+		if(DfEdge.includesType(edge, CalleeBoundaryEdges)) {
+			queue.add(source, baseEnvironment, baseEnvFingerprint, false);
+		}
+	}
 }
 
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;

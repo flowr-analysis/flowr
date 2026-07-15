@@ -6,6 +6,35 @@ interface SchemaLine {
 	text:  string;
 }
 
+/** the leaf type, description, and any enumerated valid values of a schema path */
+export interface SchemaPathInfo {
+	readonly type?:        string;
+	readonly description?: string;
+	readonly valids?:      readonly unknown[];
+}
+
+/** walk a Joi schema {@link Joi.Description|description} down a key path, returning the leaf's {@link SchemaPathInfo} (empty if the path does not exist) */
+export function descriptionPathInfo(description: Joi.Description, path: readonly string[]): SchemaPathInfo {
+	let node: Joi.Description | undefined = description;
+	for(const key of path) {
+		node = (node?.keys as Record<string, Joi.Description> | undefined)?.[key];
+		if(node === undefined) {
+			return {};
+		}
+	}
+	const allow = (node as { allow?: readonly unknown[] }).allow;
+	return {
+		type:        node.type,
+		description: (node.flags as { description?: string } | undefined)?.description,
+		valids:      allow && allow.length > 0 ? allow : undefined
+	};
+}
+
+/** {@link descriptionPathInfo} straight from a schema (describes it once per call) */
+export function schemaPathInfo(schema: Joi.Schema, path: readonly string[]): SchemaPathInfo {
+	return descriptionPathInfo(schema.describe(), path);
+}
+
 /**
  * Describes a Joi schema in a human-readable way.
  */

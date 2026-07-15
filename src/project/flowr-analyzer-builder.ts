@@ -173,7 +173,16 @@ export class FlowrAnalyzerBuilder {
 			const engines = await retrieveEngineInstances(this.flowrConfig, true);
 			this.parser = engines.engines[engines.default] as KnownParser;
 		}
-		return this.buildSync();
+		const analyzer = this.buildSync();
+		// when the assumed R version is auto (the default), detect the engine's R version once and record it, so
+		// versioned (base-R) resolution and `:version` reflect the installed R (or the default when it reports none)
+		const assumed = this.flowrConfig.solver.sigdb.assumedRVersion;
+		if(assumed === undefined || assumed === 'auto') {
+			try {
+				analyzer.context().setDetectedRVersion(await this.parser.rVersion());
+			} catch{ /* leave undetected: resolveAssumedRVersion falls back to the default assumed version */ }
+		}
+		return analyzer;
 	}
 
 	/**
@@ -184,7 +193,7 @@ export class FlowrAnalyzerBuilder {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
-		if(this.flowrConfig.solver.pkgdb.enabled && this.flowrConfig.solver.pkgdb.eagerlyLoad) {
+		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
 			context.deps.eagerlyLoadPackageDatabases();
 		}
 		const cache = FlowrAnalyzerCache.create({

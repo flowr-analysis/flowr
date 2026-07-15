@@ -985,9 +985,9 @@ function() {
 }`,  emptyGraph()
 				.defineVariable('2@x')
 				.defineVariable('4@x')
-				.use('4:13')
-				.reads('4:13', '2@x')
-				.reads('4:13', '4@x')
+				.use('4@[2]x')
+				.reads('4@[2]x', '2@x')
+				.reads('4@[2]x', '4@x')
 				.overwriteRootIds([]),
 			{
 				expectIsSubgraph:      true,
@@ -1003,9 +1003,9 @@ function() {
 }}}}`,  emptyGraph()
 				.defineVariable('2@x')
 				.defineVariable('4@x')
-				.use('4:13')
-				.reads('4:13', '2@x')
-				.reads('4:13', '4@x')
+				.use('4@[2]x')
+				.reads('4@[2]x', '2@x')
+				.reads('4@[2]x', '4@x')
 				.overwriteRootIds([]),
 			{
 				expectIsSubgraph:      true,

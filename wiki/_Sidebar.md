@@ -13,7 +13,7 @@
   * [Normalized AST](https://github.com/flowr-analysis/flowr/wiki/Normalized-AST)
   * [Control Flow Graph (CFG)](https://github.com/flowr-analysis/flowr/wiki/Control-Flow-Graph)
   * [Dataflow Graph (DFG)](https://github.com/flowr-analysis/flowr/wiki/Dataflow-Graph)
-  * [Package Database](https://github.com/flowr-analysis/flowr/wiki/Package-Database)
+  * [Signature Database](https://github.com/flowr-analysis/flowr/wiki/Signature-Database)
   * [Supported Features/Capabilities](https://github.com/flowr-analysis/flowr/wiki/Capabilities)
 * [🧹 Testing & Linting](https://github.com/flowr-analysis/flowr/wiki/Linting-and-Testing) ([Benchmark Page](https://flowr-analysis.github.io/flowr/wiki/stats/benchmark))
 * [⁉️ FAQ](https://github.com/flowr-analysis/flowr/wiki/FAQ)

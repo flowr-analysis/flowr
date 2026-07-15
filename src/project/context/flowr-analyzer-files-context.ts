@@ -43,6 +43,7 @@ export type RoleBasedFiles = {
 	/* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];
+	[FileRole.Install]:     FlowrFileProvider[];
 	[FileRole.License]:     FlowrFileProvider[];
 	[FileRole.VirtualEnv]:  FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];

@@ -26,6 +26,8 @@ export interface SlicerCliOptions {
 	stats:               boolean
 	api:                 boolean
 	'no-magic-comments': boolean
+	inline:              boolean
+	'include-callees':   boolean
 }
 
 
@@ -36,6 +38,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 		// why double escaped :C
 		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"} {bold --diff}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
+		'{bold -c} {italic "5@result"} {bold --inline} {italic main.R}',
 		'{bold --help}'
 	]
 });
@@ -52,7 +55,10 @@ async function getSlice() {
 			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
 			: { request: 'file', content: options.input },
 		config,
-		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
+		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect),
+		undefined,
+		options.inline,
+		options['include-callees']
 	);
 
 	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];

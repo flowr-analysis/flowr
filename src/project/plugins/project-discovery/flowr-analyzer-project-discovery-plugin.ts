@@ -23,7 +23,9 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 }
 
 const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd|rnw)$/i;
-const ignorePathsWith = /(\.git|\.svn|\.hg|rv|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
+// matched against a single directory-entry name (see getAllFilesSync), so anchor it: a bare substring like `rv`
+// would otherwise wrongly ignore legitimate directories such as `rvest`, `survey`, or a random temp-dir suffix.
+const ignorePathsWith = /^(\.git|\.svn|\.hg|rv|renv|packrat|node_modules|__pycache__|\.Rproj\.user)$/i;
 const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
 /** Configuration options for the {@link DefaultFlowrAnalyzerProjectDiscoveryPlugin}. */

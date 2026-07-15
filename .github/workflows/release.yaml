@@ -81,7 +81,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run:   lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        run:   lapply(c("dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
@@ -96,6 +96,9 @@ jobs:
     name: "📦 Release"
     runs-on: ubuntu-latest
     needs: ['test-full']
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
@@ -127,7 +130,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -139,6 +141,9 @@ jobs:
 
       - name: "📦 Install Dependencies"
         run: npm ci
+
+      - name: "🔁 Fetch latest main before release"
+        run: git fetch origin main && git reset --hard origin/main
 
       - name: "🌟 Release"
         id: release
@@ -296,7 +301,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -315,21 +319,23 @@ jobs:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
     needs: [ performance-test ]
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v6
         with:
           submodules: true
           token:      ${{ secrets.RELEASE_TOKEN }}
-          # check out the release ref so that the upload action finds the commit
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
+          ref: main
 
       - name: "⚙️ Name and Email for Git (config) and update"
-        # we fetch just to be totally sure
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch --tags
+          git fetch --tags origin main
+          git pull origin main
 
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
@@ -427,6 +433,9 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
+      - name: "⬆️ Pull latest to avoid conflicts"
+        run: git pull origin main --no-edit
+
       - name: "⬆️ Push benchmark results"
         # we manipulate the name of the last commit message
         run: |
@@ -439,4 +448,3 @@ jobs:
         with:
           branch: main
           github_token: ${{ secrets.RELEASE_TOKEN }}
-          force: true

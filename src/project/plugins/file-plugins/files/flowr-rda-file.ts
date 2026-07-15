@@ -6,7 +6,6 @@ import * as bzip2 from 'bzip2';
 import * as zlib from 'node:zlib';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
-import { unxzSync } from 'node-liblzma';
 
 /**
  * This decorates a text file and provides access to its content in the format of an {@link RObject}.
@@ -340,11 +339,7 @@ export class RDAParser{
 			}
 
 			case CompressionType.CompXz:
-			case CompressionType.CompLzma: {
-				buffer = Buffer.from(unxzSync(fileContent));
-				break;
-			}
-
+			case CompressionType.CompLzma:
 			case CompressionType.CompZstd: {
 				throw new Error(compressionType + 'not supported yet.');
 			}

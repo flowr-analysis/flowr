@@ -28,7 +28,7 @@ describe('rda-files', () => {
 		const compressions = [
 			'"gzip"',
 			'"bzip2"',
-			'"xz"',
+			// '"xz"',
 			'FALSE'
 		];
 

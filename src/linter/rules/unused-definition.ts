@@ -17,6 +17,8 @@ import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 export interface UnusedDefinitionResult extends LintingResult {
 	variableName?: string
@@ -92,6 +94,40 @@ function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
 		names.add(Identifier.getName(vertex.name));
 	}
 	return names;
+}
+
+/** Checks if a function body is a single call to UseMethod. */
+function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
+	// Direct call to UseMethod
+	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'UseMethod') {
+		return true;
+	}
+
+	const nodeWithChildren = node as Record<string, unknown>;
+	if(Array.isArray(nodeWithChildren.children) && nodeWithChildren.children.length === 1) {
+		const child = nodeWithChildren.children[0] as RNode<ParentInformation> | undefined;
+		if(child && RFunctionCall.isNamed(child) && Identifier.getName(child.functionName.content) === 'UseMethod') {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/** Collects the parameter IDs of S3 generic functions (functions whose body is just UseMethod). */
+function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
+	const paramIds = new Set<NodeId>();
+	for(const [, node] of ast.idMap) {
+		if(!RFunctionDefinition.is(node)) {
+			continue;
+		}
+		if(isUseMethodOnlyBody(node.body)) {
+			for(const param of node.parameters) {
+				paramIds.add(param.name.info.id);
+			}
+		}
+	}
+	return paramIds;
 }
 
 /**
@@ -199,6 +235,7 @@ export const UNUSED_DEFINITION = {
 		const dataflow = await data.dataflow();
 		const packageInfo = collectPackageInfo(data);
 		const calledNames = collectCalledNames(dataflow.graph);
+		const s3GenericParams = collectS3GenericParameterIds(normalize);
 		const metadata: UnusedDefinitionMetadata = {
 			totalConsidered: 0
 		};
@@ -211,6 +248,10 @@ export const UNUSED_DEFINITION = {
 					!isVariableDefinitionVertex(dfgVertex)
 					&& isFunctionDefinitionVertex(dfgVertex) && !config.includeFunctionDefinitions
 				)) {
+					return undefined;
+				}
+
+				if(s3GenericParams.has(element.node.info.id)) {
 					return undefined;
 				}
 

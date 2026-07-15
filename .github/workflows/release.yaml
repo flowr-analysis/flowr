@@ -233,7 +233,7 @@ jobs:
             ARTIFACT_NAME="full"
           fi
           VERSION="$(date '+%Y%m%d')"
-          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR\s*:\s*\K[^ ]+' | head -n1)"
+          FLOWR_VERSION="$(docker run --rm flowr --version | sed 's/\x1b]8;;[^\x07]*\x07//g; s/\x1b\[[0-9;]*m//g' | grep -oP 'flowR\s*:\s*\K[^ ]+' | head -n1)"
           if [[ -z "$FLOWR_VERSION" ]]; then
             echo "ERROR: failed to extract flowR version from docker image"
             exit 1

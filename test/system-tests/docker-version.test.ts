@@ -18,4 +18,12 @@ describe('Docker version extraction', () => {
 		assert.include(versionOutput, 'engine:', `version output should include engine information:\n${versionOutput}`);
 		assert.include(versionOutput, 'R:', `version output should include R version information:\n${versionOutput}`);
 	});
+
+	test('CI bash pipeline extracts version correctly', async() => {
+		const bashPipeline = 'npx ts-node --transpile-only src/cli/flowr.ts --version 2>&1 | sed \'s/\\x1b]8;;[^\\x07]*\\x07//g; s/\\x1b\\[[0-9;]*m//g\' | grep -oP \'flowR\\s*:\\s*\\K[^ ]+\' | head -n1';
+		const extractedVersion = await run(bashPipeline);
+
+		assert.isDefined(extractedVersion, 'Version not extracted by bash pipeline');
+		assert.match(extractedVersion.trim(), /^\d+\.\d+\.\d+$/, `Bash pipeline should extract semver format: ${extractedVersion}`);
+	});
 });

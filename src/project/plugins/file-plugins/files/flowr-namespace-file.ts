@@ -28,10 +28,8 @@ export interface NamespaceInfo {
 	exportedPatterns:     string[];
 	importedPackages:     Map<string, string[] | 'all'>;
 	loadsWithSideEffects: boolean;
-	/**
-	 * This will only be present in complex parsed NAMESPACE files and tell you
-	 * about which parts are only active with given conditions!
-	 */
+	callable:             string[];
+	/** Present only in complex parsed NAMESPACE files. Maps conditions to the parts they gate. */
 	conditional?:         Map<RNode<ParentInformation>, NamespaceInfo>;
 }
 
@@ -41,26 +39,21 @@ export interface NamespaceFormat {
 }
 
 /**
- * This decorates a text file and provides access to its content in the {@link NamespaceFormat}.
- * Namespace files can be parsed in a simple mode which is much quicker, but does not support `if`/other R-constructs!
+ * Decorates a text file to expose its content as a {@link NamespaceFormat}.
+ * Simple parsing is quicker but does not support `if`/other R constructs.
  */
 export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	private readonly wrapped: FlowrFileProvider;
 	private readonly ctx:     FlowrAnalyzerContext | undefined;
 
-	/**
-	 * Prefer the static {@link FlowrNamespaceFile.from} method to create instances of this class as it will not re-create if already a namespace file
-	 * and handle role assignments.
-	 */
+	/** Prefer {@link FlowrNamespaceFile.from}, which avoids re-wrapping and handles roles. */
 	constructor(file: FlowrFileProvider, ctx?: FlowrAnalyzerContext) {
 		super(file.path(), file.roles);
 		this.wrapped = file;
 		this.ctx = ctx;
 	}
 
-	/**
-	 * Creates a {@link FlowrNamespaceFile} from a given {@link NamespaceFormat}, path and optional roles. This is useful if you already have the namespace content parsed and want to create a namespace file instance without re-parsing.
-	 */
+	/** Creates a {@link FlowrNamespaceFile} from an already-parsed {@link NamespaceFormat}. */
 	public static fromNamespaceFormat(fmt: NamespaceFormat, path: string, roles?: FileRole[]): FlowrNamespaceFile {
 		const file = new FlowrNamespaceFile(new FlowrTextFile(path, roles));
 		file.setContent(fmt);
@@ -88,8 +81,7 @@ export class FlowrNamespaceFile extends FlowrFile<NamespaceFormat> {
 	}
 
 	/**
-	 * Namespace file lifter, this does not re-create if already a namespace file
-	 * and handles role assignments.
+	 * Lifts a file to a {@link FlowrNamespaceFile}, reusing it if already one and assigning roles.
 	 * @param file - The file to lift or return if already a namespace file
 	 * @param ctx - An optional analyzer context to use for complex parsing
 	 * @param role - An optional role to assign to the file
@@ -127,12 +119,11 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	if(name.includes('.')) {
 		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
-			if(m.map(m => `${k}.${m}`).includes(name)) {
+			if(m.some(method => `${k}.${method}` === name)) {
 				return true;
 			}
 		}
 	}
-	// pattern
 	for(const pattern of nsInfo.exportedPatterns) {
 		const regex = parseRRegexPattern(pattern);
 		if(regex.test(name)) {
@@ -140,7 +131,6 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 		}
 	}
 	if(nsInfo.conditional) {
-		// nested with recursion
 		for(const [cond, info] of nsInfo.conditional) {
 			const res = isExportedInInfo(name, info);
 			if(res === true) {
@@ -230,6 +220,33 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 			}
 		}
 	});
+}
+
+/** All exported names of a namespace that can be referenced (functions, symbols, patterns and S3 methods as `generic.class`). */
+export function getExportedNames(info: NamespaceInfo): string[] {
+	const s3: string[] = [];
+	for(const [g, methods] of info.exportS3Generics){
+		for(const m of methods){
+			s3.push(`${g}.${m}`);
+		}
+	}
+	return [...new Set([...info.exportedSymbols, ...info.exportedFunctions, ...info.exportedPatterns, ...s3])];
+}
+
+/** The names a package makes callable: the explicitly configured {@link NamespaceInfo#callable} subset, or all exports (see {@link getExportedNames}) by default. */
+export function getCallables(info: NamespaceInfo): string[] {
+	return info.callable.length > 0 ? info.callable : getExportedNames(info);
+}
+
+/** Sets the given list of strings as callable functions */
+export function setCallable(info: NamespaceInfo, func: string[]): NamespaceInfo{
+	const all = new Set(getExportedNames(info));
+	for(const f of func){
+		if(all.has(f)){
+			info.callable.push(f);
+		}
+	}
+	return info;
 }
 
 function handleConditionCall(idMap: AstIdMap, cond: RNode<ParentInformation>, thenBranch: NamespaceFormat, elseBranch: NamespaceFormat | undefined): NamespaceFormat {
@@ -340,6 +357,7 @@ function handleUseDynLibCall(g: NamespaceFormat, args: readonly PotentiallyEmpty
 			exportS3Generics:     new Map<string, string[]>(),
 			exportedPatterns:     [],
 			importedPackages:     new Map<string, string[] | 'all'>(),
+			callable:             [],
 			loadsWithSideEffects: false,
 		};
 	}
@@ -364,6 +382,7 @@ function getEmptyNamespaceFormat(): NamespaceFormat {
 			exportS3Generics:     new Map<string, string[]>(),
 			exportedPatterns:     [] as string[],
 			importedPackages:     new Map<string, string[] | 'all'>(),
+			callable:             [] as string[],
 			loadsWithSideEffects: false,
 		},
 	};
@@ -427,6 +446,7 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 	}
 
 	return {
+		callable:             [...target.callable, ...source.callable],
 		exportedSymbols:      [...target.exportedSymbols, ...source.exportedSymbols],
 		exportedFunctions:    [...target.exportedFunctions, ...source.exportedFunctions],
 		exportS3Generics:     mergedS3Generics,
@@ -435,6 +455,11 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 		loadsWithSideEffects: target.loadsWithSideEffects || source.loadsWithSideEffects,
 		conditional:          mergedConditional.size > 0 ? mergedConditional : undefined,
 	};
+}
+
+/** Split a NAMESPACE directive's argument list (`a, "b", c`) into individual, quote-stripped names. */
+function splitNamespaceArgs(args: string): string[] {
+	return args.split(',').map(s => removeRQuotes(s.trim())).filter(s => s.length > 0);
 }
 
 /**
@@ -455,7 +480,8 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.current.exportedFunctions.push(removeRQuotes(args));
+				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
+				result.current.exportedFunctions.push(...splitNamespaceArgs(args));
 				break;
 			case 'S3method':
 			{
@@ -473,7 +499,8 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				break;
 			}
 			case 'export':
-				result.current.exportedSymbols.push(removeRQuotes(args));
+				// `export(a, b)` exports both `a` and `b`, so split rather than storing the literal `"a, b"`
+				result.current.exportedSymbols.push(...splitNamespaceArgs(args));
 				break;
 			case 'useDynLib':
 			{
@@ -489,6 +516,7 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 						exportS3Generics:     new Map<string, string[]>(),
 						exportedPatterns:     [],
 						importedPackages:     new Map<string, string[] | 'all'>(),
+						callable:             [],
 						loadsWithSideEffects: false,
 					};
 				}

@@ -71,7 +71,13 @@ export function filterValidNames(
 		colnames = colnames?.map(entry => isValidColName(entry) ? entry : undefined);
 	}
 	if(noDupNames) {  // map all duplicate column names to top
-		colnames = colnames?.map((entry, _, list) => entry !== undefined && list.filter(other => other === entry).length === 1 ? entry : undefined);
+		const counts = new Map<string, number>();
+		for(const entry of colnames ?? []) {
+			if(entry !== undefined) {
+				counts.set(entry, (counts.get(entry) ?? 0) + 1);
+			}
+		}
+		colnames = colnames?.map(entry => entry !== undefined && counts.get(entry) === 1 ? entry : undefined);
 	}
 	if(noEmptyNames) {  // map all empty column names to top
 		colnames = colnames?.map(entry => entry?.length === 0 ? undefined : entry);

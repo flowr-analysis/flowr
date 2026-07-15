@@ -6,6 +6,8 @@ import { extractCfg, extractCfgQuick } from '../../../../src/control-flow/extrac
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
 import { FlowrConfig } from '../../../../src/config';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
 describe('Analyzer Cache', withTreeSitter( (shell) => {
 
@@ -101,6 +103,35 @@ describe('Analyzer Cache', withTreeSitter( (shell) => {
 				const cached = await cache.controlflow(false, CfgKind.Quick, undefined);
 				expect(original).toBe(cached);
 			});
+		});
+	});
+
+	describe('Tree disposal', () => {
+		function spyOnDelete(parse: unknown): () => number {
+			const tree = (parse as { files: { parsed: { delete(): void } }[] }).files[0].parsed;
+			let freed = 0;
+			const original = tree.delete.bind(tree);
+			tree.delete = () => {
+				freed++;
+				original();
+			};
+			return () => freed;
+		}
+
+		test('reset() frees the WASM-backed parse tree', async() => {
+			const cache = FlowrAnalyzerCache.create(createCache('x <- 1'));
+			const freed = spyOnDelete(await cache.parse());
+			cache.reset();
+			expect(freed()).toBe(1);
+		});
+
+		test('close() frees the WASM-backed parse tree', async() => {
+			// dedicated parser so close() does not affect the shared test parser
+			const analyzer = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).buildSync();
+			analyzer.addRequest('y <- 2');
+			const freed = spyOnDelete(await analyzer.parse());
+			analyzer.close();
+			expect(freed()).toBe(1);
 		});
 	});
 }));

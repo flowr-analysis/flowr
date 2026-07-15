@@ -44,6 +44,7 @@ import { getAliases, resolveIdToValue } from '../../../../../eval/resolve/alias-
 import { isValue } from '../../../../../eval/values/r-value';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { createFreshEnvState } from './built-in-new-env';
+import { stackEnvStateFromSource } from './built-in-stack-env';
 
 function toReplacementSymbol<OtherInfo>(target: RNodeWithParent<OtherInfo & ParentInformation> & RAstNodeBase<OtherInfo> & Location, prefix: Identifier, superAssignment: boolean): RSymbol<OtherInfo & ParentInformation> {
 	return {
@@ -474,6 +475,20 @@ function tryRouteToCustomEnv<OtherInfo>(
 		return undefined;
 	}
 
+	if(resolution.isStackEnv) {
+		/* real stack env, not a private snapshot. Route a global write as a super-assignment so it reaches global scope from inside a function. */
+		if(resolution.envirData.environment.current.globalEnv !== true) {
+			return undefined;
+		}
+		const globalResult = processAssignment(name, args, rootId, data, {
+			...config,
+			environmentArg:  undefined,   // prevent re-entry
+			superAssignment: true
+		});
+		globalResult.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
+		return globalResult;
+	}
+
 	/* run the normal assignment path to get the correct graph structure */
 	const normalResult = processAssignment(name, args, rootId, data, {
 		...config,
@@ -507,6 +522,32 @@ export interface AssignmentToSymbolParameters<OtherInfo> extends AssignmentConfi
  * @param data               - The dataflow analysis fold backpack
  * @param assignmentConfig   - configuration for the assignment processing
  */
+/**
+ * Model a call like `Hmisc::getHdata(x)` that loads a dataset into the variable it is *given*: the argument symbol
+ * `x` is both **read** (as the call's argument, its value comes from outside the code) and **defined** by the call.
+ * Unlike {@link markAsAssignment} we keep the read edge.
+ */
+export function processDefineArgument<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config: AssignmentConfiguration
+): DataflowInformation {
+	const res = processKnownFunctionCall({ name, args, rootId, data, forceArgs: config.forceArgs, origin: BuiltInProcName.DefineArgument });
+	const info = res.information;
+	const targetArg = res.processedArguments[0];   // the read argument, e.g. `prostate`
+	if(targetArg !== undefined) {
+		for(const node of produceWrittenNodes(rootId, targetArg, ReferenceType.Variable, data, false, undefined)) {
+			info.environment = define(node, config.superAssignment, info.environment);
+			info.graph.setDefinitionOfVertex(node, [rootId]);
+			info.graph.addEdge(node.nodeId, rootId, EdgeType.DefinedBy);   // defined by the call; the read edge is left intact
+		}
+	}
+	return info;
+}
+
+/** Define `nodeToDefine` in the environment and wire the `DefinedBy` edges from it to its sources and the assignment root (dropping the child-added read edges). */
 export function markAsAssignment<OtherInfo>(
 	information: {
 		environment: REnvironmentInformation,
@@ -559,8 +600,12 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	if(data.ctx.config.solver.trackEnvironments) {
 		let envState: REnvironmentInformation | undefined;
 		let returnsEnvState: REnvironmentInformation | undefined;
+		const stackEnv = stackEnvStateFromSource(sourceArg, data);
 		if(isEnvCreatorSource(sourceArg)) {
 			envState = createFreshEnvState(data, sourceArg);
+		} else if(stackEnv !== undefined) {
+			// globalenv()/baseenv()/emptyenv(): assigned variable points into that search-path stack env
+			envState = stackEnv;
 		} else if(source.type === RType.Symbol) {
 			const defs = resolveByName(source.content, data.environment, ReferenceType.Variable);
 			const def = defs?.find((d): d is InGraphIdentifierDefinition => (d as InGraphIdentifierDefinition).envState !== undefined);

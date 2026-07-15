@@ -27,6 +27,36 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
+import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
+import type { LibraryExports } from '../../../src/project/sigdb/schema';
+
+/** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };
+
+/** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
+export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
+export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
+export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
+	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
+	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
+		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], cran: true }
+		: undefined;
+	return {
+		has:           pkg => pkg in pkgs,
+		lookup:        pkg => view(pkg),
+		functions:     () => undefined,
+		dependencies:  () => undefined,
+		packageNames:  () => Object.keys(pkgs),
+		isBaseR:       () => false,
+		coreVersions:  () => undefined,
+		releaseDate:   () => undefined,
+		releaseDates:  () => [],
+		latestVersion: () => undefined,
+		close:         () => { /* nothing to release */ }
+	};
+}
 
 
 /**
@@ -39,7 +69,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: Omit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {
 	assertLinterWithCleanup(name, parser, code, ruleName, expected, expectedMetadata, lintingRuleConfig, result => {
 		if('involvedId' in result) {
@@ -60,7 +90,7 @@ export function assertLinterWithIds<Name extends LintingRuleNames>(
 	ruleName: Name,
 	expected: (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[] | ((df: DataflowInformation, ast: NormalizedAst) => (Omit<LintingRuleResult<Name>, 'involvedId'> & { involvedId: SlicingCriteria })[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] }
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {
 	assertLinterWithCleanup(name, parser, code, ruleName, expected, expectedMetadata, lintingRuleConfig, (result, ast) => ({
 		...result,
@@ -83,17 +113,23 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 	ruleName: Name,
 	expected: Result[] | ((df: DataflowInformation, ast: NormalizedAst) => Result[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
-	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & { useAsFilePath?: string, addFiles?: FlowrFileProvider[] },
+	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup,
 	cleanup: (result: LintingRuleResult<Name> | Result, ast: NormalizedAst) => LintingRuleResult<Name> | Result = (r => r),
 ) {
 	test(decorateLabelContext(name, ['linter']), async() => {
-		const analyzer = await new FlowrAnalyzerBuilder()
+		let builder = new FlowrAnalyzerBuilder()
 			.setInput({
 				getId: deterministicCountingIdGenerator(0)
 			})
 			.setParser(parser)
-			.configure('solver.resolveSource.dropPaths', DropPathsOption.All)
-			.build();
+			.configure('solver.resolveSource.dropPaths', DropPathsOption.All);
+		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
+		if(lintingRuleConfig?.sigDb !== undefined) {
+			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));
+		} else if(lintingRuleConfig?.noSigDb) {
+			builder = builder.unregisterPlugins(SigDbPluginName);
+		}
+		const analyzer = await builder.build();
 		if(lintingRuleConfig?.useAsFilePath) {
 			analyzer.addFile(new FlowrInlineTextFile(lintingRuleConfig.useAsFilePath, code));
 		}

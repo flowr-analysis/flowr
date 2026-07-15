@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
 describe('flowR linter', withTreeSitter(parser => {
@@ -49,5 +49,21 @@ second <- data.frame(x = c(1, 3, 2), y = c(1, 3, 2))
 dplyr::all_equal(first, second)`, 'deprecated-functions',
 		[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::all_equal', loc: [4, 1, 4, 31] }],
 		{ totalCalls: 1, totalFunctionDefinitions: 1 });
+
+		describe('a deprecated function resolved via a loaded package is still flagged', () => {
+			// regression: the loaded-package export must still count as a built-in call target
+			assertLinter('with a (controlled) package database', parser, 'library(dplyr)\nrecode(x)',
+				'deprecated-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
+			);
+			assertLinter('without any package database', parser, 'library(dplyr)\nrecode(x)',
+				'deprecated-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['recode'], noSigDb: true }
+			);
+		});
 	});
 }));

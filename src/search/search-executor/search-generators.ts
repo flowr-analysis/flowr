@@ -83,26 +83,9 @@ async function generateGet(input: ReadonlyFlowrAnalysisProvider, { filter: { lin
 
 	if(fuzzy) {
 		guard(line, 'Fuzzy location matching requires line to be provided');
-		potentials = potentials.filter(node => {
-			const range = SourceRange.fromNode(node);
-			if(!range) {
-				return false;
-			}
-			return column === undefined ? (range[0] <= line && line <= range[2]) : SourceRange.containsPosition(range, line, column);
-		});
-		if(innermostOnly && potentials.length > 1) {
-			potentials = potentials.filter(node => {
-				const range = SourceRange.fromNode(node);
-				return range && !potentials.some(other => {
-					if(other === node) {
-						return false;
-					} else if(other.info.parent === node.info.id) {
-						return true;
-					}
-					const otherRange = SourceRange.fromNode(other);
-					return otherRange && SourceRange.isStrictSubsetOf(otherRange, range);
-				});
-			});
+		potentials = SourceRange.nodesContaining(potentials, line, column);
+		if(innermostOnly) {
+			potentials = SourceRange.innermostNodes(potentials);
 		}
 	} else if(line && column) {
 		potentials = potentials.filter(({ location }: RNodeWithParent) => location?.[0] === line && location?.[1] === column);
@@ -131,6 +114,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 	const result = await executeQueries({ analyzer: input }, args.from);
 
 	// collect involved nodes
+	const { idMap } = await input.normalize();
 	const nodesByQuery = new Map<Query['type'], Set<FlowrSearchElement<ParentInformation>>>();
 	for(const [query, content] of Object.entries(result)) {
 		if(query === '.meta') {
@@ -139,7 +123,7 @@ async function generateFromQuery(input: ReadonlyFlowrAnalysisProvider, args: {
 		const nodes = new Set<FlowrSearchElement<ParentInformation>>();
 		const queryDef = SupportedQueries[query as Query['type']] as SupportedQuery<Query['type']>;
 		for(const node of queryDef.flattenInvolvedNodes(content as BaseQueryResult, args.from, args.certainty)) {
-			nodes.add({ node: (await input.normalize()).idMap.get(node) as RNode<ParentInformation> });
+			nodes.add({ node: idMap.get(node) as RNode<ParentInformation> });
 		}
 		nodesByQuery.set(query as Query['type'], nodes);
 	}

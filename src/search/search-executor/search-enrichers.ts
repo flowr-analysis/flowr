@@ -8,7 +8,7 @@ import { VertexType } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
 import { OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
@@ -132,9 +132,11 @@ export const Enrichments = {
 						origins.map(o => {
 							switch(o.type) {
 								case OriginType.FunctionCallOrigin:
-									return {
-										node: n.idMap.get(o.id) as RNodeWithParent,
-									} satisfies FlowrSearchElement<ParentInformation>;
+									// a built-in target (e.g. a materialized package export from `library()`) has no
+									// user-code node, so surface it as a built-in string target (see `onlyBuiltin` below)
+									return NodeId.isBuiltIn(o.id)
+										? recoverName(o.id, n.idMap) ?? String(o.id)
+										: { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
 								case OriginType.BuiltInFunctionOrigin:
 									return Identifier.toString(o.fn.name);
 								default:
@@ -148,7 +150,8 @@ export const Enrichments = {
 				}
 			}
 
-			// if there is a call target that is not built-in (ie a custom function), we don't want to include it here
+			// keep only calls whose targets are all built-in; library/package exports arrive as string
+			// targets and count as built-in, a target with a `node` is user code and disqualifies the call
 			if(args?.onlyBuiltin && content.targets.some(t => typeof t !== 'string')) {
 				content.targets = [];
 			}
@@ -202,8 +205,8 @@ export const Enrichments = {
 				...args
 			};
 
-			// short-circuit if we already have a cfg stored
-			if(!args.forceRefresh && prev?.simpleCfg) {
+			// short-circuit if we already have a cfg stored (and the reachability info if requested)
+			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
 

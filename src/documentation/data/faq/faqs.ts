@@ -17,6 +17,10 @@ Tests are labeled based on the *flowR* capabilities that they test for.
 The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
 `)
+		.addFaq('How do I run *all checks* before pushing?', `
+Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
+`)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
 	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
 	this will use an unminified build (keeping debug info) and also watches the source files for changes.
@@ -98,6 +102,9 @@ relevant documentation. If you don't know the origin of the package, you can use
 🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
 or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
 be downloaded directly from [cran](https://cran.r-project.org/).
+`)
+		.addFaq('How does flowR know a *package\'s exports*?', `
+See the ${ctx.linkPage('wiki/Signature Database', 'Signature Database')} wiki page.
 `)
 	;
 

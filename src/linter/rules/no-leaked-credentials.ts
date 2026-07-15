@@ -9,7 +9,6 @@ import type { MergeableRecord } from '../../util/objects';
 import { Q } from '../../search/flowr-search-builder';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleTag } from '../linter-tags';
-import { isNotUndefined } from '../../util/assert';
 import { isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
@@ -79,7 +78,7 @@ export const NO_LEAKED_CREDENTIALS = {
 				}
 			}
 			return [];
-		}).filter(isNotUndefined);
+		});
 
 		return { results, '.meta': { totalChecked } };
 	},

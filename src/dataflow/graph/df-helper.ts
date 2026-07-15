@@ -4,6 +4,7 @@ import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
 import { GraphHelper } from './graph-helper';
 import { CallGraph } from './call-graph';
+import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../internal/process/functions/call/built-in/transitive-side-effects';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
@@ -50,7 +51,14 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin: getOriginInDfg,
+	origin:      getOriginInDfg,
+	/**
+	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
+	 */
+	sideEffects: {
+		propagateTransitive: propagateTransitiveSideEffects,
+		callGraphSummaries:  computeCallGraphSummaries,
+	},
 	/**
 	 * Only returns the sub-part of the graph that is determined by the given selection.
 	 * In other words, this will return a graph with only vertices that are part of the selected ids,

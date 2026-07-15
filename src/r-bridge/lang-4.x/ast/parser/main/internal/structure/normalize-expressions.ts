@@ -177,10 +177,8 @@ export function normalizeExpressions(
 			if(braces) {
 				return [processBraces(braces, processed, parsedComments, data)];
 			} else if(processed.length > 0) {
-				if(parsedComments) {
-					processed[0].info.adToks ??= [];
-					processed[0].info.adToks.push(...parsedComments);
-				}
+				processed[0].info.adToks ??= [];
+				processed[0].info.adToks.push(...parsedComments);
 				return processed;
 			} else {
 				return parsedComments;

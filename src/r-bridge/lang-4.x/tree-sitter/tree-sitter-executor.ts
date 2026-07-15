@@ -84,10 +84,18 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	}
 
 	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
-		const query = typeof source === 'string' ? this.createQuery(source) : source;
-		return tree
-			.flatMap(t => query.matches(t.rootNode))
-			.flatMap(m => m.captures);
+		// a Query is WASM-backed, so free it if we created it (a caller-supplied Query stays theirs)
+		const ownQuery = typeof source === 'string';
+		const query = ownQuery ? this.createQuery(source) : source;
+		try {
+			return tree
+				.flatMap(t => query.matches(t.rootNode))
+				.flatMap(m => m.captures);
+		} finally {
+			if(ownQuery) {
+				query.delete();
+			}
+		}
 	}
 
 	public close(): void {

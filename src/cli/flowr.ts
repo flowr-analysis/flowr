@@ -32,7 +32,7 @@ import { standardReplOutput } from './repl/commands/repl-main';
 import { repl, replProcessAnswer } from './repl/core';
 import { exitSafe } from '../util/proc';
 import { printVersionRepl } from './repl/print-version';
-import { defaultConfigFile, flowrMainOptionDefinitions, getScriptsText } from './flowr-main-options';
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptArguments, getScriptsText } from './flowr-main-options';
 import type { KnownParser } from '../r-bridge/parser';
 import fs from 'fs';
 import path from 'path';
@@ -92,7 +92,7 @@ const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
 log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
 log.info('running with options', options);
 
-if(options['no-ansi']) {
+if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
 	log.info('disabling ansi colors');
 	setFormatter(voidFormatter);
 }
@@ -178,7 +178,7 @@ async function mainRepl() {
 		guard(target !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
 		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
 		log.debug(`Script maps to "${target}"`);
-		await waitOnScript(`${__dirname}/${target}`, process.argv.slice(3), undefined, true);
+		await waitOnScript(`${__dirname}/${target}`, getScriptArguments(options.script, process.argv), undefined, true);
 		return exitSafe(0);
 	}
 
@@ -191,8 +191,15 @@ async function mainRepl() {
 	const defaultEngine = engines.engines[engines.default] as KnownParser;
 
 	if(options.version) {
-		for(const engine of Object.values(engines.engines)) {
-			await printVersionInformation(standardReplOutput, engine);
+		const enginesList = Object.values(engines.engines);
+		if(enginesList.length > 0) {
+			await printVersionInformation(standardReplOutput, enginesList[0]);
+			for(const engine of enginesList.slice(1)) {
+				console.log('');
+				await printVersionInformation(standardReplOutput, engine, true);
+			}
+		}
+		for(const engine of enginesList) {
 			engine?.close();
 		}
 		return exitSafe(0);

@@ -245,7 +245,7 @@ function processObjectEntry(key: string, value: unknown, obj: DataForQuad, quads
 		} else if(value instanceof Set) {
 			let i = 0;
 			for(const setValue of value.values()) {
-				processObjectEntry('idx-'+String(i++), setValue, obj, quads, config);
+				processObjectEntry('idx-' + String(i++), setValue, obj, quads, config);
 			}
 		} else {
 			processObjectEntries(key, value, obj, quads, config);
@@ -282,7 +282,7 @@ function serializeObject(obj: DataForQuad | undefined | null, quads: Quad[], con
 	} else if(obj instanceof Set) {
 		let i = 0;
 		for(const value of obj.values()) {
-			processObjectEntry('idx-'+String(i++), value, obj, quads, config);
+			processObjectEntry('idx-' + String(i++), value, obj, quads, config);
 		}
 	} else {
 		for(const [key, value] of Object.entries(obj)) {

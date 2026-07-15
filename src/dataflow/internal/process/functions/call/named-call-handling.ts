@@ -5,10 +5,14 @@ import { appendEnvironment } from '../../../../environments/append';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { VertexType } from '../../../../graph/vertex';
-import { ReferenceType } from '../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../environments/identifier';
+import { baseRExportOwner } from '../../../../../util/r-base-packages';
+import type { InGraphIdentifierDefinition } from '../../../../environments/identifier';
+import { EdgeType } from '../../../../graph/edge';
+import { attachExportVertex, loadNodesForNamespace } from './built-in/built-in-library';
 import type { DataflowGraph } from '../../../../graph/graph';
 
 
@@ -27,19 +31,6 @@ function mergeInformation(info: DataflowInformation | undefined, newInfo: Datafl
 		exitPoints:        info.exitPoints.concat(newInfo.exitPoints),
 		hooks:             info.hooks.concat(newInfo.hooks)
 	};
-}
-
-function processDefaultFunctionProcessor<OtherInfo>(
-	information: DataflowInformation | undefined,
-	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
-	rootId: NodeId,
-	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
-) {
-	const resolve = resolveByName(name.content, data.environment, ReferenceType.Function);
-	/* if we do not know where we land, we force! */
-	const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: (resolve?.length ?? 0) > 0 ? undefined : 'all', origin: 'default' });
-	return mergeInformation(information, call.information);
 }
 
 /**
@@ -66,6 +57,13 @@ export function processNamedCall<OtherInfo>(
 	const resolved = resolveByName(name.content, data.environment, ReferenceType.Function) ?? [];
 	let defaultProcessor = resolved.length === 0;
 
+	/* if this call will be marked as built-in only (see below), its vertex needs no environment snapshot */
+	if(resolved.length > 0
+		&& resolved.every(r => r.type === ReferenceType.BuiltInFunction && typeof r.processor === 'function')
+		&& resolved.some(r => r.type === ReferenceType.BuiltInFunction && r.config?.libFn !== true)) {
+		data = { ...data, builtInNoEnv: rootId };
+	}
+
 	let information: DataflowInformation | undefined = undefined;
 	let builtIn = false;
 	for(const resolvedFunction of resolved) {
@@ -78,10 +76,52 @@ export function processNamedCall<OtherInfo>(
 	}
 
 	if(defaultProcessor) {
-		information = processDefaultFunctionProcessor(information, name, args, rootId, data);
+		/* if we do not know where we land, we force! reuse `resolved`, data.environment did not change above */
+		const call = processKnownFunctionCall({ name, args, rootId, data, forceArgs: resolved.length > 0 ? undefined : 'all', origin: 'default' });
+		information = mergeInformation(information, call.information);
 	} else if(information && builtIn) {
 		// mark the function call as built in only
 		markAsOnlyBuiltIn(information.graph, rootId);
+	}
+
+	// on demand: materialize the built-in vertex for any package export this call resolves to and, when we
+	// already know the loading call here, link to it (a function-local export is invisible to the later
+	// top-level linkMaterializedExportsToLoaders pass, so we must catch it at the call site)
+	if(information) {
+		const sigdb = data.ctx.config.solver.sigdb;
+		for(const r of resolved) {
+			if(r.type === ReferenceType.Function && r.nodeId !== undefined && NodeId.isBuiltIn(r.nodeId)) {
+				attachExportVertex(information.graph, r.nodeId, data.environment, data.ctx, data.cds);
+				const definedAt = (r as Partial<InGraphIdentifierDefinition>).definedAt;
+				if(definedAt !== undefined && !NodeId.isBuiltIn(definedAt)) {
+					information.graph.addEdge(r.nodeId, definedAt, EdgeType.Reads | EdgeType.Calls);
+					// the call itself reads the library() load that made this export resolvable
+					information.graph.addEdge(rootId, definedAt, EdgeType.Reads);
+				}
+				// opt-in: a lightweight ref edge from the call to its sigdb-backed package function vertex
+				if(sigdb.linkPackageCalls && NodeId.toPkgFn(r.nodeId) !== undefined) {
+					information.graph.addEdge(rootId, r.nodeId, EdgeType.Reads);
+				}
+			}
+		}
+		const ns = Identifier.getNamespace(name.content);
+		// an explicit `pkg::fn` links to a database-unresolved `library(pkg)` recorded below the global env
+		if(ns !== undefined) {
+			for(const loadNode of loadNodesForNamespace(data.environment, ns)) {
+				information.graph.addEdge(rootId, loadNode, EdgeType.Reads);
+			}
+		}
+		// opt-in: link a bare base-R call to its sigdb function vertex (base-R qualification is edge-free otherwise);
+		// same guards as Identifier.toQualified -- not namespaced, not resolving to a user definition
+		if(sigdb.linkBaseRCalls && ns === undefined && !resolved.some(r => r.nodeId !== undefined && !NodeId.isBuiltIn(r.nodeId))) {
+			const bare = Identifier.getName(name.content);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				const builtInId = NodeId.fromPkgFn(owner, bare);
+				attachExportVertex(information.graph, builtInId, data.environment, data.ctx, data.cds);
+				information.graph.addEdge(rootId, builtInId, EdgeType.Reads);
+			}
+		}
 	}
 
 	return information ?? DataflowInformation.initialize(rootId, data);

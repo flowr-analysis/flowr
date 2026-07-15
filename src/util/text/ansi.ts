@@ -28,18 +28,22 @@ export enum ColorEffect {
 export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions;
 
 export interface ColorFormatOptions {
-	color:  Colors
-	effect: ColorEffect
+	color:   Colors
+	effect:  ColorEffect
+	/** use the high-intensity variant */
+	bright?: boolean
 }
 
 export interface WeightFormatOptions {
-	style: FontStyles
+	style: FontStyles | readonly FontStyles[]
 }
 
 export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
+	/** render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text) */
+	hyperlink(text: string, url: string): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -54,6 +58,10 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, _url: string): string {
+		return text;
+	}
 }();
 
 export const markdownFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -64,7 +72,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 			} else if(options.style === FontStyles.Italic) {
 				input = `_${input}_`;
 			} else {
-				throw new Error(`Unsupported font style: ${options.style}`);
+				throw new Error(`Unsupported font style: ${String(options.style)}`);
 			}
 		}
 
@@ -86,6 +94,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, url: string): string {
+		return `[${text}](${url})`;
+	}
 }();
 
 /**
@@ -103,6 +115,13 @@ export function bold(s: string, f: OutputFormatter = formatter, options?: Format
 }
 
 /**
+ * Color the text in the given foreground color.
+ */
+export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
+	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
+}
+
+/**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
  */
 export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
@@ -116,6 +135,11 @@ export const ansiFormatter = {
 		return `${escape}0${colorSuffix}`;
 	},
 
+	hyperlink(text: string, url: string): string {
+		// OSC 8 hyperlink, BEL-terminated (\x07) -- more widely supported than the ST form (Konsole, tmux, ...)
+		return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+	},
+
 	format(input: string, options?: FormatOptions): string {
 		return `${this.getFormatString(options)}${input}${this.reset()}`;
 	},
@@ -124,9 +148,15 @@ export const ansiFormatter = {
 		if(options === undefined) {
 			return '';
 		}
-		const colorString = 'color' in options ? `${options.effect + options.color}` : '';
-		const weightString = 'style' in options ? `${options.style}` : '';
-		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`;
+		const params: number[] = [];
+		if('style' in options) {
+			const styles: readonly FontStyles[] = Array.isArray(options.style) ? options.style as readonly FontStyles[] : [options.style as FontStyles];
+			params.push(...styles);
+		}
+		if('color' in options) {
+			params.push((options.bright ? options.effect + 60 : options.effect) + options.color);
+		}
+		return params.length === 0 ? '' : `${escape}${params.join(';')}${colorSuffix}`;
 	}
 };
 

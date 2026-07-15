@@ -1,14 +1,42 @@
-import { type FlowrGasConfig, type FlowrGasThresholds, GasLevel } from '../../gas';
-import { getHeapStatistics } from 'v8';
+import { type FlowrGasConfig, type FlowrGasThresholds, type GasHeapStatistics, GasLevel } from '../../gas';
 import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 import type { FlowrAnalyzerContext } from './flowr-analyzer-context';
+import { log } from '../../util/log';
+
+type ChromiumMemory = { usedJSHeapSize: number, jsHeapSizeLimit: number };
+let heapStatisticsProvider: (() => GasHeapStatistics) | null | undefined = undefined;
+
+/**
+ * Heap statistics come from the v8 module (Node.js, Electron, VS Code extension host) or,
+ * as a fallback, from Chromium's non-standard performance.memory (browsers, web workers).
+ * If neither exists, this returns undefined and gas skips the memory check
+ * (use {@link FlowrGasConfig#heapProvider} or a gas plugin to supply a custom source).
+ */
+function tryGetHeapStatistics(): GasHeapStatistics | undefined {
+	if(heapStatisticsProvider === undefined) {
+		const v8 = globalThis.process?.getBuiltinModule?.('v8');
+		if(v8) {
+			heapStatisticsProvider = v8.getHeapStatistics;
+		} else if((globalThis.performance as { memory?: ChromiumMemory } | undefined)?.memory) {
+			heapStatisticsProvider = () => {
+				const m = (globalThis.performance as unknown as { memory: ChromiumMemory }).memory;
+				return { used_heap_size: m.usedJSHeapSize, heap_size_limit: m.jsHeapSizeLimit };
+			};
+		} else {
+			heapStatisticsProvider = null;
+			log.info('no heap statistics source available in this runtime, gas skips the memory check');
+		}
+	}
+	return heapStatisticsProvider ? heapStatisticsProvider() : undefined;
+}
 
 /** Read-only gas context exposed via `ctx.gas`. */
 export interface ReadOnlyFlowrAnalyzerGasContext {
 	readonly name: string;
 	/**
 	 * Returns the resource-pressure level for `key` (`config.gas.features[key]`).
-	 * Returns `GasLevel.Normal` with zero overhead when the feature factor is 0 or absent.
+	 * Returns `GasLevel.Normal` with zero overhead when the feature factor is 0 or absent
+	 * and no gas plugins are registered (plugins are always consulted and may escalate any key).
 	 */
 	checkGas(key: string): GasLevel;
 }
@@ -34,12 +62,11 @@ export class FlowrAnalyzerGasContext implements ReadOnlyFlowrAnalyzerGasContext 
 	}
 
 	private memoryLevel(factor: number, t: FlowrGasThresholds): GasLevel {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		const { used_heap_size, heap_size_limit } = getHeapStatistics();
-		if(heap_size_limit <= 0) {
+		const stats = this.config?.heapProvider ? this.config.heapProvider() : tryGetHeapStatistics();
+		if(stats === undefined || stats.heap_size_limit <= 0) {
 			return GasLevel.Normal;
 		}
-		const ratio = (used_heap_size / heap_size_limit) * factor;
+		const ratio = (stats.used_heap_size / stats.heap_size_limit) * factor;
 		if(ratio >= t.memory.critical)    {
 			return GasLevel.Critical;
 		}

@@ -52,7 +52,7 @@ import { Dataflow } from '../../../src/dataflow/graph/df-helper';
 import { SliceDirection } from '../../../src/util/slice-direction';
 import { CallGraph } from '../../../src/dataflow/graph/call-graph';
 
-export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>) => {
+export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) => void | Promise<void>, timeout?: number) => {
 	return test(msg, async function(this: unknown): Promise<void> {
 		let shell: RShell | null = null;
 		try {
@@ -62,7 +62,7 @@ export const testWithShell = (msg: string, fn: (shell: RShell, test: unknown) =>
 			// ensure we close the shell in error cases too
 			shell?.close();
 		}
-	});
+	}, timeout);
 };
 
 
@@ -167,7 +167,6 @@ export const retrieveNormalizedAst = async(shell: RShell, input: `${typeof fileP
 export interface TestConfiguration extends MergeableRecord {
 	/** the (inclusive) minimum version of R required to run this test, e.g., {@link MIN_VERSION_PIPE} */
 	minRVersion:            string | undefined
-	needsXmlParseData:      boolean
 	needsNetworkConnection: boolean
 }
 
@@ -179,7 +178,6 @@ export interface TestConfigurationWithOutput extends TestConfiguration {
 
 export const defaultTestConfiguration: TestConfiguration = {
 	minRVersion:            undefined,
-	needsXmlParseData:      false,
 	needsNetworkConnection: false
 };
 
@@ -208,14 +206,6 @@ function skipTestBecauseInsufficientRVersion(versionToSatisfy: string): boolean 
 }
 
 
-function skipTestBecauseXmlParseDataIsMissing(): boolean {
-	if(!globalThis.hasXmlParseData) {
-		console.warn('Skipping test because package "xmlparsedata" is not installed (install it locally to get the tests to run).');
-		return true;
-	}
-	return false;
-}
-
 
 /**
  * Automatically skip a test if the given configuration is not met
@@ -223,8 +213,7 @@ function skipTestBecauseXmlParseDataIsMissing(): boolean {
 export function skipTestBecauseConfigNotMet(userConfig?: Partial<TestConfiguration>): boolean {
 	const config = deepMergeObject(defaultTestConfiguration, userConfig);
 	return config.needsNetworkConnection && skipTestBecauseNoNetwork()
-		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`)
-		|| config.needsXmlParseData && skipTestBecauseXmlParseDataIsMissing();
+		|| config.minRVersion !== undefined && skipTestBecauseInsufficientRVersion(`>=${config.minRVersion}`);
 }
 
 /**
@@ -558,6 +547,8 @@ interface TestCaseParams {
 	flowrConfig:          FlowrConfig,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
+	/** Continue backward slicing past a function-definition boundary, including the definition's binding and call sites */
+	includeCallees?:      boolean
 }
 
 /**
@@ -649,11 +640,12 @@ export function assertSliced(
 				context.addFiles(testConfig.addFiles);
 			}
 			return await createSlicePipeline(parser, {
-				getId:        getId(),
-				context:      context,
-				criterion:    criteria,
-				autoSelectIf: testConfig?.autoSelectIf,
-				direction:    testConfig?.sliceDirection
+				getId:          getId(),
+				context:        context,
+				criterion:      criteria,
+				autoSelectIf:   testConfig?.autoSelectIf,
+				direction:      testConfig?.sliceDirection,
+				includeCallees: testConfig?.includeCallees
 			}).allRemainingSteps();
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {

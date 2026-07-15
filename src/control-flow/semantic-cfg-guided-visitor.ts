@@ -295,12 +295,15 @@ export class SemanticCfgGuidedVisitor<
 				return this.onPurrFormulaCall({ call });
 			case BuiltInProcName.NamespaceAccess:
 			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.StackEnv:
 			case BuiltInProcName.With:
 			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.DefineArgument:
 				return this.onDefaultFunctionCall({ call });
 			case BuiltInProcName.Load:
 				return this.onLoadCall({ call });

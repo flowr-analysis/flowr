@@ -68,6 +68,16 @@ describe('repl', () => {
 		}
 	});
 
+	test('reports the loaded package database', async() => {
+		const output = await flowrRepl([':version', ':quit']);
+		try {
+			assert.include(output, 'databases');
+		} catch(e) {
+			console.error('Output was:', output);
+			throw e;
+		}
+	});
+
 	describe(':query api', () => {
 		describe('dependencies', () => {
 			test('Provide Library Load', async() => {

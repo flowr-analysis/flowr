@@ -1,5 +1,4 @@
-import { coerce, Range, SemVer } from 'semver';
-import { guard } from './assert';
+import { coerce, Range, SemVer, satisfies as semverSatisfies } from 'semver';
 
 
 function makeVersion(version: string, original: string) {
@@ -68,40 +67,110 @@ function normalizeVersions(versions: string): string {
 	return parts.join('');
 }
 
-/**
- * This parses an R version string and returns a SemVer object.
- * In contrast to just using `new SemVer(version)`, this function also tries to
- * normalize R's much free-er versioning scheme into valid SemVer versions.
- * You can always access the original version string via the `str` property on the returned object.
- */
-export function parseRVersion(version: string): SemVer & { str: string } {
-	try {
-		return makeVersion(version, version);
-	} catch{ /* do nothing */ }
-	try {
-		const normalized = normalizeVersions(version);
-		return makeVersion(normalized, version);
-	} catch{ /* do nothing */ }
-	const coerced = coerce(version, { loose: true, includePrerelease: true });
-	guard(coerced !== null, `Could not coerce R version "${version}" to SemVer`);
-	return makeVersion(coerced.version, version);
-}
-
 function makeRange(range: string, original: string) {
 	const semverRange = new Range(range) as Range & { str: string };
 	semverRange.str = original;
 	return semverRange;
 }
-/**
- * This parses an R version range string and returns a SemVer Range object.
- * In contrast to just using `new Range(range)`, this function also tries to
- * normalize R's much free-er versioning scheme into valid SemVer ranges.
- * You can always access the original range string via the `str` property on the returned object.
- */
-export function parseRRange(range: string): Range & { str: string } {
-	try {
-		return makeRange(range, range);
-	} catch{/* try to normalize R range to SemVer */}
-	const normalized = normalizeVersions(range);
-	return makeRange(normalized, range);
-}
+
+/** A parsed R package version: a comparable {@link SemVer} that also keeps its original string as `.str`. */
+export type RVersion = SemVer & { str: string };
+
+/** Helpers for R package versions (`1.2-3` style), which are freer than SemVer. */
+export const RVersion = {
+	/**
+	 * Parse an R version string into a {@link SemVer}, normalizing R's freer scheme (e.g. `0.4-9`). Unlike
+	 * `new SemVer(version)` this coerces where needed; the original string is available via `.str`. Returns
+	 * undefined (never throws) when the string cannot be coerced to a version at all.
+	 * @see {@link RVersion.parseOrZero}
+	 */
+	parse(this: void, version: string): RVersion | undefined {
+		try {
+			return makeVersion(version, version);
+		} catch{ /* try to normalize */ }
+		try {
+			return makeVersion(normalizeVersions(version), version);
+		} catch{ /* fall back to coercion */ }
+		// like {@link RRange.parse}, this never throws: a truly un-coercible version (e.g. an empty `Version:`
+		// field or pure text) yields undefined so the caller can detect it rather than crashing
+		const coerced = coerce(version, { loose: true, includePrerelease: true });
+		return coerced === null ? undefined : makeVersion(coerced.version, version);
+	},
+
+	/**
+	 * Compare two R version strings following R's `numeric_version` scheme: split on `.` and `-`, compare
+	 * numerically, shorter versions padded with zeros (`0.4-9 < 0.4.10 < 1.0`). Negative/zero/positive for
+	 * `a` less than/equal to/greater than `b`.
+	 */
+	compare(this: void, a: string, b: string): number {
+		const pa = a.split(/[.-]/), pb = b.split(/[.-]/);
+		for(let i = 0; i < Math.max(pa.length, pb.length); i++) {
+			const x = Number(pa[i] ?? 0) || 0, y = Number(pb[i] ?? 0) || 0;
+			if(x !== y) {
+				return x - y;
+			}
+		}
+		return 0;
+	},
+
+	/**
+	 * Like {@link parse} but never undefined: a truly un-coercible version sorts as `0.0.0` while keeping its
+	 * original string as `.str`, so it stays usable as a sort key.
+	 * @see {@link RVersion.parse}
+	 */
+	parseOrZero(this: void, version: string): RVersion {
+		const parsed = RVersion.parse(version);
+		if(parsed !== undefined) {
+			return parsed;
+		}
+		const fallback = RVersion.parse('0.0.0') as RVersion;   // `0.0.0` always parses
+		fallback.str = version;
+		return fallback;
+	},
+
+	/** The highest of some version strings by R's `numeric_version` order (`0.9.0 < 0.10.0`); undefined if none. */
+	highest(this: void, versions: Iterable<string>): string | undefined {
+		let best: string | undefined;
+		for(const v of versions) {
+			if(best === undefined || RVersion.compare(v, best) > 0) {
+				best = v;
+			}
+		}
+		return best;
+	}
+} as const;
+
+/** Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). */
+export const RRange = {
+	/**
+	 * Parse an R version range string into a {@link Range}, normalizing R's freer scheme. The original range
+	 * string is available via `.str`.
+	 *
+	 * This never throws: an unparseable constraint (e.g. `>= abc`, or a git/URL "version" from a lockfile) yields
+	 * `undefined` rather than aborting the caller, so a malformed constraint is *detectable* and simply contributes
+	 * no version bound. Parsing is attempted first verbatim, then after normalizing R's scheme to SemVer.
+	 */
+	parse(this: void, range: string): (Range & { str: string }) | undefined {
+		try {
+			return makeRange(range, range);
+		} catch{ /* try to normalize R range to SemVer */ }
+		try {
+			return makeRange(normalizeVersions(range), range);
+		} catch{ /* unparseable even after normalization -> report as "no constraint" */ }
+		return undefined;
+	},
+
+	/**
+	 * Whether an R version string satisfies a range constraint, normalizing R's freer scheme on both sides.
+	 * `range` may be a parsed {@link Range} or a raw constraint string. Returns `false` if either is unparseable
+	 * (never throws), so a malformed version/constraint simply does not match.
+	 */
+	satisfies(this: void, version: string, range: Range | string): boolean {
+		const v = RVersion.parse(version);
+		if(v === undefined) {
+			return false;
+		}
+		const r = typeof range === 'string' ? RRange.parse(range) : range;
+		return r !== undefined && semverSatisfies(v, r, { loose: true, includePrerelease: true });
+	}
+} as const;

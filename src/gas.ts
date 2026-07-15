@@ -1,5 +1,8 @@
 import type { MergeableRecord } from './util/objects';
 
+/** Wiki reference for the gas resource guard, use this in user-facing warnings. */
+export const GasWikiRef = 'https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard';
+
 /**
  * Resource-pressure level returned by {@link ReadOnlyFlowrAnalyzerGasContext.checkGas}.
  * Numeric ordering lets callers use `>=` for threshold comparisons at zero cost.
@@ -21,12 +24,10 @@ export const enum GasLevel {
 export const GasFeatureKey = {
 	/** Gas key for built-in `source()` file analysis. */
 	Source:            'source',
-	/**
-	 * Gas key for the side-effect link resolution phase of the dataflow extractor.
-	 * This phase iterates unknown side effects and attempts to match them against call sites via CFG,
-	 * which can be expensive for large scripts with many unresolved calls.
-	 */
-	SideEffectLinking: 'side-effect-linking'
+	/** Gas key for the side-effect link resolution phase of the dataflow extractor, which matches unknown side effects against call sites via the CFG and can be expensive for large scripts. */
+	SideEffectLinking: 'side-effect-linking',
+	/** Gas key for the linter, checked once per linting rule. Under critical pressure, remaining rules are skipped. */
+	Linter:            'linter'
 } as const;
 
 export type GasFeatureKey = typeof GasFeatureKey[keyof typeof GasFeatureKey];
@@ -41,7 +42,7 @@ export interface GasThresholdPair extends MergeableRecord {
 
 /**
  * Thresholds for {@link GasLevel} transitions used by {@link ReadOnlyFlowrAnalyzerGasContext.checkGas}.
- * Memory values are fractions of the V8 heap limit (0-1), time values are in milliseconds.
+ * Memory values are fractions of the heap limit reported by the active heap source (0-1), time values are in milliseconds.
  * See the [Gas (Resource Guard)](https://github.com/flowr-analysis/flowr/wiki/Core#gas-resource-guard) wiki section.
  */
 export interface FlowrGasThresholds extends MergeableRecord {
@@ -49,6 +50,12 @@ export interface FlowrGasThresholds extends MergeableRecord {
 	readonly memory: GasThresholdPair;
 	/** Elapsed analysis time thresholds in milliseconds (before factor scaling). */
 	readonly timeMs: GasThresholdPair;
+}
+
+/** Heap statistics used for gas memory checks (field names follow the v8 API). */
+export interface GasHeapStatistics {
+	readonly used_heap_size:  number;
+	readonly heap_size_limit: number;
 }
 
 /**
@@ -64,7 +71,12 @@ export interface FlowrGasThresholds extends MergeableRecord {
  */
 export interface FlowrGasConfig extends MergeableRecord {
 	/** Shared thresholds scaled by each feature factor before comparison. */
-	readonly thresholds: FlowrGasThresholds;
+	readonly thresholds:    FlowrGasThresholds;
 	/** Per-feature sensitivity factors. Missing or `0` disables checking with zero overhead. */
-	readonly features:   Record<string, number | undefined>;
+	readonly features:      Record<string, number | undefined>;
+	/**
+	 * Custom heap statistics source (programmatic configs only), overriding the built-in
+	 * detection (v8 module, then Chromium's performance.memory). Return undefined to skip the memory check.
+	 */
+	readonly heapProvider?: () => GasHeapStatistics | undefined;
 }

@@ -132,11 +132,10 @@ export function processReplacementFunction<OtherInfo>(
 		}
 	}
 
-	const fa = unpackNonameArg(args[0]);
-	if(fa) {
+	if(firstArg) {
 		res = {
 			...res,
-			in: [...res.in, { name: fa.lexeme, type: ReferenceType.Variable, nodeId: fa.info.id, cds: data.cds }]
+			in: [...res.in, { name: firstArg.lexeme, type: ReferenceType.Variable, nodeId: firstArg.info.id, cds: data.cds }]
 		};
 	}
 

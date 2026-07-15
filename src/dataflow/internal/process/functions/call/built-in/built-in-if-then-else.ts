@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, type KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
@@ -15,6 +15,7 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
@@ -153,6 +154,14 @@ export function processIfThenElse<OtherInfo>(
 			(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
 		);
 
+	// a branch-local removal only happens maybe; apply it here since the branch-environment merge cannot represent it
+	let killed: KillReference[] | undefined;
+	if(then?.kill?.length || otherwise?.kill?.length) {
+		killed = (makeThenMaybe ? makeKillsMaybe(then?.kill, cdTrue) : then?.kill ?? [])
+			.concat(makeOtherwiseMaybe ? makeKillsMaybe(otherwise?.kill, cdFalse) : otherwise?.kill ?? []);
+		finalEnvironment = applyKills(finalEnvironment, killed);
+	}
+
 	patchFunctionCall({
 		nextGraph,
 		rootId,
@@ -177,5 +186,6 @@ export function processIfThenElse<OtherInfo>(
 		environment:       finalEnvironment,
 		graph:             nextGraph,
 		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		kill:              killed,
 	};
 }

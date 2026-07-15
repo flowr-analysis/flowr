@@ -1,11 +1,15 @@
+import { FontStyles } from './text/ansi';
 import { SemVer } from 'semver';
 import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
+import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 
 // this is automatically replaced with the current version by release-it
-const version = '2.10.9';
+const version = '2.12.1';
+// this is automatically replaced with the release date by release-it (regex-bumper, see package.json)
+const versionDate = '2026-07-15T07:13:44Z';
 
 /**
  * Retrieves the current flowR version as a new {@link SemVer} object.
@@ -57,9 +61,38 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
 /**
  * Displays the version information to the given output.
  */
-export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider) {
+export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider, engineOnly = false) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
-	output.stdout(`Engine: ${engine}`);
-	output.stdout(` flowR: ${flowr}`);
-	output.stdout(` R: ${r}`);
+	const faint = (s: string) => output.formatter.format(s, { style: FontStyles.Faint });
+	const rReason = r === 'none' ? ' (no R interpreter available)'
+		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
+			: '';
+	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
+	const rows: [string, string, boolean?][] = [];
+	if(!engineOnly) {
+		rows.push(['flowR', `${flowrValue} ${faint(`(${versionDate})`)}`]);
+	}
+	rows.push(
+		['engine', engine],
+		['R', `${r}${rReason}`, r === 'none' || r === 'unknown']
+	);
+	if(typeof input !== 'function' && 'inspectContext' in input) {
+		// reads the current analyzer, so it reflects the databases in use (and adapts to config changes)
+		const ctx = input.inspectContext();
+		const setting = ctx.config.solver.sigdb.assumedRVersion ?? 'auto';
+		rows.push(['assumed R', `${ctx.resolvedRVersion} ${faint(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
+		const dbs = ctx.deps.loadedPackageDatabases();
+		const sigDbUrl = sigDbRemoteRelease()?.url;
+		const describe = (d: typeof dbs[number]) => {
+			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
+			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl) : entry;
+		};
+		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
+	}
+	const width = Math.max(...rows.map(([label]) => label.length));
+	for(const [label, value, faded] of rows) {
+		const padding = ' '.repeat(width - label.length);
+		const line = `${label}:${padding} ${value}`;
+		output.stdout(faded ? faint(line) : line);
+	}
 }

@@ -1,6 +1,6 @@
 import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
-import { assertLinter } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { NETWORK_FUNCTIONS } from '../../../src/linter/rules/network-functions';
 
@@ -31,7 +31,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter(`network funcion with multiple arguments: ${prefix}`, parser, `download.file("${prefix}foo.org/bar.csv", "local.csv")`,
 				'network-functions',
 				[
-					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length+45] }
+					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length + 45] }
 				],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: ['download.file'] }
@@ -109,5 +109,21 @@ describe('flowR linter', withTreeSitter(parser => {
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
 			{ fns: ['read.csv'] }
 		);
+
+		describe('a call resolved via a loaded package is still flagged', () => {
+			// regression: the loaded-package export must still count as a built-in call target
+			assertLinter('with a (controlled) package database', parser, 'library(httr)\nGET("http://example.com")',
+				'network-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['GET'], sigDb: controlledSigDb('httr', ['GET', 'POST']) }
+			);
+			assertLinter('without any package database', parser, 'library(httr)\nGET("http://example.com")',
+				'network-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'GET', loc: [2, 1, 2, 25] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: ['GET'], noSigDb: true }
+			);
+		});
 	});
 }));

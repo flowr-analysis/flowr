@@ -16,9 +16,8 @@ import { type LintingResultsError,
 	LintingResults,
 	type LintingRule
 } from '../../../linter/linter-format';
-import { bold, ColorEffect, Colors, FontStyles } from '../../../util/text/ansi';
+import { bold, italic, ColorEffect, Colors, FontStyles, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
-import { codeInline } from '../../../documentation/doc-util/doc-code';
 import type { FlowrConfig } from '../../../config';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
@@ -64,7 +63,7 @@ function linterQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		const parseResult = rulesFromInput(output, rulesPart);
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
-				+`\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
+				+ `\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		rules = parseResult.valid;
 		input = line[1];
@@ -134,7 +133,7 @@ export const LinterQueryDefinition = {
 			return true;
 		}
 		for(const [ruleName, results] of Object.entries(out.results)) {
-			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result);
+			addLintingRuleResult(ruleName as LintingRuleNames, results as LintingResults<LintingRuleNames>, result, formatter);
 		}
 		return true;
 	},
@@ -162,29 +161,67 @@ export const LinterQueryDefinition = {
 	}
 } as const satisfies SupportedQuery<'linter'>;
 
-function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[]) {
+/** cap on findings shown per certainty before collapsing to a `+N more` line; the full set is in `:query*` JSON */
+const MaxFindingsShown = 10;
+
+function addLintingRuleResult<Name extends LintingRuleNames>(ruleName: Name, results: LintingResults<Name>, result: string[], formatter: OutputFormatter) {
 	const rule = LintingRules[ruleName] as unknown as LintingRule<LintingRuleResult<Name>, LintingRuleMetadata<Name>, LintingRuleConfig<Name>>;
-	result.push(`   ╰ **${rule.info.name}** (${ruleName}):`);
+	const header = `${bold(rule.info.name, formatter)} (${ruleName})`;
 
 	if(LintingResults.isError(results)) {
 		const error = LintingResults.stringifyError(results).includes('At least one request must be set') ? 'No requests to lint for were found in the analysis.' : 'Error during execution of rule: ' + LintingResults.stringifyError(results);
+		result.push(`   ╰ ${header}:`);
 		result.push(`       ╰ ${error}`);
 		return;
 	}
 
+	// a rule with no findings collapses to a single line (no per-certainty block, no metadata)
+	if(results.results.length === 0) {
+		result.push(`   ╰ ${header}: ${italic('no findings', formatter)}`);
+		return;
+	}
+
+	result.push(`   ╰ ${header}:`);
 	for(const certainty of [LintingResultCertainty.Certain, LintingResultCertainty.Uncertain]) {
 		const certaintyResults = results.results.filter(r => r.certainty === certainty) as LintingRuleResult<Name>[];
 		if(certaintyResults.length) {
 			result.push(`       ╰ ${certainty}:`);
-			for(const res of certaintyResults) {
+			for(const res of certaintyResults.slice(0, MaxFindingsShown)) {
 				const pretty = rule.prettyPrint[LintingPrettyPrintContext.Query](res, results['.meta']);
-				result.push(`           ╰ ${pretty}${res.quickFix ? ` (${res.quickFix.length} quick fix(es) available)` : ''}`);
+				result.push(`           ╰ ${hyperlinkLocations(pretty, formatter)}${res.quickFix ? ` (${res.quickFix.length} quick fix(es) available)` : ''}`);
+			}
+			if(certaintyResults.length > MaxFindingsShown) {
+				result.push(`           ╰ ${italic(`… +${certaintyResults.length - MaxFindingsShown} more (:query* for the full JSON)`, formatter)}`);
 			}
 		}
 	}
-	result.push(`       ╰ _Metadata_: ${codeInline(renderMetaData(results['.meta']))}`);
+	result.push(`       ╰ ${italic('Metadata', formatter)}: ${renderMetaData(results['.meta'])}`);
+}
+
+/**
+ * Matches an absolute file path (POSIX `/...` or Windows `X:\...`) with an extension, followed by `:` and a flowR
+ * position `<line>(.<col>)?(-<endline>.<endcol>)?`. Used to turn linting finding locations into clickable links.
+ */
+const locationPattern = /((?:[A-Za-z]:\\|\/)[^\s:]*\.[A-Za-z]+):(\d+(?:\.\d+)?(?:-\d+(?:\.\d+)?)?)/g;
+
+/** Wrap every `path:loc` location in the given pretty string in a `file://path:line:col` hyperlink via the formatter. */
+function hyperlinkLocations(pretty: string, formatter: OutputFormatter): string {
+	return pretty.replace(locationPattern, (match, path: string, position: string) => {
+		const [line, col] = position.split('-')[0].split('.');
+		const url = `file://${path}:${line}${col ? `:${col}` : ''}`;
+		return formatter.hyperlink(match, url);
+	});
 }
 
 function renderMetaData(metadata: object): string {
-	return Object.entries(metadata).map(r => `${r[0]}: ${JSON.stringify(r[1])}`).join(', ');
+	return Object.entries(metadata).map(([k, v]) => `${k}: ${renderMetaValue(v)}`).join(', ');
+}
+
+/** Render a metadata value; a nested object (e.g. suppression counts) becomes `(key=value, ...)`, omitting zero counts (`0` if all zero). */
+function renderMetaValue(value: unknown): string {
+	if(value !== null && typeof value === 'object' && !Array.isArray(value)) {
+		const nonZero = Object.entries(value).filter(([, v]) => v !== 0);
+		return nonZero.length === 0 ? '0' : `(${nonZero.map(([k, v]) => `${k}=${renderMetaValue(v)}`).join(', ')})`;
+	}
+	return JSON.stringify(value);
 }

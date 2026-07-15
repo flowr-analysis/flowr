@@ -14,25 +14,32 @@ import { isNotUndefined } from '../util/assert';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
-	readonly name:          string;
+	readonly name:             string;
 	/**
 	 * The default config for this linting rule.
 	 * This config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig: NoInfer<DeepReadonly<Config>>;
+	readonly defaultConfig:    NoInfer<DeepReadonly<Config>>;
 	/**
 	 * A short list of tags that describe and categorize the linting rule.
 	 */
-	readonly tags:          readonly LintingRuleTag[];
+	readonly tags:             readonly LintingRuleTag[];
 	/**
 	 * The linting rule's certainty in terms of the rule's calculations' precision and recall.
 	 */
-	readonly certainty:     LintingRuleCertainty;
+	readonly certainty:        LintingRuleCertainty;
 	/**
 	 * A short description of the linting rule.
 	 * This is used to display the rule in the UI and to provide a brief overview of what the rule does.
 	 */
-	readonly description:   string;
+	readonly description:      string;
+	/**
+	 * Whether the rule runs when a linter query does not explicitly list any rules.
+	 * Defaults to `true` when omitted. Set to `false` for noisy or heuristic rules
+	 * that should only run when requested explicitly (an explicit rule list overrides this flag).
+	 * @see {@link executeLinterQuery} - reads this flag to pick the default rule set
+	 */
+	readonly activeByDefault?: boolean;
 }
 
 /**

@@ -81,7 +81,7 @@ jobs:
 
       - name: "📦 Install R Packages"
         shell: Rscript {0}
-        run:   lapply(c("xmlparsedata","dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
+        run:   lapply(c("dplyr","readr"), install.packages, repos="https://cloud.r-project.org/")
 
       - name: "🧪 Run the Tests"
         run: bash .github/workflows/scripts/run-flowr-command.sh "test-full -- --allowOnly=false"
@@ -96,6 +96,9 @@ jobs:
     name: "📦 Release"
     runs-on: ubuntu-latest
     needs: ['test-full']
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     if: startsWith(github.event.head_commit.message, '[release:minor]') ||
         startsWith(github.event.head_commit.message, '[release:major]') ||
         startsWith(github.event.head_commit.message, '[release:patch]')
@@ -127,7 +130,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -139,6 +141,9 @@ jobs:
 
       - name: "📦 Install Dependencies"
         run: npm ci
+
+      - name: "🔁 Fetch latest main before release"
+        run: git fetch origin main && git reset --hard origin/main
 
       - name: "🌟 Release"
         id: release
@@ -217,29 +222,48 @@ jobs:
 
       - name: "🚀 Deploy the Image"
         run: |
-          # add -slim suffix if no R  
-          TAG="eagleoutice/${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'flowr-slim' || 'flowr' }}"
+          # add -slim suffix if no R
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            TAG="eagleoutice/flowr-slim"
+            ARTIFACT_SUFFIX="-slim"
+            ARTIFACT_NAME="slim"
+          else
+            TAG="eagleoutice/flowr"
+            ARTIFACT_SUFFIX=""
+            ARTIFACT_NAME="full"
+          fi
           VERSION="$(date '+%Y%m%d')"
-          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR:\s*\K[^ ]+' | head -n1)"
-          docker tag flowr "${TAG}":"date-$VERSION"
-          docker tag flowr "${TAG}":"$FLOWR_VERSION"
-          docker tag flowr "${TAG}":latest
+          FLOWR_VERSION="$(docker run --rm flowr --version | grep -oP 'flowR\s*:\s*\K[^ ]+' | head -n1)"
+          if [[ -z "$FLOWR_VERSION" ]]; then
+            echo "ERROR: failed to extract flowR version from docker image"
+            exit 1
+          fi
+          docker tag flowr "${TAG}:date-$VERSION"
+          docker tag flowr "${TAG}:$FLOWR_VERSION"
+          docker tag flowr "${TAG}:latest"
           docker images "$TAG"
           echo ${{ secrets.DH_PASSWD }} | docker login -u ${{ secrets.DH_NAME }} --password-stdin
           docker push "$TAG" --all-tags
           echo "THE_FLOWR_VERSION=$FLOWR_VERSION" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SUFFIX=$ARTIFACT_SUFFIX" >> "$GITHUB_ENV"
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
 
       - name: "🗃️ Compress the image"
         run: |
-          docker save flowr | gzip > "./flowr-$THE_FLOWR_VERSION-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz"
+          if [[ "${{ matrix.dockerfile }}" == "scripts/Dockerfile-NoR" ]]; then
+            SUFFIX="-slim"
+          else
+            SUFFIX=""
+          fi
+          docker save flowr | gzip > "./flowr-${{ env.THE_FLOWR_VERSION }}$SUFFIX.tar.gz"
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
 
       - name: "⬆️ Upload the compressed image to the workflow"
         uses: actions/upload-artifact@v6
         with:
-          name: flowr-image-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && 'slim' || 'full' }}
-          path: flowr-${{ env.THE_FLOWR_VERSION }}-${{ matrix.dockerfile == 'scripts/Dockerfile-NoR' && '-slim' || '' }}.tar.gz
+          name: "flowr-image-${{ env.ARTIFACT_NAME }}"
+          path: "flowr-${{ env.THE_FLOWR_VERSION }}${{ env.ARTIFACT_SUFFIX }}.tar.gz"
 
   performance-test:
     name: "⏱️ Performance Test"
@@ -281,7 +305,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -300,21 +323,23 @@ jobs:
     name: "⬆️ Upload Performance Test Results"
     runs-on: ubuntu-22.04
     needs: [ performance-test ]
+    concurrency:
+      group: release-main
+      cancel-in-progress: false
     steps:
       - name: "Checkout Repository"
         uses: actions/checkout@v6
         with:
           submodules: true
           token:      ${{ secrets.RELEASE_TOKEN }}
-          # check out the release ref so that the upload action finds the commit
-          ref: "refs/tags/v${{ needs.performance-test.outputs.version }}"
+          ref: main
 
       - name: "⚙️ Name and Email for Git (config) and update"
-        # we fetch just to be totally sure
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git fetch --tags
+          git fetch --tags origin main
+          git pull origin main
 
       - name: "⬇️ Get benchmark Artifacts (artificial, r-shell)"
         uses: actions/download-artifact@v4
@@ -412,6 +437,9 @@ jobs:
           benchmark-data-dir-path: wiki/stats/benchmark/
           auto-push: false
 
+      - name: "⬆️ Pull latest to avoid conflicts"
+        run: git pull origin main --no-edit
+
       - name: "⬆️ Push benchmark results"
         # we manipulate the name of the last commit message
         run: |
@@ -424,4 +452,3 @@ jobs:
         with:
           branch: main
           github_token: ${{ secrets.RELEASE_TOKEN }}
-          force: true

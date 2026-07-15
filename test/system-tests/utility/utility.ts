@@ -38,6 +38,24 @@ export async function flowrRepl(input: string[]): Promise<string> {
 }
 
 /**
+ * Like {@link run}, but returns the combined stdout and stderr so diagnostics printed to stderr can be asserted on.
+ * @param command - Command to run
+ * @param timeout - (optional) timeout in milliseconds
+ */
+export async function runCaptureAll(command: string, timeout = 60 * 1000): Promise<string> {
+	return new Promise<string>((resolve, reject) => {
+		exec(command, { timeout }, (error, stdout, stderr) => {
+			const output = `${stdout}${stderr}`;
+			if(error && output.length === 0) {
+				reject(new Error(`${error.name}: ${error.message}`));
+			} else {
+				resolve(output);
+			}
+		});
+	});
+}
+
+/**
  * Runs a command and terminates it automatically if it outputs a certain string
  * This is useful, so we don't have to set timeouts and hope the output will be produced in time.
  * @param command - Command to run

@@ -1,14 +1,15 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
-	FlowrAnalyzerPackageVersionsPlugin
+	FlowrAnalyzerPackageVersionsPlugin,
+	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
+import type { PackageSignatureSource } from '../sigdb/reader';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { isSigDbEnabled } from '../../config';
 
 /**
- * This is a read-only interface to the {@link FlowrAnalyzerDependenciesContext}.
- * It prevents you from modifying the dependencies, but allows you to inspect them (which is probably what you want when using the {@link FlowrAnalyzer}).
- * If you are a {@link FlowrAnalyzerPackageVersionsPlugin} and want to modify the dependencies, you can use the {@link FlowrAnalyzerDependenciesContext} directly.
+ * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
  */
 export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	/**
@@ -32,24 +33,102 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
+
+	/**
+	 * Metadata of the package databases the version plugins currently have loaded.
+	 */
+	loadedPackageDatabases(): SigDbLoadedInfo[];
+
+	/**
+	 * The names of known packages that export `name` (from the version plugins' package databases). Used to
+	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
+	 * available or the package db is disabled.
+	 */
+	packagesExporting(name: string): readonly string[];
+
+	/** The signature sources the version plugins currently have loaded (backs the signature query). */
+	signatureSources(): readonly PackageSignatureSource[];
 }
 
 /**
- * This context is responsible for managing the dependencies of the project, including their versions and interplays with {@link FlowrAnalyzerPackageVersionsPlugin}s.
- *
- * If you are interested in inspecting these dependencies, refer to {@link ReadOnlyFlowrAnalyzerDependenciesContext}.
+ * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
  */
 export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
 
-	private dependencies: Map<string, Package> = new Map();
+	private dependencies:  Map<string, Package> = new Map();
 	private staticsLoaded = false;
+	/** resolvers consulted lazily to fill in exports; `existing` carries version info from other plugins */
+	private lazyResolvers: ((name: string, existing?: Package) => Package | undefined)[] = [];
+	private resolvedMisses = new Set<string>();
 
 	public reset(): void {
 		this.dependencies = new Map();
 		this.staticsLoaded = false;
+		this.lazyResolvers = [];
+		this.resolvedMisses = new Set();
+	}
+
+	/** Register a resolver consulted by {@link getDependency} to fill in a package's exports lazily. */
+	public addLazyResolver(resolver: (name: string, existing?: Package) => Package | undefined): void {
+		this.lazyResolvers.push(resolver);
+	}
+
+	public loadedPackageDatabases(): SigDbLoadedInfo[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		return this.plugins.flatMap(p => p.loadedDatabases());
+	}
+
+	public packagesExporting(name: string): readonly string[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		const out = new Set<string>();
+		for(const p of this.plugins) {
+			for(const pkg of p.packagesExporting(name)) {
+				out.add(pkg);
+			}
+		}
+		return [...out];
+	}
+
+	public signatureSources(): readonly PackageSignatureSource[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
+	}
+
+	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */
+	public hasBaseRSource(): boolean {
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
+	}
+
+	/** Cheap fingerprint of only the base-R-providing databases, so base-R-derived caches survive unrelated database changes. */
+	public baseRSourceFingerprint(): string {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return '';
+		}
+		return this.plugins.filter(p => p.providesBaseRPackages())
+			.flatMap(p => p.loadedDatabases()).map(d => d.hash).join(',');
+	}
+
+	/** Mount an additional signature database/source by path (a plain `.sigs.ndjson`, a `.br`, or a manifest). */
+	public async addDatabaseSource(source: string): Promise<void> {
+		for(const p of this.plugins) {
+			await p.addDatabaseSource(source);
+		}
+	}
+
+	/** Eagerly mount every version plugin's package database up front (see `solver.sigdb.eagerlyLoad`). */
+	public eagerlyLoadPackageDatabases(): void {
+		for(const p of this.plugins) {
+			p.preloadDatabasesSync();
+		}
 	}
 
 	public constructor(functionsContext: FlowrAnalyzerFunctionsContext, plugins?: readonly FlowrAnalyzerPackageVersionsPlugin[]) {
@@ -62,20 +141,49 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.staticsLoaded = true;
 	}
 
-	public addDependency(pkg: Package): void {
+	/**
+	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
+	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the
+	 * declared deps never enter the context (unlike {@link addDependency}, used for on-demand signature-database
+	 * resolution).
+	 */
+	public addDeclaredDependency(pkg: Package): this {
+		if(!this.ctx.config.solver.sigdb.loadProjectDependencies) {
+			return this;
+		}
+		return this.addDependency(pkg);
+	}
+
+	public addDependency(pkg: Package): this {
 		const p = this.dependencies.get(pkg.name);
 		if(p) {
 			p.mergeInPlace(pkg);
 		} else {
 			this.dependencies.set(pkg.name, pkg);
 		}
+		return this;
 	}
 
 	public getDependency(name: string): Package | undefined {
 		if(!this.staticsLoaded) {
 			this.resolveStaticDependencies();
 		}
-		return this.dependencies.get(name);
+		const existing = this.dependencies.get(name);
+		// a package already carrying exports is complete; a version-only one is still enriched below
+		if(existing?.namespaceInfo || (!existing && this.resolvedMisses.has(name))) {
+			return existing;
+		}
+		if(!this.resolvedMisses.has(name)) {
+			for(const resolve of this.lazyResolvers) {
+				const resolved = resolve(name, existing);
+				if(resolved) {
+					this.addDependency(resolved);   // merges exports into any existing version info
+					return this.dependencies.get(name);
+				}
+			}
+			this.resolvedMisses.add(name);
+		}
+		return existing;
 	}
 
 	public getDependencies(): Package[] {

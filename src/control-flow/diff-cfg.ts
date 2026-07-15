@@ -9,7 +9,7 @@ import { arrayEqual } from '../util/collections/arrays';
 /**
  * Compare two control flow graphs and return a report on the differences.
  * If you simply want to check whether they equal, use {@link GraphDifferenceReport#isEqual|`<result>.isEqual()`}.
- * @see {@link diffOfDataflowGraphs} - for dataflow graphs
+ * @see {@link diffDataflowGraph} - for dataflow graphs
  */
 export function diffOfControlFlowGraphs(left: NamedGraph<ControlFlowGraph>, right: NamedGraph<ControlFlowGraph>, config?: Partial<GenericDiffConfiguration>): GraphDifferenceReport {
 	if(left.graph === right.graph) {
@@ -36,8 +36,8 @@ function diffRootVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
 }
 
 function diffVertices(ctx: GraphDiffContext<ControlFlowGraph>): void {
-	const lVert = ctx.left.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
-	const rVert = ctx.right.vertices(false).entries().map(([id, info]) => ([id, info] as const)).toArray();
+	const lVert = [...ctx.left.vertices(false).entries()];
+	const rVert = [...ctx.right.vertices(false).entries()];
 	if(lVert.length < rVert.length && !ctx.config.leftIsSubgraph
         || lVert.length > rVert.length && !ctx.config.rightIsSubgraph
 	) {

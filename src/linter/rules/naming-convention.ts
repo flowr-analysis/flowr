@@ -66,9 +66,9 @@ export function detectPotentialCasings(identifier: string, ignorePrefix?: string
 	const isAllUpper = identifier === upper;
 	const isAllLower = identifier === lower;
 	const hasUnderscores = identifier.includes('_');
-	const upperAfterAllScores = Array(identifier.length-1).keys().every(i =>
+	const upperAfterAllScores = Array(identifier.length - 1).keys().every(i =>
 		identifier[i] !== '_' || identifier[i + 1] === upper[i + 1]);
-	const hasAnyUpperAfterLower = Array(identifier.length-1).keys().some(i =>
+	const hasAnyUpperAfterLower = Array(identifier.length - 1).keys().some(i =>
 		containsAlpha(identifier[i]) && identifier[i] === lower[i] &&
 		containsAlpha(identifier[i + 1]) && identifier[i + 1] === upper[i + 1]);
 
@@ -239,12 +239,14 @@ export const NAMING_CONVENTION = {
 		[LintingPrettyPrintContext.Full]:  result => `Identifier '${result.name}' at ${SourceLocation.format(result.loc)} follows wrong convention: ${result.detectedCasing}`
 	},
 	info: {
-		name:          'Naming Convention',
+		name:            'Naming Convention',
 		// detects casing heuristically so correctness is not ensured using default config, but checks all identifiers in the code for naming convention match
-		certainty:     LintingRuleCertainty.OverApproximative,
-		description:   'Checks whether the symbols conform to a certain naming convention',
-		tags:          [LintingRuleTag.Style, LintingRuleTag.QuickFix],
-		defaultConfig: {
+		certainty:       LintingRuleCertainty.OverApproximative,
+		description:     'Checks whether the symbols conform to a certain naming convention',
+		tags:            [LintingRuleTag.Style, LintingRuleTag.QuickFix],
+		// heuristic and noisy on real package code, so only run when requested explicitly
+		activeByDefault: false,
+		defaultConfig:   {
 			caseing:        'auto',
 			ignoreNonAlpha: true
 		}

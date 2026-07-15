@@ -4,6 +4,7 @@
  */
 import { prompt } from './prompt';
 import * as readline from 'readline';
+import { installGhostHint } from './ghost-hint';
 import { tryExecuteRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
@@ -18,6 +19,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
+import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -46,10 +48,7 @@ export interface CommandCompletions {
 	readonly argumentPart?: string;
 }
 
-/**
- * Used by the repl to provide automatic completions for a given (partial) input line
- */
-export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+function computeCompletions(line: string, config: FlowrConfig): [string[], string] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -73,7 +72,13 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
-			} else {
+			} else if(cmd === signatureCommand) {
+				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions = completions.concat(sigCompletions);
+			} else if(cmd?.isCodeCommand) {
 				completions.push(fileProtocol);
 				completions.push(watchProtocol);
 			}
@@ -86,9 +91,36 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
+/**
+ * Used by the repl to provide automatic completions for a given (partial) input line. Returns every matching
+ * option, so Tab shows the full menu and only completes when a single option remains (standard readline behavior).
+ */
+export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+	return computeCompletions(line, config);
+}
+
+/**
+ * The remaining text of the best (first) completion, i.e. what the inline ghost previews as you type; empty when
+ * there is nothing to suggest. Independent of {@link replCompleter}: the ghost hints the best match even when Tab
+ * would still offer several.
+ */
+export function completionSuggestion(line: string, config: FlowrConfig): string {
+	if(line.length === 0) {
+		return '';
+	}
+	const [completions, fragment] = computeCompletions(line, config);
+	const best = completions[0];
+	if(best === undefined || !best.startsWith(fragment) || best.length <= fragment.length) {
+		return '';
+	} else if(best === fileProtocol || best === watchProtocol) {
+		return '';
+	}
+	return best.slice(fragment.length);
+}
+
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
+	const queryShorts = ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
 	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
@@ -339,6 +371,10 @@ export async function repl(
 		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }));
 	}
 
+	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
+		suggest: line => completionSuggestion(line, analyzer.flowrConfig)
+	});
+
 	let sigintCount = 0;
 	rl.on('SIGINT', () => {
 		process.stdout.write('\n');
@@ -372,6 +408,7 @@ export async function repl(
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(activeWatcher !== undefined ? '' : prompt(), answer => {
+				ghostHint.clear();
 				sigintCount = 0;
 				rl.pause();
 				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
@@ -379,6 +416,9 @@ export async function repl(
 					resolve();
 				}).catch(reject);
 			});
+			if(activeWatcher === undefined) {
+				ghostHint.show();
+			}
 		});
 	}
 }

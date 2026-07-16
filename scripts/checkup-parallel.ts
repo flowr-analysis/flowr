@@ -60,7 +60,38 @@ const runningVitest = Math.max(1, jobs.filter(j => vitestIds.has(j.id)).length);
 const perVitest = Math.max(1, Math.floor((cores - 1) / runningVitest));
 jobs = jobs.map(j => vitestIds.has(j.id) ? { ...j, argv: [...j.argv, `--maxWorkers=${perVitest}`] } : j);
 
-const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-checkup-'));
+const logPrefix = 'flowr-checkup-';
+
+/** log dirs stay around to be inspected after a run, so prune the older ones to not pile up in tmp */
+function pruneOldLogDirs(keep: number): void {
+	let dirs: { path: string, mtime: number }[];
+	try {
+		dirs = fs.readdirSync(os.tmpdir())
+			.filter(n => n.startsWith(logPrefix))
+			.map(n => path.join(os.tmpdir(), n))
+			.flatMap(p => {
+				try {
+					const stat = fs.statSync(p);
+					return stat.isDirectory() ? [{ path: p, mtime: stat.mtimeMs }] : [];
+				} catch{
+					return [];
+				}
+			});
+	} catch{
+		return;
+	}
+	for(const { path: p } of dirs.sort((a, b) => b.mtime - a.mtime).slice(keep)) {
+		try {
+			fs.rmSync(p, { recursive: true, force: true });
+		} catch{
+			// a concurrent checkup may own it, leave it be
+		}
+	}
+}
+
+// keep the previous run, so that with this run's dir at most two remain
+pruneOldLogDirs(1);
+const logDir = fs.mkdtempSync(path.join(os.tmpdir(), logPrefix));
 const bold = (s: string) => `\x1b[1m${s}\x1b[0m`;
 const green = (s: string) => `\x1b[32m${s}\x1b[0m`;
 const red = (s: string) => `\x1b[31m${s}\x1b[0m`;

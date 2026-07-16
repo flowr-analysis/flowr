@@ -32,7 +32,7 @@ export class WikiPackageDatabase extends DocMaker<'wiki/Package Database.md'> {
 flowR ships a database of CRAN package exports so it can resolve calls into the packages you load.
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. This also backs
 qualified names (a bare \`map()\` after \`library(purrr)\` is \`purrr::map\`, not the \`maps\` plot), the
-${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')}, and the ${ctx.linkPage('wiki/Linter', '`undefined-symbol` rule')}.
+${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')}, the ${ctx.linkPage('wiki/Linter', '`undefined-symbol` rule')}, and the ${ctx.linkPage('wiki/Linter', '`unused-import` rule')}.
 
 ## Configuration
 

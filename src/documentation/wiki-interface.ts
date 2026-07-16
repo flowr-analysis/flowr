@@ -233,8 +233,9 @@ ${ctx.linkO(FlowrConfig, 'amend')}.
 The following summarizes the configuration options:
 
 - \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
-- \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`.
-  You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR.
+- \`ignoreLoadCalls\`: If set to \`true\`, _flowR_ will ignore load calls when analyzing the code, i.e., ignoring the loading of r-data files.
+- \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`. 
+  You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR. 
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
 - \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')} for more information.
@@ -252,6 +253,7 @@ So you can configure _flowR_ by adding a file like the following:
 ${codeBlock('json', JSON.stringify(
 		{
 			ignoreSourceCalls: true,
+			ignoreLoadCalls:   true,
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {

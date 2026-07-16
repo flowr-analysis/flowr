@@ -1,4 +1,4 @@
-import type { Range } from 'semver';
+import { type Range, minVersion } from 'semver';
 import { guard } from '../../../util/assert';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
 import { FlowrNamespaceFile, setCallable } from '../file-plugins/files/flowr-namespace-file';
@@ -99,22 +99,24 @@ export class Package {
 		this.namespaceInfo = namespaceInfo ?? this.namespaceInfo;
 
 		if(versionConstraints !== undefined) {
-			this.derivedVersion ??= versionConstraints[0];
-
 			for(const constraint of versionConstraints) {
-				if(!this.derivedVersion?.intersects(constraint)) {
-					throw new Error('Version constraint mismatch!');
-				}
 				this.versionConstraints.push(constraint);
-				this.derivedVersion = this.deriveVersion();
 			}
+			// sources may disagree, which `hasSatisfiableVersion` reports rather than this failing
+			this.derivedVersion = this.deriveVersion() ?? this.derivedVersion;
 		}
 	}
 
+	/** The combined (intersected) range of all recorded constraints, or `undefined` if none were given. */
 	public deriveVersion(): Range | undefined {
 		return this.versionConstraints.length > 0
 			? RRange.parse(this.versionConstraints.map(c => c.raw).join(' '))
 			: undefined;
+	}
+
+	/** Whether some concrete version can satisfy every recorded constraint at once. */
+	public hasSatisfiableVersion(): boolean {
+		return this.derivedVersion !== undefined && minVersion(this.derivedVersion) !== null;
 	}
 
 	public static parsePkgVersionRange(constraint?: string, version?: string): Range | undefined {

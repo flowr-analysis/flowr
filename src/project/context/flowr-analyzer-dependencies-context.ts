@@ -5,6 +5,7 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
+import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { isSigDbEnabled } from '../../config';
 
@@ -28,6 +29,17 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
 	getDependency(name: string): Readonly<Package> | undefined;
+
+	/**
+	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
+	 * an `rproject.toml` entry, a lockfile pin, ...). `undefined` if the dependency is unknown, if nothing
+	 * constrains it, or if the sources contradict each other -- then no version is possible at all.
+	 *
+	 * For *why* it is what it is (the individual constraints, or the version the database resolved to), take the
+	 * {@link Package} from {@link getDependency}.
+	 * @param name - The name of the dependency.
+	 */
+	inferredVersion(name: string): Range | undefined;
 
 	/**
 	 * Get all dependencies known to this context.
@@ -191,6 +203,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolvedMisses.add(name);
 		}
 		return existing;
+	}
+
+	public inferredVersion(name: string): Range | undefined {
+		const pkg = this.getDependency(name);
+		return pkg?.hasSatisfiableVersion() ? pkg.derivedVersion : undefined;
 	}
 
 	public getDependencies(): Package[] {

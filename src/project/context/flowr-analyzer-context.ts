@@ -8,6 +8,7 @@ import {
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext
 } from './flowr-analyzer-dependencies-context';
+import type { Range } from 'semver';
 import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
 import type {
@@ -58,6 +59,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly resolvedRVersion: string;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
 	projectKind(): ProjectKind;
+	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredVersion}. */
+	inferredVersion(name: string): Range | undefined;
 	/**
 	 * Resource-usage guard (gas).
 	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
@@ -129,6 +132,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
 	public projectKind(): ProjectKind {
 		return this.files.projectKind();
+	}
+
+	/** The versions a dependency can possibly have (delegates to {@link FlowrAnalyzerDependenciesContext#inferredVersion}). */
+	public inferredVersion(name: string): Range | undefined {
+		return this.deps.inferredVersion(name);
 	}
 
 	/** delegate request addition */

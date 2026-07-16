@@ -523,7 +523,6 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					access:   [{
 						type:     RType.Argument,
 						name:     undefined,
-						// no `defaultInfo()` here: it describes the whole access, not the field (`a$b` for `b`)
 						value:    convertTreeNode(rhs),
 						location: rhsRange,
 						lexeme:   rhs?.text,

@@ -11,7 +11,7 @@ describe('flowR linter', withTreeSitter(parser => {
 		assertLinter('no function listed', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
 			'deprecated-functions', [],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: [] }
+			{ always: [] }
 		);
 		/* Given that we declare `cat` as deprecated, we expect all uses to be marked! */
 		assertLinter('cat', parser, 'cat("hello")\nprint("hello")\nx <- 1\ncat(x)',
@@ -20,7 +20,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'cat', loc: [4, 1, 4, 6], type: 'deprecated-function' },
 			],
 			{ totalCalls: 2, totalFunctionDefinitions: 2 },
-			{ fns: ['cat'] }
+			{ always: ['cat'] }
 		);
 		/* Overwriting the `cat` function with a user defined implementation (even though it is useless), should cause the linter to not mark calls to the custom `cat` function as deprecated */
 		assertLinter('custom cat', parser, 'cat("hello")\nprint("hello")\ncat <- function(x) { }\nx <- 1\ncat(x)',
@@ -28,7 +28,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'cat', loc: [1, 1, 1, 12], type: 'deprecated-function' }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['cat'] }
+			{ always: ['cat'] }
 		);
 		/* Using the default linter configuration, a function such as `all_equal` should be marked as deprecated */
 		assertLinter('with defaults', parser, 'all_equal(foo)',
@@ -58,13 +58,13 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
+				{ always: ['recode'], sigDb: controlledSigDb('dplyr', ['recode', 'filter']) }
 			);
 			assertLinter('without any package database', parser, 'library(dplyr)\nrecode(x)',
 				'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9], type: 'deprecated-function' }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['recode'], noSigDb: true }
+				{ always: ['recode'], noSigDb: true }
 			);
 		});
 
@@ -73,7 +73,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				'deprecated-functions',
 				[],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated }] } ] }
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated }] } } }
 			);
 
 			assertLinter('deprecated arg present', parser, 'testFn(badArg=5)',
@@ -89,7 +89,7 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					loc:          [1, 8, 1, 13]
 				}],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>= 4.0.0') }] } ] }
+				{ always: [], conditionally: {  'testFn': { whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>= 4.0.0') }] } } }
 			);
 		});
 	});

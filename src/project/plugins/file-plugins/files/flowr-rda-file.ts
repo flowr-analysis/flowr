@@ -1,9 +1,6 @@
 import type { FileRole, FlowrFileProvider } from '../../../context/flowr-file';
 import { FlowrFile } from '../../../context/flowr-file';
 import fs from 'node:fs';
-// @ts-expect-error no type information provided for package bzip2
-import * as bzip2 from 'bzip2';
-import * as zlib from 'node:zlib';
 import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 
@@ -322,15 +319,21 @@ export class RDAParser{
 
 		switch(compressionType) {
 			case CompressionType.CompGz: {
+				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
+				const zlib = require('node:zlib');
 				try {
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.gunzipSync(fileContent);
 				} catch{
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 					buffer = zlib.inflateSync(fileContent);
 				}
 				break;
 			}
 
 			case CompressionType.CompBz: {
+				// eslint-disable-next-line @typescript-eslint/no-require-imports,@typescript-eslint/no-unsafe-assignment
+				const bzip2 = require('bzip2');
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment,@typescript-eslint/no-unsafe-call,@typescript-eslint/no-unsafe-member-access
 				const decompressed = bzip2.simple(bzip2.array(fileContent));
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

@@ -142,13 +142,15 @@ export interface FlowrConfig extends MergeableRecord {
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
-		quickStats:      boolean
+		quickStats:           boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
-		dfProcessorHeat: boolean;
+		dfProcessorHeat:      boolean;
 		/** Whether to show dim inline hints (e.g. `:help`) on the empty prompt; automatically disabled on non-interactive terminals */
-		hints:           boolean;
+		hints:                boolean;
 		/** Plugins to load in REPL mode */
-		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
+		plugins:              (ConfigPlugin<string> | 'flowr:default')[]
+		/** Automatically use the file protocol for inputs that look like paths (default `false`) */
+		autoUseFileProtocol?: boolean
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -462,10 +464,11 @@ export const FlowrConfig = {
 		}).description('Configure language semantics and how flowR handles them.'),
 		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({
-			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
-			hints:           Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
-			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
+			quickStats:          Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
+			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
+			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
+			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it (default false).')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),

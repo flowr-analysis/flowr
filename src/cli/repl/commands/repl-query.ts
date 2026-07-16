@@ -17,6 +17,7 @@ import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
 import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
+import type { FlowrConfig } from '../../../config';
 import { watchProtocol } from '../core';
 import fs from 'fs';
 
@@ -30,6 +31,23 @@ function looksLikePath(s: string): boolean {
 	}
 	// a single path-like token (a separator, no R-code punctuation) that actually exists on disk
 	return /^[^\s()]+\/[^\s()]+$/.test(s) && fs.existsSync(s);
+}
+
+/**
+ * Returns the input to analyze: an input that looks like a path is either prepended with the {@link fileProtocol}
+ * (if `repl.autoUseFileProtocol` is set) or kept as is, pointing the user at the protocol either way.
+ */
+export function handlePathLikeInput(output: ReplOutput, input: string, config: FlowrConfig): string {
+	if(!looksLikePath(input)) {
+		return input;
+	}
+	const asFile = fileProtocol + input;
+	if(config.repl.autoUseFileProtocol) {
+		output.stdout(ansiInfo(`'${input}' looks like a path, analyzing ${bold(asFile, output.formatter)} (${bold('repl.autoUseFileProtocol', output.formatter)} is set).`));
+		return asFile;
+	}
+	output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(asFile, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes), or set ${bold('repl.autoUseFileProtocol', output.formatter)} to have flowR do this for you. Use ${bold(':help', output.formatter)} for more.`));
+	return input;
 }
 
 /**
@@ -129,9 +147,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	if(input) {
-		if(looksLikePath(input)) {
-			output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(fileProtocol + input, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes). Use ${bold(':help', output.formatter)} for more.`));
-		}
+		input = handlePathLikeInput(output, input, analyzer.flowrConfig);
 		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
 		if(!analyzerHasTarget(analyzer, input)) {
 			analyzer.reset();

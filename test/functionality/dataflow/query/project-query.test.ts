@@ -3,9 +3,10 @@ import { withTreeSitter } from '../../_helper/shell';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { FlowrConfig } from '../../../../src/config';
-import { FlowrAnalyzerPackageVersionsPkgDbPlugin, PkgDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
-import { PkgDatabase } from '../../../../src/project/plugins/package-version-plugins/pkgdb';
-import { buildPkgDbFromInstalled, readInstalledPackages } from '../../../../src/project/plugins/package-version-plugins/pkgdb-local';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { SigDatabase } from '../../../../src/project/sigdb/reader';
+import { SigDbBuilder, writeSignatureDb } from '../../../../src/project/sigdb/build';
+import { SigDbExt, FnProp, type SigVersionInfo } from '../../../../src/project/sigdb/schema';
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
@@ -14,19 +15,18 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-/** in-memory database exporting a couple of symbols for cli and ggplot2 */
-function db(): PkgDatabase {
-	return PkgDatabase.fromObject({
-		format:  'flowr-pkgdb',
-		schema:  4,
-		scope:   'latest',
-		content: { version: 1, date: '2026-05-23', hash: 'x', generated: 0, packages: 2, versions: 2 },
-		strings: [],
-		pkgs:    {
-			cli:     ['3.6.0', ['cli_alert']],
-			ggplot2: ['3.5.1', ['ggplot', 'aes', 'geom_point']]
-		}
-	});
+const expFn = (name: string) => ({ name, props: FnProp.Exported, params: [], callees: [], line: 1 });
+const ver = (functions: SigVersionInfo['functions']): SigVersionInfo => ({ cran: true, functions });
+
+/** an in-memory signature database exporting a couple of symbols for cli and ggplot2 */
+async function buildDb(dir: string): Promise<SigDatabase> {
+	const b = new SigDbBuilder();
+	b.addPackage('cli', { latest: '3.6.0', downloads: 5 });
+	b.addVersion('cli', '3.6.0', ver([expFn('cli_alert')]));
+	b.addPackage('ggplot2', { latest: '3.5.1', downloads: 5 });
+	b.addVersion('ggplot2', '3.5.1', ver([expFn('ggplot'), expFn('aes'), expFn('geom_point')]));
+	await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+	return SigDatabase.open(path.join(dir, `db${SigDbExt}`));
 }
 
 function writePackage(root: string, pkgName: string, description: string, code: string): string {
@@ -37,10 +37,10 @@ function writePackage(root: string, pkgName: string, description: string, code: 
 	return dir;
 }
 
-async function analyzeProject(parser: TreeSitterExecutor, dir: string, config?: FlowrConfig) {
+async function analyzeProject(parser: TreeSitterExecutor, db: SigDatabase, dir: string, config?: FlowrConfig) {
 	const builder = new FlowrAnalyzerBuilder().setParser(parser)
-		.unregisterPlugins(PkgDbPluginName)
-		.registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(db()));
+		.unregisterPlugins(SigDbPluginName)
+		.registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(db));
 	if(config) {
 		builder.setConfig(config);
 	}
@@ -51,10 +51,13 @@ async function analyzeProject(parser: TreeSitterExecutor, dir: string, config?: 
 
 describe.sequential('Project Query', withTreeSitter(parser => {
 	let tmp: string;
-	beforeAll(() => {
+	let db: SigDatabase;
+	beforeAll(async() => {
 		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-project-query-'));
+		db = await buildDb(tmp);
 	});
 	afterAll(() => {
+		db?.close();
 		fs.rmSync(tmp, { recursive: true, force: true });
 	});
 
@@ -62,7 +65,7 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		const dir = writePackage(tmp, 'mypkg',
 			'Version: 1.2.3\nDepends: R (>= 4.0.0), methods\nImports: cli, ggplot2, notarealpkg\nSuggests: testthat, knitr\nLinkingTo: Rcpp\n',
 			'library(ggplot2)\nfoo <- function(x) ggplot(x)\n');
-		const analyzer = await analyzeProject(parser, dir);
+		const analyzer = await analyzeProject(parser, db, dir);
 
 		const results = await executeQueries({ analyzer }, [{ type: 'project' }]);
 		const project = results.project;
@@ -99,7 +102,7 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
 			c.project.basePackages = ['methods', 'ggplot2'];
 		});
-		const deps = (await executeQueries({ analyzer: await analyzeProject(parser, dir, config) }, [{ type: 'project' }])).project.dependencies;
+		const deps = (await executeQueries({ analyzer: await analyzeProject(parser, db, dir, config) }, [{ type: 'project' }])).project.dependencies;
 		expect(deps?.base).toBe(2);
 		expect(deps?.covered).toBe(1);
 	});
@@ -108,7 +111,7 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		const dir = writePackage(tmp, 'ggplot2',
 			'Version: 3.5.1\nImports: cli\n',
 			'ggplot <- function(x) x\nuseCli <- function() cli::cli_alert("hi")\n');
-		const analyzer = await analyzeProject(parser, dir);
+		const analyzer = await analyzeProject(parser, db, dir);
 		await analyzer.dataflow();
 
 		const deps = analyzer.inspectContext().deps;
@@ -120,59 +123,9 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		const dir = fs.mkdtempSync(path.join(tmp, 'shiny-'));
 		fs.writeFileSync(path.join(dir, 'app.R'), 'library(shiny)\nx <- 1\n');
 		fs.writeFileSync(path.join(dir, 'helper.R'), 'y <- 2\n');
-		const analyzer = await analyzeProject(parser, dir);
+		const analyzer = await analyzeProject(parser, db, dir);
 
 		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('unknown');
 		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
-	});
-}));
-
-describe.sequential('Add a locally installed package to a pkgdb database', withTreeSitter(() => {
-	let tmp: string;
-	beforeAll(() => {
-		tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-pkgdb-local-'));
-	});
-	afterAll(() => {
-		fs.rmSync(tmp, { recursive: true, force: true });
-	});
-
-	function installPackage(root: string, name: string, description: string, namespace: string): string {
-		const dir = fs.mkdtempSync(path.join(root, name + '-'));
-		fs.writeFileSync(path.join(dir, 'DESCRIPTION'), `Package: ${name}\n${description}`);
-		fs.writeFileSync(path.join(dir, 'NAMESPACE'), namespace);
-		return dir;
-	}
-
-	test(label('extracts installed exports and builds a loadable, resolving database', [], ['other']), async() => {
-		const dir = installPackage(tmp, 'mypkg', 'Version: 2.1.0\n', 'export(foo)\nexport(bar)\nS3method(print, mypkg)\n');
-
-		const [info] = await readInstalledPackages(FlowrConfig.default(), dir);
-		expect(info?.name).toBe('mypkg');
-		expect(info?.version).toBe('2.1.0');
-		expect(new Set(info?.exported)).toEqual(new Set(['foo', 'bar', 'print.mypkg']));
-
-		const { db, added } = await buildPkgDbFromInstalled(FlowrConfig.default(), dir, { date: '2026-07-09', generated: 0 });
-		expect(added).toEqual(['mypkg']);
-
-		const reader = PkgDatabase.fromObject(db);
-		expect(reader.lookup('mypkg')?.version).toBe('2.1.0');
-		expect(new Set(reader.lookup('mypkg')?.exported)).toEqual(new Set(['foo', 'bar', 'print.mypkg']));
-		expect(reader.lookup('mypkg')?.cran).toBe(false);
-	});
-
-	test(label('reads every package in a library folder and skips a broken one', [], ['other']), async() => {
-		const lib = fs.mkdtempSync(path.join(tmp, 'lib-'));
-		installPackage(lib, 'pkgA', 'Version: 1.0.0\n', 'export(a)\n');
-		installPackage(lib, 'pkgB', 'Version: 2.0.0\n', 'export(b1)\nexport(b2)\n');
-		// a directory without a DESCRIPTION must not abort the run
-		fs.mkdirSync(path.join(lib, 'not-a-package'));
-
-		const { added } = await buildPkgDbFromInstalled(FlowrConfig.default(), lib, { date: '2026-07-09', generated: 0 });
-		expect(new Set(added)).toEqual(new Set(['pkgA', 'pkgB']));
-	});
-
-	test(label('returns nothing for a non-existent directory instead of throwing', [], ['other']), async() => {
-		const { added } = await buildPkgDbFromInstalled(FlowrConfig.default(), path.join(tmp, 'does-not-exist'), { date: '2026-07-09', generated: 0 });
-		expect(added).toEqual([]);
 	});
 }));

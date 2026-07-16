@@ -33,7 +33,6 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
-import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
@@ -51,6 +50,8 @@ import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-que
 import { SliceDirection } from '../util/slice-direction';
 import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
 import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
+import { executeAbsintQuery } from '../queries/catalog/absint-query/absint-query-executor';
+import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-query-format';
 
 
 registerQueryDocumentation('call-context', {
@@ -539,29 +540,32 @@ enables quick statistics after each REPL command. Likewise, setting \`repl.dfPro
 	}
 });
 
-registerQueryDocumentation('df-shape', {
-	name:             'Dataframe Shape Inference Query',
+registerQueryDocumentation('absint', {
+	name:             'Abstract Interpretation Query',
 	type:             'active',
-	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
-	functionName:     executeDfShapeQuery.name,
-	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	shortDescription: 'Returns the abstract values inferred for every expression or at specific locations.',
+	functionName:     executeAbsintQuery.name,
+	functionFile:     '../queries/catalog/absint-query/absint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
-		const criterion = '2@x' as SlicingCriterion;
+		const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
+		const inference: AbsintQueryType = 'df-shape';
+		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
 		return `
-This query infers all shapes of dataframes within the code. For example, you can use:
+This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
 ${
 	await showQuery(shell, exampleCode, [{
-		type: 'df-shape'
+		type:      'absint',
+		inference: inference
 	}], { showCode: true, collapseQuery: true, ctx })
 }
 
-The query also accepts an optional slice criterion to narrow the results to a specific node. For example:
+The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:      'df-shape',
-		criterion: criterion
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+		type:      'absint',
+		inference: inference,
+		criteria:  criteria
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -637,6 +641,8 @@ registerQueryDocumentation('static-slice', {
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criteria = ['3@z', '4@x'] as SlicingCriteria;
+		const sourceExample = 'source("library.R")\nprint(greeting)';
+		const sourceCriteria = ['2@print'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
@@ -675,6 +681,24 @@ ${
 		criteria:  ['1@x'],
 		direction: SliceDirection.Forward
 	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
+}
+
+If your program pulls in other files with \`source(...)\`, the \`inlineSources\` flag splices the reconstruction
+of each resolvable sourced file into the place of its \`source()\` call, so the slice becomes a single
+self-contained R text (cyclic or unresolvable \`source()\` calls are kept verbatim and reported via
+\`reconstruct.inlineWarnings\`). With the ${getReplCommand('query')} REPL command you append an \`i\` to the
+criteria (and may combine it with the forward \`f\` as \`fi\`), for example (with a faked \`library.R\` providing \`greeting\`):
+${
+	await showQuery(shell, sourceExample, [{
+		type:          'static-slice',
+		criteria:      sourceCriteria,
+		inlineSources: true
+	}], {
+		showCode:  false,
+		shorthand: sliceQueryShorthand(sourceCriteria, escapeNewline(sourceExample), false, true),
+		ctx,
+		files:     [{ name: 'library.R', content: 'greeting <- "hello"\nunused <- 123' }]
+	})
 }
 
 You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
@@ -764,7 +788,7 @@ print("hello world!")
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
-Loaded libraries are resolved against the ${ctx.linkPage('wiki/Package Database', 'package database')}.
+Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${

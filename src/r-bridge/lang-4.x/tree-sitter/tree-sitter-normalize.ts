@@ -726,6 +726,7 @@ function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, S
 function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
 	const remain: SyntaxAndRNode[] = [];
 	const cacheMap = new Map<number, SyntaxNode | null>();
+	const nodeById = new Map<number, SyntaxAndRNode>(nodes.map(n => [n[0].id, n]));
 	for(const [commentSyntaxNode, commentNode] of comments) {
 		let sibling: SyntaxNode | null;
 		const prev = commentSyntaxNode.previousSibling;
@@ -736,7 +737,7 @@ function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNo
 			sibling = findFirstNonCommentSibling(commentSyntaxNode, cacheMap);
 		}
 		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
-		const [, node] = (sibling ? nodes.find(([s]) => s.id === sibling.id) : undefined) ?? nodes[0] ?? [];
+		const [, node] = (sibling ? nodeById.get(sibling.id) : undefined) ?? nodes[0] ?? [];
 		if(node) {
 			node.info.adToks ??= [];
 			node.info.adToks.push(commentNode);

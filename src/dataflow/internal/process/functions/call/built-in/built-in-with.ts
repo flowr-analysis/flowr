@@ -1,7 +1,7 @@
 import type { DataflowProcessorInformation } from '../../../../../processor';
 import { processDataflowFor } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
-import { processKnownFunctionCall } from '../known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation, NseArguments } from '../known-call-handling';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -16,6 +16,18 @@ import { linkInputs } from '../../../../linker';
 
 /** Formal parameter names for `with(data, expr, ...)` and `within(data, expr, ...)`. */
 const withParams = ['data', 'expr'] as const;
+
+/** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE. */
+function markAsMaskedFallback<OtherInfo>(
+	name:   RSymbol<OtherInfo & ParentInformation>,
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
+): DataflowInformation {
+	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With });
+	markArgumentsAsNonStandardEvaluation(information.graph, rootId, processedArguments, NseArguments.AllButFirst);
+	return information;
+}
 
 /**
  * Processes `with(data, expr)` and `within(data, expr)`.
@@ -47,14 +59,16 @@ export function processWithEnv<OtherInfo>(
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 
-	if(dataArg === undefined || dataArg === EmptyArgument || dataArg.value === undefined ||
-	   exprArg === undefined || exprArg === EmptyArgument || exprArg.value === undefined) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
+	// when we cannot resolve the data to a tracked environment, `expr` is still data-masked: its symbols name
+	// columns of `data`, not variables in scope, so mark the non-data arguments as non-standard-evaluated
+	if(dataArg === EmptyArgument || dataArg?.value === undefined ||
+	   exprArg === EmptyArgument || exprArg?.value === undefined) {
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	const envirResolution = resolveArgToEnvir(dataArg, data);
 	if(!envirResolution) {
-		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
+		return markAsMaskedFallback(name, args, rootId, data);
 	}
 
 	/* evaluate data arg in the caller's scope (it is just read) */

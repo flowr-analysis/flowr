@@ -8,10 +8,15 @@ import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../gas';
 
 /**
  * Executes the given linter queries using the provided analyzer.
+ * A query without an explicit rule list runs only the rules that are active by default.
  * @see {@link executeLintingRule}
+ * @see {@link LinterRuleInformation#activeByDefault} - opts a rule out of the default rule set
  */
 export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
-	const flattened = queries.flatMap(q => q.rules ?? (Object.keys(LintingRules) as LintingRuleNames[]));
+	// no explicit rules: run only the rules that opt in via activeByDefault (default true)
+	const defaultRules = (Object.keys(LintingRules) as LintingRuleNames[])
+		.filter((name: LintingRuleNames) => (LintingRules[name].info as { activeByDefault?: boolean }).activeByDefault !== false);
+	const flattened = queries.flatMap(q => q.rules ?? defaultRules);
 	const distinct = new Set(flattened);
 	if(distinct.size !== flattened.length) {
 		const pretty = [...distinct].filter(r => flattened.indexOf(r) !== flattened.lastIndexOf(r)).map(r => typeof r === 'string' ? r : r.name).join(', ');

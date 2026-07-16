@@ -97,6 +97,31 @@ export function processS7NewGeneric<OtherInfo>(
 	return info;
 }
 
+/**
+ * Process a call that **returns a function**: S7/S4 constructor factories (`make_constructor`, `new_class`,
+ * `setClass`) and generic function factories (`Negate`, `Vectorize`, `partial`, …). We model the result as a
+ * synthetic function definition so the assigned symbol is recognized as a **function** rather than a plain
+ * constant.
+ */
+export function processMakeConstructor<OtherInfo>(
+	name: RSymbol<OtherInfo & ParentInformation>,
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
+	rootId: NodeId,
+	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	config?: { readonly mode?: readonly ('s7' | 's3' | 's4')[] }
+): DataflowInformation {
+	// synthesise `function(...) S7_dispatch()` and make the call return it
+	const [funArg, funId]: [RArgument<OtherInfo & ParentInformation>, NodeId] = makeS7DispatchFDef(name, [], rootId, args.length, data.completeAst.idMap);
+	const info = processKnownFunctionCall({ name, forceArgs: 'all', args: [...args, funArg], rootId, data, origin: BuiltInProcName.S7MakeConstructor }).information;
+	info.graph.addEdge(rootId, funId, EdgeType.Returns);
+	info.entryPoint = funId;
+	const fArg = info.graph.getVertex(funId);
+	if(fArg?.tag === VertexType.FunctionDefinition && config?.mode) {
+		fArg.mode ??= config.mode.slice();   // copy: mode is mutated in place later, config.mode is shared
+	}
+	return info;
+}
+
 // 'function([dispatch_args],...) S7_dispatch()'; returns the value id
 function makeS7DispatchFDef<OtherInfo>(name: RSymbol<ParentInformation>, names: (string | undefined)[], rootId: NodeId, args: number, idMap: AstIdMap): [RArgument<OtherInfo & ParentInformation>, NodeId] {
 	const argNameId = rootId + '-s7-new-generic-fun-arg-name';

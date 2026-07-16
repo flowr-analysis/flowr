@@ -14,6 +14,12 @@ describe('commands', () => {
 		assert.include(output, 'a <- 3\na');
 	});
 
+	test('slicer --diff reads the original file for a file input', async() => {
+		const output = await run('npm run slicer -- -c "12@product" -i test/testfiles/example.R --diff');
+		assert.include(output, 'product', `diff output should contain the sliced symbol:\n${output}`);
+		assert.include(output, 'w <- 7', `diff output should contain original-file lines outside the slice, proving the file was read:\n${output}`);
+	});
+
 	test('flowr --execute output is not truncated when piped', async() => {
 		const output = await run('npx ts-node --transpile-only src/cli/flowr.ts --execute ":parse 1+2"');
 		assert.include(output, '"1"', `missing first literal in output:\n${output}`);

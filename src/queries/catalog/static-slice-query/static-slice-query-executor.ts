@@ -1,6 +1,7 @@
 import type { StaticSliceQuery, StaticSliceQueryResult } from './static-slice-query-format';
 import { staticSlice } from '../../../slicing/static/static-slicer';
 import { reconstructToCode } from '../../../reconstruct/reconstruct';
+import { SourceInlineMap } from '../../../reconstruct/inline/source-inline-map';
 import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
 import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
 import { log } from '../../../util/log';
@@ -29,16 +30,21 @@ export async function executeStaticSliceQuery({ analyzer }: BasicQueryData, quer
 		if(results[key]) {
 			log.warn(`Duplicate Key for slicing-query: ${key}, skipping...`);
 		}
-		const { criteria, noReconstruction, noMagicComments } = query;
+		const { criteria, noReconstruction, noMagicComments, inlineSources, includeCallees } = query;
 		const sliceStart = Date.now();
 		const n = await analyzer.normalize();
-		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: await analyzer.dataflow(), ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold });
+		const df = await analyzer.dataflow();
+		const slice = staticSlice({ ctx: analyzer.inspectContext(), info: df, ast: n, ids: SlicingCriteria.convertAll(criteria, n.idMap), direction: query.direction ?? SliceDirection.Backward, threshold: analyzer.flowrConfig.solver.slicer?.threshold, includeCallees });
 		const sliceEnd = Date.now();
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(await analyzer.normalize(), { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructToCode(n, {
+				nodes:         slice.result,
+				inlineSources: inlineSources,
+				sourceMap:     inlineSources ? SourceInlineMap.build(n, df.graph) : undefined
+			}, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

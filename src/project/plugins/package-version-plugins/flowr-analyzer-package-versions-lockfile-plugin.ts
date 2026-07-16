@@ -14,8 +14,8 @@ function virtualEnvFiles(ctx: FlowrAnalyzerContext, name: string): FlowrFileProv
 }
 
 function pin(ctx: FlowrAnalyzerContext, name: string, version: string): void {
-	const range = Package.parsePackageVersionRange(undefined, version);
-	ctx.deps.addDependency(new Package({ name, versionConstraints: range ? [range] : undefined }));
+	const range = Package.parsePkgVersionRange(undefined, version);
+	ctx.deps.addDeclaredDependency(new Package({ name, versionConstraints: range ? [range] : undefined }));
 }
 
 /** Reads package versions from an `renv.lock` (JSON). renv pins are exact. */

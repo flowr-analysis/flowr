@@ -86,17 +86,38 @@ describe('REPL ghost hint', () => {
 		expect(completionSuggestion('hel', cfg)).toBe('');
 	});
 
-	test(label('Tab accepts exactly the previewed suggestion; the empty prompt keeps the full menu', [], ['other']), () => {
+	test(label('Tab offers every matching option and completes only when one remains', [], ['other']), () => {
 		const cfg = config(true);
-		expect(replCompleter(':', cfg)).toEqual([[':help '], ':']);
-		expect(replCompleter(':query ', cfg)).toEqual([['help '], '']);
+		// ambiguous prefixes keep the full menu instead of committing the first item
+		expect(replCompleter(':', cfg)[0].length).toBeGreaterThan(1);
+		expect(replCompleter(':', cfg)[0]).toContain(':help ');
+		expect(replCompleter(':query ', cfg)[0].length).toBeGreaterThan(1);
+		expect(replCompleter(':query ', cfg)[0]).toContain('help ');
 		expect(replCompleter('', cfg)[0].length).toBeGreaterThan(1);
+		// a unique prefix still resolves to a single completion
+		expect(replCompleter(':bench', cfg)).toEqual([[':benchmark '], ':bench']);
 	});
 
-	test(label('only code commands suggest a file path argument', [], ['other']), () => {
+	test(label('the file path protocol is offered by Tab completion but never ghosted', [], ['other']), () => {
 		const cfg = config(true);
-		expect(completionSuggestion(':dataflow ', cfg)).toBe('file://');
+		// `file://` is highlighted as a URL by terminals, so ghosting it is misleading -- suppressed
+		expect(completionSuggestion(':dataflow ', cfg)).toBe('');
+		expect(replCompleter(':dataflow ', cfg)[0]).toContain('file://');   // ...but Tab still offers it
 		expect(completionSuggestion(':help ', cfg)).toBe('');
 		expect(completionSuggestion(':version ', cfg)).toBe('');
+	});
+
+	test(label('completes :signature subcommands, then a path for add', [], ['other']), () => {
+		const cfg = config(true);
+		// the bare command offers every subcommand (via the :sig alias too)
+		for(const kw of [':signature ', ':sig ']) {
+			const subs = replCompleter(kw, cfg)[0];
+			expect(subs).toEqual(expect.arrayContaining(['query ', 'add ', 'download ', 'help ']));
+		}
+		// a unique prefix ghosts the rest
+		expect(completionSuggestion(':signature qu', cfg)).toBe('ery ');
+		// `add` takes a path: Tab offers file:// but it is never ghosted; watch:// makes no sense (ingest once)
+		expect(replCompleter(':signature add ', cfg)[0]).toEqual(['file://']);
+		expect(completionSuggestion(':signature add ', cfg)).toBe('');
 	});
 });

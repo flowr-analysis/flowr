@@ -43,6 +43,7 @@ import {
 	DataflowLensQueryDefinition
 } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { type ProjectQuery, ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import { type SignatureQuery, SignatureQueryDefinition } from './catalog/signature-query/signature-query-format';
 import { type OriginQuery, OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
 import { type LinterQuery, LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -50,7 +51,6 @@ import {
 	type ControlFlowQuery,
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
-import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfig } from '../config';
 import {
@@ -87,6 +87,7 @@ import type { ProvenanceQuery } from './catalog/provenance-query/provenance-quer
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
+import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -100,7 +101,7 @@ export type Query = CallContextQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
 	| FilesQuery
-	| DfShapeQuery
+	| AbsintQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -113,6 +114,7 @@ export type Query = CallContextQuery
 	| InspectRecursionQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| SignatureQuery
 	| OriginQuery
 	| LinterQuery
 	| ProvenanceQuery
@@ -167,7 +169,7 @@ export const SupportedQueries = {
 	'dataflow':             DataflowQueryDefinition,
 	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
-	'df-shape':             DfShapeQueryDefinition,
+	'absint':               AbsintQueryDefinition,
 	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,
@@ -184,6 +186,7 @@ export const SupportedQueries = {
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
+	'signature':            SignatureQueryDefinition,
 	'origin':               OriginQueryDefinition,
 	'linter':               LinterQueryDefinition,
 	'dice':                 DiceQueryDefinition
@@ -273,8 +276,9 @@ export async function executeQueries<
 			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			log.warn(e);
-			results.push([type, undefined]);
+			const message = e instanceof Error ? e.message : String(e);
+			log.error(`query of type '${type}' failed: ${message}`, e);
+			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}
 

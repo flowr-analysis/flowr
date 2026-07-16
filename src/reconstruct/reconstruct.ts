@@ -30,6 +30,7 @@ import { type StatefulFoldFunctions, foldAstStateful } from '../r-bridge/lang-4.
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-select-defaults';
 import { Identifier } from '../dataflow/environments/identifier';
+import type { InlineWarning } from './inline/source-inline-map';
 
 interface Selection {
 	/**
@@ -40,6 +41,18 @@ interface Selection {
 	 * @see {@link ReconstructRequiredInput#reconstructFiles}
 	 */
 	reconstructFiles?: 'all' | number[]
+	/**
+	 * If set, selected `source()` calls are replaced by the (spliced) reconstruction of the sourced file,
+	 * producing a single self-contained reconstruction (`code` will be a `string` for the main file, index 0).
+	 * Requires {@link Selection#sourceMap} to be provided. Overrides {@link Selection#reconstructFiles}.
+	 * @see {@link SourceInlineMap.build}
+	 */
+	inlineSources?:    boolean
+	/**
+	 * Maps a `source()` call node id to the index of the sourced file in `ast.ast.files`.
+	 * Only used together with {@link Selection#inlineSources}. Build it via {@link SourceInlineMap.build}.
+	 */
+	sourceMap?:        ReadonlyMap<NodeId, number>
 }
 
 interface PrettyPrintLine {
@@ -118,13 +131,10 @@ function reconstructRawBinaryOperator(lhs: PrettyPrintLine[], n: string, rhs: Pr
 
 
 function reconstructUnaryOp(leaf: RNodeWithParent, operand: Code, configuration: ReconstructionConfiguration) {
-	if(configuration.selection.has(leaf.info.id)) {
-		return foldToConst(leaf);
-	} else if(operand.length === 0) {
+	if(!configuration.selection.has(leaf.info.id) && operand.length === 0) {
 		return [];
-	} else {
-		return foldToConst(leaf);
 	}
+	return foldToConst(leaf);
 }
 
 function reconstructBinaryOp(n: RBinaryOp<ParentInformation> | RPipe<ParentInformation>, lhs: Code, rhs: Code, config: ReconstructionConfiguration): Code {
@@ -376,6 +386,42 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${Identifier.toString(call.functionName.content)} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
 }
 
+/**
+ * If `inlineSources` is active and this call is a selected `source()` that we can resolve, this returns the
+ * reconstruction to splice in place of the call (or the literal call at a cycle edge). It returns `undefined`
+ * to signal that the call should be reconstructed as usual (e.g., an unresolvable `source()`).
+ */
+function tryInlineSourceCall(call: RFunctionCall<ParentInformation>, config: ReconstructionConfiguration): Code | undefined {
+	const id = call.info.id;
+	const targetFile = config.sourceMap?.get(id);
+	if(targetFile !== undefined) {
+		const visited = config.visited ?? new Set<number>([config.currentFile ?? 0]);
+		const path = config.fullAst.ast.files[targetFile]?.filePath;
+		if(visited.has(targetFile)) {
+			// cyclic source() - keep the literal call and mark the cycle edge
+			config.warnings?.push({ kind: 'cycle', callId: id, path });
+			reconstructLogger.warn(`cyclic source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
+			const literal = plain(getLexeme(call));
+			literal.push({ line: `# [flowR] cyclic source() not inlined: ${path ?? '<unknown>'}`, indent: 0 });
+			return literal;
+		}
+		const childConfig: ReconstructionConfiguration = {
+			...config,
+			visited:     new Set<number>([...visited, config.currentFile ?? 0, targetFile]),
+			currentFile: targetFile
+		};
+		return stripOuterExpressionList(reconstructFileCode(config.fullAst, targetFile, childConfig));
+	}
+	// a selected source() that we could not link to a file (dynamic/missing path): keep it verbatim
+	if(call.named && call.functionName.lexeme === 'source') {
+		const arg = call.arguments[0];
+		const path = arg !== undefined && arg !== EmptyArgument && arg.value?.type === RType.String ? arg.value.content.str : undefined;
+		config.warnings?.push({ kind: 'unresolved', callId: id, path });
+		reconstructLogger.warn(`unresolved source() not inlined at node ${JSON.stringify(id)}: ${JSON.stringify(path)}`);
+	}
+	return undefined;
+}
+
 function reconstructFunctionCall(
 	call: RFunctionCall<ParentInformation>,
 	functionName: Code,
@@ -383,6 +429,12 @@ function reconstructFunctionCall(
 	configuration: ReconstructionConfiguration
 ): Code {
 	const selected = isSelected(configuration, call);
+	if(configuration.inlineSources && selected) {
+		const inlined = tryInlineSourceCall(call, configuration);
+		if(inlined !== undefined) {
+			return inlined;
+		}
+	}
 	if(!selected) {
 		const f = args.filter(a => a !== EmptyArgument && a.length !== 0) as Code[];
 		if(f.length === 0) {
@@ -423,10 +475,20 @@ function reconstructFunctionCall(
  * Options to use with {@link reconstructToCode}.
  */
 interface ReconstructionConfiguration<Info = ParentInformation> extends MergeableRecord {
-	selection:    ReadonlySet<NodeId>
-	fullAst:      NormalizedAst<Info>
+	selection:      ReadonlySet<NodeId>
+	fullAst:        NormalizedAst<Info>
 	/** if true, this will force the ast part to be reconstructed, this can be used, for example, to force include `library` statements */
-	autoSelectIf: AutoSelectPredicate
+	autoSelectIf:   AutoSelectPredicate
+	/** if true, selected `source()` calls are replaced by the (spliced) reconstruction of the sourced file, see {@link SourceInlineMap.build} */
+	inlineSources?: boolean
+	/** maps a `source()` call node id to the index of the sourced file in `fullAst.ast.files`, see {@link SourceInlineMap.build} */
+	sourceMap?:     ReadonlyMap<NodeId, number>
+	/** the set of file indices currently being inlined on the active path (used to break cyclic `source()` inlining) */
+	visited?:       ReadonlySet<number>
+	/** the index of the file that is currently being reconstructed (0 = main file) */
+	currentFile?:   number
+	/** collects the warnings raised while inlining `source()` calls (shared by reference across the recursion) */
+	warnings?:      InlineWarning[]
 }
 
 /**
@@ -480,19 +542,32 @@ export interface ReconstructionResult {
 	code:                  string | string[]
 	/** number of lines that contain nodes that triggered the `autoSelectIf` predicate {@link reconstructToCode} */
 	linesWithAutoSelected: number
+	/** warnings raised while inlining `source()` calls (only set when {@link Selection#inlineSources} is active) */
+	inlineWarnings?:       InlineWarning[]
 }
 
-function removeOuterExpressionListIfApplicable(result: PrettyPrintLine[]): string  {
+/** Removes a redundant outer `{ }` block (de-indenting its content) if present. */
+function stripOuterExpressionList(result: Code): Code {
 	if(result.length > 1 && result[0].line === '{' && result[result.length - 1].line === '}') {
-		// remove outer block
-		return prettyPrintCodeToString(indentBy(result.slice(1, result.length - 1), -1));
-	} else {
-		return prettyPrintCodeToString(result);
+		return indentBy(result.slice(1, result.length - 1), -1);
 	}
+	return result;
+}
+
+function removeOuterExpressionListIfApplicable(result: Code): string  {
+	return prettyPrintCodeToString(stripOuterExpressionList(result));
+}
+
+/** Folds a single file of the project into {@link Code}, reused by the top-level reconstruction and the `source()` inlining recursion. */
+function reconstructFileCode(ast: NormalizedAst, fileIndex: number, config: ReconstructionConfiguration): Code {
+	if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
+		reconstructLogger.trace(`reconstructing file index ${fileIndex} with root id ${ast.ast.files[fileIndex].root.info.id}`);
+	}
+	return foldAstStateful(ast.ast.files[fileIndex].root, config, reconstructAstFolds);
 }
 
 
-export function reconstructToCode(ast: NormalizedAst, selection: Selection & { reconstructFiles?: [number] | undefined }, autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult;
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
@@ -518,6 +593,27 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		return result;
 	};
 
+	// when inlining sources we produce a single self-contained file (the main file, index 0),
+	// splicing every resolvable `source()` in place; this overrides `reconstructFiles`.
+	if(selection.inlineSources) {
+		const warnings: InlineWarning[] = [];
+		const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, 0, {
+			selection:     selection.nodes,
+			autoSelectIf:  autoSelectIfWrapper,
+			fullAst:       ast,
+			inlineSources: true,
+			sourceMap:     selection.sourceMap ?? new Map<NodeId, number>(),
+			visited:       new Set<number>([0]),
+			currentFile:   0,
+			warnings
+		}));
+		return {
+			code,
+			linesWithAutoSelected: linesWithAutoSelected.size,
+			inlineWarnings:        warnings
+		};
+	}
+
 	const indices = selection.reconstructFiles === 'all' ? ast.ast.files.map((_, i) => i) : (selection.reconstructFiles ?? [0]);
 	guard(
 		indices.every(i => i >= 0 && i < ast.ast.files.length),
@@ -527,16 +623,10 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 	const results: string[] = [];
 	// fold of the normalized ast
 	for(const i of indices) {
-		if(reconstructLogger.settings.minLevel <= LogLevel.Trace) {
-			reconstructLogger.trace(`reconstructing file index ${i} with root id ${ast.ast.files[i].root.info.id}`);
-		}
-
 		results.push(
-			removeOuterExpressionListIfApplicable(foldAstStateful(
-				ast.ast.files[i].root,
-				{ selection: selection.nodes, autoSelectIf: autoSelectIfWrapper, fullAst: ast },
-				reconstructAstFolds
-			))
+			removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
+				selection: selection.nodes, autoSelectIf: autoSelectIfWrapper, fullAst: ast, currentFile: i
+			}))
 		);
 	}
 

@@ -44,13 +44,13 @@ if(TRUE) {
   a - 1 -> a
 }
 foo(5)`, [...OperatorDatabase['<-'].capabilities, ...OperatorDatabase['='].capabilities, ...OperatorDatabase['-'].capabilities, ...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['->'].capabilities, ...OperatorDatabase['+'].capabilities, ...OperatorDatabase['>'].capabilities, 'name-normal', 'numbers', 'newlines', 'if', 'while-loop', 'logical', 'named-arguments', 'side-effects-in-argument', 'formals-named', 'implicit-return'],
-		[ '1@a' ], [ '2@b' ], [ '4@a' ], [ '5:5' ], [ '5:9' ], [ '7@foo' ], [ '8@x' ], [ '10:3' ], [ '10:12' ]);
+		[ '1@a' ], [ '2@b' ], [ '4@a' ], [ '5@[1]a' ], [ '5@[2]a' ], [ '7@foo' ], [ '8@x' ], [ '10@[1]a' ], [ '10@[2]a' ]);
 		test(`x = NULL
 u <<- function(a = NULL, b = NA, c, d=7, e=x, f=TRUE, g=FALSE, ...) {
   g <- 12 * NaN - Inf
   h <- function(x) { x + 1 }
   return(h(a + b))
 }`, [...OperatorDatabase['<<-'].capabilities, ...OperatorDatabase['='].capabilities, 'name-normal', 'inf-and-nan', 'numbers', 'null', 'newlines', 'formals-default', 'formals-named', 'unnamed-arguments', ...OperatorDatabase['+'].capabilities, 'implicit-return', 'return'],
-		[ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4:22' ], [ '5@a' ], [ '5@b' ]);
+		[ '1@x' ], [ '2@u' ], ['2@x'], [ '3@g' ], [ '4@h' ], [ '4@[2]x' ], [ '5@a' ], [ '5@b' ]);
 	});
 }));

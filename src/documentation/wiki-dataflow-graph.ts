@@ -251,8 +251,10 @@ ${block({
 		type:        VertexType.FunctionCall,
 		description: `
 Describes any kind of function call, including unnamed calls and those that happen implicitly!
-In general the vertex provides you with information about 
+In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
+
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded \`library()\`/\`::\`, or via the always-available base-R packages taken from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. \`acf\` is shown as \`stats::acf\`). To obtain this qualified identifier programmatically from a call's origins, use \`Identifier.toQualified\` (see the \`origin\` property below and the ${ctx.linkPage('wiki/Signature Database', 'signature database')} for where the base-R knowledge comes from).
 
 However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
@@ -590,7 +592,7 @@ ${details('Example: Parameters of a Function',
 		const [text, info] = await printDfGraphForCode(parser, code, { mark: new Set([10, 1, 3]), exposeResult: true, ctx });
 		const ast = await printNormalizedAstForCode(parser, code, { prefix: 'flowchart LR\n', showCode: false, ctx });
 
-		const functionDefinition = [...info.dataflow.graph.vertices(true)].find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
+		const functionDefinition = info.dataflow.graph.vertices(true).find(([, vertex]) => vertex.tag === VertexType.FunctionDefinition);
 		guard(functionDefinition !== undefined, () => `Could not find function definition for ${code}`);
 		const [id] = functionDefinition;
 
@@ -1009,11 +1011,12 @@ ${section('Lexeme', 3, 'vtx-lexeme')}
 
 Also in the first line, next to the [syntactic type](#vtx-synt-type), you can find the lexeme of the vertex (if it has one, e.g., for a variable definition or use).
 This usually represents the textual source string of the respective vertex, and is also linked to the ${ctx.linkPage('wiki/Normalized AST')}.
+For a clearer hierarchy, the lexeme is rendered in **bold** while the [syntactic type](#vtx-synt-type) is de-emphasized in _italics_ (mermaid markdown labels do not support a per-token font color, so a true gray tone would require styling the whole node). Only the token the source actually wrote is bold: when a call is shown with a package-qualified name that flowR *added* (e.g. the code wrote \`acf\` but it is displayed as \`stats::acf\`), the added \`stats::\` prefix stays non-bold, whereas a namespace written verbatim in the source is part of the lexeme and is bold as a whole.
 You can access the lexeme too with ${ctx.linkO(RNode, 'lexeme')}.
 
 ${section('Vertex Id', 3, 'vtx-id')}
 
-In the second line, you will usually find the id (in the form of a ${ctx.link(NodeId, undefined, { type: 'variable' })}) of the vertex,
+In the second line, you will usually find the id (in the form of a ${ctx.link(NodeId, undefined, { type: 'variable' })}) of the vertex &mdash; kept compact by sharing the line with the [location](#vtx-location), in the form \`*location* (**id: <id>**)\` with the id in **bold** &mdash;
 alongside its [control dependencies](#control-dependencies) if it has any. This id links the vertex to the respective node in the ${ctx.linkPage('wiki/Normalized AST')} (and all other perspectives created by flowR).
 To give you an example, have a look at the following graph:
 
@@ -1023,7 +1026,7 @@ on the \`if\`, which only triggers when the condition is \`true\` (as indicated 
 
 ${section('Location', 3, 'vtx-location')}
 
-The third line indicates the compressed ${ctx.link(SourceRange)} of the vertex in the format \`startLine.startCharacter - endLine.endCharacter\`. If the range reads \`1.7\`, 
+The second line also indicates the compressed ${ctx.link(SourceRange)} of the vertex (directly before the [id](#vtx-id)) in the format \`startLine.startCharacter - endLine.endCharacter\`. If the range reads \`1.7\`,
 this is short for \`1.7-1.7\`, likewise, \`1.7-9\` is short for \`1.7-1.9\`. So, \`1.7-9\` describes something starting
 in the first line at the seventh character and ending in the first line at the ninth character.
 
@@ -1031,7 +1034,7 @@ ${section('Arguments and Additional Information', 3, 'vtx-additional-info')}
 
 Some vertices (e.g., [function calls](#function-call-vertex)) have additional information, like the arguments of the call. 
 As you can see with the \`if\` example above alongside the [vertex id](#vtx-id),
-these vertices also have an additional line which lists the ids of the arguments in order to clear any ambiguity in case, for example,
+these vertices also have an additional line (prefixed with \`arg:\`) which lists the ids of the arguments in order to clear any ambiguity in case, for example,
 the mermaid graph layouting fumbles the order.
 
 ${section('Vertices', 2, 'vertices')}

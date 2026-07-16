@@ -53,8 +53,7 @@ import { DataFrameShapeInferenceVisitor } from '../abstract-interpretation/data-
 import type { PosIntervalDomain } from '../abstract-interpretation/domains/positive-interval-domain';
 import { SetRangeDomain } from '../abstract-interpretation/domains/set-range-domain';
 import fs from 'fs';
-import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { contextFromInput } from '../project/context/flowr-analyzer-context';
+import { type FlowrAnalyzerContext, contextFromInput } from '../project/context/flowr-analyzer-context';
 import { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RComment } from '../r-bridge/lang-4.x/ast/model/nodes/r-comment';
 import { CallGraph } from '../dataflow/graph/call-graph';
@@ -138,7 +137,7 @@ export class BenchmarkSlicer {
 	 * Can only be called once for each instance.
 	 */
 	public async init(request: RParseRequestFromFile | RParseRequestFromText, config: FlowrConfig,
-		autoSelectIf?: AutoSelectPredicate, threshold?: number) {
+		autoSelectIf?: AutoSelectPredicate, threshold?: number, inlineSources?: boolean, includeCallees?: boolean) {
 		guard(this.stats === undefined, 'cannot initialize the slicer twice');
 
 		// we know these are in sync so we just cast to one of them
@@ -158,6 +157,8 @@ export class BenchmarkSlicer {
 			criterion: [],
 			autoSelectIf,
 			threshold,
+			inlineSources,
+			includeCallees,
 		});
 
 		this.loadedXml = (await this.measureCommonStep('parse', 'retrieve AST from R code')).files.map(p => p.parsed);
@@ -437,9 +438,9 @@ export class BenchmarkSlicer {
 	private getInferredRange<T>(value: SetRangeDomain<T> | PosIntervalDomain): number {
 		if(value.isValue()) {
 			if(value instanceof SetRangeDomain) {
-				return value.isFinite() ? value.value.range.size : Infinity;
+				return value.isFinite() ? value.may.size : Infinity;
 			} else {
-				return value.value[1] - value.value[0];
+				return value.upper - value.lower;
 			}
 		}
 		return 0;
@@ -452,9 +453,9 @@ export class BenchmarkSlicer {
 			if(!value.isFinite()) {
 				return 'infinite';
 			} else if(value instanceof SetRangeDomain) {
-				return Math.floor(value.value.min.size + (value.value.range.size / 2));
+				return Math.floor(value.value.must.size + (value.value.may.size / 2));
 			} else {
-				return Math.floor((value.value[0] + value.value[1]) / 2);
+				return Math.floor((value.lower + value.upper) / 2);
 			}
 		}
 		return 'bottom';

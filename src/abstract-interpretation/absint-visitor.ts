@@ -15,6 +15,9 @@ import { AbstractDomain } from './domains/abstract-domain';
 import type { AnyStateDomain, ValueDomain } from './domains/state-domain-like';
 import { UnsupportedFunctions } from './unsupported-functions';
 
+export type DomainOfVisitor<AbsintVisitor extends AbstractInterpretationVisitor<AnyStateDomain>> =
+	AbsintVisitor extends AbstractInterpretationVisitor<infer StateDomain> ? StateDomain : never;
+
 export type AbsintVisitorConfiguration = Omit<SemanticCfgGuidedVisitorConfiguration<NoInfo, ControlFlowInformation, NormalizedAst>, 'defaultVisitingOrder' | 'defaultVisitingType'>;
 
 /**

@@ -19,7 +19,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.varInLine('x', 1).first().first(),
 		Q.varInLine('x', 1).last()
 	);
-	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1:6'],
+	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1@[2]x'],
 		Q.varInLine('x', 1).select(1),
 		Q.var('x').select(1),
 		Q.var('x').index(1),
@@ -27,7 +27,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').take(2).last(),
 		Q.var('x').take(2).tail()
 	);
-	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1:6', '2@x'],
+	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1@[2]x', '2@x'],
 		Q.var('x').select(1).merge(Q.varInLine('x', 2).filter(FlowrFilter.DropEmptyArguments).first()),
 		Q.var('x').filter(FlowrFilter.DropEmptyArguments).select(1, 3),
 		Q.var('x').take(2).last().merge(Q.var('x').filter(FlowrFilter.DropEmptyArguments).last()),

@@ -119,7 +119,7 @@ export function isExportedInInfo(this: void, name: string, nsInfo: NamespaceInfo
 	}
 	if(name.includes('.')) {
 		for(const [k, m] of nsInfo.exportS3Generics.entries()) {
-			if(m.map(m => `${k}.${m}`).includes(name)) {
+			if(m.some(method => `${k}.${method}` === name)) {
 				return true;
 			}
 		}
@@ -457,6 +457,11 @@ function mergeNamespaceInfo(target: NamespaceInfo, source: NamespaceInfo): Names
 	};
 }
 
+/** Split a NAMESPACE directive's argument list (`a, "b", c`) into individual, quote-stripped names. */
+function splitNamespaceArgs(args: string): string[] {
+	return args.split(',').map(s => removeRQuotes(s.trim())).filter(s => s.length > 0);
+}
+
 /**
  * Parses the given NAMESPACE file
  */
@@ -475,7 +480,8 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 		switch(type) {
 			case 'exportClasses':
 			case 'exportMethods':
-				result.current.exportedFunctions.push(removeRQuotes(args));
+				// a single directive may list several symbols, e.g. `exportMethods(show, summary)`
+				result.current.exportedFunctions.push(...splitNamespaceArgs(args));
 				break;
 			case 'S3method':
 			{
@@ -493,7 +499,8 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				break;
 			}
 			case 'export':
-				result.current.exportedSymbols.push(removeRQuotes(args));
+				// `export(a, b)` exports both `a` and `b`, so split rather than storing the literal `"a, b"`
+				result.current.exportedSymbols.push(...splitNamespaceArgs(args));
 				break;
 			case 'useDynLib':
 			{

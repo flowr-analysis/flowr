@@ -1,8 +1,17 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
 import { SemVer } from 'semver';
+import type { PackageSignatureSource } from '../../sigdb/reader';
+import type { FlowrConfig } from '../../../config';
 
 /** metadata of a package database a plugin currently has loaded */
-export interface PkgDbLoadedInfo { scope: string, version: number, date: string }
+export interface SigDbLoadedInfo {
+	scope:            string;
+	version:          number;
+	date:             string;
+	hash:             string;
+	/** the on-disk compression codec of the resolved source(s): `zstd`, `brotli`, `gzip`, `plain`, or `mixed` for a set spanning several */
+	readonly format?: string;
+}
 
 /**
  * This is the base class for all plugins that identify package and dependency versions used in the project.
@@ -17,12 +26,35 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
 	}
 
 	/** metadata of the databases this plugin currently has loaded (empty for plugins without any) */
-	public loadedDatabases(): PkgDbLoadedInfo[] {
+	public loadedDatabases(): SigDbLoadedInfo[] {
 		return [];
+	}
+
+	/** Packages known to this plugin that export `name` (empty for plugins without a database). */
+	public packagesExporting(_name: string): readonly string[] {
+		return [];
+	}
+
+	/** The signature sources this plugin currently has loaded (empty for plugins without any). `config` lets a query resolve config-driven sources before any analysis has set the plugin's context. */
+	public signatureSources(_config?: FlowrConfig): readonly PackageSignatureSource[] {
+		return [];
+	}
+
+	/** Mount an extra signature source by path (a `.sigs.ndjson`, `.br`, or `*.manifest.json(.br)`); no-op by default. */
+	public addDatabaseSource(_source: string): Promise<void> {
+		return Promise.resolve();
 	}
 
 	/** Eagerly parse and mount this plugin's databases up front (no-op for plugins without any). */
 	public preloadDatabasesSync(): void {}
+
+	/**
+	 * Whether this plugin can resolve the always-available base-R packages (so their exports can be attached
+	 * eagerly for bare base calls). `false` for plugins without a versioned base-R signature source.
+	 */
+	public providesBaseRPackages(): boolean {
+		return false;
+	}
 }
 
 /**

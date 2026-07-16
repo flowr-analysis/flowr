@@ -19,6 +19,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
+import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
 import { startAndEndsWith } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
@@ -71,6 +72,12 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
+			} else if(cmd === signatureCommand) {
+				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions = completions.concat(sigCompletions);
 			} else if(cmd?.isCodeCommand) {
 				completions.push(fileProtocol);
 				completions.push(watchProtocol);
@@ -85,29 +92,30 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 }
 
 /**
- * Used by the repl to provide automatic completions for a given (partial) input line. On a non-empty line whose
- * best completion advances the input, Tab accepts exactly that completion; the empty prompt keeps the full menu.
+ * Used by the repl to provide automatic completions for a given (partial) input line. Returns every matching
+ * option, so Tab shows the full menu and only completes when a single option remains (standard readline behavior).
  */
 export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
-	const [completions, fragment] = computeCompletions(line, config);
-	const best = completions[0];
-	if(line.length > 0 && best !== undefined && best.startsWith(fragment) && best.length > fragment.length) {
-		return [[best], fragment];
-	}
-	return [completions, fragment];
+	return computeCompletions(line, config);
 }
 
 /**
- * The remaining text of the best completion, i.e. what Tab would append; empty when there is nothing to suggest.
- * Consistent with {@link replCompleter}, so the inline ghost previews exactly what Tab will accept.
+ * The remaining text of the best (first) completion, i.e. what the inline ghost previews as you type; empty when
+ * there is nothing to suggest. Independent of {@link replCompleter}: the ghost hints the best match even when Tab
+ * would still offer several.
  */
 export function completionSuggestion(line: string, config: FlowrConfig): string {
 	if(line.length === 0) {
 		return '';
 	}
-	const [completions, fragment] = replCompleter(line, config);
+	const [completions, fragment] = computeCompletions(line, config);
 	const best = completions[0];
-	return completions.length === 1 && best.startsWith(fragment) && best.length > fragment.length ? best.slice(fragment.length) : '';
+	if(best === undefined || !best.startsWith(fragment) || best.length <= fragment.length) {
+		return '';
+	} else if(best === fileProtocol || best === watchProtocol) {
+		return '';
+	}
+	return best.slice(fragment.length);
 }
 
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {

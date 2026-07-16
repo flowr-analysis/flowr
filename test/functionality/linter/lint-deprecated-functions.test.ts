@@ -3,7 +3,7 @@ import { withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { DeprecationState } from '../../../src/linter/rules/deprecated-functions';
-import { parseRRange } from '../../../src/util/r-version';
+import { RRange } from '../../../src/util/r-version';
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('deprecated functions', () => {
@@ -85,11 +85,11 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 					replacedBy:   'foo',
 					function:     'testFn',
 					state:        DeprecationState.Deprecated,
-					sinceVersion: parseRRange('>= 4.0.0'),
+					sinceVersion: RRange.parse('>= 4.0.0'),
 					loc:          [1, 8, 1, 13]
 				}],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: parseRRange('>= 4.0.0') }] } ] }
+				{ fns: [{ name: 'testFn', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>= 4.0.0') }] } ] }
 			);
 		});
 	});

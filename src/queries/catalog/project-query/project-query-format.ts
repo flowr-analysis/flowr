@@ -9,6 +9,7 @@ import { rAuthorInfoToReadable } from '../../../util/r-author';
 import type { RLicenseElementInfo } from '../../../util/r-license';
 import { stringifyRLicense } from '../../../util/r-license';
 import type { FileRole } from '../../../project/context/flowr-file';
+import type { ProjectKind } from '../../../project/context/project-kind';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
@@ -16,10 +17,6 @@ export interface ProjectQuery extends BaseQueryFormat {
 	/** Whether to include Dataflow information in the result. */
 	readonly withDf?: boolean;
 }
-
-// the classification lives with the files it inspects; re-exported here so the query API keeps a single import site
-import { ProjectKind } from '../../../project/context/flowr-analyzer-files-context';
-export { ProjectKind };
 
 /** Statistics on the project's declared dependencies, cross-referenced with the package database. */
 export interface ProjectDependencyStats {

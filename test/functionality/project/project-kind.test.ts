@@ -1,6 +1,6 @@
 import { assert, describe, test } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
-import { ProjectKind } from '../../../src/project/context/flowr-analyzer-files-context';
+import { ProjectKind } from '../../../src/project/context/project-kind';
 import { FlowrConfig } from '../../../src/config';
 import { FlowrInlineTextFile, FileRole } from '../../../src/project/context/flowr-file';
 import { FlowrDescriptionFile } from '../../../src/project/plugins/file-plugins/files/flowr-description-file';

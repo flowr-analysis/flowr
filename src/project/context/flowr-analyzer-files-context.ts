@@ -21,24 +21,9 @@ import path from 'path';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
+import { ProjectKind } from './project-kind';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
-
-/** The kind of project that flowR is analyzing, see {@link FlowrAnalyzerFilesContext#projectKind}. */
-export enum ProjectKind {
-	/** An R package (has a `DESCRIPTION` file that does not mark it as a {@link ProjectKind.ShinyApp}). */
-	Package  = 'package',
-	/** A single R script. */
-	Script   = 'script',
-	/** A Shiny application (`Type: shiny` in the `DESCRIPTION`, `app.R`, or `ui.R` with `server.R`). */
-	ShinyApp = 'shiny-app',
-	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
-	Notebook = 'notebook',
-	/** A multi-file project that is not a package. */
-	Project  = 'project',
-	/** The kind could not be determined (e.g. before the files are known). */
-	Unknown  = 'unknown'
-}
 
 const notebookExtension = /\.(ipynb|rmd|qmd|rnw)$/;
 const shinyDescriptionTypes = new Set(['shiny', 'shiny-app', 'shinyapp']);
@@ -244,14 +229,13 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				entries.set(name, f);
 			}
 		}
-		for(const p of this.consideredFiles) {
+		const pending = this.loadingOrder.getUnorderedRequests()
+			.filter(r => r.request === 'file').map(r => r.content);
+		for(const p of [...pending, ...this.consideredFiles]) {
 			const name = path.basename(p).toLowerCase();
 			names.add(name);
 			if(shinyEntryFiles.has(name) && !entries.has(name)) {
-				const f = this.getFileByPath(p);
-				if(f) {
-					entries.set(name, f);
-				}
+				entries.set(name, this.getFileByPath(p) ?? new FlowrTextFile(p));
 			}
 		}
 		if(this.isShinyApp(names, entries)) {
@@ -319,6 +303,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private addRequest(request: RAnalysisRequest): void {
 		if(request.request !== 'project') {
 			this.loadingOrder.addRequest(request);
+			this.projectKindCache = undefined;
 			return;
 		}
 

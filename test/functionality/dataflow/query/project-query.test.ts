@@ -119,13 +119,14 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		expect(deps.getDependency('cli')?.namespaceInfo).toBeDefined();
 	});
 
-	test(label('classifies a non-package project once its files are known', [], ['other']), async() => {
+	test(label('classifies a non-package project from the files it is asked to analyze', [], ['other']), async() => {
 		const dir = fs.mkdtempSync(path.join(tmp, 'shiny-'));
 		fs.writeFileSync(path.join(dir, 'app.R'), 'library(shiny)\nx <- 1\n');
 		fs.writeFileSync(path.join(dir, 'helper.R'), 'y <- 2\n');
 		const analyzer = await analyzeProject(parser, db, dir);
 
-		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('unknown');
+		// the scripts are known as requests, so the kind does not have to wait for the dataflow
+		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('shiny-app');
 		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
 	});
 

@@ -1,9 +1,9 @@
 import {
 	FlowrAnalyzerFilesContext,
-	type ProjectKind,
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
+import type { ProjectKind } from './project-kind';
 import {
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext

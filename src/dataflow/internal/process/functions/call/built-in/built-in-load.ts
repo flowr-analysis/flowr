@@ -58,7 +58,7 @@ export function processLoadCall<OtherInfo>(
 	const fn = processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Load });
 
 	if(data.ctx.config.ignoreLoadCalls) {
-		expensiveTrace(dataflowLogger, () => `Skipping load call ${JSON.stringify(fileArg)} (disabled in config file)`);
+		dataflowLogger.warn(`Skipping load call ${JSON.stringify(fileArg)} (disabled in config file)`);
 		handleUnknownSideEffect(fn.information.graph, fn.information.environment, rootId);
 		return fn.information;
 	}
@@ -98,7 +98,7 @@ export function processLoadCall<OtherInfo>(
 			try {
 				variables = new RDAParser(new FlowrTextFile(filepath), true).parse();
 			} catch(e) {
-				expensiveTrace(dataflowLogger, () => `Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
+				dataflowLogger.warn(`Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
 				continue;
 			}
 			if(variables === null || variables.length === 0) {

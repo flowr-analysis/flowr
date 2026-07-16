@@ -143,7 +143,7 @@ function expectNames(result: RObjectData[], vars: ReadonlyMap<string, string>) {
 }
 
 /* Maps the {@link SexpType} to its string representation in the R shell*/
-const SexpToRType = {
+export const SexpToRType = {
 	0:  'NULL',
 	1:  'symbol',
 	2:  'pairlist',

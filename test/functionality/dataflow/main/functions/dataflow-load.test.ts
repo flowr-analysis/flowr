@@ -5,7 +5,7 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import fs from 'fs';
 import path from 'path';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
-import { getVarsAndTypesFromShell } from '../../../project/plugin/load-pipeline/load-pipeline.test';
+import { getVarsAndTypesFromShell, SexpToRType } from '../../../project/plugin/load-pipeline/load-pipeline.test';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import seedrandom from 'seedrandom';
 import { RandomRCodeGenerator, RObjectType, SeededRandom } from '../../../util/project/plugin/random-r-code-generator';
@@ -40,7 +40,7 @@ describe('load real-world', withTreeSitter(parser => {
 				const syntheticId = `3:loaded:${varName}`;
 				const cds = [{ id: '3', when: true }];
 
-				if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
+				if(varType === SexpToRType[3] || varType === SexpToRType[7] || varType === SexpToRType[8]) {
 					const fdefId = `${syntheticId}:fdef`;
 					graph = graph.defineFunction(fdefId, [], {
 						entryPoint:        fdefId,
@@ -112,7 +112,7 @@ describe('load real-world', withTreeSitter(parser => {
 			const varsAndTypesFromShell = getVarsAndTypesFromShell(file, rShell);
 			rShell.close();
 
-			const firstClosure = [...varsAndTypesFromShell.entries()].find(([, type]) => type === 'closure');
+			const firstClosure = [...varsAndTypesFromShell.entries()].find(([, type]) => type === SexpToRType[3]);
 			if(!firstClosure) {
 				continue;
 			}
@@ -199,7 +199,7 @@ describe('load random', withTreeSitter(parser => {
 		for(const [varName, varType] of varsAndTypes) {
 			const syntheticId = `3:loaded:${varName}`;
 			const cds = [{ id: '3', when: true }];
-			if(varType === 'closure' || varType === 'special' || varType === 'builtin') {
+			if(varType === SexpToRType[3] || varType === SexpToRType[7]  || varType === SexpToRType[8]) {
 				const fdefId = `${syntheticId}:fdef`;
 				graph = graph.defineFunction(fdefId, [], {
 					entryPoint: fdefId, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
@@ -296,7 +296,7 @@ describe('load random', withTreeSitter(parser => {
 			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
 		});
 
-		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === 'closure');
+		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === SexpToRType[3]);
 		if(firstClosure) {
 			const [closureName] = firstClosure;
 

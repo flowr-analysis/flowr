@@ -14,7 +14,6 @@ import { findSource } from './built-in-source';
 import { FlowrTextFile } from '../../../../../../project/context/flowr-file';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
-import { expensiveTrace } from '../../../../../../util/log';
 import { dataflowLogger } from '../../../../../logger';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { EdgeType } from '../../../../../graph/edge';

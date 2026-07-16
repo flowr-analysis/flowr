@@ -72,6 +72,18 @@ function getLexeme(n: RNodeWithParent) {
 	return RNode.lexeme(n) ?? '';
 }
 
+function codeToText(code: Code): string {
+	return code.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+}
+
+/** the arguments synthesized for infix operands have no `fullLexeme`, so resolve through the value */
+function getArgumentLexeme(n: RArgument<ParentInformation> | typeof EmptyArgument | undefined): string {
+	if(n === undefined || n === EmptyArgument) {
+		return '';
+	}
+	return n.info.fullLexeme ?? (n.value !== undefined ? getLexeme(n.value) : getLexeme(n));
+}
+
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
 	const selectionHasLeaf = configuration.selection.has(leaf.info.id) || configuration.autoSelectIf(leaf, configuration.fullAst);
 	return selectionHasLeaf ? foldToConst(leaf) : [];
@@ -372,18 +384,22 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return [];
 	}
-	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still have to keep both now, but reconstruct manually :/
 	if(lhs !== EmptyArgument && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+		const lhsText = codeToText(lhs);
 		if(rhs !== EmptyArgument && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
-			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${rhsText}`);
+			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${codeToText(rhs)}`);
 		} else {
 			return plain(lhsText);
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${Identifier.toString(call.functionName.content)} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
+	// only the operands' lexemes are left to go by; a `{` block has none, so keep the call as it was written
+	const lhsLexeme = getArgumentLexeme(call.arguments[0]);
+	const rhsLexeme = getArgumentLexeme(call.arguments[1]);
+	if(lhsLexeme.length === 0 || rhsLexeme.length === 0) {
+		return plain(getLexeme(call));
+	}
+	return plain(`${lhsLexeme} ${Identifier.toString(call.functionName.content)} ${rhsLexeme}`);
 }
 
 /**

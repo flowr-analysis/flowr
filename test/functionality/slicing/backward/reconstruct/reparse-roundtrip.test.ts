@@ -41,7 +41,8 @@ describe.sequential('Reconstruction re-parse round-trip', withShell(shell => {
 		'control flow and loops':  'total <- 0\nfor(i in 1:10) {\n  if(i %% 2 == 0) {\n    total <- total + i\n  } else {\n    next\n  }\n}\nwhile(total > 0) total <- total - 1\nprint(total)',
 		'closures and functions':  'make <- function(start) {\n  count <- start\n  function() {\n    count <<- count + 1\n    count\n  }\n}\nc1 <- make(0)\nprint(c1())',
 		'strings and escapes':     'msg <- paste0("a\\t\\"b\\"", \'single\')\nlbl <- gsub("O", "0", "FOO")\ncat(msg, lbl)',
-		'switch and index access': 'classify <- function(n) switch(as.character(n), "1" = "one", "two")\nv <- list(a = 1:5)[["a"]][2]\nprint(classify(v))'
+		'switch and index access': 'classify <- function(n) switch(as.character(n), "1" = "one", "two")\nv <- list(a = 1:5)[["a"]][2]\nprint(classify(v))',
+		'access as pipe operand':  'library(magrittr)\ndf <- make(out, type = 1)$data %>% dplyr::mutate(id = rownames(.)) %>% tidyr::as_tibble()\nprint(df)'
 	};
 
 	for(const [name, program] of Object.entries(samples)) {

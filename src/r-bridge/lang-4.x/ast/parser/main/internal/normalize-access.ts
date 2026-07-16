@@ -21,7 +21,9 @@ function normalizeAbstractArgument(x: readonly NamedJsonEntry[], data: Normalize
 		guard(gotAccess !== undefined, () => `expected one access result in access as argument, yet received ${JSON.stringify(gotAccess)} for ${JSON.stringify([operator, x])}`);
 		return gotAccess;
 	} else {
-		const node = normalizeSingleNode(data, x[0]) as RNode;
+		// the field is no `expr` of its own and would inherit the enclosing access' lexeme (`a$b` for `b`)
+		const { content, location } = retrieveMetaStructure(x[0].content);
+		const node = normalizeSingleNode({ ...data, currentRange: location, currentLexeme: content }, x[0]) as RNode;
 		guard(node.type !== RType.ExpressionList, () => `expected expression list to be parsed as argument, yet received ${JSON.stringify(node)} for ${JSON.stringify(x)}`);
 		return {
 			type:     RType.Argument,

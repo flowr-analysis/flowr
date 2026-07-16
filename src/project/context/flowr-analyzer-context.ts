@@ -1,5 +1,6 @@
 import {
 	FlowrAnalyzerFilesContext,
+	type ProjectKind,
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
@@ -55,6 +56,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly config:           FlowrConfig;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
 	readonly resolvedRVersion: string;
+	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
+	projectKind(): ProjectKind;
 	/**
 	 * Resource-usage guard (gas).
 	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
@@ -95,7 +98,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
-		this.meta = new FlowrAnalyzerMetaContext();
+		// the plugins contributing the metadata are the ones the dependency context runs on demand
+		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
@@ -120,6 +124,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
 	public get resolvedRVersion(): string {
 		return resolveAssumedRVersion(this.config, this._detectedR);
+	}
+
+	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
+	public projectKind(): ProjectKind {
+		return this.files.projectKind();
 	}
 
 	/** delegate request addition */

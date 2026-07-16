@@ -17,21 +17,9 @@ export interface ProjectQuery extends BaseQueryFormat {
 	readonly withDf?: boolean;
 }
 
-/** The kind of project that flowR is analyzing. */
-export enum ProjectKind {
-	/** An R package (has a `DESCRIPTION` file). */
-	Package  = 'package',
-	/** A single R script. */
-	Script   = 'script',
-	/** A Shiny application (`app.R`, or `ui.R` together with `server.R`). */
-	ShinyApp = 'shiny-app',
-	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
-	Notebook = 'notebook',
-	/** A multi-file project that is not a package. */
-	Project  = 'project',
-	/** The kind could not be determined (e.g. before the files are known). */
-	Unknown  = 'unknown'
-}
+// the classification lives with the files it inspects; re-exported here so the query API keeps a single import site
+import { ProjectKind } from '../../../project/context/flowr-analyzer-files-context';
+export { ProjectKind };
 
 /** Statistics on the project's declared dependencies, cross-referenced with the package database. */
 export interface ProjectDependencyStats {
@@ -70,6 +58,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly encoding?:     string;
 	/** The version of the project, if available. */
 	readonly version?:      string;
+	/** The R version the project targets, e.g. the `r_version` of an `rproject.toml`. */
+	readonly rVersion?:     string;
 	/** The classified kind of the project (e.g. package, script, shiny app). */
 	readonly kind?:         ProjectKind;
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */

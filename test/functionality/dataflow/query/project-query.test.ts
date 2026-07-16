@@ -128,4 +128,27 @@ describe.sequential('Project Query', withTreeSitter(parser => {
 		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('unknown');
 		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
 	});
+
+	test(label('classifies a shiny app that ships a DESCRIPTION as a shiny app, not a package', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'myapp', 'Version: 1.0.0\n', 'x <- 1\n');
+		fs.writeFileSync(path.join(dir, 'app.R'), 'library(shiny)\ny <- 2\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('shiny-app');
+	});
+
+	test(label('classifies a DESCRIPTION with an explicit shiny type as a shiny app', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'typedapp', 'Type: Shiny\nVersion: 1.0.0\n', 'x <- 1\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+
+		// the DESCRIPTION is known without dataflow, so the type alone settles the kind
+		expect((await executeQueries({ analyzer }, [{ type: 'project' }])).project.kind).toBe('shiny-app');
+	});
+
+	test(label('still classifies a plain package with a package type as a package', [], ['other']), async() => {
+		const dir = writePackage(tmp, 'plainpkg', 'Type: Package\nVersion: 1.0.0\n', 'x <- 1\n');
+		const analyzer = await analyzeProject(parser, db, dir);
+
+		expect((await executeQueries({ analyzer }, [{ type: 'project', withDf: true }])).project.kind).toBe('package');
+	});
 }));

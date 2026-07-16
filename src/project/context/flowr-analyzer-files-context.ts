@@ -20,8 +20,35 @@ import fs from 'fs';
 import path from 'path';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
+import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
 
 const fileLog = log.getSubLogger({ name: 'flowr-analyzer-files-context' });
+
+/** The kind of project that flowR is analyzing, see {@link FlowrAnalyzerFilesContext#projectKind}. */
+export enum ProjectKind {
+	/** An R package (has a `DESCRIPTION` file that does not mark it as a {@link ProjectKind.ShinyApp}). */
+	Package  = 'package',
+	/** A single R script. */
+	Script   = 'script',
+	/** A Shiny application (`Type: shiny` in the `DESCRIPTION`, `app.R`, or `ui.R` with `server.R`). */
+	ShinyApp = 'shiny-app',
+	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
+	Notebook = 'notebook',
+	/** A multi-file project that is not a package. */
+	Project  = 'project',
+	/** The kind could not be determined (e.g. before the files are known). */
+	Unknown  = 'unknown'
+}
+
+const notebookExtension = /\.(ipynb|rmd|qmd|rnw)$/;
+const shinyDescriptionTypes = new Set(['shiny', 'shiny-app', 'shinyapp']);
+/** the (lower-cased) file names a shiny app is assembled from; the app is `app.r`, or the `ui.r`+`server.r` pair */
+const shinyEntryFiles = new Set(['app.r', 'ui.r', 'server.r', 'global.r']);
+/**
+ * Evidence that a file actually is part of a shiny app rather than just sharing a name: a load of the shiny stack
+ * or a call to one of its entry points. Kept broad enough to also catch `bslib`/`shinydashboard`/`golem` apps.
+ */
+const shinyUsage = /(?:library|require|requireNamespace|loadNamespace)\s*\(\s*['"]?(?:shiny|bslib|shinydashboard|shinyMobile|golem|flexdashboard)\b|\b(?:shinyApp|shinyServer|shinyUI|runApp|fluidPage|fluidRow|navbarPage|bootstrapPage|fillPage|dashboardPage|page_fluid|page_sidebar|page_navbar|pageWithSidebar)\s*\(/;
 
 /**
  * This is a request to process a folder as a project, which will be expanded by the registered {@link FlowrAnalyzerProjectDiscoveryPlugin}s.
@@ -40,6 +67,7 @@ export type RoleBasedFiles = {
 	[FileRole.Description]: FlowrDescriptionFile[];
 	[FileRole.News]:        FlowrNewsFile[];
 	[FileRole.Namespace]:   FlowrNamespaceFile[];
+	[FileRole.Manifest]:    FlowrRProjectFile[];
 	/* currently no special support */
 	[FileRole.Vignette]:    FlowrFileProvider[];
 	[FileRole.Test]:        FlowrFileProvider[];
@@ -129,6 +157,13 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * Get all files that have been considered during dataflow analysis.
 	 */
 	consideredFilesList(): readonly string[];
+	/**
+	 * Classify the {@link ProjectKind} of the project from its files. A {@link ProjectKind.ShinyApp | shiny app}
+	 * is detected first, as apps commonly ship a `DESCRIPTION` too. The finer distinctions rely on the source
+	 * files, which are only known once the dataflow ran; before that a non-package project reports
+	 * {@link ProjectKind.Unknown}. The result is cached and invalidated whenever the files change.
+	 */
+	projectKind(): ProjectKind;
 }
 
 /**
@@ -150,7 +185,9 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private readonly discoveryPlugins: readonly FlowrAnalyzerProjectDiscoveryPlugin[];
 
 	/* files that are part of the analysis, e.g. source files */
-	private byRole: RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+	private byRole:           RoleBasedFiles = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+	/** cached {@link projectKind}, invalidated whenever the files change (added or reset) */
+	private projectKindCache: ProjectKind | undefined = undefined;
 
 	constructor(
 		loadingOrder: FlowrAnalyzerLoadingOrderContext,
@@ -169,6 +206,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		this.consideredFiles.length = 0;
 		this.inlineFiles.length = 0;
 		this.byRole = Object.fromEntries<FlowrFileProvider[]>(Object.values(FileRole).map(k => [k, []])) as RoleBasedFiles;
+		this.projectKindCache = undefined;
 	}
 
 	/**
@@ -176,6 +214,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public addConsideredFile(path: string): void {
 		this.consideredFiles.push(path);
+		this.projectKindCache = undefined;
 	}
 
 	/**
@@ -183,6 +222,85 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	 */
 	public consideredFilesList(): readonly string[] {
 		return this.consideredFiles;
+	}
+
+	public projectKind(): ProjectKind {
+		return this.projectKindCache ??= this.classifyProject();
+	}
+
+	private classifyProject(): ProjectKind {
+		const descriptions = this.getFilesByRole(FileRole.Description);
+		// an explicit `Type: shiny` in the DESCRIPTION settles it without looking at any source
+		if(descriptions.some(d => shinyDescriptionTypes.has(d.type() ?? ''))) {
+			return ProjectKind.ShinyApp;
+		}
+		// the readable entry files by (lower-cased) name, plus every known file name for the coarser checks below
+		const entries = new Map<string, FlowrFileProvider>();
+		const names = new Set<string>();
+		for(const f of this.getAllFiles()) {
+			const name = path.basename(f.path()).toLowerCase();
+			names.add(name);
+			if(shinyEntryFiles.has(name)) {
+				entries.set(name, f);
+			}
+		}
+		for(const p of this.consideredFiles) {
+			const name = path.basename(p).toLowerCase();
+			names.add(name);
+			if(shinyEntryFiles.has(name) && !entries.has(name)) {
+				const f = this.getFileByPath(p);
+				if(f) {
+					entries.set(name, f);
+				}
+			}
+		}
+		if(this.isShinyApp(names, entries)) {
+			return ProjectKind.ShinyApp;
+		}
+		if(descriptions.length > 0) {
+			return ProjectKind.Package;
+		}
+		if(names.size === 0) {
+			return ProjectKind.Unknown;
+		}
+		for(const name of names) {
+			if(notebookExtension.test(name)) {
+				return ProjectKind.Notebook;
+			}
+		}
+		let rSources = 0;
+		for(const name of names) {
+			if(name.endsWith('.r')) {
+				rSources++;
+			}
+		}
+		return rSources <= 1 ? ProjectKind.Script : ProjectKind.Project;
+	}
+
+	/**
+	 * Whether the project is a shiny app: it has the canonical entry files (a single `app.R`, or the `ui.R`+`server.R`
+	 * pair -- a lone `server.R` is not enough) and one of them actually loads or calls the shiny stack. The usage
+	 * check keeps a coincidental `ui.R`/`server.R` pair from being mistaken for an app; only when none of the entry
+	 * files can be read do we fall back to trusting the file names alone.
+	 */
+	private isShinyApp(names: ReadonlySet<string>, entries: ReadonlyMap<string, FlowrFileProvider>): boolean {
+		if(!names.has('app.r') && !(names.has('ui.r') && names.has('server.r'))) {
+			return false;
+		}
+		let couldRead = false;
+		for(const f of entries.values()) {
+			let content: string;
+			try {
+				content = f.content().toString();
+			} catch{
+				continue;
+			}
+			couldRead = true;
+			if(shinyUsage.test(content)) {
+				return true;
+			}
+		}
+		return !couldRead;
 	}
 
 	/**
@@ -247,6 +365,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			}
 		}
 
+		this.projectKindCache = undefined;
 		return f;
 	}
 

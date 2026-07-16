@@ -141,6 +141,13 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.staticsLoaded = true;
 	}
 
+	/** Runs the static plugins once. They fill this context and the project metadata, so both gate their reads on it. */
+	public ensureStaticsLoaded(): void {
+		if(!this.staticsLoaded) {
+			this.resolveStaticDependencies();
+		}
+	}
+
 	/**
 	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
 	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the

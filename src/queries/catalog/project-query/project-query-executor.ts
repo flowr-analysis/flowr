@@ -1,26 +1,23 @@
 import { log } from '../../../util/log';
 import type { ProjectDependencyStats, ProjectQuery, ProjectQueryResult } from './project-query-format';
-import { ProjectKind } from './project-query-format';
 import type { BasicQueryData } from '../../base-query-format';
 import { FileRole } from '../../../project/context/flowr-file';
-import type { FlowrDescriptionFile } from '../../../project/plugins/file-plugins/files/flowr-description-file';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
-import type { ReadOnlyFlowrAnalyzerFilesContext } from '../../../project/context/flowr-analyzer-files-context';
+import type { DeclaredPackages } from '../../../project/context/flowr-analyzer-meta-context';
 import { baseRPackages } from '../../../util/r-base-packages';
-import path from 'path';
 
 /**
- * Collects dependency statistics from the project's `DESCRIPTION` file, cross-referenced with the
+ * Collects dependency statistics from what the project declares, cross-referenced with the
  * loaded package database(s) to report how many dependencies we can cover.
  */
-function collectDependencyStats(desc: FlowrDescriptionFile, deps: ReadOnlyFlowrAnalyzerDependenciesContext, basePackages: ReadonlySet<string>): ProjectDependencyStats {
-	const imports = desc.imports() ?? [];
-	const dependsAll = desc.depends() ?? [];
+function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrAnalyzerDependenciesContext, basePackages: ReadonlySet<string>): ProjectDependencyStats {
+	const imports = declared.imports ?? [];
+	const dependsAll = declared.depends ?? [];
 	const rEntry = dependsAll.find(d => d.name === 'R');
 	const rVersion = rEntry?.derivedVersion?.raw;
 	const depends = dependsAll.filter(d => d.name !== 'R');
-	const suggests = desc.suggests() ?? [];
-	const linkingTo = desc.linkingTo() ?? [];
+	const suggests = declared.suggests ?? [];
+	const linkingTo = declared.linkingTo ?? [];
 
 	const runtime = new Set([...imports, ...depends, ...linkingTo].map(p => p.name));
 
@@ -53,48 +50,6 @@ function collectDependencyStats(desc: FlowrDescriptionFile, deps: ReadOnlyFlowrA
 	};
 }
 
-const notebookExtension = /\.(ipynb|rmd|qmd|rnw)$/;
-
-/**
- * Classifies the {@link ProjectKind} of the given files context.
- *
- * A `DESCRIPTION` file unambiguously marks an R {@link ProjectKind.Package | package} and is available as soon
- * as the project is loaded. The finer distinctions ({@link ProjectKind.ShinyApp | shiny app},
- * {@link ProjectKind.Notebook | notebook}, {@link ProjectKind.Script | script} vs.
- * {@link ProjectKind.Project | multi-file project}) rely on the project's source files, which are only known
- * once the dataflow analysis has run; before that a non-package project reports {@link ProjectKind.Unknown}.
- *
- * This is a pure inspection of the files context and can be used standalone, independently of the project query.
- * @param files - the (read-only) files context of an analyzer to classify
- */
-export function classifyProject(files: ReadOnlyFlowrAnalyzerFilesContext): ProjectKind {
-	if(files.getFilesByRole(FileRole.Description).length > 0) {
-		return ProjectKind.Package;
-	}
-	const names = new Set<string>([
-		...files.getAllFiles().map(f => path.basename(f.path()).toLowerCase()),
-		...files.consideredFilesList().map(p => path.basename(p).toLowerCase())
-	]);
-	if(names.size === 0) {
-		return ProjectKind.Unknown;
-	}
-	if(names.has('app.r') || (names.has('ui.r') && names.has('server.r'))) {
-		return ProjectKind.ShinyApp;
-	}
-	for(const name of names) {
-		if(notebookExtension.test(name)) {
-			return ProjectKind.Notebook;
-		}
-	}
-	let rSources = 0;
-	for(const name of names) {
-		if(name.endsWith('.r')) {
-			rSources++;
-		}
-	}
-	return rSources <= 1 ? ProjectKind.Script : ProjectKind.Project;
-}
-
 /**
  * Executes the given project queries.
  */
@@ -111,24 +66,27 @@ export async function executeProjectQuery({ analyzer }: BasicQueryData, queries:
 
 	const ctx = analyzer.inspectContext();
 	const basePackages = new Set(ctx.config.project.basePackages ?? baseRPackages(ctx.resolvedRVersion));
-	const descFile = ctx.files.getFilesByRole(FileRole.Description);
-	const desc: FlowrDescriptionFile | undefined = descFile[0];
 	const roleCounts: Record<FileRole, number> = {} as Record<FileRole, number>;
 	for(const file of Object.values(FileRole)) {
 		roleCounts[file] = ctx.files.getFilesByRole(file).length;
 	}
+	// whichever plugin read the metadata (DESCRIPTION, rproject.toml, a lockfile) contributed it to the context,
+	// so nothing here has to know which file the project happens to use
+	const declared = ctx.meta.getDeclaredPackages();
+	const hasDeclarations = Object.values(declared).some(g => g !== undefined);
 	return {
 		'.meta': {
 			timing: Date.now() - startTime
 		},
-		name:         desc?.content().get('Package')?.[0] ?? desc?.content()?.get('Title')?.[0],
+		name:         ctx.meta.getProjectName() ?? ctx.meta.getProjectTitle(),
 		files:        Array.from(ctx.files.consideredFilesList()),
-		authors:      desc?.authors(),
-		encoding:     desc?.content().get('Encoding')?.[0],
-		version:      desc?.content().get('Version')?.[0],
-		licenses:     desc?.license(),
+		authors:      ctx.meta.getAuthors(),
+		encoding:     ctx.meta.getEncoding(),
+		version:      ctx.meta.getProjectVersion()?.str,
+		rVersion:     ctx.meta.getRVersion(),
+		licenses:     ctx.meta.getLicenses(),
 		roleCounts:   roleCounts,
-		kind:         classifyProject(ctx.files),
-		dependencies: desc ? collectDependencyStats(desc, ctx.deps, basePackages) : undefined
+		kind:         ctx.projectKind(),
+		dependencies: hasDeclarations ? collectDependencyStats(declared, ctx.deps, basePackages) : undefined
 	};
 }

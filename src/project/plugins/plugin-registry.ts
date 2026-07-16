@@ -12,6 +12,9 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
@@ -41,6 +44,7 @@ export const BuiltInPlugins = [
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
+	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],

@@ -9,10 +9,11 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepWritable, Paths, PathValue } from 'ts-essentials';
+import type { DeepPartial, DeepWritable, Paths, PathValue } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
+import { ProjectKind } from './project/context/project-kind';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
@@ -160,16 +161,28 @@ export interface FlowrConfig extends MergeableRecord {
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
 		 */
 		basePackages?:             string[]
+		/**
+		 * Files a framework loads on its own, without any `source()` call (e.g. `global.R` in a shiny app), in load
+		 * order. Entries are case-insensitive globs (`R/*.R`) matched against the path, a plain name matches any file
+		 * with that name; entries matching nothing are warned about. Usually set per {@link ProjectKind} via
+		 * {@link FlowrConfig.specializeConfig}.
+		 */
+		implicitSources?:          string[]
 	}
+	/**
+	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
+	 * e.g. to give a shiny app its implicit sources. Resolve it with {@link FlowrConfig.forKind}.
+	 */
+	readonly specializeConfig?: Partial<Record<ProjectKind, DeepPartial<FlowrConfig>>>
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
-	readonly engines:        EngineConfig[]
+	readonly engines:           EngineConfig[]
 	/**
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
-	readonly defaultEngine?: EngineConfig['type'];
+	readonly defaultEngine?:    EngineConfig['type'];
 	/** How to resolve constants, constraints, cells, … */
 	readonly solver: {
 		/**
@@ -362,6 +375,7 @@ export const FlowrDefaultPlugins = [
 	'versions:renv',
 	'versions:rv',
 	'loading-order:description',
+	'loading-order:implicit-sources',
 	'meta:description',
 	'meta:rproject',
 	'files:vignette',
@@ -407,6 +421,12 @@ export const FlowrConfig = {
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
+			},
+			/* shiny loads global.R first, then the ui/server pair, and app.R last as it wires them together */
+			specializeConfig: {
+				'shiny-app': {
+					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] }
+				}
 			},
 			engines:       [],
 			defaultEngine: 'tree-sitter',
@@ -472,8 +492,11 @@ export const FlowrConfig = {
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
-			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.')
+			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
+			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.')
 		}).description('Project specific configuration options.'),
+		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object()).optional()
+			.description('Overwrite (parts of) the configuration depending on the project kind flowR detects, e.g. to give a shiny app its implicit sources.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
 				type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
@@ -594,6 +617,15 @@ export const FlowrConfig = {
 			log.error(`Failed to load config: ${(e as Error).message}`);
 			return FlowrConfig.default();
 		}
+	},
+	/**
+	 * Resolves the configuration for the given {@link ProjectKind} by merging the matching {@link FlowrConfig.specializeConfig}
+	 * entry into `config` (arrays are concatenated, see {@link deepMergeObject}). Returns `config` itself if the kind has no
+	 * overwrite, so callers can use this freely.
+	 */
+	forKind(this: void, config: FlowrConfig, kind: ProjectKind): FlowrConfig {
+		const overwrite = config.specializeConfig?.[kind];
+		return overwrite ? deepMergeObject<FlowrConfig>(config, overwrite) : config;
 	},
 	/**
 	 * Gets the configuration for the given engine type from the config.

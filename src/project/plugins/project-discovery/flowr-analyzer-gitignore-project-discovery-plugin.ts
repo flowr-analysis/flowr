@@ -7,14 +7,7 @@ import { isParseRequest } from '../../../r-bridge/retriever';
 import type { FlowrFile } from '../../context/flowr-file';
 import path from 'path';
 import fs from 'fs';
-import type ignore from 'ignore';
-
-/** Lazily loaded on first use so `ignore` is only required when the gitignore plugin actually runs. */
-let ignoreFactory: typeof ignore | undefined;
-function loadIgnore(): typeof ignore {
-	// eslint-disable-next-line @typescript-eslint/no-require-imports -- loaded on demand, see above
-	return ignoreFactory ??= require('ignore') as typeof ignore;
-}
+import { loadIgnore } from '../../../util/glob';
 
 /**
  * Decorator around any {@link FlowrAnalyzerProjectDiscoveryPlugin} that filters discovered files

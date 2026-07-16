@@ -1,6 +1,6 @@
 import type { KnownParser } from '../../r-bridge/parser';
 import { retrieveVersionInformation } from '../../util/version';
-import { defaultSigDbPath, readManifestFile, type SigDbScope } from '../../project/sigdb/manifest';
+import { defaultSigDbPath, readManifestDate, type SigDbScope } from '../../project/sigdb/manifest';
 import { formatter, italic } from '../../util/text/ansi';
 import { pathToFileURL } from 'node:url';
 
@@ -28,7 +28,7 @@ function sigDbSummaryString(): string {
 		}
 		let date: string | undefined;
 		try {
-			date = readManifestFile(file).date;
+			date = readManifestDate(file);
 		} catch{ /* a corrupt/unreadable manifest must not break --version */ }
 		entries.push({ label, file, date });
 	};

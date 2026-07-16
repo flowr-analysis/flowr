@@ -457,19 +457,15 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	const exports = selectExports(getCallables(dependency.namespaceInfo), spec);
 	if(spec.namespaceOnly || isSubsetAttach(spec)){
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
-		let layer = new Environment(envInfo.current).asLibrary(pack, layerType);
-		for(const exp of exports){
-			layer = layer.define(exportDefinition(pack, exp, definedAt));
-		}
+		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
+			.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
 		return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
-	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
-	for(const exp of exports){
-		namespaceEnv = namespaceEnv.define(exportDefinition(pack, exp, definedAt));
-	}
+	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
+		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
 	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
 }
 
@@ -568,16 +564,24 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 		if(alreadyImportedAll.has(importedDependency.name)){
 			continue;
 		}
+		/* collect first and define in one go, as defining one by one copies the (growing) memory every time */
+		const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+		const queued = new Set<string>();
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(Package.functionIdentifier(importedDependency.name, func))){
+			const identifier = Package.functionIdentifier(importedDependency.name, func);
+			if(importsEnv.memory.has(identifier) || queued.has(identifier)){
 				continue;
 			}
-			importsEnv = importsEnv.define({
-				name:      Identifier.make(Package.functionIdentifier(importedDependency.name, func), importsEnv.n),
+			queued.add(identifier);
+			toDefine.push({
+				name:      Identifier.make(identifier, importsEnv.n),
 				type:      ReferenceType.Function,
 				nodeId:    NodeId.fromPkgFn(importedDependency.name, func),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)
 			});
+		}
+		if(toDefine.length > 0){
+			importsEnv = importsEnv.defineAll(toDefine);
 		}
 		if(imp[1] === 'all'){
 			alreadyImportedAll.add(importedDependency.name);

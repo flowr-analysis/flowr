@@ -191,10 +191,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
+	const status = queue.status();
 	if(ctx.config.solver.slicer?.autoExtend) {
-		return { ...queue.status(), slicedFor: ids, result: extendSlices(queue.status().result, idMap) };
+		return { ...status, slicedFor: ids, result: extendSlices(status.result, idMap) };
 	} else {
-		return { ...queue.status(), slicedFor: ids };
+		return { ...status, slicedFor: ids };
 	}
 }
 

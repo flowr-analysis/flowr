@@ -60,11 +60,34 @@ export function writeManifest(file: string, manifest: SigDbManifest): void {
 	}
 }
 
+/** how cheap a file is to read (lower is better); one we cannot decompress here sorts last */
+function codecRank(file: string): number {
+	const ext = compressedExtOf(file);
+	if(ext === undefined) {
+		return -1;
+	}
+	const preferred = readableExtsPreferred().indexOf(ext);
+	return preferred < 0 ? Number.MAX_SAFE_INTEGER : preferred;
+}
+
 /** read a manifest file (transparently decompressing a `.br`/`.zst`/`.gz`) */
 export function readManifestFile(manifestFile: string): SigDbManifest {
+	return JSON.parse(readManifestText(manifestFile)) as SigDbManifest;
+}
+
+function readManifestText(manifestFile: string): string {
 	const raw = fs.readFileSync(manifestFile);
-	const text = compressedExtOf(manifestFile) ? decompressSyncFor(manifestFile, raw).toString('utf8') : raw.toString('utf8');
-	return JSON.parse(text) as SigDbManifest;
+	return compressedExtOf(manifestFile) ? decompressSyncFor(manifestFile, raw).toString('utf8') : raw.toString('utf8');
+}
+
+/**
+ * The `date` of a manifest without parsing the rest of it, whose `meta` is megabytes of packages.
+ * Falls back to a full parse if the date is not where we expect it.
+ */
+export function readManifestDate(manifestFile: string): string | undefined {
+	const text = readManifestText(manifestFile);
+	return /"date"\s*:\s*"([^"]*)"/.exec(text.slice(0, 4096))?.[1]
+		?? (JSON.parse(text) as SigDbManifest).date;
 }
 
 /** breadth/temporal scope of a bundled sigdb: base R only, `current` (latest CRAN + base R), or the `full` history */
@@ -137,6 +160,17 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 	}
 	const manifests = new Map<string, string>();    // `<name>.manifest.json` (ignoring compression ext) -> first-found path
 	const standalones = new Map<string, string>();   // `<name>.sigs.ndjson` (ignoring compression ext) -> first-found path
+	const foundIn = new Map<string, string>();       // where a key was first found, to only compare codecs within one directory
+	/** keeps the first location, but picks the cheapest readable codec among the copies that location offers */
+	const keep = (into: Map<string, string>, key: string, file: string, dir: string): void => {
+		const previous = into.get(key);
+		if(previous === undefined) {
+			into.set(key, file);
+			foundIn.set(key, dir);
+		} else if(foundIn.get(key) === dir && codecRank(file) < codecRank(previous)) {
+			into.set(key, file);
+		}
+	};
 	for(const root of sigDbSearchRoots(searchRoots)) {
 		for(let dir = root, i = 0; i < 10; i++) {
 			for(const sub of SigDbSubDirs) {
@@ -149,11 +183,9 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 				for(const file of entries) {
 					const full = path.join(dir, sub, file);
 					if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
-						const key = stripCompressedExt(file);
-						manifests.set(key, manifests.get(key) ?? full);
+						keep(manifests, stripCompressedExt(file), full, path.join(dir, sub));
 					} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
-						const key = stripCompressedExt(file);
-						standalones.set(key, standalones.get(key) ?? full);
+						keep(standalones, stripCompressedExt(file), full, path.join(dir, sub));
 					}
 				}
 			}

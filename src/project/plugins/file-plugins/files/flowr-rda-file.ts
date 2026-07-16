@@ -2392,16 +2392,6 @@ export class RDAParser{
 					throw new Error('cannot unserialize this ALTREP object');
 			}
 		}
-		//
-		// const rtype = ALTREP_CLASS_BASE_TYPE(clss);
-		// if(type !== rtype) {
-		// console.warn(`serialized class '${(cSym as RObjectData).name}' from package
-		// '${(pSym as RObjectData).name}' has type ${SexpType[type]} registered class has type ${SexpType[rtype]}`);
-		// }
-		//
-		// const altrep_methods_t = CLASS_METHODS_TABLE(c);
-		// const val = altrep_methods_t.UnserializeEX(clss, state, attr, objf, levs);
-		// return val;
 		return {} as RObjectData;
 	}
 

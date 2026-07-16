@@ -5,8 +5,7 @@ import { randomString } from '../../../../../src/util/random';
  */
 export const validStringSymbols = [
 	Array.from({ length: 223 }, (_, i) => String.fromCharCode(32 + i)),
-	// eslint-disable-next-line no-useless-escape
-	[ '\n', '\t', '\v', '\b', '\r', '\f', '\a', '\\', '\'', '\"', ' ' ],
+	[ '\n', '\t', '\v', '\b', '\r', '\f', '\x07', '\\', '\'', '"', ' ' ],
 	[ '😀', '💩' ]
 ];
 

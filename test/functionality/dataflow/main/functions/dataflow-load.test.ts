@@ -13,6 +13,7 @@ import os from 'os';
 import { FlowrConfig } from '../../../../../src/config';
 import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { SexpType } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
 
 describe('load real-world', withTreeSitter(parser => {
 	const dir = 'test/functionality/project/plugin/load-pipeline/zenodo/files';
@@ -40,7 +41,7 @@ describe('load real-world', withTreeSitter(parser => {
 				const syntheticId = `3:loaded:${varName}`;
 				const cds = [{ id: '3', when: true }];
 
-				if(varType === SexpToRType[3] || varType === SexpToRType[7] || varType === SexpToRType[8]) {
+				if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp] || varType === SexpToRType[SexpType.BuiltInSxp]) {
 					const fdefId = `${syntheticId}:fdef`;
 					graph = graph.defineFunction(fdefId, [], {
 						entryPoint:        fdefId,
@@ -112,7 +113,7 @@ describe('load real-world', withTreeSitter(parser => {
 			const varsAndTypesFromShell = getVarsAndTypesFromShell(file, rShell);
 			rShell.close();
 
-			const firstClosure = [...varsAndTypesFromShell.entries()].find(([, type]) => type === SexpToRType[3]);
+			const firstClosure = [...varsAndTypesFromShell.entries()].find(([, type]) => type === SexpToRType[SexpType.CloSxp]);
 			if(!firstClosure) {
 				continue;
 			}
@@ -199,7 +200,7 @@ describe('load random', withTreeSitter(parser => {
 		for(const [varName, varType] of varsAndTypes) {
 			const syntheticId = `3:loaded:${varName}`;
 			const cds = [{ id: '3', when: true }];
-			if(varType === SexpToRType[3] || varType === SexpToRType[7]  || varType === SexpToRType[8]) {
+			if(varType === SexpToRType[SexpType.CloSxp] || varType === SexpToRType[SexpType.SpecialSxp]  || varType === SexpToRType[SexpType.BuiltInSxp]) {
 				const fdefId = `${syntheticId}:fdef`;
 				graph = graph.defineFunction(fdefId, [], {
 					entryPoint: fdefId, graph: new Set(), out: [], in: [], unknownReferences: [], hooks: [], environment: defaultEnv()
@@ -296,7 +297,7 @@ describe('load random', withTreeSitter(parser => {
 			expect([...varsAndTypes.keys()].sort()).toEqual(vars.sort());
 		});
 
-		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === SexpToRType[3]);
+		const firstClosure = [...varsAndTypes.entries()].find(([, type]) => type === SexpToRType[SexpType.CloSxp]);
 		if(firstClosure) {
 			const [closureName] = firstClosure;
 

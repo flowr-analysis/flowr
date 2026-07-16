@@ -21,6 +21,7 @@ describe('rda-files', () => {
 			'FALSE' // XDR
 		];
 		const versions = [
+			// version 1 is not supported yet
 			// '1',
 			'2',
 			'3'
@@ -28,6 +29,7 @@ describe('rda-files', () => {
 		const compressions = [
 			'"gzip"',
 			'"bzip2"',
+			// xz decompression is not supported yet
 			// '"xz"',
 			'FALSE'
 		];

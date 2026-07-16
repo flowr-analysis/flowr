@@ -29,12 +29,12 @@ export class FlowrRDAFile extends FlowrFile<RObject[]> {
 
 	/**
 	 * Loads and parses the content of the wrapped file as an RDA structure.
-	 * @see {@link parseRDA} for details on the parsing logic.
+	 * @see {@link parse} for details on the parsing logic.
 	 * @returns An array of top-level {@link RObject}s or `[{}]` when the
 	 *          file contains no R objects.
 	 */
 	protected loadContent(): RObject[] {
-		return new RDAParser(this.wrapped, this.shortcut).parseRDA() ?? [{}];
+		return new RDAParser(this.wrapped, this.shortcut).parse() ?? [{}];
 	}
 
 	/**
@@ -250,7 +250,7 @@ export class RDAParser{
 	 * @param shortcut - When `true`, only names and types are collected.
 	 * @returns List of found {@link RObjectData} or `null` if the file is empty.
 	 */
-	parseRDA(): RObjectData[] | null {
+	parse(): RObjectData[] | null {
 		const fileContent = fs.readFileSync(this.file.path());
 		const compressionType = this.detectCompression(fileContent);
 		this.buffer = this.decompress(fileContent, compressionType);

@@ -96,7 +96,7 @@ export function processLoadCall<OtherInfo>(
 
 			let variables: RObjectData[] | null;
 			try {
-				variables = new RDAParser(new FlowrTextFile(filepath), true).parseRDA();
+				variables = new RDAParser(new FlowrTextFile(filepath), true).parse();
 			} catch(e) {
 				expensiveTrace(dataflowLogger, () => `Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
 				continue;

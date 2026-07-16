@@ -60,7 +60,7 @@ describe('rda-files', () => {
 				expect([...varsAndTypesFromShell.keys()].sort())
 					.toEqual(vars.sort());
 
-				const result2 = new RDAParser(new FlowrTextFile(file)).parseRDA();
+				const result2 = new RDAParser(new FlowrTextFile(file)).parse();
 
 				expect(result2).toBeDefined();
 
@@ -96,7 +96,7 @@ describe('rda-files', () => {
 					return;
 				}
 
-				const result2 = new RDAParser(new FlowrTextFile(file), true).parseRDA();
+				const result2 = new RDAParser(new FlowrTextFile(file)).parse();
 
 				expect(result2).toBeDefined();
 

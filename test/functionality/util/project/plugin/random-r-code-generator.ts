@@ -4,23 +4,7 @@ import { randomString } from '../../../../../src/util/random';
  * Pools of symbols used by {@link RandomRCodeGenerator.generateString} to build random R strings.
  */
 export const validStringSymbols = [
-	[
-		'a', 'b', 'c', 'x', 'y', 'z',
-		'A', 'B', 'C', 'X', 'Y', 'Z',
-		'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-
-		'.', ',', ';', ':', '!', '?',
-		'-', '_', '+', '*', '/', '=',
-
-		'(', ')', '[', ']', '{', '}',
-
-		'@', '€', '#', '§', '$', '%', '&', '^', '|', '`', '~', '<', '>', '°',
-
-		'ä', 'ö', 'ü', 'ß',
-		'Ä', 'Ö', 'Ü',
-		'é', 'è', 'ê',
-		'í', 'ì', 'î',
-	],
+	Array.from({ length: 223 }, (_, i) => String.fromCharCode(32 + i)),
 	// eslint-disable-next-line no-useless-escape
 	[ '\n', '\t', '\v', '\b', '\r', '\f', '\a', '\\', '\'', '\"', ' ' ],
 	[ '😀', '💩' ]
@@ -30,30 +14,52 @@ export const validStringSymbols = [
  * Kinds of R objects {@link RandomRCodeGenerator} can 'generate'.
  */
 export enum RObjectType {
-	Literal         = 'literal',
-	Vector          = 'vector',
-	List            = 'list',
-	Map             = 'map',
-	Matrix          = 'matrix',
-	DataFrame       = 'dataframe',
-	Environment     = 'environment',
-	Function        = 'function',
-	PairList        = 'pairlist',
-	Call            = 'call',
-	Symbol          = 'symbol',
-	Language        = 'language',
-	Expression      = 'expression',
+	Literal           = 'literal',
+	Vector            = 'vector',
+	List              = 'list',
+	Map               = 'map',
+	Matrix            = 'matrix',
+	DataFrame         = 'dataframe',
+	Environment       = 'environment',
+	Function          = 'function',
+	PairList          = 'pairlist',
+	Call              = 'call',
+	Symbol            = 'symbol',
+	Language          = 'language',
+	Expression        = 'expression',
 	AnonymousFunction = 'anonymous-function',
-	Primitive       = 'primitive',
-	Promise         = 'promise',
-	Factor          = 'factor',
-	S4              = 's4',
+	Primitive         = 'primitive',
+	Promise           = 'promise',
+	Factor            = 'factor',
+	S4                = 's4',
+}
+
+/**
+ * The result of generating a single R object.
+ */
+export interface GeneratedRObject {
+	readonly value: string;
+	readonly type:  string;
+	readonly len:   number;
 }
 
 /**
  * {@link RObjectType}s for which generating an attribute is not possible.
  */
 const typesWithoutAttributes = new Set(['symbol', 'promise']);
+
+/**
+ * Constant pool of fixed R object definitions used by {@link RandomRCodeGenerator}.
+ */
+const FixedRObjects = {
+	promise:           { value: 'delayedAssign("x", 1L)',                            type: 'promise',    len: 1 },
+	primitive:         { value: '.Primitive("sqrt")',                                type: 'primitive',  len: 1 },
+	anonymousFunction: { value: '(function(x, y){ z <- x^2 + y^2; x+y+z })(0:7, 1)', type: 'function',   len: 1 },
+	expression:        { value: 'expression(1 + 0:9)',                               type: 'expression', len: 1 },
+	language:          { value: 'quote(1+2)',                                        type: 'language',   len: 1 },
+	symbol:            { value: 'as.name("arrg")',                                   type: 'symbol',     len: 1 },
+	call:              { value: 'call("round",10.5)',                                type: 'call',       len: 1 },
+} as const;
 
 /**
  * Generates random R code (literals, vectors, lists, functions, environments, S4 objects, ...).
@@ -126,7 +132,7 @@ export class RandomRCodeGenerator {
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
 	 * @returns The generated R expression (`value`), its R type name (`type`), and its length/size (`len`).
 	 */
-	generateObjectOfType(type: RObjectType, nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateObjectOfType(type: RObjectType, nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		switch(type) {
 			case RObjectType.Literal:           return this.generateLiteral();
 			case RObjectType.Vector:            return this.generateVector(nestingLevel + 1, maxNestingLevel);
@@ -137,13 +143,13 @@ export class RandomRCodeGenerator {
 			case RObjectType.Environment:       return this.generateEnvironmentExpr();
 			case RObjectType.Function:          return this.generateFunction(nestingLevel + 1, maxNestingLevel);
 			case RObjectType.PairList:          return this.generatePairList(nestingLevel + 1, maxNestingLevel);
-			case RObjectType.Call:              return this.generateCall();
-			case RObjectType.Symbol:            return this.generateSymbol();
-			case RObjectType.Language:          return this.generateLanguage();
-			case RObjectType.Expression:        return this.generateExpression();
-			case RObjectType.AnonymousFunction: return this.generateAnonymousFunction();
-			case RObjectType.Primitive:         return this.generatePrimitive();
-			case RObjectType.Promise:           return this.generatePromise();
+			case RObjectType.Call:              return FixedRObjects.call;
+			case RObjectType.Symbol:            return FixedRObjects.symbol;
+			case RObjectType.Language:          return FixedRObjects.language;
+			case RObjectType.Expression:        return FixedRObjects.expression;
+			case RObjectType.AnonymousFunction: return FixedRObjects.anonymousFunction;
+			case RObjectType.Primitive:         return FixedRObjects.primitive;
+			case RObjectType.Promise:           return FixedRObjects.promise;
 			case RObjectType.Factor:            return this.generateFactor(nestingLevel + 1, maxNestingLevel);
 			case RObjectType.S4:                return { value: this.generateS4(`tmp_${Date.now()}`), type: 's4', len: 1 };
 		}
@@ -190,10 +196,9 @@ export class RandomRCodeGenerator {
 	 * Generates a random object, picking its {@link RObjectType} uniformly at random.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type of the object (`type`),
-	 * and the length of the object (`len`).
+	 * @returns The generated R object.
 	 */
-	generateObject(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateObject(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		if(nestingLevel >= maxNestingLevel){
 			return this.generateLiteral();
 		}
@@ -207,9 +212,9 @@ export class RandomRCodeGenerator {
 	 * Generates a `factor(...)` wrapping a random vector.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'factor' (`type`), and the length of the vector (`len`).
+	 * @returns The generated R object.
 	 */
-	generateFactor(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number }  {
+	generateFactor(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const vector = this.generateVector(nestingLevel, maxNestingLevel);
 		return { value: `factor(${vector.value})`, type: 'factor', len: vector.len };
 	}
@@ -225,140 +230,83 @@ export class RandomRCodeGenerator {
 	}
 
 	/**
-	 * Generates a set promise.
-	 * @returns The generated R source code (`value`), the type 'promise' (`type`) and a length of 1 (`len`).
-	 */
-	generatePromise(): { value: string, type: string, len: number } {
-		return { value: 'delayedAssign("x", 1L)', type: 'promise', len: 1 };
-	}
-
-	/**
-	 * Generates a set primitive.
-	 * @returns The generated R source code (`value`), the type 'primitive' (`type`) and a length of 1 (`len`).
-	 */
-	generatePrimitive(): { value: string, type: string, len: number }  {
-		return { value: '.Primitive("sqrt")', type: 'primitive', len: 1 };
-	}
-
-	/**
-	 * Generates a set anonymous function.
-	 * @returns The generated R source code (`value`), the type 'function' (`type`) and a length of 1 (`len`).
-	 */
-
-	generateAnonymousFunction(): { value: string, type: string, len: number }  {
-		return { value: '(function(x, y){ z <- x^2 + y^2; x+y+z })(0:7, 1)', type: 'function', len: 1 };
-	}
-
-	/**
-	 * Generates a set expression.
-	 * @returns The generated R source code (`value`), the type 'expression' (`type`) and a length of 1 (`len`).
-	 */
-	generateExpression(): { value: string, type: string, len: number } {
-		return { value: 'expression(1 + 0:9)', type: 'expression', len: 1 };
-	}
-
-	/**
-	 * Generates a set language object.
-	 * @returns The generated R source code (`value`), the type 'language' (`type`) and a length of 1 (`len`).
-	 */
-	generateLanguage(): { value: string, type: string, len: number } {
-		return { value: 'quote(1+2)', type: 'language', len: 1 };
-	}
-
-	/**
-	 * Generates a set symbol object.
-	 * @returns The generated R source code (`value`), the type 'symbol' (`type`) and a length of 1 (`len`).
-	 */
-	generateSymbol(): { value: string, type: string, len: number } {
-		return { value: 'as.name("arrg")', type: 'symbol', len: 1 };
-	}
-
-	/**
-	 * Generates a set call object.
-	 * @returns The generated R source code (`value`), the type 'call' (`type`) and a length of 1 (`len`).
-	 */
-	generateCall(): { value: string, type: string, len: number } {
-		return { value: 'call("round",10.5)', type: 'call', len: 1 };
-	}
-
-	/**
 	 * Generates a pairlist.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'pairlist' (`type`) and a length of the pairlist (`len`).
+	 * @returns The generated R object.
 	 */
-	generatePairList(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number }  {
+	generatePairList(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
 		const elements = Array.from({ length: len }, () =>
 			this.generateObject(nestingLevel + 1, maxNestingLevel).value
 		);
-		return { value: `pairlist(${elements.join(', ')})`, type: 'pairlist', len: len };
+		return { value: `pairlist(${elements.join(', ')})`, type: 'pairlist', len };
 	}
 
 	/**
 	 * Generates a vector.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'vector' (`type`) and the length of the vector (`len`).
+	 * @returns The generated R object.
 	 */
-	generateVector(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateVector(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
 		const elements = Array.from({ length: len }, () =>
 			this.generateObject(nestingLevel + 1, maxNestingLevel).value
 		);
-		return { value: `c(${elements.join(', ')})`, type: 'vector', len: len };
+		return { value: `c(${elements.join(', ')})`, type: 'vector', len };
 	}
 
 	/**
-	 * Generates a List.
+	 * Generates a list.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
 	 * @param length          - (optional) Size of the generated list.
-	 * @returns The generated R source code (`value`), the type 'list' (`type`) and the length of the list (`len`)
+	 * @returns The generated R object.
 	 */
-	generateList(nestingLevel: number, maxNestingLevel: number, length?: number): { value: string, type: string, len: number } {
-		const len = length || this.rnd.int(10);
+	generateList(nestingLevel: number, maxNestingLevel: number, length?: number): GeneratedRObject {
+		const len = length ?? this.rnd.int(10);
 		const elements = Array.from({ length: len }, () =>
 			this.generateObject(nestingLevel + 1, maxNestingLevel).value
 		);
-		return { value: `list(${elements.join(', ')})`, type: 'list', len: len };
+		return { value: `list(${elements.join(', ')})`, type: 'list', len };
 	}
 
 	/**
-	 * Generates a Map.
+	 * Generates a map (named list).
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'map' (`type`) and a length of 1 (`len`).
+	 * @returns The generated R object.
 	 */
-	generateMap(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateMap(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const len = this.rnd.int(10);
 		const elements = Array.from({ length: len }, (_, i) => {
 			const key = `key_${i}`;
-			const { value, type: _type } = this.generateObject(nestingLevel + 1, maxNestingLevel);
+			const { value } = this.generateObject(nestingLevel + 1, maxNestingLevel);
 			return `${key} = ${value}`;
 		});
-		return { value: `list(${elements.join(', ')})`, type: 'map', len: len };
+		return { value: `list(${elements.join(', ')})`, type: 'map', len };
 	}
 
 	/**
-	 * Generates a Matrix.
+	 * Generates a matrix.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'matrix' (`type`) and the number of elements in it (`len`).
+	 * @returns The generated R object.
 	 */
-	generateMatrix(maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateMatrix(maxNestingLevel: number): GeneratedRObject {
 		const rows = this.rnd.int(3) + 1;
 		const cols = this.rnd.int(3) + 1;
 		const len = rows * cols;
-		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel, rows);
+		const elements = this.generateList(maxNestingLevel - 1, maxNestingLevel, len);
 		const byRow = this.rnd.pick(['TRUE', 'FALSE']);
 		return { value: `matrix(c(${elements.value}), nrow = ${rows}, ncol = ${cols}, byrow = ${byRow})`, type: 'matrix', len };
 	}
 
 	/**
 	 * Generates a data frame.
-	 * @returns The generated R source code (`value`), the type 'dataframe' (`type`) and the number of columns (`len`).
+	 * @returns The generated R object.
 	 */
-	generateDataFrame(): { value: string, type: string, len: number } {
+	generateDataFrame(): GeneratedRObject {
 		const nRows = this.rnd.int(10);
 		const nCols = this.rnd.int(10);
 		const cols = Array.from({ length: nCols }, (_, i) => {
@@ -371,9 +319,9 @@ export class RandomRCodeGenerator {
 
 	/**
 	 * Generates an environment expression.
-	 * @returns The generated R source code (`value`), the type 'environment' (`type`) and a length of 1 (`len`).
+	 * @returns The generated R object.
 	 */
-	generateEnvironmentExpr(): { value: string, type: string, len: number } {
+	generateEnvironmentExpr(): GeneratedRObject {
 		const value = this.rnd.pick([
 			'new.env()',
 			'new.env(parent = emptyenv())',
@@ -381,17 +329,16 @@ export class RandomRCodeGenerator {
 			'baseenv()',
 			'emptyenv()',
 		]);
-		return { value: value, type: 'environment', len: 1 };
+		return { value, type: 'environment', len: 1 };
 	}
 
 	/**
 	 * Generates a function.
-	 * The function is filled with random R objects.
 	 * @param nestingLevel    - Current recursion depth.
 	 * @param maxNestingLevel - Maximum recursion depth allowed.
-	 * @returns The generated R source code (`value`), the type 'function' (`type`) and the length of the body (`len`).
+	 * @returns The generated R object.
 	 */
-	generateFunction(nestingLevel: number, maxNestingLevel: number): { value: string, type: string, len: number } {
+	generateFunction(nestingLevel: number, maxNestingLevel: number): GeneratedRObject {
 		const args = Array.from({ length: this.rnd.int(3) }, (_, i) => `arg${i}`).join(', ');
 		const body = this.generateObject(nestingLevel + 1, maxNestingLevel);
 		return { value: `function(${args}) { ${body.value} }`, type: 'function', len: body.len };
@@ -400,11 +347,11 @@ export class RandomRCodeGenerator {
 	/**
 	 * Generates a single literal value of the given primitive R type.
 	 * @param type - The primitive R type name to generate a literal for.
-	 * @returns The generated R source code (`value`), the object's type (`type`) and the length of the object (`len`).
+	 * @returns The generated R object.
 	 */
-	generateTypedLiteral(type: string): { value: string, type: string, len: number } {
+	generateTypedLiteral(type: string): GeneratedRObject {
 		switch(type) {
-			case 'integer':   {
+			case 'integer': {
 				const obj = this.rnd.int(1000);
 				return { value: `${obj}L`, type: 'integer', len: Math.ceil(Math.log10(obj + 1)) };
 			}
@@ -418,11 +365,11 @@ export class RandomRCodeGenerator {
 	}
 
 	/**
-	 * Generates a string.
-	 * Uses {@link validStringSymbols}
-	 * @returns The generated R source code (`value`), the type 'string' (`type`) and the length of the string (`len`).
+	 * Generates a random string literal.
+	 * Uses {@link validStringSymbols}.
+	 * @returns The generated R object.
 	 */
-	generateString(): { value: string, type: string, len: number } {
+	generateString(): GeneratedRObject {
 		const len = this.rnd.int(50);
 
 		const weights = [70, 20, 10];
@@ -453,9 +400,9 @@ export class RandomRCodeGenerator {
 
 	/**
 	 * Generates a random literal.
-	 * @returns The generated R source code (`value`), the object's type (`type`) and the length of the object (`len`).
+	 * @returns The generated R object.
 	 */
-	generateLiteral(): { value: string, type: string, len: number } {
+	generateLiteral(): GeneratedRObject {
 		return this.rnd.pick([
 			() => ({ value: `${this.rnd.pick(['NA_integer_', 'NA_real_', 'NA_complex_', 'NA_character_', 'Inf', '-Inf', 'NaN'])}`, type: 'NaTypes', len: 1 }),
 			() => this.generateTypedLiteral('logical'),
@@ -468,10 +415,10 @@ export class RandomRCodeGenerator {
 	}
 
 	/**
-	 * Generates a double.
-	 * @returns The generated R source code (`value`), the type 'double' (`type`) and the length of the double (`len`).
+	 * Generates a random double literal.
+	 * @returns The generated R object.
 	 */
-	generateDouble(): { value: string, type: string, len: number } {
+	generateDouble(): GeneratedRObject {
 		return this.rnd.pick([
 			() => {
 				const value = (this.rnd.int(10000) / 100 - 50).toFixed(this.rnd.int(10));

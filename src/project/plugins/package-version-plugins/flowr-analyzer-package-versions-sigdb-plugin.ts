@@ -482,11 +482,20 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return undefined;
 	}
 
-	/** the versions the source can answer for a package (dated releases, base-R core releases, and the latest), ascending */
+	/**
+	 * The versions the source can answer for a package (dated releases, base-R core releases, and the latest),
+	 * ascending. Versions that differ in writing but not in order (`1.2` and `1.2.0`) compare equal, so it uses the release
+	 * dates (if known)
+	 */
 	private availableVersions(src: PackageSignatureSource, pkg: string): string[] {
 		const set = new Set<string>();
+		const released = new Map<string, number>();
 		for(const r of src.releaseDates(pkg)) {
 			set.add(r.version.str);
+			const at = r.date.getTime();
+			if(!Number.isNaN(at)) {
+				released.set(r.version.str, at);
+			}
 		}
 		for(const v of src.coreVersions(pkg) ?? []) {
 			set.add(v.str);
@@ -495,7 +504,15 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		if(latest) {
 			set.add(latest.str);
 		}
-		return [...set].sort((a, b) => RVersion.compare(a, b));
+		return [...set].sort((a, b) => {
+			const byVersion = RVersion.compare(a, b);
+			if(byVersion !== 0) {
+				return byVersion;
+			}
+			const da = released.get(a);
+			const db = released.get(b);
+			return da !== undefined && db !== undefined ? da - db : 0;
+		});
 	}
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */

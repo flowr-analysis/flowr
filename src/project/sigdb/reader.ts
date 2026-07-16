@@ -9,7 +9,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { RVersion } from '../../util/r-version';
 import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDb, type SigDbContent, type SigDbPkgMeta } from './schema';
-import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './version';
+import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
 import { tupleToBlob, decodeFunction, decodeDependencies, deriveLibraryExports, versionFnIndices, type DecodedFunction, type ResolvedDependency } from './decode';
 import { isCompressed, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';

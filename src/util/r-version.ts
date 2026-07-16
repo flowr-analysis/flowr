@@ -27,8 +27,15 @@ function normalizeVersion(version: string): string {
 		comparator = comparatorMatch[1].replace('==', '=');
 		version = version.slice(comparatorMatch[1].length).trim();
 	}
-	const [mainVersion, ...preReleaseParts] = version.split('-');
-	const mainVersionParts = mainVersion.split('.');
+	// R separates version components by `.` or `-` alike (`7.3-65` is `7.3.65`, and above `7.3.0`), so a numeric
+	// part is a component wherever it stands; only a non-numeric tail is a SemVer pre-release
+	const parts = version.split(/[.-]/).filter(p => p.length > 0);
+	let numeric = 0;
+	while(numeric < parts.length && /^\d+$/.test(parts[numeric])) {
+		numeric++;
+	}
+	const mainVersionParts = parts.slice(0, numeric);
+	const preReleaseParts = parts.slice(numeric);
 	if(mainVersionParts.length > 3) {
 		const newPreReleasePart = mainVersionParts.splice(3).join('.');
 		preReleaseParts.unshift(newPreReleasePart);

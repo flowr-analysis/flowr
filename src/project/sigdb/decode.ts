@@ -7,7 +7,7 @@ import {
 	DefaultCranBase, FnProp, FnPropNames, ParamFlag,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
 } from './schema';
-import { resolveVersion } from './version';
+import { resolveVersion } from './sigdb-version';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {

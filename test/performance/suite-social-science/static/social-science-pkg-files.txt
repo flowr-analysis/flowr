@@ -1,5 +1,6 @@
 0-Journal_of_Statistical_Software_Output.csv-output/1/R replication code.R
 0-Journal_of_Statistical_Software_Output.csv-output/10/R replication code.R
+0-Journal_of_Statistical_Software_Output.csv-output/11/v20i09.R: R example code from the paper.R
 0-Journal_of_Statistical_Software_Output.csv-output/12/R example code from the paper.R
 0-Journal_of_Statistical_Software_Output.csv-output/13/R replication code.R
 0-Journal_of_Statistical_Software_Output.csv-output/14/R example code from the paper.R
@@ -63,6 +64,8 @@
 1-Zenodo_Output.csv-output/931/secsse-withClips.R
 1-Zenodo_Output.csv-output/932/phylogenetic_contrast_clean.R
 1-Zenodo_Output.csv-output/994/ad.dyn_public_spite.R
+2-Figshare_Output.csv-output/12/Appendix B Hydration Script R.R
+2-Figshare_Output.csv-output/13/Appendix B - Hydration Script.R
 2-Figshare_Output.csv-output/31/Code.R
 2-Figshare_Output.csv-output/39/GA_statewide.R
 2-Figshare_Output.csv-output/45/R analysis.R

@@ -12,6 +12,9 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
@@ -23,6 +26,8 @@ import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-
 import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
 import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
+import { FlowrAnalyzerRProjectFilePlugin } from './file-plugins/flowr-analyzer-rproject-file-plugin';
+import { FlowrAnalyzerMetaRProjectFilePlugin } from './package-version-plugins/flowr-analyzer-meta-rproject-file-plugin';
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
@@ -39,7 +44,9 @@ export const BuiltInPlugins = [
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
+	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
+	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
 	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
 	['files:inst', FlowrAnalyzerMetaInstFilesPlugin],
@@ -51,6 +58,7 @@ export const BuiltInPlugins = [
 	['file:news', FlowrAnalyzerNewsFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
+	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 

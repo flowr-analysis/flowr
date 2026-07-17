@@ -1,6 +1,7 @@
 import { type MergeableRecord,
 	deepMergeObject,
-	deepClonePreserveUnclonable
+	deepClonePreserveUnclonable,
+	isPlainObject
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -9,10 +10,11 @@ import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
 import type { KnownParser } from './r-bridge/parser';
-import type { DeepWritable, Paths, PathValue } from 'ts-essentials';
+import type { DeepPartial, DeepWritable, Paths, PathValue } from 'ts-essentials';
 import type { DataflowProcessors } from './dataflow/processor';
 import type { ParentInformation } from './r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { FlowrAnalyzerContext } from './project/context/flowr-analyzer-context';
+import { ProjectKind } from './project/context/project-kind';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
@@ -109,6 +111,8 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
+	/** Assume a sourced file is always there, making what it defines certain instead of conditional on the `source` call. */
+	readonly assumeFilesExist?:     boolean
 }
 
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
@@ -146,13 +150,17 @@ export interface FlowrConfig extends MergeableRecord {
 	/** Configuration options for the REPL */
 	readonly repl: {
 		/** Whether to show quick stats in the REPL after each evaluation */
-		quickStats:      boolean
+		quickStats:           boolean
 		/** This instruments the dataflow processors to count how often each processor is called */
-		dfProcessorHeat: boolean;
+		dfProcessorHeat:      boolean;
 		/** Whether to show dim inline hints (e.g. `:help`) on the empty prompt; automatically disabled on non-interactive terminals */
-		hints:           boolean;
+		hints:                boolean;
 		/** Plugins to load in REPL mode */
-		plugins:         (ConfigPlugin<string> | 'flowr:default')[]
+		plugins:              (ConfigPlugin<string> | 'flowr:default')[]
+		/** Automatically use the file protocol for inputs that look like paths (default `true`) */
+		autoUseFileProtocol?: boolean
+		/** Whether `:query` closes with the line stating how long the queries took (default `true`, `:query*` never prints it) */
+		queryStats?:          boolean
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -162,16 +170,28 @@ export interface FlowrConfig extends MergeableRecord {
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
 		 */
 		basePackages?:             string[]
+		/**
+		 * Files a framework loads on its own, without any `source()` call (e.g. `global.R` in a shiny app), in load
+		 * order. Entries are case-insensitive globs (`R/*.R`) matched against the path, a plain name matches any file
+		 * with that name; entries matching nothing are warned about. Usually set per {@link ProjectKind} via
+		 * {@link FlowrConfig.specializeConfig}.
+		 */
+		implicitSources?:          string[]
 	}
+	/**
+	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
+	 * e.g. to give a shiny app its implicit sources. Resolve it with {@link FlowrConfig.forKind}.
+	 */
+	readonly specializeConfig?: Partial<Record<ProjectKind, DeepPartial<FlowrConfig>>>
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
 	 */
-	readonly engines:        EngineConfig[]
+	readonly engines:           EngineConfig[]
 	/**
 	 * The default engine to use for interacting with R code. If this is undefined, an arbitrary engine from {@link engines} will be used.
 	 */
-	readonly defaultEngine?: EngineConfig['type'];
+	readonly defaultEngine?:    EngineConfig['type'];
 	/** How to resolve constants, constraints, cells, … */
 	readonly solver: {
 		/**
@@ -192,7 +212,7 @@ export interface FlowrConfig extends MergeableRecord {
 		readonly sigdb: {
 			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
-			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
+			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean
 			/** Parse the database up front rather than on the first package load (default `false`, ignored if disabled). */
 			readonly eagerlyLoad:                 boolean
@@ -364,7 +384,9 @@ export const FlowrDefaultPlugins = [
 	'versions:renv',
 	'versions:rv',
 	'loading-order:description',
+	'loading-order:implicit-sources',
 	'meta:description',
+	'meta:rproject',
 	'files:vignette',
 	'files:test',
 	'files:inst',
@@ -376,11 +398,26 @@ export const FlowrDefaultPlugins = [
 	'file:news',
 	'file:license',
 	'file:virtualenv',
+	'file:rproject',
 ] satisfies ConfigPlugin<string>[];
 
 /**
- * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
+ * Applies `overwrite` to `current`, key by key, keeping every value that differs from `base`: only a value nobody
+ * configured is left to the overwrite. An array is replaced, never appended to.
  */
+function specialize(current: unknown, base: unknown, overwrite: unknown): unknown {
+	if(overwrite === undefined) {
+		return current;
+	} else if(isPlainObject(current) && isPlainObject(overwrite)) {
+		const result: Record<string, unknown> = { ...current };
+		for(const [key, value] of Object.entries(overwrite)) {
+			result[key] = specialize(current[key], isPlainObject(base) ? base[key] : undefined, value);
+		}
+		return result;
+	}
+	return JSON.stringify(current) === JSON.stringify(base) ? overwrite : current;
+}
+
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -401,13 +438,25 @@ export const FlowrConfig = {
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
-				quickStats:      false,
-				dfProcessorHeat: false,
-				hints:           true,
-				plugins:         ['flowr:default'],
+				quickStats:          false,
+				dfProcessorHeat:     false,
+				hints:               true,
+				plugins:             ['flowr:default'],
+				autoUseFileProtocol: true,
+				queryStats:          true,
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
+			},
+			/* shiny loads global.R first, then the ui/server pair, and app.R last as it wires them together */
+			specializeConfig: {
+				/* these ship the files they source, a notebook or a loose script may not */
+				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.ShinyApp]: {
+					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
+					solver:  { resolveSource: { assumeFilesExist: true } }
+				}
 			},
 			engines:       [],
 			defaultEngine: 'tree-sitter',
@@ -421,7 +470,8 @@ export const FlowrConfig = {
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            [],
-					repeatedSourceLimit:   2
+					repeatedSourceLimit:   2,
+					assumeFilesExist:      false
 				},
 				instrument: {
 					dataflowExtractors: undefined
@@ -466,15 +516,20 @@ export const FlowrConfig = {
 		}).description('Configure language semantics and how flowR handles them.'),
 		defaultPlugins: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The default plugins to load when creating a new instance of FlowrAnalyzer'),
 		repl:           Joi.object({
-			quickStats:      Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
-			dfProcessorHeat: Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
-			hints:           Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
-			plugins:         Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode')
+			quickStats:          Joi.boolean().optional().description('Whether to show quick stats in the REPL after each evaluation.'),
+			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
+			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
+			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
+			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
+			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
-			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.')
+			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
+			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.')
 		}).description('Project specific configuration options.'),
+		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object()).optional()
+			.description('Overwrite (parts of) the configuration depending on the project kind flowR detects, e.g. to give a shiny app its implicit sources.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
 				type:               Joi.string().required().valid('tree-sitter').description('Use the tree sitter engine.'),
@@ -494,7 +549,7 @@ export const FlowrConfig = {
 			trackEnvironments: Joi.boolean().optional().description('Track user-created environments (new.env, assign/get/local with envir=, dollar-assign, attach). When false, all envir-style calls fall through conservatively.'),
 			sigdb:             Joi.object({
 				enabled:                     Joi.boolean().optional().description('Resolve library()/use() exports from a signature database (default true); when false no database is consulted.'),
-				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, renv.lock, rv.lock) (default true); when false these files are not read for dependencies.'),
+				loadProjectDependencies:     Joi.boolean().optional().description('Load the project\'s declared dependencies from its metadata files (DESCRIPTION Imports/Depends, rproject.toml, renv.lock, rv.lock) (default true); when false these files are not read for dependencies.'),
 				eagerlyLoad:                 Joi.boolean().optional().description('Parse the database up front rather than on the first package load (default false, ignored if disabled).'),
 				eagerlyLoadExports:          Joi.boolean().optional().description('Add a vertex for every export on load rather than on demand (default false); keeps the dataflow graph small.'),
 				assumedRVersion:             Joi.string().optional().description('R version assumed when resolving versioned (base-R) exports: a pin like "4.5" or "auto" to detect the installed R (default "auto").'),
@@ -518,7 +573,8 @@ export const FlowrConfig = {
 				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
+				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files'),
+				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
 				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),
@@ -595,6 +651,16 @@ export const FlowrConfig = {
 			log.error(`Failed to load config: ${(e as Error).message}`);
 			return FlowrConfig.default();
 		}
+	},
+	/**
+	 * Resolves the configuration for the given {@link ProjectKind} by applying the matching
+	 * {@link FlowrConfig.specializeConfig} entry to every key it names. What you configured wins over the entry, which in
+	 * turn wins over flowR's default; a value that differs from the default counts as configured.
+	 * Returns `config` itself if the kind has no entry, so callers can use this freely.
+	 */
+	forKind(this: void, config: FlowrConfig, kind: ProjectKind): FlowrConfig {
+		const overwrite = config.specializeConfig?.[kind];
+		return overwrite ? specialize(config, FlowrConfig.default(), overwrite) as FlowrConfig : config;
 	},
 	/**
 	 * Gets the configuration for the given engine type from the config.

@@ -191,10 +191,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
+	const status = queue.status();
 	if(ctx.config.solver.slicer?.autoExtend) {
-		return { ...queue.status(), slicedFor: ids, result: extendSlices(queue.status().result, idMap) };
+		return { ...status, slicedFor: ids, result: extendSlices(status.result, idMap) };
 	} else {
-		return { ...queue.status(), slicedFor: ids };
+		return { ...status, slicedFor: ids };
 	}
 }
 
@@ -213,9 +214,10 @@ export function staticDice(
 	startIds: readonly NodeId[],
 	endIds: readonly NodeId[],
 	threshold = 75,
+	includeCallees = false,
 ): Readonly<SliceResult> {
 	guard(startIds.length > 0 && endIds.length > 0, 'must have at least one start and one end id for dicing');
-	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold });
+	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold, includeCallees });
 	// reduce to backward result and invert edges in one pass; original info kept for sliceForCall
 	const invertedReduced = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
 	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced });

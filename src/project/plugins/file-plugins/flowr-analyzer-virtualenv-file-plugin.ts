@@ -18,7 +18,7 @@ const VirtualEnvFilePattern = /^(renv|rv)\.lock$/i;
  */
 export class FlowrAnalyzerVirtualEnvFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-virtualenv-files-plugin';
-	public readonly description = 'This plugin marks virtual-environment lockfiles (renv.lock, rv.lock).';
+	public readonly description = 'Marks virtual-environment lockfiles (renv.lock, rv.lock).';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pathPattern: RegExp;
 

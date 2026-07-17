@@ -502,10 +502,6 @@
                 // render the first chart with stacked data
                 renderGraph(graphsElem, ["Retrieve AST from R code", "Normalize R AST", "Produce dataflow information", "Extract control flow graph", "Extract call graph"], benchSet, 0)
                 renderGraph(graphsElem, ["Static slicing", "Reconstruct code"], benchSet, 3)
-                // number of files in the dataset (only once the benchmark data records it)
-                if (benchSet.has("number of files")) {
-                    renderGraph(graphsElem, ["number of files"], benchSet, 5)
-                }
                 // add a details element to contain the rest of the charts
                 const details = document.createElement('details');
                 details.style.width = '100%';

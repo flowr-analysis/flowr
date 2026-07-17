@@ -178,6 +178,35 @@ export function getParentDirectory(directory: string): string{
 }
 
 /**
+ * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
+ */
+export function commonDirectory(paths: readonly string[]): string | undefined {
+	if(paths.length === 0) {
+		return undefined;
+	}
+	const split = paths.map(p => path.resolve(p).split(path.sep));
+	const common: string[] = [];
+	for(let i = 0; i < split[0].length; i++) {
+		if(!split.every(s => s[i] === split[0][i])) {
+			break;
+		}
+		common.push(split[0][i]);
+	}
+	if(common.length === 0) {
+		return undefined;
+	}
+	return common.length === 1 && common[0] === '' ? path.sep : common.join(path.sep);
+}
+
+/**
+ * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
+ */
+export function relativeTo(root: string, filePath: string): string {
+	const relative = path.relative(root, filePath).replaceAll('\\', '/');
+	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
+}
+
+/**
  * Checks whether the given path-like object is a file that exists on the local filesystem.
  */
 export function isFilePath(p: PathLike) {

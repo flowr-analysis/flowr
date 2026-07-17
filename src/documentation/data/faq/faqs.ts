@@ -3,6 +3,7 @@ import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from '../../d
 import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
 import type { GeneralDocContext } from '../../wiki-mk/doc-context';
+import { ProjectKind } from '../../../project/context/project-kind';
 
 
 /**
@@ -79,7 +80,17 @@ ${codeBlock('shell', ':query @linter watch://path/to/project')}
 For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
 If you want to create your own project using flowR as a library, check out the
 [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
-		`);
+		`)
+		.addFaq('How to configure flowR *per kind of project*?', `
+Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
+This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
+${codeBlock('json', JSON.stringify({
+	specializeConfig: {
+		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
+	}
+}, null, 2))}
+Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
+`);
 
 	wikiFaq.withTopic('r.packages')
 		.addFaq('What is the R *prelude* and R *base* package?', `

@@ -5,6 +5,9 @@ import { log } from '../../../util/log';
 import type { ConfiguredLintingRule } from '../../../linter/linter-format';
 import { executeLintingRule } from '../../../linter/linter-executor';
 import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../gas';
+import { formatLints } from '../../../linter/linter-output';
+import { flowrVersion } from '../../../util/version';
+import { isNotUndefined } from '../../../util/assert';
 
 /**
  * Executes the given linter queries using the provided analyzer.
@@ -39,8 +42,12 @@ export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: 
 		results.results[ruleName] = await executeLintingRule<typeof ruleName>(ruleName, analyzer, (entry as ConfiguredLintingRule)?.config);
 	}
 
+	/* rendered here, not when printing, so an api client gets it too */
+	const format = queries.map(q => q.format).find(isNotUndefined);
+	const formatted = format ? formatLints((results as LinterQueryResult).results, format, flowrVersion().toString()) : undefined;
 	return {
 		...results,
+		...(formatted ? { formatted } : {}),
 		'.meta': {
 			timing: Date.now() - start
 		}

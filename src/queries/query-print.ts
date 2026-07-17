@@ -132,6 +132,8 @@ export async function asciiSummaryOfQueryResult<S extends SupportedQueryTypes>(
 		result.push(`  - Took ${printAsMs(timing, 0)}`);
 	}
 
-	result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
+	if(analyzer.flowrConfig.repl.queryStats !== false) {
+		result.push(italic(`All queries together required ≈${printAsMs(results['.meta'].timing, 0)} (1ms accuracy, total ${printAsMs(totalInMs, 0)})`, formatter));
+	}
 	return formatter.format(result.join('\n'));
 }

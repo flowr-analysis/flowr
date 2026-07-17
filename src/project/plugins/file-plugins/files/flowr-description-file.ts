@@ -154,6 +154,14 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 		const titles = this.content().get('Title');
 		return titles && titles.length > 0 ? titles[0] : titles?.join(' ');
 	}
+
+	/**
+	 * Returns the (lower-cased) 'Type' field of the DESCRIPTION file, e.g. `package`, `shiny`, or `compendium`.
+	 */
+	public type(): string | undefined {
+		const types = this.content().get('Type');
+		return types && types.length > 0 ? types[0].trim().toLowerCase() : undefined;
+	}
 }
 
 /**

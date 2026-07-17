@@ -60,6 +60,7 @@ import type { KnownParser } from '../r-bridge/parser';
 import type { MermaidMarkdownMark } from '../util/mermaid/info';
 import { FlowrAnalyzer } from '../project/flowr-analyzer';
 import { mermaidNodeBrackets } from '../util/mermaid/dfg';
+import { Mermaid } from '../util/mermaid/mermaid';
 import { RNumber } from '../r-bridge/lang-4.x/ast/model/nodes/r-number';
 import { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import { SourceRange } from '../util/range';
@@ -1021,8 +1022,12 @@ alongside its [control dependencies](#control-dependencies) if it has any. This 
 To give you an example, have a look at the following graph:
 
 ${await printDfGraphForCode(treeSitter, 'if(u) a', { showCode: false, mark: new Set(['1']), ctx })}
-With the _may_ prefix you can see that \`a\` has a [control dependency](#control-dependencies)
-on the \`if\`, which only triggers when the condition is \`true\` (as indicated by the \`+\` suffix).
+The \`3+\` tells you that \`a\` has a [control dependency](#control-dependencies) on the vertex with id \`3\`, the \`if\`,
+which only triggers when the condition is \`true\`; a \`-\` suffix marks the \`false\` case.
+
+Other vertices are named by their id too: \`v: <id>\` is the value of a definition, \`links: <id>\` the AST vertices that
+contributed to the vertex. Mermaid rejects some characters in an id, so a space or a bracket shows as \`_\`
+(see ${ctx.linkO(Mermaid, 'escapeId')}); a path keeps its \`/\` and \`.\`.
 
 ${section('Location', 3, 'vtx-location')}
 

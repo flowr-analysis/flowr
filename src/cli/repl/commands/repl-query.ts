@@ -16,21 +16,8 @@ import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
-import { watchProtocol } from '../core';
-import fs from 'fs';
-
-/** Whether `s` looks like a filesystem path the user likely meant to load via {@link fileProtocol}. */
-function looksLikePath(s: string): boolean {
-	if(s.startsWith(fileProtocol) || s.startsWith(watchProtocol)) {
-		return false;
-	}
-	if(/^(~|\.{0,2}\/|[a-zA-Z]:[\\/])/.test(s)) {
-		return true;
-	}
-	// a single path-like token (a separator, no R-code punctuation) that actually exists on disk
-	return /^[^\s()]+\/[^\s()]+$/.test(s) && fs.existsSync(s);
-}
+import { requestFromInput } from '../../../r-bridge/retriever';
+import { handlePathLikeInput } from '../path-input';
 
 /**
  * Whether the analyzer already holds exactly `input` as its sole request, so a prior analysis (e.g. a
@@ -129,9 +116,7 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	if(input) {
-		if(looksLikePath(input)) {
-			output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(fileProtocol + input, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes). Use ${bold(':help', output.formatter)} for more.`));
-		}
+		input = handlePathLikeInput(output, input, analyzer.flowrConfig);
 		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
 		if(!analyzerHasTarget(analyzer, input)) {
 			analyzer.reset();

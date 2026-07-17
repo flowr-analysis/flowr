@@ -10,22 +10,19 @@ import { summarizeIdsIfTooLong } from '../../query-print';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import type { FlowrConfig } from '../../../config';
-import { diceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { SharedSliceFlags, diceCriteriaParser, queryLineCode, sliceFlagCompletions, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
+import { type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
 
 /**
  * Computes a program dice: only those parts that lie on a path from the given start nodes to the given end nodes.
  * Equivalent to the intersection of a forward slice from `from` and a backward slice from `to`.
  */
-export interface DiceQuery extends BaseQueryFormat {
-	readonly type:              'dice';
+export interface DiceQuery extends BaseQueryFormat, SliceQueryOptions {
+	readonly type: 'dice';
 	/** Slicing criteria for the start of the dice (forward slice seeds) */
-	readonly from:              SlicingCriteria;
+	readonly from: SlicingCriteria;
 	/** Slicing criteria for the end of the dice (backward slice seeds) */
-	readonly to:                SlicingCriteria;
-	/** Do not reconstruct the dice into readable code */
-	readonly noReconstruction?: boolean;
-	/** Should magic comments be ignored? */
-	readonly noMagicComments?:  boolean;
+	readonly to:   SlicingCriteria;
 }
 
 export interface DiceQueryResult extends BaseQueryResult {
@@ -54,9 +51,10 @@ function diceQueryLineParser(output: ReplOutput, line: readonly string[], _confi
 		));
 		return { query: [] };
 	}
+	warnAboutSliceFlags(output, line[0], SharedSliceFlags);
 	return {
-		query: [{ type: 'dice', from: parsed.from, to: parsed.to }],
-		rCode: line[1]
+		query: [{ type: 'dice', from: parsed.from, to: parsed.to, ...sliceQueryOptionsParser(line[0]) }],
+		rCode: queryLineCode(line)
 	};
 }
 
@@ -68,8 +66,9 @@ function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _c
 		return { completions: [] };
 	}
 	const arg = line[0];
-	if(arg.endsWith(')')) {
-		return { completions: [] };
+	const flags = sliceFlagCompletions(arg, SharedSliceFlags);
+	if(flags) {
+		return flags;
 	}
 	const hasArrow = arg.includes('->');
 	const side = hasArrow ? arg.slice(arg.indexOf('->') + 2) : arg.slice(1);
@@ -122,11 +121,10 @@ export const DiceQueryDefinition = {
 	fromLine:  diceQueryLineParser,
 	completer: diceQueryCompleter,
 	schema:    Joi.object({
-		type:             Joi.string().valid('dice').required().description('The type of the query.'),
-		from:             Joi.array().items(Joi.string()).min(1).required().description('Slicing criteria for the start of the dice (forward slice seeds).'),
-		to:               Joi.array().items(Joi.string()).min(1).required().description('Slicing criteria for the end of the dice (backward slice seeds).'),
-		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the dice into readable code.'),
-		noMagicComments:  Joi.boolean().optional().description('Should the magic comments be ignored?'),
+		type: Joi.string().valid('dice').required().description('The type of the query.'),
+		from: Joi.array().items(Joi.string()).min(1).required().description('Slicing criteria for the start of the dice (forward slice seeds).'),
+		to:   Joi.array().items(Joi.string()).min(1).required().description('Slicing criteria for the end of the dice (backward slice seeds).'),
+		...SliceQueryOptionsSchema
 	}).description('Dice query: selects only paths from the given start nodes that reach the given end nodes.'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const flattened: NodeId[] = [];

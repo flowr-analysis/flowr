@@ -51,47 +51,36 @@ describe('Config Query REPL Completions', () => {
 		splitLine:           [],
 		expectedCompletions: ['+', '?']
 	});
+	/* the completions come from the schema, not from the config value: an unset optional option is offered too */
 	assertReplCompletions({ completer,
-		label:               'all root nodes',
+		label:               'provides completion for a partial root node',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: 'test' },
-		splitLine:           ['+'],
-		expectedCompletions: ['+aTopNode', '+bTopNode'],
-	});
-	assertReplCompletions({ completer,
-		label:               'provides completion for partial root node',
-		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: 'test' },
 		splitLine:           ['+a'],
-		expectedCompletions: ['+aTopNode'],
+		expectedCompletions: ['+abstractInterpretation'],
 	});
 	assertReplCompletions({ completer,
-		label:               'adds dot after full root node',
+		label:               'adds a dot after a full root node',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
-		splitLine:           ['+bTopNode'],
-		expectedCompletions: ['+bTopNode.']
+		splitLine:           ['+repl'],
+		expectedCompletions: ['+repl.']
 	});
 	assertReplCompletions({ completer,
-		label:               'all second level nodes',
+		label:               'all second level nodes, including the ones no default sets',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
-		splitLine:           ['+bTopNode.'],
-		expectedCompletions: ['+bTopNode.aSecondNode', '+bTopNode.bSecondNode'],
+		splitLine:           ['+repl.'],
+		expectedCompletions: ['+repl.quickStats', '+repl.dfProcessorHeat', '+repl.hints', '+repl.plugins', '+repl.autoUseFileProtocol', '+repl.queryStats'],
 	});
 	assertReplCompletions({ completer,
-		label:               'provides completion for partial second level node',
+		label:               'provides completion for a partial second level node',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
-		splitLine:           ['+bTopNode.b'],
-		expectedCompletions: ['+bTopNode.bSecondNode'],
+		splitLine:           ['+repl.auto'],
+		expectedCompletions: ['+repl.autoUseFileProtocol'],
 	});
 	assertReplCompletions({ completer,
-		label:               'adds equals sign after full path',
+		label:               'adds an equals sign after a full path of a free-form field',
 		startingNewArg:      false,
-		config:              { aTopNode: 'test', bTopNode: { aSecondNode: 'test', bSecondNode: 'test' } },
-		splitLine:           ['+bTopNode.bSecondNode'],
-		expectedCompletions: ['+bTopNode.bSecondNode='],
+		splitLine:           ['+solver.sigdb.downloadRepo'],
+		expectedCompletions: ['+solver.sigdb.downloadRepo=<string>'],
 	});
 	assertReplCompletions({ completer,
 		label:               'no completions after equals sign',

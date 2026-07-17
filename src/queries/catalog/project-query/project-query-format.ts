@@ -9,28 +9,13 @@ import { rAuthorInfoToReadable } from '../../../util/r-author';
 import type { RLicenseElementInfo } from '../../../util/r-license';
 import { stringifyRLicense } from '../../../util/r-license';
 import type { FileRole } from '../../../project/context/flowr-file';
+import type { ProjectKind } from '../../../project/context/project-kind';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
 	readonly type:    'project';
 	/** Whether to include Dataflow information in the result. */
 	readonly withDf?: boolean;
-}
-
-/** The kind of project that flowR is analyzing. */
-export enum ProjectKind {
-	/** An R package (has a `DESCRIPTION` file). */
-	Package  = 'package',
-	/** A single R script. */
-	Script   = 'script',
-	/** A Shiny application (`app.R`, or `ui.R` together with `server.R`). */
-	ShinyApp = 'shiny-app',
-	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
-	Notebook = 'notebook',
-	/** A multi-file project that is not a package. */
-	Project  = 'project',
-	/** The kind could not be determined (e.g. before the files are known). */
-	Unknown  = 'unknown'
 }
 
 /** Statistics on the project's declared dependencies, cross-referenced with the package database. */
@@ -70,6 +55,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly encoding?:     string;
 	/** The version of the project, if available. */
 	readonly version?:      string;
+	/** The R version the project targets, e.g. the `r_version` of an `rproject.toml`. */
+	readonly rVersion?:     string;
 	/** The classified kind of the project (e.g. package, script, shiny app). */
 	readonly kind?:         ProjectKind;
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */

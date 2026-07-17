@@ -32,6 +32,13 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import type { InlineWarning } from './inline/source-inline-map';
 
+/**
+ * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
+ * precedes each with a banner comment naming it.
+ * @see {@link Selection#inlineFull}
+ */
+export type InlineFull = boolean | 'banner';
+
 interface Selection {
 	/**
 	 * The set of node ids to be reconstructed.
@@ -49,8 +56,17 @@ interface Selection {
 	 */
 	inlineSources?:    boolean
 	/**
+	 * If set, every file is reconstructed into a single self-contained text, in the loading order flowR
+	 * determined (which respects implicit sources), independent of whether it is sourced explicitly. Files that
+	 * _are_ sourced explicitly are spliced into their `source()` call instead of being repeated at the top level.
+	 * Pass `'banner'` to precede every inlined file with a banner comment naming it.
+	 * Requires {@link Selection#sourceMap} to be provided. Overrides {@link Selection#inlineSources} and
+	 * {@link Selection#reconstructFiles}.
+	 */
+	inlineFull?:       InlineFull
+	/**
 	 * Maps a `source()` call node id to the index of the sourced file in `ast.ast.files`.
-	 * Only used together with {@link Selection#inlineSources}. Build it via {@link SourceInlineMap.build}.
+	 * Only used together with {@link Selection#inlineSources} or {@link Selection#inlineFull}. Build it via {@link SourceInlineMap.build}.
 	 */
 	sourceMap?:        ReadonlyMap<NodeId, number>
 }
@@ -70,6 +86,18 @@ export const reconstructLogger = log.getSubLogger({ name: 'reconstruct' });
 
 function getLexeme(n: RNodeWithParent) {
 	return RNode.lexeme(n) ?? '';
+}
+
+function codeToText(code: Code): string {
+	return code.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+}
+
+/** the arguments synthesized for infix operands have no `fullLexeme`, so resolve through the value */
+function getArgumentLexeme(n: RArgument<ParentInformation> | typeof EmptyArgument | undefined): string {
+	if(n === undefined || n === EmptyArgument) {
+		return '';
+	}
+	return n.info.fullLexeme ?? (n.value !== undefined ? getLexeme(n.value) : getLexeme(n));
 }
 
 function reconstructAsLeaf(leaf: RNodeWithParent, configuration: ReconstructionConfiguration): Code {
@@ -372,18 +400,22 @@ function reconstructSpecialInfixFunctionCall(args: readonly (Code | typeof Empty
 	if((lhs === undefined || lhs.length === 0) && (rhs === undefined || rhs.length === 0)) {
 		return [];
 	}
-	// else if (rhs === undefined || rhs.length === 0) {
 	// if rhs is undefined we still have to keep both now, but reconstruct manually :/
 	if(lhs !== EmptyArgument && lhs.length > 0) {
-		const lhsText = lhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
+		const lhsText = codeToText(lhs);
 		if(rhs !== EmptyArgument && rhs.length > 0) {
-			const rhsText = rhs.map(l => `${getIndentString(l.indent)}${l.line}`).join('\n');
-			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${rhsText}`);
+			return plain(`${lhsText} ${Identifier.toString(call.functionName.content)} ${codeToText(rhs)}`);
 		} else {
 			return plain(lhsText);
 		}
 	}
-	return plain(`${getLexeme(call.arguments[0] as RArgument<ParentInformation>)} ${Identifier.toString(call.functionName.content)} ${getLexeme(call.arguments[1] as RArgument<ParentInformation>)}`);
+	// only the operands' lexemes are left to go by; a `{` block has none, so keep the call as it was written
+	const lhsLexeme = getArgumentLexeme(call.arguments[0]);
+	const rhsLexeme = getArgumentLexeme(call.arguments[1]);
+	if(lhsLexeme.length === 0 || rhsLexeme.length === 0) {
+		return plain(getLexeme(call));
+	}
+	return plain(`${lhsLexeme} ${Identifier.toString(call.functionName.content)} ${rhsLexeme}`);
 }
 
 /**
@@ -567,7 +599,7 @@ function reconstructFileCode(ast: NormalizedAst, fileIndex: number, config: Reco
 }
 
 
-export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { inlineFull: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult;
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
@@ -593,22 +625,31 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		return result;
 	};
 
-	// when inlining sources we produce a single self-contained file (the main file, index 0),
-	// splicing every resolvable `source()` in place; this overrides `reconstructFiles`.
-	if(selection.inlineSources) {
+	// both inlinings splice every resolvable `source()` in place, overriding `reconstructFiles`: `inlineSources`
+	// emits the main file alone, `inlineFull` every file flowR loads, minus the ones already spliced into a call.
+	if(selection.inlineFull || selection.inlineSources) {
 		const warnings: InlineWarning[] = [];
-		const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, 0, {
-			selection:     selection.nodes,
-			autoSelectIf:  autoSelectIfWrapper,
-			fullAst:       ast,
-			inlineSources: true,
-			sourceMap:     selection.sourceMap ?? new Map<NodeId, number>(),
-			visited:       new Set<number>([0]),
-			currentFile:   0,
-			warnings
-		}));
+		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
+		const splicedIn = new Set<number>(sourceMap.values());
+		const indices = selection.inlineFull ? ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i)) : [0];
+		const parts: string[] = [];
+		for(const i of indices) {
+			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
+				selection:     selection.nodes,
+				autoSelectIf:  autoSelectIfWrapper,
+				fullAst:       ast,
+				inlineSources: true,
+				sourceMap,
+				visited:       new Set<number>([i]),
+				currentFile:   i,
+				warnings
+			}));
+			if(code.length > 0) {
+				parts.push(selection.inlineFull === 'banner' ? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}` : code);
+			}
+		}
 		return {
-			code,
+			code:                  parts.join('\n'),
 			linesWithAutoSelected: linesWithAutoSelected.size,
 			inlineWarnings:        warnings
 		};

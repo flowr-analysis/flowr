@@ -31,8 +31,28 @@ describe('R Version Utility', () => {
 			['4', '4.0.0'],
 			['00004', '4.0.0'],
 			['4.00', '4.0.0'],
-			['12.01', '12.1.0']
+			['12.01', '12.1.0'],
+			// `-` separates a component just like `.` does, so `7.3-65` is `7.3.65` and not a pre-release of `7.3.0`
+			['7.3-65', '7.3.65'],
+			['0.4-9', '0.4.9'],
+			['1.1-3', '1.1.3']
 		);
+
+		describe('a parsed version orders like compare does', () => {
+			// a pre-release would sort *below* the release, which is what `-` used to be read as
+			test.each([
+				['7.3-65', '7.3.0'],
+				['0.4-9', '0.4.0'],
+				['1.1-3', '1.1.0']
+			])('%s is above %s', (a, b) => {
+				const pa = RVersion.parse(a);
+				const pb = RVersion.parse(b);
+				assert.isTrue(pa !== undefined && pb !== undefined);
+				assert.isAbove((pa as SemVer).compare(pb as SemVer), 0, `${a} must be above ${b}`);
+				assert.isAbove(RVersion.compare(a, b), 0, `${a} must be above ${b} for compare too`);
+				assert.isTrue(RRange.satisfies(a, `>= ${b}`), `${a} must satisfy >= ${b}`);
+			});
+		});
 
 		describe('un-coercible versions yield undefined (never throw)', () => {
 			test.each([
@@ -83,20 +103,22 @@ describe('R Version Utility', () => {
 			['^4.2.1-rc2', '^4.2.1-rc2'],
 			['~4.2.1-alpha', '~4.2.1-alpha'],
 			['4.2', '>=4.2.0 <4.3.0-0'],
-			['4.2-1', '4.2.0-1'],
-			['>=4.2-1', '>=4.2.0-1'],
-			['4.2.-1', '4.2.0-1'],
-			['>=4.2.-1', '>=4.2.0-1'],
-			['>=4..-1', '>=4.0.0-1'],
-			['4-1', '4.0.0-1'],
-			['>=4-1', '>=4.0.0-1'],
+			// `-` separates a component just like `.` does, so these are no pre-releases (cf. the compare tests)
+			['4.2-1', '4.2.1'],
+			['>=4.2-1', '>=4.2.1'],
+			['4-1', '4.1.0'],
+			['>=4-1', '>=4.1.0'],
+			// empty parts of a malformed version collapse
+			['4.2.-1', '4.2.1'],
+			['>=4.2.-1', '>=4.2.1'],
+			['>=4..-1', '>=4.1.0'],
 			['4', '>= 4.0.0 <5.0.0-0'],
 			['==4.2.1', '=4.2.1'],
 			['>=3.5.0 <4.0.0', '>=3.5.0 <4.0.0'],
 			['>=4.0.0 <4.2.0 || >=4.2.1', '>=4.0.0 <4.2.0 || >=4.2.1'],
 			['>=3.00', '>=3.0.0'],
 			['>=5.01', '>=5.1.0'],
-			['>= 2018-07.10', '>=2018.0.0-7.10'],
+			['>= 2018-07.10', '>=2018.7.10'],
 			['>=2018.0.0-07.10', '>=2018.0.0-7.10'],
 			['>=0.6.0-00', '>=0.6.0-0']
 		);

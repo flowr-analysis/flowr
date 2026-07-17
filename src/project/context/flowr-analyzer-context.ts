@@ -3,10 +3,12 @@ import {
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
+import type { ProjectKind } from './project-kind';
 import {
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext
 } from './flowr-analyzer-dependencies-context';
+import type { Range } from 'semver';
 import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
 import type {
@@ -55,6 +57,10 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly config:           FlowrConfig;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
 	readonly resolvedRVersion: string;
+	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
+	projectKind(): ProjectKind;
+	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredVersion}. */
+	inferredVersion(name: string): Range | undefined;
 	/**
 	 * Resource-usage guard (gas).
 	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
@@ -85,17 +91,52 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
-	public readonly config: FlowrConfig;
+	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
+	public readonly baseConfig: FlowrConfig;
+	/** {@link baseConfig}, specialized for {@link _configKind} */
+	private _config:            FlowrConfig;
+	/** the {@link ProjectKind} {@link _config} holds, `undefined` as long as it has to be resolved */
+	private _configKind:        ProjectKind | undefined;
+	/** set while classifying, as the classification must not read the config it decides, see {@link kindToSpecializeFor} */
+	private _classifying = false;
+
+	/**
+	 * {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's {@link ProjectKind} applied
+	 * (see {@link FlowrConfig.forKind}), resolved once per kind.
+	 */
+	public get config(): FlowrConfig {
+		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
+			return this.baseConfig;
+		}
+		const kind = this.kindToSpecializeFor();
+		if(this._configKind !== kind) {
+			this._configKind = kind;
+			this._config = FlowrConfig.forKind(this.baseConfig, kind);
+		}
+		return this._config;
+	}
+
+	/** {@link projectKind}, resolved with {@link baseConfig}, as classifying the project reads the config again */
+	private kindToSpecializeFor(): ProjectKind {
+		this._classifying = true;
+		try {
+			return this.projectKind();
+		} finally {
+			this._classifying = false;
+		}
+	}
 
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
-		this.config = config;
+		this.baseConfig = config;
+		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env   = new FlowrAnalyzerEnvironmentContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
 		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
-		this.meta = new FlowrAnalyzerMetaContext();
+		// the plugins contributing the metadata are the ones the dependency context runs on demand
+		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
 		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
@@ -120,6 +161,16 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
 	public get resolvedRVersion(): string {
 		return resolveAssumedRVersion(this.config, this._detectedR);
+	}
+
+	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
+	public projectKind(): ProjectKind {
+		return this.files.projectKind();
+	}
+
+	/** The versions a dependency can possibly have (delegates to {@link FlowrAnalyzerDependenciesContext#inferredVersion}). */
+	public inferredVersion(name: string): Range | undefined {
+		return this.deps.inferredVersion(name);
 	}
 
 	/** delegate request addition */

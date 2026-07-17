@@ -46,7 +46,7 @@ export interface ProjectDiscoveryConfig {
  */
 class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDiscoveryPlugin {
 	public readonly name = 'default-project-discovery-plugin';
-	public readonly description = 'This is the default project discovery plugin that does nothing.';
+	public readonly description = 'Does nothing, the default project discovery plugin.';
 	public readonly version = new SemVer('0.0.0');
 	private readonly supportedExtensions: RegExp;
 	private readonly ignorePathsRegex:    RegExp;

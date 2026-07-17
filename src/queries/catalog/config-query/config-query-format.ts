@@ -8,8 +8,8 @@ import { jsonReplacer } from '../../../util/json';
 import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
-import type { CommandCompletions } from '../../../cli/repl/core';
-import { descriptionPathInfo, type SchemaPathInfo } from '../../../util/schema';
+import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
+import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys } from '../../../util/schema';
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -22,7 +22,7 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly config: FlowrConfig;
 }
 
-function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
+function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	if(partialLine.length === 0) {
 		// `+` updates a field, `?` inspects (reads) one
 		return { completions: ['+', '?'] };
@@ -39,20 +39,20 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 			const valuePart = raw.slice(eq + 1);
 			const prefix = `${partialLine[0].slice(0, 1)}${raw.slice(0, eq)}=`;
 			const values = configValueHints(configSchemaInfo(keyPath)).filter(v => v.startsWith(valuePart) && v !== valuePart);
-			return { completions: values.map(v => prefix + v) };
+			return { completions: values.map(v => prefix + v), labels: new Map(values.map(v => [prefix + v, v])) };
 		}
 		const path = raw.split('.').filter(p => p.length > 0);
 		const fullPath = path.slice();
 		const lastPath = partialLine[0].endsWith('.') ? '' : path.pop() ?? '';
-		const subConfig = path.reduce<object | undefined>((obj, key) => (
-			obj && (obj as Record<string, unknown>)[key] !== undefined && typeof (obj as Record<string, unknown>)[key] === 'object') ? (obj as Record<string, unknown>)[key] as object : obj, config);
-		if(subConfig && !((subConfig as Record<string, unknown>)[lastPath] !== undefined && typeof (subConfig as Record<string, unknown>)[lastPath] !== 'object')) {
-			const have = Object.keys(subConfig)
-				.filter(k => k.startsWith(lastPath) && k !== lastPath)
-				.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
+		/* the schema knows every option, a value only those that are set */
+		const options = configSchemaKeys(path);
+		const atLeaf = lastPath.length > 0 && options.includes(lastPath) && configSchemaInfo([...path, lastPath]).type !== 'object';
+		if(!atLeaf) {
+			const offered = options.filter(k => k.startsWith(lastPath) && k !== lastPath);
+			const have = offered.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
-				return { completions: have };
-			} else if(lastPath.length > 0) {
+				return { completions: have, labels: new Map(have.map((c, i) => [c, describeCompletion(offered[i], configSchemaInfo([...path, offered[i]]).type ?? '')])) };
+			} else if(lastPath.length > 0 && configSchemaKeys(fullPath).length > 0) {
 				return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}.`] };
 			}
 		}
@@ -140,6 +140,12 @@ function getValueAtPath(obj: object, path: string[]): unknown {
 }
 
 let configSchemaDescription: Joi.Description | undefined;
+/** the keys the schema offers below a path, including the unset optional ones */
+function configSchemaKeys(path: readonly string[]): string[] {
+	configSchemaDescription ??= FlowrConfig.Schema.describe();
+	return descriptionPathKeys(configSchemaDescription, path);
+}
+
 /** the Joi-schema type + description of a config path (from {@link FlowrConfig.Schema}), used to document a `?key` inspection */
 function configSchemaInfo(path: readonly string[]): SchemaPathInfo {
 	configSchemaDescription ??= FlowrConfig.Schema.describe();
@@ -155,6 +161,38 @@ function configValueHints(info: SchemaPathInfo): string[] {
 		return info.valids.map(v => JSON.stringify(v));
 	}
 	return info.type ? [`<${info.type}>`] : [];
+}
+
+/** children of an inspected object listed before the rest is summarized */
+const MaxInspectedChildren = 15;
+
+/** the longest a child's value may get before only its size is shown */
+const MaxInspectedValueWidth = 48;
+
+/** a nested object is only summarized, inspecting it directly unfolds it */
+function compactValue(value: unknown): string {
+	const json = JSON.stringify(value, jsonReplacer);
+	if(value === null || typeof value !== 'object' || json.length <= MaxInspectedValueWidth) {
+		return json;
+	}
+	const keys = Array.isArray(value) ? value.length : Object.keys(value).length;
+	return Array.isArray(value) ? `[${keys} entries]` : `{${keys} keys}`;
+}
+
+/** an object reads better as its children than as one json blob */
+function inspectedChildren(value: object, path: readonly string[], formatter: OutputFormatter): string[] {
+	const entries = Object.entries(value);
+	const shown = entries.slice(0, MaxInspectedChildren);
+	const longest = Math.max(...shown.map(([key]) => key.length));
+	const lines = shown.map(([key, child]) => {
+		const type = configSchemaInfo([...path, key]).type;
+		return `           - ${(key + ':').padEnd(longest + 1)} ${compactValue(child)}`
+			+ (type ? ` ${italic(`(${type})`, formatter)}` : '');
+	});
+	if(entries.length > shown.length) {
+		lines.push(`           ${italic(`... and ${entries.length - shown.length} more, inspect them with ?${path.join('.')}.<key>`, formatter)}`);
+	}
+	return lines;
 }
 
 export const ConfigQueryDefinition = {
@@ -176,11 +214,15 @@ export const ConfigQueryDefinition = {
 			result.push('   ╰ Config:');
 			for(const path of inspects) {
 				const info = configSchemaInfo(path);
-				const value = JSON.stringify(getValueAtPath(out.config, [...path]), jsonReplacer);
-				result.push(`       - ${path.join('.')}${info.type ? ` ${italic(`(${info.type})`, formatter)}` : ''}: ${value}`);
+				const value = getValueAtPath(out.config, [...path]);
+				const type = info.type ? ` ${italic(`(${info.type})`, formatter)}` : '';
+				const children = value !== null && typeof value === 'object' && !Array.isArray(value)
+					? inspectedChildren(value, path, formatter) : undefined;
+				result.push(`       - ${path.join('.')}${type}${children ? '' : `: ${JSON.stringify(value, jsonReplacer)}`}`);
 				if(info.description) {
 					result.push(`           ${italic(info.description, formatter)}`);
 				}
+				result.push(...children ?? []);
 			}
 		} else {
 			result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);

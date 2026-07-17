@@ -45,7 +45,8 @@ export interface GeneratedRObject {
 /**
  * {@link RObjectType}s for which generating an attribute is not possible.
  */
-const typesWithoutAttributes = new Set(['symbol', 'promise']);
+/* R refuses to attach an attribute to a builtin, so generating one would only fail the whole script */
+const typesWithoutAttributes = new Set(['symbol', 'promise', 'primitive']);
 
 /**
  * Constant pool of fixed R object definitions used by {@link RandomRCodeGenerator}.

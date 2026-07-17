@@ -233,6 +233,7 @@
     "rotating-file-stream": "^3.2.8",
     "seedrandom": "^3.0.5",
     "semver": "^7.7.4",
+    "smol-toml": "^1.7.0",
     "tar": "^7.4.3",
     "tmp": "^0.2.3",
     "ts-essentials": "^10.1.1",

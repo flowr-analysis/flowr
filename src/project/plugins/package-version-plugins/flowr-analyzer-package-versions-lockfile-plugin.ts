@@ -5,6 +5,8 @@ import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context'
 import { type FlowrFileProvider, FileRole } from '../../context/flowr-file';
 import { platformBasename } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import { log } from '../../../util/log';
+import { parse as parseToml } from 'smol-toml';
+import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
 
 export const lockfileLog = log.getSubLogger({ name: 'flowr-analyzer-package-versions-lockfile-plugin' });
 
@@ -42,7 +44,13 @@ export class FlowrAnalyzerPackageVersionsRenvPlugin extends FlowrAnalyzerPackage
 	}
 }
 
-/** Reads package versions from an `rv.lock` (the resolved rv project lockfile, TOML). */
+/** The parts of an `rv.lock` we read, see https://a2-ai.github.io/rv-docs/ */
+interface RvLock {
+	r_version?: unknown;
+	packages?:  unknown;
+}
+
+/** Reads package versions from an `rv.lock` (the resolved rv project lockfile, TOML). rv pins are exact. */
 export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name        = 'flowr-analyzer-package-versions-rv-plugin';
 	public readonly description = 'Extracts package versions from an rv.lock lockfile.';
@@ -50,11 +58,19 @@ export class FlowrAnalyzerPackageVersionsRvPlugin extends FlowrAnalyzerPackageVe
 
 	public process(ctx: FlowrAnalyzerContext): void {
 		for(const file of virtualEnvFiles(ctx, 'rv.lock')) {
-			// rv.lock is TOML with repeated `[[packages]]` tables carrying `name`/`version`
-			for(const block of file.content().toString().split(/\[\[packages\]\]/).slice(1)) {
-				const name = /^\s*name\s*=\s*"([^"]+)"/m.exec(block)?.[1];
-				const version = /^\s*version\s*=\s*"([^"]+)"/m.exec(block)?.[1];
-				if(name && version) {
+			let lock: RvLock;
+			try {
+				lock = parseToml(file.content().toString()) as RvLock;
+			} catch(e) {
+				lockfileLog.warn(`Could not parse rv.lock: ${(e as Error).message}`);
+				continue;
+			}
+			if(typeof lock.r_version === 'string') {
+				ctx.meta.contribute({ rVersion: lock.r_version }, MetaPriority.Lockfile);
+			}
+			for(const pkg of Array.isArray(lock.packages) ? lock.packages : []) {
+				const { name, version } = pkg as { name?: unknown, version?: unknown };
+				if(typeof name === 'string' && typeof version === 'string') {
 					pin(ctx, name, version);
 				}
 			}

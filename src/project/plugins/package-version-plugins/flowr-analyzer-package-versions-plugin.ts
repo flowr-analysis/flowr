@@ -62,7 +62,7 @@ export abstract class FlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPl
  */
 class DefaultFlowrAnalyzerPackageVersionsPlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'default-package-versions-plugin';
-	public readonly description = 'This is the default package versions plugin that does nothing.';
+	public readonly description = 'Does nothing, the default package versions plugin.';
 	public readonly version = new SemVer('0.0.0');
 
 	public process(): void {

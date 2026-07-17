@@ -57,7 +57,8 @@ export function deterministicPrefixIdGenerator(prefix: string, id = 0): () => No
  */
 export function sourcedDeterministicCountingIdGenerator(path: string, location: SourceRange, start = 0): () => NodeId {
 	let id = start;
-	return () => `${path}-${loc2Id(location)}-${id++}`;
+	const [sl, sc] = location;
+	return () => `${path}:${sl}:${sc}-${id++}`;
 }
 
 function loc2Id([sl, sc, el, ec]: SourceRange): string {

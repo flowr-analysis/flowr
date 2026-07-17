@@ -36,6 +36,21 @@ export function schemaPathInfo(schema: Joi.Schema, path: readonly string[]): Sch
 }
 
 /**
+ * The keys a schema {@link Joi.Description|description} offers below `path`, i.e. every option that may be set there.
+ * In contrast to the keys of a value, this covers the optional ones that are unset as well.
+ */
+export function descriptionPathKeys(description: Joi.Description, path: readonly string[]): string[] {
+	let node: Joi.Description | undefined = description;
+	for(const key of path) {
+		node = (node?.keys as Record<string, Joi.Description> | undefined)?.[key];
+		if(node === undefined) {
+			return [];
+		}
+	}
+	return Object.keys((node.keys ?? {}) as Record<string, Joi.Description>);
+}
+
+/**
  * Describes a Joi schema in a human-readable way.
  */
 export function describeSchema(schema: Joi.Schema, f: OutputFormatter = formatter): string {

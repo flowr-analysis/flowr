@@ -3,6 +3,7 @@
  * @module
  */
 import { prompt } from './prompt';
+import { handlePathLikeInput, watchProtocol } from './path-input';
 import * as readline from 'readline';
 import { installGhostHint } from './ghost-hint';
 import { tryExecuteRShellCommand } from './commands/repl-execute';
@@ -10,7 +11,7 @@ import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -46,9 +47,16 @@ export interface CommandCompletions {
 	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
 	 */
 	readonly argumentPart?: string;
+	/** What Tab displays per completion, only used while several remain: readline inserts what it displays. */
+	readonly labels?:       ReadonlyMap<string, string>;
 }
 
-function computeCompletions(line: string, config: FlowrConfig): [string[], string] {
+/** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
+export function describeCompletion(insert: string, describe: string): string {
+	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
+}
+
+function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -59,6 +67,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 		if(commandNameColon) {
 			let completions: string[] = [];
 			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
+			let labels: ReadonlyMap<string, string> | undefined;
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
@@ -67,11 +76,12 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
+				const { completions: queryCompletions, argumentPart: splitArg, labels: queryLabels } = replQueryCompleter(splitLine, startingNewArg, config);
 				if(splitArg !== undefined) {
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
+				labels = queryLabels;
 			} else if(cmd === signatureCommand) {
 				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
 				if(splitArg !== undefined) {
@@ -83,7 +93,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 				completions.push(watchProtocol);
 			}
 
-			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
+			return [completions.filter(a => a.startsWith(currentArg)), currentArg, labels];
 		}
 	}
 
@@ -96,7 +106,11 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
  * option, so Tab shows the full menu and only completes when a single option remains (standard readline behavior).
  */
 export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
-	return computeCompletions(line, config);
+	const [completions, fragment, labels] = computeCompletions(line, config);
+	if(labels === undefined || completions.length <= 1) {
+		return [completions, fragment];
+	}
+	return [completions.map(c => labels.get(c) ?? c), fragment];
 }
 
 /**
@@ -160,9 +174,6 @@ export function handleString(code: string) {
 		remaining: []
 	};
 }
-
-/** Path prefix that activates watch mode; use instead of {@link fileProtocol} to re-run on every file change. */
-export const watchProtocol = 'watch://';
 
 /** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
 export function toFileStatement(statement: string): string {
@@ -228,7 +239,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							analyzer.reset();
-							analyzer.addRequest(args.rCode);
+							analyzer.addRequest(handlePathLikeInput(output, args.rCode, analyzer.flowrConfig));
 						}
 						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 					} else {

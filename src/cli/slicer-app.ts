@@ -27,6 +27,8 @@ export interface SlicerCliOptions {
 	api:                 boolean
 	'no-magic-comments': boolean
 	inline:              boolean
+	'inline-full':       boolean
+	'inline-banner':     boolean
 	'include-callees':   boolean
 }
 
@@ -39,6 +41,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"} {bold --diff}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
 		'{bold -c} {italic "5@result"} {bold --inline} {italic main.R}',
+		'{bold -c} {italic ""} {bold --inline-full} {bold --inline-banner} {italic app.R}',
 		'{bold --help}'
 	]
 });
@@ -58,7 +61,8 @@ async function getSlice() {
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect),
 		undefined,
 		options.inline,
-		options['include-callees']
+		options['include-callees'],
+		options['inline-full'] ? (options['inline-banner'] ? 'banner' : true) : undefined
 	);
 
 	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];

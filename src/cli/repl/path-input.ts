@@ -36,6 +36,6 @@ export function handlePathLikeInput(output: ReplOutput, input: string, config: F
 		output.stdout(ansiInfo(`'${input}' looks like a path, analyzing ${bold(asFile, output.formatter)} (${bold('repl.autoUseFileProtocol', output.formatter)} is set).`));
 		return asFile;
 	}
-	output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(asFile, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes), or set ${bold('repl.autoUseFileProtocol', output.formatter)} to have flowR do this for you. Use ${bold(':help', output.formatter)} for more.`));
+	output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(asFile, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes), or re-enable ${bold('repl.autoUseFileProtocol', output.formatter)} to have flowR do this for you. Use ${bold(':help', output.formatter)} for more.`));
 	return input;
 }

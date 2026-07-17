@@ -18,8 +18,8 @@ function handle(input: string, autoUseFileProtocol: boolean): { input: string, o
 }
 
 describe('Repl autoUseFileProtocol', () => {
-	test('it is off by default', () => {
-		assert.isNotTrue(FlowrConfig.default().repl.autoUseFileProtocol);
+	test('it is on by default', () => {
+		assert.isTrue(FlowrConfig.default().repl.autoUseFileProtocol);
 	});
 
 	test('disabled it only warns, naming the option', () => {

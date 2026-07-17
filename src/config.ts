@@ -153,7 +153,7 @@ export interface FlowrConfig extends MergeableRecord {
 		hints:                boolean;
 		/** Plugins to load in REPL mode */
 		plugins:              (ConfigPlugin<string> | 'flowr:default')[]
-		/** Automatically use the file protocol for inputs that look like paths (default `false`) */
+		/** Automatically use the file protocol for inputs that look like paths (default `true`) */
 		autoUseFileProtocol?: boolean
 	}
 	readonly project: {
@@ -431,10 +431,11 @@ export const FlowrConfig = {
 			},
 			defaultPlugins: FlowrDefaultPlugins,
 			repl:           {
-				quickStats:      false,
-				dfProcessorHeat: false,
-				hints:           true,
-				plugins:         ['flowr:default'],
+				quickStats:          false,
+				dfProcessorHeat:     false,
+				hints:               true,
+				plugins:             ['flowr:default'],
+				autoUseFileProtocol: true,
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -510,7 +511,7 @@ export const FlowrConfig = {
 			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
-			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it (default false).')
+			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),

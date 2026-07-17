@@ -93,10 +93,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 	} else if(arg === EmptyArgument) {
 		return '[empty]';
 	} else if(FunctionArgument.isNamed(arg)) {
-		const deps = arg.cds ? ', :may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const deps = arg.cds ? ', ' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(', ') : '';
 		return `${arg.name} (${arg.nodeId}${deps})`;
 	} else if(FunctionArgument.isPositional(arg)) {
-		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')' : '';
+		const deps = arg.cds ? ' (' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(', ') + ')' : '';
 		return `${arg.nodeId}${deps}`;
 	} else {
 		return '??';
@@ -222,9 +222,10 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
 		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
-		const deps = info.cds ? ', :may:' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(',') : '';
-		const lnks = info.link?.origin ? ', :links:' + info.link.origin.map(o => Mermaid.escapeId(o)).join(',') : '';
-		const sources = info.source ? ', v: ' + Mermaid.escape(JSON.stringify(info.source)) : '';
+		const deps = info.cds ? ', ' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(', ') : '';
+		const lnks = info.link?.origin ? ', links: ' + info.link.origin.map(o => Mermaid.escapeId(o)).join(', ') : '';
+		const source = info.tag === VertexType.VariableDefinition ? info.source : undefined;
+		const sources = source ? ', v: ' + source.map(s => Mermaid.escapeId(s)).join(', ') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')

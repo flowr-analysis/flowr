@@ -212,7 +212,7 @@ export function processSourceCall<OtherInfo>(
 				result = sourceRequest(rootId, {
 					request: 'file',
 					content: f
-				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
+				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + data.ctx.files.relativePath(f), name.location));
 			}
 			return result;
 		}

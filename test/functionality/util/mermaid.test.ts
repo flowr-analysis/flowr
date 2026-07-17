@@ -15,6 +15,18 @@ describe('Mermaid', () => {
 		shouldEscape('flow-4', 'flow-4');
 		shouldEscape('foo bar', 'foo_bar');
 
+		describe('a path stays legible, mermaid reads `/` and `.`', () => {
+			shouldEscape('/tmp/s.R-1:1-0', '/tmp/s.R-1:1-0');
+			shouldEscape('./R/a.R-1:1-0', './R/a.R-1:1-0');
+			// only what ends the id has to go
+			shouldEscape('/tmp/my dir/s.R-0', '/tmp/my_dir/s.R-0');
+			shouldEscape('/tmp/a(b).R-0', '/tmp/a_b_.R-0');
+			shouldEscape('/tmp/we`ird".R-0', '/tmp/we_ird_.R-0');
+			// a keyword is a keyword between any two separators
+			shouldEscape('/tmp/end/s.R-0', '/tmp/end_/s.R-0');
+			shouldEscape('/tmp/graph.R-0', '/tmp/graph_.R-0');
+		});
+
 		describe('reserved mermaid keywords (regression for #2609)', () => {
 			shouldEscape('built-in:class', 'built-in:class_');
 			shouldEscape('built-in:end', 'built-in:end_');

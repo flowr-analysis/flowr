@@ -7,27 +7,19 @@ import { createDataflowPipeline } from '../../../src/core/steps/pipeline/default
 import { contextFromInput } from '../../../src/project/context/flowr-analyzer-context';
 import { DataflowMermaid } from '../../../src/util/mermaid/dfg';
 
-/** the node labels of the given mermaid code, i.e. everything mermaid parses as the text of a vertex */
 function nodeLabels(mermaid: string): string[] {
 	return [...mermaid.matchAll(/"`([\s\S]*?)`"/g)].map(m => m[1]);
 }
 
-/** a name mermaid must never see as it is: the backtick ends a label, the quote the string holding it */
 const awkwardName = 'we`ird".R';
 
 describe('Dataflow mermaid', withTreeSitter(parser => {
-	/**
-	 * The mermaid of a project sourcing {@link awkwardName}, which makes the ids of the sourced vertices carry that
-	 * path. The sourced file conditionally defines the variable and the function `main.R` uses, so the vertices
-	 * reference it as a control dependency (`:may:`), an origin (`v:`) and a subflow.
-	 */
 	async function mermaidOfSourcingProject(simplified: boolean): Promise<string> {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-mermaid-'));
 		try {
 			const sourced = path.join(dir, awkwardName);
 			fs.writeFileSync(sourced, 'if(u > 1) { y <- 2 }\nf <- function(a) { a + 1 }\n');
 			const main = path.join(dir, 'main.R');
-			// single quotes, as the name holds a double one
 			fs.writeFileSync(main, `source('${sourced.replaceAll('\\', '/')}')\nx <- f(y)\n`);
 			const result = await createDataflowPipeline(parser, { context: contextFromInput(`file://${main}`) }).allRemainingSteps();
 			return DataflowMermaid.raw(result.dataflow.graph, false, undefined, simplified);
@@ -53,8 +45,17 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 	test('a vertex still reports its origins and dependencies, only escaped', async() => {
 		const mermaid = await mermaidOfSourcingProject(false);
 		assert.include(mermaid, 'v: ', 'the sourced file has to contribute origins');
-		assert.include(mermaid, ':may:', 'the conditional definition has to contribute a control dependency');
-		assert.include(mermaid, '#34;', 'a quoted origin is escaped');
+		assert.match(mermaid, /, we_ird_\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
+		assert.include(mermaid, 'we_ird_.R:1:1-', 'an id keeps the path readable, only what breaks mermaid is replaced');
+	});
+
+	test('the id of a sourced vertex is relative to what was requested', async() => {
+		const mermaid = await mermaidOfSourcingProject(false);
+		const ids = [...mermaid.matchAll(/\*\*id: (.*?)\*\*/g)].map(m => m[1]);
+		assert.isNotEmpty(ids);
+		for(const id of ids) {
+			assert.notInclude(id, os.tmpdir(), `the id ${id} still carries the requested root`);
+		}
 	});
 
 	test('a simplified subflow is labeled by the function it holds', async() => {

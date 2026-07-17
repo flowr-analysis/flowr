@@ -2,7 +2,7 @@ import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { handlePathLikeInput } from '../../../../src/cli/repl/commands/repl-query';
+import { handlePathLikeInput } from '../../../../src/cli/repl/path-input';
 import { FlowrConfig } from '../../../../src/config';
 import { voidFormatter } from '../../../../src/util/text/ansi';
 import type { ReplOutput } from '../../../../src/cli/repl/commands/repl-main';

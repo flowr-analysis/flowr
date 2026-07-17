@@ -6,7 +6,7 @@ import { documentAllServerMessages } from './data/server/doc-data-server-message
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
-import { watchProtocol } from '../cli/repl/core';
+import { watchProtocol } from '../cli/repl/path-input';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
@@ -172,6 +172,7 @@ ${await documentReplSession(parser, [{
 
 For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
 Pass \`--inline\` to splice resolvable \`source()\` calls into the reconstruction so the slice is a single self-contained R text (the same as the static slice query's \`inlineSources\` flag).
+See \`--help\` for more flags!
 
 ### Example: Interfacing with the File System
 

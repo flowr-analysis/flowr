@@ -3,6 +3,7 @@
  * @module
  */
 import { prompt } from './prompt';
+import { handlePathLikeInput, watchProtocol } from './path-input';
 import * as readline from 'readline';
 import { installGhostHint } from './ghost-hint';
 import { tryExecuteRShellCommand } from './commands/repl-execute';
@@ -161,9 +162,6 @@ export function handleString(code: string) {
 	};
 }
 
-/** Path prefix that activates watch mode; use instead of {@link fileProtocol} to re-run on every file change. */
-export const watchProtocol = 'watch://';
-
 /** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
 export function toFileStatement(statement: string): string {
 	return statement.replaceAll(watchProtocol, fileProtocol);
@@ -228,7 +226,7 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							analyzer.reset();
-							analyzer.addRequest(args.rCode);
+							analyzer.addRequest(handlePathLikeInput(output, args.rCode, analyzer.flowrConfig));
 						}
 						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 					} else {

@@ -16,39 +16,8 @@ import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
-import { fileProtocol, requestFromInput } from '../../../r-bridge/retriever';
-import type { FlowrConfig } from '../../../config';
-import { watchProtocol } from '../core';
-import fs from 'fs';
-
-/** Whether `s` looks like a filesystem path the user likely meant to load via {@link fileProtocol}. */
-function looksLikePath(s: string): boolean {
-	if(s.startsWith(fileProtocol) || s.startsWith(watchProtocol)) {
-		return false;
-	}
-	if(/^(~|\.{0,2}\/|[a-zA-Z]:[\\/])/.test(s)) {
-		return true;
-	}
-	// a single path-like token (a separator, no R-code punctuation) that actually exists on disk
-	return /^[^\s()]+\/[^\s()]+$/.test(s) && fs.existsSync(s);
-}
-
-/**
- * Returns the input to analyze: an input that looks like a path is either prepended with the {@link fileProtocol}
- * (if `repl.autoUseFileProtocol` is set) or kept as is, pointing the user at the protocol either way.
- */
-export function handlePathLikeInput(output: ReplOutput, input: string, config: FlowrConfig): string {
-	if(!looksLikePath(input)) {
-		return input;
-	}
-	const asFile = fileProtocol + input;
-	if(config.repl.autoUseFileProtocol) {
-		output.stdout(ansiInfo(`'${input}' looks like a path, analyzing ${bold(asFile, output.formatter)} (${bold('repl.autoUseFileProtocol', output.formatter)} is set).`));
-		return asFile;
-	}
-	output.stdout(ansiInfo(`'${input}' looks like a path. To analyze it, use ${bold(asFile, output.formatter)} (or ${bold(watchProtocol + input, output.formatter)} to re-run on changes), or set ${bold('repl.autoUseFileProtocol', output.formatter)} to have flowR do this for you. Use ${bold(':help', output.formatter)} for more.`));
-	return input;
-}
+import { requestFromInput } from '../../../r-bridge/retriever';
+import { handlePathLikeInput } from '../path-input';
 
 /**
  * Whether the analyzer already holds exactly `input` as its sole request, so a prior analysis (e.g. a

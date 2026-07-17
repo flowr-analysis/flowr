@@ -1,12 +1,12 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'fs';
 import {
-	watchProtocol,
 	toFileStatement,
 	extractWatchPath,
 	startWatching,
 	stopWatching,
 } from '../../../../src/cli/repl/core';
+import { watchProtocol } from '../../../../src/cli/repl/path-input';
 import { fileProtocol } from '../../../../src/r-bridge/retriever';
 import type { ReplOutput } from '../../../../src/cli/repl/commands/repl-main';
 import { formatter } from '../../../../src/util/text/ansi';

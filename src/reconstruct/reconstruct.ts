@@ -32,6 +32,13 @@ import { type AutoSelectPredicate, doNotAutoSelect } from './auto-select/auto-se
 import { Identifier } from '../dataflow/environments/identifier';
 import type { InlineWarning } from './inline/source-inline-map';
 
+/**
+ * Whether to inline every file into a single self-contained text: `true` inlines them, `'banner'` additionally
+ * precedes each with a banner comment naming it.
+ * @see {@link Selection#inlineFull}
+ */
+export type InlineFull = boolean | 'banner';
+
 interface Selection {
 	/**
 	 * The set of node ids to be reconstructed.
@@ -49,8 +56,17 @@ interface Selection {
 	 */
 	inlineSources?:    boolean
 	/**
+	 * If set, every file is reconstructed into a single self-contained text, in the loading order flowR
+	 * determined (which respects implicit sources), independent of whether it is sourced explicitly. Files that
+	 * _are_ sourced explicitly are spliced into their `source()` call instead of being repeated at the top level.
+	 * Pass `'banner'` to precede every inlined file with a banner comment naming it.
+	 * Requires {@link Selection#sourceMap} to be provided. Overrides {@link Selection#inlineSources} and
+	 * {@link Selection#reconstructFiles}.
+	 */
+	inlineFull?:       InlineFull
+	/**
 	 * Maps a `source()` call node id to the index of the sourced file in `ast.ast.files`.
-	 * Only used together with {@link Selection#inlineSources}. Build it via {@link SourceInlineMap.build}.
+	 * Only used together with {@link Selection#inlineSources} or {@link Selection#inlineFull}. Build it via {@link SourceInlineMap.build}.
 	 */
 	sourceMap?:        ReadonlyMap<NodeId, number>
 }
@@ -583,7 +599,7 @@ function reconstructFileCode(ast: NormalizedAst, fileIndex: number, config: Reco
 }
 
 
-export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
+export function reconstructToCode(ast: NormalizedAst, selection: Selection & ({ inlineSources: true } | { inlineFull: true } | { reconstructFiles?: [number] | undefined }), autoSelectIf?: AutoSelectPredicate): ReconstructionResult & { code: string };
 export function reconstructToCode(ast: NormalizedAst, selection: Selection, autoSelectIf?: AutoSelectPredicate): ReconstructionResult;
 /**
  * Reconstructs parts of a normalized R ast into R code on an expression basis.
@@ -608,6 +624,41 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		}
 		return result;
 	};
+
+	// inlining the full project yields one self-contained text: every file flowR loads is emitted in its loading
+	// order, while the explicitly sourced ones are spliced into their `source()` call so nothing is repeated.
+	if(selection.inlineFull) {
+		const warnings: InlineWarning[] = [];
+		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
+		const splicedIn = new Set<number>(sourceMap.values());
+		const parts: string[] = [];
+		for(let i = 0; i < ast.ast.files.length; i++) {
+			if(splicedIn.has(i)) {
+				continue;
+			}
+			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
+				selection:     selection.nodes,
+				autoSelectIf:  autoSelectIfWrapper,
+				fullAst:       ast,
+				inlineSources: true,
+				sourceMap,
+				visited:       new Set<number>([i]),
+				currentFile:   i,
+				warnings
+			}));
+			if(code.length === 0) {
+				continue;
+			}
+			parts.push(selection.inlineFull === 'banner'
+				? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}`
+				: code);
+		}
+		return {
+			code:                  parts.join('\n'),
+			linesWithAutoSelected: linesWithAutoSelected.size,
+			inlineWarnings:        warnings
+		};
+	}
 
 	// when inlining sources we produce a single self-contained file (the main file, index 0),
 	// splicing every resolvable `source()` in place; this overrides `reconstructFiles`.

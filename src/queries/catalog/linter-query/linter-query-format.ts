@@ -23,21 +23,26 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
+import { LinterOutputFormat } from '../../../linter/linter-output';
 
 export interface LinterQuery extends BaseQueryFormat {
-	readonly type:   'linter';
+	readonly type:    'linter';
 	/**
 	 * The rules to lint for. If unset, all rules will be included.
 	 * Optionally, a {@link ConfiguredLintingRule} can be provided, which additionally includes custom user-supplied values for the linting rules' configurations.
 	 */
-	readonly rules?: (LintingRuleNames | ConfiguredLintingRule)[];
+	readonly rules?:  (LintingRuleNames | ConfiguredLintingRule)[];
+	/** Print the findings in a machine-readable {@link LinterOutputFormat|format} instead of the human-readable summary. */
+	readonly format?: LinterOutputFormat;
 }
 
 export interface LinterQueryResult extends BaseQueryResult {
 	/**
 	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
 	 */
-	readonly results: { [L in LintingRuleNames]?: LintingResults<L> }
+	readonly results:    { [L in LintingRuleNames]?: LintingResults<L> }
+	/** The findings rendered in the requested {@link LinterQuery#format|format}, if one was requested. */
+	readonly formatted?: string
 }
 
 function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): { valid: (LintingRuleNames | ConfiguredLintingRule)[], invalid: string[] } {
@@ -54,37 +59,48 @@ function rulesFromInput(output: ReplOutput, rulesPart: readonly string[]): { val
 }
 
 const rulesPrefix = 'rules:';
+const formatPrefix = 'format:';
+
+/** the {@link LinterOutputFormat} of a `format:` argument, warning about an unknown one instead of ignoring it */
+function formatFromInput(output: ReplOutput, argument: string): LinterOutputFormat | undefined {
+	const wanted = argument.slice(formatPrefix.length).trim();
+	const format = Object.values(LinterOutputFormat).find(f => f === wanted);
+	if(format === undefined) {
+		output.stderr(`Invalid linting format ${bold(wanted, output.formatter)}, expected one of `
+			+ Object.values(LinterOutputFormat).map(f => bold(f, output.formatter)).join(', '));
+	}
+	return format;
+}
 
 function linterQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'linter'> {
 	let rules: (LintingRuleNames | ConfiguredLintingRule)[] | undefined = undefined;
-	let input: string | undefined = undefined;
-	if(line.length > 0 && line[0].startsWith(rulesPrefix)) {
-		const rulesPart = line[0].slice(rulesPrefix.length).split(',');
-		const parseResult = rulesFromInput(output, rulesPart);
+	let format: LinterOutputFormat | undefined = undefined;
+	const rest = [...line];
+	while(rest.length > 0 && (rest[0].startsWith(rulesPrefix) || rest[0].startsWith(formatPrefix))) {
+		const argument = rest.shift() as string;
+		if(argument.startsWith(formatPrefix)) {
+			format = formatFromInput(output, argument);
+			continue;
+		}
+		const parseResult = rulesFromInput(output, argument.slice(rulesPrefix.length).split(','));
 		if(parseResult.invalid.length > 0) {
 			output.stderr(`Invalid linting rule name(s): ${parseResult.invalid.map(r => bold(r, output.formatter)).join(', ')}`
 				+ `\nValid rule names are: ${Object.keys(LintingRules).map(r => bold(r, output.formatter)).join(', ')}`);
 		}
 		rules = parseResult.valid;
-		input = line[1];
-	} else if(line.length > 0) {
-		input = line[0];
 	}
-	return { query: [{ type: 'linter', rules: rules }], rCode: input } ;
+	/* an absent format must not show up as a key, a query is compared by its fingerprint */
+	return { query: [{ type: 'linter', rules, ...(format ? { format } : {}) }], rCode: rest.join(' ').trim() || undefined } ;
 }
 
 function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	const rulesPrefixNotPresent = line.length == 0 || (line.length == 1 && line[0].length < rulesPrefix.length);
-	const rulesNotFinished = line.length == 1 && line[0].startsWith(rulesPrefix) && !startingNewArg;
-	const endOfRules = line.length == 1 && startingNewArg || line.length == 2;
+	const current = startingNewArg ? '' : line[line.length - 1] ?? '';
 
-	if(rulesPrefixNotPresent) {
-		return { completions: [`${rulesPrefix}`] };
-	} else if(endOfRules) {
-		return { completions: [fileProtocol] };
-	} else if(rulesNotFinished) {
-		const rulesWithoutPrefix = line[0].slice(rulesPrefix.length);
-		const usedRules = rulesWithoutPrefix.split(',').map(r => r.trim());
+	if(current.startsWith(formatPrefix)) {
+		const wanted = current.slice(formatPrefix.length);
+		return { completions: Object.values(LinterOutputFormat).filter(f => f !== wanted), argumentPart: wanted };
+	} else if(current.startsWith(rulesPrefix)) {
+		const usedRules = current.slice(rulesPrefix.length).split(',').map(r => r.trim());
 		const allRules = Object.keys(LintingRules);
 		const unusedRules = allRules.filter(r => !usedRules.includes(r));
 		const lastRule = usedRules[usedRules.length - 1];
@@ -101,13 +117,24 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 			return { completions: [' '], argumentPart: '' };
 		}
 	}
-	return { completions: [] };
+	/* both are optional and may come in any order, so offer whatever is not given yet */
+	const given = startingNewArg ? line : line.slice(0, -1);
+	return { completions: [
+		...given.some(a => a.startsWith(rulesPrefix)) ? [] : [rulesPrefix],
+		...given.some(a => a.startsWith(formatPrefix)) ? [] : [formatPrefix],
+		fileProtocol
+	] };
 }
 
 export const LinterQueryDefinition = {
 	executor:        executeLinterQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];
+		/* a machine-readable format is the whole output: a consumer must not have to strip a summary around it */
+		if(out.formatted !== undefined) {
+			result.push(out.formatted);
+			return true;
+		}
 		result.push(`Query: ${bold('linter', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
@@ -140,8 +167,9 @@ export const LinterQueryDefinition = {
 	completer: linterQueryCompleter,
 	fromLine:  linterQueryLineParser,
 	schema:    Joi.object({
-		type:  Joi.string().valid('linter').required().description('The type of the query.'),
-		rules: Joi.array().items(
+		type:   Joi.string().valid('linter').required().description('The type of the query.'),
+		format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),
+		rules:  Joi.array().items(
 			Joi.string().valid(...Object.keys(LintingRules)),
 			Joi.object({
 				name:   Joi.string().valid(...Object.keys(LintingRules)).required(),

@@ -155,6 +155,8 @@ export interface FlowrConfig extends MergeableRecord {
 		plugins:              (ConfigPlugin<string> | 'flowr:default')[]
 		/** Automatically use the file protocol for inputs that look like paths (default `true`) */
 		autoUseFileProtocol?: boolean
+		/** Whether `:query` closes with the line stating how long the queries took (default `true`, `:query*` never prints it) */
+		queryStats?:          boolean
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -436,6 +438,7 @@ export const FlowrConfig = {
 				hints:               true,
 				plugins:             ['flowr:default'],
 				autoUseFileProtocol: true,
+				queryStats:          true,
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -511,7 +514,8 @@ export const FlowrConfig = {
 			dfProcessorHeat:     Joi.boolean().optional().description('This instruments the dataflow processors to count how often each processor is called.'),
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
-			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.')
+			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
+			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),

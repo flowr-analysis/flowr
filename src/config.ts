@@ -111,6 +111,8 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 	 * - `faa-bar.R` (replaced spaces and oo)
 	 */
 	readonly applyReplacements?:    Record<string, string>[]
+	/** Assume a sourced file is always there, making what it defines certain instead of conditional on the `source` call. */
+	readonly assumeFilesExist?:     boolean
 }
 
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
@@ -439,8 +441,12 @@ export const FlowrConfig = {
 			},
 			/* shiny loads global.R first, then the ui/server pair, and app.R last as it wires them together */
 			specializeConfig: {
-				'shiny-app': {
-					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] }
+				/* these ship the files they source, a notebook or a loose script may not */
+				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
+				[ProjectKind.ShinyApp]: {
+					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
+					solver:  { resolveSource: { assumeFilesExist: true } }
 				}
 			},
 			engines:       [],
@@ -455,7 +461,8 @@ export const FlowrConfig = {
 					ignoreCapitalization:  true,
 					inferWorkingDirectory: InferWorkingDirectory.ActiveScript,
 					searchPath:            [],
-					repeatedSourceLimit:   2
+					repeatedSourceLimit:   2,
+					assumeFilesExist:      false
 				},
 				instrument: {
 					dataflowExtractors: undefined
@@ -555,7 +562,8 @@ export const FlowrConfig = {
 				inferWorkingDirectory: Joi.string().valid(...Object.values(InferWorkingDirectory)).description('Try to infer the working directory from the main or any script to analyze.'),
 				searchPath:            Joi.array().items(Joi.string()).description('Additionally search in these paths.'),
 				repeatedSourceLimit:   Joi.number().optional().description('How often the same file can be sourced within a single run? Please be aware: in case of cyclic sources this may not reach a fixpoint so give this a sensible limit.'),
-				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files')
+				applyReplacements:     Joi.array().items(Joi.object()).description('Provide name replacements for loaded files'),
+				assumeFilesExist:      Joi.boolean().optional().description('Assume a sourced file is always there, making what it defines certain instead of conditional on the source call.')
 			}).optional().description('If lax source calls are active, flowR searches for sourced files much more freely, based on the configurations you give it. This option is only in effect if `ignoreSourceCalls` is set to false.'),
 			slicer: Joi.object({
 				threshold:  Joi.number().optional().description('The maximum number of iterations to perform on a single function call during slicing.'),

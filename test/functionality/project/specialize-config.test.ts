@@ -23,8 +23,8 @@ function shinyContext(config: FlowrConfig): FlowrAnalyzerContext {
 describe('FlowrConfig.forKind', () => {
 	test('a kind without an overwrite keeps the config untouched', () => {
 		const config = FlowrConfig.default();
-		assert.strictEqual(FlowrConfig.forKind(config, ProjectKind.Package), config);
-		assert.isUndefined(FlowrConfig.forKind(config, ProjectKind.Package).project.implicitSources);
+		assert.strictEqual(FlowrConfig.forKind(config, ProjectKind.Script), config);
+		assert.isUndefined(FlowrConfig.forKind(config, ProjectKind.Script).project.implicitSources);
 	});
 
 	test('any kind can be given an overwrite, not just shiny', () => {

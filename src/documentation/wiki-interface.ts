@@ -235,6 +235,7 @@ ${ctx.linkO(FlowrConfig, 'amend')}.
 The schema below documents every option; the ones you most likely want are:
 
 - ${ctx.linkConfig('ignoreSourceCalls')}: ignore source calls when analyzing the code, i.e., ignore the inclusion of other files.
+- ${ctx.linkConfig('ignoreLoadCalls')}: ignore load calls when analyzing the code, i.e., ignore the loading of r-data files.
 - ${ctx.linkConfig('semantics.environment.overwriteBuiltIns')}: overwrite _flowR_'s handling of built-in functions, or clear the preset definitions entirely.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
 - ${ctx.linkConfig('solver.variables')}: how to resolve variables and their values (${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
@@ -255,6 +256,7 @@ So you can configure _flowR_ by adding a file like the following:
 ${codeBlock('json', JSON.stringify(
 		{
 			ignoreSourceCalls: true,
+			ignoreLoadCalls:   true,
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {

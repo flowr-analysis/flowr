@@ -128,6 +128,10 @@ export interface FlowrConfig extends MergeableRecord {
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
 	readonly ignoreSourceCalls: boolean
+	/**
+	 * Whether load calls should be ignored, causing {@link processLoadCall}'s behavior to be skipped
+	 */
+	readonly ignoreLoadCalls:   boolean
 	/** Configure language semantics and how flowR handles them */
 	readonly semantics: {
 		/** Semantics regarding the handling of the environment */
@@ -423,6 +427,7 @@ export const FlowrConfig = {
 	default(this: void): FlowrConfig {
 		return {
 			ignoreSourceCalls: false,
+			ignoreLoadCalls:   false,
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {
@@ -500,6 +505,7 @@ export const FlowrConfig = {
 	 */
 	Schema: Joi.object({
 		ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
+		ignoreLoadCalls:   Joi.boolean().optional().description('Whether load calls should be ignored, causing {@link processLoadCall}\'s behavior to be skipped.'),
 		semantics:         Joi.object({
 			environment: Joi.object({
 				overwriteBuiltIns: Joi.object({

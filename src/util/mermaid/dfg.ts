@@ -43,6 +43,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 	if(subflow === undefined) {
 		return;
 	}
+	const id = Mermaid.escapeId(nodeId);
 	const subflowId = Mermaid.escapeId(`${idPrefix}flow-${nodeId}`);
 	if(mermaid.simplified) {
 		// get parent
@@ -52,7 +53,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${Mermaid.escape(nodeLexeme)}${location}"]`);
 	} else {
-		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${id}]`);
 	}
 	const subgraph = graphToMermaidGraph(subflow.graph, {
 		graph:               mermaid.rootGraph,
@@ -73,15 +74,15 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		for(const out of pool as IdentifierReference[]) {
 			if(!mermaid.mark?.has(out.nodeId)) {
 				// in/out/active for unmarked
-				mermaid.nodeLines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `);
+				mermaid.nodeLines.push(`    style ${idPrefix}${Mermaid.escapeId(out.nodeId)} stroke:${color as string},stroke-width:4px; `);
 			}
 		}
 	}
 
 	mermaid.nodeLines.push('end');
-	mermaid.edgeLines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`);
+	mermaid.edgeLines.push(`${idPrefix}${id} -.-|function| ${subflowId}\n`);
 	/* mark edge as present */
-	const edgeId = encodeEdge(idPrefix + nodeId, subflowId, new Set(['function']));
+	const edgeId = encodeEdge(idPrefix + id, subflowId, new Set(['function']));
 	mermaid.presentEdges.add(edgeId);
 }
 
@@ -221,9 +222,9 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
 		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
-		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
-		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
-		const sources = info.source ? ', v: ' + JSON.stringify(info.source) : '';
+		const deps = info.cds ? ', :may:' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(',') : '';
+		const lnks = info.link?.origin ? ', :links:' + info.link.origin.map(o => Mermaid.escapeId(o)).join(',') : '';
+		const sources = info.source ? ', v: ' + Mermaid.escape(JSON.stringify(info.source)) : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
@@ -236,7 +237,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
+		subflowToMermaid(origId, info.subflow, mermaid, idPrefix);
 	}
 	const edges = mermaid.rootGraph.outgoingEdges(NodeId.normalize(origId));
 	if(edges === undefined) {
@@ -259,7 +260,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			mermaid.presentEdges.add(edgeId);
 			const style = NodeId.isBuiltIn(target) ? '-.->' : '-->';
 			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
-				'file' in edge && edge.file ? `, from: ${edge.file}` : ''
+				'file' in edge && edge.file ? `, from: ${Mermaid.escape(String(edge.file))}` : ''
 			}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!

@@ -2,18 +2,13 @@ import { SemVer } from 'semver';
 import { FlowrAnalyzerLoadingOrderPlugin } from './flowr-analyzer-loading-order-plugin';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { RParseRequest } from '../../../r-bridge/retriever';
-import { FlowrConfig } from '../../../config';
 import { log } from '../../../util/log';
 import { globMatcher } from '../../../util/glob';
 
 export const implicitSourcesLog = log.getSubLogger({ name: 'loading-order-implicit-sources' });
 
-function isImplicit(request: RParseRequest, matches: (filePath: string) => boolean): boolean {
-	return request.request === 'file' && matches(request.content);
-}
-
 /**
- * Orders the files given by `project.implicitSources` (directly, or per kind via `specializeConfig`; a direct list wins).
+ * Orders the files given by `project.implicitSources`, which is already specialized for the project kind.
  * Files that are no implicit sources stay in front, as the implicit entry points consume them.
  */
 export class FlowrAnalyzerLoadingOrderImplicitSourcesPlugin extends FlowrAnalyzerLoadingOrderPlugin {
@@ -23,25 +18,36 @@ export class FlowrAnalyzerLoadingOrderImplicitSourcesPlugin extends FlowrAnalyze
 
 	process(ctx: FlowrAnalyzerContext): void {
 		const kind = ctx.projectKind();
-		const implicit = ctx.config.project.implicitSources
-			?? FlowrConfig.forKind(ctx.config, kind).project.implicitSources;
+		const implicit = ctx.config.project.implicitSources;
 		if(!implicit || implicit.length === 0) {
 			return;
 		}
-		const patterns = implicit.map(globMatcher);
 		const unordered = ctx.files.loadingOrder.getUnorderedRequests();
-		/* the files each entry matches, in project order; an entry matching none is a typo or names a foreign file */
-		const matches = patterns.map(p => unordered.filter(r => isImplicit(r, p)));
-		const unmatched = implicit.filter((_, i) => matches[i].length === 0);
-		if(unmatched.length > 0) {
-			implicitSourcesLog.warn(`No file of the ${kind} project matches the implicit source(s) ${unmatched.map(u => `'${u}'`).join(', ')}, ignoring them.`);
+		const files = unordered.filter(r => r.request === 'file');
+		/* the matches of each entry, in project order; an entry matching none is a typo or names a foreign file */
+		const ordered = new Set<RParseRequest>();
+		const unmatched: string[] = [];
+		for(const entry of implicit) {
+			const matches = globMatcher(entry);
+			let matched = false;
+			for(const file of files) {
+				if(matches(file.content)) {
+					ordered.add(file);
+					matched = true;
+				}
+			}
+			if(!matched) {
+				unmatched.push(`'${entry}'`);
+			}
 		}
-		const ordered = [...new Set(matches.flat())];
-		if(ordered.length === 0) {
+		if(unmatched.length > 0) {
+			implicitSourcesLog.warn(`No file of the ${kind} project matches the implicit source(s) ${unmatched.join(', ')}, ignoring them.`);
+		}
+		if(ordered.size === 0) {
 			return;
 		}
-		const rest = unordered.filter(r => !ordered.includes(r));
-		implicitSourcesLog.debug(`Ordering implicit sources of ${kind} project: ${ordered.map(s => s.request === 'file' ? s.content : '<text>').join(', ')}`);
+		const rest = unordered.filter(r => !ordered.has(r));
+		implicitSourcesLog.debug(`Ordering implicit sources of ${kind} project: ${[...ordered].map(s => s.content).join(', ')}`);
 		ctx.files.loadingOrder.addGuess([...rest, ...ordered]);
 	}
 }

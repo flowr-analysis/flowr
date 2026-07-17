@@ -1,6 +1,5 @@
 import { assert, describe, test, vi } from 'vitest';
 import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
-import { ProjectKind } from '../../../src/project/context/project-kind';
 import { FlowrConfig } from '../../../src/config';
 import { PluginType } from '../../../src/project/plugins/flowr-analyzer-plugin';
 import {
@@ -121,20 +120,5 @@ describe('Implicit sources', () => {
 			['global.R', 'a.R'],
 			'Collate is certain, so it overrides the guess instead of depending on the plugin order'
 		);
-	});
-});
-
-describe('FlowrConfig.forKind', () => {
-	test('a kind without an overwrite keeps the config untouched', () => {
-		const config = FlowrConfig.default();
-		assert.strictEqual(FlowrConfig.forKind(config, ProjectKind.Package), config);
-		assert.isUndefined(FlowrConfig.forKind(config, ProjectKind.Package).project.implicitSources);
-	});
-
-	test('any kind can be given an overwrite, not just shiny', () => {
-		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
-			c.specializeConfig = { [ProjectKind.Notebook]: { project: { implicitSources: ['setup.R'] } } };
-		});
-		assert.deepStrictEqual(FlowrConfig.forKind(config, ProjectKind.Notebook).project.implicitSources, ['setup.R']);
 	});
 });

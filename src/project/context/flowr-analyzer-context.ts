@@ -91,10 +91,50 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
 	private _detectedR:    string | undefined;
 
-	public readonly config: FlowrConfig;
+	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
+	public readonly baseConfig: FlowrConfig;
+	/** {@link baseConfig}, specialized for {@link _configKind} */
+	private _config:            FlowrConfig;
+	/** the {@link ProjectKind} {@link _config} holds, `undefined` as long as it has to be resolved */
+	private _configKind:        ProjectKind | undefined;
+	/** set while classifying, as the classification must not read the config it decides, see {@link kindToSpecializeFor} */
+	private _classifying = false;
+
+	/**
+	 * The configuration of this analysis, with the {@link FlowrConfig.specializeConfig} entry of the project's
+	 * {@link ProjectKind} applied (see {@link FlowrConfig.forKind}). It is resolved once per kind, so it follows the
+	 * project as files are added and stays fixed once the classification settles; {@link reevaluateConfig} forces it anew.
+	 */
+	public get config(): FlowrConfig {
+		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
+			return this.baseConfig;
+		}
+		const kind = this.kindToSpecializeFor();
+		if(this._configKind !== kind) {
+			this._configKind = kind;
+			this._config = FlowrConfig.forKind(this.baseConfig, kind);
+		}
+		return this._config;
+	}
+
+	/** {@link projectKind}, resolved with {@link baseConfig}, as classifying the project reads the config again */
+	private kindToSpecializeFor(): ProjectKind {
+		this._classifying = true;
+		try {
+			return this.projectKind();
+		} finally {
+			this._classifying = false;
+		}
+	}
+
+	/** Drops the resolved {@link config}, so the next use specializes it for the project kind detected by then. */
+	public reevaluateConfig(): void {
+		this._configKind = undefined;
+	}
 
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
-		this.config = config;
+		this.baseConfig = config;
+		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);

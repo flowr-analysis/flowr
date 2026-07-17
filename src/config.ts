@@ -1,6 +1,7 @@
 import { type MergeableRecord,
 	deepMergeObject,
-	deepClonePreserveUnclonable
+	deepClonePreserveUnclonable,
+	isPlainObject
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
@@ -393,8 +394,22 @@ export const FlowrDefaultPlugins = [
 ] satisfies ConfigPlugin<string>[];
 
 /**
- * Helper Object to work with {@link FlowrConfig}, provides the default config and the Joi schema for validation.
+ * Applies `overwrite` to `current`, key by key, keeping every value that differs from `base`: only a value nobody
+ * configured is left to the overwrite. An array is replaced, never appended to.
  */
+function specialize(current: unknown, base: unknown, overwrite: unknown): unknown {
+	if(overwrite === undefined) {
+		return current;
+	} else if(isPlainObject(current) && isPlainObject(overwrite)) {
+		const result: Record<string, unknown> = { ...current };
+		for(const [key, value] of Object.entries(overwrite)) {
+			result[key] = specialize(current[key], isPlainObject(base) ? base[key] : undefined, value);
+		}
+		return result;
+	}
+	return JSON.stringify(current) === JSON.stringify(base) ? overwrite : current;
+}
+
 export const FlowrConfig = {
 	name: 'FlowrConfig',
 	/**
@@ -619,13 +634,14 @@ export const FlowrConfig = {
 		}
 	},
 	/**
-	 * Resolves the configuration for the given {@link ProjectKind} by merging the matching {@link FlowrConfig.specializeConfig}
-	 * entry into `config` (arrays are concatenated, see {@link deepMergeObject}). Returns `config` itself if the kind has no
-	 * overwrite, so callers can use this freely.
+	 * Resolves the configuration for the given {@link ProjectKind} by applying the matching
+	 * {@link FlowrConfig.specializeConfig} entry to every key it names. What you configured wins over the entry, which in
+	 * turn wins over flowR's default; a value that differs from the default counts as configured.
+	 * Returns `config` itself if the kind has no entry, so callers can use this freely.
 	 */
 	forKind(this: void, config: FlowrConfig, kind: ProjectKind): FlowrConfig {
 		const overwrite = config.specializeConfig?.[kind];
-		return overwrite ? deepMergeObject<FlowrConfig>(config, overwrite) : config;
+		return overwrite ? specialize(config, FlowrConfig.default(), overwrite) as FlowrConfig : config;
 	},
 	/**
 	 * Gets the configuration for the given engine type from the config.

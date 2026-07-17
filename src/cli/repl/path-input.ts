@@ -23,10 +23,7 @@ function looksLikePath(s: string): boolean {
 	return /^[^\s()]+\/[^\s()]+$/.test(s) && fs.existsSync(s);
 }
 
-/**
- * Returns the input to analyze: an input that looks like a path is either prepended with the {@link fileProtocol}
- * (if `repl.autoUseFileProtocol` is set) or kept as is, pointing the user at the protocol either way.
- */
+/** The input to analyze: one that looks like a path gets the {@link fileProtocol}, unless the repl config says not to. */
 export function handlePathLikeInput(output: ReplOutput, input: string, config: FlowrConfig): string {
 	if(!looksLikePath(input)) {
 		return input;

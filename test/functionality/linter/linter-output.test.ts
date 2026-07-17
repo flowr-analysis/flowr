@@ -1,5 +1,5 @@
 import { assert, describe, test, vi } from 'vitest';
-import { formatLints, LinterOutputFormat, lintsToGithub, lintsToSarif } from '../../../src/linter/linter-output';
+import { formatLints, LinterOutputFormat } from '../../../src/linter/linter-output';
 import type { LinterQueryResult } from '../../../src/queries/catalog/linter-query/linter-query-format';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
@@ -18,7 +18,11 @@ interface Sarif {
 }
 
 function sarifOf(results: LinterQueryResult['results'], version = '1.2.3'): Sarif {
-	return JSON.parse(lintsToSarif(results, version)) as Sarif;
+	return JSON.parse(formatLints(results, LinterOutputFormat.Sarif, version) as string) as Sarif;
+}
+
+function githubOf(results: LinterQueryResult['results']): string {
+	return formatLints(results, LinterOutputFormat.Github, '1.2.3') as string;
 }
 
 /** a result of the `undefined-symbol` rule, whose pretty print only needs the location and the name */
@@ -74,7 +78,7 @@ describe('Linter output', () => {
 
 	describe('github', () => {
 		test('a finding becomes an annotation carrying its file and position', () => {
-			const out = lintsToGithub(undefinedSymbol(LintingResultCertainty.Certain, '/p/a.R'));
+			const out = githubOf(undefinedSymbol(LintingResultCertainty.Certain, '/p/a.R'));
 			assert.include(out, '::warning ');
 			assert.include(out, 'file=/p/a.R,line=3,col=7,endLine=3,endColumn=9');
 			assert.include(out, 'title=undefined-symbol::');
@@ -83,7 +87,7 @@ describe('Linter output', () => {
 		test('a file of the workspace is named relative to it, as github annotates nothing else', () => {
 			vi.stubEnv('GITHUB_WORKSPACE', '/p');
 			try {
-				assert.include(lintsToGithub(undefinedSymbol(LintingResultCertainty.Certain, '/p/R/a.R')), 'file=R/a.R,line=3');
+				assert.include(githubOf(undefinedSymbol(LintingResultCertainty.Certain, '/p/R/a.R')), 'file=R/a.R,line=3');
 				assert.strictEqual(sarifOf(undefinedSymbol(LintingResultCertainty.Certain, '/p/R/a.R'))
 					.runs[0].results[0].locations[0].physicalLocation.artifactLocation.uri, 'R/a.R');
 			} finally {
@@ -94,21 +98,21 @@ describe('Linter output', () => {
 		test('a file outside the workspace keeps its path, it has nothing to attach to', () => {
 			vi.stubEnv('GITHUB_WORKSPACE', '/p');
 			try {
-				assert.include(lintsToGithub(undefinedSymbol(LintingResultCertainty.Certain, '/other/a.R')), 'file=/other/a.R,line=3');
+				assert.include(githubOf(undefinedSymbol(LintingResultCertainty.Certain, '/other/a.R')), 'file=/other/a.R,line=3');
 			} finally {
 				vi.unstubAllEnvs();
 			}
 		});
 
 		test('an uncertain finding is only a notice, and one without a file carries no position', () => {
-			assert.include(lintsToGithub(undefinedSymbol(LintingResultCertainty.Uncertain, '/p/a.R')), '::notice ');
-			const noFile = lintsToGithub(undefinedSymbol(LintingResultCertainty.Certain));
+			assert.include(githubOf(undefinedSymbol(LintingResultCertainty.Uncertain, '/p/a.R')), '::notice ');
+			const noFile = githubOf(undefinedSymbol(LintingResultCertainty.Certain));
 			assert.notInclude(noFile, 'file=');
 			assert.include(noFile, '::warning title=');
 		});
 
 		test('a newline in a message is escaped, as it would end the command', () => {
-			const out = lintsToGithub({
+			const out = githubOf({
 				'undefined-symbol': { error: new Error('a\nb\rc%d') }
 			} as unknown as LinterQueryResult['results']);
 			assert.include(out, 'a%0Ab%0Dc%25d');

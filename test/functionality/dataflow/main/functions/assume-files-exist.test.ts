@@ -70,12 +70,10 @@ describe('solver.resolveSource.assumeFilesExist', withTreeSitter(parser => {
 		}
 	});
 
-	describe('the kind of the project decides it', () => {
-		test.each([
-			[ProjectKind.Package, true], [ProjectKind.Project, true], [ProjectKind.ShinyApp, true],
-			[ProjectKind.Notebook, false], [ProjectKind.Script, false], [ProjectKind.Unknown, false]
-		])('%s assumes %s', (kind, expected) => {
-			assert.strictEqual(FlowrConfig.forKind(FlowrConfig.default(), kind).solver.resolveSource?.assumeFilesExist, expected);
-		});
-	});
 }));
+
+test('only the kinds that ship the files they source assume them', () => {
+	const assumed = Object.values(ProjectKind)
+		.filter(kind => FlowrConfig.forKind(FlowrConfig.default(), kind).solver.resolveSource?.assumeFilesExist);
+	assert.deepStrictEqual(assumed, [ProjectKind.Package, ProjectKind.ShinyApp, ProjectKind.Project]);
+});

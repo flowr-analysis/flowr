@@ -41,10 +41,7 @@ describe('Slice query flags', () => {
 		assert.deepStrictEqual(sliceQueryOptionsParser('(2@x)c'), { includeCallees: true });
 		assert.deepStrictEqual(sliceQueryOptionsParser('(2@x)fIBc'),
 			{ inlineFull: 'banner', includeCallees: true }, 'the flag order must not matter');
-	});
-
-	test('the lowercase b does not request banners', () => {
-		assert.deepStrictEqual(sliceQueryOptionsParser('(2@x)Ib'), { inlineFull: true });
+		assert.deepStrictEqual(sliceQueryOptionsParser('(2@x)Ib'), { inlineFull: true }, 'only the uppercase B is the banner');
 	});
 
 	test('only the slice query knows the direction flag', () => {

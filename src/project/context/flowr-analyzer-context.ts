@@ -101,9 +101,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	private _classifying = false;
 
 	/**
-	 * The configuration of this analysis, with the {@link FlowrConfig.specializeConfig} entry of the project's
-	 * {@link ProjectKind} applied (see {@link FlowrConfig.forKind}). It is resolved once per kind, so it follows the
-	 * project as files are added and stays fixed once the classification settles; {@link reevaluateConfig} forces it anew.
+	 * {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's {@link ProjectKind} applied
+	 * (see {@link FlowrConfig.forKind}), resolved once per kind.
 	 */
 	public get config(): FlowrConfig {
 		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
@@ -125,11 +124,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		} finally {
 			this._classifying = false;
 		}
-	}
-
-	/** Drops the resolved {@link config}, so the next use specializes it for the project kind detected by then. */
-	public reevaluateConfig(): void {
-		this._configKind = undefined;
 	}
 
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {

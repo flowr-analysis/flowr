@@ -14,7 +14,7 @@ function nodeLabels(mermaid: string): string[] {
 const awkwardName = 'we`ird".R';
 
 describe('Dataflow mermaid', withTreeSitter(parser => {
-	async function mermaidOfSourcingProject(simplified: boolean): Promise<string> {
+	async function build(simplified: boolean): Promise<string> {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-mermaid-'));
 		try {
 			const sourced = path.join(dir, awkwardName);
@@ -28,13 +28,21 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 		}
 	}
 
-	test.each([false, true])('a path of the project never reaches the output unescaped (simplified: %s)', async(simplified) => {
-		assert.notInclude(await mermaidOfSourcingProject(simplified), awkwardName,
-			'every id built from the path has to be escaped, a raw one ends the label or the string around it');
-	});
+	/** the mermaid of a project sourcing {@link awkwardName}, analyzed once per mode */
+	const cache = new Map<boolean, Promise<string>>();
+	function mermaidOfSourcingProject(simplified: boolean): Promise<string> {
+		let mermaid = cache.get(simplified);
+		if(mermaid === undefined) {
+			mermaid = build(simplified);
+			cache.set(simplified, mermaid);
+		}
+		return mermaid;
+	}
 
-	test.each([false, true])('a label never carries a raw quote or backtick (simplified: %s)', async(simplified) => {
-		const labels = nodeLabels(await mermaidOfSourcingProject(simplified));
+	test.each([false, true])('nothing of the project ends a label or the string around it (simplified: %s)', async(simplified) => {
+		const mermaid = await mermaidOfSourcingProject(simplified);
+		assert.notInclude(mermaid, awkwardName, 'every id built from the path has to be escaped');
+		const labels = nodeLabels(mermaid);
 		assert.isNotEmpty(labels);
 		for(const label of labels) {
 			assert.notInclude(label, '"', `the label ${JSON.stringify(label)} has to escape its quotes`);
@@ -42,15 +50,10 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 		}
 	});
 
-	test('a vertex still reports its origins and dependencies, only escaped', async() => {
+	test('an id stays readable and relative to what was requested', async() => {
 		const mermaid = await mermaidOfSourcingProject(false);
 		assert.include(mermaid, 'v: ', 'the sourced file has to contribute origins');
 		assert.match(mermaid, /, we_ird_\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
-		assert.include(mermaid, 'we_ird_.R:1:1-', 'an id keeps the path readable, only what breaks mermaid is replaced');
-	});
-
-	test('the id of a sourced vertex is relative to what was requested', async() => {
-		const mermaid = await mermaidOfSourcingProject(false);
 		const ids = [...mermaid.matchAll(/\*\*id: (.*?)\*\*/g)].map(m => m[1]);
 		assert.isNotEmpty(ids);
 		for(const id of ids) {
@@ -59,8 +62,7 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 	});
 
 	test('a simplified subflow is labeled by the function it holds', async() => {
-		const mermaid = await mermaidOfSourcingProject(true);
-		const subgraphs = [...mermaid.matchAll(/^subgraph "[^"]+" \["(.*)"]$/gm)].map(m => m[1]);
+		const subgraphs = [...(await mermaidOfSourcingProject(true)).matchAll(/^subgraph "[^"]+" \["(.*)"]$/gm)].map(m => m[1]);
 		assert.isNotEmpty(subgraphs);
 		assert.isTrue(subgraphs.some(s => s.includes('function(a)')), `the lexeme has to name the subflow, got ${JSON.stringify(subgraphs)}`);
 	});

@@ -84,14 +84,10 @@ describe('The config of an analysis', () => {
 		assert.isTrue(ctx.config.ignoreSourceCalls);
 	});
 
-	test('is resolved anew after a re-evaluation', () => {
+	test('is resolved once per kind', () => {
 		const ctx = shinyContext(specializing(ProjectKind.ShinyApp, c => {
 			c.ignoreSourceCalls = true;
 		}));
-		const first = ctx.config;
-		assert.strictEqual(ctx.config, first, 'the same kind resolves to the same config');
-		ctx.reevaluateConfig();
-		assert.notStrictEqual(ctx.config, first);
-		assert.isTrue(ctx.config.ignoreSourceCalls);
+		assert.strictEqual(ctx.config, ctx.config, 'the same kind resolves to the same config');
 	});
 });

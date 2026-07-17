@@ -199,6 +199,14 @@ export function commonDirectory(paths: readonly string[]): string | undefined {
 }
 
 /**
+ * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
+ */
+export function relativeTo(root: string, filePath: string): string {
+	const relative = path.relative(root, filePath).replaceAll('\\', '/');
+	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
+}
+
+/**
  * Checks whether the given path-like object is a file that exists on the local filesystem.
  */
 export function isFilePath(p: PathLike) {

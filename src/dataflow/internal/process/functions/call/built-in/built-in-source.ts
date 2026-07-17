@@ -197,7 +197,6 @@ export function processSourceCall<OtherInfo>(
 		if(filepath !== undefined && filepath.length > 0) {
 			let result = information;
 			const origCds = data.cds?.slice() ?? [];
-			/* with more than one candidate it stays a maybe, as only one of them is the file that is sourced */
 			const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 			for(const f of filepath) {
 				// check if the sourced file has already been dataflow analyzed, and if so, skip it

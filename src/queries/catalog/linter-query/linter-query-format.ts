@@ -23,7 +23,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
-import { LinterOutputFormat } from '../../../linter/linter-output';
+import { type LintResultsByRule, LinterOutputFormat } from '../../../linter/linter-output';
 
 export interface LinterQuery extends BaseQueryFormat {
 	readonly type:    'linter';
@@ -40,7 +40,7 @@ export interface LinterQueryResult extends BaseQueryResult {
 	/**
 	 * The results of the linter query, which returns a set of linting results for each rule that was executed.
 	 */
-	readonly results:    { [L in LintingRuleNames]?: LintingResults<L> }
+	readonly results:    LintResultsByRule
 	/** The findings rendered in the requested {@link LinterQuery#format|format}, if one was requested. */
 	readonly formatted?: string
 }

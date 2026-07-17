@@ -625,17 +625,15 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 		return result;
 	};
 
-	// inlining the full project yields one self-contained text: every file flowR loads is emitted in its loading
-	// order, while the explicitly sourced ones are spliced into their `source()` call so nothing is repeated.
-	if(selection.inlineFull) {
+	// both inlinings splice every resolvable `source()` in place, overriding `reconstructFiles`: `inlineSources`
+	// emits the main file alone, `inlineFull` every file flowR loads, minus the ones already spliced into a call.
+	if(selection.inlineFull || selection.inlineSources) {
 		const warnings: InlineWarning[] = [];
 		const sourceMap = selection.sourceMap ?? new Map<NodeId, number>();
 		const splicedIn = new Set<number>(sourceMap.values());
+		const indices = selection.inlineFull ? ast.ast.files.map((_, i) => i).filter(i => !splicedIn.has(i)) : [0];
 		const parts: string[] = [];
-		for(let i = 0; i < ast.ast.files.length; i++) {
-			if(splicedIn.has(i)) {
-				continue;
-			}
+		for(const i of indices) {
 			const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, i, {
 				selection:     selection.nodes,
 				autoSelectIf:  autoSelectIfWrapper,
@@ -646,36 +644,12 @@ export function reconstructToCode(ast: NormalizedAst, selection: Selection, auto
 				currentFile:   i,
 				warnings
 			}));
-			if(code.length === 0) {
-				continue;
+			if(code.length > 0) {
+				parts.push(selection.inlineFull === 'banner' ? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}` : code);
 			}
-			parts.push(selection.inlineFull === 'banner'
-				? `# ---- ${ast.ast.files[i].filePath ?? '<inline>'} ----\n${code}`
-				: code);
 		}
 		return {
 			code:                  parts.join('\n'),
-			linesWithAutoSelected: linesWithAutoSelected.size,
-			inlineWarnings:        warnings
-		};
-	}
-
-	// when inlining sources we produce a single self-contained file (the main file, index 0),
-	// splicing every resolvable `source()` in place; this overrides `reconstructFiles`.
-	if(selection.inlineSources) {
-		const warnings: InlineWarning[] = [];
-		const code = removeOuterExpressionListIfApplicable(reconstructFileCode(ast, 0, {
-			selection:     selection.nodes,
-			autoSelectIf:  autoSelectIfWrapper,
-			fullAst:       ast,
-			inlineSources: true,
-			sourceMap:     selection.sourceMap ?? new Map<NodeId, number>(),
-			visited:       new Set<number>([0]),
-			currentFile:   0,
-			warnings
-		}));
-		return {
-			code,
 			linesWithAutoSelected: linesWithAutoSelected.size,
 			inlineWarnings:        warnings
 		};

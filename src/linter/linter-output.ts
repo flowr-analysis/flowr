@@ -10,7 +10,7 @@ import {
 	type LintingResult
 } from './linter-format';
 import type { SourceLocation } from '../util/range';
-import path from 'path';
+import { relativeTo } from '../util/files';
 import { FlowrGithubRef } from '../documentation/doc-util/doc-files';
 
 /** The linting results of every rule that ran, i.e. what a linter query returns. */
@@ -43,13 +43,7 @@ function findings(results: LintResultsByRule): Finding[] {
 		const perRule = perRuleResults as LintingResults<LintingRuleNames>;
 		/* staying silent about a rule that threw would claim it passed */
 		if(LintingResults.isError(perRule)) {
-			const { error } = perRule;
-			return [{
-				rule,
-				message: `the linting rule failed: ${error instanceof Error ? error.message : String(error)}`,
-				level:   'error' as Level,
-				loc:     undefined
-			}];
+			return [{ rule, message: `the linting rule failed: ${LintingResults.stringifyError(perRule)}`, level: 'error' as Level, loc: undefined }];
 		}
 		return (perRule.results as readonly LintingResult[]).map(result => ({
 			rule,
@@ -60,14 +54,9 @@ function findings(results: LintResultsByRule): Finding[] {
 	});
 }
 
-/**
- * The path as a report has to name it: relative to the workspace, as neither a github annotation nor its sarif
- * ingestion attaches to an absolute one. A file outside of the workspace keeps its path, it has nothing to attach to.
- */
+/** Neither a github annotation nor its sarif ingestion attaches to an absolute path, so report it from the workspace. */
 function reportedPath(file: string): string {
-	const root = process.env.GITHUB_WORKSPACE ?? process.cwd();
-	const relative = path.relative(root, file).replaceAll('\\', '/');
-	return relative.length > 0 && !relative.startsWith('..') ? relative : file;
+	return relativeTo(process.env.GITHUB_WORKSPACE ?? process.cwd(), file);
 }
 
 /** a finding flowR cannot locate carries no location, rather than a broken one */
@@ -87,7 +76,7 @@ function sarifLocation(loc: SourceLocation | undefined): object[] {
  * Renders the linting results as SARIF 2.1.0, the format code scanners (e.g. GitHub's) ingest, on a single line.
  * Only the rules that produced a finding are described, as SARIF requires every reported rule to be declared.
  */
-export function lintsToSarif(results: LintResultsByRule, flowrVersion: string): string {
+function lintsToSarif(results: LintResultsByRule, flowrVersion: string): string {
 	const flat = findings(results);
 	const reported = [...new Set(flat.map(f => f.rule))];
 	return JSON.stringify({
@@ -126,7 +115,7 @@ function escapeGithubData(text: string): string {
 }
 
 /** Renders the linting results as GitHub workflow commands, which a workflow run turns into annotations. */
-export function lintsToGithub(results: LintResultsByRule): string {
+function lintsToGithub(results: LintResultsByRule): string {
 	return findings(results).map(f => {
 		const loc = f.loc !== undefined && f.loc[4] !== undefined ? f.loc : undefined;
 		const where = loc === undefined ? '' : ` file=${escapeGithubData(reportedPath(loc[4] as string))},line=${loc[0]},col=${loc[1]},endLine=${loc[2]},endColumn=${loc[3]},`;

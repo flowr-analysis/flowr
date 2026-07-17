@@ -18,7 +18,7 @@ import type { FlowrDescriptionFile } from '../plugins/file-plugins/files/flowr-d
 import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
-import { commonDirectory } from '../../util/files';
+import { commonDirectory, relativeTo } from '../../util/files';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
@@ -211,14 +211,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return this.rootCache;
 	}
 
-	/** The path of `filePath` seen from the {@link root} (`s.R` instead of `/tmp/s.R`), unchanged if it is outside. */
+	/** The path of `filePath` seen from the {@link root}, see {@link relativeTo}. */
 	public relativePath(filePath: string): string {
 		const root = this.root();
-		if(root === undefined) {
-			return filePath;
-		}
-		const relative = path.relative(root, filePath);
-		return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
+		return root === undefined ? filePath : relativeTo(root, filePath);
 	}
 
 	/**

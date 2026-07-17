@@ -60,9 +60,8 @@ export function sliceDirectionParser(argument: string): SliceDirection {
 }
 
 /**
- * The {@link SliceQueryOptions} the flag suffix of `argument` requests, shared by every slicing query:
- * `i` inlines resolvable `source()` calls, `I` inlines all files (`IB` with a banner comment per file), and
- * `c` slices past function-definition boundaries. Absent flags are left out entirely, so the query defaults apply.
+ * The {@link SliceQueryOptions} the flag suffix of `argument` requests, see {@link SharedSliceFlags}.
+ * An absent flag is left out entirely, so the default of the query applies.
  */
 export function sliceQueryOptionsParser(argument: string): SliceQueryOptions {
 	const flags = sliceFlagSuffix(argument);
@@ -130,10 +129,8 @@ function lastCriterionFragment(arg: string): string {
 }
 
 /**
- * The completions for the flag suffix of `arg`, offering every flag of `flags` the argument does not carry yet,
- * whose {@link SliceFlag#requires|required} flag it does, and which none of its flags
- * {@link SliceFlag#conflicts|conflict} with. A trailing space is offered too, to move on to the code.
- * Returns `undefined` while the criteria are still open.
+ * The completions for the flag suffix of `arg`: every flag that fits the ones it carries already, plus a
+ * trailing space to move on to the code. Returns `undefined` while the criteria are still open.
  */
 export function sliceFlagCompletions(arg: string, flags: readonly SliceFlag[]): CommandCompletions | undefined {
 	const split = splitCriteriaArgument(arg);

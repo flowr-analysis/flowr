@@ -15,7 +15,7 @@ const FileNamePattern = /license(\.md|\.txt)?$/i;
  */
 export class FlowrAnalyzerLicenseFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-license-files-plugin';
-	public readonly description = 'This plugin provides support for loading license files.';
+	public readonly description = 'Loads license files.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pathPattern: RegExp;
 

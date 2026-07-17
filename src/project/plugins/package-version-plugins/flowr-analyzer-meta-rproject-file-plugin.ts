@@ -10,7 +10,7 @@ import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
  */
 export class FlowrAnalyzerMetaRProjectFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-meta-rproject-file-plugin';
-	public readonly description = 'This plugin extracts project meta information and dependencies from an rproject.toml.';
+	public readonly description = 'Extracts project meta information and dependencies from an rproject.toml.';
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {

@@ -12,7 +12,7 @@ import { MetaPriority } from '../../context/flowr-analyzer-meta-context';
  */
 export class FlowrAnalyzerMetaDescriptionFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-meta-file-plugin';
-	public readonly description = 'This plugin does extract package meta information from R DESCRIPTION files.';
+	public readonly description = 'Extracts package meta information from DESCRIPTION files.';
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {

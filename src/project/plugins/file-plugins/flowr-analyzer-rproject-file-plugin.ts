@@ -18,7 +18,7 @@ const RProjectFilePattern = /^rproject\.toml$/i;
  */
 export class FlowrAnalyzerRProjectFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-rproject-file-plugin';
-	public readonly description = 'This plugin marks the rproject.toml manifest of an rv project.';
+	public readonly description = 'Marks the rproject.toml manifest of an rv project.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pathPattern: RegExp;
 

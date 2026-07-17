@@ -24,7 +24,7 @@ export class FlowrAnalyzerLoadingOrderImplicitSourcesPlugin extends FlowrAnalyze
 		}
 		const unordered = ctx.files.loadingOrder.getUnorderedRequests();
 		const files = unordered.filter(r => r.request === 'file');
-		/* the matches of each entry, in project order; an entry matching none is a typo or names a foreign file */
+		/* node sets keep insertion order! */
 		const ordered = new Set<RParseRequest>();
 		const unmatched: string[] = [];
 		for(const entry of implicit) {

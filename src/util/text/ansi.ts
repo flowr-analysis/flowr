@@ -69,7 +69,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		if(options && 'style' in options) {
 			if(options.style === FontStyles.Bold) {
 				input = `**${input}**`;
-			} else if(options.style === FontStyles.Italic) {
+			} else if(options.style === FontStyles.Italic || options.style === FontStyles.Faint) {
 				input = `_${input}_`;
 			} else {
 				throw new Error(`Unsupported font style: ${String(options.style)}`);
@@ -119,6 +119,11 @@ export function bold(s: string, f: OutputFormatter = formatter, options?: Format
  */
 export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
 	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
+}
+
+/** Faint/dim ("grayed out") text. */
+export function faint(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+	return f.format(s, { style: FontStyles.Faint, ...options });
 }
 
 /**

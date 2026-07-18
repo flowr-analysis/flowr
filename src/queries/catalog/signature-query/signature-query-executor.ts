@@ -4,8 +4,9 @@ import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch
 } from './signature-query-format';
-import { getSharedSigSourceSync, type PackageSignatureSource } from '../../../project/sigdb/reader';
-import { DepTypeNames } from '../../../project/sigdb/schema';
+import { availableVersionEntries, getSharedSigSourceSync, type AvailableVersion, type PackageSignatureSource } from '../../../project/sigdb/reader';
+import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
+import { DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import { RVersion } from '../../../util/r-version';
@@ -57,20 +58,40 @@ function versionMatcher(spec: string): (v: string) => boolean {
 	return v => v === spec;
 }
 
-/** the versions of a package the loaded source can answer (dated releases, base-R core releases, and the latest) */
+/** whether the query narrows results by parameter shape (parameter names and/or a required-parameter count) */
+function hasParameterFilter(q: SignatureQuery): boolean {
+	return (q.parameters?.length ?? 0) > 0 || q.requiredParameters !== undefined;
+}
+
+/** a predicate over a decoded function for the query's parameter filters, or `undefined` when none are set */
+function parameterFilter(q: SignatureQuery): ((fn: DecodedFunction) => boolean) | undefined {
+	if(!hasParameterFilter(q)) {
+		return undefined;
+	}
+	const nameMatchers = q.parameters?.map(nameMatcher);
+	const required = q.requiredParameters;
+	return fn => {
+		if(nameMatchers && !nameMatchers.every(m => fn.signature.some(p => m(p.name)))) {
+			return false;
+		}
+		// required = no default; `...` is never a required parameter to provide
+		return required === undefined || fn.signature.filter(p => p.name !== '...' && !p.optional).length === required;
+	};
+}
+
+/** the version strings of a package the loaded source can answer (dated releases, base-R core releases, and the latest) */
 function availableVersions(src: PackageSignatureSource, pkg: string): string[] {
-	const set = new Set<string>();
-	for(const r of src.releaseDates(pkg)) {
-		set.add(r.version.str);
+	return availableVersionEntries(src, pkg).map(e => e.version);
+}
+
+/** a predicate selecting a package release by the `@version` spec: a date bound (`<=2026`, `>=2021.05`) or a version (exact/glob/range) */
+function releaseMatcher(spec: string): (entry: AvailableVersion) => boolean {
+	const byDate = releaseDateBound(spec);
+	if(byDate) {
+		return e => byDate(e.date);
 	}
-	for(const v of src.coreVersions(pkg) ?? []) {
-		set.add(v.str);
-	}
-	const latest = src.latestVersion(pkg);
-	if(latest) {
-		set.add(latest.str);
-	}
-	return [...set].sort((a, b) => RVersion.compare(a, b));
+	const byVersion = versionMatcher(spec);
+	return e => byVersion(e.version);
 }
 
 /** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
@@ -88,35 +109,16 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
 }
 
-/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`) */
-const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._]*$/;
-
-/** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
-function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
-	if(!RdrrTopicName.test(fn)) {
-		return undefined;
-	}
-	if(opts.base) {
-		return `https://rdrr.io/r/${pkg}/${fn}.html`;
-	}
-	if(opts.cran) {
-		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
-	}
-	return undefined;
-}
-
-/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, rdrr.io doc link */
+/** the trailing fields shared by every function view: definition location and the (accurate) CRAN-mirror source link */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
 	return {
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {})
 	};
 }
 
-/** the decoded view of one function, adding the CRAN-mirror source link and rdrr.io documentation link */
+/** the decoded view of one function, adding the CRAN-mirror source link */
 function decodedToView(pkg: string, fn: DecodedFunction, version: string | undefined, opts: { cran: boolean, base: boolean }): SignatureFunctionView {
 	return {
 		name:       fn.name,
@@ -213,9 +215,39 @@ function suggest(candidates: Iterable<string>, query: string, limit = 6): string
 /** cap on wildcard-search hits, so a `* *` search cannot exhaust memory */
 const MaxMatches = 500;
 
+/** how many parameter names a match preview shows before eliding the rest with `…` */
+const ParamPreviewCap = 4;
+
+/**
+ * A short preview of a function's parameters for a match, when the query filters by parameter, kept in signature
+ * order (highlighting never reorders it): the matched parameters are always shown, padded with leading parameters
+ * for context up to {@link ParamPreviewCap} and elided with `…` when any are dropped. Also returns the matched names
+ * so the renderer can highlight them. `undefined` when no parameter filter is set.
+ */
+function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview: string[], matched: string[] } | undefined {
+	if(!hasParameterFilter(q)) {
+		return undefined;
+	}
+	const names = fn.signature.map(p => p.name);
+	const matched = q.parameters?.length
+		? names.filter(n => q.parameters?.some(pat => nameMatcher(pat)(n)))
+		: [];
+	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && !p.optional).map(p => p.name));
+	for(const n of names) {
+		if(show.size >= ParamPreviewCap) {
+			break;
+		}
+		show.add(n);
+	}
+	const preview = names.filter(n => show.has(n));
+	if(preview.length < names.length) {
+		preview.push('…');
+	}
+	return { preview, matched };
+}
+
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
-function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): SignatureMatchView {
-	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
+function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean, params?: { preview: string[], matched: string[] }): SignatureMatchView {
 	return {
 		package:  pkg,
 		name:     fn.name,
@@ -224,7 +256,8 @@ function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefi
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
 		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
+		...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
 	};
 }
 
@@ -267,14 +300,16 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const cap = MaxMatches;
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
-	const verMatch = q.version ? versionMatcher(q.version) : undefined;
+	const relMatch = q.version ? releaseMatcher(q.version) : undefined;
 	// every source holding a package (its latest lives in `current`, its older releases in `history`)
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
-	// the versions of `pkg` matching `m`, unioned across all owning sources (so a `3.*` filter reaches history)
-	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (v: string) => boolean) =>
-		[...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(m)))];
+	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
+	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (e: AvailableVersion) => boolean) =>
+		[...new Set(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)))];
 
-	if(!q.function) {
+	const paramPred = parameterFilter(q);
+	// a parameter filter (with no function name) still means "search functions", not "list packages"
+	if(!q.function && paramPred === undefined) {
 		const packages: SignaturePackageMatch[] = [];
 		let truncated = false;
 		for(const pkg of matchedPkgs) {
@@ -283,9 +318,9 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 				continue;
 			}
 			const base = owners[0].isBaseR(pkg);
-			// with a version filter, union the matching versions across all sources (so a `3.*` reaches history)
-			const versions = verMatch
-				? matchingVersions(owners, pkg, verMatch).sort((a, b) => RVersion.compare(a, b))
+			// with a version filter, union the matching versions across all sources (so a `3.*`/date reaches history)
+			const versions = relMatch
+				? matchingVersions(owners, pkg, relMatch).sort((a, b) => RVersion.compare(a, b))
 				: undefined;
 			if(versions !== undefined && versions.length === 0) {
 				continue;
@@ -301,8 +336,12 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		return { packages, truncated };
 	}
 
-	const fnMatch = nameMatcher(q.function);
+	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
+	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
+	// every package -- the difference between a fast `* ggplot` and one that decodes the whole database
+	const exactName = q.function !== undefined && !hasGlob(q.function);
 	const matches: SignatureMatchView[] = [];
+	let searched = 0;
 	let truncated = false;
 	for(const pkg of matchedPkgs) {
 		const owners = owningOf(pkg);
@@ -310,24 +349,47 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			continue;
 		}
 		const base = owners[0].isBaseR(pkg);
-		// versions to scan: with a filter, the union of matching releases across all sources (so `3.*` reaches
-		// history); without one, just the latest. Each version is scanned in a single source (the first that has
-		// it), so a release present in more than one source is not double-counted
-		const versionsToScan: (string | undefined)[] = verMatch
-			? matchingVersions(owners, pkg, verMatch)
-			: [undefined];
-		for(const v of versionsToScan) {
-			const s = v === undefined ? owners[0] : owners.find(o => availableVersions(o, pkg).includes(v)) ?? owners[0];
-			const exports = s.lookup(pkg, v) ?? s.lookup(pkg);
-			const cran = (exports?.cran ?? false) && !base;
-			for(const fn of s.functions(pkg, v) ?? s.functions(pkg) ?? []) {
-				if(fnMatch(fn.name)) {
-					if(matches.length >= cap) {
-						truncated = true;
-						break;
+		// map each version to the single source that owns it (current before history), computed once per package so a
+		// version-filtered function search does not rebuild the release list per candidate version
+		const ownerOf = new Map<string, PackageSignatureSource>();
+		if(relMatch) {
+			for(const o of owners) {
+				for(const e of availableVersionEntries(o, pkg)) {
+					if(!ownerOf.has(e.version) && relMatch(e)) {
+						ownerOf.set(e.version, o);
 					}
-					matches.push(compactMatch(pkg, fn, exports?.version, base, cran));
 				}
+			}
+		}
+		// versions to scan: with a filter, each matching release (scanned in its single owning source, so a release in
+		// more than one source is not double-counted); without one, just the latest
+		const versionsToScan: (string | undefined)[] = relMatch ? [...ownerOf.keys()] : [undefined];
+		for(const v of versionsToScan) {
+			const s = v === undefined ? owners[0] : ownerOf.get(v) ?? owners[0];
+			const candidates = exactName
+				? (fn => fn ? [fn] : [])(s.functionByName(pkg, q.function, v))
+				: (s.functions(pkg, v) ?? s.functions(pkg) ?? []);
+			// resolve the (heavier) package export view only once a function actually matches, so non-matching
+			// packages in a wildcard search cost just the name lookup, not a full export derivation
+			let exports: LibraryExports | undefined;
+			let looked = false;
+			for(const fn of candidates) {
+				if(!fnMatch(fn.name)) {
+					continue;
+				}
+				searched++;
+				if(paramPred && !paramPred(fn)) {
+					continue;
+				}
+				if(matches.length >= cap) {
+					truncated = true;
+					break;
+				}
+				if(!looked) {
+					exports = s.lookup(pkg, v) ?? s.lookup(pkg);
+					looked = true;
+				}
+				matches.push(compactMatch(pkg, fn, exports?.version, base, (exports?.cran ?? false) && !base, matchedParamPreview(fn, q)));
 			}
 			if(truncated) {
 				break;
@@ -337,7 +399,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			break;
 		}
 	}
-	return { matches, matchCount: matches.length, truncated };
+	return { matches, matchCount: matches.length, searched, truncated };
 }
 
 /** the discoverable bundle sources for Tab completion (process-wide cached; opening the manifest reads no shard) */
@@ -443,8 +505,9 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 		return meta();
 	}
 
-	// wildcard search: a glob in the package/function name, or a version spec matching more than one release
-	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && isMultiVersion(q.version))) {
+	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
+	// a date bound), or a parameter filter (which narrows a set of functions and so always goes through the search path)
+	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
 		const found = searchSources(sources, packages, q);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"

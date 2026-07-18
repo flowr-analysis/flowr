@@ -1,5 +1,5 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
-import { bold, italic, color, Colors, FontStyles } from '../../../util/text/ansi';
+import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
@@ -11,13 +11,16 @@ export function printSignatureHelp(output: ReplOutput): void {
 	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
-	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]]`);
+	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>]`);
 	output.stdout('');
 	output.stdout(bold('Examples', f));
 	ex(':query @signature', 'summarize the loaded databases');
 	ex(':query @signature ggplot2', 'a package: version, exports, dependencies, links');
 	ex(':query @signature ggplot2::aes', 'one function (or `ggplot2 aes`, `ggplot2@3.5.0 aes`)');
 	ex(':query @signature gg* geom_*', 'glob search (versions also take ranges: >=4.0.0, 4.x)');
+	ex(':query @signature ggplot2@<=2021.05', 'select releases by date (YYYY.MM.DD: <=2026, >=2021.05)');
+	ex(':query @signature ggplot2 * --param data --param mapping', 'functions with both parameters (repeat/comma-separate --param; alone it searches all packages)');
+	ex(':query @signature stats * --required 3', 'functions with exactly 3 required parameters');
 	output.stdout('');
 	output.stdout(italic(':query* dumps the full JSON (every function, the whole match set).', f));
 }
@@ -56,9 +59,6 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.file) {
 		const loc = `${fn.file}${fn.line !== undefined ? `:${fn.line}` : ''}`;
 		result.push(`      ╰ ${italic('source', f)}  ${fn.sourceUrl ? `${loc}  ${f.hyperlink(fn.sourceUrl, fn.sourceUrl)}` : loc}`);
-	}
-	if(fn.docUrl) {
-		result.push(`      ╰ ${italic('docs', f)}    ${f.hyperlink(fn.docUrl, fn.docUrl)}`);
 	}
 	const listLine = (label: string, items: readonly string[], max: number): void => {
 		if(!items.length) {
@@ -126,11 +126,16 @@ export function pushPackage(result: string[], f: OutputFormatter, p: SignaturePa
 export function pushMatches(result: string[], f: OutputFormatter, out: SignatureQueryResult): void {
 	const matches = out.matches ?? [];
 	const cap = out.truncated ? italic(` (capped at ${matches.length})`, f) : '';
-	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${cap}`);
+	const scanned = out.searched !== undefined && out.searched > (out.matchCount ?? matches.length)
+		? faint(` (of ${out.searched.toLocaleString()} searched)`, f) : '';
+	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${scanned}${cap}`);
 	for(const m of matches) {
+		const matched = new Set(m.matchedParameters ?? []);
+		const params = m.parameters?.length
+			? `${italic('(', f)}${m.parameters.map(p => matched.has(p) ? color(p, Colors.Yellow, f, { style: FontStyles.Bold }) : italic(p, f)).join(italic(', ', f))}${italic(')', f)}`
+			: '';
 		const loc = m.file ? `  ${linkLocation(m.file, m.line, m.sourceUrl, f)}` : '';
-		const doc = m.docUrl ? `  ${f.hyperlink('docs', m.docUrl)}` : '';
-		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}`);
+		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${params}${m.version ? italic(` v${m.version}`, f) : ''}${loc}`);
 	}
 }
 

@@ -86,6 +86,10 @@ export async function readSignatureDb(file: string): Promise<SigDb> {
 export interface PackageSignatureSource {
 	/** whether the source can resolve the package at all */
 	has(pkg: string): boolean;
+	/** whether the source actually carries the given version of a package (not just the package itself) */
+	hasVersion(pkg: string, version: string): boolean;
+	/** whether a version is a current CRAN release (i.e. not in the package's `noncran`/removed set) */
+	isCranVersion(pkg: string, version: string): boolean;
 	/** the export view of a package version (defaults to its latest) */
 	lookup(pkg: string, version?: string): LibraryExports | undefined;
 	/** rich per-function view (signatures + call graphs) of a package version */
@@ -108,6 +112,39 @@ export interface PackageSignatureSource {
 	latestVersion(pkg: string): RVersion | undefined;
 	/** release any held file handles */
 	close(): void;
+}
+
+/** one version a source can answer for a package, with its release date when known */
+export interface AvailableVersion {
+	readonly version: string;
+	readonly date?:   Date;
+}
+
+/**
+ * The versions a source can answer for a package (dated releases, base-R core releases, and the recorded latest),
+ * deduplicated and ascending by R-version order. This is the single enumeration both the signature query and the
+ * version-guessing query build on.
+ */
+export function availableVersionEntries(src: PackageSignatureSource, pkg: string): AvailableVersion[] {
+	const map = new Map<string, Date | undefined>();
+	for(const r of src.releaseDates(pkg)) {
+		if(!map.has(r.version.str)) {
+			map.set(r.version.str, r.date);
+		}
+	}
+	for(const v of src.coreVersions(pkg) ?? []) {
+		if(!map.has(v.str)) {
+			map.set(v.str, src.releaseDate(pkg, v.str));
+		}
+	}
+	const latest = src.latestVersion(pkg);
+	if(latest && !map.has(latest.str)) {
+		map.set(latest.str, src.releaseDate(pkg, latest.str));
+	}
+	return [...map.entries()]
+		.map(([version, date]) => ({ version, ...(date ? { date } : {}) }))
+		// versions that differ in writing but not in R-version order (`1.2` vs `1.2.0`) are settled by release date
+		.sort((a, b) => RVersion.compare(a.version, b.version) || (a.date && b.date ? a.date.getTime() - b.date.getTime() : 0));
 }
 
 /** options controlling where {@link SigDatabase}/{@link SigDatabaseSet} materialize decompressed caches */
@@ -257,6 +294,11 @@ export class SigDatabase implements PackageSignatureSource {
 	/** whether this bundle actually carries the given version of a package (not just the package) */
 	public hasVersion(pkg: string, version: string): boolean {
 		return this.blob(pkg)?.versions[version] !== undefined;
+	}
+
+	/** whether a version is a current CRAN release (not in the package's `noncran`/removed set) */
+	public isCranVersion(pkg: string, version: string): boolean {
+		return !this.blob(pkg)?.noncran?.includes(version);
 	}
 
 	public lookup(pkg: string, version?: string): LibraryExports | undefined {
@@ -588,6 +630,11 @@ export class SigDatabaseSet implements PackageSignatureSource {
 	/** whether any active shard actually carries the given version of a package (not just the package) */
 	public hasVersion(pkg: string, version: string): boolean {
 		return this.route(pkg, version).length > 0;
+	}
+
+	/** whether a version is a current CRAN release (not in the package's `noncran`/removed set) */
+	public isCranVersion(pkg: string, version: string): boolean {
+		return !this.historyBlob(pkg)?.noncran?.includes(version);
 	}
 
 	public packageNames(): string[] {

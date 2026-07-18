@@ -10,7 +10,7 @@ import { SigDbExt, FnProp, MaxDefaultLength, type SigFunctionInfo } from '../../
 import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
-import { SignatureQueryDefinition } from '../../../../src/queries/catalog/signature-query/signature-query-format';
+import { SignatureQueryDefinition, type SignatureQuery } from '../../../../src/queries/catalog/signature-query/signature-query-format';
 import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, signatureQueryCompleter } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
 import fs from 'fs';
 import os from 'os';
@@ -96,15 +96,16 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 			expect(signatureFunctionInfo(db, 'mypkg', 'nope')).toBeUndefined();
 		});
 
-		test('a CRAN function carries an rdrr.io documentation link', () => {
-			expect(signatureFunctionInfo(db, 'mypkg', 'foo')?.docUrl).toBe('https://rdrr.io/cran/mypkg/man/foo.html');
+		test('a CRAN function carries a location and CRAN-mirror source link', () => {
+			const info = signatureFunctionInfo(db, 'mypkg', 'foo');
+			expect(info?.file).toBe('R/foo.R');
+			expect(info?.sourceUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
 		});
 
-		test('a base-R function has a location, base-R doc link, and no CRAN-mirror source link', () => {
+		test('a base-R function has a location and no CRAN-mirror source link', () => {
 			const info = signatureFunctionInfo(db, 'base', 'paste2');
 			expect(info?.file).toBe('R/paste.R');
 			expect(info?.sourceUrl).toBeUndefined();
-			expect(info?.docUrl).toBe('https://rdrr.io/r/base/paste2.html');
 		});
 
 		test('an S3 generic lists its same-package dispatch targets by name', () => {
@@ -144,32 +145,30 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 
 	describe('fromLine parser', () => {
 		const parse = (line: string[]) => SignatureQueryDefinition.fromLine?.({} as never, line, {} as never).query;
-		test('parses package and function positionals', () => {
-			expect(parse(['mypkg', 'foo'])).toEqual([{ type: 'signature', package: 'mypkg', function: 'foo' }]);
-		});
-		test('ignores unknown --flags (positional-only)', () => {
-			expect(parse(['mypkg', '--all'])).toEqual([{ type: 'signature', package: 'mypkg' }]);
-		});
-		test('an empty line yields a bare summary query', () => {
-			expect(parse([])).toEqual([{ type: 'signature' }]);
-		});
-		test('parses the `pkg::fn` shorthand', () => {
-			expect(parse(['ggplot2::ggplot'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'ggplot' }]);
-		});
-		test('parses `pkg@version`', () => {
-			expect(parse(['ggplot2@3.5.0'])).toEqual([{ type: 'signature', package: 'ggplot2', version: '3.5.0' }]);
-		});
-		test('parses `pkg@version::fn` together', () => {
-			expect(parse(['ggplot2@3.5.0::aes'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'aes', version: '3.5.0' }]);
-		});
-		test('an explicit second positional wins over the `::` function', () => {
-			expect(parse(['ggplot2::ggplot', 'aes'])).toEqual([{ type: 'signature', package: 'ggplot2', function: 'aes' }]);
-		});
-		test('keeps glob wildcards in package/function/version', () => {
-			expect(parse(['gg*@3.*', 'geom_*'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*', version: '3.*' }]);
-		});
-		test('keeps positionals when a stray --flag is present', () => {
-			expect(parse(['gg*', 'geom_*', '--full'])).toEqual([{ type: 'signature', package: 'gg*', function: 'geom_*' }]);
+		/** parse the space-separated `input` line and assert it yields exactly one signature query with `expected`'s fields */
+		const sigParse = (desc: string, input: string, expected: Partial<Omit<SignatureQuery, 'type'>>): void => {
+			test(desc, () => expect(parse(input.length ? input.split(' ') : [])).toEqual([{ type: 'signature', ...expected }]));
+		};
+
+		sigParse('parses package and function positionals', 'mypkg foo', { package: 'mypkg', function: 'foo' });
+		sigParse('ignores unknown --flags (positional-only)', 'mypkg --all', { package: 'mypkg' });
+		sigParse('an empty line yields a bare summary query', '', {});
+		sigParse('parses the `pkg::fn` shorthand', 'ggplot2::ggplot', { package: 'ggplot2', function: 'ggplot' });
+		sigParse('parses `pkg@version`', 'ggplot2@3.5.0', { package: 'ggplot2', version: '3.5.0' });
+		sigParse('parses a date bound in the version position', 'ggplot2@<=2021.05', { package: 'ggplot2', version: '<=2021.05' });
+		sigParse('parses `pkg@version::fn` together', 'ggplot2@3.5.0::aes', { package: 'ggplot2', function: 'aes', version: '3.5.0' });
+		sigParse('an explicit second positional wins over the `::` function', 'ggplot2::ggplot aes', { package: 'ggplot2', function: 'aes' });
+		sigParse('keeps glob wildcards in package/function/version', 'gg*@3.* geom_*', { package: 'gg*', function: 'geom_*', version: '3.*' });
+		sigParse('keeps positionals when a stray --flag is present', 'gg* geom_* --full', { package: 'gg*', function: 'geom_*' });
+		sigParse('parses --param and defaults the package to * so it searches everywhere', '--param fuzz', { package: '*', parameters: ['fuzz'] });
+		sigParse('parses --required alongside a package', 'mypkg --required 3', { package: 'mypkg', requiredParameters: 3 });
+		sigParse('parses --param with package and function positionals', 'mypkg * --param a', { package: 'mypkg', function: '*', parameters: ['a'] });
+		sigParse('collects a repeated --param into a list', 'mypkg --param a --param b', { package: 'mypkg', parameters: ['a', 'b'] });
+		sigParse('splits a comma-separated --param into a list', 'mypkg --param a,b', { package: 'mypkg', parameters: ['a', 'b'] });
+		sigParse('a function literally named help is queried, not treated as the help command', 'utils help', { package: 'utils', function: 'help' });
+		test('a leading `help` prints the help and yields no query', () => {
+			const out = { stdout: () => undefined, formatter: ansiFormatter } as never;
+			expect(SignatureQueryDefinition.fromLine?.(out, ['help'], {} as never).query).toEqual([]);
 		});
 	});
 
@@ -247,6 +246,41 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		expect(res.signature.packages?.map(p => p.name).sort()).toEqual(['multi', 'mypkg']);
 	});
 
+	test(label('a parameter-name filter keeps only functions that have it', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: '*', parameters: ['a'] }]);
+		expect(res.signature.matches?.map(m => `${m.package}::${m.name}`)).toEqual(['mypkg::foo']);
+	});
+
+	test(label('a parameter filter previews the matched parameters on each hit', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'mypkg', function: '*', parameters: ['a'] }]);
+		expect(res.signature.matches?.[0]?.parameters).toEqual(['a', 'b']);
+		expect(res.signature.matches?.[0]?.matchedParameters).toEqual(['a']);
+		const onB = await runQuery([{ type: 'signature', package: 'mypkg', function: '*', parameters: ['b'] }]);
+		expect(onB.res.signature.matches?.[0]?.parameters).toEqual(['a', 'b']);
+		expect(onB.res.signature.matches?.[0]?.matchedParameters).toEqual(['b']);
+	});
+
+	test(label('multiple --param names must all match (position-independent)', [], ['other']), async() => {
+		const both = await runQuery([{ type: 'signature', package: 'mypkg', function: '*', parameters: ['b', 'a'] }]);
+		expect(both.res.signature.matches?.map(m => m.name)).toEqual(['foo']);
+		expect(both.res.signature.matches?.[0]?.matchedParameters).toEqual(['a', 'b']);
+		const none = await runQuery([{ type: 'signature', package: 'mypkg', function: '*', parameters: ['a', 'zzz'] }]);
+		expect(none.res.signature.matches ?? []).toEqual([]);
+		expect(none.res.signature.searched).toBe(4);
+	});
+
+	test(label('a required-parameter-count filter keeps only functions with that many', [], ['other']), async() => {
+		const one = await runQuery([{ type: 'signature', package: 'mypkg', requiredParameters: 1 }]);
+		expect(one.res.signature.matches?.map(m => m.name)).toEqual(['foo']);
+		const zero = await runQuery([{ type: 'signature', package: 'mypkg', requiredParameters: 0 }]);
+		expect(zero.res.signature.matches?.map(m => m.name).sort()).toEqual(['bar', 'print', 'print.myclass']);
+	});
+
+	test(label('a bare parameter filter searches every package', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: '*', parameters: ['a'] }]);
+		expect(res.signature.matches?.map(m => `${m.package}::${m.name}`)).toEqual(['mypkg::foo']);
+	});
+
 	test(label('an exact version selects that release', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '2.0.0' }]);
 		expect(res.signature.package?.version).toBe('2.0.0');
@@ -260,6 +294,33 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 	test(label('a semver range matches multiple releases', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '>=2.0.0' }]);
 		expect(res.signature.packages?.[0]?.versions).toEqual(['2.0.0', '2.1.0']);
+	});
+
+	test(label('a date bound selects releases up to that year', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '<=2020' }]);
+		expect(res.signature.packages?.[0]?.versions).toEqual(['1.0.0']);
+	});
+
+	test(label('a date bound with month granularity selects only later releases', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '>=2021.06' }]);
+		expect(res.signature.packages?.[0]?.versions).toEqual(['2.1.0']);
+	});
+
+	test(label('a date bound also drives a function search', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', function: '*', version: '>=2021.06' }]);
+		expect(res.signature.matches?.map(m => m.name).sort()).toEqual(['m2', 'm21', 'trunc_fn']);
+	});
+
+	test(label('a calendar-style version without a comparator is an exact version, not a date bound', [], ['other']), async() => {
+		// `2021.01.01` must not be read as "the 2021-01-01 release" (which would wrongly return multi 2.0.0)
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '2021.01.01' }]);
+		expect(res.signature.package).toBeUndefined();
+		expect(res.signature.message).toContain('is not in the loaded database');
+	});
+
+	test(label('an out-of-range month in a date bound matches nothing rather than rolling over', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', function: '*', version: '<=2021.13' }]);
+		expect(res.signature.matches ?? []).toHaveLength(0);
 	});
 
 	test(label('an unavailable exact version is reported with the available ones', [], ['other']), async() => {

@@ -45,6 +45,7 @@ export interface FlowrCliOptions {
 	'config-file':      string
 	'config-json':      string
 	'no-ansi':          boolean
+	'no-fs':            boolean
 	'r-path':           string | undefined
 	'r-session-access': boolean
 	execute:            string | undefined
@@ -108,14 +109,18 @@ function createConfig(): FlowrConfig {
 		}
 	}
 	if(config == undefined) {
-		if(options['config-file']) {
-			// validate it exists
-			if(!fs.existsSync(path.resolve(options['config-file']))) {
-				log.error(`Config file '${options['config-file']}' does not exist`);
-				process.exit(1);
+		if(options['no-fs']) {
+			config = FlowrConfig.default();
+		} else {
+			if(options['config-file']) {
+				// validate it exists
+				if(!fs.existsSync(path.resolve(options['config-file']))) {
+					log.error(`Config file '${options['config-file']}' does not exist`);
+					process.exit(1);
+				}
 			}
+			config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 		}
-		config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
 	}
 
 
@@ -138,6 +143,10 @@ function createConfig(): FlowrConfig {
 
 		if(options['default-engine']) {
 			(c.defaultEngine as string) = options['default-engine'] as EngineConfig['type'];
+		}
+
+		if(options['no-fs']) {
+			(c.solver.sigdb as { enabled: boolean }).enabled = false;
 		}
 
 		return c;
@@ -219,7 +228,7 @@ async function mainRepl() {
 		await printVersionRepl(defaultEngine);
 		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
 		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
-		await repl({ analyzer, allowRSessionAccess });
+		await repl({ analyzer, allowRSessionAccess, ...(options['no-fs'] ? { historyFile: '' } : {}) });
 	}
 	exitSafe(0);
 }

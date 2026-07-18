@@ -158,13 +158,13 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 /**
  * Produces default readline options for the flowR REPL
  */
-export function makeDefaultReplReadline(config: FlowrConfig): readline.ReadLineOptions {
+export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string | undefined = defaultHistoryFile): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
 		output:                  process.stdout,
 		tabSize:                 4,
 		terminal:                true,
-		history:                 loadReplHistory(defaultHistoryFile),
+		history:                 historyFile ? loadReplHistory(historyFile) : [],
 		removeHistoryDuplicates: true,
 		completer:               (c: string) => replCompleter(c, config)
 	};
@@ -360,7 +360,7 @@ export interface FlowrReplOptions extends MergeableRecord {
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
 	readonly output?:              ReplOutput
-	/** The file to use for persisting the repl's history. Passing undefined causes history not to be saved. */
+	/** The file to use for loading and persisting the repl's history. Passing an empty string neither reads nor writes it. */
 	readonly historyFile?:         string
 	/** If true, allows the execution of arbitrary R code. This is a security risk, as it allows the execution of arbitrary R code. */
 	readonly allowRSessionAccess?: boolean
@@ -379,9 +379,9 @@ export interface FlowrReplOptions extends MergeableRecord {
 export async function repl(
 	{
 		analyzer,
-		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig)),
-		output = standardReplOutput,
 		historyFile = defaultHistoryFile,
+		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig, historyFile)),
+		output = standardReplOutput,
 		allowRSessionAccess = false
 	}: FlowrReplOptions) {
 	if(historyFile) {

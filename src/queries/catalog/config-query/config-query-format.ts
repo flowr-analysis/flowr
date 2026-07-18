@@ -16,7 +16,7 @@ import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
 	readonly update?:  DeepPartial<FlowrConfig>
-	/** a `.`-separated path to inspect (read) a single config value instead of dumping the whole config (repl: `?path`) */
+	/** a `.`-separated path to inspect (read) a single config value instead of dumping the whole config (repl: `path`) */
 	readonly inspect?: readonly string[]
 }
 
@@ -26,65 +26,63 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly specialization?: { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> };
 }
 
-function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
-	if(partialLine.length === 0) {
-		// `+` updates a field, `?` inspects (reads) one
-		return { completions: ['+', '?'] };
-	} else if(partialLine.length === 1 && (partialLine[0].startsWith('+') || partialLine[0].startsWith('?'))) {
-		const inspect = partialLine[0].startsWith('?');   // a read: complete the key path, but never append `=`
-		const raw = partialLine[0].slice(1);
-		// once a value is being assigned (`key=...`), the path is fixed: complete the value (its type), not more keys
-		if(raw.includes('=')) {
-			if(inspect) {
-				return { completions: [] };   // `?` reads a value, it never assigns one
-			}
-			const eq = raw.indexOf('=');
-			const keyPath = raw.slice(0, eq).split('.').filter(p => p.length > 0);
-			const valuePart = raw.slice(eq + 1);
-			const prefix = `${partialLine[0].slice(0, 1)}${raw.slice(0, eq)}=`;
-			const { concrete, placeholder } = splitValueHints(configSchemaInfo(keyPath));
-			const values = matchByPrefixOrSubsequence(concrete, valuePart);
-			return {
-				completions: values.map(v => prefix + v),
-				labels:      new Map(values.map(v => [prefix + v, v])),
-				hints:       placeholder !== undefined && valuePart.length === 0 ? [prefix + placeholder] : undefined
-			};
-		}
-		const path = raw.split('.').filter(p => p.length > 0);
-		const fullPath = path.slice();
-		const lastPath = partialLine[0].endsWith('.') ? '' : path.pop() ?? '';
-		/* the schema knows every option, a value only those that are set */
-		const options = configSchemaKeys(path);
-		const atLeaf = lastPath.length > 0 && options.includes(lastPath) && configSchemaInfo([...path, lastPath]).type !== 'object';
-		if(!atLeaf) {
-			const offered = matchByPrefixOrSubsequence(options, lastPath);
-			const have = offered.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
-			if(have.length > 0) {
-				// the label must start with the full completion `c` (with its `+`/`?` sigil), so readline's
-				// common-prefix insertion keeps the sigil instead of collapsing `+s` to `s`
-				return { completions: have, labels: new Map(have.map((c, i) => [c, describeCompletion(c, configSchemaInfo([...path, offered[i]]).type ?? '')])) };
-			} else if(lastPath.length > 0 && configSchemaKeys(fullPath).length > 0) {
-				return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}.`] };
-			}
-		}
-		const leafInfo = configSchemaInfo(fullPath);
-		if(leafInfo.type === undefined) {
-			return { completions: [] };   // not a real config key: offer nothing (in particular, never append `=`)
-		}
-		const leaf = `${partialLine[0].slice(0, 1)}${fullPath.join('.')}`;
-		if(!inspect) {
-			const { concrete, placeholder } = splitValueHints(leafInfo);
-			if(concrete.length > 0) {   // a boolean/enum offers its values to Tab
-				return { completions: concrete.map(v => `${leaf}=${v}`) };
-			}
-			if(placeholder !== undefined) {   // a free type: complete up to `=` and only *show* the `<type>`, never insert it
-				return { completions: [`${leaf}=`], hints: [`${leaf}=${placeholder}`] };
-			}
-		}
-		return { completions: [`${leaf}${inspect ? '' : '='}`] };
+function configReplCompleter(partialLine: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
+	// the config query is a single token
+	if(partialLine.length > 1 || (partialLine.length === 1 && startingNewArg)) {
+		return { completions: [] };
 	}
-
-	return { completions: [] };
+	const token = partialLine[0] ?? '';
+	const update = token.startsWith('+');   // `+path=value` writes a field; a bare path reads one
+	const raw = update ? token.slice(1) : token;
+	const sigil = update ? '+' : '';
+	// on the empty token also offer `+` (writes a value) before the inspectable keys (which read); label it like the keys
+	const lead = token.length === 0 ? ['+'] : [];
+	const leadLabels: [string, string][] = token.length === 0 ? [['+', describeCompletion('+', 'prefix to change a config value (a bare path only reads it)')]] : [];
+	// once `+key=` is typed, complete the value (its type), not more keys
+	if(update && raw.includes('=')) {
+		const eq = raw.indexOf('=');
+		const keyPath = raw.slice(0, eq).split('.').filter(p => p.length > 0);
+		const valuePart = raw.slice(eq + 1);
+		const prefix = `+${raw.slice(0, eq)}=`;
+		const { concrete, placeholder } = splitValueHints(configSchemaInfo(keyPath));
+		const values = matchByPrefixOrSubsequence(concrete, valuePart);
+		return {
+			completions: values.map(v => prefix + v),
+			labels:      new Map(values.map(v => [prefix + v, v])),
+			hints:       placeholder !== undefined && valuePart.length === 0 ? [prefix + placeholder] : undefined
+		};
+	}
+	const path = raw.split('.').filter(p => p.length > 0);
+	const fullPath = path.slice();
+	const lastPath = token.endsWith('.') ? '' : path.pop() ?? '';
+	/* the schema knows every option, a value only those that are set */
+	const options = configSchemaKeys(path);
+	const atLeaf = lastPath.length > 0 && options.includes(lastPath) && configSchemaInfo([...path, lastPath]).type !== 'object';
+	if(!atLeaf) {
+		const offered = matchByPrefixOrSubsequence(options, lastPath);
+		const have = offered.map(k => `${sigil}${[...path, k].join('.')}`);
+		if(have.length > 0) {
+			// label starts with the full completion (incl. sigil) so readline keeps the sigil on common-prefix insertion
+			return { completions: [...lead, ...have], labels: new Map([...leadLabels, ...have.map((c, i): [string, string] => [c, describeCompletion(c, configSchemaInfo([...path, offered[i]]).type ?? '')])]) };
+		} else if(lastPath.length > 0 && configSchemaKeys(fullPath).length > 0) {
+			return { completions: [`${sigil}${fullPath.join('.')}.`] };
+		}
+	}
+	const leafInfo = configSchemaInfo(fullPath);
+	if(leafInfo.type === undefined) {
+		return { completions: [] };   // not a real config key: offer nothing (in particular, never append `=`)
+	}
+	const leaf = `${sigil}${fullPath.join('.')}`;
+	if(update) {
+		const { concrete, placeholder } = splitValueHints(leafInfo);
+		if(concrete.length > 0) {   // a boolean/enum offers its values to Tab
+			return { completions: concrete.map(v => `${leaf}=${v}`) };
+		}
+		if(placeholder !== undefined) {   // a free type: complete up to `=` and only *show* the `<type>`, never insert it
+			return { completions: [`${leaf}=`], hints: [`${leaf}=${placeholder}`] };
+		}
+	}
+	return { completions: [`${leaf}${update ? '=' : ''}`] };
 }
 
 /** an error message if `path` is not a key of the config schema (naming the first unknown segment and its real siblings), or `undefined` if it is a valid key */
@@ -148,17 +146,9 @@ export function validateConfigUpdate(update: DeepPartial<FlowrConfig>, formatter
 }
 
 function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'config'> {
-	if(line.length > 0 && line[0].startsWith('?')) {
-		// inspect a single key, e.g. `?solver.sigdb.enabled`
-		const path = line[0].slice(1).split('.').filter(p => p.length > 0);
-		if(path.length === 0) {
-			return configError(output, `Invalid config inspect syntax, must be of the form ${bold('?path.to.field', output.formatter)}`);
-		}
-		const unknown = unknownConfigKey(path, output.formatter);
-		return unknown !== undefined ? configError(output, unknown) : { query: [{ type: 'config', inspect: path }] };
-	}
-	if(line.length > 0 && line[0].startsWith('+')) {
-		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
+	const first = line[0] ?? '';
+	if(first.startsWith('+')) {
+		const [pathPart, ...valueParts] = first.slice(1).split('=');
 		// build the update object
 		const path = pathPart.split('.').filter(p => p.length > 0);
 		if(path.length === 0 || valueParts.length !== 1) {
@@ -175,8 +165,13 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], _con
 		const err = validateConfigUpdate(update, output.formatter);
 		return err !== undefined ? configError(output, err) : { query: [{ type: 'config', update }] };
 	}
-	return { query: [{ type: 'config' }]
-	};
+	// a plain path inspects that part; an empty suffix dumps the whole config
+	const path = first.split('.').filter(p => p.length > 0);
+	if(path.length === 0) {
+		return { query: [{ type: 'config' }] };
+	}
+	const unknown = unknownConfigKey(path, output.formatter);
+	return unknown !== undefined ? configError(output, unknown) : { query: [{ type: 'config', inspect: path }] };
 }
 
 /** report a parse/validation error for the line and produce no query, so nothing runs and the config is not dumped */
@@ -209,19 +204,20 @@ function configSchemaKeys(path: readonly string[]): string[] {
 	return descriptionPathKeys(configSchemaDescription, path);
 }
 
-/** the Joi-schema type + description of a config path (from {@link FlowrConfig.Schema}), used to document a `?key` inspection */
+/** the Joi-schema type + description of a config path (from {@link FlowrConfig.Schema}), used to document a key inspection */
 function configSchemaInfo(path: readonly string[]): SchemaPathInfo {
 	configSchemaDescription ??= FlowrConfig.Schema.describe();
 	return descriptionPathInfo(configSchemaDescription, path);
 }
 
-/** value completions for a config leaf: both booleans, an enum's members, or a compact `<type>` hint */
+/** value completions for a config leaf: booleans, an enum's members (offered bare, like `true`/`false`), or a compact `<type>` hint */
 function configValueHints(info: SchemaPathInfo): string[] {
 	if(info.type === 'boolean') {
 		return ['true', 'false'];
 	}
 	if(info.valids && info.valids.length > 0) {
-		return info.valids.map(v => JSON.stringify(v));
+		// a string enum completes as its bare member (like a boolean); non-strings keep their JSON form
+		return info.valids.map(v => typeof v === 'string' ? v : JSON.stringify(v));
 	}
 	return info.type ? [`<${info.type}>`] : [];
 }
@@ -259,7 +255,7 @@ function inspectedChildren(value: object, path: readonly string[], formatter: Ou
 			+ (type ? ` ${italic(`(${type})`, formatter)}` : '');
 	});
 	if(entries.length > shown.length) {
-		lines.push(`           ${italic(`... and ${entries.length - shown.length} more, inspect them with ?${path.join('.')}.<key>`, formatter)}`);
+		lines.push(`           ${italic(`... and ${entries.length - shown.length} more, inspect them with ${path.join('.')}.<key>`, formatter)}`);
 	}
 	return lines;
 }

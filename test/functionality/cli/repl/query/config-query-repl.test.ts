@@ -47,18 +47,31 @@ describe('Config Query REPL Parser', () => {
 	rejects('invalid update line (no value)', ['+solver.sigdb.enabled'], 'Invalid config update syntax');
 	// an unknown key must be rejected, not silently created (regression: `+si=x` used to set a bogus `si` field)
 	rejects('rejects an unknown config key on update', ['+si=x'], 'Unknown config key');
-	rejects('rejects an unknown config key on inspect', ['?si'], 'Unknown config key');
+	// a plain path (no `+` sigil) inspects that part of the config
+	assertReplParser({ parser,
+		label:         'a plain path inspects that part of the config',
+		line:          ['solver.sigdb.enabled'],
+		expectedParse: { query: [{ type: 'config', inspect: ['solver', 'sigdb', 'enabled'] }] },
+	});
+	assertReplParser({ parser,
+		label:         'a plain section path inspects the whole section',
+		line:          ['solver.sigdb'],
+		expectedParse: { query: [{ type: 'config', inspect: ['solver', 'sigdb'] }] },
+	});
+	rejects('rejects an unknown plain path', ['nope'], 'Unknown config key');
 	// a value that does not fit the schema type is rejected (boolean field, non-boolean value)
 	rejects('rejects a value of the wrong type', ['+solver.sigdb.enabled=x'], 'expects a boolean');
 });
 
 describe('Config Query REPL Completions', () => {
 	const completer = SupportedQueries['config'].completer;
-	assertReplCompletions({ completer,
-		label:               'empty arguments',
-		startingNewArg:      true,
-		splitLine:           [],
-		expectedCompletions: ['+', '?']
+	test('empty arguments offer + (labeled) and the inspectable root keys (bare, no ?)', () => {
+		const result = completer?.([], true, FlowrConfig.default());
+		const completions = result?.completions ?? [];
+		assert.strictEqual(completions[0], '+', '+ starts an update and comes first');
+		assert.match(result?.labels?.get('+') ?? '', /change a config value/, 'the + hint explains it writes the config');
+		assert.includeMembers(completions, ['solver', 'linter', 'repl'], 'root keys are offered bare, for inspect');
+		assert.isFalse(completions.some(c => c.startsWith('?')), 'the ? sigil is gone');
 	});
 	/* the completions come from the schema, not from the config value: an unset optional option is offered too */
 	assertReplCompletions({ completer,
@@ -142,10 +155,10 @@ describe('Config Query REPL Completions', () => {
 		expectedCompletions: ['+solver.sigdb.enabled=true'],
 	});
 	assertReplCompletions({ completer,
-		label:               'inspecting a boolean field never assigns a value',
+		label:               'inspecting a boolean field (bare path) never assigns a value',
 		startingNewArg:      false,
-		splitLine:           ['?solver.sigdb.enabled'],
-		expectedCompletions: ['?solver.sigdb.enabled'],
+		splitLine:           ['solver.sigdb.enabled'],
+		expectedCompletions: ['solver.sigdb.enabled'],
 	});
 	assertReplCompletions({ completer,
 		label:               'does not re-complete a fully typed boolean value',
@@ -154,15 +167,15 @@ describe('Config Query REPL Completions', () => {
 		expectedCompletions: [],
 	});
 	assertReplCompletions({ completer,
-		label:               'offers an enum member and stops once it is fully typed',
+		label:               'offers an enum member bare (like true/false), stopping once it is fully typed',
 		startingNewArg:      false,
 		splitLine:           ['+solver.variables='],
-		expectedCompletions: ['+solver.variables="disabled"', '+solver.variables="alias"', '+solver.variables="builtin"'],
+		expectedCompletions: ['+solver.variables=disabled', '+solver.variables=alias', '+solver.variables=builtin'],
 	});
 	assertReplCompletions({ completer,
 		label:               'does not re-complete a fully typed enum value',
 		startingNewArg:      false,
-		splitLine:           ['+solver.variables="disabled"'],
+		splitLine:           ['+solver.variables=disabled'],
 		expectedCompletions: [],
 	});
 });

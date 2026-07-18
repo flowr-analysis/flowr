@@ -11,17 +11,14 @@ import { Q } from '../../search/flowr-search-builder';
 import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import type { Writable } from 'ts-essentials';
-import { VertexType, type DataflowGraphVertexFunctionCall } from '../../dataflow/graph/vertex';
 import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { LibraryFunctions } from '../../queries/catalog/dependencies-query/function-info/library-functions';
-import { pMatch } from '../../dataflow/internal/linker';
-import { resolveIdToValue } from '../../dataflow/eval/resolve/alias-tracking';
-import { valueSetGuard } from '../../dataflow/eval/values/general';
+import type { PkgDb } from '../../project/plugins/package-version-plugins/pkgdb';
+import { Enrichment } from '../../search/search-executor/search-enrichers';
 
 export interface UnusedImportResult extends LintingResult{
-	readonly version: string[][]
+	readonly version: [string, string]
 }
 
 export interface UnusedImportConfig extends MergeableRecord {
@@ -36,108 +33,70 @@ export type UnusedImportMetadata = MergeableRecord;
  * an ingoing reads-edge. We only consider packages that could be resolved from the `flowr-pkgdb` database.
  */
 export const UNUSED_IMPORT = {
-	//createSearch:        () => Q.fromQuery({ type: 'call-context', callName: '^(library)|(use)|(require)$' }),
-	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
+	createSearch:        () => Q.fromQuery({ type: 'dependencies', 'enabledCategories': ['library'] }),
 	processSearchResult: async(elements, config, data) => {
 		const dataflow = await data.dataflow();
-		//get library functions to filter out 
-		let ecurrent = dataflow.environment.current;
-		const usedpackages = new Set();
-		while(ecurrent !== undefined){
-			if(isNotUndefined(ecurrent.n)){
-				usedpackages.add(ecurrent.n);
-			}
-			ecurrent = ecurrent.parent;
-		}
-		const libraryFunctions = LibraryFunctions.filter(v => usedpackages.has(v.package) || v.package === 'base').reduce((a, b) => {
-			return a.add(b.name);
-		}, new Set<String>)
-
-		const deps = data.inspectContext().deps;
-		const dependencyToVersion: Map<String, String> = new Map();
-		for(const dep of deps.getDependencies()){
-			dependencyToVersion.set(dep.name, new String(dep.deriveVersion()))
+		// needs a package database to compute
+		if(!(config.pkgDb !== null && typeof config.pkgDb === 'object' && 'format' in config.pkgDb && config.pkgDb.format === 'flowr-pkgdb' && 'pkgs' in config.pkgDb && (config.pkgDb as PkgDb).pkgs !== null)){
+			return { results: [], '.meta': {} };
 		}
 		const whitelist = new Set(config.whitelist);
 		const unknownIds = new Set<NodeId>();
 		for(const e of dataflow.graph.unknownSideEffects) {
-			unknownIds.add(typeof e === 'object' ? e.id : String(e));
+			unknownIds.add(typeof e === 'object' && 'id' in e ? e.id : e);
 		}
-
-		//all library calls we want to test
-		const libraryFCalls = elements.getElements()
+		const libraryCalls = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'].library
 			.filter(element => {
-				if(isNotUndefined(element.node.lexeme) && !libraryFunctions.has(element.node.lexeme)){
+				//packages that could not be resolved from package database
+				if(unknownIds.has(element.nodeId)){
 					return false;
 				}
-				//for libraries where we can't read the export, cannot decide whether they are used or not
-				if(unknownIds.has(element.node.info.id)){
-					return false; 
+				const origins = getOriginInDfg(dataflow.graph, element.nodeId);
+				if(isNotUndefined(origins)) {
+					const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
+					if(!builtIn){
+						return false;
+					}
 				}
-				//is of built-in origin			
-			const origins = getOriginInDfg(dataflow.graph, element.node.info.id);
-			if(isNotUndefined(origins)) {
-			const builtIn = origins.every(e => e.type === OriginType.BuiltInFunctionOrigin);
-				if(!builtIn){
-					return false;
-				}
-			}
-			return true;
-		});
+				return true;
+			});
 		//all NodeIds that have an ingoing read-edge
 		const readEdges = new Set(dataflow.graph.edges().flatMap(e => e[1].entries()).filter(entry => {
-			if(DfEdge.includesType(entry[1], EdgeType.Reads)){
+			//nodes with "::" are definitely read
+			if(typeof entry[0] === 'string' && entry[0].includes('::')){
 				return true;
-			} else {
-				return false; 
+			} else if(DfEdge.includesType(entry[1], EdgeType.Reads)){
+				return true;
+			} else{
+				return false;
 			}
 		}).map(e => e[0]));
+
+		const dependencyToVersion = Object.entries((config.pkgDb as PkgDb).pkgs).reduce((map, entry) => {
+			map.set(entry[0], entry[1][0]);
+			return map;
+		}, new Map());
+		const idToDependecyName = libraryCalls.filter(element => !readEdges.has(element.nodeId) && isNotUndefined(element.value) && !whitelist.has(element.value))
+		.reduce((map, element) => {
+			map.set(element.nodeId, element.value);
+			return map;
+		}, new Map());
 		return {
 			results:
-				libraryFCalls.filter(c => !readEdges.has(c.node.info.id))
-					.map(element => {
-						const fCall = dataflow.graph.getVertex(element.node.info.id) as DataflowGraphVertexFunctionCall;
-						const paramMap = {
-							'package':    'pkg',
-						} as const;
-						let arg = []
-						const mapping = pMatch(fCall.args, paramMap);
-						const mappedToF = mapping.get('pkg') ?? [];
-						for(const argId of mappedToF) {
-							const res = resolveIdToValue(argId, { graph: dataflow.graph, environment: fCall.environment, ctx: data.inspectContext() });
-							const values = valueSetGuard(res);
-							if(values?.type === 'set' && values.elements.length !== 0){
-								for(const elem of values.elements){
-									if(elem.type === 'string' && 'str' in elem.value){
-										arg.push(elem.value.str)
-									}
-								}
-							}
-						}
-						return {
-						element: element,
-						lib: arg
-					}})
-					//only packages for which we have a package db entry
-					.filter(({ lib }) => {
-						return !lib.some(v => !dependencyToVersion.has(v));
-					})
-					//don't consider entries in whitelist
-					.filter(({ lib }) => !lib.some(v => whitelist.has(v)))
-					.map(({ element, lib }) => ({
-						certainty:  LintingResultCertainty.Uncertain,
-						involvedId: element.node.info.id,
-						loc:        SourceLocation.fromNode(element.node),
-						//of form: [[package, version]]
-						version:    lib.map(v => [v, dependencyToVersion.get(v)])
-					}))
-					.filter(element => isNotUndefined(element.loc)) as Writable<UnusedImportResult>[],
+			elements.getElements().filter(element => {
+				return  idToDependecyName.has(element.node.info.id);
+			}).map(element => ({
+				certainty:  LintingResultCertainty.Uncertain,
+				involvedId: element.node.info.id,
+				loc:        SourceLocation.fromNode(element.node),
+				version:    [idToDependecyName.get(element.node.info.id), dependencyToVersion.get(idToDependecyName.get(element.node.info.id))]
+		})).filter(element => isNotUndefined(element.loc)) as Writable<UnusedImportResult>[],
 			'.meta': {}
 		};
 	},
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Import at ${SourceLocation.format(result.loc)}`,
-		[LintingPrettyPrintContext.Full]:  result => `Import at ${SourceLocation.format(result.loc)} is unused. Used version is ${result.version}.`
+		[LintingPrettyPrintContext.Full]:  result => `Import at ${SourceLocation.format(result.loc)} is unused. Used version is ${result.version.join()}.`
 	},
 	info: {
 		name:          'Unused Import',

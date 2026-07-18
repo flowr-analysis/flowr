@@ -426,7 +426,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const start = Date.now();
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
 	const deps = analyzer.inspectContext().deps;
-	const databases: SignatureDatabaseView[] = deps.loadedPackageDatabases()
+	const databases: SignatureDatabaseView[] = deps.loadedSignatureDatabases()
 		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));
 	// the plugin's loaded sources (bundled default + $FLOWR_SIGDB + anything added at runtime), so the query
 	// reflects dynamically-mounted sources

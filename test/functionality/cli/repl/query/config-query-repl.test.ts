@@ -1,9 +1,19 @@
-import { describe } from 'vitest';
+import { assert, describe, test } from 'vitest';
 import { SupportedQueries } from '../../../../../src/queries/query';
-import { assertReplCompletions, assertReplParser } from '../../../_helper/repl';
+import { assertReplCompletions, assertReplParser, discardingReplOutput } from '../../../_helper/repl';
+import { FlowrConfig } from '../../../../../src/config';
 
 describe('Config Query REPL Parser', () => {
 	const parser = SupportedQueries['config'].fromLine;
+	/** the parser rejects `line`, printing an error containing `contains` and producing no query (so nothing runs) */
+	function rejects(label: string, line: string[], contains: string) {
+		test(label, () => {
+			const printed: string[] = [];
+			const parsed = parser({ ...discardingReplOutput, stdout: s => printed.push(s) }, line, FlowrConfig.default());
+			assert.isUndefined(parsed.query, `expected no query, got ${JSON.stringify(parsed.query)}`);
+			assert.include(printed.join('\n'), contains);
+		});
+	}
 	assertReplParser({ parser,
 		label:         'empty line',
 		line:          [],
@@ -13,34 +23,33 @@ describe('Config Query REPL Parser', () => {
 			}],
 		},
 	});
-	assertReplParser({ parser,
-		label:         'incomplete line',
-		line:          ['+'],
-		expectedParse: {
-			query: [{
-				type: 'config',
-			}],
-		},
-	});
+	rejects('incomplete line shows the syntax hint', ['+'], 'Invalid config update syntax');
 	assertReplParser({ parser,
 		label:         'valid update',
-		line:          ['+someConfig.secondLevel=new'],
+		line:          ['+solver.sigdb.downloadRepo=my/repo'],
 		expectedParse: {
 			query: [{
 				type:   'config',
-				update: { someConfig: { secondLevel: 'new' } },
+				update: { solver: { sigdb: { downloadRepo: 'my/repo' } } },
 			}],
 		},
 	});
 	assertReplParser({ parser,
-		label:         'invalid update line',
-		line:          ['+someConfig.secondLevel'],
+		label:         'valid boolean update parses the value',
+		line:          ['+solver.sigdb.enabled=false'],
 		expectedParse: {
 			query: [{
-				type: 'config',
+				type:   'config',
+				update: { solver: { sigdb: { enabled: false } } },
 			}],
 		},
 	});
+	rejects('invalid update line (no value)', ['+solver.sigdb.enabled'], 'Invalid config update syntax');
+	// an unknown key must be rejected, not silently created (regression: `+si=x` used to set a bogus `si` field)
+	rejects('rejects an unknown config key on update', ['+si=x'], 'Unknown config key');
+	rejects('rejects an unknown config key on inspect', ['?si'], 'Unknown config key');
+	// a value that does not fit the schema type is rejected (boolean field, non-boolean value)
+	rejects('rejects a value of the wrong type', ['+solver.sigdb.enabled=x'], 'expects a boolean');
 });
 
 describe('Config Query REPL Completions', () => {
@@ -57,6 +66,13 @@ describe('Config Query REPL Completions', () => {
 		startingNewArg:      false,
 		splitLine:           ['+a'],
 		expectedCompletions: ['+abstractInterpretation'],
+	});
+	/* a fragment with no prefix match falls back to a fuzzy (subsequence) match, so `sg` still tab-completes */
+	assertReplCompletions({ completer,
+		label:               'fuzzy-completes a key with no prefix match',
+		startingNewArg:      false,
+		splitLine:           ['+sg'],
+		expectedCompletions: ['+specializeConfig'],
 	});
 	assertReplCompletions({ completer,
 		label:               'adds a dot after a full root node',
@@ -76,11 +92,24 @@ describe('Config Query REPL Completions', () => {
 		splitLine:           ['+repl.auto'],
 		expectedCompletions: ['+repl.autoUseFileProtocol'],
 	});
+	// a free-form field completes only up to `=`; its `<type>` is a display-only hint, never inserted on Tab
 	assertReplCompletions({ completer,
 		label:               'adds an equals sign after a full path of a free-form field',
 		startingNewArg:      false,
 		splitLine:           ['+solver.sigdb.downloadRepo'],
-		expectedCompletions: ['+solver.sigdb.downloadRepo=<string>'],
+		expectedCompletions: ['+solver.sigdb.downloadRepo='],
+	});
+	test('a free-form value type is shown as a hint, not an inserted completion', () => {
+		const c = completer(['+solver.sigdb.downloadRepo='], false, FlowrConfig.default());
+		assert.deepEqual(c.completions, []);
+		assert.deepEqual(c.hints, ['+solver.sigdb.downloadRepo=<string>']);
+	});
+	// an unknown key is not a settable leaf, so it must not be completed with a trailing `=`
+	assertReplCompletions({ completer,
+		label:               'does not append = to an unknown key',
+		startingNewArg:      false,
+		splitLine:           ['+semantics.s'],
+		expectedCompletions: [],
 	});
 	assertReplCompletions({ completer,
 		label:               'no completions after equals sign',

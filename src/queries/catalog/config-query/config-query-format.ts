@@ -1,6 +1,6 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
 import { executeConfigQuery } from './config-query-executor';
-import { bold, italic, type OutputFormatter } from '../../../util/text/ansi';
+import { bold, italic, voidFormatter, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { FlowrConfig } from '../../../config';
@@ -9,7 +9,9 @@ import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
-import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys } from '../../../util/schema';
+import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, firstUnknownSchemaSegment } from '../../../util/schema';
+import type { ProjectKind } from '../../../project/context/project-kind';
+import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
 
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
@@ -19,7 +21,9 @@ export interface ConfigQuery extends BaseQueryFormat {
 }
 
 export interface ConfigQueryResult extends BaseQueryResult {
-	readonly config: FlowrConfig;
+	readonly config:          FlowrConfig;
+	/** the project-kind specialization applied to {@link config}, if any (surfaced in the repl summary) */
+	readonly specialization?: { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> };
 }
 
 function configReplCompleter(partialLine: readonly string[], _startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
@@ -38,8 +42,13 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 			const keyPath = raw.slice(0, eq).split('.').filter(p => p.length > 0);
 			const valuePart = raw.slice(eq + 1);
 			const prefix = `${partialLine[0].slice(0, 1)}${raw.slice(0, eq)}=`;
-			const values = configValueHints(configSchemaInfo(keyPath)).filter(v => v.startsWith(valuePart) && v !== valuePart);
-			return { completions: values.map(v => prefix + v), labels: new Map(values.map(v => [prefix + v, v])) };
+			const { concrete, placeholder } = splitValueHints(configSchemaInfo(keyPath));
+			const values = matchByPrefixOrSubsequence(concrete, valuePart);
+			return {
+				completions: values.map(v => prefix + v),
+				labels:      new Map(values.map(v => [prefix + v, v])),
+				hints:       placeholder !== undefined && valuePart.length === 0 ? [prefix + placeholder] : undefined
+			};
 		}
 		const path = raw.split('.').filter(p => p.length > 0);
 		const fullPath = path.slice();
@@ -48,19 +57,28 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 		const options = configSchemaKeys(path);
 		const atLeaf = lastPath.length > 0 && options.includes(lastPath) && configSchemaInfo([...path, lastPath]).type !== 'object';
 		if(!atLeaf) {
-			const offered = options.filter(k => k.startsWith(lastPath) && k !== lastPath);
+			const offered = matchByPrefixOrSubsequence(options, lastPath);
 			const have = offered.map(k => `${partialLine[0].slice(0, 1)}${[...path, k].join('.')}`);
 			if(have.length > 0) {
-				return { completions: have, labels: new Map(have.map((c, i) => [c, describeCompletion(offered[i], configSchemaInfo([...path, offered[i]]).type ?? '')])) };
+				// the label must start with the full completion `c` (with its `+`/`?` sigil), so readline's
+				// common-prefix insertion keeps the sigil instead of collapsing `+s` to `s`
+				return { completions: have, labels: new Map(have.map((c, i) => [c, describeCompletion(c, configSchemaInfo([...path, offered[i]]).type ?? '')])) };
 			} else if(lastPath.length > 0 && configSchemaKeys(fullPath).length > 0) {
 				return { completions: [`${partialLine[0].slice(0, 1)}${fullPath.join('.')}.`] };
 			}
 		}
+		const leafInfo = configSchemaInfo(fullPath);
+		if(leafInfo.type === undefined) {
+			return { completions: [] };   // not a real config key: offer nothing (in particular, never append `=`)
+		}
 		const leaf = `${partialLine[0].slice(0, 1)}${fullPath.join('.')}`;
 		if(!inspect) {
-			const values = configValueHints(configSchemaInfo(fullPath));   // a boolean/enum offers its values, others a `<type>` hint
-			if(values.length > 0) {
-				return { completions: values.map(v => `${leaf}=${v}`) };
+			const { concrete, placeholder } = splitValueHints(leafInfo);
+			if(concrete.length > 0) {   // a boolean/enum offers its values to Tab
+				return { completions: concrete.map(v => `${leaf}=${v}`) };
+			}
+			if(placeholder !== undefined) {   // a free type: complete up to `=` and only *show* the `<type>`, never insert it
+				return { completions: [`${leaf}=`], hints: [`${leaf}=${placeholder}`] };
 			}
 		}
 		return { completions: [`${leaf}${inspect ? '' : '='}`] };
@@ -69,62 +87,107 @@ function configReplCompleter(partialLine: readonly string[], _startingNewArg: bo
 	return { completions: [] };
 }
 
+/** an error message if `path` is not a key of the config schema (naming the first unknown segment and its real siblings), or `undefined` if it is a valid key */
+function unknownConfigKey(path: readonly string[], formatter: OutputFormatter): string | undefined {
+	configSchemaDescription ??= FlowrConfig.Schema.describe();
+	const unknown = firstUnknownSchemaSegment(configSchemaDescription, path);
+	if(unknown === undefined) {
+		return undefined; // every segment is a known (or pattern-/free-form-accepted) key
+	}
+	const where = unknown.at.length === 0 ? 'the top level' : bold(unknown.at.join('.'), formatter);
+	return `Unknown config key ${bold(path.join('.'), formatter)}: no ${bold(unknown.segment, formatter)} at ${where}. Available: ${[...unknown.available].join(', ') || '(none)'}`;
+}
+
+/** an error message if `value` does not fit the schema type at `path`, or `undefined` if it fits */
+function badConfigValue(path: readonly string[], value: unknown, formatter: OutputFormatter): string | undefined {
+	const info = configSchemaInfo(path);
+	const expected = (t: string): string => `${bold(path.join('.'), formatter)} expects a ${t}, got ${bold(JSON.stringify(value), formatter)}`;
+	if(info.valids && info.valids.length > 0 && !info.valids.includes(value)) {
+		return expected(`one of ${info.valids.map(v => JSON.stringify(v)).join(', ')}`);
+	}
+	if(info.type === 'boolean' && typeof value !== 'boolean') {
+		return expected('boolean (true/false)');
+	}
+	if(info.type === 'number' && typeof value !== 'number') {
+		return expected('number');
+	}
+	if(info.type === 'array' && !Array.isArray(value)) {
+		return expected('list (e.g. ["a","b"])');
+	}
+	if(info.type === 'object' && (typeof value !== 'object' || value === null || Array.isArray(value))) {
+		return `${bold(path.join('.'), formatter)} is a config section, not a value to set; set one of its fields instead`;
+	}
+	return undefined;
+}
+
+/** yields each leaf `[path, value]` of a (possibly nested) config update object */
+function* configUpdateLeaves(update: object, prefix: readonly string[] = []): Generator<[string[], unknown]> {
+	for(const [key, value] of Object.entries(update)) {
+		const path = [...prefix, key];
+		if(value !== null && typeof value === 'object' && !Array.isArray(value)) {
+			yield* configUpdateLeaves(value as object, path);
+		} else {
+			yield [path, value];
+		}
+	}
+}
+
+/**
+ * The first schema violation (an unknown key or a wrong-typed value) in a config update, or `undefined` if it is
+ * valid. Shared by the repl line parser and the {@link executeConfigQuery|executor}, so a programmatic or JSON-API
+ * update is validated exactly like a `:config +key=value` line and never merges junk or a mistyped value.
+ */
+export function validateConfigUpdate(update: DeepPartial<FlowrConfig>, formatter: OutputFormatter = voidFormatter): string | undefined {
+	for(const [path, value] of configUpdateLeaves(update as object)) {
+		const err = unknownConfigKey(path, formatter) ?? badConfigValue(path, value, formatter);
+		if(err !== undefined) {
+			return err;
+		}
+	}
+	return undefined;
+}
+
 function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'config'> {
 	if(line.length > 0 && line[0].startsWith('?')) {
 		// inspect a single key, e.g. `?solver.sigdb.enabled`
 		const path = line[0].slice(1).split('.').filter(p => p.length > 0);
 		if(path.length === 0) {
-			output.stdout(`Invalid config inspect syntax, must be of the form ${bold('?path.to.field', output.formatter)}`);
-		} else {
-			return { query: [{ type: 'config', inspect: path }] };
+			return configError(output, `Invalid config inspect syntax, must be of the form ${bold('?path.to.field', output.formatter)}`);
 		}
+		const unknown = unknownConfigKey(path, output.formatter);
+		return unknown !== undefined ? configError(output, unknown) : { query: [{ type: 'config', inspect: path }] };
 	}
 	if(line.length > 0 && line[0].startsWith('+')) {
 		const [pathPart, ...valueParts] = line[0].slice(1).split('=');
 		// build the update object
 		const path = pathPart.split('.').filter(p => p.length > 0);
 		if(path.length === 0 || valueParts.length !== 1) {
-			output.stdout(`Invalid config update syntax, must be of the form ${bold('+path.to.field=value', output.formatter)}`);
-		} else {
-			const update: DeepPartial<FlowrConfig> = {};
-			const value = valueParts[0];
-			let current: Record<string, unknown> = update;
-			for(let i = 0; i < path.length; i++) {
-				const key = path[i];
-				if(i === path.length - 1) {
-					// last part, set the value
-					// try to parse as JSON first
-					try {
-						current[key] = JSON.parse(value);
-					} catch{
-						// fallback to string
-						current[key] = value;
-					}
-				} else {
-					current[key] = {};
-					current = current[key] as Record<string, unknown>;
-				}
-			}
-			return { query: [{ type: 'config', update }]
-			};
+			return configError(output, `Invalid config update syntax, must be of the form ${bold('+path.to.field=value', output.formatter)}`);
 		}
+		const raw = valueParts[0];
+		let value: unknown;
+		try {
+			value = JSON.parse(raw); // numbers, booleans, arrays, ...
+		} catch{
+			value = raw; // fall back to a plain string
+		}
+		const update = path.reduceRight<unknown>((acc, key) => ({ [key]: acc }), value) as DeepPartial<FlowrConfig>;
+		const err = validateConfigUpdate(update, output.formatter);
+		return err !== undefined ? configError(output, err) : { query: [{ type: 'config', update }] };
 	}
 	return { query: [{ type: 'config' }]
 	};
 }
 
-function collectKeysFromUpdate(update: DeepPartial<FlowrConfig>, prefix: string = ''): string[] {
-	// only collect leaf keys
-	const keys: string[] = [];
-	for(const [key, value] of Object.entries(update)) {
-		const fullKey = prefix ? `${prefix}.${key}` : key;
-		if(value && typeof value === 'object' && !Array.isArray(value)) {
-			keys.push(...collectKeysFromUpdate(value as DeepPartial<FlowrConfig>, fullKey));
-		} else {
-			keys.push(fullKey);
-		}
-	}
-	return keys;
+/** report a parse/validation error for the line and produce no query, so nothing runs and the config is not dumped */
+function configError(output: ReplOutput, message: string): ParsedQueryLine<'config'> {
+	output.stdout(message);
+	return { query: undefined };
+}
+
+/** the dotted leaf keys of a (possibly nested) config update object */
+function collectKeysFromUpdate(update: DeepPartial<FlowrConfig>): string[] {
+	return [...configUpdateLeaves(update as object)].map(([path]) => path.join('.'));
 }
 
 function getValueAtPath(obj: object, path: string[]): unknown {
@@ -161,6 +224,12 @@ function configValueHints(info: SchemaPathInfo): string[] {
 		return info.valids.map(v => JSON.stringify(v));
 	}
 	return info.type ? [`<${info.type}>`] : [];
+}
+
+/** the leaf's `concrete` completable values (booleans/enum members) vs a `<type>` `placeholder` that is only shown, never inserted */
+function splitValueHints(info: SchemaPathInfo): { concrete: string[], placeholder: string | undefined } {
+	const hints = configValueHints(info);
+	return { concrete: hints.filter(v => !v.startsWith('<')), placeholder: hints.find(v => v.startsWith('<')) };
 }
 
 /** children of an inspected object listed before the rest is summarized */
@@ -226,6 +295,12 @@ export const ConfigQueryDefinition = {
 			}
 		} else {
 			result.push(`   ╰ Config:\n${JSON.stringify(out.config, jsonReplacer, 4)}`);
+		}
+		if(out.specialization) {
+			const keys = collectKeysFromUpdate(out.specialization.overwrite);
+			result.push(`   ╰ Specialized for project kind ${bold(out.specialization.kind, formatter)} (overrides ${keys.join(', ') || '(nothing)'})`);
+		} else {
+			result.push(`   ╰ ${italic('No project-kind specialization in effect', formatter)}`);
 		}
 		return true;
 	},

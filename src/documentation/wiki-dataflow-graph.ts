@@ -1199,6 +1199,10 @@ ${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)', { ctx })}
 In general, as we cannot handle these correctly, we leave it up to other analyses (and ${ctx.linkPage('wiki/Query API', 'queries')}) to handle these cases
 as they see fit.
 
+The \`load\` call above degrades to an unknown side effect only because the file could not be found.
+When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+You can disable this and always treat \`load\` as an unknown side effect with the ${ctx.linkConfig('ignoreLoadCalls')} configuration option.
+
 #### Linked Unknown Side Effects
 
 Not all side effects are created equal in the sense that they stem from a specific function call.

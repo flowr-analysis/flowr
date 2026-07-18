@@ -210,7 +210,7 @@ export interface FlowrConfig extends MergeableRecord {
 		readonly trackEnvironments: boolean
 		/** Resolving `library()`/`use()` exports from a signature database (e.g. the bundled `flowr-sigdb`). */
 		readonly sigdb: {
-			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
+			/** Resolve library exports from a signature database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
 			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean

@@ -192,7 +192,7 @@ function pluginLink(key: string): string {
 }
 
 /**
- * https://github.com/flowr-analysis/flowr/wiki/Package-Database
+ * https://github.com/flowr-analysis/flowr/wiki/Signature-Database
  */
 export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'> {
 	constructor() {

@@ -26,6 +26,8 @@ import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
 import { FlowrConfig, resolveAssumedRVersion } from '../../config';
+import { deepMergeObject } from '../../util/objects';
+import type { DeepPartial } from 'ts-essentials';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
@@ -55,6 +57,8 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/** The configuration options used by the analyzer. */
 	readonly config:           FlowrConfig;
+	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
+	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
 	readonly resolvedRVersion: string;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
@@ -100,11 +104,32 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	/** set while classifying, as the classification must not read the config it decides, see {@link kindToSpecializeFor} */
 	private _classifying = false;
 
+	/** accumulated runtime overrides from {@link updateConfig}, applied on top of the specialized config so they always win */
+	private runtimeOverrides: DeepPartial<FlowrConfig> | undefined;
+	/** memoized {@link config}: {@link specializedConfig} merged with {@link runtimeOverrides} */
+	private _effective:       FlowrConfig | undefined;
+	/** the specialized object {@link _effective} was built from, for identity-based invalidation on a kind change */
+	private _effectiveOf:     FlowrConfig | undefined;
+
 	/**
-	 * {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's {@link ProjectKind} applied
-	 * (see {@link FlowrConfig.forKind}), resolved once per kind.
+	 * {@link baseConfig} specialized for the project {@link ProjectKind}, with any {@link updateConfig|runtime
+	 * overrides} applied on top (those win over both base and specialization).
 	 */
 	public get config(): FlowrConfig {
+		const specialized = this.specializedConfig();
+		if(this.runtimeOverrides === undefined) {
+			return specialized;
+		}
+		if(this._effective === undefined || this._effectiveOf !== specialized) {
+			// a fresh object, so neither the shared base nor the memoized specialized config is mutated
+			this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
+			this._effectiveOf = specialized;
+		}
+		return this._effective;
+	}
+
+	/** {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's kind applied ({@link FlowrConfig.forKind}), resolved once per kind. */
+	private specializedConfig(): FlowrConfig {
 		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
 			return this.baseConfig;
 		}
@@ -114,6 +139,26 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 			this._config = FlowrConfig.forKind(this.baseConfig, kind);
 		}
 		return this._config;
+	}
+
+	/**
+	 * Apply a runtime {@link FlowrConfig} update. It is layered on top of the specialized config (so it wins over
+	 * project-kind specialization) and never mutates the shared {@link baseConfig}. The analysis cache must be
+	 * invalidated separately (see {@link FlowrAnalyzer.updateConfig}), as the results were computed under the old config.
+	 */
+	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.runtimeOverrides = deepMergeObject(this.runtimeOverrides ?? {}, update);
+		this._effective = undefined; // recompute on next `config` access
+	}
+
+	/** The project kind the effective {@link config} is specialized for, plus the overrides it applies, or `undefined` when no specialization is in effect. */
+	public configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined {
+		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
+			return undefined;
+		}
+		const kind = this.kindToSpecializeFor();
+		const overwrite = this.baseConfig.specializeConfig[kind];
+		return overwrite ? { kind, overwrite } : undefined;
 	}
 
 	/** {@link projectKind}, resolved with {@link baseConfig}, as classifying the project reads the config again */

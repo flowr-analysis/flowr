@@ -56,6 +56,10 @@ export const SlicingCriterion = {
 	 *
 	 * A negative line counts from the end of the input (`-1` being the last line). Every criterion but `$id`
 	 * accepts a trailing `(file-regex)` (e.g. `2@x(tmp/.*)`) restricting it to a matching file.
+	 *
+	 * Lines, columns, and the `[n]` occurrence are all *1-based*, so a `0` anywhere (`2:0`, `0@x`, `2@[0]x`)
+	 * addresses nothing and resolves to `undefined` -- it is not a wildcard for the whole line. A criterion
+	 * always denotes at most a single node; use one criterion per node to select several.
 	 * @see {@link SlicingCriterion.parse} for the version that throws an error
 	 */
 	tryParse(this: void, criterion: SlicingCriterion | NodeId, idMap: AstIdMap): NodeId | undefined {

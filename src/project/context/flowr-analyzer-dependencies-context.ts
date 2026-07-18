@@ -5,6 +5,8 @@ import {
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
+import { Identifier } from '../../dataflow/environments/identifier';
+import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { isSigDbEnabled } from '../../config';
@@ -47,19 +49,28 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
-	 * Metadata of the package databases the version plugins currently have loaded.
+	 * Metadata of the signature databases the version plugins currently have loaded.
 	 */
-	loadedPackageDatabases(): SigDbLoadedInfo[];
+	loadedSignatureDatabases(): SigDbLoadedInfo[];
 
 	/**
-	 * The names of known packages that export `name` (from the version plugins' package databases). Used to
+	 * The names of known packages that export `name` (from the version plugins' signature databases). Used to
 	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
-	 * available or the package db is disabled.
+	 * available or the signature database is disabled.
 	 */
 	packagesExporting(name: string): readonly string[];
 
 	/** The signature sources the version plugins currently have loaded (backs the signature query). */
 	signatureSources(): readonly PackageSignatureSource[];
+
+	/**
+	 * The signature-database entry for the qualified call `id` (a `pkg::fn` {@link Identifier}) from the first
+	 * {@link signatureSources|source} that has it, resolving the package version from the project's dependency info
+	 * unless `version` overrides it. This is the easy way to obtain a function's parameters from a context: pass
+	 * `fn.signature` (or {@link signatureParameterNames}) to {@link RFunctionCall.matchArgsToParams}. `undefined`
+	 * if `id` is unqualified or no loaded source defines it.
+	 */
+	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
 
 /**
@@ -88,7 +99,7 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.lazyResolvers.push(resolver);
 	}
 
-	public loadedPackageDatabases(): SigDbLoadedInfo[] {
+	public loadedSignatureDatabases(): SigDbLoadedInfo[] {
 		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
@@ -115,6 +126,26 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
 	}
 
+	public signatureOf(id: Identifier, version?: string): DecodedFunction | undefined {
+		const pkg = Identifier.getNamespace(id);
+		if(pkg === undefined) {
+			return undefined; // a qualified `pkg::fn` identifier is required to know which package to look in
+		}
+		const name = Identifier.getName(id);
+		const ver = version ?? this.getDependency(pkg)?.resolvedVersion;
+		for(const src of this.signatureSources()) {
+			if(!src.has(pkg)) {
+				continue; // avoids touching a package this source lacks
+			}
+			// decode only the one function (not the whole package), falling back to the source's latest version
+			const fn = src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name);
+			if(fn) {
+				return fn;
+			}
+		}
+		return undefined;
+	}
+
 	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */
 	public hasBaseRSource(): boolean {
 		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
@@ -136,8 +167,8 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		}
 	}
 
-	/** Eagerly mount every version plugin's package database up front (see `solver.sigdb.eagerlyLoad`). */
-	public eagerlyLoadPackageDatabases(): void {
+	/** Eagerly mount every version plugin's signature database up front (see `solver.sigdb.eagerlyLoad`). */
+	public eagerlyLoadSignatureDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();
 		}

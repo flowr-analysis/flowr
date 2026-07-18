@@ -10,7 +10,7 @@ import { executeSignatureQuery, signatureQueryCompleter } from './signature-quer
 import { printSignatureHelp, pushFunction, pushPackage, pushMatches, pushPackages, pushSummary } from './signature-query-render';
 
 /**
- * Inspects the loaded signature database(s) (see the {@link https://github.com/flowr-analysis/flowr/wiki/Package-Database|Package Database wiki}).
+ * Inspects the loaded signature database(s) (see the {@link https://github.com/flowr-analysis/flowr/wiki/Signature-Database|Signature Database wiki}).
  * The `package` and `function` fields accept glob wildcards (`*`, `?`), and `version` accepts an exact version,
  * a glob (`3.*`), or a semver range (`>=3.0.0`, `3.x`). With no `package` it summarizes the loaded databases;
  * a single exact package/function yields the full view (signature, definition location, CRAN-mirror source link,

@@ -18,7 +18,7 @@ export interface ProjectQuery extends BaseQueryFormat {
 	readonly withDf?: boolean;
 }
 
-/** Statistics on the project's declared dependencies, cross-referenced with the package database. */
+/** Statistics on the project's declared dependencies, cross-referenced with the signature database. */
 export interface ProjectDependencyStats {
 	/** Number of packages in the `Imports` field. */
 	readonly imports:   number;
@@ -32,9 +32,9 @@ export interface ProjectDependencyStats {
 	readonly runtime:   number;
 	/** How many of the runtime dependencies are base or recommended R packages. */
 	readonly base:      number;
-	/** How many of the non-base runtime dependencies are covered by the loaded package database(s). */
+	/** How many of the non-base runtime dependencies are covered by the loaded signature database(s). */
 	readonly covered:   number;
-	/** The first few runtime dependencies with the version the package database resolved them to, if any. */
+	/** The first few runtime dependencies with the version the signature database resolved them to, if any. */
 	readonly first:     { name: string, base: boolean, dbVersion?: string }[];
 	/** The required R version derived from the `Depends` field, if declared. */
 	readonly rVersion?: string;
@@ -113,7 +113,7 @@ export const ProjectQueryDefinition = {
 		if(out.dependencies) {
 			const d = out.dependencies;
 			result.push(`   ╰ Dependencies: ${d.runtime} runtime (${d.imports} imports, ${d.depends} depends, ${d.linkingTo} linkingTo), ${d.suggests} suggested`);
-			result.push(`      ╰ ${d.base} base/recommended, ${d.covered}/${Math.max(d.runtime - d.base, 0)} non-base covered by the package database`);
+			result.push(`      ╰ ${d.base} base/recommended, ${d.covered}/${Math.max(d.runtime - d.base, 0)} non-base covered by the signature database`);
 			if(d.first.length > 0) {
 				const names = d.first.map(f => f.dbVersion ? `${f.name}@${f.dbVersion}` : f.name).join(', ');
 				result.push(`      ╰ e.g. ${names}${d.runtime > d.first.length ? ', ...' : ''}`);

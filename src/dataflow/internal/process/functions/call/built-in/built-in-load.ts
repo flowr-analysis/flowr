@@ -5,7 +5,7 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RDAParser, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
@@ -33,7 +33,7 @@ import type {
 import {
 	EmptyArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { bindArgs, resolveArgToEnvir } from './built-in-envir-utils';
+import { bindArgs, resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -46,7 +46,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg, envirArg } = getArguments(args);
+	const { fileArg, envirArg } = getArguments(args, data);
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
@@ -278,8 +278,9 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 	}
 }
 
-function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
-	const loadParams = ['file', 'envir', 'verbose'] as const;
+function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
+	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
 	const bound = bindArgs(args, loadParams);
 
 	const fileArgBound = bound.get('file');

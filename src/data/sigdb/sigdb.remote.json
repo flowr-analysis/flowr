@@ -1,112 +1,112 @@
 {
 	"format": "flowr-sigdb-remote",
 	"schema": 1,
-	"tag": "sigdb-v2.11.1",
+	"tag": "v2.12.3",
 	"repo": "flowr-analysis/flowr",
 	"shards": {
 		"base.base-current.sigs.ndjson.br": {
-			"sha256": "7f286f58a0d7392c5ccaf6ac3c2bdf6ede1a110494e16a54785726f7e3ad82e0",
-			"bytes": 90026
+			"sha256": "6d64270339d45268765b72a15a49dd246c3564ba4ea750cec9a76b6071920962",
+			"bytes": 89861
 		},
 		"base.base-current.sigs.ndjson.zst": {
-			"sha256": "def3c61083ce9c8cfca726c3529de44203e0f20623b5f072bd959fb82a6858f0",
-			"bytes": 95945
+			"sha256": "3185be2c266e8141dfc2bf4438a867196e28a1ad344627d7e4ec5a21c983ac78",
+			"bytes": 115334
 		},
 		"base.base-full.sigs.ndjson.br": {
-			"sha256": "2511f0f5359b6311bdc84039ae369303fcaa5fa6994a26d17ebef39eaa508051",
-			"bytes": 413427
+			"sha256": "8d6824e2acbcbd45a0e39de18c16159bb49d0ff7302c87f3f09b9bbcd22020e9",
+			"bytes": 412243
 		},
 		"base.base-full.sigs.ndjson.zst": {
-			"sha256": "8e5fc30ce66cb84a12c6d38bb0f3a1867861d10ae8eea316b5ef742725feb71b",
-			"bytes": 446108
+			"sha256": "7b1013f4bce48ea998e1972c012fce6416e772c2ec3f4258a363542bd86ec83d",
+			"bytes": 652732
 		},
 		"base.dict.sigs.ndjson.br": {
-			"sha256": "c0c56f235e188b2c5fc8da0b14a5e65001c07e84545b43b0e5e6dde81478809b",
-			"bytes": 49594
+			"sha256": "e496e1b2a84f6e514d270870edd0c456485e54ad6fc952d93edc489617297ada",
+			"bytes": 49169
 		},
 		"base.dict.sigs.ndjson.zst": {
-			"sha256": "a0ed8c80dc11f47b5d56d2d50069d9f7ef5e5bbd8ee3282b2ad6872fd3aa75a5",
-			"bytes": 51020
+			"sha256": "b0d5ac26f51e0bad03ae0bd9d8a769331742d6f227b6b002f223e84bce400ef9",
+			"bytes": 56901
 		},
 		"base.manifest.json.br": {
-			"sha256": "e16a304fbd7b2683c14366fe327a2b5f70df8492105063027a5a6f2f99faca3b",
-			"bytes": 806
+			"sha256": "49ef99da81849e1db3495e6f228252c8e69cafa5c630ce417142bb6ff9b63780",
+			"bytes": 807
 		},
 		"base.manifest.json.zst": {
-			"sha256": "bbf77e03d4823ecc843f27c4fb3e2fe7bd530bd46b53c724e0a758c2f6388e21",
-			"bytes": 908
+			"sha256": "a0937811967a91ce7fa3539797023083dd8c53659f2dd02e7b6c221e6bd4585f",
+			"bytes": 942
 		},
 		"current.base-current.sigs.ndjson.br": {
-			"sha256": "075907a7a839fe6348e54a73ef3d27e4a3590d1d80042bd80f1435795233c733",
-			"bytes": 97450
+			"sha256": "235af21878e18d142519c4815d44b43be605038eec030b1823d92732cb65ae6f",
+			"bytes": 97061
 		},
 		"current.base-current.sigs.ndjson.zst": {
-			"sha256": "d42d7bc6cdccad5d73912c6ab6e9100da618efc37f9cb18cf2bdbb6055002690",
-			"bytes": 102863
+			"sha256": "9d7ef9b610b558cb416b8941fc6d227bfc8919b42471329229caf31431a21179",
+			"bytes": 122212
 		},
 		"current.base-full.sigs.ndjson.br": {
-			"sha256": "67fdf17991c0929726ab2c53bbf21f748cfd82ecbd2d18cead61f612281b86b2",
-			"bytes": 427751
+			"sha256": "3d65cda71a00f52d6ef3cc5ff79820a2ae506bdc06979be0aaa43ab8c743b190",
+			"bytes": 425670
 		},
 		"current.base-full.sigs.ndjson.zst": {
-			"sha256": "33b6a02564e027b8f0afb70e4b41ce3d3d52ce2bc829f8de10e3c4ebf2929aba",
-			"bytes": 461423
+			"sha256": "6614f6976f48b636ec9559de3ba1b9cd421a00e33f583bb9068c42a249aac590",
+			"bytes": 683826
 		},
 		"current.current-rest.sigs.ndjson.br": {
-			"sha256": "4fa862ffab29cfcd5873259def33b321b2c35b4c2fb87eb4053c30bb677005ab",
-			"bytes": 14698884
+			"sha256": "20d167cb5fcc29f80ceb462675e01320276f3e4b4ba0eb04cf255bddd73d3332",
+			"bytes": 14684817
 		},
 		"current.current-rest.sigs.ndjson.zst": {
-			"sha256": "ed912393f82bf2708e15c43113cb822f6fdc432ee2c67ef6caf7d566decd824b",
-			"bytes": 15430613
+			"sha256": "bee09c303b1e0d899f022635b2422e93577da5aca02ecf265c09ba6f35addf10",
+			"bytes": 20201215
 		},
 		"current.current-top.sigs.ndjson.br": {
-			"sha256": "4566fffc038fc70eb5102a85315c880c52e328b60fb037d474902c6593383649",
-			"bytes": 2038147
+			"sha256": "1755beb4e5be2a1cfc587da2e299537598cef0259e77bc2eb3f0c769c0367c48",
+			"bytes": 2029862
 		},
 		"current.current-top.sigs.ndjson.zst": {
-			"sha256": "b3f0872dabfb437797f8a6d0061b3550cb6c651fb632a48fb7ffbc39447e3b4e",
-			"bytes": 2141474
+			"sha256": "7f25862a56df8511fdd2d39f2b247b0c3c168fe1700d7a6e01eafbe01e9e7b46",
+			"bytes": 2749387
 		},
 		"current.dict.sigs.ndjson.br": {
-			"sha256": "2918d69a78938fc14793f0942d0767aeddb2228216f56b38bc2f905e288523b5",
-			"bytes": 6528828
+			"sha256": "5c40e4a611169d26687fac6037eb33faaa570e9c163ca2d018b9618e61691cdf",
+			"bytes": 6521368
 		},
 		"current.dict.sigs.ndjson.zst": {
-			"sha256": "1ace15643727bef4ded7df21a3df18205e672d6f83e62c2f1d5822c8cf0ef048",
-			"bytes": 6664857
+			"sha256": "bc47e24a4a945dec0f949ff0fc37a54d507f681b398dbeb59b2d97df98bcdae3",
+			"bytes": 8219955
 		},
 		"current.manifest.json.br": {
-			"sha256": "7c1f7553773c8096cd21a75c7be784600ae4b43ca8d0265ca1ae0a9e6cc48d26",
-			"bytes": 419290
+			"sha256": "a805831591ecb47b4eb2ed8165409c3d32270c05610e3c1eaf97af625ef5fb76",
+			"bytes": 420819
 		},
 		"current.manifest.json.zst": {
-			"sha256": "fb276919e6237da465c69796ced744ceaf4f24dcf53751e4c9567cf3f3841696",
-			"bytes": 447011
+			"sha256": "298b3a3e9a4ce9734bdc7077359f8a67e9b2184815e978d0fdb926232a80beac",
+			"bytes": 615077
 		},
 		"history.dict.sigs.ndjson.br": {
-			"sha256": "e52d71c9143b6a6a7943dc625082d4590901aa7db6fc3ae1db5c816cb5cbeab0",
-			"bytes": 6804901
+			"sha256": "6062852ac16f0d79a646575e059ac7a7e77fdff4f662a502fbe95c06065162b0",
+			"bytes": 6782498
 		},
 		"history.dict.sigs.ndjson.zst": {
-			"sha256": "8c4565d5bec609117bfb45bca3bd21606415c0315eb26345f275966a79177d7d",
-			"bytes": 6935498
+			"sha256": "018b0b69394d3bdb64ee21c3a9c03755ebee01f23a779173cd9e2c6b5094790e",
+			"bytes": 8692212
 		},
 		"history.history-rest.sigs.ndjson.br": {
-			"sha256": "08127837136fb9bd51757149153df0056fce36e7a93ac92948149189ec689f47",
-			"bytes": 28938888
+			"sha256": "59ce8a292635543399c75c2f67951f7792d0399f4f120d4e3f63573df2e9a4d6",
+			"bytes": 28855459
 		},
 		"history.history-rest.sigs.ndjson.zst": {
-			"sha256": "b21abfdc8fddc5781809ff1f171034c5699ac5a383c0f5b95812da3b19404410",
-			"bytes": 31321399
+			"sha256": "771a9352dd25bee5e9b781b55cfd2a3aded6cf923c3953e54e708aff29a12beb",
+			"bytes": 43549908
 		},
 		"history.manifest.json.br": {
-			"sha256": "e91cf94c118a1567a4dfdfdb387f56c828067109d59c0435fae0ff6c5d03c03f",
-			"bytes": 335113
+			"sha256": "d203e4c0c4af80f26adcaa1f7d4a01b654b1457477df697d6f44d5b5487759d4",
+			"bytes": 335642
 		},
 		"history.manifest.json.zst": {
-			"sha256": "3a1617068e19a766bf327dc251df0180f748bfa11ba286800b155f0c369a856b",
-			"bytes": 360716
+			"sha256": "77800b353c12f88f30f4f3be41cc82bab7b3e087d7b036b1a26d4a4eb4b15728",
+			"bytes": 484554
 		}
 	}
 }

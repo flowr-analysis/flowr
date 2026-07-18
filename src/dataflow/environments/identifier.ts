@@ -5,6 +5,8 @@ import { startAndEndsWith } from '../../util/text/strings';
 import { baseRExportOwner } from '../../util/r-base-packages';
 import type { REnvironmentInformation } from './environment';
 import type { Origin } from '../origin/dfg-get-origin';
+/* type-only, as the value import would cycle back through the graph helpers */
+import type { Dataflow } from '../graph/df-helper';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -214,6 +216,7 @@ export const Identifier = {
 	 * from the base package that exports it (`sd` yields `stats::sd`, `plot` yields `base::plot`) via the
 	 * precomputed {@link baseRExportOwner} store -- no loaded database, no graph edges. This is suppressed when
 	 * the call resolves to a user definition or is already namespaced, so a local `sd()` is never `stats::sd`.
+	 * @see {@link Dataflow.qualified} - the compact form, if you have the call's id and its graph
 	 */
 	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier): Identifier | undefined {
 		let sawUserDefinition = false;
@@ -237,11 +240,6 @@ export const Identifier = {
 			}
 		}
 		return undefined;
-	},
-	/** The fully qualified `package::name` of a resolved call (see {@link Identifier.toQualified}). */
-	toQualifiedName(this: void, origins: readonly Origin[] | undefined, name?: Identifier): string | undefined {
-		const qualified = Identifier.toQualified(origins, name);
-		return qualified === undefined ? undefined : Identifier.toString(qualified);
 	}
 } as const;
 

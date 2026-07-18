@@ -8,6 +8,8 @@ import { computeCallGraphSummaries, propagateTransitiveSideEffects } from '../in
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { DataflowGraphVertexInfo } from './vertex';
+import { isFunctionCallVertex } from './vertex';
+import { Identifier } from '../environments/identifier';
 
 /**
  * This is the root helper object to work with the {@link DataflowGraph}.
@@ -51,7 +53,27 @@ export const Dataflow = {
 	 * Returns the origin of a vertex in the dataflow graph
 	 * @see {@link getOriginInDfg} - for the underlying function
 	 */
-	origin:      getOriginInDfg,
+	origin: getOriginInDfg,
+	/**
+	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
+	 * export (with `purrr` loaded, a `map()` call yields `Identifier.make('map', 'purrr')`).
+	 *
+	 * This is the compact form of {@link Identifier.toQualified}, reconstructing both the
+	 * {@link Dataflow.origin|origins} and the call's name from the graph.
+	 * @param id           - The id of the call to qualify
+	 * @param graph        - The graph the call is part of
+	 * @param qualifyBaseR - Whether to also qualify a bare base-R call from the package exporting it
+	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
+	 *                       Set this to `false` to only qualify what the origins resolve to.
+	 */
+	qualified(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
+		// only look the vertex up when its name is actually needed (base-R qualification)
+		const vertex = qualifyBaseR ? graph.getVertex(id) : undefined;
+		return Identifier.toQualified(
+			getOriginInDfg(graph, id),
+			isFunctionCallVertex(vertex) ? vertex.name : undefined
+		);
+	},
 	/**
 	 * Interprocedural propagation of escaped side effects (attached packages, `<<-` definitions) to their callers.
 	 */

@@ -1,3 +1,4 @@
+import { rPath } from '../../../_helper/r-path';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -31,7 +32,7 @@ async function sourcingProject(assumeFilesExist: boolean, parser: Parameters<typ
 	try {
 		fs.writeFileSync(path.join(dir, 's.R'), 'y <- 2\n');
 		const main = path.join(dir, 'main.R');
-		fs.writeFileSync(main, `y <- 1\nsource('${path.join(dir, 's.R').replaceAll('\\', '/')}')\nx <- y\n`);
+		fs.writeFileSync(main, `y <- 1\nsource('${rPath(path.join(dir, 's.R'))}')\nx <- y\n`);
 		return await createDataflowPipeline(parser, { context: contextFromInput(`file://${main}`, config) }).allRemainingSteps();
 	} finally {
 		fs.rmSync(dir, { recursive: true, force: true });

@@ -8,7 +8,7 @@ import { baseRPackages } from '../../../util/r-base-packages';
 
 /**
  * Collects dependency statistics from what the project declares, cross-referenced with the
- * loaded package database(s) to report how many dependencies we can cover.
+ * loaded signature database(s) to report how many dependencies we can cover.
  */
 function collectDependencyStats(declared: DeclaredPackages, deps: ReadOnlyFlowrAnalyzerDependenciesContext, basePackages: ReadonlySet<string>): ProjectDependencyStats {
 	const imports = declared.imports ?? [];

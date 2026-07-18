@@ -1,4 +1,5 @@
 import type { FlowrConfig } from '../config';
+import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -147,6 +148,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	runFull(force?: boolean): Promise<void>;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfig;
+	/** Merge a runtime update into the base config and invalidate the derived config and cached analysis, so it takes effect. */
+	updateConfig(update: DeepPartial<FlowrConfig>): void;
 }
 
 
@@ -200,6 +203,12 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 
 	public reset() {
 		this.ctx.reset();
+		this.cache.reset();
+	}
+
+	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.ctx.updateConfig(update);
+		// the parse/dataflow results were computed under the previous config, so they must be recomputed
 		this.cache.reset();
 	}
 

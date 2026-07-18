@@ -90,6 +90,8 @@ export interface PackageSignatureSource {
 	lookup(pkg: string, version?: string): LibraryExports | undefined;
 	/** rich per-function view (signatures + call graphs) of a package version */
 	functions(pkg: string, version?: string): DecodedFunction[] | undefined;
+	/** the rich view of a single function by name, decoding only it (unlike {@link functions}, which decodes the whole package) */
+	functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined;
 	/** declared dependencies (Depends/Imports/…) of a package version, with version qualifiers */
 	dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined;
 	/** every package name this source can resolve */
@@ -266,7 +268,8 @@ export class SigDatabase implements PackageSignatureSource {
 		return deriveLibraryExports(this.strings, blob, meta, pkg, version, this.cranBase);
 	}
 
-	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+	/** resolve a package version to its blob and the function-record indices of that version (the shared prologue of {@link functions}/{@link functionByName}) */
+	private versionFns(pkg: string, version?: string): { blob: PkgBlob, idxs: readonly number[] } | undefined {
 		const blob = this.blob(pkg);
 		const meta = this.index.meta[pkg];
 		if(!blob || !meta) {
@@ -274,7 +277,19 @@ export class SigDatabase implements PackageSignatureSource {
 		}
 		const ver = resolveVersion(blob, meta[0], version);
 		const idxs = ver !== undefined ? versionFnIndices(blob, ver) : undefined;
-		return idxs?.map(i => decodeFunction(this.strings, blob, i));
+		return idxs !== undefined ? { blob, idxs } : undefined;
+	}
+
+	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
+		const r = this.versionFns(pkg, version);
+		return r?.idxs.map(i => decodeFunction(this.strings, r.blob, i));
+	}
+
+	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+		const r = this.versionFns(pkg, version);
+		// compare the stored name-string index and decode only the match, rather than the whole package
+		const hit = r?.idxs.find(i => this.strings[r.blob.fns[i][0]] === name);
+		return hit !== undefined && r !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
 	}
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
@@ -606,6 +621,10 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	public functions(pkg: string, version?: string): DecodedFunction[] | undefined {
 		return this.firstOf(pkg, version, db => db.functions(pkg, version));
+	}
+
+	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
+		return this.firstOf(pkg, version, db => db.functionByName(pkg, name, version));
 	}
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {

@@ -81,7 +81,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const ctx = input.inspectContext();
 		const setting = ctx.config.solver.sigdb.assumedRVersion ?? 'auto';
 		rows.push(['assumed R', `${ctx.resolvedRVersion} ${faint(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
-		const dbs = ctx.deps.loadedPackageDatabases();
+		const dbs = ctx.deps.loadedSignatureDatabases();
 		const sigDbUrl = sigDbRemoteRelease()?.url;
 		const describe = (d: typeof dbs[number]) => {
 			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;

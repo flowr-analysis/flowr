@@ -178,6 +178,14 @@ export function getParentDirectory(directory: string): string{
 }
 
 /**
+ * A path with backslashes rewritten to forward slashes, i.e. POSIX form. R accepts these on every OS, so this is
+ * also how a filesystem path is made safe to interpolate into an R string literal (where a raw `\` would escape).
+ */
+export function toPosixPath(p: string): string {
+	return p.replaceAll('\\', '/');
+}
+
+/**
  * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
  */
 export function commonDirectory(paths: readonly string[]): string | undefined {
@@ -202,7 +210,7 @@ export function commonDirectory(paths: readonly string[]): string | undefined {
  * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
  */
 export function relativeTo(root: string, filePath: string): string {
-	const relative = path.relative(root, filePath).replaceAll('\\', '/');
+	const relative = toPosixPath(path.relative(root, filePath));
 	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
 }
 

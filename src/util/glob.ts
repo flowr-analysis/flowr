@@ -3,6 +3,7 @@
  * @module
  */
 import type ignore from 'ignore';
+import { toPosixPath } from './files';
 
 let ignoreFactory: typeof ignore | undefined;
 /** The `ignore` factory, required on first use only. */
@@ -13,7 +14,7 @@ export function loadIgnore(): typeof ignore {
 
 /** `ignore` rejects absolute and windows paths */
 function relative(filePath: string): string {
-	return filePath.replaceAll('\\', '/').replace(/^([a-zA-Z]:)?\/+/, '');
+	return toPosixPath(filePath).replace(/^([a-zA-Z]:)?\/+/, '');
 }
 
 /**

@@ -69,7 +69,7 @@ describe('Config Query REPL Completions', () => {
 		const result = completer?.([], true, FlowrConfig.default());
 		const completions = result?.completions ?? [];
 		assert.strictEqual(completions[0], '+', '+ starts an update and comes first');
-		assert.match(result?.labels?.get('+') ?? '', /change a config value/, 'the + hint explains it writes the config');
+		assert.match(result?.labels?.get('+') ?? '', /change config value/, 'the + hint explains it writes the config');
 		assert.includeMembers(completions, ['solver', 'linter', 'repl'], 'root keys are offered bare, for inspect');
 		assert.isFalse(completions.some(c => c.startsWith('?')), 'the ? sigil is gone');
 	});

@@ -32,12 +32,12 @@ function configReplCompleter(partialLine: readonly string[], startingNewArg: boo
 		return { completions: [] };
 	}
 	const token = partialLine[0] ?? '';
-	const update = token.startsWith('+');   // `+path=value` writes a field; a bare path reads one
+	const update = token.startsWith('+');
 	const raw = update ? token.slice(1) : token;
 	const sigil = update ? '+' : '';
 	// on the empty token also offer `+` (writes a value) before the inspectable keys (which read); label it like the keys
 	const lead = token.length === 0 ? ['+'] : [];
-	const leadLabels: [string, string][] = token.length === 0 ? [['+', describeCompletion('+', 'prefix to change a config value (a bare path only reads it)')]] : [];
+	const leadLabels: [string, string][] = token.length === 0 ? [['+', describeCompletion('+', 'change config values')]] : [];
 	// once `+key=` is typed, complete the value (its type), not more keys
 	if(update && raw.includes('=')) {
 		const eq = raw.indexOf('=');

@@ -135,13 +135,8 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const info = functionMap.get(name) as FunctionInfo;
 
-			// the qualified call name (`dplyr::filter` for a bare `filter()` after `library(dplyr)`),
-			// falling back to the plain called name when the call does not resolve to a loaded package
-			const functionName = Dataflow.qualified(id, dfg, false) ?? vertex.name;
+			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
 
-			// a call qualified to (or resolved via a loaded library to) a different package than the
-			// function's is not this function - e.g. purrr::map, or a bare map() after library(purrr),
-			// is not the maps `map` plot; bare/matching-namespace calls still count.
 			if(info.package !== undefined) {
 				const callNamespace = Identifier.getNamespace(functionName);
 				if(callNamespace !== undefined && callNamespace !== info.package) {

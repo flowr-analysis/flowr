@@ -216,7 +216,7 @@ export const Identifier = {
 	 * from the base package that exports it (`sd` yields `stats::sd`, `plot` yields `base::plot`) via the
 	 * precomputed {@link baseRExportOwner} store -- no loaded database, no graph edges. This is suppressed when
 	 * the call resolves to a user definition or is already namespaced, so a local `sd()` is never `stats::sd`.
-	 * @see {@link Dataflow.qualified} - the compact form, if you have the call's id and its graph
+	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
 	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier): Identifier | undefined {
 		let sawUserDefinition = false;

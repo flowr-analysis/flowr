@@ -333,7 +333,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 				}
 			}
 			if(query.callTargetNamespace !== undefined) {
-				const pkg = Identifier.getNamespace(Dataflow.qualified(nodeId, dataflow.graph) ?? info.name);
+				const pkg = Identifier.getNamespace(Dataflow.qualify(nodeId, dataflow.graph) ?? info.name);
 				if(pkg !== query.callTargetNamespace) {
 					continue;
 				}

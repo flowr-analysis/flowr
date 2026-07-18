@@ -77,19 +77,17 @@ function callResolvesTo(df: Awaited<ReturnType<typeof analyze>>['df'], callName:
 	return edges !== undefined && edges.entries().some(([to, e]) => String(to) === target && DfEdge.includesType(e, EdgeType.Calls));
 }
 
-/** the edge-free qualified name of the call `callName` via {@link Dataflow.qualified} + the base-export index */
 function qualifiedName(res: Awaited<ReturnType<typeof analyze>>, callName: string): string | undefined {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
 		if(isFunctionCallVertex(v) && Identifier.getName(v.name) === callName) {
-			const q = Dataflow.qualified(id, dfg);
+			const q = Dataflow.qualify(id, dfg);
 			return q === undefined ? undefined : Identifier.toString(q);
 		}
 	}
 	return undefined;
 }
 
-/** the `built-in:pkg:fn` proc strings of the origins that the dataflow attaches to the call `callName` */
 function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string): string[] {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
@@ -100,7 +98,6 @@ function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string)
 	return [];
 }
 
-/** the node ids of calls to `callName` that a call-context query resolves to package `namespace` */
 async function callTargets(analyzer: FlowrAnalyzer, callName: string, namespace: string): Promise<NodeId[]> {
 	const out = await executeCallContextQueries({ analyzer }, [{ type: 'call-context', callName, callTargetNamespace: namespace }]);
 	return Object.values(out.kinds).flatMap(({ subkinds }) => Object.values(subkinds).flatMap(rs => rs.map(r => r.id)));

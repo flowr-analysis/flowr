@@ -17,6 +17,7 @@ import { Identifier } from '../environments/identifier';
  * - {@link Dataflow.visualize} - for visualization helpers (e.g., rendering the DFG as a mermaid graph),
  * - {@link Dataflow.views} - for working with specific views of the dataflow graph (e.g., the call graph),
  * - {@link Dataflow.edge} - for working with the edges in the dataflow graph,
+ * - {@link Dataflow.qualify} - for the package-qualified `pkg::fn` identifier of a call from its id and graph,
  */
 export const Dataflow = {
 	name:  'Dataflow',
@@ -66,7 +67,7 @@ export const Dataflow = {
 	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
 	 *                       Set this to `false` to only qualify what the origins resolve to.
 	 */
-	qualified(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
+	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
 		// only look the vertex up when its name is actually needed (base-R qualification)
 		const vertex = qualifyBaseR ? graph.getVertex(id) : undefined;
 		return Identifier.toQualified(

@@ -157,7 +157,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 			return undefined;
 		}
 		const kind = this.kindToSpecializeFor();
-		const overwrite = this.baseConfig.specializeConfig[kind];
+		const overwrite = FlowrConfig.specializationFor(this.baseConfig, kind);
 		return overwrite ? { kind, overwrite } : undefined;
 	}
 

@@ -277,6 +277,9 @@ ${codeBlock('json', JSON.stringify(
 				resolveUnknownPathsOnDisk: true,
 				implicitSources:           ['global.R', 'app.R']
 			},
+			linter: {
+				disabledRules: []
+			},
 			specializeConfig: {
 				[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
 			},

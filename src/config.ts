@@ -118,6 +118,9 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
 	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
 
+/** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
+export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
+
 /**
  * The configuration file format for flowR.
  * @see {@link FlowrConfig.default} for the default configuration.
@@ -178,11 +181,17 @@ export interface FlowrConfig extends MergeableRecord {
 		 */
 		implicitSources?:          string[]
 	}
+	/** Linter configuration, usually specialized per {@link ProjectKind} via {@link FlowrConfig.specializeConfig}. */
+	readonly linter: {
+		/** Rule names excluded from the *default* rule set (a rule requested explicitly still runs). */
+		readonly disabledRules: string[]
+	}
 	/**
 	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
-	 * e.g. to give a shiny app its implicit sources. Resolve it with {@link FlowrConfig.forKind}.
+	 * e.g. to give a shiny app its implicit sources. An entry may `inherit` another kind's overwrite (merged first,
+	 * with the entry's own keys winning) to avoid repeating it. Resolve it with {@link FlowrConfig.forKind}.
 	 */
-	readonly specializeConfig?: Partial<Record<ProjectKind, DeepPartial<FlowrConfig>>>
+	readonly specializeConfig?: Partial<Record<ProjectKind, SpecializeConfigEntry>>
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
@@ -401,6 +410,29 @@ export const FlowrDefaultPlugins = [
 	'file:rproject',
 ] satisfies ConfigPlugin<string>[];
 
+/** deep-merge two config overwrites with `own` winning; objects merge, arrays/scalars replace (matching {@link specialize}'s array-as-leaf treatment) */
+function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<FlowrConfig>): DeepPartial<FlowrConfig> {
+	const result: Record<string, unknown> = { ...parent };
+	for(const [key, value] of Object.entries(own)) {
+		const prev = (parent as Record<string, unknown>)[key];
+		result[key] = isPlainObject(prev) && isPlainObject(value) ? mergeOverwrite(prev, value) : value;
+	}
+	return result;
+}
+
+/** The effective overwrite for `kind`, following {@link SpecializeConfigEntry.inherit} (cycle-guarded; own keys win, `inherit` stripped), or `undefined` when nothing is overwritten. */
+function resolveSpecialization(specializeConfig: FlowrConfig['specializeConfig'], kind: ProjectKind, seen: Set<ProjectKind> = new Set()): DeepPartial<FlowrConfig> | undefined {
+	const entry = specializeConfig?.[kind];
+	if(!entry || seen.has(kind)) {
+		return undefined;
+	}
+	seen.add(kind);
+	const { inherit, ...own } = entry;
+	const parent = inherit !== undefined ? resolveSpecialization(specializeConfig, inherit, seen) : undefined;
+	const resolved = parent !== undefined ? mergeOverwrite(parent, own) : own;
+	return Object.keys(resolved).length > 0 ? resolved : undefined;
+}
+
 /**
  * Applies `overwrite` to `current`, key by key, keeping every value that differs from `base`: only a value nobody
  * configured is left to the overwrite. An array is replaced, never appended to.
@@ -448,15 +480,19 @@ export const FlowrConfig = {
 			project: {
 				resolveUnknownPathsOnDisk: true
 			},
-			/* shiny loads global.R first, then the ui/server pair, and app.R last as it wires them together */
+			linter: {
+				disabledRules: []
+			},
 			specializeConfig: {
-				/* these ship the files they source, a notebook or a loose script may not */
 				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
 					solver:  { resolveSource: { assumeFilesExist: true } }
-				}
+				},
+				[ProjectKind.Script]:   { inherit: ProjectKind.Unknown },
+				[ProjectKind.Notebook]: { inherit: ProjectKind.Unknown },
+				[ProjectKind.Unknown]:  { linter: { disabledRules: ['software-has-license', 'software-has-tests'] } }
 			},
 			engines:       [],
 			defaultEngine: 'tree-sitter',
@@ -528,7 +564,12 @@ export const FlowrConfig = {
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.')
 		}).description('Project specific configuration options.'),
-		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object()).optional()
+		linter: Joi.object({
+			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
+		}).description('Linter configuration options.'),
+		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
+			inherit: Joi.string().valid(...Object.values(ProjectKind)).optional().description('Inherit another kind\'s overwrite first (merged before this entry\'s own keys, which win).')
+		}).unknown(true)).optional()
 			.description('Overwrite (parts of) the configuration depending on the project kind flowR detects, e.g. to give a shiny app its implicit sources.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
@@ -659,8 +700,13 @@ export const FlowrConfig = {
 	 * Returns `config` itself if the kind has no entry, so callers can use this freely.
 	 */
 	forKind(this: void, config: FlowrConfig, kind: ProjectKind): FlowrConfig {
-		const overwrite = config.specializeConfig?.[kind];
+		const overwrite = FlowrConfig.specializationFor(config, kind);
 		return overwrite ? specialize(config, FlowrConfig.default(), overwrite) as FlowrConfig : config;
+	},
+
+	/** The overwrite {@link FlowrConfig.forKind} applies for `kind` (with {@link SpecializeConfigEntry.inherit} resolved), or `undefined`. */
+	specializationFor(this: void, config: FlowrConfig, kind: ProjectKind): DeepPartial<FlowrConfig> | undefined {
+		return resolveSpecialization(config.specializeConfig, kind);
 	},
 	/**
 	 * Gets the configuration for the given engine type from the config.

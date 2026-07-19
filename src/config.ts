@@ -254,6 +254,11 @@ export interface FlowrConfig extends MergeableRecord {
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
 		}
+		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
+		readonly versionManagement?: {
+			/** Groups of packages that must resolve to the same version (like the base packages, which share the R version); version guessing intersects each group so its members stay mutually compatible (default `[]`). */
+			readonly linkedVersionGroups?: string[][]
+		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
 			/**
@@ -390,8 +395,10 @@ export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
 	'versions:sigdb',
+	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
+	'versions:session-info',
 	'loading-order:description',
 	'loading-order:implicit-sources',
 	'meta:description',
@@ -501,6 +508,7 @@ export const FlowrConfig = {
 				evalStrings:       true,
 				trackEnvironments: true,
 				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -605,6 +613,9 @@ export const FlowrConfig = {
 				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
 				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
+			versionManagement: Joi.object({
+				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
+			}).description('Policies for reasoning about dependency versions.'),
 			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),

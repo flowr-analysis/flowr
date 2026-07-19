@@ -209,6 +209,8 @@ function parseNamespaceComplex(file: FlowrFileProvider, ctx: FlowrAnalyzerContex
 					case 'import':
 						return handleImportCall(g, call.arguments);
 					case 'importFrom':
+					case 'importClassesFrom':
+					case 'importMethodsFrom':
 						return handleImportFromCall(g, call.arguments);
 					case 'useDynLib':
 						return handleUseDynLibCall(g, call.arguments);
@@ -528,7 +530,9 @@ function parseNamespaceSimple(file: FlowrFileProvider): NamespaceFormat {
 				result.current.importedPackages?.set(pkg, 'all');
 				break;
 			}
-			case 'importFrom': {
+			case 'importFrom':
+			case 'importClassesFrom':
+			case 'importMethodsFrom': {
 				const parts = args.split(',').map(s => s.trim());
 				if(parts.length < 2) {
 					continue;

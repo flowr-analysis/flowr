@@ -5,6 +5,9 @@ import { Package } from '../../../../../src/project/plugins/package-version-plug
 import { FlowrNamespaceFile, setCallable } from '../../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
 import { EnvType, REnvironment } from '../../../../../src/dataflow/environments/environment';
+import { VertexType } from '../../../../../src/dataflow/graph/vertex';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
+import { Identifier } from '../../../../../src/dataflow/environments/identifier';
 
 const ggplot2Callable = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 const randomPlaceholder1Callable = ['test1', 'test2'];
@@ -143,6 +146,29 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		env = env.parent;
 		const imported = [Package.functionIdentifier('random_placeholder', 'test1')];
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
+	});
+
+	test('the analyzed package\'s own importFrom resolves a bare imported call to its source package', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
+		// the analyzed package (`current`) imports `index` from zoo via its own NAMESPACE, then calls it bare
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'importFrom(zoo, index)')).content().current
+		}));
+		analyzer.context().deps.addDependency(new Package({
+			name:          'zoo',
+			namespaceInfo: setCallable(FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'export(index)')).content().current, ['index'])
+		}));
+		analyzer.addRequest('index(x)');
+		const df = await analyzer.dataflow();
+		let resolved: string | undefined;
+		for(const [id, vtx] of df.graph.verticesOfType(VertexType.FunctionCall)) {
+			if(Identifier.getName(vtx.name) === 'index') {
+				const qualified = Dataflow.qualify(id, df.graph, true);
+				resolved = qualified === undefined ? undefined : Identifier.getNamespace(qualified);
+			}
+		}
+		expect(resolved).toBe('zoo');
 	});
 
 	test('Linked library imports another library', async() => {

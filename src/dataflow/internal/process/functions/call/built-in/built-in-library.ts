@@ -549,6 +549,47 @@ export function attachDeclaredDependencies(env: REnvironmentInformation, ctx: Fl
 	return built;
 }
 
+/** attach the analyzed package's own `NAMESPACE importFrom(...)` symbols (by their bare name) below the global, so a bare imported call resolves to its source package */
+export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const own = ctx.deps.getDependency('current')?.namespaceInfo;
+	if(own === undefined || own.importedPackages.size === 0){
+		return env;
+	}
+	const layerNamespace = 'current';
+	const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+	for(const [pkg, funcs] of own.importedPackages){
+		// an explicit `importFrom(pkg, a, b)` names the symbols directly; `import(pkg)` needs the package's own export list
+		let names: readonly string[];
+		if(funcs === 'all'){
+			const imported = ctx.deps.getDependency(pkg)?.namespaceInfo;
+			if(imported === undefined){
+				continue;
+			}
+			names = getCallables(imported);
+		} else {
+			names = funcs;
+		}
+		for(const fn of names){
+			toDefine.push({
+				name:      Identifier.make(fn, layerNamespace),
+				type:      ReferenceType.Function,
+				nodeId:    NodeId.fromPkgFn(pkg, fn),
+				definedAt: NodeId.toBuiltIn(pkg)
+			});
+		}
+	}
+	if(toDefine.length === 0){
+		return env;
+	}
+	const layer = new Environment(env.current).asLibrary(layerNamespace, EnvType.Imports).defineAll(toDefine);
+	return { level: env.level, current: REnvironment.attachBelowGlobal(env.current, layer, layer) };
+}
+
+/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */
+export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	return [attachBaseRNamespaces, attachProjectImports, attachDeclaredDependencies].reduce((e, attach) => attach(e, ctx), env);
+}
+
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){
 	for(const imp of namespaceInfo.importedPackages){
 		const importedDependency = ctx.deps.getDependency(imp[0]);

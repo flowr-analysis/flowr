@@ -27,6 +27,7 @@ import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../
 import { requestFromInput } from '../../r-bridge/retriever';
 import { FlowrConfig, resolveAssumedRVersion } from '../../config';
 import { deepMergeObject } from '../../util/objects';
+import { setLogLevel, type LogLevelName } from '../../util/log';
 import type { DeepPartial } from 'ts-essentials';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
@@ -114,6 +115,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	private runtimeOverrides: DeepPartial<FlowrConfig> | undefined;
 	/** memoized {@link config}: {@link specializedConfig} merged with {@link runtimeOverrides} */
 	private _effective:       FlowrConfig | undefined;
+	private _appliedLogLevel: LogLevelName | undefined;
 	/** the specialized object {@link _effective} was built from, for identity-based invalidation on a kind change */
 	private _effectiveOf:     FlowrConfig | undefined;
 
@@ -123,15 +125,22 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	 */
 	public get config(): FlowrConfig {
 		const specialized = this.specializedConfig();
+		let cfg: FlowrConfig;
 		if(this.runtimeOverrides === undefined) {
-			return specialized;
+			cfg = specialized;
+		} else {
+			if(this._effective === undefined || this._effectiveOf !== specialized) {
+				// a fresh object, so neither the shared base nor the memoized specialized config is mutated
+				this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
+				this._effectiveOf = specialized;
+			}
+			cfg = this._effective;
 		}
-		if(this._effective === undefined || this._effectiveOf !== specialized) {
-			// a fresh object, so neither the shared base nor the memoized specialized config is mutated
-			this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
-			this._effectiveOf = specialized;
+		if(cfg.logLevel !== undefined && cfg.logLevel !== this._appliedLogLevel) {
+			this._appliedLogLevel = cfg.logLevel;
+			setLogLevel(cfg.logLevel);
 		}
-		return this._effective;
+		return cfg;
 	}
 
 	/** {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's kind applied ({@link FlowrConfig.forKind}), resolved once per kind. */

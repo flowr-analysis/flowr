@@ -16,7 +16,7 @@ export async function versionReplString(parser: KnownParser): Promise<string> {
 
 /**
  * Compact, dimmed note on the bundled signature databases (merged into the engine parenthesis): one linked ref per
- * scope present on disk (`current`, `full-history`) with its last update; `base` only when nothing richer ships.
+ * scope present on disk (`current`, `base`, `full-history`) with its last update.
  * The full history is on disk as `history.*` (mounted alongside `current.*`), or a merged `full.*` in a baked container.
  */
 function sigDbSummaryString(): string {
@@ -33,10 +33,8 @@ function sigDbSummaryString(): string {
 		entries.push({ label, file, date });
 	};
 	add('current', defaultSigDbPath('current'));
+	add('base', defaultSigDbPath('base'));
 	add('full-history', defaultSigDbPath('full') ?? defaultSigDbPath('history' as SigDbScope));
-	if(entries.length === 0) {
-		add('base', defaultSigDbPath('base'));
-	}
 	if(entries.length === 0) {
 		return it('no sigdb');
 	}

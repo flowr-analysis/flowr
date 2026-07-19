@@ -161,8 +161,7 @@ export const ansiFormatter = {
 	},
 
 	hyperlink(text: string, url: string): string {
-		// OSC 8 (BEL-terminated) when supported, else the raw url so it stays visible instead of hidden behind the text
-		return supportsHyperlinks() ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : (text === url ? url : `${text} (${url})`);
+		return supportsHyperlinks() ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : text;
 	},
 
 	format(input: string, options?: FormatOptions): string {

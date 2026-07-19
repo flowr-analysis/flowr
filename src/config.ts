@@ -5,7 +5,7 @@ import { type MergeableRecord,
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
-import { log } from './util/log';
+import { log, LogLevelNames, setLogLevel, type LogLevelName } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
@@ -127,6 +127,7 @@ export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inheri
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
 export interface FlowrConfig extends MergeableRecord {
+	readonly logLevel?:         LogLevelName
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
@@ -551,6 +552,7 @@ export const FlowrConfig = {
 	 * The Joi schema for validating a config file, use this to validate your config file before using it. You can also use this to generate documentation for the config file format.
 	 */
 	Schema: Joi.object({
+		logLevel:          Joi.string().valid(...Object.keys(LogLevelNames)).optional().description('flowR\'s global minimum log level, applied when the config is loaded.'),
 		ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
 		ignoreLoadCalls:   Joi.boolean().optional().description('Whether load calls should be ignored, causing {@link processLoadCall}\'s behavior to be skipped.'),
 		semantics:         Joi.object({
@@ -701,12 +703,17 @@ export const FlowrConfig = {
 	 * This is mostly useful for user-facing features.
 	 */
 	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+		let config: FlowrConfig;
 		try {
-			return loadConfigFromFile(configFile, configWorkingDirectory);
+			config = loadConfigFromFile(configFile, configWorkingDirectory);
 		} catch(e) {
 			log.error(`Failed to load config: ${(e as Error).message}`);
-			return FlowrConfig.default();
+			config = FlowrConfig.default();
 		}
+		if(config.logLevel !== undefined) {
+			setLogLevel(config.logLevel);
+		}
+		return config;
 	},
 	/**
 	 * Resolves the configuration for the given {@link ProjectKind} by applying the matching

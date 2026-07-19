@@ -1,10 +1,12 @@
-import { faint } from './text/ansi';
+import { bold, faint, supportsHyperlinks } from './text/ansi';
 import { SemVer } from 'semver';
 import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
+import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
+import { BuiltInPlugins } from '../project/plugins/plugin-registry';
 
 // this is automatically replaced with the current version by release-it
 const version = '2.12.3';
@@ -69,6 +71,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 			: '';
 	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
 	const rows: [string, string, boolean?][] = [];
+	const pluginLines: string[] = [];
 	if(!engineOnly) {
 		rows.push(['flowR', `${flowrValue} ${dim(`(${versionDate})`)}`]);
 	}
@@ -88,11 +91,47 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl) : entry;
 		};
 		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
+		// the registered plugins, grouped by prefix; collected here and printed after the table (below) so the
+		// longer labels do not widen the version rows. The header links (once) to the plugin wiki section
+		const wiki = `${FlowrWikiBaseRef}/Analyzer#plugins`;
+		const osc8 = supportsHyperlinks();
+		const names = ctx.config.defaultPlugins.map(x => typeof x === 'string' ? x : x[0]);
+		const byPrefix = new Map<string, string[]>();
+		for(const p of names) {
+			const at = p.indexOf(':');
+			const [prefix, suffix] = at < 0 ? [p, ''] : [p.slice(0, at), p.slice(at + 1)];
+			byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), suffix]);
+		}
+		// when `showPlugins` is set, the config keys of plugins that produced a result (matched from their recorded
+		// class names) so the ones that did not activate can be grayed out
+		const trace = ctx.config.repl.showPlugins;
+		const keyByClass = new Map<string, string>(BuiltInPlugins.map(([key, producer]) => [producer.name, key]));
+		const activated = new Set<string>();
+		for(const cls of ctx.activatedPlugins) {
+			const key = keyByClass.get(cls);
+			if(key !== undefined) {
+				activated.add(key);
+			}
+		}
+		const render = (full: string, suffix: string): string => trace && !activated.has(full) ? dim(suffix) : suffix;
+		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
+		const header = `registered plugins (${names.length})`;
+		const hint = trace ? ' (faint = did not activate)' : ' (set repl.showPlugins: true to track activation)';
+		pluginLines.push(`${bold(osc8 ? output.formatter.hyperlink(header, wiki) : header, output.formatter)}:${dim(hint)}`);
+		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
+			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
+		}
+		if(!osc8) {
+			pluginLines.push(`  ${dim('docs: ' + wiki)}`);
+		}
 	}
 	const width = Math.max(...rows.map(([label]) => label.length));
 	for(const [label, value, faded] of rows) {
 		const padding = ' '.repeat(width - label.length);
 		const line = `${label}:${padding} ${value}`;
 		output.stdout(faded ? dim(line) : line);
+	}
+	for(const line of pluginLines) {
+		output.stdout(line);
 	}
 }

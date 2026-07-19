@@ -164,6 +164,8 @@ export interface FlowrConfig extends MergeableRecord {
 		autoUseFileProtocol?: boolean
 		/** Whether `:query` closes with the line stating how long the queries took (default `true`, `:query*` never prints it) */
 		queryStats?:          boolean
+		/** Whether `:version` grays out the plugins that did not activate during the last analysis (default `false`) */
+		showPlugins?:         boolean
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -483,6 +485,7 @@ export const FlowrConfig = {
 				plugins:             ['flowr:default'],
 				autoUseFileProtocol: true,
 				queryStats:          true,
+				showPlugins:         false,
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
@@ -565,7 +568,8 @@ export const FlowrConfig = {
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
 			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
-			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).')
+			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).'),
+			showPlugins:         Joi.boolean().optional().description('Whether `:version` grays out the plugins that did not activate during the last analysis.')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),

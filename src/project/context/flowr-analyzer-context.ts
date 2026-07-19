@@ -57,10 +57,14 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/** The configuration options used by the analyzer. */
 	readonly config:           FlowrConfig;
+	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
+	readonly activatedPlugins: ReadonlySet<string>;
 	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
 	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
 	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
 	readonly resolvedRVersion: string;
+	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or an engine-detected version) rather than the fallback default. */
+	readonly rVersionKnown:    boolean;
 	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
 	projectKind(): ProjectKind;
 	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredVersion}. */
@@ -90,6 +94,8 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	public readonly files: FlowrAnalyzerFilesContext;
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
+	/** class names of plugins that activated since the last reset; only filled when `config.repl.showPlugins` is set */
+	public readonly activatedPlugins = new Set<string>();
 	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
 	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
@@ -208,6 +214,14 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		return resolveAssumedRVersion(this.config, this._detectedR);
 	}
 
+	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
+	public get rVersionKnown(): boolean {
+		const setting = this.config.solver.sigdb.assumedRVersion;
+		return (setting !== undefined && setting !== 'auto')
+			|| this.meta.getRVersion() !== undefined
+			|| (this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown');
+	}
+
 	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
 	public projectKind(): ProjectKind {
 		return this.files.projectKind();
@@ -248,6 +262,7 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		this.deps.reset();
 		this.meta.reset();
 		this.gas.reset();
+		this.activatedPlugins.clear();
 	}
 }
 

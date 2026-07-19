@@ -44,18 +44,21 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], cran: true }
 		: undefined;
 	return {
-		has:            pkg => pkg in pkgs,
-		lookup:         pkg => view(pkg),
-		functions:      () => undefined,
-		functionByName: () => undefined,
-		dependencies:   () => undefined,
-		packageNames:   () => Object.keys(pkgs),
-		isBaseR:        () => false,
-		coreVersions:   () => undefined,
-		releaseDate:    () => undefined,
-		releaseDates:   () => [],
-		latestVersion:  () => undefined,
-		close:          () => { /* nothing to release */ }
+		has:               pkg => pkg in pkgs,
+		hasVersion:        (pkg, version) => pkg in pkgs && version === '1.0.0',
+		isCranVersion:     () => true,
+		lookup:            pkg => view(pkg),
+		functions:         () => undefined,
+		functionByName:    () => undefined,
+		transitiveCallees: () => undefined,
+		dependencies:      () => undefined,
+		packageNames:      () => Object.keys(pkgs),
+		isBaseR:           () => false,
+		coreVersions:      () => undefined,
+		releaseDate:       () => undefined,
+		releaseDates:      () => [],
+		latestVersion:     () => undefined,
+		close:             () => { /* nothing to release */ }
 	};
 }
 

@@ -159,8 +159,9 @@ function buildBlob(p: Readonly<RawPkg>, strings: StringPool, tier: SigDbTier, fe
 		return cgs.intern(idxs.join(','), deltaEncode(idxs));
 	};
 	const fn = (f: SigFunctionInfo): number => {
-		const rec: SigFn = [strings.str(f.name), sig(f.params), cg(f.callees), f.props,
+		const base: SigFn = [strings.str(f.name), sig(f.params), cg(f.callees), f.props,
 			feats.locations && f.file ? strings.str(f.file) : -1, feats.locations ? f.line ?? -1 : -1];
+		const rec: SigFn = f.topic && f.topic !== f.name ? [...base, strings.str(f.topic)] : base;
 		return fns.intern(rec.join(','), rec);
 	};
 	const depList = (list: readonly SigDependencyInfo[]): number => {
@@ -429,7 +430,10 @@ class StringPool {
 	readonly strings: string[] = [];
 	private readonly idx = new Map<string, number>();
 	str(s: string): number {
-		return internalize(this.strings, this.idx, s, s);
+		// the dictionary is newline-delimited on disk, so a stored string must never contain one -- otherwise it splits
+		// on read and shifts every later index. Flatten defensively here so no field (name, file, topic, ...) can corrupt it.
+		const safe = s.includes('\n') || s.includes('\r') ? s.replace(/[\r\n]+/g, ' ') : s;
+		return internalize(this.strings, this.idx, safe, safe);
 	}
 }
 
@@ -465,6 +469,9 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 		for(const f of blob.fns) {
 			bump(f[0]);
 			bump(f[4]);
+			if(f[6] !== undefined) {
+				bump(f[6]);
+			}
 		}
 		for(const list of blob.deps) {
 			for(const d of list) {
@@ -508,6 +515,9 @@ function optimizeStringOrder(strings: string[], blobs: PkgBlob[]): string[] {
 			f[0] = remap[f[0]];
 			if(f[4] >= 0) {
 				f[4] = remap[f[4]];
+			}
+			if(f[6] !== undefined && f[6] >= 0) {
+				f[6] = remap[f[6]];
 			}
 		}
 		for(const list of blob.deps) {

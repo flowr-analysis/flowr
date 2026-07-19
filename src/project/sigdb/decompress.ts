@@ -119,6 +119,11 @@ function cachePaths(hash: string, cacheDir?: string): CachePaths {
 	return { plain, idx: `${plain}.idx` };
 }
 
+/** whether a compressed source with the given content hash has already been unpacked into its decompressed cache */
+export function isUnpacked(hash: string, cacheDir?: string): boolean {
+	return fs.existsSync(cachePaths(hash, cacheDir).plain);
+}
+
 /** materialize the `.idx` for a freshly decompressed cache file -- from the supplied index or the source's sibling */
 function writeCacheIndex(source: string, idx: string, index?: SigDbIndex): void {
 	if(index) {

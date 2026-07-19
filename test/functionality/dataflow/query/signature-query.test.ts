@@ -33,9 +33,9 @@ async function buildDb(dir: string): Promise<SigDatabase> {
 			file:    'R/foo.R',
 			line:    5
 		}), fn('bar', { file: 'R/foo.R', line: 20 }),
-		// `print` is an S3 generic (its dispatch target `print.myclass` lives in the same package)
-		fn('print', { callees: ['UseMethod'], file: 'R/print.R', line: 1 }),
-		fn('print.myclass', { file: 'R/print.R', line: 8 })]
+		// `print` is an S3 generic; its registered method `print.myclass` (the s3-method flag) lives in the same package
+		fn('print', { file: 'R/print.R', line: 1 }),
+		fn('print.myclass', { props: FnProp.Exported | FnProp.S3Method, file: 'R/print.R', line: 8 })]
 	});
 	b.addPackage('base', { latest: '4.5.3', core: true });
 	b.addVersion('base', '4.5.3', { cran: false, functions: [fn('paste2', { file: 'R/paste.R', line: 10 })] });
@@ -90,10 +90,62 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 			expect(info?.file).toBe('R/foo.R');
 			expect(info?.line).toBe(5);
 			expect(info?.sourceUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
+			expect(info?.docUrl).toBe('https://rdrr.io/cran/mypkg/man/foo.html');
 		});
 
 		test('an unknown function yields undefined', () => {
 			expect(signatureFunctionInfo(db, 'mypkg', 'nope')).toBeUndefined();
+		});
+
+		test('the rdrr doc link uses the Rd help topic when it differs from the function name', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('topicpkg', { latest: '1.0.0', downloads: 1 });
+			b.addVersion('topicpkg', '1.0.0', { cran: true, functions: [fn('filter', { topic: 'dplyr-filter' })] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-topic-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			expect(signatureFunctionInfo(src, 'topicpkg', 'filter')?.docUrl).toBe('https://rdrr.io/cran/topicpkg/man/dplyr-filter.html');
+			src.close();
+			fs.rmSync(dir, { recursive: true, force: true });
+		});
+
+		test('a proven-undocumented (no-doc) function carries no doc link', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('ndpkg', { latest: '1.0.0', downloads: 1 });
+			b.addVersion('ndpkg', '1.0.0', { cran: true, functions: [
+				fn('documented'),
+				fn('secret', { props: FnProp.Exported | FnProp.NoDoc })
+			] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-nodoc-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			expect(signatureFunctionInfo(src, 'ndpkg', 'documented')?.docUrl).toBe('https://rdrr.io/cran/ndpkg/man/documented.html');
+			expect(signatureFunctionInfo(src, 'ndpkg', 'secret')?.docUrl).toBeUndefined();
+			src.close();
+			fs.rmSync(dir, { recursive: true, force: true });
+		});
+
+		test('an S3 method links back to its generic (same package and base R)', async() => {
+			const b = new SigDbBuilder();
+			b.addPackage('base', { latest: '4.5.0' });
+			b.addVersion('base', '4.5.0', { cran: false, functions: [fn('print')] });
+			b.addPackage('s3pkg', { latest: '1.0.0', downloads: 1 });
+			b.addVersion('s3pkg', '1.0.0', { cran: true, functions: [
+				fn('summary'),
+				fn('summary.thing', { props: FnProp.Exported | FnProp.S3Method }),
+				fn('print.thing', { props: FnProp.Exported | FnProp.S3Method }),
+				fn('plain'),
+				fn('data.frame') // a non-method whose prefix `data` is absent: no s3-method flag, so no bogus backlink
+			] });
+			const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-sig-s3-'));
+			await writeSignatureDb(path.join(dir, 'db'), b.build({ date: '2026-05-23', generated: 0 }));
+			const src = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+			expect(signatureFunctionInfo(src, 's3pkg', 'summary.thing')?.s3method).toEqual({ generic: 'summary', class: 'thing', package: 's3pkg' });
+			expect(signatureFunctionInfo(src, 's3pkg', 'print.thing')?.s3method).toEqual({ generic: 'print', class: 'thing', package: 'base' });
+			expect(signatureFunctionInfo(src, 's3pkg', 'plain')?.s3method).toBeUndefined();
+			expect(signatureFunctionInfo(src, 's3pkg', 'data.frame')?.s3method).toBeUndefined(); // not registered -> no backlink
+			src.close();
+			fs.rmSync(dir, { recursive: true, force: true });
 		});
 
 		test('a CRAN function carries a location and CRAN-mirror source link', () => {
@@ -181,6 +233,13 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		return { analyzer, res };
 	}
 
+	test(label('--cg attaches a mermaid.live call-graph link to a single function', [], ['other']), async() => {
+		const plain = (await runQuery([{ type: 'signature', package: 'mypkg', function: 'print' }])).res.signature;
+		expect(plain.function?.callGraph).toBeUndefined();
+		const withCg = (await runQuery([{ type: 'signature', package: 'mypkg', function: 'print', callGraph: true }])).res.signature;
+		expect(withCg.function?.callGraph).toMatch(/^https:\/\/mermaid\.live\/view#base64:/);
+	});
+
 	test(label('the function query returns the located function with its mirror link', [], ['other']), async() => {
 		const { analyzer, res } = await runQuery([{ type: 'signature', package: 'mypkg', function: 'foo' }]);
 		const out = res.signature;
@@ -216,8 +275,8 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		expect(res.signature.package?.repoUrl).toBe('https://github.com/cran/mypkg');
 		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg' }]);
 		// OSC 8 terminal hyperlinks are emitted for the CRAN page and the dependency
-		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=mypkg\x07');
-		expect(ascii).toContain('\x1b]8;;https://cran.r-project.org/package=rlang\x07');
+		expect(ascii).toContain('https://cran.r-project.org/package=mypkg');
+		expect(ascii).toContain('https://cran.r-project.org/package=rlang');
 		expect(ascii).toContain('imports');   // grouped dependency section
 	});
 
@@ -289,6 +348,12 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 	test(label('a version glob matches multiple releases', [], ['other']), async() => {
 		const { res } = await runQuery([{ type: 'signature', package: 'multi', version: '2.*' }]);
 		expect(res.signature.packages?.[0]?.versions).toEqual(['2.0.0', '2.1.0']);
+	});
+
+	test(label('a version-glob function search lists the releases newest-first', [], ['other']), async() => {
+		const { res } = await runQuery([{ type: 'signature', package: 'multi', function: 'm2', version: '2.*' }]);
+		// newest-first so the truncation cap keeps the most recent releases
+		expect(res.signature.matches?.map(m => m.version)).toEqual(['2.1.0', '2.0.0']);
 	});
 
 	test(label('a semver range matches multiple releases', [], ['other']), async() => {

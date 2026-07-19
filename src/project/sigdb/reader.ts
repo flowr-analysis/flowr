@@ -11,8 +11,8 @@ import { RVersion } from '../../util/r-version';
 import { DefaultCranBase, SigDbExt, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDb, type SigDbContent, type SigDbPkgMeta } from './schema';
 import { dayToMillis, releasesOf, newestVersion, resolveVersion, type VersionRelease } from './sigdb-version';
 import { decodeIndex, readSigDbIndex, type ByteRange, type SigDbIndex } from './index-format';
-import { tupleToBlob, decodeFunction, decodeDependencies, deriveLibraryExports, versionFnIndices, type DecodedFunction, type ResolvedDependency } from './decode';
-import { isCompressed, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
+import { tupleToBlob, decodeFunction, decodeDependencies, deriveLibraryExports, versionFnIndices, transitiveCallees, type DecodedFunction, type ResolvedDependency } from './decode';
+import { isCompressed, isUnpacked, parseHeader, sigDbStream, resolveSource, ensurePlain, ensurePlainSync } from './decompress';
 import { stripCompressedExt } from './codec';
 import { contentHash, dictionaryHash, shardHash } from './hash';
 import { readManifestFile, SigDbManifestMagic, type SigDbManifest, type SigDbShardRef } from './manifest';
@@ -96,6 +96,8 @@ export interface PackageSignatureSource {
 	functions(pkg: string, version?: string): DecodedFunction[] | undefined;
 	/** the rich view of a single function by name, decoding only it (unlike {@link functions}, which decodes the whole package) */
 	functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined;
+	/** the transitive callees of a function within one package version, expanding the stored local call graphs */
+	transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined;
 	/** declared dependencies (Depends/Imports/…) of a package version, with version qualifiers */
 	dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined;
 	/** every package name this source can resolve */
@@ -118,6 +120,18 @@ export interface PackageSignatureSource {
 export interface AvailableVersion {
 	readonly version: string;
 	readonly date?:   Date;
+}
+
+/** the on-demand load state of one shard of a {@link SigDatabaseSet} */
+export interface ShardStatus {
+	/** the shard id, e.g. `current-top` (its `base`/`current`/`history` prefix is the scope it belongs to) */
+	readonly id:         string;
+	/** whether the shard ships only as a compressed `.br`/`.zst` bundle (so it must be unpacked to be read) */
+	readonly compressed: boolean;
+	/** whether this session has opened (mounted) the shard */
+	readonly accessed:   boolean;
+	/** whether the shard's decompressed cache exists on disk (unpacked, this session or an earlier one) */
+	readonly unpacked:   boolean;
 }
 
 /**
@@ -332,6 +346,11 @@ export class SigDatabase implements PackageSignatureSource {
 		// compare the stored name-string index and decode only the match, rather than the whole package
 		const hit = r?.idxs.find(i => this.strings[r.blob.fns[i][0]] === name);
 		return hit !== undefined && r !== undefined ? decodeFunction(this.strings, r.blob, hit) : undefined;
+	}
+
+	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {
+		const fns = this.functions(pkg, version);
+		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
 	}
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {
@@ -641,6 +660,19 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		return [...this.routes.keys()];
 	}
 
+	/** the on-demand load state (opened + unpacked) of every shard in this set */
+	public shardStatus(): ShardStatus[] {
+		return this.manifest.shards.map((ref, i) => {
+			const compressed = isCompressed(resolveSource(this.baseDir, ref.path));
+			return {
+				id:       ref.id,
+				compressed,
+				accessed: this.opened[i] !== undefined,
+				unpacked: !compressed || isUnpacked(ref.hash, this.cacheDir)
+			};
+		});
+	}
+
 	/** open (blocking) and return every shard database with its manifest ref -- used for whole-set verification */
 	public allShards(): MountedShard[] {
 		return this.manifest.shards.map((ref, i) => ({ ref, db: this.shard(i) }));
@@ -672,6 +704,11 @@ export class SigDatabaseSet implements PackageSignatureSource {
 
 	public functionByName(pkg: string, name: string, version?: string): DecodedFunction | undefined {
 		return this.firstOf(pkg, version, db => db.functionByName(pkg, name, version));
+	}
+
+	public transitiveCallees(pkg: string, name: string, version?: string): string[] | undefined {
+		const fns = this.functions(pkg, version);
+		return fns?.some(f => f.name === name) ? transitiveCallees(fns, name) : undefined;
 	}
 
 	public dependencies(pkg: string, version?: string): ResolvedDependency[] | undefined {

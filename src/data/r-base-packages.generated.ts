@@ -1,7 +1,7 @@
 /* eslint-disable */
 /*
- * GENERATED from the flowr-sigdb bundle by scripts/gen-base-packages.ts on 2026-07-17 -- do not edit.
- * bundle: v5|2026-07-12|83c1f204aacf5d34,e774accd18c1bd9e,9c8dcf8451bb5cb9,ad2f2e4907355001
+ * GENERATED from the flowr-sigdb bundle by scripts/gen-base-packages.ts on 2026-07-19 -- do not edit.
+ * bundle: v5|2026-07-19|449bc035a759bdc3,648d1e4e6ef8d204,65e98a565a0cec45,188706c7b0533db4
  * newestRVersion: newest R release in the database. current: its base packages. packages: [first, last]
  * core R-version per package. exportsByPackage: each current base package to its exported names
  * (inverted to an export -> owning-package lookup on first use, so a package name is not repeated).

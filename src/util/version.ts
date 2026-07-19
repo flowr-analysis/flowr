@@ -1,4 +1,4 @@
-import { FontStyles } from './text/ansi';
+import { faint } from './text/ansi';
 import { SemVer } from 'semver';
 import type { KnownParser } from '../r-bridge/parser';
 import { guard } from './assert';
@@ -63,14 +63,14 @@ export async function retrieveVersionInformation(input: KnownParser | ReadonlyFl
  */
 export async function printVersionInformation(output: ReplOutput, input: KnownParser | ReadonlyFlowrAnalysisProvider, engineOnly = false) {
 	const { flowr, r, engine } = await retrieveVersionInformation(input);
-	const faint = (s: string) => output.formatter.format(s, { style: FontStyles.Faint });
+	const dim = (s: string) => faint(s, output.formatter);
 	const rReason = r === 'none' ? ' (no R interpreter available)'
 		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
 			: '';
 	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
 	const rows: [string, string, boolean?][] = [];
 	if(!engineOnly) {
-		rows.push(['flowR', `${flowrValue} ${faint(`(${versionDate})`)}`]);
+		rows.push(['flowR', `${flowrValue} ${dim(`(${versionDate})`)}`]);
 	}
 	rows.push(
 		['engine', engine],
@@ -80,7 +80,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		// reads the current analyzer, so it reflects the databases in use (and adapts to config changes)
 		const ctx = input.inspectContext();
 		const setting = ctx.config.solver.sigdb.assumedRVersion ?? 'auto';
-		rows.push(['assumed R', `${ctx.resolvedRVersion} ${faint(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
+		rows.push(['assumed R', `${ctx.resolvedRVersion} ${dim(`(solver.sigdb.assumedRVersion = "${setting}")`)}`]);
 		const dbs = ctx.deps.loadedSignatureDatabases();
 		const sigDbUrl = sigDbRemoteRelease()?.url;
 		const describe = (d: typeof dbs[number]) => {
@@ -93,6 +93,6 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 	for(const [label, value, faded] of rows) {
 		const padding = ' '.repeat(width - label.length);
 		const line = `${label}:${padding} ${value}`;
-		output.stdout(faded ? faint(line) : line);
+		output.stdout(faded ? dim(line) : line);
 	}
 }

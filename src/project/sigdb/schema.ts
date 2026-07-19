@@ -47,7 +47,9 @@ export const enum FnProp {
 	CanThrow         = 16,
 	Deprecated       = 32,
 	CallsInternal    = 64,
-	NonDeterministic = 128
+	NonDeterministic = 128,
+	NoDoc            = 256,
+	S3Method         = 512
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -59,7 +61,9 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.CanThrow]:         'can-throw',
 	[FnProp.Deprecated]:       'deprecated',
 	[FnProp.CallsInternal]:    'calls-internal',
-	[FnProp.NonDeterministic]: 'non-deterministic'
+	[FnProp.NonDeterministic]: 'non-deterministic',
+	[FnProp.NoDoc]:            'no-doc',
+	[FnProp.S3Method]:         's3-method'
 };
 
 /** parameter flags, packed into {@link SigParam}'s flag int */
@@ -77,8 +81,13 @@ export const enum ParamFlag {
 export type SigParam = number | [nameIdx: number, flags: number] | [nameIdx: number, flags: number, defaultIdx: number];
 /** a full signature: the ordered parameter list */
 export type Sig = SigParam[];
-/** one function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when absent) */
-export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number];
+/**
+ * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
+ * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ */
+export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
 
 /** the kind of a package dependency (mirrors the DESCRIPTION fields) */
 export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
@@ -181,6 +190,8 @@ export interface SigFunctionInfo {
 	readonly callees: readonly string[];
 	readonly file?:   string;
 	readonly line?:   number;
+	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
+	readonly topic?:  string;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {

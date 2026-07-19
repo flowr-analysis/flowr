@@ -135,14 +135,34 @@ export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
 
 export const escape = '\x1b[';
 const colorSuffix = 'm';
+let hyperlinkSupport: boolean | undefined;
+/** best-effort, env-based OSC 8 hyperlink support (`FORCE_HYPERLINK`/`NO_HYPERLINK` override; unknown terminals are treated as unsupported) */
+export function supportsHyperlinks(): boolean {
+	if(hyperlinkSupport !== undefined) {
+		return hyperlinkSupport;
+	}
+	const env = process.env;
+	if(env.FORCE_HYPERLINK !== undefined) {
+		return (hyperlinkSupport = env.FORCE_HYPERLINK !== '' && env.FORCE_HYPERLINK !== '0');
+	}
+	if(env.NO_HYPERLINK !== undefined || !process.stdout.isTTY) {
+		return (hyperlinkSupport = false);
+	}
+	const known = Boolean(env.WT_SESSION || env.KITTY_WINDOW_ID || env.KONSOLE_VERSION || env.DOMTERM)
+		|| (env.TERM_PROGRAM !== undefined && ['iTerm.app', 'WezTerm', 'vscode', 'ghostty', 'Hyper', 'rio'].includes(env.TERM_PROGRAM))
+		|| (env.VTE_VERSION !== undefined && Number(env.VTE_VERSION) >= 5000)
+		|| (env.TERM !== undefined && /kitty|wezterm|ghostty/i.test(env.TERM));
+	return (hyperlinkSupport = known);
+}
+
 export const ansiFormatter = {
 	reset(): string {
 		return `${escape}0${colorSuffix}`;
 	},
 
 	hyperlink(text: string, url: string): string {
-		// OSC 8 hyperlink, BEL-terminated (\x07) -- more widely supported than the ST form (Konsole, tmux, ...)
-		return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+		// OSC 8 (BEL-terminated) when supported, else the raw url so it stays visible instead of hidden behind the text
+		return supportsHyperlinks() ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : (text === url ? url : `${text} (${url})`);
 	},
 
 	format(input: string, options?: FormatOptions): string {

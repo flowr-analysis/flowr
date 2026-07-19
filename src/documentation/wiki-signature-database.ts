@@ -22,6 +22,20 @@ function usePackageDatabase(parser: KnownParser) {
 	return new FlowrAnalyzerBuilder().setParser(parser).registerPlugins(sigdb).build();
 }
 
+function accessTheDatabase(source: PackageSignatureSource) {
+	const fn = source.functionByName('dplyr', 'lead', '1.1.4');
+	return {
+		exported:   fn?.exported,
+		signature:  fn?.signature.map(p => p.name),
+		localCalls: fn?.callees,
+		topic:      fn?.topic,
+		location:   [fn?.file, fn?.line],
+		transitive: source.transitiveCallees('dplyr', 'lead', '1.1.4'),
+		deps:       source.dependencies('dplyr', '1.1.4'),
+		exports:    source.lookup('dplyr')?.exported
+	};
+}
+
 /** a coarse duration in short units (`µs`/`ms`); we only ever quote estimates, never false precision */
 function roughDuration(ms: number): string {
 	if(ms < 0.001) {
@@ -224,6 +238,32 @@ flowR ships a database of the complete history of all exports in every version o
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. The same database
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
 as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
+
+## What is stored
+
+Every function is a ${ctx.link('DecodedFunction')}:
+
+| field | holds |
+|-------|-------|
+| ${ctx.link('DecodedFunction::exported')} | whether the name is a package export |
+| ${ctx.link('DecodedFunction::signature')} | the parameters, with defaults and forced or optional flags |
+| ${ctx.link('DecodedFunction::callees')} | the function's own local calls |
+| ${ctx.link('DecodedFunction::topic')} | the Rd help topic when it differs from the name |
+| ${ctx.link('DecodedFunction::file')}, ${ctx.link('DecodedFunction::line')} | source location |
+| ${ctx.link('DecodedFunction::props')} | flags like higher-order, recursive, deprecated |
+
+Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
+
+Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.link('FnProp::NoDoc')} (a documented package has no help page for this name) and ${ctx.link('FnProp::S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table).
+
+These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
+- the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.link('FnProp::NoDoc')} function
+- the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.link('FnProp::S3Method')} function, resolving its generic
+- the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
+
+Read it back like this:
+
+${ctx.code(accessTheDatabase, { dropLinesStart: 1 })}
 
 ## Configuration
 

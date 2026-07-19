@@ -1,4 +1,5 @@
 import type { BaseQueryFormat, BaseQueryResult } from '../../base-query-format';
+import type { ShardStatus } from '../../../project/sigdb/reader';
 import Joi from 'joi';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
@@ -31,6 +32,8 @@ export interface SignatureQuery extends BaseQueryFormat {
 	readonly parameters?:         readonly string[];
 	/** keep only functions with exactly this many required (no-default) parameters, excluding `...` */
 	readonly requiredParameters?: number;
+	/** for a single function, also render its transitive call graph as a mermaid.live link (`--cg`) */
+	readonly callGraph?:          boolean;
 }
 
 /** one parameter of a function signature */
@@ -54,10 +57,16 @@ export interface SignatureFunctionView {
 	readonly line?:      number;
 	/** deep link into the read-only CRAN GitHub mirror, when the definition location + a CRAN version are known */
 	readonly sourceUrl?: string;
+	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	readonly docUrl?:    string;
 	/** whether the function looks like an S3 generic (has `<generic>.<class>` dispatch targets in the same package) */
 	readonly s3generic?: boolean;
 	/** the `<generic>.<class>` dispatch targets found in the same package */
 	readonly s3methods?: readonly string[];
+	/** when the function is an S3 method, the generic it dispatches for (`print.rema` is `print` in `base`, class `rema`); lazily computed */
+	readonly s3method?:  { readonly generic: string, readonly class: string, readonly package: string };
+	/** a mermaid.live link visualizing the transitive call graph from this function (only when requested with `--cg`) */
+	readonly callGraph?: string;
 }
 
 /** one declared dependency of a package */
@@ -102,6 +111,8 @@ export interface SignatureMatchView {
 	readonly file?:              string;
 	readonly line?:              number;
 	readonly sourceUrl?:         string;
+	/** best-effort rdrr.io documentation link, when the function name maps to a documentable topic */
+	readonly docUrl?:            string;
 	/** a preview of the function's parameters (the ones a parameter/required filter matched first), when such a filter is active */
 	readonly parameters?:        readonly string[];
 	/** the subset of {@link parameters} that the `--param` filter actually matched, so the renderer can highlight them */
@@ -130,6 +141,8 @@ export interface SignatureQueryResult extends BaseQueryResult {
 	readonly databases:    readonly SignatureDatabaseView[];
 	readonly packageCount: number;
 	readonly sourceCount:  number;
+	/** per-shard load state of the sharded sources (which shards this session has opened and unpacked); summary only */
+	readonly shards?:      readonly ShardStatus[];
 	/** set when a single package was requested and found */
 	readonly package?:     SignaturePackageView;
 	/** set when a single function was requested and found */
@@ -153,6 +166,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	// pull the `--param <name>` (repeatable, comma-separable) / `--required <n>` flags out, leaving the positional tokens
 	const parameters: string[] = [];
 	let requiredParameters: number | undefined;
+	let callGraph = false;
 	const positional: string[] = [];
 	for(let i = 0; i < line.length; i++) {
 		const tok = line[i];
@@ -163,6 +177,8 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 			parameters.push(...(line[++i] ?? '').split(',').map(s => s.trim()).filter(s => s.length > 0));
 		} else if(tok === '--required' || tok === '--req') {
 			requiredParameters = Number(line[++i]);
+		} else if(tok === '--cg') {
+			callGraph = true;
 		} else if(!tok.startsWith('--')) {
 			positional.push(tok);
 		}
@@ -174,9 +190,10 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 	}
 	const paramFilters = {
 		...(parameters.length > 0 ? { parameters } : {}),
-		...(requiredParameters !== undefined && !Number.isNaN(requiredParameters) ? { requiredParameters } : {})
+		...(requiredParameters !== undefined && !Number.isNaN(requiredParameters) ? { requiredParameters } : {}),
+		...(callGraph ? { callGraph: true } : {})
 	};
-	const hasParamFilter = Object.keys(paramFilters).length > 0;
+	const hasParamFilter = parameters.length > 0 || (requiredParameters !== undefined && !Number.isNaN(requiredParameters));
 	const [first, second] = positional;
 	if(!first) {
 		// a bare parameter filter (`--param fuzz`) searches every package; otherwise summarize the databases
@@ -231,7 +248,8 @@ export const SignatureQueryDefinition = {
 		function:           Joi.string().optional().description('A function/symbol to inspect (glob wildcards allowed).'),
 		version:            Joi.string().optional().description('A version spec: an exact version, a glob (3.*), a semver range (>=3.0.0, 3.x), or a release-date bound (<=2026, >=2021.05 in YYYY.MM.DD).'),
 		parameters:         Joi.array().items(Joi.string()).optional().description('Keep only functions that have a parameter matching every one of these names (glob wildcards allowed, position-independent).'),
-		requiredParameters: Joi.number().integer().min(0).optional().description('Keep only functions with exactly this many required (no-default) parameters, excluding `...`.')
+		requiredParameters: Joi.number().integer().min(0).optional().description('Keep only functions with exactly this many required (no-default) parameters, excluding `...`.'),
+		callGraph:          Joi.boolean().optional().description('For a single function, also render its transitive call graph as a mermaid.live link (`--cg`).')
 	}).description('Inspects the loaded signature database(s): loaded databases, a package, a function, or wildcard matches (optionally filtered by parameter name or required-parameter count).'),
 	flattenInvolvedNodes: (): NodeId[] => []
 } as const satisfies SupportedQuery<'signature'>;

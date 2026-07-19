@@ -4,12 +4,14 @@ import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch
 } from './signature-query-format';
-import { availableVersionEntries, getSharedSigSourceSync, type AvailableVersion, type PackageSignatureSource } from '../../../project/sigdb/reader';
+import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
 import { DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import { RVersion } from '../../../util/r-version';
+import { baseRPackages } from '../../../util/r-base-packages';
+import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
@@ -109,12 +111,35 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
 }
 
-/** the trailing fields shared by every function view: definition location and the (accurate) CRAN-mirror source link */
+/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
+const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
+/** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
+function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+	if(!RdrrTopicName.test(fn)) {
+		return undefined;
+	}
+	if(opts.base) {
+		return `https://rdrr.io/r/${pkg}/${fn}.html`;
+	}
+	if(opts.cran) {
+		return `https://rdrr.io/cran/${pkg}/man/${fn}.html`;
+	}
+	return undefined;
+}
+
+/** the doc link for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
+function docUrlFor(pkg: string, fn: DecodedFunction, base: boolean, cran: boolean): string | undefined {
+	return fn.props.includes('no-doc') ? undefined : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base, cran });
+}
+
+/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, and rdrr.io doc link */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
+	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {})
+		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
+		...(doc ? { docUrl: doc } : {})
 	};
 }
 
@@ -151,17 +176,77 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	}
 	const exports = src.lookup(pkg, version) ?? src.lookup(pkg);
 	const view = decodedToView(pkg, fn, exports?.version, { cran: exports?.cran ?? false, base: src.isBaseR(pkg) });
-	// S3 dispatch targets are the `<generic>.<class>` functions in the same package (name-based, matching flowR's
-	// own S3 handling). We use this rather than the stored `UseMethod` callee, which the bundled call graphs
-	// aggregate transitively and so cannot distinguish a real generic from one that merely reaches a dispatch.
+	// an S3 generic's methods are the same-package `<generic>.<class>` functions that are themselves registered
+	// S3 methods; the reverse links a registered method back to the generic it dispatches for
 	const methods = (fns ?? [])
-		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.'))
+		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && isS3Method(f))
 		.map(f => f.name)
 		.sort();
-	if(methods.length > 0) {
-		return { ...view, s3generic: true, s3methods: methods };
+	const s3method = isS3Method(fn) ? s3MethodParts(src, pkg, fns, fn.name) : undefined;
+	return {
+		...view,
+		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
+		...(s3method ? { s3method } : {})
+	};
+}
+
+/** whether a function is a registered S3 method (the `s3-method` property, set from its NAMESPACE at build time) */
+function isS3Method(fn: DecodedFunction): boolean {
+	return fn.props.includes('s3-method');
+}
+
+/**
+ * The generic and dispatch class of a registered S3 method named `generic.class`: the longest dotted prefix that
+ * names a function in the same package or base R is the generic, the remainder is the class, and the owning package
+ * is returned too (`print.rema` gives `print` in `base`, class `rema`). Only ever called for names flagged
+ * {@link isS3Method}, so ordinary dotted names like `data.frame` never reach here and are not mistaken for methods.
+ */
+function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, name: string): { generic: string, class: string, package: string } | undefined {
+	const bases = baseRPackages();
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		const generic = name.slice(0, dot);
+		if(fns?.some(f => f.name === generic)) {
+			return { generic, class: name.slice(dot + 1), package: pkg };
+		}
+		for(const base of bases) {
+			if(base !== pkg && src.functionByName(base, generic) !== undefined) {
+				return { generic, class: name.slice(dot + 1), package: base };
+			}
+		}
 	}
-	return view;
+	return undefined;
+}
+
+/** a mermaid.live link for the transitive call graph reachable from `root` (a node per function, an edge per stored local call; external callees are leaves) */
+function signatureCallGraphUrl(functions: readonly DecodedFunction[], root: string): string {
+	const local = new Map(functions.map(f => [f.name, f.callees]));
+	const ids = new Map<string, string>();
+	const id = (n: string): string => {
+		let v = ids.get(n);
+		if(v === undefined) {
+			ids.set(n, v = `n${ids.size}`);
+		}
+		return v;
+	};
+	id(root);
+	const edges: string[] = [];
+	const seen = new Set<string>();
+	const queue = [root];
+	while(queue.length > 0) {
+		const cur = queue.pop() as string;
+		if(seen.has(cur)) {
+			continue;
+		}
+		seen.add(cur);
+		for(const callee of local.get(cur) ?? []) {
+			edges.push(`  ${id(cur)} --> ${id(callee)}`);
+			if(local.has(callee) && !seen.has(callee)) {
+				queue.push(callee);
+			}
+		}
+	}
+	const nodes = [...ids].map(([name, nid]) => `  ${nid}["${name.replace(/"/g, '&quot;')}"]`);
+	return Mermaid.codeToUrl(['flowchart LR', ...nodes, ...edges].join('\n'));
 }
 
 /** the full view of a package: version, kind, export breakdown, dependencies, and every function's view */
@@ -248,6 +333,7 @@ function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview:
 
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
 function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean, params?: { preview: string[], matched: string[] }): SignatureMatchView {
+	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		package:  pkg,
 		name:     fn.name,
@@ -256,6 +342,7 @@ function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefi
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
 		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
+		...(doc ? { docUrl: doc } : {}),
 		...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
 		...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
 	};
@@ -361,9 +448,9 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 				}
 			}
 		}
-		// versions to scan: with a filter, each matching release (scanned in its single owning source, so a release in
-		// more than one source is not double-counted); without one, just the latest
-		const versionsToScan: (string | undefined)[] = relMatch ? [...ownerOf.keys()] : [undefined];
+		// versions to scan: with a filter, each matching release newest-first (scanned in its single owning source, so a
+		// release in more than one source is not double-counted, and the truncation cap keeps the newest); else just the latest
+		const versionsToScan: (string | undefined)[] = relMatch ? [...ownerOf.keys()].sort((a, b) => RVersion.compare(b, a)) : [undefined];
 		for(const v of versionsToScan) {
 			const s = v === undefined ? owners[0] : ownerOf.get(v) ?? owners[0];
 			const candidates = exactName
@@ -478,6 +565,16 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 	return { completions: [] };
 }
 
+/** the deduped shard load-state across all sharded sources (a shard id mounted by several sources folds into one, accessed/unpacked if any source is) */
+function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardStatus[] {
+	const byId = new Map<string, ShardStatus>();
+	for(const s of sources.flatMap(src => src instanceof SigDatabaseSet ? src.shardStatus() : [])) {
+		const prev = byId.get(s.id);
+		byId.set(s.id, prev ? { ...prev, accessed: prev.accessed || s.accessed, unpacked: prev.unpacked || s.unpacked } : s);
+	}
+	return [...byId.values()];
+}
+
 /**
  * Executes the signature query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
  * or a multi-version `version` triggers a wildcard search (matching packages or functions). Otherwise a single
@@ -502,7 +599,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
 
 	if(!q.package) {
-		return meta();
+		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
+		return { ...meta(), shards: collectShardStatus(sources) };
 	}
 
 	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
@@ -539,7 +637,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	if(q.function) {
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
 		if(fn) {
-			return { ...meta(), function: fn };
+			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc.functions(q.package, version) ?? [], fn.name) : undefined;
+			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<string>([

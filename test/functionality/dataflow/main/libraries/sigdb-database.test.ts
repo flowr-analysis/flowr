@@ -160,6 +160,89 @@ describe('sigdb database (schema 4)', () => {
 		rd.close();
 	});
 
+	test('the Rd help topic round-trips (surviving the frequency reorder) only when it differs from the function name', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		// the shared high-frequency callee reorders the dictionary, so a low-frequency topic string must be remapped with it
+		const shared = ['common', 'common', 'common'];
+		b.addVersion('p', '1.0', ver([
+			{ name: 'lead', props: FnProp.Exported, params: [], callees: shared, topic: 'lead-lag' },
+			{ name: 'lag', props: FnProp.Exported, params: [], callees: shared, topic: 'lead-lag' },
+			{ name: 'select', props: FnProp.Exported, params: [], callees: shared, topic: 'select' },
+			{ name: 'mutate', props: FnProp.Exported, params: [], callees: shared }
+		]));
+		const dir = sigTmpDir('sigdb-topic-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		// the topic must survive every shipped variant: the plain bundle and both compressed codecs
+		const variants = [`db${SigDbExt}`, `db${SigDbExt}.br`, ...(zstdSupported() ? [`db${SigDbExt}.zst`] : [])];
+		for(const variant of variants) {
+			const cache = sigTmpDir('sigdb-topic-cache-');
+			const rd = await SigDatabase.open(path.join(dir, variant), { cacheDir: cache });
+			const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+			expect(byName.get('lead')?.topic, variant).toBe('lead-lag');
+			expect(byName.get('lag')?.topic, variant).toBe('lead-lag');
+			expect(byName.get('select')?.topic, variant).toBeUndefined();
+			expect(byName.get('mutate')?.topic, variant).toBeUndefined();
+			rd.close();
+		}
+	});
+
+	test('the no-doc property round-trips so the query can suppress a guessed doc link', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		b.addVersion('p', '1.0', ver([
+			{ name: 'documented', props: FnProp.Exported, params: [], callees: [] },
+			{ name: 'undocumented', props: FnProp.Exported | FnProp.NoDoc, params: [], callees: [] }
+		]));
+		const dir = sigTmpDir('sigdb-nodoc-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+		expect(byName.get('undocumented')?.props).toContain('no-doc');
+		expect(byName.get('documented')?.props).not.toContain('no-doc');
+		rd.close();
+	});
+
+	test('a newline in a string is flattened so the newline-delimited dictionary never shifts on read', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '1.0' });
+		b.addVersion('p', '1.0', ver([
+			// a dirty topic with a trailing newline + text would, unflattened, split the dict and shift every later index
+			{ name: 'dirty', props: FnProp.Exported, params: [], callees: [], topic: 'realtopic\n#### trailing block' },
+			{ name: 'after', props: FnProp.Exported, params: [], callees: [], file: 'R/after.R', topic: 'after-topic' }
+		]));
+		const dir = sigTmpDir('sigdb-nl-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		const byName = new Map(rd.functions('p', '1.0')?.map(f => [f.name, f]));
+		expect(byName.get('dirty')?.topic).not.toContain('\n');       // flattened
+		expect(byName.get('after')?.topic).toBe('after-topic');       // not shifted by the dirty string
+		expect(byName.get('after')?.file).toBe('R/after.R');
+		rd.close();
+	});
+
+	test('transitiveCallees expands local callees within a version, keeps names outside the set as leaves, and respects version sets', async() => {
+		const b = new SigDbBuilder();
+		b.addPackage('p', { latest: '2.0' });
+		b.addVersion('p', '1.0', ver([
+			{ name: 'a', props: FnProp.Exported, params: [], callees: ['b', 'extfun'] },
+			{ name: 'b', props: FnProp.Exported, params: [], callees: ['c'] },
+			{ name: 'c', props: FnProp.Exported, params: [], callees: [] },
+			{ name: 'rec', props: FnProp.Exported, params: [], callees: ['rec'] }
+		]));
+		b.addVersion('p', '2.0', ver([
+			{ name: 'a', props: FnProp.Exported, params: [], callees: ['b'] }
+		]));
+		const dir = sigTmpDir('sigdb-tcg-');
+		await writeSignatureDb(path.join(dir, 'db'), b.build(meta));
+		const rd = await SigDatabase.open(path.join(dir, `db${SigDbExt}`));
+		expect(rd.transitiveCallees('p', 'a', '1.0')).toEqual(['b', 'c', 'extfun']);
+		expect(rd.transitiveCallees('p', 'rec', '1.0')).toEqual(['rec']);
+		expect(rd.transitiveCallees('p', 'a', '2.0')).toEqual(['b']);
+		expect(rd.transitiveCallees('p', 'nope', '1.0')).toBeUndefined();
+		rd.close();
+	});
+
 	test('ParamFlag packing: forced + missing', () => {
 		const b = new SigDbBuilder();
 		b.addPackage('p', { latest: '1.0' });
@@ -296,6 +379,34 @@ describe('sigdb tiers, shards and federation', () => {
 		await set.preload(['hot']);                          // warm in the background
 		expect(set.lookup('hot')?.exported).toEqual(['h_new']);   // from the current shard
 		expect(set.lookup('hot', '1.0')?.exported).toEqual(['h_old']); // from the full shard (lazy decompress)
+		set.close();
+	});
+
+	test('shardStatus tracks which shards are accessed and unpacked, flipping on first access', async() => {
+		const dir = sigTmpDir('sigdb-shardstatus-');
+		const cacheDir = sigTmpDir('sigdb-shardstatus-cache-');
+		const b = builder();
+		const shards: SigDbManifest['shards'] = [];
+		let globalMeta: SigDbManifest['meta'] = {};
+		for(const tier of ['current', 'full'] as const) {
+			const db = b.build({ ...meta, tier });
+			const index = await writeSignatureDb(path.join(dir, tier), db);
+			fs.rmSync(path.join(dir, `${tier}${SigDbExt}`));       // ship only the compressed `.br` (nothing unpacked yet)
+			fs.rmSync(path.join(dir, `${tier}${SigDbExt}.idx`));
+			globalMeta = { ...globalMeta, ...index.meta };
+			shards.push({ id: tier, tier, path: `${tier}${SigDbExt}`, hash: db.content.hash, packages: db.content.packages, versions: db.content.versions, idx: encodeIndex(index, false) });
+		}
+		writeManifest(path.join(dir, 'm.json'), { format: SigDbManifestMagic, schema: SigDbManifestSchema, date: meta.date, generated: 0, meta: globalMeta, shards });
+
+		const set = SigDatabaseSet.openManifestSync(path.join(dir, 'm.json'), { cacheDir });
+		const before = set.shardStatus();
+		expect(before.map(s => s.id).sort()).toEqual(['current', 'full']);
+		expect(before.every(s => s.compressed && !s.accessed && !s.unpacked)).toBe(true);
+
+		set.lookup('hot');                                        // opens + unpacks the current shard only
+		const after = set.shardStatus();
+		expect(after.find(s => s.id === 'current')).toMatchObject({ accessed: true, unpacked: true });
+		expect(after.find(s => s.id === 'full')).toMatchObject({ accessed: false, unpacked: false });
 		set.close();
 	});
 

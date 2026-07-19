@@ -6,7 +6,6 @@ import type { ReplOutput } from '../cli/repl/commands/repl-main';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { sigDbRemoteRelease } from '../project/sigdb/sigdb-download';
 import { FlowrWikiBaseRef } from '../documentation/doc-util/doc-files';
-import { BuiltInPlugins } from '../project/plugins/plugin-registry';
 
 // this is automatically replaced with the current version by release-it
 const version = '2.12.3';
@@ -102,9 +101,10 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 			const [prefix, suffix] = at < 0 ? [p, ''] : [p.slice(0, at), p.slice(at + 1)];
 			byPrefix.set(prefix, [...(byPrefix.get(prefix) ?? []), suffix]);
 		}
-		// when `showPlugins` is set, the config keys of plugins that produced a result (matched from their recorded
-		// class names) so the ones that did not activate can be grayed out
 		const trace = ctx.config.repl.showPlugins;
+		// loaded lazily so this presentation util does not statically pull the plugin registry (and the whole
+		// plugin/dataflow graph) into `util/version`, which `util/assert` depends on
+		const { BuiltInPlugins } = await import('../project/plugins/plugin-registry');
 		const keyByClass = new Map<string, string>(BuiltInPlugins.map(([key, producer]) => [producer.name, key]));
 		const activated = new Set<string>();
 		for(const cls of ctx.activatedPlugins) {

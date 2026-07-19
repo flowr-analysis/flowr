@@ -8,6 +8,7 @@
 import { minVersion, type Range } from 'semver';
 import { RRange, RVersion } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
+import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { availableVersionEntries, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction } from './sigdb/decode';
 import { matchArgumentsToSignature } from './sigdb/signature-match';
@@ -86,6 +87,8 @@ export interface SurvivingEntries {
 	readonly base:                boolean;
 	/** whether the declared + transitive constraints contradict each other (no version can satisfy them all) */
 	readonly unsatisfiable:       boolean;
+	/** the total number of versions the database carries for the package (the full history the candidates are drawn from) */
+	readonly total:               number;
 }
 
 /** one package's surviving versions, ordered by preference for the constraint-space explosion */
@@ -193,12 +196,20 @@ function suppliedArgs(args: readonly FunctionArgument[]): number {
 	return args.reduce((n, a) => n + (FunctionArgument.isEmpty(a) ? 0 : 1), 0);
 }
 
-/** whether a *carried* package version's signatures can accept how the code calls the package (R's argument matching) */
-function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage): boolean {
+/**
+ * Whether a *carried* package version's signatures can accept how the code calls the package (R's argument matching).
+ * A name in `tracked` is known to the package's signature history, so its absence here means it was removed in this
+ * version (reject); a name never tracked at all is an untracked primitive (base `c`/`is.na`/`round`, ...) and cannot
+ * disprove a version, so it is ignored.
+ */
+function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage, tracked: ReadonlySet<string>): boolean {
 	for(const [fn, use] of usage) {
 		const decoded = getFn(fn, version);
 		if(decoded === undefined) {
-			return false; // the function did not exist (or was not exported) in this version
+			if(tracked.has(fn)) {
+				return false; // a tracked function removed in this version
+			}
+			continue; // an untracked primitive: unknown, not a removal
 		}
 		for(const args of use.calls.values()) {
 			// R's matching rules (exact, then pmatch prefix, then positional; `...` absorbs the rest); an argument
@@ -216,8 +227,11 @@ function isCompatible(getFn: FnResolver, version: string, usage: PackageUsage): 
 	return true;
 }
 
-/** whether a named argument would bind to a parameter of `decoded` under R's matching (exact, pmatch, or `...`) */
-function argumentSupported(decoded: DecodedFunction, arg: string): boolean {
+/** whether a named argument would bind to a parameter of `decoded` under R's matching (exact, pmatch, or `...`); `undefined` = the function is absent, so no */
+function argumentSupported(decoded: DecodedFunction | undefined, arg: string): boolean {
+	if(decoded === undefined) {
+		return false;
+	}
 	const names = decoded.signature.map(p => p.name);
 	return names.includes('...') || names.includes(findByPrefixIfUnique(arg, names) ?? arg);
 }
@@ -232,30 +246,56 @@ function earliestSupporting(src: PackageSignatureSource, pkg: string, timeline: 
 	return undefined;
 }
 
+/** the latest *carried* version in `timeline` (ascending) whose signature satisfies `predicate` */
+function latestSupporting(src: PackageSignatureSource, pkg: string, timeline: readonly TimelineEntry[], predicate: (version: string) => boolean): string | undefined {
+	for(let i = timeline.length - 1; i >= 0; i--) {
+		if(src.hasVersion(pkg, timeline[i].ver) && predicate(timeline[i].ver)) {
+			return timeline[i].ver;
+		}
+	}
+	return undefined;
+}
+
+/** one probe of a function feature (the function itself, or one of its named arguments) across the version timeline */
+interface SignatureFeature {
+	readonly supported:  (version: string) => boolean;
+	/** the verb for an introduction (`>=`) bound, e.g. `exists only from` */
+	readonly from:       string;
+	/** the verb for a removal (`<=`) bound, e.g. `removed after` */
+	readonly after:      string;
+	readonly parameter?: string;
+}
+
+/** emit one signature bound: `>=v` only when `v` is after the floor, `<=v` only when before the ceiling */
+function emitSignatureBound(observe: ConstraintObserver, fn: Identifier, v: string | undefined, op: '>=' | '<=', ref: string, verb: string, parameter?: string): void {
+	if(v !== undefined && (op === '>=' ? RVersion.compare(v, ref) > 0 : RVersion.compare(v, ref) < 0)) {
+		const qualified = Identifier.toString(fn);
+		observe({ source: 'signature', origin: qualified, detail: `${qualified} ${verb} ${v}`, bound: `${op}${v}`, function: qualified, parameter });
+	}
+}
+
 /**
- * Emit lower-bound provenance derived from the signature database: for each used function (and each named argument)
- * whose earliest supporting version is later than the earliest carried version, note "it must be `>= X` because
- * this function/parameter only existed from X".
+ * Emit signature-database provenance: each used function, and each of its named arguments, is a feature whose
+ * support window in the carried timeline yields a bound -- `>=first` when it appears after the earliest carried
+ * version (introduced), `<=last` when it vanishes before the newest (dropped).
  */
 function addSignatureEvidence(observe: ConstraintObserver, src: PackageSignatureSource, getFn: FnResolver, pkg: string, usage: PackageUsage, timeline: readonly TimelineEntry[]): void {
 	const floor = earliestSupporting(src, pkg, timeline, () => true);
-	if(floor === undefined) {
-		return; // no carried version to compare against (only latest-tier data), cannot pin an introduction
+	const ceiling = latestSupporting(src, pkg, timeline, () => true);
+	if(floor === undefined || ceiling === undefined) {
+		return; // no carried version to compare against
 	}
 	for(const [fn, use] of usage) {
-		const qualified = `${pkg}::${fn}`;
-		const recordIfLater = (intro: string | undefined, detailPrefix: string, parameter?: string): void => {
-			if(intro !== undefined && RVersion.compare(intro, floor) > 0) {
-				observe({ source: 'signature', origin: qualified, detail: `${detailPrefix} ${intro}`, bound: `>=${intro}`, function: qualified, parameter });
-			}
-		};
-		recordIfLater(earliestSupporting(src, pkg, timeline, v => getFn(fn, v) !== undefined), `${qualified} exists only from`);
-		for(const arg of use.named) {
-			const argIntro = earliestSupporting(src, pkg, timeline, v => {
-				const decoded = getFn(fn, v);
-				return decoded !== undefined && argumentSupported(decoded, arg);
-			});
-			recordIfLater(argIntro, `${qualified} has parameter '${arg}' only from`, arg);
+		const qualified = Identifier.make(fn, pkg);
+		const features: SignatureFeature[] = [
+			{ supported: v => getFn(fn, v) !== undefined, from: 'exists only from', after: 'removed after' },
+			...[...use.named].map((arg): SignatureFeature => ({
+				supported: v => argumentSupported(getFn(fn, v), arg), from: `has parameter '${arg}' only from`, after: `dropped parameter '${arg}' after`, parameter: arg
+			}))
+		];
+		for(const f of features) {
+			emitSignatureBound(observe, qualified, earliestSupporting(src, pkg, timeline, f.supported), '>=', floor, f.from, f.parameter);
+			emitSignatureBound(observe, qualified, latestSupporting(src, pkg, timeline, f.supported), '<=', ceiling, f.after, f.parameter);
 		}
 	}
 }
@@ -324,18 +364,26 @@ export function survivingEntries(name: string, src: PackageSignatureSource | und
 	// a genuine contradiction is a property of the *constraints*, not of the db being empty after date/signature filters
 	const unsatisfiable = constraintsContradict(declaredConstraints, declaredRange, transitive);
 	if(!src) {
-		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable };
+		return { survivors: [], preSignature: [], getFn, declaredRange, declaredConstraints, base: false, unsatisfiable, total: 0 };
 	}
 	const base = src.isBaseR(name);
-	const preSignature = applyConstraints(versionTimeline(src, name), name, declaredRange, declaredConstraints, transitive, base, rVersion, cutoff, observe);
+	const timeline = versionTimeline(src, name);
+	const total = timeline.length;
+	const preSignature = applyConstraints(timeline, name, declaredRange, declaredConstraints, transitive, base, rVersion, cutoff, observe);
 	if(!usage) {
-		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable };
+		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total };
 	}
+	// base primitives (`c`, `as.integer`, ...) are captured inconsistently across R releases in the db, so their
+	// absence in a later version is a data gap, not a removal -- they must not drive base's bounds or reject versions
+	const relevant = base ? new Map([...usage].filter(([fn]) => !RBasePrimitives.has(fn))) : usage;
 	if(observe) {
-		addSignatureEvidence(observe, src, getFn, name, usage, preSignature);
+		addSignatureEvidence(observe, src, getFn, name, relevant, preSignature);
 	}
-	const survivors = preSignature.filter(e => !src.hasVersion(name, e.ver) || isCompatible(getFn, e.ver, usage));
-	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable };
+	// a used name is "tracked" only if it appears in some carried version; an untracked name is unknown to the db and
+	// must not reject every version (which zeroed base packages out)
+	const tracked = new Set([...relevant.keys()].filter(fn => preSignature.some(e => getFn(fn, e.ver) !== undefined)));
+	const survivors = preSignature.filter(e => !src.hasVersion(name, e.ver) || isCompatible(getFn, e.ver, relevant, tracked));
+	return { survivors, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total };
 }
 
 /** whether the (combined) declared and transitive constraints can be satisfied by no version at all */

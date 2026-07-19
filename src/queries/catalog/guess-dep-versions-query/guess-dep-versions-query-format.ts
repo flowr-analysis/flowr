@@ -4,6 +4,8 @@ import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/nod
 import type { ParsedQueryLine, QueryResults, SupportedQuery } from '../../query';
 import { bold, italic, color, Colors } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
+import { RVersion } from '../../../util/r-version';
+import { arraysGroupBy } from '../../../util/collections/arrays';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import { executeGuessDepVersionsQuery } from './guess-dep-versions-query-executor';
@@ -71,6 +73,8 @@ export interface GuessedDependency {
 	readonly maxVersion?:         string;
 	/** how many candidate versions survived every constraint */
 	readonly candidateCount:      number;
+	/** how many versions the database carries in total for the package (the history the candidates are drawn from) */
+	readonly totalVersions?:      number;
 	/** the surviving candidate versions, ascending (capped, see {@link GuessDepVersionsQuery.maxCandidates}) */
 	readonly candidates?:         readonly string[];
 	/** whether the listed {@link candidates} were capped */
@@ -95,6 +99,7 @@ export interface GuessDepVersionsQueryResult extends BaseQueryResult {
 /** parse a repl line: `[pkg ...] [--date YYYY.MM.DD] [--max N] [--explode [--oldest] [--limit N] [--prefer pkg=ver ...]]` */
 function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'guess-dep-versions'> {
 	const packages: string[] = [];
+	const codeParts: string[] = [];
 	let date: string | undefined;
 	let maxCandidates: number | undefined;
 	let explode = false;
@@ -123,8 +128,12 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 			if(pkg && ver) {
 				prefer[pkg] = ver;
 			}
+		} else if(tok === '--only') {
+			packages.push(...(line[++i] ?? '').split(',').map(s => s.trim()).filter(s => s.length > 0));
 		} else if(!tok.startsWith('--')) {
-			packages.push(tok);
+			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path -- auto-prepended to
+			// `file://` by the repl -- or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
+			codeParts.push(tok);
 		}
 	}
 	const explodeOpts = explode ? {
@@ -135,6 +144,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 		}
 	} : {};
 	return {
+		rCode: codeParts.length > 0 ? codeParts.join(' ') : undefined,
 		query: [{
 			type: 'guess-dep-versions',
 			...(packages.length > 0 ? { packages } : {}),
@@ -153,6 +163,31 @@ const evidenceColor: Record<GuessEvidenceSource, Colors> = {
 	'base-r':   Colors.Green
 };
 
+/** a one-letter marker per evidence source (shown instead of a bullet, so the source is legible without color) */
+const evidenceLetter: Record<GuessEvidenceSource, string> = {
+	declared:   'd',
+	transitive: 't',
+	signature:  's',
+	date:       'D',
+	'base-r':   'b'
+};
+
+/** the tightest bound among a function's signature constraints for the given operator: highest `>=` or lowest `<=` */
+function tightestBound(evs: readonly DerivedConstraint[], op: '>=' | '<='): string | undefined {
+	let best: string | undefined, bestVer: string | undefined;
+	for(const e of evs) {
+		if(!e.bound?.startsWith(op)) {
+			continue;
+		}
+		const ver = e.bound.slice(op.length).trim();
+		if(bestVer === undefined || (op === '>=' ? RVersion.compare(ver, bestVer) > 0 : RVersion.compare(ver, bestVer) < 0)) {
+			bestVer = ver;
+			best = e.bound;
+		}
+	}
+	return best;
+}
+
 export const GuessDepVersionsQueryDefinition = {
 	executor:        executeGuessDepVersionsQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, _query) => {
@@ -163,21 +198,38 @@ export const GuessDepVersionsQueryDefinition = {
 		} else if(out.rVersion) {
 			result.push(`   ╰ R ${italic(out.rVersion, formatter)}`);
 		}
+		if(out.dependencies.some(d => d.evidence.length > 0)) {
+			const legend = (Object.keys(evidenceLetter) as GuessEvidenceSource[]).map(s => `${color(evidenceLetter[s], evidenceColor[s], formatter)} ${s}`).join('  ');
+			result.push(`   ${italic('evidence', formatter)}: ${legend}`);
+		}
 		if(out.message) {
 			result.push(`   ╰ ${color(out.message, Colors.Red, formatter)}`);
 		}
 		for(const dep of out.dependencies) {
 			const tag = dep.base ? italic('[base]', formatter) + ' ' : '';
 			const range = dep.unsatisfiable ? color('unsatisfiable', Colors.Red, formatter) : bold(dep.range, formatter);
-			result.push(`   ${tag}${dep.package}: ${range} (${dep.candidateCount} candidate${dep.candidateCount === 1 ? '' : 's'})`);
+			const count = dep.totalVersions !== undefined ? `${dep.candidateCount}/${dep.totalVersions} versions` : `${dep.candidateCount} candidate${dep.candidateCount === 1 ? '' : 's'}`;
+			result.push(`   ${tag}${dep.package}: ${range} (${count})`);
+			// non-signature evidence (declared/transitive/date/base-r): one deduplicated bullet each
 			const seen = new Set<string>();
 			for(const ev of dep.evidence) {
+				if(ev.source === 'signature') {
+					continue;
+				}
 				const line = `${ev.bound ? ev.bound + ' ' : ''}${ev.detail} [${ev.origin}]`;
 				if(seen.has(line)) {
 					continue;
 				}
 				seen.add(line);
-				result.push(`      ${color('•', evidenceColor[ev.source], formatter)} ${line}`);
+				result.push(`      ${color(evidenceLetter[ev.source], evidenceColor[ev.source], formatter)} ${line}`);
+			}
+			// signature evidence: one bullet per function, its tightest bound plus what raised it (new/parameters)
+			const byFn = arraysGroupBy(dep.evidence.filter(e => e.source === 'signature'), e => e.function ?? e.origin);
+			for(const [fn, evs] of byFn) {
+				const bounds = [tightestBound(evs, '>='), tightestBound(evs, '<=')].filter(Boolean).join(' ');
+				const params = [...new Set(evs.filter(e => e.parameter).map(e => e.parameter as string))];
+				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${params.join(', ')}]` : undefined].filter(Boolean).join(', ');
+				result.push(`      ${color(evidenceLetter.signature, evidenceColor.signature, formatter)} ${bounds ? bounds + ' ' : ''}${fn}${reasons ? ` (${reasons})` : ''}`);
 			}
 		}
 		if(out.assignments) {

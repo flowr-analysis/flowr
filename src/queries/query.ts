@@ -283,7 +283,7 @@ export async function executeQueries<
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
 			const message = e instanceof Error ? e.message : String(e);
-			log.error(`query of type '${type}' failed: ${message}`, e);
+			log.error(`query of type '${type}' failed: ${message}`);
 			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}

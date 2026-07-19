@@ -5,6 +5,8 @@ import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type Guess
 import { FlowrConfig } from '../../../../src/config';
 import { executeQueries } from '../../../../src/queries/query';
 import { explodeDependencyVersions } from '../../../../src/project/dependency-version-space';
+import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
+import { ansiFormatter } from '../../../../src/util/text/ansi';
 
 afterAll(cleanupSigTmpDirs);
 
@@ -145,6 +147,55 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(dep?.base).toBe(true);
 		expect(dep?.maxVersion).toBe('4.3.0');
 		expect(boundsFrom(dep, 'base-r')).toContain('<=4.3.0');
+	});
+
+	test('an untracked base primitive does not zero out a base package', async() => {
+		// `c` is a base primitive absent from the db; it must not reject every version (which reported 0 candidates)
+		const dep = await guessDep(ts, {
+			code:     'paste(c(1, 2))',
+			config:   assumedR('4.4.0'),
+			packages: {
+				base: { base: true, latest: '4.4.0', versions: {
+					'4.2.0': { fns: { paste: ['...'] } },
+					'4.3.0': { fns: { paste: ['...'] } },
+					'4.4.0': { fns: { paste: ['...'] } }
+				} }
+			}
+		}, 'base');
+		expect(dep?.candidateCount).toBeGreaterThan(0);
+	});
+
+	test('a base primitive captured only in early releases does not cap or zero the base package', async() => {
+		// `c` (a real base primitive) is recorded at 1.0.0 but not 2.0.0 -- a data gap, not a removal
+		const dep = await guessDep(ts, {
+			code:     'c(1)\nmyfun()',
+			config:   assumedR('2.0.0'),
+			packages: {
+				base: { base: true, latest: '2.0.0', versions: {
+					'1.0.0': { fns: { c: [], myfun: [] } },
+					'2.0.0': { fns: { myfun: [] } }
+				} }
+			}
+		}, 'base');
+		expect(dep?.candidateCount).toBeGreaterThan(0);
+		expect((dep?.evidence ?? []).some(e => e.function === 'base::c')).toBe(false); // primitive raises no bound
+	});
+
+	test('the summary renders a function with both a lower and an upper bound without crashing', async() => {
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'library(pkg)\nf(p = 1)',
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2020-01-01', fns: {} },           // no f
+				'2.0.0': { date: '2021-01-01', fns: { f: ['p'] } }, // f gains parameter p
+				'3.0.0': { date: '2022-01-01', fns: { f: [] } }     // p dropped
+			} } }
+		});
+		const q = [{ type: 'guess-dep-versions' as const }];
+		const res = await executeQueries({ analyzer }, q);
+		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, q);
+		expect(ascii).toContain('pkg::f');
+		expect(ascii).toContain('>=2.0.0');
+		expect(ascii).toContain('<=2.0.0');
 	});
 
 	test('contradictory declared constraints are reported as unsatisfiable', async() => {

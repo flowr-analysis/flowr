@@ -6,11 +6,11 @@ import type {
 } from './signature-query-format';
 import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
 import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
-import { DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
+import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import { RVersion } from '../../../util/r-version';
-import { baseRPackages } from '../../../util/r-base-packages';
+import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
 import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
@@ -217,36 +217,90 @@ function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly D
 	return undefined;
 }
 
-/** a mermaid.live link for the transitive call graph reachable from `root` (a node per function, an edge per stored local call; external callees are leaves) */
-function signatureCallGraphUrl(functions: readonly DecodedFunction[], root: string): string {
-	const local = new Map(functions.map(f => [f.name, f.callees]));
-	const ids = new Map<string, string>();
-	const id = (n: string): string => {
-		let v = ids.get(n);
-		if(v === undefined) {
-			ids.set(n, v = `n${ids.size}`);
+/** how many nodes the call-graph render is capped at (cross-package expansion could otherwise explode into base R) */
+const CallGraphMaxNodes = 300;
+
+/**
+ * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders:
+ * a bare callee is attributed to the first namespace that exports it (the calling package, then its attached
+ * `Depends`/`Imports`, then base R), qualified as `owner::fn`, and expanded there. Base R calls are qualified leaves
+ * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by {@link CallGraphMaxNodes}.
+ */
+function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string): string {
+	const bases = new Set(baseRPackages());
+	const exportsCache = new Map<string, ReadonlySet<string>>();
+	const exportsOf = (p: string, v?: string): ReadonlySet<string> => {
+		const key = `${p}\0${v ?? ''}`;
+		let s = exportsCache.get(key);
+		if(s === undefined) {
+			exportsCache.set(key, s = new Set(src.functions(p, v)?.map(f => f.name) ?? src.lookup(p, v)?.exported ?? []));
 		}
-		return v;
+		return s;
 	};
-	id(root);
+	const attachedDeps = (p: string, v?: string): string[] =>
+		(src.dependencies(p, v) ?? []).filter(d => d.type === DepType.Depends || d.type === DepType.Imports).map(d => d.name);
+	/** resolve a callee named in `p@v` to its owning `{ owner, name }`, or undefined when no loaded namespace exports it */
+	const resolve = (p: string, v: string | undefined, callee: string): { owner: string, name: string } | undefined => {
+		const q = /^([A-Za-z][\w.]*):::?(.+)$/.exec(callee);
+		if(q) {
+			return { owner: q[1], name: q[2] };
+		}
+		if(exportsOf(p, v).has(callee)) {
+			return { owner: p, name: callee };
+		}
+		for(const dep of attachedDeps(p, v)) {
+			if(exportsOf(dep, src.latestVersion(dep)?.str).has(callee)) {
+				return { owner: dep, name: callee };
+			}
+		}
+		// base R (incl. C-level primitives absent from the sigdb: `c`, `is.na`, ...) via flowR's base export/primitive store
+		const base = baseRExportOwner(callee);
+		return base !== undefined ? { owner: base, name: callee } : undefined;
+	};
+
+	// each distinct node is keyed by `owner::name`, remembering its owning package (for the subgraph) and short label
+	const nodes = new Map<string, { id: string, owner: string | undefined, short: string }>();
+	const node = (owner: string | undefined, short: string): string => {
+		const key = owner ? `${owner}::${short}` : short;
+		let n = nodes.get(key);
+		if(n === undefined) {
+			nodes.set(key, n = { id: `n${nodes.size}`, owner, short });
+		}
+		return n.id;
+	};
+	const rootId = node(pkg, root);
 	const edges: string[] = [];
 	const seen = new Set<string>();
-	const queue = [root];
-	while(queue.length > 0) {
-		const cur = queue.pop() as string;
-		if(seen.has(cur)) {
+	const queue: { owner: string, ver?: string, name: string, id: string }[] = [{ owner: pkg, ver: version, name: root, id: rootId }];
+	while(queue.length > 0 && nodes.size < CallGraphMaxNodes) {
+		const cur = queue.pop() as { owner: string, ver?: string, name: string, id: string };
+		const key = `${cur.owner}::${cur.name}`;
+		if(seen.has(key)) {
 			continue;
 		}
-		seen.add(cur);
-		for(const callee of local.get(cur) ?? []) {
-			edges.push(`  ${id(cur)} --> ${id(callee)}`);
-			if(local.has(callee) && !seen.has(callee)) {
-				queue.push(callee);
+		seen.add(key);
+		for(const callee of src.functionByName(cur.owner, cur.name, cur.ver)?.callees ?? []) {
+			const r = resolve(cur.owner, cur.ver, callee);
+			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
+			// expand into a resolved same/other CRAN package (not base R -- its internals explode the graph), avoiding cycles
+			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
+				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
 			}
 		}
 	}
-	const nodes = [...ids].map(([name, nid]) => `  ${nid}["${name.replace(/"/g, '&quot;')}"]`);
-	return Mermaid.codeToUrl(['flowchart LR', ...nodes, ...edges].join('\n'));
+	// group nodes into a `subgraph` per owning package; unqualified/unresolved calls stay ungrouped
+	const byOwner = new Map<string, string[]>();
+	const ungrouped: string[] = [];
+	for(const { id, owner, short } of nodes.values()) {
+		const decl = `${id}["${short.replace(/"/g, '&quot;')}"]`;
+		if(owner === undefined) {
+			ungrouped.push(`  ${decl}`);
+		} else {
+			(byOwner.get(owner) ?? byOwner.set(owner, []).get(owner) as string[]).push(`    ${decl}`);
+		}
+	}
+	const subgraphs = [...byOwner].flatMap(([owner, decls]) => [`  subgraph ${owner}`, ...decls, '  end']);
+	return Mermaid.codeToUrl(['flowchart LR', ...subgraphs, ...ungrouped, ...edges].join('\n'));
 }
 
 /** the full view of a package: version, kind, export breakdown, dependencies, and every function's view */
@@ -637,7 +691,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	if(q.function) {
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
 		if(fn) {
-			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc.functions(q.package, version) ?? [], fn.name) : undefined;
+			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
 			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);

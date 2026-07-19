@@ -118,6 +118,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		minVersion:     survivors.length > 0 ? survivors[0] : undefined,
 		maxVersion:     survivors.length > 0 ? survivors[survivors.length - 1] : undefined,
 		candidateCount: survivors.length,
+		totalVersions:  surviving.total,
 		candidates:     candidates.length > 0 ? candidates : undefined,
 		truncated:      survivors.length > cap ? true : undefined,
 		evidence:       evidence.list,

@@ -805,6 +805,26 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							],
 							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name:         'Class-Based Dependency Attribution',
+							id:           'oop-class-dependency-attribution',
+							supported:    'partially',
+							description:  '_Attribute the use of a class to the package that owns it (registers a method for it and exports a same-named constructor), so a class use implies a dependency for library detection and version guessing (backed by the signature database\'s class-ownership map)._',
+							capabilities: [
+								{
+									name:        'S3 class ownership',
+									id:          'class-owner-s3',
+									supported:   'partially',
+									description: '_The signature database records which package owns each S3 class. A class use is attributed to the owning package -- both from a project\'s NAMESPACE `S3method(generic, class)` registrations (e.g. `S3method("as.irts","zoo")` marks `zoo` used) and from class-name string literals in plain code (`inherits(x, "zoo")`, `methods::is`, `new`, `structure(..., class=)`), marking the owner used and bounding its version below by the same-named constructor\'s export history. Class names that come from a variable or a `c(...)` vector, and method-definition names like `print.zoo`, are not yet resolved._'
+								},
+								{
+									name:        'S4 class ownership',
+									id:          'class-owner-s4',
+									supported:   'partially',
+									description: '_A project\'s `importClassesFrom`/`importMethodsFrom` NAMESPACE directives are tracked, so the source package is attached and marked used like a plain `importFrom`. S4 class ownership itself (`exportClasses`, `setClass`) is not yet recorded in the signature database, so a bare S4 class use is not attributed to its owning package._'
+								}
+							]
 						}
 					]
 				}

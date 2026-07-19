@@ -41,13 +41,14 @@ export function controlledSigDb(pkg: string, exports: readonly string[]): Packag
 export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
 	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
 	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
-		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], cran: true }
+		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true }
 		: undefined;
 	return {
 		has:               pkg => pkg in pkgs,
 		hasVersion:        (pkg, version) => pkg in pkgs && version === '1.0.0',
 		isCranVersion:     () => true,
 		lookup:            pkg => view(pkg),
+		classOwner:        () => undefined,
 		functions:         () => undefined,
 		functionByName:    () => undefined,
 		transitiveCallees: () => undefined,

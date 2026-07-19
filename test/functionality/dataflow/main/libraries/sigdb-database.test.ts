@@ -16,7 +16,7 @@ afterAll(cleanupSigTmpDirs);
 
 const meta = { date: '2026-05-23', generated: 0 };
 
-describe('sigdb database (schema 4)', () => {
+describe(`sigdb database (schema ${SigDbSchema})`, () => {
 	test('builder + full read: dictionary/blobs/pkgs/meta round-trip, deterministic hash', async() => {
 		const b = new SigDbBuilder();
 		b.addPackage('ggplot2', { latest: '3.5.1', downloads: 100 });

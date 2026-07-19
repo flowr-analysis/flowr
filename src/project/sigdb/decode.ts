@@ -167,6 +167,8 @@ export function deriveLibraryExports(
 	const exported: string[] = [];
 	const internal: string[] = [];
 	const deprecated: string[] = [];
+	const s3Classes: string[] = [];
+	const s4Classes: string[] = [];
 	const locations = new Map<string, SigDefinitionLocation>();
 	for(const i of idxs) {
 		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
@@ -175,13 +177,19 @@ export function deriveLibraryExports(
 		if(bits & FnProp.Deprecated) {
 			deprecated.push(name);
 		}
+		if(bits & FnProp.S3Owner) {
+			s3Classes.push(name);
+		}
+		if(bits & FnProp.S4Owner) {
+			s4Classes.push(name);
+		}
 		if(fileIdx >= 0) {
 			locations.set(name, { file: strings[fileIdx], line });
 		}
 	}
 	const cran = !blob.noncran?.includes(ver);
 	return {
-		version: ver, exported, internal, deprecated, cran,
+		version: ver, exported, internal, deprecated, s3Classes, s4Classes, cran,
 		cranUrl: cranBlobUrl(cranBase, pkg, ver, { latest, archived: archived === 1, cran }),
 		...(locations.size > 0 ? { locations } : {})
 	};

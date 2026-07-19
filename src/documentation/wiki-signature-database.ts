@@ -32,7 +32,9 @@ function accessTheDatabase(source: PackageSignatureSource) {
 		location:   [fn?.file, fn?.line],
 		transitive: source.transitiveCallees('dplyr', 'lead', '1.1.4'),
 		deps:       source.dependencies('dplyr', '1.1.4'),
-		exports:    source.lookup('dplyr')?.exported
+		exports:    source.lookup('dplyr')?.exported,
+		s3Classes:  source.lookup('zoo')?.s3Classes,
+		classOwner: source.classOwner('zoo')
 	};
 }
 
@@ -254,7 +256,7 @@ Every function is a ${ctx.link('DecodedFunction')}:
 
 Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
 
-Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.link('FnProp::NoDoc')} (a documented package has no help page for this name) and ${ctx.link('FnProp::S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table).
+Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.link('FnProp::NoDoc')} (a documented package has no help page for this name), ${ctx.link('FnProp::S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.link('FnProp::S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call -- e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
 
 These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
 - the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.link('FnProp::NoDoc')} function

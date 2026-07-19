@@ -62,6 +62,18 @@ describe('flowR linter', withTreeSitter(parser => {
 				undefined, { sigDb: controlledSigDb('quadprog', ['solve.QP']), checkVariables: false });
 		});
 
+		describe('implicit test-framework imports', () => {
+			// a test file runs under its framework's attached namespace, so its exports need no explicit library() there
+			assertLinter('a testthat export is not flagged inside a test file', parser, 'expect_equal(1, 1)',
+				'undefined-symbol', [], undefined,
+				{ sigDb: controlledSigDb('testthat', ['expect_equal']), checkVariables: false, useAsFilePath: 'tests/testthat/test-x.R' });
+
+			// the same call outside a test file has no attached framework, so it is still flagged (with a hint)
+			assertLinter('the same testthat export is flagged outside a test file', parser, 'expect_equal(1, 1)',
+				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'expect_equal', kind: 'function', loc: [1, 1, 1, 18], availableInPackages: ['testthat'] }],
+				undefined, { sigDb: controlledSigDb('testthat', ['expect_equal']), checkVariables: false });
+		});
+
 		describe('variables', () => {
 			assertLinter('undefined variable read is flagged (checked by default)', parser, 'f <- function() undefinedVar',
 				'undefined-symbol', [{ certainty: LintingResultCertainty.Uncertain, name: 'undefinedVar', kind: 'variable', loc: [1, 17, 1, 28] }]);

@@ -4,16 +4,28 @@ import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import {
 	type DependenciesQuery,
 	type DependenciesQueryResult,
+	type DependencyCategoryName,
 	type DependencyInfo,
 	Unknown
 } from '../../../../src/queries/catalog/dependencies-query/dependencies-query-format';
 import type { AstIdMap } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
-import { describe } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
 import { RType } from '../../../../src/r-bridge/lang-4.x/ast/model/type';
 import { Identifier } from '../../../../src/dataflow/environments/identifier';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { Package } from '../../../../src/project/plugins/package-version-plugins/package';
+import { executeQueries } from '../../../../src/queries/query';
 
-const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [] };
+const emptyDependencies: Omit<DependenciesQueryResult, '.meta'> = { library: [], source: [], read: [], write: [], visualize: [], test: [], undeclared: [], unused: [] };
+
+/**
+ * The categories this test file originally covered, before `undeclared`/`unused` were added. Used as the
+ * default `enabledCategories` for {@link testQuery} so the hundreds of pre-existing assertions below (which
+ * never set up a project's declared dependencies) do not have to additionally account for every `library()`/`::`
+ * mention now also being an undeclared-dependency finding. Tests exercising the new categories opt in explicitly.
+ */
+const originalCategories: DependencyCategoryName[] = ['library', 'source', 'read', 'write', 'visualize', 'test'];
 
 function decodeIds(res: Partial<DependenciesQueryResult>, idMap: AstIdMap): Partial<DependenciesQueryResult> {
 	const out: Partial<DependenciesQueryResult> = {
@@ -40,7 +52,10 @@ describe('Dependencies Query', withTreeSitter(parser => {
 		expected: Partial<DependenciesQueryResult>,
 		query: Partial<DependenciesQuery> = {}
 	): void {
-		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query }], ({ normalize }) => ({
+		const enabledCategories = Object.hasOwn(query, 'enabledCategories') || query.additionalCategories !== undefined
+			? query.enabledCategories
+			: originalCategories;
+		assertQuery(label(name), parser, code, [{ type: 'dependencies', ...query, enabledCategories }], ({ normalize }) => ({
 			dependencies: {
 				...emptyDependencies,
 				...decodeIds(expected, normalize.idMap)
@@ -210,7 +225,8 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
 			}, { enabledCategories: ['library'] });
 			testQuery('Empty enabled', 'library(testLibrary)', {
-				library: [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }]
+				library:    [{ nodeId: '1@library', functionName: 'library', value: 'testLibrary' }],
+				undeclared: [{ nodeId: '1@library', functionName: 'testLibrary', value: 'testLibrary' }]
 			}, { enabledCategories: undefined });
 		});
 	});
@@ -524,6 +540,53 @@ describe('Dependencies Query', withTreeSitter(parser => {
 				},
 			],
 			write: []
+		});
+	});
+
+	describe('Undeclared and unused dependencies', () => {
+		/** builds a fresh analyzer with `declared` injected as project dependencies (no `DESCRIPTION` involved) and runs the dependencies query */
+		async function runDependencies(code: string, declared: readonly string[] = [], query: Partial<DependenciesQuery> = {}): Promise<DependenciesQueryResult> {
+			const analyzer = await new FlowrAnalyzerBuilder().setParser(parser).build();
+			for(const name of declared) {
+				analyzer.context().deps.addDependency(new Package({ name }));
+			}
+			analyzer.addRequest(code);
+			const results = await executeQueries({ analyzer }, [{ type: 'dependencies', enabledCategories: ['undeclared', 'unused'], ...query }]);
+			return results.dependencies;
+		}
+
+		test('a `::` use of a package that is not declared is undeclared', async() => {
+			const res = await runDependencies('foo::bar()', []);
+			expect(res.undeclared.map(d => d.value)).toEqual(['foo']);
+			expect(res.unused).toEqual([]);
+		});
+
+		test('a declared package used via `::` is neither undeclared nor unused', async() => {
+			const res = await runDependencies('foo::bar()', ['foo']);
+			expect(res.undeclared).toEqual([]);
+			expect(res.unused).toEqual([]);
+		});
+
+		test('a declared package that is never referenced is unused', async() => {
+			const res = await runDependencies('x <- 1', ['foo']);
+			expect(res.undeclared).toEqual([]);
+			expect(res.unused.map(d => d.value)).toEqual(['foo']);
+		});
+
+		test('library() of an undeclared package is reported, a declared one used via library() is not', async() => {
+			const res = await runDependencies('library(foo)\nlibrary(bar)', ['bar']);
+			expect(res.undeclared.map(d => d.value)).toEqual(['foo']);
+			expect(res.unused).toEqual([]);
+		});
+
+		test('an attached base package used via `::` is never undeclared', async() => {
+			const res = await runDependencies('base::sum(1, 2)', []);
+			expect(res.undeclared).toEqual([]);
+		});
+
+		test('disabled when ignoreDefaultFunctions is set', async() => {
+			const res = await runDependencies('foo::bar()', [], { ignoreDefaultFunctions: true });
+			expect(res.undeclared).toEqual([]);
 		});
 	});
 

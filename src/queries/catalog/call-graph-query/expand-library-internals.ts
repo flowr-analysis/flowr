@@ -12,11 +12,7 @@ export interface LibraryLeafExpansion {
 
 /**
  * The transitive internal callees of a library/built-in leaf call `id` (a `built-in:pkg:fn` node id), resolved
- * from the project's loaded signature-database sources -- mirrors the resolution order of
- * {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf}: the project's resolved dependency version first,
- * falling back to the source's latest. `undefined` when `id` is not a package-qualified builtin, or no loaded
- * source can answer it (including when the signature database is disabled or not loaded -- callers treat that
- * as a no-op, leaving the query's default behavior unchanged).
+ * from the project's loaded signature-database sources.
  */
 export function transitiveLibraryCallees(id: NodeId, deps: ReadOnlyFlowrAnalyzerDependenciesContext): LibraryLeafExpansion | undefined {
 	const pkgFn = NodeId.toPkgFn(id);
@@ -40,7 +36,7 @@ export function transitiveLibraryCallees(id: NodeId, deps: ReadOnlyFlowrAnalyzer
 /**
  * Expands every library/built-in leaf call reachable in `graph` into its internal callees (see
  * {@link transitiveLibraryCallees}), adding one synthetic `pkg:calleeName` edge per expanded callee straight off
- * the leaf. Returns a fresh copy of `graph`; the (cached, shared) input is never mutated.
+ * the leaf. Returns a fresh copy of `graph`.
  */
 export function expandCallGraphLibraryInternals(graph: CallGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext): CallGraph {
 	const augmented: CallGraph = new DataflowGraph(graph.idMap);

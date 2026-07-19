@@ -114,7 +114,7 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 /** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
-function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
@@ -296,7 +296,11 @@ function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version
 		if(owner === undefined) {
 			ungrouped.push(`  ${decl}`);
 		} else {
-			(byOwner.get(owner) ?? byOwner.set(owner, []).get(owner) as string[]).push(`    ${decl}`);
+			let decls = byOwner.get(owner);
+			if(decls === undefined) {
+				byOwner.set(owner, decls = []);
+			}
+			decls.push(`    ${decl}`);
 		}
 	}
 	const subgraphs = [...byOwner].flatMap(([owner, decls]) => [`  subgraph ${owner}`, ...decls, '  end']);

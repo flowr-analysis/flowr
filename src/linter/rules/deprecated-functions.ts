@@ -1,15 +1,74 @@
-import { LintingRuleCertainty, type LintingRule } from '../linter-format';
+import { VertexType } from '../../dataflow/graph/vertex';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { Q } from '../../search/flowr-search-builder';
+import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
+import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import { SourceLocation } from '../../util/range';
+import { LintingRuleCertainty, LintingResultCertainty, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
 import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectConfig, functionFinderUtil } from './function-finder-util';
 
 export const DEPRECATED_FUNCTIONS = {
-	createSearch:        (config) => functionFinderUtil.createSearch(config.fns),
-	processSearchResult: functionFinderUtil.processSearchResult,
-	prettyPrint:         functionFinderUtil.prettyPrint('deprecated'),
-	info:                {
+	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
+	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
+	createSearch:        (_config: FunctionsToDetectConfig) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	processSearchResult: async(elements, config, data) => {
+		const matchesConfiguredFns = testFunctionsIgnoringPackage(config.fns);
+		const hardcoded = await functionFinderUtil.processSearchResult(elements, config, data, es =>
+			es.filter(e => enrichmentContent(e, Enrichment.CallTargets)?.targets
+				.some(t => typeof t === 'string' && matchesConfiguredFns.test(t))));
+
+		const deps = data.inspectContext().deps;
+		if(deps.signatureSources().length === 0) {
+			return hardcoded;
+		}
+
+		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
+		// even when it is not part of the hardcoded `fns` list above
+		const graph = (await data.dataflow()).graph;
+		const alreadyFlagged = new Set(hardcoded.results.map(r => r.involvedId));
+		const sigdbFlagged: FunctionsResult[] = [];
+		for(const element of elements.getElements()) {
+			const id = element.node.info.id;
+			if(alreadyFlagged.has(id)) {
+				continue;
+			}
+			const qualified = Dataflow.qualify(id, graph);
+			if(qualified === undefined) {
+				continue;
+			}
+			const fn = deps.signatureOf(qualified);
+			if(fn === undefined || !fn.props.includes('deprecated')) {
+				continue;
+			}
+			const loc = SourceLocation.fromNode(element.node);
+			if(loc === undefined) {
+				continue;
+			}
+			alreadyFlagged.add(id);
+			sigdbFlagged.push({
+				certainty:  LintingResultCertainty.Certain,
+				involvedId: id,
+				function:   Identifier.toString(qualified),
+				loc
+			});
+		}
+
+		return {
+			results: [...hardcoded.results, ...sigdbFlagged],
+			'.meta': {
+				totalCalls:               hardcoded['.meta'].totalCalls + sigdbFlagged.length,
+				totalFunctionDefinitions: hardcoded['.meta'].totalFunctionDefinitions + sigdbFlagged.length
+			}
+		};
+	},
+	prettyPrint: functionFinderUtil.prettyPrint('deprecated'),
+	info:        {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
-		// ensures all deprecated functions found are actually deprecated through its limited config, but doesn't find all deprecated functions since the config is pre-crawled
+		// the hardcoded `fns` list ensures every reported hit is real, but the list is pre-crawled and hence
+		// incomplete; the signature-database pass above adds recall for whichever packages are resolved
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: {

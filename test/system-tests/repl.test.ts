@@ -82,8 +82,8 @@ describe('repl', () => {
 		describe('dependencies', () => {
 			test('Provide Library Load', async() => {
 				const output = await flowrRepl([':query @dependencies "library(x)"', ':quit']);
-				assert.include(output, '`library`');
-				assert.include(output, '`x`');
+				assert.include(output, 'Libraries');
+				assert.include(output, 'via library');
 			});
 		});
 	});

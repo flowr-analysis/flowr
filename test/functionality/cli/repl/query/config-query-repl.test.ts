@@ -97,7 +97,7 @@ describe('Config Query REPL Completions', () => {
 		label:               'all second level nodes, including the ones no default sets',
 		startingNewArg:      false,
 		splitLine:           ['+repl.'],
-		expectedCompletions: ['+repl.quickStats', '+repl.dfProcessorHeat', '+repl.hints', '+repl.plugins', '+repl.autoUseFileProtocol', '+repl.queryStats'],
+		expectedCompletions: ['+repl.quickStats', '+repl.dfProcessorHeat', '+repl.hints', '+repl.plugins', '+repl.autoUseFileProtocol', '+repl.queryStats', '+repl.showPlugins'],
 	});
 	assertReplCompletions({ completer,
 		label:               'provides completion for a partial second level node',

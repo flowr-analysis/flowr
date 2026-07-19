@@ -587,7 +587,7 @@ export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAna
 
 /** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */
 export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
-	return [attachBaseRNamespaces, attachProjectImports, attachDeclaredDependencies].reduce((e, attach) => attach(e, ctx), env);
+	return attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx);
 }
 
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){

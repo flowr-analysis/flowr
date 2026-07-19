@@ -112,7 +112,7 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		test('a proven-undocumented (no-doc) function carries no doc link', async() => {
 			const b = new SigDbBuilder();
 			b.addPackage('ndpkg', { latest: '1.0.0', downloads: 1 });
-			b.addVersion('ndpkg', '1.0.0', { cran: true, functions: [
+			b.addVersion('ndpkg', '1.0.0', { cran:      true, functions: [
 				fn('documented'),
 				fn('secret', { props: FnProp.Exported | FnProp.NoDoc })
 			] });
@@ -130,7 +130,7 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 			b.addPackage('base', { latest: '4.5.0' });
 			b.addVersion('base', '4.5.0', { cran: false, functions: [fn('print')] });
 			b.addPackage('s3pkg', { latest: '1.0.0', downloads: 1 });
-			b.addVersion('s3pkg', '1.0.0', { cran: true, functions: [
+			b.addVersion('s3pkg', '1.0.0', { cran:      true, functions: [
 				fn('summary'),
 				fn('summary.thing', { props: FnProp.Exported | FnProp.S3Method }),
 				fn('print.thing', { props: FnProp.Exported | FnProp.S3Method }),
@@ -273,7 +273,12 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		const { analyzer, res } = await runQuery([{ type: 'signature', package: 'mypkg' }]);
 		expect(res.signature.package?.cranPage).toBe('https://cran.r-project.org/package=mypkg');
 		expect(res.signature.package?.repoUrl).toBe('https://github.com/cran/mypkg');
-		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg' }]);
+		// the CI env is not a TTY, so stand in an OSC 8 capable terminal to exercise hyperlink emission
+		const osc8Formatter: typeof ansiFormatter = {
+			...ansiFormatter,
+			hyperlink: (text, url) => `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`
+		};
+		const ascii = await asciiSummaryOfQueryResult(osc8Formatter, 0, res, analyzer, [{ type: 'signature', package: 'mypkg' }]);
 		// OSC 8 terminal hyperlinks are emitted for the CRAN page and the dependency
 		expect(ascii).toContain('https://cran.r-project.org/package=mypkg');
 		expect(ascii).toContain('https://cran.r-project.org/package=rlang');

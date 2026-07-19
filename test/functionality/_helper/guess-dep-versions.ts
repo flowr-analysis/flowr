@@ -9,7 +9,7 @@ import type {
 	GuessEvidenceSource
 } from '../../../src/queries/catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { SigDbBuilder } from '../../../src/project/sigdb/build';
-import { DepType, type SigDb, type SigFunctionInfo, type SigVersionInfo } from '../../../src/project/sigdb/schema';
+import { DepType, FnProp, type SigDb, type SigFunctionInfo, type SigVersionInfo } from '../../../src/project/sigdb/schema';
 import { RRange, RVersion } from '../../../src/util/r-version';
 import { Package } from '../../../src/project/plugins/package-version-plugins/package';
 import { expFn, sigTmpDir, sigdbAnalyzer, writeAndOpen } from './sigdb';
@@ -17,12 +17,16 @@ import { expFn, sigTmpDir, sigdbAnalyzer, writeAndOpen } from './sigdb';
 /** one version of a package in a scenario: when it was released, which functions (with which parameters) it exports, and what it depends on */
 export interface ScenarioVersion {
 	/** release date `YYYY-MM-DD` (drives the `date` cutoff and version ordering) */
-	readonly date?: string;
+	readonly date?:      string;
 	/** exported function to its parameter names (use `'...'` for a variadic) */
-	readonly fns?:  Readonly<Record<string, readonly string[]>>;
+	readonly fns?:       Readonly<Record<string, readonly string[]>>;
 	/** declared dependency to its version constraint (e.g. `>= 1.0.0`) */
-	readonly deps?: Readonly<Record<string, string>>;
-	readonly cran?: boolean;
+	readonly deps?:      Readonly<Record<string, string>>;
+	readonly cran?:      boolean;
+	/** S3 classes this version OWNS (must also be an exported function name in {@link fns}); see {@link FnProp.S3Owner} */
+	readonly s3Classes?: readonly string[];
+	/** S4 classes this version OWNS (exported via `exportClasses`, need not be a function); see {@link FnProp.S4Owner} */
+	readonly s4Classes?: readonly string[];
 }
 
 /** a package across its versions */
@@ -50,13 +54,19 @@ const dayMs = (date: string): number => {
 	return Date.UTC(y, m - 1, d);
 };
 
-const fnInfo = (name: string, params: readonly string[]): SigFunctionInfo =>
-	({ ...expFn(name), params: params.map(p => ({ name: p })) });
+const fnInfo = (name: string, params: readonly string[], s3Owner: boolean): SigFunctionInfo =>
+	({ ...expFn(name), props: FnProp.Exported | (s3Owner ? FnProp.S3Owner : 0), params: params.map(p => ({ name: p })) });
 
 function versionInfo(v: ScenarioVersion): SigVersionInfo {
+	const owned = new Set(v.s3Classes ?? []);
+	const functions = Object.entries(v.fns ?? {}).map(([name, params]) => fnInfo(name, params, owned.has(name)));
+	// S4 classes are recorded as owner entries carrying the S4Owner bit (mirrors the crawler's synthetic entry)
+	for(const cls of v.s4Classes ?? []) {
+		functions.push({ ...expFn(cls), props: FnProp.Exported | FnProp.S4Owner });
+	}
 	return {
-		cran:      v.cran ?? true,
-		functions: Object.entries(v.fns ?? {}).map(([name, params]) => fnInfo(name, params)),
+		cran: v.cran ?? true,
+		functions,
 		...(v.deps ? { dependencies: Object.entries(v.deps).map(([name, constraint]) => ({ name, type: DepType.Imports, constraint })) } : {}),
 		...(v.date ? { date: dayMs(v.date) } : {})
 	};

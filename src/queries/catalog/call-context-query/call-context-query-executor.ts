@@ -24,6 +24,8 @@ import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { ArrayQueue } from '../../../util/collections/queue';
+import { baseRExportOwner } from '../../../util/r-base-packages';
+import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -231,6 +233,30 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<Promoted
 	return filter.filter(file);
 }
 
+/**
+ * Whether a bare (unqualified) callee named `name` could originate from `target`, resolved through the
+ * signature database: base R's export owner, then any package the loaded sources record as exporting `name`.
+ * Only meaningful once the version plugins are initialized (see {@link primeSigDbForNamespaceFilter}).
+ */
+function bareCallOwnedBy(name: string, target: string, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+	return baseRExportOwner(name) === target || deps.packagesExporting(name).includes(target);
+}
+
+/**
+ * Whether a bare-callee sigdb fallback is worth attempting for `queries`: some query filters by
+ * {@link CallContextQuery#callTargetNamespace} and a signature source is actually loaded. When so, this also
+ * forces the version plugins to initialize (the same {@link ReadOnlyFlowrAnalyzerDependenciesContext#getDependencies}
+ * priming the `undefined-symbol` linter relies on) -- otherwise `packagesExporting` answers empty until
+ * something else happens to trigger it.
+ */
+function primeSigDbForNamespaceFilter(queries: readonly PromotedQuery[], deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+	if(!queries.some(q => q.callTargetNamespace !== undefined) || deps.signatureSources().length === 0) {
+		return false;
+	}
+	deps.getDependencies();
+	return true;
+}
+
 function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	let node = ast.idMap.get(nodeId);
 	while(node !== undefined) {
@@ -255,6 +281,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 export async function executeCallContextQueries({ analyzer }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
 	const dataflow = await analyzer.dataflow();
 	const ast = await analyzer.normalize();
+	const deps = analyzer.inspectContext().deps;
 
 	/* omit performance page load */
 	const now = Date.now();
@@ -263,6 +290,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	/* promote all strings to regex patterns */
 	const { promotedQueries, requiresCfg } = promoteQueryCallNames(queries);
+	const sigDbReady = primeSigDbForNamespaceFilter(promotedQueries, deps);
 
 	let cfg = undefined;
 	if(requiresCfg) {
@@ -334,7 +362,9 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			}
 			if(query.callTargetNamespace !== undefined) {
 				const pkg = Identifier.getNamespace(Dataflow.qualify(nodeId, dataflow.graph) ?? info.name);
-				if(pkg !== query.callTargetNamespace) {
+				// a bare callee (no syntactic/resolved namespace) is not yet a mismatch -- consult the sigdb for who exports it
+				const owned = pkg === undefined ? sigDbReady && bareCallOwnedBy(n, query.callTargetNamespace, deps) : pkg === query.callTargetNamespace;
+				if(!owned) {
 					continue;
 				}
 			}

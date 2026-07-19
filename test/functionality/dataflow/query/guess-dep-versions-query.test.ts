@@ -7,6 +7,9 @@ import { executeQueries } from '../../../../src/queries/query';
 import { explodeDependencyVersions } from '../../../../src/project/dependency-version-space';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
+import { Package } from '../../../../src/project/plugins/package-version-plugins/package';
+import { FlowrNamespaceFile } from '../../../../src/project/plugins/file-plugins/files/flowr-namespace-file';
+import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 
 afterAll(cleanupSigTmpDirs);
 
@@ -54,6 +57,117 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		}, 'pmpkg');
 		expect(dep?.minVersion).toBe('1.1.0');
 		expect(dep?.candidateCount).toBe(1);
+	});
+
+	test('a bare call to a function imported via NAMESPACE importFrom marks its source package as used', async() => {
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'index(x)',
+			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { index: [] } } } } }
+		});
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'importFrom(zoo, index)')).content().current
+		}));
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
+		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
+	});
+
+	test('an S3 method registered for a class the sigdb marks as owned marks that package as used (no direct call)', async() => {
+		// mirrors tseries's `S3method("as.irts","zoo")`: the analyzed project never calls zoo directly, but its own
+		// NAMESPACE registers a method for class `zoo`, which the sigdb says the `zoo` package OWNS (it exports a
+		// same-named constructor `zoo` and registers an S3 method for it)
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'x <- 1', // no call to zoo at all
+			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [], 'print.zoo': [] }, s3Classes: ['zoo'] } } } }
+		});
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
+		}));
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
+		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
+	});
+
+	test('an S3 method registered for a class NOT owned by any package does not mark anything used', async() => {
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'x <- 1',
+			// zoo does not export a same-named constructor -> does not own class `zoo` -> not an owner
+			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { 'print.zoo': [] } } } } }
+		});
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
+		}));
+		// force `zoo` into the guessed set (it is neither called nor a declared dependency) so `used` is reported at all
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const, packages: ['zoo'] }]);
+		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(false);
+	});
+
+	test('a bare class-name string in code does NOT introduce an unrelated package (weak evidence)', async() => {
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'inherits(x, "zoo")',
+			packages: { zoo: { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] } } } }
+		});
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
+		expect(guessed(res['guess-dep-versions'], 'zoo')).toBeUndefined();
+	});
+
+	test('a class used in code narrows an already-known dependency by the constructor that first carries it', async() => {
+		const dep = await guessDep(ts, {
+			code:     'library(zoo)\ninherits(x, "yearmon")',
+			packages: { zoo: { versions: {
+				'1.0': { date: '2019-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] },
+				'2.0': { date: '2020-01-01', fns: { zoo: [], yearmon: [] }, s3Classes: ['zoo', 'yearmon'] }
+			} } }
+		}, 'zoo');
+		expect(dep?.used).toBe(true);
+		expect(dep?.minVersion).toBe('2.0');
+		expect(dep?.candidates).not.toContain('1.0');
+	});
+
+	test('an S4 class instantiated in code narrows its owning (loaded) dependency by the class-introducing version', async() => {
+		const dep = await guessDep(ts, {
+			code:     'library(sp)\nnew("SpatialPoints")',
+			packages: { sp: { versions: {
+				'1.0': { date: '2019-01-01', fns: { bbox: [] } },
+				'2.0': { date: '2020-01-01', fns: { bbox: [] }, s4Classes: ['SpatialPoints'] }
+			} } }
+		}, 'sp');
+		expect(dep?.used).toBe(true);
+		expect(dep?.minVersion).toBe('2.0');
+		expect(dep?.candidates).not.toContain('1.0');
+	});
+
+	test('arc consistency drops a version whose requirement no surviving partner version can meet, and marks the count an upper bound', async() => {
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)',
+			packages: {
+				A: { versions: {
+					'1.0': { date: '2019-01-01', fns: { af: [] }, deps: { B: '>= 1.0' } },
+					'2.0': { date: '2020-01-01', fns: { af: [] }, deps: { B: '>= 2.0' } }
+				} },
+				B: { versions: { '1.0': { date: '2019-01-01', fns: { bf: [] } } } }
+			}
+		});
+		const a = guessed(res, 'A');
+		expect(a?.candidates).not.toContain('2.0');
+		expect(a?.maxVersion).toBe('1.0');
+		// only A is a counted factor (one surviving version of two); B keeps all its versions so is not counted
+		expect(res.runnableCombinations).toBe(1);
+		expect(res.possibleCombinations).toBe(2);
+	});
+
+	test('a variadic (...) absorbs a named argument, so it raises no version bound', async() => {
+		// `custom` matches no explicit parameter, but `...` accepts it in every version, so it neither bounds nor rejects
+		const dep = await guessDep(ts, {
+			code:     'library(vpkg)\nf(custom = 1)',
+			packages: { vpkg: { versions: {
+				'1.0.0': { date: '2019-01-01', fns: { f: ['a', '...'] } },
+				'2.0.0': { date: '2020-01-01', fns: { f: ['a', '...'] } }
+			} } }
+		}, 'vpkg');
+		expect(dep?.evidence.some(e => e.source === 'signature' && e.parameter === 'custom')).toBe(false);
+		expect(dep?.candidateCount).toBe(2);
 	});
 
 	test('a function only introduced later raises the lower bound', async() => {
@@ -149,13 +263,30 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(boundsFrom(dep, 'base-r')).toContain('<=4.3.0');
 	});
 
+	test('a base package is not bounded by R when the version is only the fallback default (auto mode)', async() => {
+		// no `assumedRVersion` pin, no metadata, no detected R: the guess must not impose flowR's fallback as a base-R ceiling
+		const res = await runGuess(ts, {
+			code:     'paste("a")',
+			packages: {
+				base: { base:     true, latest:   '4.4.0', versions: {
+					'4.2.0': { fns: { paste: ['...'] } },
+					'4.3.0': { fns: { paste: ['...'] } },
+					'4.4.0': { fns: { paste: ['...'] } }
+				} }
+			}
+		});
+		const dep = guessed(res, 'base');
+		expect(boundsFrom(dep, 'base-r')).toEqual([]); // no R ceiling imposed
+		expect(res.rVersion).toBeUndefined();
+	});
+
 	test('an untracked base primitive does not zero out a base package', async() => {
 		// `c` is a base primitive absent from the db; it must not reject every version (which reported 0 candidates)
 		const dep = await guessDep(ts, {
 			code:     'paste(c(1, 2))',
 			config:   assumedR('4.4.0'),
 			packages: {
-				base: { base: true, latest: '4.4.0', versions: {
+				base: { base:     true, latest:   '4.4.0', versions: {
 					'4.2.0': { fns: { paste: ['...'] } },
 					'4.3.0': { fns: { paste: ['...'] } },
 					'4.4.0': { fns: { paste: ['...'] } }
@@ -171,7 +302,7 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 			code:     'c(1)\nmyfun()',
 			config:   assumedR('2.0.0'),
 			packages: {
-				base: { base: true, latest: '2.0.0', versions: {
+				base: { base:     true, latest:   '2.0.0', versions: {
 					'1.0.0': { fns: { c: [], myfun: [] } },
 					'2.0.0': { fns: { myfun: [] } }
 				} }
@@ -185,17 +316,121 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		const analyzer = await buildGuessAnalyzer(ts, {
 			code:     'library(pkg)\nf(p = 1)',
 			packages: { pkg: { versions: {
-				'1.0.0': { date: '2020-01-01', fns: {} },           // no f
-				'2.0.0': { date: '2021-01-01', fns: { f: ['p'] } }, // f gains parameter p
-				'3.0.0': { date: '2022-01-01', fns: { f: [] } }     // p dropped
+				'1.0.0': { date: '2020-01-01', fns: {} },              // no f
+				'2.0.0': { date: '2021-01-01', fns: { f: ['p'] } },    // f gains parameter p
+				'3.0.0': { date: '2022-01-01', fns: { f: ['q'] } }     // p genuinely dropped (a different, non-empty signature)
 			} } }
 		});
 		const q = [{ type: 'guess-dep-versions' as const }];
 		const res = await executeQueries({ analyzer }, q);
 		const ascii = await asciiSummaryOfQueryResult(ansiFormatter, 0, res, analyzer, q);
-		expect(ascii).toContain('pkg::f');
+		expect(ascii).toContain('pkg');            // the package heads its block
+		expect(ascii).toContain('f (');            // the bare function name (package is already in the header)
 		expect(ascii).toContain('>=2.0.0');
 		expect(ascii).toContain('<=2.0.0');
+	});
+
+	test('a parameter absorbed by a generic (empty later capture) raises no false upper bound', async() => {
+		// mirrors real `base::seq`: captured as `[x, ...]` early, then `[]` once it became a generic; `length.out`
+		// still binds through dispatch, so a call using it must not report the parameter as removed
+		const dep = await guessDep(ts, {
+			code:     'library(pkg)\nf(length.out = 1)',
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2020-01-01', fns: { f: ['x', '...'] } },
+				'2.0.0': { date: '2021-01-01', fns: { f: [] } },
+				'3.0.0': { date: '2022-01-01', fns: { f: [] } }
+			} } }
+		}, 'pkg');
+		// no signature evidence bounds the version from above (`<=...`): the empty capture cannot disprove the call
+		expect((dep?.evidence ?? []).some(e => e.source === 'signature' && e.bound?.startsWith('<='))).toBe(false);
+		expect(dep?.candidateCount).toBe(3);
+	});
+
+	test('configured linked package groups resolve to one shared version', async() => {
+		// pkgA and pkgB are declared a linked group, so a release is only usable when both have it; pkgA loses 1.0.0 (pkgB lacks it)
+		const linked = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.solver.versionManagement = { linkedVersionGroups: [['pkgA', 'pkgB']] };
+		});
+		const res = await runGuess(ts, {
+			code:     'library(pkgA)\nlibrary(pkgB)\naf()\nbf()',
+			config:   linked,
+			packages: {
+				pkgA: { versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] } },
+					'2.0.0': { date: '2020-01-01', fns: { af: [] } }
+				} },
+				pkgB: { versions: { '2.0.0': { date: '2020-01-01', fns: { bf: [] } } } }
+			}
+		});
+		expect(guessed(res, 'pkgA')?.candidates).toEqual(['2.0.0']);
+		expect(res.linkedGroups).toContainEqual(['pkgA', 'pkgB']);
+	});
+
+	test('a transitive requirement is re-derived from the depending package guessed version (mutual constraints)', async() => {
+		// A is unconstrained, so its guessed lower bound is 1.0.0, whose requirement is B >= 1.0.0; the resolved-latest
+		// A 2.0.0 would instead force B >= 2.0.0, so B 1.0.0 only survives because the second pass reads A at its guess
+		const res = await runGuess(ts, {
+			code:     'library(A)\nlibrary(B)\naf()\nbf()',
+			declared: { A: '*' },
+			packages: {
+				A: { latest:   '2.0.0', versions: {
+					'1.0.0': { date: '2019-01-01', fns: { af: [] }, deps: { B: '>= 1.0.0' } },
+					'2.0.0': { date: '2021-01-01', fns: { af: [] }, deps: { B: '>= 2.0.0' } }
+				} },
+				B: { versions: {
+					'1.0.0': { date: '2019-01-01', fns: { bf: [] } },
+					'2.0.0': { date: '2021-01-01', fns: { bf: [] } }
+				} }
+			}
+		});
+		expect(guessed(res, 'B')?.candidates).toContain('1.0.0');
+	});
+
+	test('the data-coverage envelope is reported as explicit `available` evidence', async() => {
+		// the guess can never fall outside the versions the database has data for; that outer bound is stated, not silently applied
+		const dep = await guessDep(ts, {
+			code:     'library(pkg)\nf()',
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2019-01-01', fns: { f: [] } },
+				'2.0.0': { date: '2020-01-01', fns: { f: [] } },
+				'3.0.0': { date: '2021-01-01', fns: { f: [] } }
+			} } }
+		}, 'pkg');
+		expect(boundsFrom(dep, 'available')).toEqual(['>=1.0.0', '<=3.0.0']);
+	});
+
+	test('the R version is guessed from the base package timeline it shares', async() => {
+		// `R` has no signature source of its own; its releases are the base package's, so it reuses that history
+		const dep = await guessDep(ts, {
+			code:     'paste("a")',
+			declared: { R: '>= 3.5.0' },
+			config:   assumedR('4.0.0'),
+			packages: {
+				base: { base:     true, latest:   '4.0.0', versions: {
+					'3.4.0': { fns: { paste: ['...'] } },
+					'3.5.0': { fns: { paste: ['...'] } },
+					'4.0.0': { fns: { paste: ['...'] } }
+				} }
+			}
+		}, 'R');
+		expect(dep?.candidates).toEqual(['3.5.0', '4.0.0']); // declared R >= 3.5.0, bounded above by assumed R 4.0.0
+		expect(dep?.evidence.some(e => e.source === 'declared')).toBe(true);
+	});
+
+	test('clean mode ignores the project declared constraints', async() => {
+		const scenario = {
+			code:     'library(pkg)',
+			declared: { pkg: '<= 1.0.0' },
+			packages: { pkg: { versions: {
+				'1.0.0': { date: '2020-01-01', fns: { f: [] } },
+				'2.0.0': { date: '2021-01-01', fns: { f: [] } }
+			} } }
+		} as const;
+		const declared = await guessDep(ts, scenario, 'pkg');
+		const cleaned = await guessDep(ts, { ...scenario, query: { clean: true } }, 'pkg');
+		expect(declared?.candidateCount).toBe(1);                                            // declared `<= 1.0.0` restricts
+		expect(cleaned?.candidateCount).toBe(2);                                             // clean ignores it
+		expect((cleaned?.evidence ?? []).some(e => e.source === 'declared')).toBe(false);
 	});
 
 	test('contradictory declared constraints are reported as unsatisfiable', async() => {

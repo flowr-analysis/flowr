@@ -152,6 +152,8 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
 	/** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
+	/** optional one-line usage of the repl `@`-shorthand `fromLine` accepts, shown by `:query ?<type>` */
+	syntax?:              string
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)

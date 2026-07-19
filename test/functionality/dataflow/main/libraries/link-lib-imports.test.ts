@@ -70,9 +70,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		const ggplotSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		const rPSsymbols = ['test1', 'test2'];
 		//namespace:ggplot2 -> imports:ggplot2 -> globalEnv -> ...
-		//ggplot2 namespace
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(ggplotSymbols), new Set(env.memory.keys()))).toBeTruthy();
-		//ggplot2 imports
 		env = env.parent;
 		const imported = createImportedFunctions([['random_placeholder', rPSsymbols], ['ggplot2', ggplotSymbols], ['random_placeholder3', ['a']]]);
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();
@@ -150,7 +148,6 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 
 	test('the analyzed package\'s own importFrom resolves a bare imported call to its source package', async() => {
 		const analyzer = await new FlowrAnalyzerBuilder().setParser(ts).build();
-		// the analyzed package (`current`) imports `index` from zoo via its own NAMESPACE, then calls it bare
 		analyzer.context().deps.addDependency(new Package({
 			name:          'current',
 			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'importFrom(zoo, index)')).content().current
@@ -188,9 +185,7 @@ describe('Linked library imports libraries', withTreeSitter(ts => {
 		let env = REnvironment.findGlobal(df.environment.current).parent;
 		const exportedSymbols = ['+', 'ggplot', 'aes', 'geom_point', 'geom_line', 'theme_bw', 'coord_cartesian', 'ggsave', 'fortify', 'scale_type'];
 		//namespace:ggplot -> imports:ggplot -> globalEnv
-		//ggplot package
 		expect(env.n === 'ggplot2' && env.t === EnvType.Namespace && compare(new Set(exportedSymbols), new Set(env.memory.keys()))).toBeTruthy();
-		//ggplot imports
 		env = env.parent;
 		const imported = createImportedFunctions([['random_placeholder', ['test1', 'test2']]]);
 		expect(env.n === 'ggplot2' && env.t === EnvType.Imports && compare(new Set(imported), new Set(env.memory.keys()))).toBeTruthy();

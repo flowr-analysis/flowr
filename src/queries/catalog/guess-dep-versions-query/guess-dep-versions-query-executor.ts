@@ -9,6 +9,7 @@ import {
 } from './guess-dep-versions-query-format';
 import { RVersion } from '../../../util/r-version';
 import { compactRecord } from '../../../util/objects';
+import { sourceForPackage, type PackageSignatureSource } from '../../../project/sigdb/reader';
 import {
 	assignmentsOf,
 	collectTransitiveConstraints,
@@ -16,15 +17,22 @@ import {
 	dateCutoff,
 	DefaultExplodeLimit,
 	defaultTargets,
+	intersectSurvivors,
 	isoDay,
+	countRunnableCombinations,
+	enforceArcConsistency,
+	iterateToFixpoint,
 	orderedCandidatesOf,
 	survivingEntries,
+	timelinePackageKey,
+	type CountFactor,
+	type TransitiveConstraint,
 	type DerivedConstraint,
 	type OrderedCandidates,
 	type SurvivingEntries
 } from '../../../project/dependency-version-space';
 
-/** collects provenance-carrying constraints for one dependency, deduplicating identical ones; `add` is a resolver `ConstraintObserver` */
+/** collects and deduplicates provenance-carrying constraints */
 class EvidenceCollector {
 	private readonly seen = new Set<string>();
 	public readonly list: GuessVersionEvidence[] = [];
@@ -70,7 +78,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 		}
 		explode ??= q.explode;
 	}
-	// the tightest valid date wins; if every given date was malformed, keep one so the executor can report it
+	// keep the tightest date, or any malformed date to report it
 	const date = earliestDate ?? anyDate;
 	return {
 		type: 'guess-dep-versions',
@@ -81,7 +89,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 	};
 }
 
-/** the version range string from the surviving candidates (honest about gaps) and the declared fallbacks */
+/** format version range string from survivors and declared constraints, honest about gaps */
 function rangeString(survivors: readonly string[], nonContiguous: boolean, unsatisfiable: boolean, declaredRange: Range | undefined, declaredConstraints: readonly string[], cap: number): string {
 	if(survivors.length === 0) {
 		if(unsatisfiable) {
@@ -101,7 +109,7 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, used: boolean): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -122,7 +130,8 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		candidates:     candidates.length > 0 ? candidates : undefined,
 		truncated:      survivors.length > cap ? true : undefined,
 		evidence:       evidence.list,
-		unsatisfiable:  unsatisfiable ? true : undefined
+		unsatisfiable:  unsatisfiable ? true : undefined,
+		used
 	}) as GuessedDependency;
 }
 
@@ -154,22 +163,132 @@ export async function executeGuessDepVersionsQuery(
 			message = `could not parse date '${query.date}', expected YYYY.MM.DD; ignoring the date bound`;
 		}
 	}
-	const rVersion = ctx.meta.getRVersion() ?? ctx.resolvedRVersion;
+	// bound base packages by R only when the version is genuinely known; in `auto` mode with nothing detected, base tries every R release
+	const rVersion = ctx.rVersionKnown ? (ctx.meta.getRVersion() ?? ctx.resolvedRVersion) : undefined;
 
-	const usage = collectUsage((await analyzer.dataflow()).graph);
-	const transitive = collectTransitiveConstraints(deps, sources);
-	const targets = query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage);
+	const usage = collectUsage((await analyzer.dataflow()).graph, deps);
+	// the analyzed package guesses versions for its dependencies, not for itself
+	const self = ctx.meta.getNamespace();
+	const sorted = (query.packages && query.packages.length > 0 ? [...query.packages] : defaultTargets(deps, usage)).filter(name => name !== self).sort();
+
+	// resolve (and cache) each target's timeline package key + merged source once, reused across both guess passes
+	const sourceByName = new Map<string, { readonly key: string, readonly src: PackageSignatureSource | undefined }>();
+	const sourceFor = (name: string): { readonly key: string, readonly src: PackageSignatureSource | undefined } => {
+		let entry = sourceByName.get(name);
+		if(entry === undefined) {
+			const key = timelinePackageKey(name, sources);
+			entry = { key, src: sourceForPackage(sources, key) };
+			sourceByName.set(name, entry);
+		}
+		return entry;
+	};
+
+	// the guessed lower bound of every target under a set of transitive constraints (drives the mutual-constraint refinement)
+	const guessLowerBounds = (trans: Map<string, TransitiveConstraint[]>): Map<string, string> => {
+		const out = new Map<string, string>();
+		for(const name of sorted) {
+			const { key, src } = sourceFor(name);
+			const s = survivingEntries(name, src, deps, usage.get(name), trans.get(name) ?? [], cutoff, rVersion, undefined, query.clean, key);
+			if(s.survivors.length > 0) {
+				out.set(name, s.survivors[0].ver);
+			}
+		}
+		return out;
+	};
+
+	let transitive = collectTransitiveConstraints(deps, sources);
+	if(!query.clean) {
+		let prev = '';
+		iterateToFixpoint(8, () => {
+			const pass = guessLowerBounds(transitive);
+			const signature = [...pass].sort().map(([k, v]) => `${k}=${v}`).join(',');
+			if(signature === prev) {
+				return false;
+			}
+			prev = signature;
+			transitive = collectTransitiveConstraints(deps, sources, name => pass.get(name));
+			return true;
+		});
+	}
 
 	const cap = query.maxCandidates ?? DefaultCandidateCap;
 	const explodeOrder = query.explode?.order ?? 'newest';
+
+	const guessedAll = sorted.map(name => {
+		const { key, src } = sourceFor(name);
+		const evidence = new EvidenceCollector();
+		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, evidence.add, query.clean, key);
+		return { name, src, key, evidence, surviving };
+	});
+
+	const arcEntries = guessedAll.map(g => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors }));
+	const blockers = query.clean ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries);
+	guessedAll.forEach((g, i) => {
+		g.surviving = { ...g.surviving, survivors: arcEntries[i].survivors };
+		const max = g.surviving.survivors.at(-1)?.ver;
+		for(const [partner, constraint] of blockers.get(g.name) ?? []) {
+			if(max !== undefined) {
+				g.evidence.add({ source: 'indirect', origin: `${partner} ${constraint}`, detail: `${g.name} capped by ${partner}`, bound: `<=${max}` });
+			}
+		}
+	});
+
+	// linked packages share one version: base/R group and configured groups; intersect survivor sets to keep them consistent
+	const groups = [
+		guessedAll.filter(g => g.surviving.base).map(g => g.name),
+		...(ctx.config.solver.versionManagement?.linkedVersionGroups ?? [])
+	];
+	const linkedGroups: string[][] = [];
+	for(const group of groups) {
+		const members = guessedAll.filter(g => group.includes(g.name));
+		if(members.length > 1) {
+			const shared = intersectSurvivors(members.map(m => m.surviving.survivors));
+			for(const m of members) {
+				m.surviving = { ...m.surviving, survivors: shared };
+			}
+			linkedGroups.push(members.map(m => m.name));
+		}
+	}
+
+	// runnable combinations: the base/R group is the shared hub every other constrained package is counted against
+	const grouped = new Set(linkedGroups.flat());
+	const factorOf = (g: typeof guessedAll[number]): CountFactor => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors.map(e => e.ver) });
+	let hub: CountFactor | undefined, hubTotal = 1, othersTotal = 1;
+	const others: CountFactor[] = [];
+	for(const group of linkedGroups) {
+		const rep = guessedAll.find(g => group.includes(g.name));
+		if(rep === undefined) {
+			continue;
+		}
+		if(rep.surviving.base && hub === undefined) {
+			hub = factorOf(rep);
+			hubTotal = rep.surviving.total ?? 1;
+		} else {
+			others.push(factorOf(rep));
+			othersTotal *= rep.surviving.total ?? 1;
+		}
+	}
+	// a package is a counted factor only when a *real* constraint narrows it (declared/transitive/signature/indirect);
+	// date/available narrowing alone must not promote an otherwise any-version package into the product, or a tighter
+	// date cutoff could paradoxically grow the count by turning more packages into factors
+	const reallyConstrained = (g: typeof guessedAll[number]): boolean =>
+		g.evidence.list.some(e => e.source === 'declared' || e.source === 'transitive' || e.source === 'signature' || e.source === 'indirect');
+	for(const g of guessedAll) {
+		const total = g.surviving.total ?? 0;
+		if(grouped.has(g.name) || total === 0 || !reallyConstrained(g)) {
+			continue;
+		}
+		others.push(factorOf(g));
+		othersTotal *= total;
+	}
+	const runnableCombinations = countRunnableCombinations(hub, others);
+	const possibleCombinations = hubTotal * othersTotal;
+
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
-	for(const name of [...targets].sort()) {
-		const src = sources.find(s => s.has(name));
-		const evidence = new EvidenceCollector();
-		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, evidence.add);
-		dependencies.push(guessPackage(name, cap, surviving, evidence));
-		const oc = query.explode ? orderedCandidatesOf(src, name, surviving, query.explode.prefer?.[name], explodeOrder) : undefined;
+	for(const g of guessedAll) {
+		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, usage.has(g.name)));
+		const oc = query.explode ? orderedCandidatesOf(g.src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {
 			ordered.push(oc);
 		}
@@ -180,10 +299,14 @@ export async function executeGuessDepVersionsQuery(
 		: undefined;
 
 	return compactRecord({
-		'.meta':    { timing: Date.now() - start },
+		'.meta':          { timing: Date.now() - start },
 		dependencies,
-		dateCutoff: cutoff ? isoDay(cutoff) : undefined,
+		dateCutoff:       cutoff ? isoDay(cutoff) : undefined,
 		rVersion,
+		versionSelection: ctx.config.solver.sigdb.versionSelection,
+		runnableCombinations,
+		possibleCombinations,
+		linkedGroups:     linkedGroups.length > 0 ? linkedGroups : undefined,
 		assignments,
 		message
 	}) as GuessDepVersionsQueryResult;

@@ -30,6 +30,8 @@ export interface GuessDepVersionsQuery extends BaseQueryFormat {
 	readonly date?:          string;
 	/** cap the number of candidate versions listed per dependency in the result (default {@link DefaultCandidateCap}) */
 	readonly maxCandidates?: number;
+	/** bound both fixpoint loops (mutual transitive refinement and arc consistency), default {@link DefaultFixpointIterations} */
+	readonly maxIterations?: number;
 	/** ignore the project's declared constraints (`DESCRIPTION` ranges, lockfile pins, transitive requirements); guess purely from code usage and the date/R bounds */
 	readonly clean?:         boolean;
 	/** also explode the guessed space into concrete per-dependency version assignments (see {@link GuessExplodeOptions}) */
@@ -86,6 +88,8 @@ export interface GuessedDependency {
 	readonly evidence:            readonly GuessVersionEvidence[];
 	/** set when the constraints contradict each other so that no version can satisfy them all */
 	readonly unsatisfiable?:      boolean;
+	/** the other packages this one shares a version with, so its range is not independent of theirs */
+	readonly linkedWith?:         readonly string[];
 	/**
 	 * Whether the analyzed code actually uses this package (a declared-but-never-used dependency is unconstrained):
 	 * either a direct call, or the project's own NAMESPACE registering an S3 method for a class this package OWNS
@@ -115,12 +119,13 @@ export interface GuessDepVersionsQueryResult extends BaseQueryResult {
 	readonly message?:              string;
 }
 
-/** parse a repl line: `[(clean[:<=YYYY])] [pkg ...] [--date YYYY.MM.DD] [--max N] [--explode [--oldest] [--limit N] [--prefer pkg=ver ...]]` */
+/** parse a repl line: `[(clean[:<=YYYY])] [pkg ...] [--date YYYY.MM.DD] [--max N] [--iterations N] [--explode [--oldest] [--limit N] [--prefer pkg=ver ...]]` */
 function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'guess-dep-versions'> {
 	const packages: string[] = [];
 	const codeParts: string[] = [];
 	let date: string | undefined;
 	let maxCandidates: number | undefined;
+	let maxIterations: number | undefined;
 	let clean = false;
 	let explode = false;
 	let order: 'newest' | 'oldest' | undefined;
@@ -150,6 +155,8 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 			date = tokens[++i];
 		} else if(tok === '--max') {
 			maxCandidates = Number(tokens[++i]);
+		} else if(tok === '--iterations' || tok === '--iter') {
+			maxIterations = Number(tokens[++i]);
 		} else if(tok === '--explode') {
 			explode = true;
 		} else if(tok === '--oldest') {
@@ -185,6 +192,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 			...(packages.length > 0 ? { packages } : {}),
 			...(date ? { date } : {}),
 			...(maxCandidates !== undefined && !Number.isNaN(maxCandidates) ? { maxCandidates } : {}),
+			...(maxIterations !== undefined && !Number.isNaN(maxIterations) ? { maxIterations } : {}),
 			...(clean ? { clean } : {}),
 			...explodeOpts
 		}]
@@ -334,9 +342,9 @@ export const GuessDepVersionsQueryDefinition = {
 			const rep = out.dependencies.find(d => group.includes(d.package) && d.maxVersion !== undefined);
 			result.push(`   ${italic('linked', formatter)}: ${group.join(' + ')}${rep?.maxVersion ? faint(' @ ' + rep.maxVersion, formatter) : ''}`);
 		}
-		const linkedNames = new Set((out.linkedGroups ?? []).flat());
 		for(const dep of out.dependencies) {
-			const groupTag = dep.base ? ' ' + italic('[base]', formatter) : linkedNames.has(dep.package) ? ' ' + italic('[linked]', formatter) : '';
+			const groupTag = dep.base ? ' ' + italic('[base]', formatter)
+				: dep.linkedWith ? ' ' + italic(`[linked: ${dep.linkedWith.join(', ')}]`, formatter) : '';
 			const note = dep.base ? '' : dep.used === false ? ' ' + faint('(not called)', formatter) : !isConstrained(dep) && dep.totalVersions ? ' ' + faint('(any version)', formatter) : '';
 			const tag = groupTag + note;
 			const range = dep.unsatisfiable ? color('unsatisfiable', Colors.Red, formatter) : bold(dep.range, formatter);
@@ -406,12 +414,13 @@ export const GuessDepVersionsQueryDefinition = {
 		return true;
 	},
 	fromLine: guessDepVersionsLineParser,
-	syntax:   '@guess-dep-versions [<pkg> ...] [(clean | <=YYYY.MM.DD)] [--date YYYY.MM.DD] [--max <n>] [--explode [--oldest] [--limit <n>] [--prefer <pkg>=<ver>]] <code | file://path>',
+	syntax:   '@guess-dep-versions [<pkg> ...] [(clean | <=YYYY.MM.DD)] [--date YYYY.MM.DD] [--max <n>] [--iterations <n>] [--explode [--oldest] [--limit <n>] [--prefer <pkg>=<ver>]] <code | file://path>',
 	schema:   Joi.object({
 		type:          Joi.string().valid('guess-dep-versions').required().description('The type of the query.'),
 		packages:      Joi.array().items(Joi.string()).optional().description('Restrict the guess to these packages; omit to guess for every declared and used dependency.'),
 		date:          Joi.string().optional().description('Only consider versions released on or before this day, written YYYY.MM.DD (also YYYY or YYYY.MM).'),
 		maxCandidates: Joi.number().integer().min(0).optional().description('Cap the number of candidate versions listed per dependency.'),
+		maxIterations: Joi.number().integer().min(0).optional().description('Bound both fixpoint loops (mutual transitive refinement and arc consistency).'),
 		clean:         Joi.boolean().optional().description('Ignore the project declared constraints (DESCRIPTION/lockfile/transitive); guess purely from code usage and the date/R bounds.'),
 		explode:       Joi.object({
 			order:  Joi.string().valid('newest', 'oldest').optional().description('Iterate each dependency newest-first (default) or oldest-first.'),

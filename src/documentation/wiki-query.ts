@@ -524,8 +524,8 @@ ${
 	])
 }
 
-One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
-enables quick statistics after each REPL command. Likewise, setting \`repl.dfProcessorHeat=true\` enables the dataflow processor heatmap after each REPL command.
+One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting ${ctx.linkConfig('repl.quickStats', true)}
+enables quick statistics after each REPL command. Likewise, ${ctx.linkConfig('repl.dfProcessorHeat', true)} enables the dataflow processor heatmap after each REPL command.
 `;
 	}
 });
@@ -1066,7 +1066,7 @@ ${
 	block({
 		type:    'NOTE',
 		content: `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
-See the ${ctx.linkPage('wiki/Signature Database')} page for the storage format, the configuration under \`solver.sigdb\`, and how to obtain further shards.
+See the ${ctx.linkPage('wiki/Signature Database')} page for the storage format, the configuration under ${ctx.linkConfig('solver.sigdb', true)}, and how to obtain further shards.
 To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`
 	})
 }
@@ -1107,8 +1107,12 @@ The guess can be narrowed further:
 * \`packages\` restricts it to the dependencies you care about,
 * \`date\` caps every guess to releases available at that point in time (\`YYYY.MM.DD\`, also \`YYYY\` or \`YYYY.MM\`),
 * \`clean\` ignores the declared constraints entirely and guesses purely from usage,
-* \`maxCandidates\` caps how many candidate versions are listed per dependency, and
+* \`maxCandidates\` caps how many candidate versions are listed per dependency,
+* \`maxIterations\` bounds the two fixpoint loops (packages constrain each other, so the guess is iterated until it settles), and
 * \`explode\` additionally enumerates concrete version _combinations_ (\`order\`, \`prefer\`, and \`limit\` control which and how many).
+
+Packages can also be tied to one shared version (the base/R packages always are), and ${ctx.linkConfig('solver.versionManagement.linkedVersionGroups', true)}
+declares further groups. Such a package reports its partners in \`linkedWith\`, because its range is then no longer independent of theirs.
 
 ${
 	block({

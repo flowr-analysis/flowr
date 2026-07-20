@@ -430,6 +430,9 @@ export function collectTransitiveConstraints(deps: ReadOnlyFlowrAnalyzerDependen
 	return out;
 }
 
+/** the default bound for the fixpoint loops, overridable per query with {@link GuessDepVersionsQuery.maxIterations} */
+export const DefaultFixpointIterations = 8;
+
 /** repeatedly run `step` until it reports no further change (returns `false`) or `maxIterations` is reached */
 export function iterateToFixpoint(maxIterations: number, step: () => boolean): void {
 	for(let i = 0; i < maxIterations && step(); i++) { /* repeat until a step makes no change */ }
@@ -445,7 +448,7 @@ export interface ArcEntry {
 }
 
 /** drop, to a fixpoint, versions no co-guessed dependency can satisfy; returns the blocking partners per package */
-export function enforceArcConsistency(entries: readonly ArcEntry[], maxIterations = 8): Map<string, Map<string, string>> {
+export function enforceArcConsistency(entries: readonly ArcEntry[], maxIterations = DefaultFixpointIterations): Map<string, Map<string, string>> {
 	const blockers = new Map<string, Map<string, string>>();
 	iterateToFixpoint(maxIterations, () => {
 		const survivorsByName = new Map(entries.map(e => [e.name, e.survivors.map(s => s.ver)]));

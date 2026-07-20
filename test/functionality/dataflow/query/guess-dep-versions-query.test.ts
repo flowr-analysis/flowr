@@ -364,6 +364,9 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		});
 		expect(guessed(res, 'pkgA')?.candidates).toEqual(['2.0.0']);
 		expect(res.linkedGroups).toContainEqual(['pkgA', 'pkgB']);
+		/* each package also names its partners, so the link is visible per dependency */
+		expect(guessed(res, 'pkgA')?.linkedWith).toEqual(['pkgB']);
+		expect(guessed(res, 'pkgB')?.linkedWith).toEqual(['pkgA']);
 	});
 
 	test('a transitive requirement is re-derived from the depending package guessed version (mutual constraints)', async() => {
@@ -531,6 +534,11 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 	test('explode with order oldest starts from the oldest versions', async() => {
 		const res = await runGuess(ts, { ...explodeScenario, query: { ...explodeScenario.query, explode: { order: 'oldest' } } });
 		expect(res.assignments?.[0].versions).toEqual({ pkgA: '1.0.0', pkgB: '1.0.0' });
+	});
+
+	test('maxIterations bounds the fixpoint loops without changing a converged result', async() => {
+		const res = await runGuess(ts, { ...explodeScenario, query: { ...explodeScenario.query, maxIterations: 1 } });
+		expect(guessed(res, 'pkgA')?.range).toBe(guessed(await runGuess(ts, explodeScenario), 'pkgA')?.range);
 	});
 
 	test('explode honors a preferred version and a limit', async() => {

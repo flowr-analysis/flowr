@@ -37,6 +37,7 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
  * @param suffix     - Suffix of the files to be retrieved, tested against the file name
  * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
  *                     (e.g. `packrat/lib`), so a pattern can address nested directories
+ * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
  * @see {@link getAllFiles} - for an asynchronous version.
  */
 export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir): Generator<string> {

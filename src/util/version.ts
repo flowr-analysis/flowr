@@ -116,7 +116,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const render = (full: string, suffix: string): string => trace && !activated.has(full) ? dim(suffix) : suffix;
 		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
 		const header = `registered plugins (${names.length})`;
-		const hint = trace ? ' (faint = did not activate)' : ' (set repl.showPlugins: true to track activation)';
+		const hint = trace ? ' (faint = did not activate)' : ' (set +repl.showPlugins=true to track activation)';
 		pluginLines.push(`${bold(osc8 ? output.formatter.hyperlink(header, wiki) : header, output.formatter)}:${dim(hint)}`);
 		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
 			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);

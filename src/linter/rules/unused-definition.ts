@@ -10,11 +10,12 @@ import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
 import { FileRole } from '../../project/context/flowr-file';
 import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { removeRQuotes } from '../../r-bridge/retriever';
 import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -226,6 +227,27 @@ function onlyKeepSupersetOfUnused(
 	});
 }
 
+/** Whether the node sits inside a promise, i.e. an argument default value or a `delayedAssign` body, which may never run. */
+function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
+	let child = node;
+	let parentId = node.info.parent;
+	while(parentId !== undefined) {
+		const parent = idMap.get(parentId);
+		if(parent === undefined) {
+			return false;
+		}
+		if(parent.type === RType.Parameter && parent.defaultValue?.info.id === child.info.id) {
+			return true;
+		}
+		if(parent.type === RType.FunctionCall && parent.named && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
+			return true;
+		}
+		child = parent;
+		parentId = parent.info.parent;
+	}
+	return false;
+}
+
 export const UNUSED_DEFINITION = {
 	/* this can be done better once we have types */
 	createSearch: config => Q.all().filter(
@@ -242,6 +264,9 @@ export const UNUSED_DEFINITION = {
 		return {
 			results: onlyKeepSupersetOfUnused(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
+				if(isWithinPromise(element.node, normalize.idMap)) {
+					return [];
+				}
 
 				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (

@@ -19,6 +19,7 @@ export function printSignatureHelp(output: ReplOutput): void {
 	ex(':query @signature ggplot2', 'a package: version, exports, dependencies, links');
 	ex(':query @signature ggplot2::aes', 'one function (or `ggplot2 aes`, `ggplot2@3.5.0 aes`)');
 	ex(':query @signature gg* geom_*', 'glob search (versions also take ranges: >=4.0.0, 4.x)');
+	ex(':query @signature gg*@* geom_*', 'search every release in the history, not just the latest');
 	ex(':query @signature ggplot2@<=2021.05', 'select releases by date (YYYY.MM.DD: <=2026, >=2021.05)');
 	ex(':query @signature ggplot2 * --param data --param mapping', 'functions with both parameters (repeat/comma-separate --param; alone it searches all packages)');
 	ex(':query @signature stats * --required 3', 'functions with exactly 3 required parameters');
@@ -149,7 +150,9 @@ export function pushMatches(result: string[], f: OutputFormatter, out: Signature
 	const cap = out.truncated ? italic(` (capped at ${matches.length})`, f) : '';
 	const scanned = out.searched !== undefined && out.searched > (out.matchCount ?? matches.length)
 		? faint(` (of ${out.searched.toLocaleString()} searched)`, f) : '';
-	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${scanned}${cap}`);
+	const onlyLatest = out.latestOnly && out.searched !== undefined
+		? faint(' latest versions only, add ', f) + italic('@*', f) + faint(' to the package to search the history', f) : '';
+	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${scanned}${cap}${onlyLatest}`);
 	for(const m of matches) {
 		const matched = new Set(m.matchedParameters ?? []);
 		const params = m.parameters?.length

@@ -152,6 +152,8 @@ export interface SignatureQueryResult extends BaseQueryResult {
 	readonly matchCount?:  number;
 	/** how many functions the search examined against the filters (only interesting when it exceeds the hit count) */
 	readonly searched?:    number;
+	/** whether the search covered only the latest version of each package, so historical releases were skipped */
+	readonly latestOnly?:  boolean;
 	/** package hits from a wildcard package search (no function given) */
 	readonly packages?:    readonly SignaturePackageMatch[];
 	/** whether the match list was capped */

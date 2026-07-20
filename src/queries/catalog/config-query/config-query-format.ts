@@ -92,6 +92,10 @@ function unknownConfigKey(path: readonly string[], formatter: OutputFormatter): 
 	if(unknown === undefined) {
 		return undefined; // every segment is a known (or pattern-/free-form-accepted) key
 	}
+	if(unknown.segment.includes('=')) {
+		const full = path.join('.');
+		return `To set a value, prefix the key with ${bold('+', formatter)}: ${bold('+' + full, formatter)}. Without it ${bold(full, formatter)} is read as a key to inspect.`;
+	}
 	const where = unknown.at.length === 0 ? 'the top level' : bold(unknown.at.join('.'), formatter);
 	return `Unknown config key ${bold(path.join('.'), formatter)}: no ${bold(unknown.segment, formatter)} at ${where}. Available: ${[...unknown.available].join(', ') || '(none)'}`;
 }
@@ -276,7 +280,7 @@ export const ConfigQueryDefinition = {
 			for(const key of updatedKeys) {
 				const path = key.split('.');
 				const newValue = getValueAtPath(out.config, path);
-				result.push(`       - ${key}: ${JSON.stringify(newValue, jsonReplacer)}`);
+				result.push(`       - ${key}=${JSON.stringify(newValue, jsonReplacer)}`);
 			}
 		} else if(inspects.length > 0) {
 			result.push('   ╰ Config:');

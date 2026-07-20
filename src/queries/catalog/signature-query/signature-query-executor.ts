@@ -544,7 +544,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			break;
 		}
 	}
-	return { matches, matchCount: matches.length, searched, truncated };
+	return { matches, matchCount: matches.length, searched, truncated, latestOnly: relMatch === undefined };
 }
 
 /** the discoverable bundle sources for Tab completion (process-wide cached; opening the manifest reads no shard) */

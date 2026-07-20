@@ -55,6 +55,7 @@ export const OriginQueryDefinition = {
 	},
 	fromLine:  originQueryLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@origin (<criterion>) <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('origin').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criteria to use'),

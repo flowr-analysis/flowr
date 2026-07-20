@@ -245,6 +245,7 @@ export const SignatureQueryDefinition = {
 	},
 	fromLine:  signatureQueryLineParser,
 	completer: signatureQueryCompleter,
+	syntax:    '@signature [<pkg>[@<version>]] [<pkg>::<fn> | <fn>] [--param <name>[,...]] [--required <n>] [--cg] [--help]',
 	schema:    Joi.object({
 		type:               Joi.string().valid('signature').required().description('The type of the query.'),
 		package:            Joi.string().optional().description('The package to inspect (glob wildcards allowed); omit for a summary of the loaded databases.'),

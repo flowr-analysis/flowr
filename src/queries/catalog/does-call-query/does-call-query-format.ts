@@ -138,6 +138,7 @@ export const DoesCallQueryDefinition = {
 		return true;
 	},
 	fromLine: doesCallQueryLineParser,
+	syntax:   '@does-call (<criterion>:$<id>|"<name>") <code | file://path>',
 	schema:   Joi.object({
 		type:                   Joi.string().valid('does-call').required().description('The type of the query.'),
 		queryId:                Joi.string().optional().description('An optional unique identifier for this query, to identify it in the output.'),

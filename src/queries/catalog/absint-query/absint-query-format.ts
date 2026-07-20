@@ -118,6 +118,7 @@ export const AbsintQueryDefinition = {
 	},
 	completer: absintQueryCompleter,
 	fromLine:  absintQueryLineParser,
+	syntax:    '@absint <inference-type> [(<criteria>)] <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('absint').required().description('The type of the query.'),
 		inference: Joi.string().valid(...Record.keys(AbsintQueryInferences)).required().description('The type of abstract interpretation inference.'),

@@ -179,12 +179,13 @@ export function tocForQueryType(type: 'active' | 'virtual') {
 
 async function explainQuery(shell: RShell, ctx: GeneralDocContext, id: string, { shortDescription, functionName, functionFile, buildExplanation }: QueryDocumentation) {
 	const name = getQueryTitle(id);
+	const syntax = (SupportedQueries[id as SupportedQueryTypes] as SupportedQuery | undefined)?.syntax;
 	return `
 ${autoGenHeader({ filename: QueryDocFile, purpose: 'query API' })}
 ${section(name + `&emsp;<sup>[<a href="${FlowrWikiBaseRef}/Query-API">overview</a>]</sup>`, 2, name)}
 
 ${shortDescription}\\
-_This query is requested with the type \`${id}\`._
+_This query is requested with the type \`${id}\`._${syntax ? `\\\nRun in the REPL: \`:query ${syntax}\`` : ''}
 
 ${await buildExplanation(shell, ctx)}
 

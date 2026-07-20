@@ -115,6 +115,7 @@ export const StaticSliceQueryDefinition = {
 	},
 	fromLine:  sliceQueryLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@static-slice (<crit>;...)[fiIcB] <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('static-slice').required().description('The type of the query.'),
 		criteria:  Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),

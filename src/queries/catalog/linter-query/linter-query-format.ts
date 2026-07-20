@@ -167,6 +167,7 @@ export const LinterQueryDefinition = {
 	},
 	completer: linterQueryCompleter,
 	fromLine:  linterQueryLineParser,
+	syntax:    '@linter [rules:<r1>,<r2>,...] [format:<fmt>] <code | file://path>',
 	schema:    Joi.object({
 		type:   Joi.string().valid('linter').required().description('The type of the query.'),
 		format: Joi.string().valid(...Object.values(LinterOutputFormat)).optional().description('Print the findings in a machine-readable format instead of the human-readable summary.'),

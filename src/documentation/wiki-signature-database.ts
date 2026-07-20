@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import zlib from 'zlib';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
 import { SigDbSchema } from '../project/sigdb/schema';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
+import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';
 import { DefaultAssumedRVersion } from '../config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -117,9 +117,9 @@ function tierHistory(s: SigDbShardRef): string {
 	return s.tier === 'current' ? 'latest only' : 'full history';
 }
 
-/** resolve a manifest-relative source to its shipped file, preferring the compressed `.br` */
+/** resolve a manifest-relative source to its shipped file, preferring `.zst` over `.br` (whichever this Node can read) */
 function resolveShipped(baseDir: string, rel: string): string | undefined {
-	for(const candidate of [path.resolve(baseDir, rel + '.br'), path.resolve(baseDir, rel)]) {
+	for(const candidate of [rel + '.zst', rel + '.br', rel].map(c => path.resolve(baseDir, c))) {
 		if(fs.existsSync(candidate)) {
 			return candidate;
 		}
@@ -127,16 +127,16 @@ function resolveShipped(baseDir: string, rel: string): string | undefined {
 	return undefined;
 }
 
-/** time (at generation time) how long it takes to decompress one shipped `.br`, i.e. its first-touch load cost */
+/** time (at generation time) how long it takes to decompress one shipped shard, i.e. its first-touch load cost */
 function measureLoad(file: string): number | undefined {
-	if(!file.endsWith('.br')) {
+	if(!/\.(br|zst|gz)$/.test(file)) {
 		return undefined;
 	}
 	try {
 		const raw = fs.readFileSync(file);
-		const t0 = Date.now();
-		zlib.brotliDecompressSync(raw, { params: { [zlib.constants.BROTLI_DECODER_PARAM_LARGE_WINDOW]: 1 } });
-		return Date.now() - t0;
+		const t0 = process.hrtime.bigint();
+		decompressSyncFor(file, raw);
+		return Number(process.hrtime.bigint() - t0) / 1e6;
 	} catch{
 		return undefined;
 	}
@@ -151,7 +151,7 @@ function measureLoad(file: string): number | undefined {
  * without generated data).
  */
 function bundledDatabaseTable(): string | undefined {
-	const manifestPaths = defaultSigDbPaths().filter(p => /\.manifest\.json(\.br)?$/.test(p));
+	const manifestPaths = defaultSigDbPaths().filter(p => new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(p));
 	if(manifestPaths.length === 0) {
 		return undefined;
 	}
@@ -161,16 +161,11 @@ function bundledDatabaseTable(): string | undefined {
 		return load !== undefined ? `≈ ${roughDuration(load)}` : 'n/a';
 	};
 	const shardRows: string[] = [];
-	const dictRows: string[] = [];
 	const seenShards = new Set<string>();
-	const seenDicts = new Set<string>();
 	for(const manifestPath of manifestPaths) {
 		let shards: readonly SigDbShardRef[];
-		let dicts: readonly { id: string, path: string, strings: number }[];
 		try {
-			const manifest = readManifestFile(manifestPath);
-			shards = manifest.shards;
-			dicts = manifest.dicts ?? [];
+			shards = readManifestFile(manifestPath).shards;
 		} catch{
 			continue;
 		}
@@ -183,23 +178,13 @@ function bundledDatabaseTable(): string | undefined {
 			const file = resolveShipped(baseDir, s.path);
 			shardRows.push(`| \`${s.id}\` | ${shardContents(s)} | ${tierHistory(s)} | ${groupThousands(s.packages)} | ${groupThousands(s.versions)} | ${sizeOf(file)} | ${loadOf(file)} |`);
 		}
-		for(const d of dicts) {
-			// every manifest names its dict id `shared`; the files differ per scope, so dedupe (and label) by path
-			if(seenDicts.has(d.path)) {
-				continue;
-			}
-			seenDicts.add(d.path);
-			const file = resolveShipped(baseDir, d.path);
-			const label = path.basename(d.path).replace(/\.sigs\.ndjson$/, '');
-			dictRows.push(`| \`${label}\` | ${groupThousands(d.strings)} shared strings | - | - | - | ${sizeOf(file)} | ${loadOf(file)} |`);
-		}
 	}
 	if(shardRows.length === 0) {
 		return undefined;
 	}
 	return `| Shard | Contents | Versions kept | Packages | Versions | Size (\`.br\`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-${[...shardRows, ...dictRows].join('\n')}`;
+${shardRows.join('\n')}`;
 }
 
 /** link a built-in plugin key (e.g. `versions:sigdb`) to its registration */

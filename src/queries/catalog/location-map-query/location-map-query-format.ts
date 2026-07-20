@@ -54,6 +54,7 @@ export const LocationMapQueryDefinition = {
 	},
 	fromLine:  locationMapLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@location-map [(<crit>;...)] <code | file://path>',
 	schema:    Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')

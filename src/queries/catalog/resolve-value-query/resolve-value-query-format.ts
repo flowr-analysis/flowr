@@ -61,6 +61,7 @@ export const ResolveValueQueryDefinition = {
 	},
 	fromLine:  resolveValueLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@resolve-value (<crit>;...) <code | file://path>',
 	schema:    Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),

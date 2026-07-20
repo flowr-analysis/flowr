@@ -2608,6 +2608,7 @@ For the definition of the hello message, please see it's implementation at [`./s
                         - (string)
                     - **date** [optional] _Only consider versions released on or before this day, written YYYY.MM.DD (also YYYY or YYYY.MM)._ (string)
                     - **maxCandidates** [optional] _Cap the number of candidate versions listed per dependency._ (number)
+                    - **maxIterations** [optional] _Bound both fixpoint loops (mutual transitive refinement and arc consistency)._ (number)
                     - **clean** [optional] _Ignore the project declared constraints (DESCRIPTION/lockfile/transitive); guess purely from code usage and the date/R bounds._ (boolean)
                     - **explode** [optional] _Also explode the guessed space into concrete per-dependency version assignments._ (object)
                         - **order** [optional] _Iterate each dependency newest-first (default) or oldest-first._ (string)

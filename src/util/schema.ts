@@ -73,8 +73,8 @@ const ScalarSchemaTypes = new Set(['boolean', 'number', 'string', 'array', 'date
 /**
  * The first path segment the schema does not accept, with the keys that ARE accepted there and the path to that
  * point -- or `undefined` when the whole path is a settable key. Used to reject typo'd config keys. A `.pattern()`
- * object accepts any key (validation continues into its value schema) and a free-form object (`Joi.object()` with
- * no declared keys, e.g. a `specializeConfig` entry) accepts any key, so neither is reported as unknown.
+ * object accepts any key (validation continues into its value schema) and an `.unknown(true)` object (e.g. a
+ * `specializeConfig` entry, which may overwrite any config key) accepts any key, so neither is reported as unknown.
  */
 export function firstUnknownSchemaSegment(description: Joi.Description, path: readonly string[]): { readonly segment: string, readonly available: readonly string[], readonly at: readonly string[] } | undefined {
 	let node: Joi.Description | undefined = description;
@@ -89,6 +89,9 @@ export function firstUnknownSchemaSegment(description: Joi.Description, path: re
 				node = pattern.value;
 				continue;
 			}
+		}
+		if((node?.flags as Record<string, unknown> | undefined)?.['unknown'] === true) {
+			return undefined; // `.unknown(true)`: any further key is accepted here
 		}
 		const keys = node?.keys as Record<string, Joi.Description> | undefined;
 		if(keys === undefined) {
@@ -112,7 +115,13 @@ export function firstUnknownSchemaSegment(description: Joi.Description, path: re
  */
 export function descriptionPathKeys(description: Joi.Description, path: readonly string[]): string[] {
 	const node = descendDescriptionPath(description, path);
-	return node === undefined ? [] : Object.keys((node.keys ?? {}) as Record<string, Joi.Description>);
+	if(node === undefined) {
+		return [];
+	}
+	const keys = Object.keys((node.keys ?? {}) as Record<string, Joi.Description>);
+	// a `.pattern()` object declares no keys, but a `.valid(...)` key schema restricts them to a known set
+	const valids = patternObject(node)?.keyValids?.map(v => String(v)) ?? [];
+	return [...keys, ...valids.filter(v => !keys.includes(v))];
 }
 
 /**

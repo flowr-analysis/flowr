@@ -524,6 +524,22 @@ ${
 	])
 }
 
+In the REPL you can also read a single option by its \`.\`-separated path, or several at once with a glob&mdash;\`*\` covers
+one path segment, \`**\` any number. This only reads: setting a value still names exactly one key.
+
+${
+	await documentReplSession(shell, [
+		{
+			command:     ':query @config **.enabled',
+			description: 'Read every `enabled` option, wherever it sits in the configuration.'
+		},
+		{
+			command:     ':query @config solver.*',
+			description: 'Read the direct children of `solver` (use `solver.**` for the whole subtree).'
+		}
+	])
+}
+
 One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting ${ctx.linkConfig('repl.quickStats', true)}
 enables quick statistics after each REPL command. Likewise, ${ctx.linkConfig('repl.dfProcessorHeat', true)} enables the dataflow processor heatmap after each REPL command.
 `;

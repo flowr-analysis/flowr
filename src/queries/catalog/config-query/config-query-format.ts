@@ -9,7 +9,7 @@ import type { DeepPartial } from 'ts-essentials';
 import type { ParsedQueryLine, Query, SupportedQuery } from '../../query';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { type CommandCompletions, describeCompletion } from '../../../cli/repl/core';
-import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, firstUnknownSchemaSegment } from '../../../util/schema';
+import { descriptionPathInfo, type SchemaPathInfo, descriptionPathKeys, descriptionPaths, firstUnknownSchemaSegment } from '../../../util/schema';
 import type { ProjectKind } from '../../../project/context/project-kind';
 import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
 
@@ -18,6 +18,8 @@ export interface ConfigQuery extends BaseQueryFormat {
 	readonly update?:  DeepPartial<FlowrConfig>
 	/** a `.`-separated path to inspect (read) a single config value instead of dumping the whole config (repl: `path`, which also accepts a `*`/`**` glob) */
 	readonly inspect?: readonly string[]
+	/** discard every runtime update made so far, reverting to the config the analyzer was created with (repl: `+reset`) */
+	readonly reset?:   boolean
 }
 
 export interface ConfigQueryResult extends BaseQueryResult {
@@ -26,7 +28,7 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly specialization?: { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> };
 }
 
-function configReplCompleter(partialLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
+function configReplCompleter(partialLine: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
 	// the config query is a single token
 	if(partialLine.length > 1 || (partialLine.length === 1 && startingNewArg)) {
 		return { completions: [] };
@@ -55,21 +57,21 @@ function configReplCompleter(partialLine: readonly string[], startingNewArg: boo
 	// a glob reads several keys, so expand it to the paths it matches (the trailing segment completes as a prefix)
 	if(!update && raw.includes('*')) {
 		const matches = configGlobMatcher(raw.endsWith('*') ? raw : `${raw}*`);
-		const found = [...configPaths(config)].filter(matches).map(p => p.join('.')).sort();
+		const found = sortConfigPaths(configPaths().filter(matches)).map(p => p.join('.'));
 		return { completions: found, labels: new Map(found.map(p => [p, describeCompletion(p, configSchemaInfo(p.split('.')).type ?? '')])), preFiltered: true };
 	}
 	const path = raw.split('.').filter(p => p.length > 0);
 	const fullPath = path.slice();
 	const lastPath = token.endsWith('.') ? '' : path.pop() ?? '';
-	/* the schema knows every option, a value only those that are set */
-	const options = configSchemaKeys(path);
+	/* the schema knows every option, a value only those that are set; `reset` (top level, update only) is not a schema key but a fixed action */
+	const options = update && path.length === 0 ? [...configSchemaKeys(path), 'reset'] : configSchemaKeys(path);
 	const atLeaf = lastPath.length > 0 && options.includes(lastPath) && configSchemaInfo([...path, lastPath]).type !== 'object';
 	if(!atLeaf) {
 		const offered = matchByPrefixOrSubsequence(options, lastPath);
 		const have = offered.map(k => `${sigil}${[...path, k].join('.')}`);
 		if(have.length > 0) {
 			// label starts with the full completion (incl. sigil) so readline keeps the sigil on common-prefix insertion
-			return { completions: [...lead, ...have], labels: new Map([...leadLabels, ...have.map((c, i): [string, string] => [c, describeCompletion(c, configSchemaInfo([...path, offered[i]]).type ?? '')])]) };
+			return { completions: [...lead, ...have], labels: new Map([...leadLabels, ...have.map((c, i): [string, string] => [c, offered[i] === 'reset' && path.length === 0 ? describeCompletion(c, 'discard runtime config updates') : describeCompletion(c, configSchemaInfo([...path, offered[i]]).type ?? '')])]) };
 		} else if(lastPath.length > 0 && configSchemaKeys(fullPath).length > 0) {
 			return { completions: [`${sigil}${fullPath.join('.')}.`] };
 		}
@@ -91,16 +93,15 @@ function configReplCompleter(partialLine: readonly string[], startingNewArg: boo
 	return { completions: [`${leaf}${update ? '=' : ''}`] };
 }
 
-/** every `.`-separated path in the config, intermediate objects included, for {@link configGlobMatcher} */
-function* configPaths(node: unknown, prefix: readonly string[] = []): Generator<string[]> {
-	if(prefix.length > 0) {
-		yield [...prefix];
-	}
-	if(node !== null && typeof node === 'object' && !Array.isArray(node)) {
-		for(const [key, value] of Object.entries(node)) {
-			yield* configPaths(value, [...prefix, key]);
-		}
-	}
+/** every `.`-separated path the config schema allows, intermediate objects included, for {@link configGlobMatcher} */
+function configPaths(): string[][] {
+	configSchemaDescription ??= FlowrConfig.Schema.describe();
+	return descriptionPaths(configSchemaDescription);
+}
+
+/** shallower (fewer path segments) first, alphabetical among equally deep paths */
+function sortConfigPaths(paths: readonly (readonly string[])[]): (readonly string[])[] {
+	return [...paths].sort((a, b) => a.length - b.length || a.join('.').localeCompare(b.join('.')));
 }
 
 /** matches a config path against a glob, `*` covering one segment and `**` any number (`**.enabled`, `solver.*`) */
@@ -186,8 +187,11 @@ export function validateConfigUpdate(update: DeepPartial<FlowrConfig>, formatter
 	return undefined;
 }
 
-function configQueryLineParser(output: ReplOutput, line: readonly string[], config: FlowrConfig): ParsedQueryLine<'config'> {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'config'> {
 	const first = line[0] ?? '';
+	if(first === '+reset') {
+		return { query: [{ type: 'config', reset: true }] };
+	}
 	if(first.startsWith('+')) {
 		const [pathPart, ...valueParts] = first.slice(1).split('=');
 		// build the update object
@@ -200,7 +204,11 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], conf
 		try {
 			value = JSON.parse(raw); // numbers, booleans, arrays, ...
 		} catch{
-			value = raw; // fall back to a plain string
+			try {
+				value = JSON.parse(raw.replace(/'([^']*)'/g, (_, s: string) => JSON.stringify(s))); // allow 'single' quotes too
+			} catch{
+				value = raw; // fall back to a plain string
+			}
 		}
 		const update = path.reduceRight<unknown>((acc, key) => ({ [key]: acc }), value) as DeepPartial<FlowrConfig>;
 		const err = validateConfigUpdate(update, output.formatter);
@@ -214,7 +222,7 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], conf
 	if(first.includes('*')) {
 		// a glob reads several keys at once (inspection only, setting stays a single explicit key)
 		const matches = configGlobMatcher(first);
-		const found = [...configPaths(config)].filter(matches).sort((a, b) => a.join('.').localeCompare(b.join('.')));
+		const found = sortConfigPaths(configPaths().filter(matches));
 		return found.length === 0
 			? configError(output, `No config key matches ${bold(first, output.formatter)}`)
 			: { query: found.map(p => ({ type: 'config', inspect: p })) };
@@ -311,14 +319,16 @@ function inspectedChildren(value: object, path: readonly string[], formatter: Ou
 
 export const ConfigQueryDefinition = {
 	title:           'Config Query',
-	syntax:          '@config [<path> | <glob>] | @config +<path>=<value>',
+	syntax:          '@config [<path> | <glob>] | @config +<path>=<value> | @config +reset',
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;
 		result.push(`Query: ${bold('config', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		const configQueries = queries.filter(q => q.type === 'config');
 		const inspects = configQueries.filter(q => q.inspect).map(q => q.inspect as readonly string[]);
-		if(configQueries.some(q => q.update)) {
+		if(configQueries.some(q => q.reset)) {
+			result.push('   ╰ Configuration reset to the analyzer\'s base config');
+		} else if(configQueries.some(q => q.update)) {
 			const updatedKeys = configQueries.flatMap(q => q.update ? collectKeysFromUpdate(q.update) : []);
 			result.push('   ╰ Updated configuration:');
 			for(const key of updatedKeys) {
@@ -356,7 +366,8 @@ export const ConfigQueryDefinition = {
 	schema:    Joi.object({
 		type:    Joi.string().valid('config').required().description('The type of the query.'),
 		update:  Joi.object().optional().description('An optional partial configuration to update the current configuration with before returning it. Only the provided fields will be updated, all other fields will remain unchanged.'),
-		inspect: Joi.array().items(Joi.string()).optional().description('An optional `.`-separated path (as a string array) to read a single configuration value instead of returning the whole configuration.')
+		inspect: Joi.array().items(Joi.string()).optional().description('An optional `.`-separated path (as a string array) to read a single configuration value instead of returning the whole configuration.'),
+		reset:   Joi.boolean().optional().description('If true, discard every prior update and revert to the config the analyzer was created with, before returning it.')
 	}).description('The config query retrieves the current configuration of the flowR instance and optionally also updates it.'),
 	flattenInvolvedNodes: () => []
 } as const satisfies SupportedQuery<'config'>;

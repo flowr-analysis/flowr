@@ -245,6 +245,7 @@ The schema below documents every option; the ones you most likely want are:
   loaded. Entries are globs (e.g. \`R/*.R\`) matched against the file path ignoring capitalization; one matching no file is reported.
 - ${ctx.linkConfig('specializeConfig')}: overwrite (parts of) the configuration depending on the kind of project _flowR_ detects
   (e.g. \`shiny-app\`), which is how a shiny app gets its implicit sources by default. What you configure directly wins.
+- ${ctx.linkConfig('project.useProjectType')}: skip that detection and force a project kind yourself, when auto-detection guesses wrong.
 - ${ctx.linkConfig('defaultPlugins')} and ${ctx.linkConfig('repl.plugins')}: the plugins to load for a new ${ctx.link(FlowrAnalyzer)} and in the REPL
   (use \`flowr:default\` to reference the former).
 

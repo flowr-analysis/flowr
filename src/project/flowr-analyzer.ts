@@ -150,6 +150,8 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	flowrConfig: FlowrConfig;
 	/** Merge a runtime update into the base config and invalidate the derived config and cached analysis, so it takes effect. */
 	updateConfig(update: DeepPartial<FlowrConfig>): void;
+	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
+	resetConfig(): void;
 }
 
 
@@ -209,6 +211,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public updateConfig(update: DeepPartial<FlowrConfig>): void {
 		this.ctx.updateConfig(update);
 		// the parse/dataflow results were computed under the previous config, so they must be recomputed
+		this.cache.reset();
+	}
+
+	public resetConfig(): void {
+		this.ctx.resetConfig();
 		this.cache.reset();
 	}
 

@@ -171,6 +171,8 @@ export interface FlowrConfig extends MergeableRecord {
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
+		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
+		useProjectType?:           ProjectKind
 		/**
 		 * The packages considered part of R itself, used e.g. by the project query to classify dependencies. If
 		 * unset, flowR derives them (for the assumed R version) from the signature database via `baseRPackages`.
@@ -601,7 +603,8 @@ export const FlowrConfig = {
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
-			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.')
+			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
+			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.')
 		}).description('Project specific configuration options.'),
 		linter: Joi.object({
 			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')

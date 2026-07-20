@@ -34,6 +34,8 @@ export interface GuessDepVersionsQuery extends BaseQueryFormat {
 	readonly maxIterations?: number;
 	/** ignore the project's declared constraints (`DESCRIPTION` ranges, lockfile pins, transitive requirements); guess purely from code usage and the date/R bounds */
 	readonly clean?:         boolean;
+	/** exclude these evidence sources from consideration entirely (repl: `--disabled` followed by their one-letter codes, e.g. `--disabled ds` for declared+signature) */
+	readonly disabled?:      readonly ConstraintSource[];
 	/** also explode the guessed space into concrete per-dependency version assignments (see {@link GuessExplodeOptions}) */
 	readonly explode?:       GuessExplodeOptions;
 }
@@ -119,7 +121,7 @@ export interface GuessDepVersionsQueryResult extends BaseQueryResult {
 	readonly message?:              string;
 }
 
-/** parse a repl line: `[(clean[:<=YYYY])] [pkg ...] [--date YYYY.MM.DD] [--max N] [--iterations N] [--explode [--oldest] [--limit N] [--prefer pkg=ver ...]]` */
+/** parse a repl line: `[(clean[:<=YYYY])] [pkg ...] [--date YYYY.MM.DD] [--max N] [--iterations N] [--disabled <letters>] [--explode [--oldest] [--limit N] [--prefer pkg=ver ...]]` */
 function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'guess-dep-versions'> {
 	const packages: string[] = [];
 	const codeParts: string[] = [];
@@ -131,6 +133,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 	let order: 'newest' | 'oldest' | undefined;
 	let limit: number | undefined;
 	const prefer: Record<string, string> = {};
+	const disabled = new Set<GuessEvidenceSource>();
 	// an optional parenthesised clause `(clean)`, `(<=2025)`, or `(clean:<=2025)`: `clean` drops declared constraints, a (`<=`-prefixed) date caps the window
 	const tokens = [...line];
 	const open = tokens.findIndex(t => t.startsWith('('));
@@ -172,6 +175,13 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 			}
 		} else if(tok === '--only') {
 			packages.push(...(tokens[++i] ?? '').split(',').map(s => s.trim()).filter(s => s.length > 0));
+		} else if(tok === '--disabled') {
+			for(const ch of tokens[++i] ?? '') {
+				const source = letterToSource[ch];
+				if(source) {
+					disabled.add(source);
+				}
+			}
 		} else if(!tok.startsWith('--')) {
 			// every bare token is the code to analyse (a `file://`/`watch://` target, a bare path -- auto-prepended to
 			// `file://` by the repl -- or inline R code); package filters are the explicit `--only` flag, so nothing is guessed
@@ -194,6 +204,7 @@ function guessDepVersionsLineParser(_output: ReplOutput, line: readonly string[]
 			...(maxCandidates !== undefined && !Number.isNaN(maxCandidates) ? { maxCandidates } : {}),
 			...(maxIterations !== undefined && !Number.isNaN(maxIterations) ? { maxIterations } : {}),
 			...(clean ? { clean } : {}),
+			...(disabled.size > 0 ? { disabled: [...disabled] } : {}),
 			...explodeOpts
 		}]
 	};
@@ -230,6 +241,11 @@ const evidenceLetter: Record<GuessEvidenceSource, string> = {
 	available:  '#',
 	indirect:   'i'
 };
+
+/** inverse of {@link evidenceLetter}, decoding a `--disabled` flag's letters back to sources */
+const letterToSource: Record<string, GuessEvidenceSource> = Object.fromEntries(
+	(Object.entries(evidenceLetter) as [GuessEvidenceSource, string][]).map(([source, letter]) => [letter, source])
+);
 
 /** the tightest bound among a function's signature constraints for the given operator: highest `>=` or lowest `<=` */
 function tightestBound(evs: readonly DerivedConstraint[], op: '>=' | '<='): string | undefined {
@@ -414,7 +430,7 @@ export const GuessDepVersionsQueryDefinition = {
 		return true;
 	},
 	fromLine: guessDepVersionsLineParser,
-	syntax:   '@guess-dep-versions [<pkg> ...] [(clean | <=YYYY.MM.DD)] [--date YYYY.MM.DD] [--max <n>] [--iterations <n>] [--explode [--oldest] [--limit <n>] [--prefer <pkg>=<ver>]] <code | file://path>',
+	syntax:   '@guess-dep-versions [<pkg> ...] [(clean | <=YYYY.MM.DD)] [--date YYYY.MM.DD] [--max <n>] [--iterations <n>] [--disabled <letters>] [--explode [--oldest] [--limit <n>] [--prefer <pkg>=<ver>]] <code | file://path>',
 	schema:   Joi.object({
 		type:          Joi.string().valid('guess-dep-versions').required().description('The type of the query.'),
 		packages:      Joi.array().items(Joi.string()).optional().description('Restrict the guess to these packages; omit to guess for every declared and used dependency.'),
@@ -422,7 +438,9 @@ export const GuessDepVersionsQueryDefinition = {
 		maxCandidates: Joi.number().integer().min(0).optional().description('Cap the number of candidate versions listed per dependency.'),
 		maxIterations: Joi.number().integer().min(0).optional().description('Bound both fixpoint loops (mutual transitive refinement and arc consistency).'),
 		clean:         Joi.boolean().optional().description('Ignore the project declared constraints (DESCRIPTION/lockfile/transitive); guess purely from code usage and the date/R bounds.'),
-		explode:       Joi.object({
+		disabled:      Joi.array().items(Joi.string().valid('declared', 'transitive', 'signature', 'date', 'base-r', 'available', 'indirect')).optional()
+			.description('Exclude these evidence sources from consideration entirely (repl: --disabled followed by their one-letter codes, e.g. --disabled ds for declared+signature).'),
+		explode: Joi.object({
 			order:  Joi.string().valid('newest', 'oldest').optional().description('Iterate each dependency newest-first (default) or oldest-first.'),
 			prefer: Joi.object().pattern(Joi.string(), Joi.string()).optional().description('A version to prefer per dependency when it survives the constraints.'),
 			limit:  Joi.number().integer().min(0).optional().description('Cap the number of concrete assignments produced.')

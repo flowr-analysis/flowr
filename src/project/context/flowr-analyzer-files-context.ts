@@ -19,6 +19,7 @@ import { log } from '../../util/log';
 import fs from 'fs';
 import path from 'path';
 import { commonDirectory, relativeTo } from '../../util/files';
+import { globMatcher } from '../../util/glob';
 import type { FlowrNewsFile } from '../plugins/file-plugins/files/flowr-news-file';
 import type { FlowrNamespaceFile } from '../plugins/file-plugins/files/flowr-namespace-file';
 import type { FlowrRProjectFile } from '../plugins/file-plugins/files/flowr-rproject-file';
@@ -176,6 +177,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	/** cached {@link projectKind}, invalidated whenever the files change (added or reset) */
 	private projectKindCache: ProjectKind | undefined = undefined;
 	private requestedRoots:   string[] = [];
+	/** directories already scanned by {@link discoverImplicitSources}, so a sibling implicit source is not re-triggered for every file added from it */
+	private implicitSourceDirs = new Set<string>();
 	/** cached {@link root}, fixed on first use as the ids built from it have to stay stable */
 	private rootCache:        string | undefined = undefined;
 	private rootResolved      = false;
@@ -234,7 +237,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	}
 
 	public projectKind(): ProjectKind {
-		return this.projectKindCache ??= this.classifyProject();
+		return this.projectKindCache ??= this.ctx.config.project.useProjectType ?? this.classifyProject();
 	}
 
 	private classifyProject(): ProjectKind {
@@ -328,6 +331,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		if(request.request !== 'project') {
 			if(request.request === 'file') {
 				this.requestedRoots.push(path.dirname(request.content));
+				this.discoverImplicitSources(request.content);
 			}
 			this.loadingOrder.addRequest(request);
 			this.projectKindCache = undefined;
@@ -340,6 +344,41 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
 		const expandedRequests = active.flatMap(p => p.processor(this.ctx, request));
 		for(const req of expandedRequests) {
+			if(isParseRequest(req)) {
+				this.addRequest(req);
+			} else {
+				this.addFile(req, req.roles);
+			}
+		}
+	}
+
+	/**
+	 * A single-file request otherwise skips project discovery entirely, so a sibling `project.implicitSources`
+	 * entry (e.g. a shiny app's `s.R` next to the analyzed `t.R`) would never be found. If `implicitSources` is
+	 * configured, scan `fileContent`'s directory once and add whatever matches.
+	 */
+	private discoverImplicitSources(fileContent: string): void {
+		const implicit = this.ctx.config.project.implicitSources;
+		if(!implicit || implicit.length === 0) {
+			return;
+		}
+		const dir = path.dirname(fileContent);
+		if(this.implicitSourceDirs.has(dir)) {
+			return;
+		}
+		this.implicitSourceDirs.add(dir);
+		if(!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) {
+			return;
+		}
+		const matchers = implicit.map(entry => globMatcher(entry));
+		const active = this.discoveryPlugins.length > 0
+			? this.discoveryPlugins
+			: [FlowrAnalyzerProjectDiscoveryPlugin.defaultPlugin()];
+		for(const req of active.flatMap(p => p.processor(this.ctx, { request: 'project', content: dir }))) {
+			const filePath = isParseRequest(req) ? (req.request === 'file' ? req.content : undefined) : req.path();
+			if(filePath === undefined || filePath === fileContent || !matchers.some(m => m(filePath))) {
+				continue;
+			}
 			if(isParseRequest(req)) {
 				this.addRequest(req);
 			} else {

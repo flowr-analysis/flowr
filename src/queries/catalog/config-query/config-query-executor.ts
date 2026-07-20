@@ -8,6 +8,10 @@ import { isNotUndefined } from '../../../util/assert';
  * Executes the given configuration queries using the provided analyzer.
  */
 export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
+	if(queries.some(q => q.reset)) {
+		analyzer.resetConfig();
+	}
+
 	const updates = queries.map(q => q.update).filter(isNotUndefined);
 	if(updates.length > 1) {
 		log.warn('Config query usually expects only up to one update, but got', updates.length);

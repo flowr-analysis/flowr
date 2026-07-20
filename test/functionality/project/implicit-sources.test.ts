@@ -1,4 +1,7 @@
-import { assert, describe, test, vi } from 'vitest';
+import { afterAll, assert, describe, test, vi } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
 import { FlowrConfig } from '../../../src/config';
 import { PluginType } from '../../../src/project/plugins/flowr-analyzer-plugin';
@@ -104,6 +107,47 @@ describe('Implicit sources', () => {
 	test('a matching or an unset list warns about nothing', () => {
 		assert.isEmpty(warningsFor(withImplicit('global.R', 'app.R'), '/p/app.R', '/p/global.R'));
 		assert.isEmpty(warningsFor(withImplicit(), 'b.R', 'a.R'));
+	});
+
+	const roots: string[] = [];
+	afterAll(() => {
+		for(const r of roots) {
+			fs.rmSync(r, { recursive: true, force: true });
+		}
+	});
+
+	/** Materializes `files` (path to content) below a fresh temporary root. */
+	function project(files: Record<string, string>): string {
+		const root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-implicit-'));
+		roots.push(root);
+		for(const [file, content] of Object.entries(files)) {
+			fs.writeFileSync(path.join(root, file), content);
+		}
+		return root;
+	}
+
+	test('a single-file request discovers a sibling implicit source on disk', () => {
+		const root = project({ 't.R': 'y <- 42\nprint(x + y)\n', 's.R': 'x <- 21\n' });
+		const ctx = new FlowrAnalyzerContext(withImplicit('s.R'), new Map([
+			[PluginType.LoadingOrder, [new FlowrAnalyzerLoadingOrderImplicitSourcesPlugin()]]
+		]));
+		ctx.addRequests([{ request: 'file', content: path.join(root, 't.R') }]);
+		assert.deepStrictEqual(
+			ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<text>'),
+			['t.R', 's.R']
+		);
+	});
+
+	test('without implicitSources configured, a single-file request stays single', () => {
+		const root = project({ 't.R': 'y <- 42\nprint(x + y)\n', 's.R': 'x <- 21\n' });
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map([
+			[PluginType.LoadingOrder, [new FlowrAnalyzerLoadingOrderImplicitSourcesPlugin()]]
+		]));
+		ctx.addRequests([{ request: 'file', content: path.join(root, 't.R') }]);
+		assert.deepStrictEqual(
+			ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<text>'),
+			['t.R']
+		);
 	});
 
 	test('an explicit Collate order wins, as implicit sources are only a guess', () => {

@@ -17,7 +17,9 @@ import { controlflowBbCommand, controlflowBbStarCommand, controlflowCommand, con
 import { type OutputFormatter, Colors, FontStyles, bold, color, italic } from '../../../util/text/ansi';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { guard } from '../../../util/assert';
+import type { OptionDefinition } from 'command-line-usage';
 import { scripts } from '../../common/scripts-info';
+import type { FlowrConfig } from '../../../config';
 import { queryCommand, queryStarCommand } from './repl-query';
 import { signatureCommand } from './repl-signature';
 import { flowrVersion } from '../../../util/version';
@@ -178,6 +180,19 @@ function hasModule(path: string): boolean {
 
 
 /**
+ * The args a master script is forked with: `remainingLine` tokenized, plus `--config-json <analyzer.flowrConfig>`
+ * so it sees the repl's current (possibly `:query \@config`-edited) config -- unless the script does not support
+ * that option, or the user already named a config themselves.
+ */
+export function masterScriptArgs(remainingLine: string, config: FlowrConfig, scriptOptions: readonly OptionDefinition[]): string[] {
+	const args = splitAtEscapeSensitive(remainingLine);
+	if(scriptOptions.some(o => o.name === 'config-json') && !args.includes('--config-json') && !args.includes('--config-file')) {
+		args.push('--config-json', JSON.stringify(config));
+	}
+	return args;
+}
+
+/**
  * Retrieve all REPL commands (including those generated from master scripts)
  */
 export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand> {
@@ -185,7 +200,7 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 		return _commands;
 	}
 	commandsInitialized = true;
-	for(const [script, { target, description, type }] of Object.entries(scripts)) {
+	for(const [script, { target, description, type, options }] of Object.entries(scripts)) {
 		if(type === 'master script') {
 			(_commands as Record<string, ReplCommand | ReplCodeCommand>)[script] = {
 				description,
@@ -193,7 +208,7 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 				script:        true,
 				usageExample:  `:${script} --help`,
 				isCodeCommand: false,
-				fn:            async({ output, remainingLine }) => {
+				fn:            async({ output, remainingLine, analyzer }) => {
 					// check if the target *module* exists in the current directory, else try two dirs up, otherwise, fail with a message
 					let path = `${__dirname}/${target}`;
 					if(!hasModule(path)) {
@@ -205,7 +220,7 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 					}
 					await waitOnScript(
 						path,
-						splitAtEscapeSensitive(remainingLine),
+						masterScriptArgs(remainingLine, analyzer.flowrConfig, options),
 						stdio => stdioCaptureProcessor(stdio, msg => output.stdout(msg), msg => output.stderr(msg))
 					);
 				}

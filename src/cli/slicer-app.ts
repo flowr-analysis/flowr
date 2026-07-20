@@ -30,6 +30,8 @@ export interface SlicerCliOptions {
 	'inline-full':       boolean
 	'inline-banner':     boolean
 	'include-callees':   boolean
+	'config-file':       string | undefined
+	'config-json':       string | undefined
 }
 
 
@@ -51,7 +53,8 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
-	const config = FlowrConfig.fromFile();
+	const config = (options['config-json'] ? FlowrConfig.parse(options['config-json']) : undefined)
+		?? FlowrConfig.fromFile(options['config-file']);
 
 	await slicer.init(
 		options['input-is-text']

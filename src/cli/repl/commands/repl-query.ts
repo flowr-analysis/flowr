@@ -188,12 +188,21 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	};
 }
 
+const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
+
 /**
  * Function for splitting the input line.
  * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
+ * `@config` is passed its rest-of-line untouched, since its own `fromLine` reads a single raw token and the
+ * generic tokenizer would otherwise strip quotes out of a `+path=["a"]` value.
  * @param line - The input line
  */
 function parseArgs(line: string) {
+	const configMatch = ConfigLineRegex.exec(line);
+	if(configMatch) {
+		const [, name, rest] = configMatch;
+		return { rCode: undefined, remaining: rest === undefined ? [name] : [name, rest] };
+	}
 	const args = splitAtEscapeSensitive(line);
 	return {
 		rCode:     undefined,

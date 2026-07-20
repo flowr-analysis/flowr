@@ -1098,7 +1098,7 @@ registerQueryDocumentation('guess-dep-versions', {
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'library(dplyr)\nmutate(mtcars, across(everything(), round))';
 		return `
-A script rarely says which version of a package it needs&mdash;but it shows you. If it passes an argument that a function only
+A script rarely says which version of a package it needs, but it shows you. If it passes an argument that a function only
 gained in some release, it cannot run on anything older. This query turns that observation into a concrete version range per dependency.
 
 It combines two sources of evidence:
@@ -1113,8 +1113,8 @@ Two things can raise a lower bound: calling a function that did not exist yet, o
 function only gained later. Consider a script calling \`dplyr::across\`:
 ${codeBlock('r', exampleCode)}
 
-\`across\` was only introduced in dplyr 1.0.0, so the script cannot run on anything older&mdash;and the guess says so,
-naming the function that produced the bound:
+\`across\` was only introduced in dplyr 1.0.0, so the script cannot run on anything older. The result names the function
+that produced the bound:
 
 ${await showQuery(shell, exampleCode, [{ type: 'guess-dep-versions' }], { showCode: false, collapseResult: true, ctx })}
 
@@ -1123,6 +1123,7 @@ The guess can be narrowed further:
 * \`packages\` restricts it to the dependencies you care about,
 * \`date\` caps every guess to releases available at that point in time (\`YYYY.MM.DD\`, also \`YYYY\` or \`YYYY.MM\`),
 * \`clean\` ignores the declared constraints entirely and guesses purely from usage,
+* \`disabled\` excludes individual evidence sources by name (repl: \`--disabled\` followed by their one-letter codes shown in the legend below, e.g. \`--disabled ds\` drops \`declared\` and \`signature\`),
 * \`maxCandidates\` caps how many candidate versions are listed per dependency,
 * \`maxIterations\` bounds the two fixpoint loops (packages constrain each other, so the guess is iterated until it settles), and
 * \`explode\` additionally enumerates concrete version _combinations_ (\`order\`, \`prefer\`, and \`limit\` control which and how many).

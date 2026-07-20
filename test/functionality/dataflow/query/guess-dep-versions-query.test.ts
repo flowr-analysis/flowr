@@ -3,7 +3,8 @@ import { withTreeSitter } from '../../_helper/shell';
 import { cleanupSigTmpDirs } from '../../_helper/sigdb';
 import { boundsFrom, buildGuessAnalyzer, guessDep, guessed, runGuess, type GuessScenario } from '../../_helper/guess-dep-versions';
 import { FlowrConfig } from '../../../../src/config';
-import { executeQueries } from '../../../../src/queries/query';
+import { executeQueries, SupportedQueries } from '../../../../src/queries/query';
+import { discardingReplOutput } from '../../_helper/repl';
 import { explodeDependencyVersions } from '../../../../src/project/dependency-version-space';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
@@ -434,6 +435,40 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(declared?.candidateCount).toBe(1);                                            // declared `<= 1.0.0` restricts
 		expect(cleaned?.candidateCount).toBe(2);                                             // clean ignores it
 		expect((cleaned?.evidence ?? []).some(e => e.source === 'declared')).toBe(false);
+	});
+
+	test('disabled excludes individual evidence sources independently, unlike clean which bundles declared+transitive', async() => {
+		const scenario = {
+			code:     'library(dplyr)\nfilter(x, .by = grp)',
+			declared: { dplyr: '<= 1.0.5' },
+			packages: { dplyr: { versions: {
+				'1.0.0': { date: '2020-01-01', fns: { filter: ['.data'] } },
+				'1.1.0': { date: '2021-01-01', fns: { filter: ['.data', '.by'] } }
+			} } }
+		} as const;
+		const both = await guessDep(ts, scenario, 'dplyr');
+		expect(both?.candidateCount).toBe(0);                                                // declared <=1.0.5 excludes the version the signature requires
+
+		const noDeclared = await guessDep(ts, { ...scenario, query: { disabled: ['declared'] } }, 'dplyr');
+		expect(noDeclared?.minVersion).toBe('1.1.0');
+		expect((noDeclared?.evidence ?? []).some(e => e.source === 'declared')).toBe(false);
+		expect((noDeclared?.evidence ?? []).some(e => e.source === 'signature')).toBe(true);
+
+		const noSignature = await guessDep(ts, { ...scenario, query: { disabled: ['signature'] } }, 'dplyr');
+		expect(noSignature?.minVersion).toBe('1.0.0');
+		expect((noSignature?.evidence ?? []).some(e => e.source === 'signature')).toBe(false);
+		expect((noSignature?.evidence ?? []).some(e => e.source === 'declared')).toBe(true);
+
+		const disableBoth = await guessDep(ts, { ...scenario, query: { disabled: ['declared', 'signature'] } }, 'dplyr');
+		expect(disableBoth?.candidateCount).toBe(2);
+		expect((disableBoth?.evidence ?? []).some(e => e.source === 'declared' || e.source === 'signature')).toBe(false);
+	});
+
+	test('--disabled decodes evidence letters to a disabled list', () => {
+		const parser = SupportedQueries['guess-dep-versions'].fromLine;
+		const parsed = parser(discardingReplOutput, ['--disabled', 'ds', 'library(x)'], FlowrConfig.default());
+		const query = Array.isArray(parsed.query) ? parsed.query[0] : parsed.query;
+		expect([...(query?.disabled ?? [])].sort()).toEqual(['declared', 'signature']);
 	});
 
 	test('contradictory declared constraints are reported as unsatisfiable', async() => {

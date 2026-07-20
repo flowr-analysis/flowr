@@ -180,6 +180,13 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 		}
 	}
 
+	/** Discards every {@link updateConfig} override made so far, reverting {@link config} back to {@link baseConfig} (specialized for the project kind). */
+	public resetConfig(): void {
+		this.runtimeOverrides = undefined;
+		this._effective = undefined;
+		this._effectiveOf = undefined;
+	}
+
 	/** The project kind the effective {@link config} is specialized for, plus the overrides it applies, or `undefined` when no specialization is in effect. */
 	public configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined {
 		if(this.baseConfig.specializeConfig === undefined || this._classifying) {

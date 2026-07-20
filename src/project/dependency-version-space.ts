@@ -518,27 +518,35 @@ export function versionMeetsPartners(src: PackageSignatureSource, pkg: string, v
 	return true;
 }
 
+/** an empty set, shared so callers that do not disable anything need not allocate one */
+export const NoDisabledSources: ReadonlySet<ConstraintSource> = new Set();
+
 /**
  * Filter a version timeline by the declared range, transitive constraints, base-R version bound, and date cutoff,
  * emitting each constraint to `observe` (when given) as it is applied -- so the filtering and its explanation cannot
- * drift apart.
+ * drift apart. A source in `disabled` is skipped entirely: neither filtered on nor reported as evidence.
  */
-function applyConstraints(timeline: readonly TimelineEntry[], name: string, declaredRange: Range | undefined, declaredConstraints: readonly string[], transitive: readonly TransitiveConstraint[], base: boolean, rVersion: string | undefined, cutoff: Date | undefined, observe?: ConstraintObserver): TimelineEntry[] {
-	for(const c of declaredConstraints) {
-		observe?.({ source: 'declared', origin: 'project metadata', detail: `declared as ${c}`, bound: c });
+function applyConstraints(timeline: readonly TimelineEntry[], name: string, declaredRange: Range | undefined, declaredConstraints: readonly string[], transitive: readonly TransitiveConstraint[], base: boolean, rVersion: string | undefined, cutoff: Date | undefined, observe?: ConstraintObserver, disabled: ReadonlySet<ConstraintSource> = NoDisabledSources): TimelineEntry[] {
+	let t = [...timeline];
+	if(!disabled.has('declared')) {
+		for(const c of declaredConstraints) {
+			observe?.({ source: 'declared', origin: 'project metadata', detail: `declared as ${c}`, bound: c });
+		}
+		t = declaredRange ? t.filter(e => RRange.satisfies(e.ver, declaredRange)) : t;
 	}
-	let t = declaredRange ? timeline.filter(e => RRange.satisfies(e.ver, declaredRange)) : [...timeline];
-	for(const c of transitive) {
-		observe?.({ source: 'transitive', origin: c.from, detail: `${c.from} requires ${name} ${c.range.raw}`, bound: c.range.raw });
-		t = t.filter(e => RRange.satisfies(e.ver, c.range));
+	if(!disabled.has('transitive')) {
+		for(const c of transitive) {
+			observe?.({ source: 'transitive', origin: c.from, detail: `${c.from} requires ${name} ${c.range.raw}`, bound: c.range.raw });
+			t = t.filter(e => RRange.satisfies(e.ver, c.range));
+		}
 	}
 	// a base package's version *is* the R version, so it is bounded by the assumed/declared R (only when that is known)
-	const rv = base && rVersion ? RVersion.parse(rVersion) : undefined;
+	const rv = !disabled.has('base-r') && base && rVersion ? RVersion.parse(rVersion) : undefined;
 	if(rv) {
 		observe?.({ source: 'base-r', origin: `R ${rVersion}`, detail: `base package bounded by R ${rVersion}`, bound: `<=${rVersion}` });
 		t = t.filter(e => RVersion.compare(e.ver, rv.str) <= 0);
 	}
-	if(cutoff) {
+	if(cutoff && !disabled.has('date')) {
 		observe?.({ source: 'date', origin: isoDay(cutoff), detail: `only releases up to ${isoDay(cutoff)}`, bound: `<=${isoDay(cutoff)}` });
 		// base R is stored undated, so fall back to its R release date; a dated release must predate the cutoff, and an
 		// undated one is dropped -- except base R older than the release table (kept, as it predates any real cutoff)
@@ -554,13 +562,12 @@ function applyConstraints(timeline: readonly TimelineEntry[], name: string, decl
  * Apply every constraint (declared, transitive, base-R, date, then signature usage) to a package's timeline. When an
  * `observe` callback is given, emits the provenance of each constraint (including the signature lower bounds).
  */
-export function survivingEntries(name: string, src: PackageSignatureSource | undefined, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: PackageUsage | undefined, transitive: readonly TransitiveConstraint[], cutoff: Date | undefined, rVersion: string | undefined, observe?: ConstraintObserver, ignoreDeclared = false, packageKey: string = name): SurvivingEntries {
+export function survivingEntries(name: string, src: PackageSignatureSource | undefined, deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: PackageUsage | undefined, transitive: readonly TransitiveConstraint[], cutoff: Date | undefined, rVersion: string | undefined, observe?: ConstraintObserver, disabled: ReadonlySet<ConstraintSource> = NoDisabledSources, packageKey: string = name): SurvivingEntries {
 	// packageKey: sigdb package (R reuses base, others use themselves)
 	const getFn = makeFnResolver(src, packageKey);
-	// clean mode ignores declared/transitive constraints, guessing purely from usage and date/R bounds
-	const declaredRange = ignoreDeclared ? undefined : deps.inferredVersion(name);
-	const declaredConstraints = ignoreDeclared ? [] : (deps.getDependency(name)?.versionConstraints.map(c => c.raw) ?? []);
-	const effectiveTransitive = ignoreDeclared ? [] : transitive;
+	const declaredRange = disabled.has('declared') ? undefined : deps.inferredVersion(name);
+	const declaredConstraints = disabled.has('declared') ? [] : (deps.getDependency(name)?.versionConstraints.map(c => c.raw) ?? []);
+	const effectiveTransitive = disabled.has('transitive') ? [] : transitive;
 	// contradiction is a constraint property, not an empty database
 	const unsatisfiable = constraintsContradict(declaredConstraints, declaredRange, effectiveTransitive);
 	if(!src) {
@@ -570,12 +577,12 @@ export function survivingEntries(name: string, src: PackageSignatureSource | und
 	const timeline = versionTimeline(src, packageKey);
 	const total = timeline.length;
 	// emit database coverage envelope as outer bounds
-	if(observe && timeline.length > 0) {
+	if(observe && timeline.length > 0 && !disabled.has('available')) {
 		observe({ source: 'available', origin: 'signature database', detail: `data available from ${timeline[0].ver}`, bound: `>=${timeline[0].ver}` });
 		observe({ source: 'available', origin: 'signature database', detail: `data available up to ${timeline[timeline.length - 1].ver}`, bound: `<=${timeline[timeline.length - 1].ver}` });
 	}
-	const preSignature = applyConstraints(timeline, name, declaredRange, declaredConstraints, effectiveTransitive, base, rVersion, cutoff, observe);
-	if(!usage) {
+	const preSignature = applyConstraints(timeline, name, declaredRange, declaredConstraints, effectiveTransitive, base, rVersion, cutoff, observe, disabled);
+	if(!usage || disabled.has('signature')) {
 		return { survivors: preSignature, preSignature, getFn, declaredRange, declaredConstraints, base, unsatisfiable, total };
 	}
 	// exclude base primitives from base packages (captured inconsistently, so absence is data gap not removal)
@@ -677,7 +684,7 @@ async function orderedCandidatesFor(analyzer: ReadonlyFlowrAnalysisProvider, opt
 	for(const name of targets.sort()) {
 		const packageKey = timelinePackageKey(name, sources);
 		const src = sourceForPackage(sources, packageKey);
-		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, undefined, false, packageKey);
+		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, undefined, NoDisabledSources, packageKey);
 		const oc = orderedCandidatesOf(src, name, surviving, options.prefer?.[name], order);
 		if(oc) {
 			out.push(oc);

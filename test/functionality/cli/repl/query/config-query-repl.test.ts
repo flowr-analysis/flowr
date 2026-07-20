@@ -3,6 +3,7 @@ import { SupportedQueries } from '../../../../../src/queries/query';
 import { assertReplCompletions, assertReplParser, discardingReplOutput } from '../../../_helper/repl';
 import { FlowrConfig } from '../../../../../src/config';
 import { replCompleter } from '../../../../../src/cli/repl/core';
+import { queryCommand } from '../../../../../src/cli/repl/commands/repl-query';
 
 describe('Config Query REPL Parser', () => {
 	const parser = SupportedQueries['config'].fromLine;
@@ -51,6 +52,9 @@ describe('Config Query REPL Parser', () => {
 	});
 
 	rejects('a glob matching nothing is reported', ['**.doesNotExist'], 'No config key matches');
+	test('a glob offers a schema-known but unset key, shallowest first', () => {
+		assert.deepStrictEqual(inspectsOf('**.implicitSources').map(p => p.join('.')), ['project.implicitSources']);
+	});
 	rejects('setting rejects a glob, it is inspection only', ['+solver.*=true'], 'Unknown config key');
 	assertReplParser({ parser,
 		label:         'valid update',
@@ -89,6 +93,32 @@ describe('Config Query REPL Parser', () => {
 	rejects('rejects an unknown plain path', ['nope'], 'Unknown config key');
 	// a value that does not fit the schema type is rejected (boolean field, non-boolean value)
 	rejects('rejects a value of the wrong type', ['+solver.sigdb.enabled=x'], 'expects a boolean');
+	assertReplParser({ parser,
+		label:         'a double-quoted array value parses as JSON',
+		line:          ['+project.implicitSources=["s.R"]'],
+		expectedParse: { query: [{ type: 'config', update: { project: { implicitSources: ['s.R'] } } }] },
+	});
+	assertReplParser({ parser,
+		label:         'a single-quoted array value is accepted too',
+		line:          ["+project.implicitSources=['s.R']"],
+		expectedParse: { query: [{ type: 'config', update: { project: { implicitSources: ['s.R'] } } }] },
+	});
+	assertReplParser({ parser,
+		label:         '+reset produces a reset query',
+		line:          ['+reset'],
+		expectedParse: { query: [{ type: 'config', reset: true }] },
+	});
+});
+
+describe('Config Query REPL argument parsing', () => {
+	test('@config keeps a JSON array value untouched, quotes included', () => {
+		const { remaining } = queryCommand.argsParser('@config +project.implicitSources=["s.R"]');
+		assert.deepStrictEqual(remaining, ['@config', '+project.implicitSources=["s.R"]']);
+	});
+	test('@config with no arguments still parses', () => {
+		const { remaining } = queryCommand.argsParser('@config');
+		assert.deepStrictEqual(remaining, ['@config']);
+	});
 });
 
 describe('Config Query REPL Completions', () => {

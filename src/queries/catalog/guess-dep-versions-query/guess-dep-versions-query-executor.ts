@@ -23,15 +23,25 @@ import {
 	DefaultFixpointIterations,
 	enforceArcConsistency,
 	iterateToFixpoint,
+	NoDisabledSources,
 	orderedCandidatesOf,
 	survivingEntries,
 	timelinePackageKey,
+	type ConstraintSource,
 	type CountFactor,
 	type TransitiveConstraint,
 	type DerivedConstraint,
 	type OrderedCandidates,
 	type SurvivingEntries
 } from '../../../project/dependency-version-space';
+
+/** the sources `query` disables: `clean` is sugar for disabling `declared`+`transitive`, `disabled` adds any others by name */
+function disabledSources(query: GuessDepVersionsQuery): ReadonlySet<ConstraintSource> {
+	if(!query.clean && !query.disabled?.length) {
+		return NoDisabledSources;
+	}
+	return new Set([...(query.clean ? (['declared', 'transitive'] as const) : []), ...(query.disabled ?? [])]);
+}
 
 /** collects and deduplicates provenance-carrying constraints */
 class EvidenceCollector {
@@ -59,6 +69,8 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 	let maxCandidates: number | undefined;
 	let maxIterations: number | undefined;
 	let explode: GuessDepVersionsQuery['explode'];
+	const disabled = new Set<ConstraintSource>();
+	let anyClean = false;
 	for(const q of queries) {
 		if(q.packages) {
 			for(const p of q.packages) {
@@ -82,6 +94,10 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 			maxIterations = maxIterations === undefined ? q.maxIterations : Math.max(maxIterations, q.maxIterations);
 		}
 		explode ??= q.explode;
+		anyClean ||= q.clean === true;
+		for(const s of q.disabled ?? []) {
+			disabled.add(s);
+		}
 	}
 	// keep the tightest date, or any malformed date to report it
 	const date = earliestDate ?? anyDate;
@@ -91,7 +107,9 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 		...(date ? { date } : {}),
 		...(maxCandidates !== undefined ? { maxCandidates } : {}),
 		...(maxIterations !== undefined ? { maxIterations } : {}),
-		...(explode ? { explode } : {})
+		...(explode ? { explode } : {}),
+		...(anyClean ? { clean: true } : {}),
+		...(disabled.size > 0 ? { disabled: [...disabled] } : {})
 	};
 }
 
@@ -190,12 +208,14 @@ export async function executeGuessDepVersionsQuery(
 		return entry;
 	};
 
+	const disabled = disabledSources(query);
+
 	// the guessed lower bound of every target under a set of transitive constraints (drives the mutual-constraint refinement)
 	const guessLowerBounds = (trans: Map<string, TransitiveConstraint[]>): Map<string, string> => {
 		const out = new Map<string, string>();
 		for(const name of sorted) {
 			const { key, src } = sourceFor(name);
-			const s = survivingEntries(name, src, deps, usage.get(name), trans.get(name) ?? [], cutoff, rVersion, undefined, query.clean, key);
+			const s = survivingEntries(name, src, deps, usage.get(name), trans.get(name) ?? [], cutoff, rVersion, undefined, disabled, key);
 			if(s.survivors.length > 0) {
 				out.set(name, s.survivors[0].ver);
 			}
@@ -205,7 +225,7 @@ export async function executeGuessDepVersionsQuery(
 
 	const maxIterations = query.maxIterations ?? DefaultFixpointIterations;
 	let transitive = collectTransitiveConstraints(deps, sources);
-	if(!query.clean) {
+	if(!disabled.has('transitive')) {
 		let prev = '';
 		iterateToFixpoint(maxIterations, () => {
 			const pass = guessLowerBounds(transitive);
@@ -225,12 +245,12 @@ export async function executeGuessDepVersionsQuery(
 	const guessedAll = sorted.map(name => {
 		const { key, src } = sourceFor(name);
 		const evidence = new EvidenceCollector();
-		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, evidence.add, query.clean, key);
+		const surviving = survivingEntries(name, src, deps, usage.get(name), transitive.get(name) ?? [], cutoff, rVersion, evidence.add, disabled, key);
 		return { name, src, key, evidence, surviving };
 	});
 
 	const arcEntries = guessedAll.map(g => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors }));
-	const blockers = query.clean ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries, maxIterations);
+	const blockers = query.clean || disabled.has('indirect') ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries, maxIterations);
 	guessedAll.forEach((g, i) => {
 		g.surviving = { ...g.surviving, survivors: arcEntries[i].survivors };
 		const max = g.surviving.survivors.at(-1)?.ver;

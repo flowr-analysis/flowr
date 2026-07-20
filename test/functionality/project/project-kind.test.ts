@@ -65,4 +65,13 @@ describe('Project kind', () => {
 		ctx.files.addFile(new FlowrInlineTextFile('app.R', 'library(shiny)\nshinyApp(1, 2)'));
 		assert.strictEqual(ctx.projectKind(), ProjectKind.ShinyApp, 'adding a file must invalidate the cached kind');
 	});
+
+	test('project.useProjectType overrides what would otherwise be inferred', () => {
+		const config = FlowrConfig.amend(FlowrConfig.default(), c => {
+			c.project.useProjectType = ProjectKind.ShinyApp;
+		});
+		const ctx = new FlowrAnalyzerContext(config, new Map());
+		ctx.addFile(new FlowrInlineTextFile('helper.R', 'x <- 1'));
+		assert.strictEqual(ctx.projectKind(), ProjectKind.ShinyApp, 'the override wins even though nothing here looks like a shiny app');
+	});
 });

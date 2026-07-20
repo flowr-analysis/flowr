@@ -148,4 +148,15 @@ describe('The config of an analysis', () => {
 		}));
 		assert.strictEqual(ctx.config, ctx.config, 'the same kind resolves to the same config');
 	});
+
+	test('resetConfig discards runtime updates, reverting to the base (specialized) config', () => {
+		const ctx = shinyContext(specializing(ProjectKind.ShinyApp, c => {
+			c.ignoreLoadCalls = true;
+		}));
+		ctx.updateConfig({ ignoreSourceCalls: true });
+		assert.isTrue(ctx.config.ignoreSourceCalls);
+		ctx.resetConfig();
+		assert.isFalse(ctx.config.ignoreSourceCalls, 'the runtime update is gone');
+		assert.isTrue(ctx.config.ignoreLoadCalls, 'the kind specialization still applies');
+	});
 });

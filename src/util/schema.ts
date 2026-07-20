@@ -124,6 +124,19 @@ export function descriptionPathKeys(description: Joi.Description, path: readonly
 	return [...keys, ...valids.filter(v => !keys.includes(v))];
 }
 
+/** every settable path in a schema description, intermediate objects included */
+export function descriptionPaths(description: Joi.Description, path: readonly string[] = []): string[][] {
+	const result: string[][] = [];
+	for(const key of descriptionPathKeys(description, path)) {
+		const childPath = [...path, key];
+		result.push(childPath);
+		if(descriptionPathInfo(description, childPath).type === 'object') {
+			result.push(...descriptionPaths(description, childPath));
+		}
+	}
+	return result;
+}
+
 /**
  * Describes a Joi schema in a human-readable way.
  */

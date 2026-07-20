@@ -44,6 +44,10 @@ import {
 	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
 	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
 } from './project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
+import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-rprofile-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderRprofilePlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -58,6 +62,7 @@ export const BuiltInPlugins = [
 	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
+	['loading-order:rprofile', FlowrAnalyzerLoadingOrderRprofilePlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
@@ -74,6 +79,7 @@ export const BuiltInPlugins = [
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
+	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
 	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
 	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin]

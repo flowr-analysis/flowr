@@ -4,8 +4,9 @@ import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
-import { platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import path from 'path';
+import { RprofileFilePattern } from '../file-plugins/flowr-analyzer-rprofile-file-plugin';
 
 /**
  * This is the base class for all plugins that discover files in a project for analysis.
@@ -22,10 +23,9 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
-const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd|rnw)$/i;
-// matched against the posix path relative to the project root (see getAllFilesSync), so anchor it: a bare
-// `rv` would wrongly ignore `rvest` or `survey`. Only installed sources are dropped, so the manifests
-// and bootstrap scripts stay visible.
+// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
+const discoverRSourcesRegex = /(\.(r|rmd|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
+// matched against the posix path relative to the project root
 const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
@@ -76,6 +76,10 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 			const relativePath = path.relative(args.content, file);
 			if(this.supportedExtensions.test(relativePath) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(relativePath)) && !this.excludePathsRegex.test(platformDirname(relativePath))) {
 				requests.push({ content: file, request: 'file' });
+				if(RprofileFilePattern.test(platformBasename(relativePath))) {
+					// parse requests skip the file plugins, so emit a file too to have the profile tagged
+					requests.push(new FlowrTextFile(file));
+				}
 			} else {
 				requests.push(new FlowrTextFile(file));
 			}

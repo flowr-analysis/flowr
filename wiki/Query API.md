@@ -198,7 +198,7 @@ Valid item types:
                 - **roles** [optional] _Optional roles of the files to query. If not provided, all roles are considered._ (array)
                 Valid item types:
                     - (string)
-                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'license', 'virtual-env', 'manifest', 'source', 'other'
+                        Only allows: 'description', 'namespace', 'news', 'vignette', 'test', 'install', 'data', 'license', 'virtual-env', 'manifest', 'startup', 'source', 'other'
                 - **matchesPathRegex** [optional] _An optional regular expression to match the file paths against._ (string)
             - _The id map query retrieves the id map from the normalized AST._ (object)
                 - **type** [required] _The type of the query._ (string)
@@ -1776,6 +1776,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/inte
         "versions:session-info",
         "loading-order:description",
         "loading-order:implicit-sources",
+        "loading-order:rprofile",
         "meta:description",
         "meta:rproject",
         "file-roles:vignette",
@@ -1790,7 +1791,8 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/inte
         "file:rda",
         "file:license",
         "file:virtualenv",
-        "file:rproject"
+        "file:rproject",
+        "file:rprofile"
       ],
       "repl": {
         "quickStats": false,
@@ -6615,6 +6617,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/inte
       "license": 0,
       "virtual-env": 0,
       "manifest": 0,
+      "startup": 0,
       "source": 0,
       "other": 0
     },

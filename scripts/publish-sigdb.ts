@@ -40,20 +40,20 @@ function haveTool(cmd: string): boolean {
 }
 
 /** regenerate the committed link file (hashes match the upload) and return the downloadable shard paths */
-async function bundleAssets(): Promise<string[]> {
+async function bundleAssets(tag: string): Promise<string[]> {
 	if(!fs.existsSync(bundleDir)) {
 		throw new Error(`no sigdb bundle at ${bundleDir} -- generate it first (crawlr dump:sigs, then copy into src/data/sigdb)`);
 	}
-	const { downloadable } = await writeRemotePointer({ bundleDir, skipVerification: true });
+	// the pointer is written for the same tag we upload the assets to, so the two can never drift
+	const { downloadable } = await writeRemotePointer({ bundleDir, skipVerification: true, tag });
 	console.log(`regenerated sigdb.remote.json (${downloadable.length} shards) -- commit it so clients auto-sync`);
 	return downloadable.map((f: string) => path.join(bundleDir, f));
 }
 
-function publishRelease(version: string, assets: string[]): void {
+function publishRelease(tag: string, version: string, assets: string[]): void {
 	if(!haveTool('gh')) {
 		throw new Error('the GitHub CLI `gh` is required for --target=release (and you must be logged in)');
 	}
-	const tag = `sigdb-v${version}`;
 	const repoFlag = process.env.GH_REPO ? ['--repo', process.env.GH_REPO] : [];
 	console.log(`-> GitHub Release ${tag} (${assets.length} assets)`);
 	// create the release only if it does not exist yet, then upload/overwrite the assets (idempotent)
@@ -105,14 +105,16 @@ function publishGhcr(version: string): void {
 
 async function main(): Promise<void> {
 	const version = (JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) as { version: string }).version;
-	const assets = await bundleAssets();
+	// `--tag=` targets an existing sigdb release (e.g. to re-clobber the last one); default is this version's tag
+	const tag = [...args].find(a => a.startsWith('--tag='))?.slice('--tag='.length) ?? `sigdb-v${version}`;
+	const assets = await bundleAssets(tag);
 	const totalMb = (assets.reduce((n, f) => n + fs.statSync(f).size, 0) / 1e6).toFixed(1);
 	console.log(`flowr-sigdb publisher -- version ${version}, ${assets.length} shards (${totalMb} MB)${confirm ? '' : '  [DRY RUN: pass --confirm to publish]'}`);
 	console.log(assets.map(a => `   - ${path.basename(a)}`).join('\n'));
 
 	for(const t of targets) {
 		if(t === 'release') {
-			publishRelease(version, assets);
+			publishRelease(tag, version, assets);
 		} else if(t === 'ghcr') {
 			publishGhcr(version);
 		} else {

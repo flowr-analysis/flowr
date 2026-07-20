@@ -1,3 +1,4 @@
+import { rPath } from '../_helper/r-path';
 import { assert, describe, test } from 'vitest';
 import fs from 'fs';
 import os from 'os';
@@ -11,16 +12,18 @@ function nodeLabels(mermaid: string): string[] {
 	return [...mermaid.matchAll(/"`([\s\S]*?)`"/g)].map(m => m[1]);
 }
 
-const awkwardName = 'we`ird".R';
+// a backtick is legal in a filename on every OS (a `"` is not, on Windows), so the path stresses id/label
+// escaping via the backtick; the quote-in-label escaping is exercised by the string literal in the sourced code
+const awkwardName = 'we`ird.R';
 
 describe('Dataflow mermaid', withTreeSitter(parser => {
 	async function build(simplified: boolean): Promise<string> {
 		const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-mermaid-'));
 		try {
 			const sourced = path.join(dir, awkwardName);
-			fs.writeFileSync(sourced, 'if(u > 1) { y <- 2 }\nf <- function(a) { a + 1 }\n');
+			fs.writeFileSync(sourced, 'if(u > 1) { y <- 2 }\nf <- function(a) { a + 1 }\nq <- "a\\"b"\n');
 			const main = path.join(dir, 'main.R');
-			fs.writeFileSync(main, `source('${sourced.replaceAll('\\', '/')}')\nx <- f(y)\n`);
+			fs.writeFileSync(main, `source('${rPath(sourced)}')\nx <- f(y)\n`);
 			const result = await createDataflowPipeline(parser, { context: contextFromInput(`file://${main}`) }).allRemainingSteps();
 			return DataflowMermaid.raw(result.dataflow.graph, false, undefined, simplified);
 		} finally {
@@ -53,7 +56,7 @@ describe('Dataflow mermaid', withTreeSitter(parser => {
 	test('an id stays readable and relative to what was requested', async() => {
 		const mermaid = await mermaidOfSourcingProject(false);
 		assert.include(mermaid, 'v: ', 'the sourced file has to contribute origins');
-		assert.match(mermaid, /, we_ird_\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
+		assert.match(mermaid, /, we_ird\.R:\d+:\d+-\d+\+/, 'the conditional definition has to contribute a control dependency');
 		const ids = [...mermaid.matchAll(/\*\*id: (.*?)\*\*/g)].map(m => m[1]);
 		assert.isNotEmpty(ids);
 		for(const id of ids) {

@@ -48,6 +48,13 @@ describe('Slicing criteria', withTreeSitter(ts => {
 			expect(SlicingCriterion.tryParse('2@[0]a', idMap)).toBeUndefined();
 		});
 
+		test('0 addresses nothing, as lines, columns and occurrences are 1-based', async() => {
+			const idMap = await idMapOf(ts, 'x <- 1\ny <- f(x)');
+			for(const criterion of ['0@y', '0:1', '0~1', '2:0', '2~0', '2@[0]y'] as const) {
+				expect(SlicingCriterion.tryParse(criterion, idMap), criterion).toBeUndefined();
+			}
+		});
+
 		test('a negative line counts from the end of the input', async() => {
 			const idMap = await idMapOf(ts, 'x <- 1\ny <- 2\nzzz <- 3');
 			expect(nodeOf('-1@zzz', idMap)?.lexeme).toBe('zzz');

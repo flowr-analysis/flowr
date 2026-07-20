@@ -7,15 +7,15 @@ import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../..
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { IdentifierReference } from '../../../../../environments/identifier';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
-import { bindArgs, resolveArgToEnvir, routeWrittenToCustomEnv } from './built-in-envir-utils';
+import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
+import { bindArgs, resolveArgToEnvir, routeWrittenToCustomEnv, signatureParamNames } from './built-in-envir-utils';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 import { patchFunctionCall } from '../common';
 import { EdgeType } from '../../../../../graph/edge';
 import { linkInputs } from '../../../../linker';
 
-/** Formal parameter names for `with(data, expr, ...)` and `within(data, expr, ...)`. */
-const withParams = ['data', 'expr'] as const;
+/** Fallback formal parameter names for `with(data, expr, ...)` / `within(data, expr, ...)` when the signature database has no `base::with`. */
+const withParamsFallback = ['data', 'expr'] as const;
 
 /** Normal call analysis, marking the data-masked arguments (columns of the data) as NSE. */
 function markAsMaskedFallback<OtherInfo>(
@@ -55,7 +55,9 @@ export function processWithEnv<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.With }).information;
 	}
 
-	const bound = bindArgs(args, withParams);
+	// prefer R's real `base::with` signature from the database, falling back to the known formals when it is absent
+	// use the call's own name (`with` or `within`) qualified to base, so each gets its real signature
+	const bound = bindArgs(args, signatureParamNames(data, Identifier.make(Identifier.getName(name.content), PkgName.Base), withParamsFallback));
 	const dataArg = bound.get('data');
 	const exprArg = bound.get('expr');
 

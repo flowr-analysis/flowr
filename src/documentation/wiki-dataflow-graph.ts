@@ -255,7 +255,7 @@ Describes any kind of function call, including unnamed calls and those that happ
 In general the vertex provides you with information about
 the _name_ of the called function, the passed _arguments_, and the _environment_ in which the call happens (if it is of importance).
 
-Whenever flowR can determine which package a call resolves to &mdash; via a loaded \`library()\`/\`::\`, or via the always-available base-R packages taken from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. \`acf\` is shown as \`stats::acf\`). To obtain this qualified identifier programmatically from a call's origins, use \`Identifier.toQualified\` (see the \`origin\` property below and the ${ctx.linkPage('wiki/Signature Database', 'signature database')} for where the base-R knowledge comes from).
+Whenever flowR can determine which package a call resolves to &mdash; via a loaded \`library()\`/\`::\`, or via the always-available base-R packages taken from the ${ctx.linkPage('wiki/Signature Database', 'signature database')} &mdash; the mermaid visualization prints the **package-qualified name** in place of the bare one (e.g. \`acf\` is shown as \`stats::acf\`). To obtain this qualified identifier programmatically, prefer ${ctx.linkO(Dataflow, 'qualify')} which, given only a call's id and its graph, reconstructs the \`pkg::fn\` identifier from the origins (and, for base R, from the exporting package) &mdash; the compact form of \`Identifier.toQualified\` (see the \`origin\` property below and the ${ctx.linkPage('wiki/Signature Database', 'signature database')} for where the base-R knowledge comes from).
 
 However, the implementation reveals that it may hold an additional \`onlyBuiltin\` flag to indicate that the call is only calling builtin functions &mdash; however, this is only a flag to improve performance,
 and it should not be relied on as it may under-approximate the actual calling targets (e.g., being \`false\` even though all calls resolve to builtins).
@@ -1198,6 +1198,10 @@ ${await printDfGraphForCode(treeSitter, 'load("file")\nprint(x + y)', { ctx })}
 
 In general, as we cannot handle these correctly, we leave it up to other analyses (and ${ctx.linkPage('wiki/Query API', 'queries')}) to handle these cases
 as they see fit.
+
+The \`load\` call above degrades to an unknown side effect only because the file could not be found.
+When the referenced \`.rda\`/\`.rdata\` file _is_ resolvable, flowR instead parses it natively (see ${ctx.link('RDAParser')}, supporting \`gzip\`- and \`bzip2\`-compressed files) and ${ctx.link('processLoadCall')} injects the loaded variable names into the dataflow graph as definitions, so subsequent uses resolve against them.
+You can disable this and always treat \`load\` as an unknown side effect with the ${ctx.linkConfig('ignoreLoadCalls')} configuration option.
 
 #### Linked Unknown Side Effects
 

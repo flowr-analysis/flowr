@@ -87,6 +87,10 @@ import type { ProvenanceQuery } from './catalog/provenance-query/provenance-quer
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
+import {
+	type GuessDepVersionsQuery,
+	GuessDepVersionsQueryDefinition
+} from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
 import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 
 /**
@@ -120,6 +124,7 @@ export type Query = CallContextQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
 	| DiceQuery
+	| GuessDepVersionsQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -147,6 +152,8 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
 	/** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
+	/** optional one-line usage of the repl `@`-shorthand `fromLine` accepts, shown by `:query ?<type>` */
+	syntax?:              string
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
@@ -189,7 +196,8 @@ export const SupportedQueries = {
 	'signature':            SignatureQueryDefinition,
 	'origin':               OriginQueryDefinition,
 	'linter':               LinterQueryDefinition,
-	'dice':                 DiceQueryDefinition
+	'dice':                 DiceQueryDefinition,
+	'guess-dep-versions':   GuessDepVersionsQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
@@ -277,7 +285,7 @@ export async function executeQueries<
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
 			const message = e instanceof Error ? e.message : String(e);
-			log.error(`query of type '${type}' failed: ${message}`, e);
+			log.error(`query of type '${type}' failed: ${message}`);
 			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}

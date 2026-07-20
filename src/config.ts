@@ -5,7 +5,7 @@ import { type MergeableRecord,
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
-import { log } from './util/log';
+import { log, LogLevelNames, setLogLevel, type LogLevelName } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
 import type { BuiltInDefinitions } from './dataflow/environments/built-in-config';
@@ -118,12 +118,16 @@ export interface FlowrLaxSourcingOptions extends MergeableRecord {
 export type ConfigPlugin<T extends BuiltInFlowrPluginName | string> =
 	T | string | (T extends BuiltInFlowrPluginName ? [T, BuiltInFlowrPluginArgs<T>] : [string, unknown[]]);
 
+/** One {@link FlowrConfig.specializeConfig} entry: a config overwrite, optionally `inherit`ing another kind's overwrite (own keys win). */
+export type SpecializeConfigEntry = DeepPartial<FlowrConfig> & { readonly inherit?: ProjectKind };
+
 /**
  * The configuration file format for flowR.
  * @see {@link FlowrConfig.default} for the default configuration.
  * @see {@link FlowrConfig.Schema} for the Joi schema for validation.
  */
 export interface FlowrConfig extends MergeableRecord {
+	readonly logLevel?:         LogLevelName
 	/**
 	 * Whether source calls should be ignored, causing {@link processSourceCall}'s behavior to be skipped
 	 */
@@ -161,6 +165,8 @@ export interface FlowrConfig extends MergeableRecord {
 		autoUseFileProtocol?: boolean
 		/** Whether `:query` closes with the line stating how long the queries took (default `true`, `:query*` never prints it) */
 		queryStats?:          boolean
+		/** Whether `:version` grays out the plugins that did not activate during the last analysis (default `false`) */
+		showPlugins?:         boolean
 	}
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
@@ -178,11 +184,17 @@ export interface FlowrConfig extends MergeableRecord {
 		 */
 		implicitSources?:          string[]
 	}
+	/** Linter configuration, usually specialized per {@link ProjectKind} via {@link FlowrConfig.specializeConfig}. */
+	readonly linter: {
+		/** Rule names excluded from the *default* rule set (a rule requested explicitly still runs). */
+		readonly disabledRules: string[]
+	}
 	/**
 	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
-	 * e.g. to give a shiny app its implicit sources. Resolve it with {@link FlowrConfig.forKind}.
+	 * e.g. to give a shiny app its implicit sources. An entry may `inherit` another kind's overwrite (merged first,
+	 * with the entry's own keys winning) to avoid repeating it. Resolve it with {@link FlowrConfig.forKind}.
 	 */
-	readonly specializeConfig?: Partial<Record<ProjectKind, DeepPartial<FlowrConfig>>>
+	readonly specializeConfig?: Partial<Record<ProjectKind, SpecializeConfigEntry>>
 	/**
 	 * The engines to use for interacting with R code. Currently, supports {@link TreeSitterEngineConfig} and {@link RShellEngineConfig}.
 	 * An empty array means all available engines will be used.
@@ -210,7 +222,7 @@ export interface FlowrConfig extends MergeableRecord {
 		readonly trackEnvironments: boolean
 		/** Resolving `library()`/`use()` exports from a signature database (e.g. the bundled `flowr-sigdb`). */
 		readonly sigdb: {
-			/** Resolve library exports from a package database (default `true`); when `false` no database is consulted. */
+			/** Resolve library exports from a signature database (default `true`); when `false` no database is consulted. */
 			readonly enabled:                     boolean
 			/** Load the project's declared dependencies from its metadata files (`DESCRIPTION` Imports/Depends, `rproject.toml`, `renv.lock`, `rv.lock`) into the dependency context (default `true`); when `false` these files are not read, so neither the undefined-symbol linter nor {@link linkDescriptionDependencies} sees any project-declared dependency. */
 			readonly loadProjectDependencies:     boolean
@@ -244,6 +256,11 @@ export interface FlowrConfig extends MergeableRecord {
 			readonly versionSelection?:           VersionSelection
 			/** Force an exact version for specific packages (mapping a package name to a version), overriding both the project constraint and the {@link versionSelection} policy; a version missing from the database falls back with a warning (default `{}`). */
 			readonly versionOverrides?:           Record<string, string>
+		}
+		/** Policies for reasoning about dependency versions (independent of how the signature database is loaded). */
+		readonly versionManagement?: {
+			/** Groups of packages that must resolve to the same version (like the base packages, which share the R version); version guessing intersects each group so its members stay mutually compatible (default `[]`). */
+			readonly linkedVersionGroups?: string[][]
 		}
 		/** These keys are only intended for use within code, allowing to instrument the dataflow analyzer! */
 		readonly instrument: {
@@ -381,25 +398,51 @@ export const FlowrDefaultPlugins = [
 	'file:description',
 	'versions:description',
 	'versions:sigdb',
+	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
+	'versions:session-info',
 	'loading-order:description',
 	'loading-order:implicit-sources',
 	'meta:description',
 	'meta:rproject',
-	'files:vignette',
-	'files:test',
-	'files:inst',
+	'file-roles:vignette',
+	'file-roles:test',
+	'file-roles:inst',
 	'file:rmd',
 	'file:qmd',
 	'file:rnw',
 	'file:ipynb',
 	'file:namespace',
 	'file:news',
+	'file:rda',
 	'file:license',
 	'file:virtualenv',
 	'file:rproject',
 ] satisfies ConfigPlugin<string>[];
+
+/** deep-merge two config overwrites with `own` winning; objects merge, arrays/scalars replace (matching {@link specialize}'s array-as-leaf treatment) */
+function mergeOverwrite(parent: DeepPartial<FlowrConfig>, own: DeepPartial<FlowrConfig>): DeepPartial<FlowrConfig> {
+	const result: Record<string, unknown> = { ...parent };
+	for(const [key, value] of Object.entries(own)) {
+		const prev = (parent as Record<string, unknown>)[key];
+		result[key] = isPlainObject(prev) && isPlainObject(value) ? mergeOverwrite(prev, value) : value;
+	}
+	return result;
+}
+
+/** The effective overwrite for `kind`, following {@link SpecializeConfigEntry.inherit} (cycle-guarded; own keys win, `inherit` stripped), or `undefined` when nothing is overwritten. */
+function resolveSpecialization(specializeConfig: FlowrConfig['specializeConfig'], kind: ProjectKind, seen: Set<ProjectKind> = new Set()): DeepPartial<FlowrConfig> | undefined {
+	const entry = specializeConfig?.[kind];
+	if(!entry || seen.has(kind)) {
+		return undefined;
+	}
+	seen.add(kind);
+	const { inherit, ...own } = entry;
+	const parent = inherit !== undefined ? resolveSpecialization(specializeConfig, inherit, seen) : undefined;
+	const resolved = parent !== undefined ? mergeOverwrite(parent, own) : own;
+	return Object.keys(resolved).length > 0 ? resolved : undefined;
+}
 
 /**
  * Applies `overwrite` to `current`, key by key, keeping every value that differs from `base`: only a value nobody
@@ -416,6 +459,27 @@ function specialize(current: unknown, base: unknown, overwrite: unknown): unknow
 		return result;
 	}
 	return JSON.stringify(current) === JSON.stringify(base) ? overwrite : current;
+}
+
+/**
+ * Merge a user config onto the defaults. Unlike {@link deepMergeObject}, an array in the user config replaces the
+ * default one instead of being appended to it, so options such as `defaultPlugins` can be reduced and not just extended.
+ */
+function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConfig>): FlowrConfig {
+	const merge = (b: unknown, a: unknown): unknown => {
+		if(a === undefined) {
+			return b;
+		}
+		if(!isPlainObject(a) || !isPlainObject(b)) {
+			return a;
+		}
+		const out: Record<string, unknown> = { ...b };
+		for(const [key, value] of Object.entries(a)) {
+			out[key] = merge(out[key], value);
+		}
+		return out;
+	};
+	return merge(base, addon) as FlowrConfig;
 }
 
 export const FlowrConfig = {
@@ -444,19 +508,24 @@ export const FlowrConfig = {
 				plugins:             ['flowr:default'],
 				autoUseFileProtocol: true,
 				queryStats:          true,
+				showPlugins:         false,
 			},
 			project: {
 				resolveUnknownPathsOnDisk: true
 			},
-			/* shiny loads global.R first, then the ui/server pair, and app.R last as it wires them together */
+			linter: {
+				disabledRules: []
+			},
 			specializeConfig: {
-				/* these ship the files they source, a notebook or a loose script may not */
 				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
 					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
 					solver:  { resolveSource: { assumeFilesExist: true } }
-				}
+				},
+				[ProjectKind.Script]:   { inherit: ProjectKind.Unknown },
+				[ProjectKind.Notebook]: { inherit: ProjectKind.Unknown },
+				[ProjectKind.Unknown]:  { linter: { disabledRules: ['software-has-license', 'software-has-tests'] } }
 			},
 			engines:       [],
 			defaultEngine: 'tree-sitter',
@@ -465,6 +534,7 @@ export const FlowrConfig = {
 				evalStrings:       true,
 				trackEnvironments: true,
 				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, assumedRVersion: 'auto', linkBaseR: false, linkDescriptionDependencies: false, linkBaseRCalls: false, linkPackageCalls: false, warmInBackground: false, additionalPaths: [], autoSync: false, versionSelection: VersionSelection.Newest, versionOverrides: {} },
+				versionManagement: { linkedVersionGroups: [] },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,
@@ -504,6 +574,7 @@ export const FlowrConfig = {
 	 * The Joi schema for validating a config file, use this to validate your config file before using it. You can also use this to generate documentation for the config file format.
 	 */
 	Schema: Joi.object({
+		logLevel:          Joi.string().valid(...Object.keys(LogLevelNames)).optional().description('flowR\'s global minimum log level, applied when the config is loaded.'),
 		ignoreSourceCalls: Joi.boolean().optional().description('Whether source calls should be ignored, causing {@link processSourceCall}\'s behavior to be skipped.'),
 		ignoreLoadCalls:   Joi.boolean().optional().description('Whether load calls should be ignored, causing {@link processLoadCall}\'s behavior to be skipped.'),
 		semantics:         Joi.object({
@@ -521,14 +592,20 @@ export const FlowrConfig = {
 			hints:               Joi.boolean().optional().description('Whether to show dim inline hints on the empty prompt (automatically disabled on non-interactive terminals).'),
 			plugins:             Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.array().ordered(Joi.string(), Joi.array().items(Joi.any())).length(2))).optional().description('The plugins to load in REPL mode'),
 			autoUseFileProtocol: Joi.boolean().optional().description('Prepend the file protocol to a repl input that looks like a path, instead of only warning about it.'),
-			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).')
+			queryStats:          Joi.boolean().optional().description('Whether `:query` closes with the line stating how long the queries took (`:query*` never prints it).'),
+			showPlugins:         Joi.boolean().optional().description('Whether `:version` grays out the plugins that did not activate during the last analysis.')
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.')
 		}).description('Project specific configuration options.'),
-		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object()).optional()
+		linter: Joi.object({
+			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
+		}).description('Linter configuration options.'),
+		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
+			inherit: Joi.string().valid(...Object.values(ProjectKind)).optional().description('Inherit another kind\'s overwrite first (merged before this entry\'s own keys, which win).')
+		}).unknown(true)).optional()
 			.description('Overwrite (parts of) the configuration depending on the project kind flowR detects, e.g. to give a shiny app its implicit sources.'),
 		engines: Joi.array().items(Joi.alternatives(
 			Joi.object({
@@ -564,6 +641,9 @@ export const FlowrConfig = {
 				versionSelection:            Joi.string().valid(...Object.values(VersionSelection)).optional().description('When a project constrains a dependency, resolve to the newest (default), oldest, or system-installed version satisfying it; system needs R and falls back to newest. Base-R packages always resolve against the assumed R version.'),
 				versionOverrides:            Joi.object().pattern(Joi.string(), Joi.string()).optional().description('Force an exact version for specific packages (name -> version), overriding both the project constraint and the versionSelection policy (default {}).')
 			}).description('Resolving library exports from a signature database.'),
+			versionManagement: Joi.object({
+				linkedVersionGroups: Joi.array().items(Joi.array().items(Joi.string())).optional().description('Groups of packages that must resolve to the same version; version guessing intersects each group so its members stay mutually compatible (default []).')
+			}).description('Policies for reasoning about dependency versions.'),
 			instrument: Joi.object({
 				dataflowExtractors: Joi.any().optional().description('These keys are only intended for use within code, allowing to instrument the dataflow analyzer!')
 			}),
@@ -615,7 +695,7 @@ export const FlowrConfig = {
 			const validate = FlowrConfig.Schema.validate(parsed);
 			if(!validate.error) {
 				// assign default values to all config options except for the specified ones
-				return deepMergeObject(FlowrConfig.default(), parsed);
+				return mergeConfigOntoDefaults(FlowrConfig.default(), parsed);
 			} else {
 				log.error(`Failed to validate config ${jsonString}: ${validate.error.message}`);
 				return undefined;
@@ -645,12 +725,17 @@ export const FlowrConfig = {
 	 * This is mostly useful for user-facing features.
 	 */
 	fromFile(this: void, configFile?: string, configWorkingDirectory = process.cwd()): FlowrConfig {
+		let config: FlowrConfig;
 		try {
-			return loadConfigFromFile(configFile, configWorkingDirectory);
+			config = loadConfigFromFile(configFile, configWorkingDirectory);
 		} catch(e) {
 			log.error(`Failed to load config: ${(e as Error).message}`);
-			return FlowrConfig.default();
+			config = FlowrConfig.default();
 		}
+		if(config.logLevel !== undefined) {
+			setLogLevel(config.logLevel);
+		}
+		return config;
 	},
 	/**
 	 * Resolves the configuration for the given {@link ProjectKind} by applying the matching
@@ -659,8 +744,13 @@ export const FlowrConfig = {
 	 * Returns `config` itself if the kind has no entry, so callers can use this freely.
 	 */
 	forKind(this: void, config: FlowrConfig, kind: ProjectKind): FlowrConfig {
-		const overwrite = config.specializeConfig?.[kind];
+		const overwrite = FlowrConfig.specializationFor(config, kind);
 		return overwrite ? specialize(config, FlowrConfig.default(), overwrite) as FlowrConfig : config;
+	},
+
+	/** The overwrite {@link FlowrConfig.forKind} applies for `kind` (with {@link SpecializeConfigEntry.inherit} resolved), or `undefined`. */
+	specializationFor(this: void, config: FlowrConfig, kind: ProjectKind): DeepPartial<FlowrConfig> | undefined {
+		return resolveSpecialization(config.specializeConfig, kind);
 	},
 	/**
 	 * Gets the configuration for the given engine type from the config.

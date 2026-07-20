@@ -1,3 +1,4 @@
+import { rPath } from '../../../_helper/r-path';
 import { describe, expect, it } from 'vitest';
 import { assertDataflow, withTreeSitter } from '../../../_helper/shell';
 import { label } from '../../../_helper/label';
@@ -24,7 +25,8 @@ describe('load real-world', withTreeSitter(parser => {
 
 	const files = fs.readdirSync(dir)
 		.filter(file => file.toLowerCase().endsWith('.rdata') || file.toLowerCase().endsWith('.rda'))
-		.map(file => path.join(dir, file));
+		// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
+		.map(file => rPath(path.join(dir, file)));
 
 	describe('defines variables', () => {
 		for(const file of files) {
@@ -173,7 +175,8 @@ describe('load random', withTreeSitter(parser => {
 
 	const createRda = (types: RObjectType[], filename: string): { file: string, vars: string[] } => {
 		const { rCode, vars } = rcg.generateRCodeWithTypes(types);
-		const file = path.join(tempFolder, filename);
+		// forward slashes so the path survives interpolation into R strings (`\` is an escape there) on Windows
+		const file = rPath(path.join(tempFolder, filename));
 		const rShell = new RShellExecutor();
 		rShell.run(`${rCode}\nsave(${vars.join(', ')}, file="${file}")`);
 		rShell.close();

@@ -10,6 +10,9 @@ import {
 	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
 import {
+	FlowrAnalyzerPackageVersionsSessionInfoPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-session-info-plugin';
+import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
 import {
@@ -20,7 +23,9 @@ import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analy
 import { guard } from '../../util/assert';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
+import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
+import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
 import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
@@ -43,19 +48,22 @@ export const BuiltInPlugins = [
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
+	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
-	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
-	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
-	['files:inst', FlowrAnalyzerMetaInstFilesPlugin],
+	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
+	['file-roles:test', FlowrAnalyzerMetaTestFilesPlugin],
+	['file-roles:inst', FlowrAnalyzerMetaInstFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:rnw', FlowrAnalyzerSweaveFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
+	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
+	['file:rda', FlowrAnalyzerRdaFilePlugin],
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],

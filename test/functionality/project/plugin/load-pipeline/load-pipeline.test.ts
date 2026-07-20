@@ -1,3 +1,4 @@
+import { rPath } from '../../../_helper/r-path';
 import { describe, expect, it } from 'vitest';
 import { RShellExecutor } from '../../../../../src/r-bridge/shell-executor';
 import type { RObjectData } from '../../../../../src/project/plugins/file-plugins/files/flowr-rda-file';
@@ -52,7 +53,7 @@ describe('rda-files', () => {
 				const { rCode, vars } = rcg.generateRCode(objectsPerRun, maxNestingLevel);
 
 				const shellCode = `${rCode}
-					save(${vars.join(', ')}, file="${file}", ascii = ${encoding}, version = ${version}, compress = ${compression})`;
+					save(${vars.join(', ')}, file="${rPath(file)}", ascii = ${encoding}, version = ${version}, compress = ${compression})`;
 				const rShell = new RShellExecutor();
 				rShell.run(shellCode);
 
@@ -118,7 +119,7 @@ export function getVarsAndTypesFromShell(file: string, rShell: RShellExecutor) {
 	const output = rShell.run(`
 		e <- new.env()
 		
-		vars <- load("${file}", envir = e)
+		vars <- load("${rPath(file)}", envir = e)
 
 		for(v in vars) {
 			cat(v, "::", typeof(e[[v]]), "\\n")

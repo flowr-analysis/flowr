@@ -16,9 +16,11 @@ import { isNotUndefined } from '../../../util/assert';
  * @see {@link LinterRuleInformation#activeByDefault} - opts a rule out of the default rule set
  */
 export async function executeLinterQuery({ analyzer }: BasicQueryData, queries: readonly LinterQuery[]): Promise<LinterQueryResult> {
-	// no explicit rules: run only the rules that opt in via activeByDefault (default true)
+	// no explicit rules: run the rules that opt in via activeByDefault (default true), minus those the (project-kind
+	// specialized) config disables -- e.g. software-has-license/-tests are off for a lone script or a notebook
+	const disabled = new Set(analyzer.flowrConfig.linter.disabledRules);
 	const defaultRules = (Object.keys(LintingRules) as LintingRuleNames[])
-		.filter((name: LintingRuleNames) => (LintingRules[name].info as { activeByDefault?: boolean }).activeByDefault !== false);
+		.filter((name: LintingRuleNames) => (LintingRules[name].info as { activeByDefault?: boolean }).activeByDefault !== false && !disabled.has(name));
 	const flattened = queries.flatMap(q => q.rules ?? defaultRules);
 	const distinct = new Set(flattened);
 	if(distinct.size !== flattened.length) {

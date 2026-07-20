@@ -4,11 +4,14 @@ import type {
 	SignatureQuery, SignatureQueryResult, SignaturePackageView, SignatureFunctionView, SignatureDatabaseView,
 	SignatureMatchView, SignaturePackageMatch
 } from './signature-query-format';
-import { getSharedSigSourceSync, type PackageSignatureSource } from '../../../project/sigdb/reader';
-import { DepTypeNames } from '../../../project/sigdb/schema';
+import { availableVersionEntries, getSharedSigSourceSync, SigDatabaseSet, type AvailableVersion, type PackageSignatureSource, type ShardStatus } from '../../../project/sigdb/reader';
+import { isDateBound, releaseDateBound } from '../../../project/sigdb/sigdb-version';
+import { DepType, DepTypeNames, type LibraryExports } from '../../../project/sigdb/schema';
 import { defaultSigDbPaths } from '../../../project/sigdb/manifest';
 import type { DecodedFunction } from '../../../project/sigdb/decode';
 import { RVersion } from '../../../util/r-version';
+import { baseRPackages, baseRExportOwner } from '../../../util/r-base-packages';
+import { Mermaid } from '../../../util/mermaid/mermaid';
 import type { CommandCompletions } from '../../../cli/repl/core';
 
 /** the CRAN package landing page (only meaningful for CRAN packages, not base R) */
@@ -57,20 +60,40 @@ function versionMatcher(spec: string): (v: string) => boolean {
 	return v => v === spec;
 }
 
-/** the versions of a package the loaded source can answer (dated releases, base-R core releases, and the latest) */
+/** whether the query narrows results by parameter shape (parameter names and/or a required-parameter count) */
+function hasParameterFilter(q: SignatureQuery): boolean {
+	return (q.parameters?.length ?? 0) > 0 || q.requiredParameters !== undefined;
+}
+
+/** a predicate over a decoded function for the query's parameter filters, or `undefined` when none are set */
+function parameterFilter(q: SignatureQuery): ((fn: DecodedFunction) => boolean) | undefined {
+	if(!hasParameterFilter(q)) {
+		return undefined;
+	}
+	const nameMatchers = q.parameters?.map(nameMatcher);
+	const required = q.requiredParameters;
+	return fn => {
+		if(nameMatchers && !nameMatchers.every(m => fn.signature.some(p => m(p.name)))) {
+			return false;
+		}
+		// required = no default; `...` is never a required parameter to provide
+		return required === undefined || fn.signature.filter(p => p.name !== '...' && !p.optional).length === required;
+	};
+}
+
+/** the version strings of a package the loaded source can answer (dated releases, base-R core releases, and the latest) */
 function availableVersions(src: PackageSignatureSource, pkg: string): string[] {
-	const set = new Set<string>();
-	for(const r of src.releaseDates(pkg)) {
-		set.add(r.version.str);
+	return availableVersionEntries(src, pkg).map(e => e.version);
+}
+
+/** a predicate selecting a package release by the `@version` spec: a date bound (`<=2026`, `>=2021.05`) or a version (exact/glob/range) */
+function releaseMatcher(spec: string): (entry: AvailableVersion) => boolean {
+	const byDate = releaseDateBound(spec);
+	if(byDate) {
+		return e => byDate(e.date);
 	}
-	for(const v of src.coreVersions(pkg) ?? []) {
-		set.add(v.str);
-	}
-	const latest = src.latestVersion(pkg);
-	if(latest) {
-		set.add(latest.str);
-	}
-	return [...set].sort((a, b) => RVersion.compare(a, b));
+	const byVersion = versionMatcher(spec);
+	return e => byVersion(e.version);
 }
 
 /** read-only CRAN GitHub mirror base; `github.com/cran/<pkg>` mirrors every CRAN package and tags each release */
@@ -88,11 +111,10 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
 }
 
-/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`) */
-const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._]*$/;
-
+/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
+const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
-function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
+export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
 	if(!RdrrTopicName.test(fn)) {
 		return undefined;
 	}
@@ -105,9 +127,14 @@ function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolea
 	return undefined;
 }
 
-/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, rdrr.io doc link */
+/** the doc link for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
+function docUrlFor(pkg: string, fn: DecodedFunction, base: boolean, cran: boolean): string | undefined {
+	return fn.props.includes('no-doc') ? undefined : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base, cran });
+}
+
+/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, and rdrr.io doc link */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
+	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
@@ -116,7 +143,7 @@ function locationFields(pkg: string, fn: DecodedFunction, version: string | unde
 	};
 }
 
-/** the decoded view of one function, adding the CRAN-mirror source link and rdrr.io documentation link */
+/** the decoded view of one function, adding the CRAN-mirror source link */
 function decodedToView(pkg: string, fn: DecodedFunction, version: string | undefined, opts: { cran: boolean, base: boolean }): SignatureFunctionView {
 	return {
 		name:       fn.name,
@@ -149,17 +176,135 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	}
 	const exports = src.lookup(pkg, version) ?? src.lookup(pkg);
 	const view = decodedToView(pkg, fn, exports?.version, { cran: exports?.cran ?? false, base: src.isBaseR(pkg) });
-	// S3 dispatch targets are the `<generic>.<class>` functions in the same package (name-based, matching flowR's
-	// own S3 handling). We use this rather than the stored `UseMethod` callee, which the bundled call graphs
-	// aggregate transitively and so cannot distinguish a real generic from one that merely reaches a dispatch.
+	// an S3 generic's methods are the same-package `<generic>.<class>` functions that are themselves registered
+	// S3 methods; the reverse links a registered method back to the generic it dispatches for
 	const methods = (fns ?? [])
-		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.'))
+		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && isS3Method(f))
 		.map(f => f.name)
 		.sort();
-	if(methods.length > 0) {
-		return { ...view, s3generic: true, s3methods: methods };
+	const s3method = isS3Method(fn) ? s3MethodParts(src, pkg, fns, fn.name) : undefined;
+	return {
+		...view,
+		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
+		...(s3method ? { s3method } : {})
+	};
+}
+
+/** whether a function is a registered S3 method (the `s3-method` property, set from its NAMESPACE at build time) */
+function isS3Method(fn: DecodedFunction): boolean {
+	return fn.props.includes('s3-method');
+}
+
+/**
+ * The generic and dispatch class of a registered S3 method named `generic.class`: the longest dotted prefix that
+ * names a function in the same package or base R is the generic, the remainder is the class, and the owning package
+ * is returned too (`print.rema` gives `print` in `base`, class `rema`). Only ever called for names flagged
+ * {@link isS3Method}, so ordinary dotted names like `data.frame` never reach here and are not mistaken for methods.
+ */
+function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, name: string): { generic: string, class: string, package: string } | undefined {
+	const bases = baseRPackages();
+	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
+		const generic = name.slice(0, dot);
+		if(fns?.some(f => f.name === generic)) {
+			return { generic, class: name.slice(dot + 1), package: pkg };
+		}
+		for(const base of bases) {
+			if(base !== pkg && src.functionByName(base, generic) !== undefined) {
+				return { generic, class: name.slice(dot + 1), package: base };
+			}
+		}
 	}
-	return view;
+	return undefined;
+}
+
+/** how many nodes the call-graph render is capped at (cross-package expansion could otherwise explode into base R) */
+const CallGraphMaxNodes = 300;
+
+/**
+ * A mermaid.live link for the transitive call graph reachable from `pkg::root`, resolved across package borders:
+ * a bare callee is attributed to the first namespace that exports it (the calling package, then its attached
+ * `Depends`/`Imports`, then base R), qualified as `owner::fn`, and expanded there. Base R calls are qualified leaves
+ * (their internals are noise); explicit `pkg::fn` calls resolve directly. Bounded by {@link CallGraphMaxNodes}.
+ */
+function signatureCallGraphUrl(src: PackageSignatureSource, pkg: string, version: string | undefined, root: string): string {
+	const bases = new Set(baseRPackages());
+	const exportsCache = new Map<string, ReadonlySet<string>>();
+	const exportsOf = (p: string, v?: string): ReadonlySet<string> => {
+		const key = `${p}\0${v ?? ''}`;
+		let s = exportsCache.get(key);
+		if(s === undefined) {
+			exportsCache.set(key, s = new Set(src.functions(p, v)?.map(f => f.name) ?? src.lookup(p, v)?.exported ?? []));
+		}
+		return s;
+	};
+	const attachedDeps = (p: string, v?: string): string[] =>
+		(src.dependencies(p, v) ?? []).filter(d => d.type === DepType.Depends || d.type === DepType.Imports).map(d => d.name);
+	/** resolve a callee named in `p@v` to its owning `{ owner, name }`, or undefined when no loaded namespace exports it */
+	const resolve = (p: string, v: string | undefined, callee: string): { owner: string, name: string } | undefined => {
+		const q = /^([A-Za-z][\w.]*):::?(.+)$/.exec(callee);
+		if(q) {
+			return { owner: q[1], name: q[2] };
+		}
+		if(exportsOf(p, v).has(callee)) {
+			return { owner: p, name: callee };
+		}
+		for(const dep of attachedDeps(p, v)) {
+			if(exportsOf(dep, src.latestVersion(dep)?.str).has(callee)) {
+				return { owner: dep, name: callee };
+			}
+		}
+		// base R (incl. C-level primitives absent from the sigdb: `c`, `is.na`, ...) via flowR's base export/primitive store
+		const base = baseRExportOwner(callee);
+		return base !== undefined ? { owner: base, name: callee } : undefined;
+	};
+
+	// each distinct node is keyed by `owner::name`, remembering its owning package (for the subgraph) and short label
+	const nodes = new Map<string, { id: string, owner: string | undefined, short: string }>();
+	const node = (owner: string | undefined, short: string): string => {
+		const key = owner ? `${owner}::${short}` : short;
+		let n = nodes.get(key);
+		if(n === undefined) {
+			nodes.set(key, n = { id: `n${nodes.size}`, owner, short });
+		}
+		return n.id;
+	};
+	const rootId = node(pkg, root);
+	const edges: string[] = [];
+	const seen = new Set<string>();
+	const queue: { owner: string, ver?: string, name: string, id: string }[] = [{ owner: pkg, ver: version, name: root, id: rootId }];
+	while(queue.length > 0 && nodes.size < CallGraphMaxNodes) {
+		const cur = queue.pop() as { owner: string, ver?: string, name: string, id: string };
+		const key = `${cur.owner}::${cur.name}`;
+		if(seen.has(key)) {
+			continue;
+		}
+		seen.add(key);
+		for(const callee of src.functionByName(cur.owner, cur.name, cur.ver)?.callees ?? []) {
+			const r = resolve(cur.owner, cur.ver, callee);
+			edges.push(`  ${cur.id} --> ${node(r?.owner, r ? r.name : callee)}`);
+			// expand into a resolved same/other CRAN package (not base R -- its internals explode the graph), avoiding cycles
+			if(r && !bases.has(r.owner) && !seen.has(`${r.owner}::${r.name}`) && nodes.size < CallGraphMaxNodes) {
+				queue.push({ owner: r.owner, ver: r.owner === cur.owner ? cur.ver : src.latestVersion(r.owner)?.str, name: r.name, id: node(r.owner, r.name) });
+			}
+		}
+	}
+	// group nodes into a `subgraph` per owning package; unqualified/unresolved calls stay ungrouped
+	const byOwner = new Map<string, string[]>();
+	const ungrouped: string[] = [];
+	for(const { id, owner, short } of nodes.values()) {
+		const decl = `${id}["${short.replace(/"/g, '&quot;')}"]`;
+		if(owner === undefined) {
+			ungrouped.push(`  ${decl}`);
+		} else {
+			let decls = byOwner.get(owner);
+			if(decls === undefined) {
+				byOwner.set(owner, decls = []);
+			}
+			decls.push(`    ${decl}`);
+		}
+	}
+	const subgraphs = [...byOwner].flatMap(([owner, decls]) => [`  subgraph ${owner}`, ...decls, '  end']);
+	return Mermaid.codeToUrl(['flowchart LR', ...subgraphs, ...ungrouped, ...edges].join('\n'));
 }
 
 /** the full view of a package: version, kind, export breakdown, dependencies, and every function's view */
@@ -213,9 +358,40 @@ function suggest(candidates: Iterable<string>, query: string, limit = 6): string
 /** cap on wildcard-search hits, so a `* *` search cannot exhaust memory */
 const MaxMatches = 500;
 
+/** how many parameter names a match preview shows before eliding the rest with `…` */
+const ParamPreviewCap = 4;
+
+/**
+ * A short preview of a function's parameters for a match, when the query filters by parameter, kept in signature
+ * order (highlighting never reorders it): the matched parameters are always shown, padded with leading parameters
+ * for context up to {@link ParamPreviewCap} and elided with `…` when any are dropped. Also returns the matched names
+ * so the renderer can highlight them. `undefined` when no parameter filter is set.
+ */
+function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview: string[], matched: string[] } | undefined {
+	if(!hasParameterFilter(q)) {
+		return undefined;
+	}
+	const names = fn.signature.map(p => p.name);
+	const matched = q.parameters?.length
+		? names.filter(n => q.parameters?.some(pat => nameMatcher(pat)(n)))
+		: [];
+	const show = new Set(matched.length > 0 ? matched : fn.signature.filter(p => p.name !== '...' && !p.optional).map(p => p.name));
+	for(const n of names) {
+		if(show.size >= ParamPreviewCap) {
+			break;
+		}
+		show.add(n);
+	}
+	const preview = names.filter(n => show.has(n));
+	if(preview.length < names.length) {
+		preview.push('…');
+	}
+	return { preview, matched };
+}
+
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
-function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): SignatureMatchView {
-	const doc = rdrrDocUrl(pkg, fn.name, { base, cran });
+function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean, params?: { preview: string[], matched: string[] }): SignatureMatchView {
+	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		package:  pkg,
 		name:     fn.name,
@@ -224,7 +400,9 @@ function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefi
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
 		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...(doc ? { docUrl: doc } : {}),
+		...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
+		...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
 	};
 }
 
@@ -267,14 +445,16 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 	const cap = MaxMatches;
 	const pkgMatch = nameMatcher(q.package as string);
 	const matchedPkgs = [...allNames].filter(pkgMatch).sort();
-	const verMatch = q.version ? versionMatcher(q.version) : undefined;
+	const relMatch = q.version ? releaseMatcher(q.version) : undefined;
 	// every source holding a package (its latest lives in `current`, its older releases in `history`)
 	const owningOf = (pkg: string) => sources.filter(s => s.has(pkg));
-	// the versions of `pkg` matching `m`, unioned across all owning sources (so a `3.*` filter reaches history)
-	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (v: string) => boolean) =>
-		[...new Set(owners.flatMap(s => availableVersions(s, pkg).filter(m)))];
+	// the versions of `pkg` matching the spec, unioned across all owning sources (so a `3.*`/date filter reaches history)
+	const matchingVersions = (owners: readonly PackageSignatureSource[], pkg: string, m: (e: AvailableVersion) => boolean) =>
+		[...new Set(owners.flatMap(s => availableVersionEntries(s, pkg).filter(m).map(e => e.version)))];
 
-	if(!q.function) {
+	const paramPred = parameterFilter(q);
+	// a parameter filter (with no function name) still means "search functions", not "list packages"
+	if(!q.function && paramPred === undefined) {
 		const packages: SignaturePackageMatch[] = [];
 		let truncated = false;
 		for(const pkg of matchedPkgs) {
@@ -283,9 +463,9 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 				continue;
 			}
 			const base = owners[0].isBaseR(pkg);
-			// with a version filter, union the matching versions across all sources (so a `3.*` reaches history)
-			const versions = verMatch
-				? matchingVersions(owners, pkg, verMatch).sort((a, b) => RVersion.compare(a, b))
+			// with a version filter, union the matching versions across all sources (so a `3.*`/date reaches history)
+			const versions = relMatch
+				? matchingVersions(owners, pkg, relMatch).sort((a, b) => RVersion.compare(a, b))
 				: undefined;
 			if(versions !== undefined && versions.length === 0) {
 				continue;
@@ -301,8 +481,12 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 		return { packages, truncated };
 	}
 
-	const fnMatch = nameMatcher(q.function);
+	const fnMatch = q.function ? nameMatcher(q.function) : () => true;
+	// an exact function name lets us seek that one record (decoding only it) instead of decoding every function of
+	// every package -- the difference between a fast `* ggplot` and one that decodes the whole database
+	const exactName = q.function !== undefined && !hasGlob(q.function);
 	const matches: SignatureMatchView[] = [];
+	let searched = 0;
 	let truncated = false;
 	for(const pkg of matchedPkgs) {
 		const owners = owningOf(pkg);
@@ -310,24 +494,47 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			continue;
 		}
 		const base = owners[0].isBaseR(pkg);
-		// versions to scan: with a filter, the union of matching releases across all sources (so `3.*` reaches
-		// history); without one, just the latest. Each version is scanned in a single source (the first that has
-		// it), so a release present in more than one source is not double-counted
-		const versionsToScan: (string | undefined)[] = verMatch
-			? matchingVersions(owners, pkg, verMatch)
-			: [undefined];
-		for(const v of versionsToScan) {
-			const s = v === undefined ? owners[0] : owners.find(o => availableVersions(o, pkg).includes(v)) ?? owners[0];
-			const exports = s.lookup(pkg, v) ?? s.lookup(pkg);
-			const cran = (exports?.cran ?? false) && !base;
-			for(const fn of s.functions(pkg, v) ?? s.functions(pkg) ?? []) {
-				if(fnMatch(fn.name)) {
-					if(matches.length >= cap) {
-						truncated = true;
-						break;
+		// map each version to the single source that owns it (current before history), computed once per package so a
+		// version-filtered function search does not rebuild the release list per candidate version
+		const ownerOf = new Map<string, PackageSignatureSource>();
+		if(relMatch) {
+			for(const o of owners) {
+				for(const e of availableVersionEntries(o, pkg)) {
+					if(!ownerOf.has(e.version) && relMatch(e)) {
+						ownerOf.set(e.version, o);
 					}
-					matches.push(compactMatch(pkg, fn, exports?.version, base, cran));
 				}
+			}
+		}
+		// versions to scan: with a filter, each matching release newest-first (scanned in its single owning source, so a
+		// release in more than one source is not double-counted, and the truncation cap keeps the newest); else just the latest
+		const versionsToScan: (string | undefined)[] = relMatch ? [...ownerOf.keys()].sort((a, b) => RVersion.compare(b, a)) : [undefined];
+		for(const v of versionsToScan) {
+			const s = v === undefined ? owners[0] : ownerOf.get(v) ?? owners[0];
+			const candidates = exactName
+				? (fn => fn ? [fn] : [])(s.functionByName(pkg, q.function, v))
+				: (s.functions(pkg, v) ?? s.functions(pkg) ?? []);
+			// resolve the (heavier) package export view only once a function actually matches, so non-matching
+			// packages in a wildcard search cost just the name lookup, not a full export derivation
+			let exports: LibraryExports | undefined;
+			let looked = false;
+			for(const fn of candidates) {
+				if(!fnMatch(fn.name)) {
+					continue;
+				}
+				searched++;
+				if(paramPred && !paramPred(fn)) {
+					continue;
+				}
+				if(matches.length >= cap) {
+					truncated = true;
+					break;
+				}
+				if(!looked) {
+					exports = s.lookup(pkg, v) ?? s.lookup(pkg);
+					looked = true;
+				}
+				matches.push(compactMatch(pkg, fn, exports?.version, base, (exports?.cran ?? false) && !base, matchedParamPreview(fn, q)));
 			}
 			if(truncated) {
 				break;
@@ -337,7 +544,7 @@ function searchSources(sources: readonly PackageSignatureSource[], allNames: Rea
 			break;
 		}
 	}
-	return { matches, matchCount: matches.length, truncated };
+	return { matches, matchCount: matches.length, searched, truncated, latestOnly: relMatch === undefined };
 }
 
 /** the discoverable bundle sources for Tab completion (process-wide cached; opening the manifest reads no shard) */
@@ -416,6 +623,16 @@ export function signatureQueryCompleter(line: readonly string[], startingNewArg:
 	return { completions: [] };
 }
 
+/** the deduped shard load-state across all sharded sources (a shard id mounted by several sources folds into one, accessed/unpacked if any source is) */
+function collectShardStatus(sources: readonly PackageSignatureSource[]): ShardStatus[] {
+	const byId = new Map<string, ShardStatus>();
+	for(const s of sources.flatMap(src => src instanceof SigDatabaseSet ? src.shardStatus() : [])) {
+		const prev = byId.get(s.id);
+		byId.set(s.id, prev ? { ...prev, accessed: prev.accessed || s.accessed, unpacked: prev.unpacked || s.unpacked } : s);
+	}
+	return [...byId.values()];
+}
+
 /**
  * Executes the signature query. With no `package` it summarizes the loaded databases. A glob in `package`/`function`
  * or a multi-version `version` triggers a wildcard search (matching packages or functions). Otherwise a single
@@ -426,7 +643,7 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const start = Date.now();
 	const q = queries[queries.length - 1] ?? { type: 'signature' };
 	const deps = analyzer.inspectContext().deps;
-	const databases: SignatureDatabaseView[] = deps.loadedPackageDatabases()
+	const databases: SignatureDatabaseView[] = deps.loadedSignatureDatabases()
 		.map(d => ({ scope: d.scope, version: d.version, date: d.date }));
 	// the plugin's loaded sources (bundled default + $FLOWR_SIGDB + anything added at runtime), so the query
 	// reflects dynamically-mounted sources
@@ -440,11 +657,13 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	const meta = (): SignatureQueryResult => ({ '.meta': { timing: Date.now() - start }, databases, packageCount: packages.size, sourceCount: sources.length });
 
 	if(!q.package) {
-		return meta();
+		// shard load-state is only shown in the summary, so it is only worth its filesystem probes here
+		return { ...meta(), shards: collectShardStatus(sources) };
 	}
 
-	// wildcard search: a glob in the package/function name, or a version spec matching more than one release
-	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && isMultiVersion(q.version))) {
+	// wildcard search: a glob in the package/function name, a version spec matching more than one release (a range or
+	// a date bound), or a parameter filter (which narrows a set of functions and so always goes through the search path)
+	if(hasGlob(q.package) || (q.function !== undefined && hasGlob(q.function)) || (q.version !== undefined && (isMultiVersion(q.version) || isDateBound(q.version))) || hasParameterFilter(q)) {
 		const found = searchSources(sources, packages, q);
 		// a version glob against a single concrete, known package that matched no release: point at the available versions
 		// (the same guidance the exact-version path gives) instead of a bare "0 matched"
@@ -476,7 +695,8 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 	if(q.function) {
 		const fn = signatureFunctionInfo(resolvedSrc, q.package, q.function, version);
 		if(fn) {
-			return { ...meta(), function: fn };
+			const cg = q.callGraph ? signatureCallGraphUrl(resolvedSrc, q.package, version, fn.name) : undefined;
+			return { ...meta(), function: cg ? { ...fn, callGraph: cg } : fn };
 		}
 		const exports = resolvedSrc.lookup(q.package, version) ?? resolvedSrc.lookup(q.package);
 		const universe = new Set<string>([

@@ -157,13 +157,17 @@ export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds ? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
+function environmentLevel(env: IEnvironment | undefined): number {
+	return env === undefined || env.builtInEnv ? 0 : environmentLevel(env.parent) + 1;
+}
+
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	if(env === undefined) {
 		return ['??'];
 	} else if(env.builtInEnv) {
 		return ['Built-in'];
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`];
+	const lines = [...printEnvironmentToLines(env.parent), `${environmentLevel(env)}${'-'.repeat(40)}`];
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length));
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`;

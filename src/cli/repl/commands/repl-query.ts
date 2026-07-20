@@ -1,5 +1,5 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic } from '../../../util/text/ansi';
+import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint, supportsHyperlinks } from '../../../util/text/ansi';
 import {
 	executeQueries,
 	type Query,
@@ -33,6 +33,7 @@ function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: strin
 function printHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
 	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
+	output.stdout(`Start with '?<type>' instead to see documentation on a query, e.g. ${bold(':query ?guess-dep-versions', output.formatter)} (a bare ${bold(':query ?', output.formatter)} lists them all).`);
 	output.stdout(`With this, ${bold(':query @config', output.formatter)} prints the result of the config query.`);
 	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)} (or ${bold('watch://<path>', output.formatter)} to re-run on changes).`);
 	output.stdout(ansiInfo('Otherwise, you can also directly pass the query json. Then, the query is an array of query objects to represent multiple queries.'));
@@ -40,9 +41,56 @@ function printHelp(output: ReplOutput) {
 	output.stdout('Please have a look at the wiki for more info: https://github.com/flowr-analysis/flowr/wiki/Query-API');
 }
 
+/** one parameter of a query, as returned by Joi's loosely-typed {@link Joi.ObjectSchema.describe} */
+interface QueryParamDescription {
+	readonly type?:  string;
+	readonly flags?: { readonly presence?: string, readonly description?: string };
+	readonly allow?: readonly unknown[];
+}
+/** the described shape of a query's Joi schema (its own description plus its parameters) */
+interface QuerySchemaDescription {
+	readonly flags?: { readonly description?: string };
+	readonly keys?:  Record<string, QueryParamDescription>;
+}
+
+/** the single boundary cast for Joi's untyped {@link Joi.Description}, shared by the doc and template renderers */
+function describeSchema(schema: SupportedQuery['schema']): QuerySchemaDescription {
+	return schema.describe() as unknown as QuerySchemaDescription;
+}
+
+/** Print documentation for one query type from its Joi schema (description + each parameter), or list all when no name is given. */
+function printQueryDoc(output: ReplOutput, name: string): void {
+	if(name.length === 0) {
+		output.stdout(`Queries: ${Object.keys(SupportedQueries).sort().map(q => bold('@' + q, output.formatter)).join(', ')}`);
+		output.stdout(`Use ${bold(':query ?<type>', output.formatter)} for details on one, e.g. ${bold(':query ?guess-dep-versions', output.formatter)}.`);
+		return;
+	}
+	const def = Object.entries(SupportedQueries).find(([key]) => key === name)?.[1];
+	if(def === undefined) {
+		output.stderr(`Unknown query ${italic(name, output.formatter)}; use ${bold(':query ?', output.formatter)} to list every query.`);
+		return;
+	}
+	const desc = describeSchema(def.schema);
+	output.stdout(`${bold('@' + name, output.formatter)}${desc.flags?.description ? ` ${faint('— ' + desc.flags.description, output.formatter)}` : ''}`);
+	const params = Object.entries(desc.keys ?? {}).filter(([key]) => key !== 'type');
+	if(params.length === 0) {
+		output.stdout(faint('  (no parameters)', output.formatter));
+	}
+	for(const [key, spec] of params) {
+		const presence = spec.flags?.presence === 'required' ? 'required' : 'optional';
+		const allowed = Array.isArray(spec.allow) && spec.allow.length > 0 ? ` {${spec.allow.join('|')}}` : '';
+		output.stdout(`  ${bold(key, output.formatter)} ${faint(`(${spec.type}${allowed}, ${presence})`, output.formatter)}${spec.flags?.description ? ': ' + spec.flags.description : ''}`);
+	}
+	const syntax = 'syntax' in def && typeof def.syntax === 'string' ? def.syntax : `@${name} <code | file://path>`;
+	output.stdout(`Run: ${bold(':query ' + syntax, output.formatter)}`);
+	output.stdout(`JSON: ${italic(queryTemplate(name, def.schema), output.formatter)}`);
+	const wiki = `https://github.com/flowr-analysis/flowr/wiki/Query-API#${name}-query`;
+	output.stdout(`Docs: ${supportsHyperlinks() ? output.formatter.hyperlink(`${name} query`, wiki) : wiki}`);
+}
+
 /** A copy-pasteable JSON template for a query type: its `type` plus each required field as a placeholder. */
 function queryTemplate(type: string, schema: SupportedQuery['schema']): string {
-	const keys = (schema.describe() as { keys?: Record<string, { flags?: { presence?: string } }> }).keys ?? {};
+	const keys = describeSchema(schema).keys ?? {};
 	const fields = [`\\"type\\": \\"${type}\\"`];
 	for(const [key, value] of Object.entries(keys)) {
 		if(key !== 'type' && value.flags?.presence === 'required') {
@@ -85,6 +133,11 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 	if(query === 'help') {
 		printHelp(output);
+		return;
+	}
+	// `?<type>` (or `? <type>`) documents a query instead of running it; a bare `?` lists them all
+	if(query.startsWith('?')) {
+		printQueryDoc(output, query.slice(1) || (remainingArgs.shift() ?? ''));
 		return;
 	}
 

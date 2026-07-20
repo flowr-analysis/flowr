@@ -1,5 +1,5 @@
 /**
- * On-disk schema of the `flowr-sigdb` database (schema 4): the constants, enums, numeric tuple forms and
+ * On-disk schema of the `flowr-sigdb` database (schema 5): the constants, enums, numeric tuple forms and
  * data interfaces that define the serialized format and its read view. The reader/writer/builder logic that
  * operates on these lives in `./sigdb` (which re-exports this module, so `./sigdb` stays the single entry point).
  */
@@ -18,6 +18,13 @@ export interface LibraryExports {
 	/** defined-but-not-exported identifiers (only available when internal names are stored, which we usually avoid in the db) */
 	readonly internal:   readonly string[];
 	readonly deprecated: readonly string[];
+	/**
+	 * S3 classes this package version OWNS: it registers at least one S3 method for the class (its NAMESPACE's
+	 * `S3method(generic, class)`) AND exports a same-named constructor function. See {@link FnProp.S3Owner}.
+	 */
+	readonly s3Classes:  readonly string[];
+	/** S4 classes this package version OWNS: it exports the class via its NAMESPACE `exportClasses()`. See {@link FnProp.S4Owner}. */
+	readonly s4Classes:  readonly string[];
 	/** flag indicating whether this is a package available on CRAN */
 	readonly cran:       boolean;
 	/** package documentation url base in case this package is found at a different endpoint */
@@ -27,7 +34,7 @@ export interface LibraryExports {
 }
 
 export const SigDbMagic = 'flowr-sigdb';
-export const SigDbSchema = 4;
+export const SigDbSchema = 5;
 /** default CRAN source-package base URL, used to build a version's tarball link */
 export const DefaultCranBase = 'https://cran.r-project.org/src/contrib/';
 /**
@@ -47,7 +54,20 @@ export const enum FnProp {
 	CanThrow         = 16,
 	Deprecated       = 32,
 	CallsInternal    = 64,
-	NonDeterministic = 128
+	NonDeterministic = 128,
+	NoDoc            = 256,
+	S3Method         = 512,
+	/**
+	 * An exported function that is also an S3 class this package OWNS: it is a same-named constructor for a
+	 * class the package registers at least one S3 method for (see {@link LibraryExports.s3Classes}, derived
+	 * from this bit by {@link deriveLibraryExports}).
+	 */
+	S3Owner          = 1024,
+	/**
+	 * Set on the name of an S4 class this package OWNS: it exports the class via its NAMESPACE `exportClasses()`
+	 * (see {@link LibraryExports.s4Classes}, derived from this bit by {@link deriveLibraryExports}).
+	 */
+	S4Owner          = 2048
 }
 
 /** the {@link FnProp} bit to its name (for decoding); integer keys iterate in ascending bit order */
@@ -59,7 +79,11 @@ export const FnPropNames: Readonly<Record<FnProp, string>> = {
 	[FnProp.CanThrow]:         'can-throw',
 	[FnProp.Deprecated]:       'deprecated',
 	[FnProp.CallsInternal]:    'calls-internal',
-	[FnProp.NonDeterministic]: 'non-deterministic'
+	[FnProp.NonDeterministic]: 'non-deterministic',
+	[FnProp.NoDoc]:            'no-doc',
+	[FnProp.S3Method]:         's3-method',
+	[FnProp.S3Owner]:          's3-owner',
+	[FnProp.S4Owner]:          's4-owner'
 };
 
 /** parameter flags, packed into {@link SigParam}'s flag int */
@@ -77,8 +101,13 @@ export const enum ParamFlag {
 export type SigParam = number | [nameIdx: number, flags: number] | [nameIdx: number, flags: number, defaultIdx: number];
 /** a full signature: the ordered parameter list */
 export type Sig = SigParam[];
-/** one function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when absent) */
-export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number];
+/**
+ * One function record `[nameIdx, sigIdx, cgIdx, propBits, fileIdx, line]` (`sigIdx`/`cgIdx`/`fileIdx` are -1 when
+ * absent), with an optional trailing `topicIdx` (the Rd help topic, present only when it differs from the name).
+ * The trailing element is additive: readers that stop at `line` ignore it, so older bundles stay readable.
+ */
+export type SigFn = [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number]
+	| [nameIdx: number, sigIdx: number, cgIdx: number, propBits: number, fileIdx: number, line: number, topicIdx: number];
 
 /** the kind of a package dependency (mirrors the DESCRIPTION fields) */
 export const enum DepType { Depends = 0, Imports = 1, LinkingTo = 2, Suggests = 3, Enhances = 4 }
@@ -181,6 +210,8 @@ export interface SigFunctionInfo {
 	readonly callees: readonly string[];
 	readonly file?:   string;
 	readonly line?:   number;
+	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
+	readonly topic?:  string;
 }
 /** one declared package dependency, e.g. `{ name: 'testthat', type: Suggests, constraint: '>= 2.1.0' }` */
 export interface SigDependencyInfo {

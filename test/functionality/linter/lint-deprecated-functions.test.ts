@@ -2,6 +2,33 @@ import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
+import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
+import type { DecodedFunction } from '../../../src/project/sigdb/decode';
+import type { LibraryExports } from '../../../src/project/sigdb/schema';
+
+/** a minimal in-memory signature source exposing a single, richly-decoded (and deprecated) function of `pkg` */
+function sigDbWithDeprecatedFn(pkg: string, fnName: string): PackageSignatureSource {
+	const fn: DecodedFunction = { name: fnName, line: 1, exported: true, props: ['deprecated'], signature: [], callees: [] };
+	const view: LibraryExports = { version: '1.0.0', exported: [fnName], internal: [], deprecated: [fnName], s3Classes: [], s4Classes: [], cran: true };
+	return {
+		has:               p => p === pkg,
+		hasVersion:        (p, version) => p === pkg && version === '1.0.0',
+		isCranVersion:     () => true,
+		lookup:            p => p === pkg ? view : undefined,
+		classOwner:        () => undefined,
+		functions:         p => p === pkg ? [fn] : undefined,
+		functionByName:    (p, name) => p === pkg && name === fnName ? fn : undefined,
+		transitiveCallees: () => undefined,
+		dependencies:      () => undefined,
+		packageNames:      () => [pkg],
+		isBaseR:           () => false,
+		coreVersions:      () => undefined,
+		releaseDate:       () => undefined,
+		releaseDates:      () => [],
+		latestVersion:     () => undefined,
+		close:             () => { /* nothing to release */ }
+	};
+}
 
 describe('flowR linter', withTreeSitter(parser => {
 	describe('deprecated functions', () => {
@@ -63,6 +90,20 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 				[{ certainty: LintingResultCertainty.Certain, function: 'recode', loc: [2, 1, 2, 9] }],
 				{ totalCalls: 1, totalFunctionDefinitions: 1 },
 				{ fns: ['recode'], noSigDb: true }
+			);
+		});
+
+		describe('a call the signature database marks deprecated is flagged even outside the hardcoded list', () => {
+			assertLinter('sigdb-deprecated function not in fns', parser, 'library(dplyr)\nold_verb(x)',
+				'deprecated-functions',
+				[{ certainty: LintingResultCertainty.Certain, function: 'dplyr::old_verb', loc: [2, 1, 2, 11] }],
+				{ totalCalls: 1, totalFunctionDefinitions: 1 },
+				{ fns: [], sigDb: sigDbWithDeprecatedFn('dplyr', 'old_verb') }
+			);
+			assertLinter('not flagged without a package database', parser, 'library(dplyr)\nold_verb(x)',
+				'deprecated-functions', [],
+				{ totalCalls: 0, totalFunctionDefinitions: 0 },
+				{ fns: [], noSigDb: true }
 			);
 		});
 	});

@@ -5,13 +5,12 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { ControlDependency, DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
-import { ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
-import { RDAParser, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
+import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
-import { FlowrTextFile } from '../../../../../../project/context/flowr-file';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
@@ -33,7 +32,7 @@ import type {
 import {
 	EmptyArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { bindArgs, resolveArgToEnvir } from './built-in-envir-utils';
+import { bindArgs, resolveArgToEnvir, signatureParamNames } from './built-in-envir-utils';
 
 /**
  * Processes a built-in 'load' function call by retrieving the names of the variables loaded by the given file.
@@ -46,7 +45,7 @@ export function processLoadCall<OtherInfo>(
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ): DataflowInformation {
-	const { fileArg, envirArg } = getArguments(args);
+	const { fileArg, envirArg } = getArguments(args, data);
 
 	if(!fileArg) {
 		const fn = processKnownFunctionCall({ name, args, rootId, data, origin: 'default' });
@@ -95,12 +94,17 @@ export function processLoadCall<OtherInfo>(
 
 			let variables: RObjectData[] | null;
 			try {
-				variables = new RDAParser(new FlowrTextFile(filepath), true).parse();
+				const file = data.ctx.files.resolveFile(filepath);
+				variables = file instanceof FlowrRDAFile ? file.content() : null;
 			} catch(e) {
 				dataflowLogger.warn(`Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
 				continue;
 			}
-			if(variables === null || variables.length === 0) {
+			if(variables === null) {
+				dataflowLogger.warn(`Could not read ${JSON.stringify(filepath)} as an RDA file, treating the load as unknown`);
+				continue;
+			}
+			if(variables.length === 0) {
 				return fn.information;
 			}
 
@@ -278,8 +282,9 @@ function sexpTypeToReferenceType(type?: SexpType): ReferenceType{
 	}
 }
 
-function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
-	const loadParams = ['file', 'envir', 'verbose'] as const;
+function getArguments<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], data: DataflowProcessorInformation<OtherInfo & ParentInformation>) {
+	// prefer R's real `base::load` signature from the database, falling back to the known formals when it is absent
+	const loadParams = signatureParamNames(data, Identifier.make('load', PkgName.Base), ['file', 'envir', 'verbose']);
 	const bound = bindArgs(args, loadParams);
 
 	const fileArgBound = bound.get('file');

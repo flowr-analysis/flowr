@@ -1,4 +1,5 @@
 import { DataflowGraph, FunctionArgument } from '../dataflow/graph/graph';
+import { linkToQueryOfName } from './doc-util/doc-query';
 import {
 	type DataflowGraphVertexFunctionCall,
 	type DataflowGraphVertexFunctionDefinition,
@@ -1281,7 +1282,7 @@ If you are interested in which features we support and which features are still 
 ${section('Resolving Values', 3, 'dfg-resolving-values')}
 
 FlowR supports a ${ctx.linkPage('wiki/Interface', 'configurable', 'configuring-flowr')} level of value tracking&mdash;all with the goal of knowing the static value domain of a variable.
-These capabilities are exposed by the ${ctx.linkPage('wiki/Query API', 'resolve value Query', 'resolve-value-query')} and backed by two important functions:
+These capabilities are exposed by the ${linkToQueryOfName('resolve-value', 'resolve value Query')} and backed by two important functions:
 
 ${ctx.link(resolveIdToValue)} provides an environment-sensitive (see ${ctx.link('REnvironmentInformation')})
 value resolution depending on if the environment is provided.

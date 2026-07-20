@@ -289,6 +289,7 @@ function isDominated(bound: string | undefined, tightestGe: string | undefined, 
 }
 
 export const GuessDepVersionsQueryDefinition = {
+	title:           'Guess Dependency Versions Query',
 	executor:        executeGuessDepVersionsQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, _query) => {
 		const out = queryResults as QueryResults<'guess-dep-versions'>['guess-dep-versions'];

@@ -76,6 +76,7 @@ function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 export const StaticSliceQueryDefinition = {
+	title:           'Static Slice Query',
 	executor:        executeStaticSliceQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];

@@ -24,6 +24,7 @@ export interface DataflowQueryResult extends BaseQueryResult {
 }
 
 export const DataflowQueryDefinition = {
+	title:           'Dataflow Query',
 	executor:        executeDataflowQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow'>['dataflow'];

@@ -127,6 +127,7 @@ function linterQueryCompleter(line: readonly string[], startingNewArg: boolean, 
 }
 
 export const LinterQueryDefinition = {
+	title:           'Linter Query',
 	executor:        executeLinterQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'linter'>['linter'];

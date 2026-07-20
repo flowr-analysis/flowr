@@ -260,6 +260,7 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 })).optional();
 
 export const DependenciesQueryDefinition = {
+	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;

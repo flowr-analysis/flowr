@@ -40,6 +40,7 @@ function locationMapLineParser(_output: ReplOutput, line: readonly string[], _co
 }
 
 export const LocationMapQueryDefinition = {
+	title:           'Location Map Query',
 	executor:        executeLocationMapQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;

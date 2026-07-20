@@ -83,6 +83,7 @@ function diceQueryCompleter(line: readonly string[], startingNewArg: boolean, _c
 }
 
 export const DiceQueryDefinition = {
+	title:           'Dice Query',
 	executor:        executeDiceQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dice'>['dice'];

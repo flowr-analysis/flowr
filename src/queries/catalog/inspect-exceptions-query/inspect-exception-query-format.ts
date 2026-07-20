@@ -42,6 +42,7 @@ function inspectExceptionLineParser(_output: ReplOutput, line: readonly string[]
 }
 
 export const InspectExceptionQueryDefinition = {
+	title:           'Inspect Exceptions of Functions Query',
 	executor:        executeExceptionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-exception'>['inspect-exception'];

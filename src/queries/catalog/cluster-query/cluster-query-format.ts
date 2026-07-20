@@ -21,6 +21,7 @@ export interface DataflowClusterQueryResult extends BaseQueryResult {
 }
 
 export const ClusterQueryDefinition = {
+	title:           'Dataflow Cluster Query',
 	executor:        executeDataflowClusterQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];

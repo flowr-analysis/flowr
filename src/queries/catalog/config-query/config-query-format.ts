@@ -268,6 +268,7 @@ function inspectedChildren(value: object, path: readonly string[], formatter: Ou
 }
 
 export const ConfigQueryDefinition = {
+	title:           'Config Query',
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;

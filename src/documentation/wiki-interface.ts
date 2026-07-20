@@ -1,4 +1,5 @@
 import { RShell } from '../r-bridge/shell';
+import { linkToQueryOfName } from './doc-util/doc-query';
 import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
@@ -150,8 +151,8 @@ the REPL will re-use previously obtained information and not re-parse the code a
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
-Of special note, the ${ctx.linkPage('wiki/Query API', 'Config Query', 'Config-Query')}
-can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
+Of special note, the ${linkToQueryOfName('config', 'Config Query')}
+can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${linkToQueryOfName('config', 'wiki page')} for more information).
 
 ### Example: Retrieving the Dataflow Graph
 

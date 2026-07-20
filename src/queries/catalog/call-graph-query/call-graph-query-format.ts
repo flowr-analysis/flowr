@@ -25,6 +25,7 @@ export interface CallGraphQueryResult extends BaseQueryResult {
 }
 
 export const CallGraphQueryDefinition = {
+	title:           'Call-Graph Query',
 	executor:        executeCallGraphQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'call-graph'>['call-graph'];

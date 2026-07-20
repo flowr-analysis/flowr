@@ -68,6 +68,7 @@ function addSuffix(count: number, singular = '', plural = 's'): string {
 }
 
 export const ProjectQueryDefinition = {
+	title:           'Project Query',
 	executor:        executeProjectQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'project'>['project'];

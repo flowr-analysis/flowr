@@ -37,7 +37,11 @@ import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
-import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discovery/flowr-analyzer-gitignore-project-discovery-plugin';
+import {
+	FlowrAnalyzerGitignoreProjectDiscoveryPlugin,
+	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
+	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
+} from './project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -67,7 +71,9 @@ export const BuiltInPlugins = [
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
-	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
+	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
+	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
+	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

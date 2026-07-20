@@ -1,12 +1,18 @@
-import { assert, describe, test } from 'vitest';
+import { afterAll, assert, beforeAll, describe, test } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
+import { TreeSitterExecutor } from '../../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrAnalyzerContext } from '../../../../src/project/context/flowr-analyzer-context';
 import { arraysGroupBy } from '../../../../src/util/collections/arrays';
-import { FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { FlowrConfig } from '../../../../src/config';
 import {
 	FlowrAnalyzerVirtualEnvFilePlugin
 } from '../../../../src/project/plugins/file-plugins/flowr-analyzer-virtualenv-file-plugin';
 import {
+	FlowrAnalyzerPackageVersionsPackratPlugin,
 	FlowrAnalyzerPackageVersionsRenvPlugin,
 	FlowrAnalyzerPackageVersionsRvPlugin
 } from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
@@ -50,13 +56,32 @@ const renvLock = `{
   }
 }`;
 
+/** a packrat.lock: multi-record DCF, metadata first */
+const packratLock = `PackratFormat: 1.4
+PackratVersion: 0.4.8.1
+RVersion: 3.2.3
+Repos: CRAN=https://cran.rstudio.com/
+
+Package: R6
+Source: CRAN
+Version: 2.1.2
+Hash: b20c3f8bbb7ea1b1eaee0a1b7bcd8c9f
+
+Package: ggplot2
+Source: CRAN
+Version: 2.1.0
+Hash: 5f0e0e0a1b7bcd8c9fb20c3f8bbb7ea1
+Requires: digest, gtable
+`;
+
 function ctxWith(name: string, content: string): FlowrAnalyzerContext {
 	const ctx = new FlowrAnalyzerContext(
 		FlowrConfig.default(),
 		arraysGroupBy([
 			new FlowrAnalyzerVirtualEnvFilePlugin(),
 			new FlowrAnalyzerPackageVersionsRvPlugin(),
-			new FlowrAnalyzerPackageVersionsRenvPlugin()
+			new FlowrAnalyzerPackageVersionsRenvPlugin(),
+			new FlowrAnalyzerPackageVersionsPackratPlugin()
 		], p => p.type)
 	);
 	ctx.addFile(new FlowrInlineTextFile(name, content));
@@ -81,8 +106,42 @@ describe('Lockfile versions', () => {
 		assert.sameDeepMembers(got, [['R6', '2.5.1'], ['cli', '3.6.4']]);
 	});
 
+	test('packrat.lock pins every package', () => {
+		const ctx = ctxWith('packrat.lock', packratLock);
+		const got = ctx.deps.getDependencies().map(d => [d.name, d.versionConstraints[0]?.raw]);
+		assert.sameDeepMembers(got, [['R6', '2.1.2'], ['ggplot2', '2.1.0']]);
+	});
+
+	test('packrat.lock contributes its RVersion', () => {
+		assert.strictEqual(ctxWith('packrat.lock', packratLock).meta.getRVersion(), '3.2.3');
+	});
+
 	test('a broken lockfile is skipped rather than throwing', () => {
 		assert.deepStrictEqual(ctxWith('rv.lock', '[[packages]\nname = ').deps.getDependencies(), []);
 		assert.deepStrictEqual(ctxWith('renv.lock', '{not json').deps.getDependencies(), []);
+	});
+});
+
+describe('packrat within a discovered project', () => {
+	let root: string;
+	beforeAll(() => {
+		root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-packrat-'));
+		fs.mkdirSync(path.join(root, 'packrat', 'lib', '3.2.3'), { recursive: true });
+		fs.writeFileSync(path.join(root, 'packrat', 'packrat.lock'), packratLock);
+		fs.writeFileSync(path.join(root, 'packrat', 'init.R'), 'packrat_mode <- TRUE');
+		fs.writeFileSync(path.join(root, 'packrat', 'lib', '3.2.3', 'installed.R'), 'junk <- 1');
+	});
+	afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
+
+	test('the lockfile is discovered and read, the installed library is not', async() => {
+		const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		analyzer.addRequest({ request: 'project', content: root });
+		const ctx = analyzer.inspectContext();
+		assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.VirtualEnv).map(f => path.basename(f.path())), ['packrat.lock']);
+		assert.sameMembers(ctx.deps.getDependencies().map(d => d.name), ['R6', 'ggplot2']);
+		assert.strictEqual(ctx.meta.getRVersion(), '3.2.3');
+		const loaded = ctx.files.loadingOrder.getLoadingOrder().map(r => r.request === 'file' ? path.basename(r.content) : '<inline>');
+		assert.include(loaded, 'init.R', 'the bootstrap script stays visible');
+		assert.notInclude(loaded, 'installed.R', 'packrat/lib holds installed sources and is ignored');
 	});
 });

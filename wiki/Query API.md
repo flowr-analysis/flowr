@@ -1772,6 +1772,7 @@ Please consult the [Interface](https://github.com/flowr-analysis/flowr/wiki/inte
         "versions:namespace",
         "versions:renv",
         "versions:rv",
+        "versions:packrat",
         "versions:session-info",
         "loading-order:description",
         "loading-order:implicit-sources",

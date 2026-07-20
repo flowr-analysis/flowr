@@ -7,7 +7,9 @@ import {
 	FlowrAnalyzerPackageVersionsSigDbPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import {
-	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
+	FlowrAnalyzerPackageVersionsPackratPlugin,
+	FlowrAnalyzerPackageVersionsRenvPlugin,
+	FlowrAnalyzerPackageVersionsRvPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
 import {
 	FlowrAnalyzerPackageVersionsSessionInfoPlugin
@@ -52,6 +54,7 @@ export const BuiltInPlugins = [
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
+	['versions:packrat', FlowrAnalyzerPackageVersionsPackratPlugin],
 	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],

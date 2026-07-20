@@ -8,13 +8,12 @@ import {
 	platformBasename
 } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
-/** Lockfiles pinning a project's package environment (`renv.lock`, `rv.lock`). */
-const VirtualEnvFilePattern = /^(renv|rv)\.lock$/i;
+/** Lockfiles pinning a project's package environment (`renv.lock`, `rv.lock`, `packrat.lock`). */
+const VirtualEnvFilePattern = /^(renv|rv|packrat)\.lock$/i;
 
 /**
- * Tags a project's virtual-environment lockfiles (e.g. `renv.lock`, `rv.lock`) with the
- * {@link FileRole.VirtualEnv} role, so the version plugins that read them (renv/rv) can look them up
- * by role instead of scanning every project file.
+ * Tags a project's virtual-environment lockfiles with the {@link FileRole.VirtualEnv} role, so the version
+ * plugins that read them can look them up by role instead of scanning every project file.
  */
 export class FlowrAnalyzerVirtualEnvFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-virtualenv-files-plugin';

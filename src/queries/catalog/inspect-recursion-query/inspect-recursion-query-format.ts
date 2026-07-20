@@ -35,6 +35,7 @@ function inspectRecLineParser(output: ReplOutput, line: readonly string[], _conf
 }
 
 export const InspectRecursionQueryDefinition = {
+	title:           'Inspect Recursive Functions Query',
 	executor:        executeRecursionQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-recursion'>['inspect-recursion'];

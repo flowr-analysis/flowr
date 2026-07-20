@@ -154,6 +154,8 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
 	/** optional one-line usage of the repl `@`-shorthand `fromLine` accepts, shown by `:query ?<type>` */
 	syntax?:              string
+	/** the human-readable name, e.g. `Call-Context Query`; also names its wiki page, see {@link queryWikiPage} */
+	title:                string
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
@@ -201,6 +203,11 @@ export const SupportedQueries = {
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
+
+/** The wiki page documenting a query, derived from its {@link SupportedQuery.title}. */
+export function queryWikiPage(title: string): string {
+	return '[Query] ' + title.replace(/\s*Query$/, '');
+}
 export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
 /**

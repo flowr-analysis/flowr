@@ -2,6 +2,7 @@ import { assert, describe, test } from 'vitest';
 import { SupportedQueries } from '../../../../../src/queries/query';
 import { assertReplCompletions, assertReplParser, discardingReplOutput } from '../../../_helper/repl';
 import { FlowrConfig } from '../../../../../src/config';
+import { replCompleter } from '../../../../../src/cli/repl/core';
 
 describe('Config Query REPL Parser', () => {
 	const parser = SupportedQueries['config'].fromLine;
@@ -24,6 +25,33 @@ describe('Config Query REPL Parser', () => {
 		},
 	});
 	rejects('incomplete line shows the syntax hint', ['+'], 'Invalid config update syntax');
+
+	/** the paths a glob inspects, in order */
+	function inspectsOf(line: string): (readonly string[])[] {
+		const parsed = parser(discardingReplOutput, [line], FlowrConfig.default());
+		const queries = Array.isArray(parsed.query) ? parsed.query : parsed.query ? [parsed.query] : [];
+		return queries.map(q => q.inspect ?? []);
+	}
+
+	test('a `**` glob inspects matching keys at any depth', () => {
+		assert.deepStrictEqual(inspectsOf('**.enabled'), [['solver', 'sigdb', 'enabled']]);
+	});
+
+	test('a `*` glob stays within one segment, `**` spans them', () => {
+		const single = inspectsOf('solver.*').map(p => p.join('.'));
+		const deep = inspectsOf('solver.**').map(p => p.join('.'));
+		assert.include(single, 'solver.sigdb');
+		assert.notInclude(single, 'solver.sigdb.enabled', '`*` must not reach into a nested object');
+		assert.include(deep, 'solver.sigdb.enabled');
+	});
+
+	test('a glob matches within a segment', () => {
+		assert.deepStrictEqual(inspectsOf('solver.sigdb.eagerly*').map(p => p.join('.')),
+			['solver.sigdb.eagerlyLoad', 'solver.sigdb.eagerlyLoadExports']);
+	});
+
+	rejects('a glob matching nothing is reported', ['**.doesNotExist'], 'No config key matches');
+	rejects('setting rejects a glob, it is inspection only', ['+solver.*=true'], 'Unknown config key');
 	assertReplParser({ parser,
 		label:         'valid update',
 		line:          ['+solver.sigdb.downloadRepo=my/repo'],
@@ -177,5 +205,39 @@ describe('Config Query REPL Completions', () => {
 		startingNewArg:      false,
 		splitLine:           ['+solver.variables=disabled'],
 		expectedCompletions: [],
+	});
+});
+
+describe('Config Query REPL completion', () => {
+	/* the repl filters a completer's output against the typed fragment, so this must be tested through replCompleter */
+	function completionsFor(line: string): string[] {
+		const ansi = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m', 'g');
+		return replCompleter(line, FlowrConfig.default())[0].map(c => c.replace(ansi, '').split('  ')[0]);
+	}
+
+	test('a glob completes to the keys it matches, which share no prefix with it', () => {
+		assert.deepStrictEqual(completionsFor(':query @config **.enab'), ['solver.sigdb.enabled']);
+	});
+
+	test('a `*` glob completes to direct children only', () => {
+		const got = completionsFor(':query @config solver.*');
+		assert.include(got, 'solver.sigdb');
+		assert.notInclude(got, 'solver.sigdb.enabled');
+	});
+
+	test('a glob matching nothing completes to nothing', () => {
+		assert.isEmpty(completionsFor(':query @config **.doesNotExist'));
+	});
+
+	test('setting does not expand a glob', () => {
+		assert.isEmpty(completionsFor(':query @config +solver.*'));
+	});
+
+	test('a pattern-keyed section completes to its permitted keys', () => {
+		assert.deepStrictEqual(completionsFor(':query @config specializeConfig.pack'), ['specializeConfig.package']);
+	});
+
+	test('a plain path still completes by prefix', () => {
+		assert.deepStrictEqual(completionsFor(':query @config solver.sigdb.enab'), ['solver.sigdb.enabled']);
 	});
 });

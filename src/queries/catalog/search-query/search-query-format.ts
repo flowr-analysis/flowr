@@ -20,6 +20,7 @@ export interface SearchQueryResult extends BaseQueryResult {
 }
 
 export const SearchQueryDefinition = {
+	title:           'Search Query',
 	executor:        executeSearch,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'search'>['search'];

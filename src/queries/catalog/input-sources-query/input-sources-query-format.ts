@@ -66,6 +66,7 @@ function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[]
 }
 
 export const InputSourcesDefinition = {
+	title:           'Input Sources Query',
 	executor:        executeInputSourcesQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'input-sources'>['input-sources'];

@@ -16,6 +16,7 @@ export interface IdMapQueryResult extends BaseQueryResult {
 }
 
 export const IdMapQueryDefinition = {
+	title:           'Id-Map Query',
 	executor:        executeIdMapQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'id-map'>['id-map'];

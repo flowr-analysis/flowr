@@ -401,9 +401,11 @@ export const FlowrDefaultPlugins = [
 	'versions:namespace',
 	'versions:renv',
 	'versions:rv',
+	'versions:packrat',
 	'versions:session-info',
 	'loading-order:description',
 	'loading-order:implicit-sources',
+	'loading-order:rprofile',
 	'meta:description',
 	'meta:rproject',
 	'file-roles:vignette',
@@ -419,6 +421,7 @@ export const FlowrDefaultPlugins = [
 	'file:license',
 	'file:virtualenv',
 	'file:rproject',
+	'file:rprofile',
 ] satisfies ConfigPlugin<string>[];
 
 /** deep-merge two config overwrites with `own` winning; objects merge, arrays/scalars replace (matching {@link specialize}'s array-as-leaf treatment) */

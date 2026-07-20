@@ -8,10 +8,10 @@ import { isNotUndefined } from '../../../util/assert';
  * Executes the given configuration queries using the provided analyzer.
  */
 export function executeConfigQuery({ analyzer }: BasicQueryData, queries: readonly ConfigQuery[]): Promise<ConfigQueryResult> {
-	if(queries.length !== 1) {
-		log.warn('Config query usually expects only up to one query, but got', queries.length);
-	}
 	const updates = queries.map(q => q.update).filter(isNotUndefined);
+	if(updates.length > 1) {
+		log.warn('Config query usually expects only up to one update, but got', updates.length);
+	}
 
 	// validate here too (not only in the repl parser), so a programmatic / JSON-API update cannot merge an unknown
 	// key or a wrong-typed value; the update then lands via `updateConfig`, which invalidates the analysis cache

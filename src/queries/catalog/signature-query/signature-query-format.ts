@@ -221,6 +221,7 @@ function signatureQueryLineParser(output: ReplOutput, line: readonly string[], _
 }
 
 export const SignatureQueryDefinition = {
+	title:           'Signature Query',
 	executor:        executeSignatureQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, _query) => {
 		const out = queryResults as QueryResults<'signature'>['signature'];

@@ -16,7 +16,7 @@ import { matchByPrefixOrSubsequence } from '../../../util/text/strings';
 export interface ConfigQuery extends BaseQueryFormat {
 	readonly type:     'config';
 	readonly update?:  DeepPartial<FlowrConfig>
-	/** a `.`-separated path to inspect (read) a single config value instead of dumping the whole config (repl: `path`) */
+	/** a `.`-separated path to inspect (read) a single config value instead of dumping the whole config (repl: `path`, which also accepts a `*`/`**` glob) */
 	readonly inspect?: readonly string[]
 }
 
@@ -26,7 +26,7 @@ export interface ConfigQueryResult extends BaseQueryResult {
 	readonly specialization?: { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> };
 }
 
-function configReplCompleter(partialLine: readonly string[], startingNewArg: boolean, _config: FlowrConfig): CommandCompletions {
+function configReplCompleter(partialLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	// the config query is a single token
 	if(partialLine.length > 1 || (partialLine.length === 1 && startingNewArg)) {
 		return { completions: [] };
@@ -51,6 +51,12 @@ function configReplCompleter(partialLine: readonly string[], startingNewArg: boo
 			labels:      new Map(values.map(v => [prefix + v, v])),
 			hints:       placeholder !== undefined && valuePart.length === 0 ? [prefix + placeholder] : undefined
 		};
+	}
+	// a glob reads several keys, so expand it to the paths it matches (the trailing segment completes as a prefix)
+	if(!update && raw.includes('*')) {
+		const matches = configGlobMatcher(raw.endsWith('*') ? raw : `${raw}*`);
+		const found = [...configPaths(config)].filter(matches).map(p => p.join('.')).sort();
+		return { completions: found, labels: new Map(found.map(p => [p, describeCompletion(p, configSchemaInfo(p.split('.')).type ?? '')])), preFiltered: true };
 	}
 	const path = raw.split('.').filter(p => p.length > 0);
 	const fullPath = path.slice();
@@ -83,6 +89,34 @@ function configReplCompleter(partialLine: readonly string[], startingNewArg: boo
 		}
 	}
 	return { completions: [`${leaf}${update ? '=' : ''}`] };
+}
+
+/** every `.`-separated path in the config, intermediate objects included, for {@link configGlobMatcher} */
+function* configPaths(node: unknown, prefix: readonly string[] = []): Generator<string[]> {
+	if(prefix.length > 0) {
+		yield [...prefix];
+	}
+	if(node !== null && typeof node === 'object' && !Array.isArray(node)) {
+		for(const [key, value] of Object.entries(node)) {
+			yield* configPaths(value, [...prefix, key]);
+		}
+	}
+}
+
+/** matches a config path against a glob, `*` covering one segment and `**` any number (`**.enabled`, `solver.*`) */
+function configGlobMatcher(pattern: string): (path: readonly string[]) => boolean {
+	const segments = pattern.split('.');
+	let regex = '^';
+	for(let i = 0; i < segments.length; i++) {
+		const last = i === segments.length - 1;
+		if(segments[i] === '**') {
+			regex += last ? '[^.]+(?:\\.[^.]+)*' : '(?:[^.]+\\.)*';
+		} else {
+			regex += segments[i].split('*').map(part => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('[^.]*') + (last ? '' : '\\.');
+		}
+	}
+	const matches = new RegExp(regex + '$');
+	return path => matches.test(path.join('.'));
 }
 
 /** an error message if `path` is not a key of the config schema (naming the first unknown segment and its real siblings), or `undefined` if it is a valid key */
@@ -152,7 +186,7 @@ export function validateConfigUpdate(update: DeepPartial<FlowrConfig>, formatter
 	return undefined;
 }
 
-function configQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'config'> {
+function configQueryLineParser(output: ReplOutput, line: readonly string[], config: FlowrConfig): ParsedQueryLine<'config'> {
 	const first = line[0] ?? '';
 	if(first.startsWith('+')) {
 		const [pathPart, ...valueParts] = first.slice(1).split('=');
@@ -176,6 +210,14 @@ function configQueryLineParser(output: ReplOutput, line: readonly string[], _con
 	const path = first.split('.').filter(p => p.length > 0);
 	if(path.length === 0) {
 		return { query: [{ type: 'config' }] };
+	}
+	if(first.includes('*')) {
+		// a glob reads several keys at once (inspection only, setting stays a single explicit key)
+		const matches = configGlobMatcher(first);
+		const found = [...configPaths(config)].filter(matches).sort((a, b) => a.join('.').localeCompare(b.join('.')));
+		return found.length === 0
+			? configError(output, `No config key matches ${bold(first, output.formatter)}`)
+			: { query: found.map(p => ({ type: 'config', inspect: p })) };
 	}
 	const unknown = unknownConfigKey(path, output.formatter);
 	return unknown !== undefined ? configError(output, unknown) : { query: [{ type: 'config', inspect: path }] };
@@ -268,6 +310,8 @@ function inspectedChildren(value: object, path: readonly string[], formatter: Ou
 }
 
 export const ConfigQueryDefinition = {
+	title:           'Config Query',
+	syntax:          '@config [<path> | <glob>] | @config +<path>=<value>',
 	executor:        executeConfigQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[], queries: readonly Query[]) => {
 		const out = queryResults as ConfigQueryResult;

@@ -20,6 +20,7 @@ import {
 	intersectSurvivors,
 	isoDay,
 	countRunnableCombinations,
+	DefaultFixpointIterations,
 	enforceArcConsistency,
 	iterateToFixpoint,
 	orderedCandidatesOf,
@@ -56,6 +57,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 	let anyAll = false;
 	let earliestDate: string | undefined, earliestTime = Infinity, anyDate: string | undefined;
 	let maxCandidates: number | undefined;
+	let maxIterations: number | undefined;
 	let explode: GuessDepVersionsQuery['explode'];
 	for(const q of queries) {
 		if(q.packages) {
@@ -76,6 +78,9 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 		if(q.maxCandidates !== undefined) {
 			maxCandidates = maxCandidates === undefined ? q.maxCandidates : Math.min(maxCandidates, q.maxCandidates);
 		}
+		if(q.maxIterations !== undefined) {
+			maxIterations = maxIterations === undefined ? q.maxIterations : Math.max(maxIterations, q.maxIterations);
+		}
 		explode ??= q.explode;
 	}
 	// keep the tightest date, or any malformed date to report it
@@ -85,6 +90,7 @@ function mergeQueries(queries: readonly GuessDepVersionsQuery[]): GuessDepVersio
 		...(anyAll || packages.size === 0 ? {} : { packages: [...packages] }),
 		...(date ? { date } : {}),
 		...(maxCandidates !== undefined ? { maxCandidates } : {}),
+		...(maxIterations !== undefined ? { maxIterations } : {}),
 		...(explode ? { explode } : {})
 	};
 }
@@ -109,7 +115,7 @@ function rangeString(survivors: readonly string[], nonContiguous: boolean, unsat
 }
 
 /** build the reported guess for one package from its already-computed surviving versions and provenance */
-function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, used: boolean): GuessedDependency {
+function guessPackage(name: string, cap: number, surviving: SurvivingEntries, evidence: EvidenceCollector, used: boolean, linkedWith?: readonly string[]): GuessedDependency {
 	const { declaredRange, declaredConstraints, unsatisfiable } = surviving;
 	const survivors = surviving.survivors.map(e => e.ver);
 	const preSignature = surviving.preSignature.map(e => e.ver);
@@ -131,6 +137,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		truncated:      survivors.length > cap ? true : undefined,
 		evidence:       evidence.list,
 		unsatisfiable:  unsatisfiable ? true : undefined,
+		linkedWith:     linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
 		used
 	}) as GuessedDependency;
 }
@@ -196,12 +203,13 @@ export async function executeGuessDepVersionsQuery(
 		return out;
 	};
 
+	const maxIterations = query.maxIterations ?? DefaultFixpointIterations;
 	let transitive = collectTransitiveConstraints(deps, sources);
 	if(!query.clean) {
 		let prev = '';
-		iterateToFixpoint(8, () => {
+		iterateToFixpoint(maxIterations, () => {
 			const pass = guessLowerBounds(transitive);
-			const signature = [...pass].sort().map(([k, v]) => `${k}=${v}`).join(',');
+			const signature = Array.from(pass, ([k, v]) => `${k}=${v}`).sort().join(',');
 			if(signature === prev) {
 				return false;
 			}
@@ -222,7 +230,7 @@ export async function executeGuessDepVersionsQuery(
 	});
 
 	const arcEntries = guessedAll.map(g => ({ name: g.name, src: g.src, key: g.key, survivors: g.surviving.survivors }));
-	const blockers = query.clean ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries);
+	const blockers = query.clean ? new Map<string, Map<string, string>>() : enforceArcConsistency(arcEntries, maxIterations);
 	guessedAll.forEach((g, i) => {
 		g.surviving = { ...g.surviving, survivors: arcEntries[i].survivors };
 		const max = g.surviving.survivors.at(-1)?.ver;
@@ -239,6 +247,7 @@ export async function executeGuessDepVersionsQuery(
 		...(ctx.config.solver.versionManagement?.linkedVersionGroups ?? [])
 	];
 	const linkedGroups: string[][] = [];
+	const linkedWith = new Map<string, string[]>();
 	for(const group of groups) {
 		const members = guessedAll.filter(g => group.includes(g.name));
 		if(members.length > 1) {
@@ -247,6 +256,9 @@ export async function executeGuessDepVersionsQuery(
 				m.surviving = { ...m.surviving, survivors: shared };
 			}
 			linkedGroups.push(members.map(m => m.name));
+			for(const m of members) {
+				linkedWith.set(m.name, members.filter(o => o !== m).map(o => o.name));
+			}
 		}
 	}
 
@@ -287,7 +299,7 @@ export async function executeGuessDepVersionsQuery(
 	const dependencies: GuessedDependency[] = [];
 	const ordered: OrderedCandidates[] = [];
 	for(const g of guessedAll) {
-		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, usage.has(g.name)));
+		dependencies.push(guessPackage(g.name, cap, g.surviving, g.evidence, usage.has(g.name), linkedWith.get(g.name)));
 		const oc = query.explode ? orderedCandidatesOf(g.src, g.name, g.surviving, query.explode.prefer?.[g.name], explodeOrder) : undefined;
 		if(oc) {
 			ordered.push(oc);

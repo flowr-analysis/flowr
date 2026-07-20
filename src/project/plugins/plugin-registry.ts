@@ -7,7 +7,9 @@ import {
 	FlowrAnalyzerPackageVersionsSigDbPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import {
-	FlowrAnalyzerPackageVersionsRenvPlugin, FlowrAnalyzerPackageVersionsRvPlugin
+	FlowrAnalyzerPackageVersionsPackratPlugin,
+	FlowrAnalyzerPackageVersionsRenvPlugin,
+	FlowrAnalyzerPackageVersionsRvPlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
 import {
 	FlowrAnalyzerPackageVersionsSessionInfoPlugin
@@ -37,7 +39,15 @@ import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
-import { FlowrAnalyzerGitignoreProjectDiscoveryPlugin } from './project-discovery/flowr-analyzer-gitignore-project-discovery-plugin';
+import {
+	FlowrAnalyzerGitignoreProjectDiscoveryPlugin,
+	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
+	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
+} from './project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
+import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-rprofile-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderRprofilePlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -48,9 +58,11 @@ export const BuiltInPlugins = [
 	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
 	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
 	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
+	['versions:packrat', FlowrAnalyzerPackageVersionsPackratPlugin],
 	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
 	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
+	['loading-order:rprofile', FlowrAnalyzerLoadingOrderRprofilePlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
 	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
 	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
@@ -67,7 +79,10 @@ export const BuiltInPlugins = [
 	['file:license', FlowrAnalyzerLicenseFilePlugin],
 	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
 	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
-	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin]
+	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
+	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
+	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
+	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

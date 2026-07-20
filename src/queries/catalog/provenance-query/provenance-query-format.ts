@@ -51,6 +51,7 @@ function provenanceQueryLineParser(output: ReplOutput, line: readonly string[], 
 }
 
 export const ProvenanceQueryDefinition = {
+	title:           'Provenance Query',
 	executor:        executeProvenanceQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'provenance'>['provenance'];

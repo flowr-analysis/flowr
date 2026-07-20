@@ -41,6 +41,7 @@ function resolveValueLineParser(output: ReplOutput, line: readonly string[], _co
 }
 
 export const ResolveValueQueryDefinition = {
+	title:           'Resolve Value Query',
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];

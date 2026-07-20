@@ -33,15 +33,20 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
 
 /**
  * Retrieves all files in the given directory recursively (synchronously)
+ * @param dir        - Directory path to start the search from
+ * @param suffix     - Suffix of the files to be retrieved, tested against the file name
+ * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
+ *                     (e.g. `packrat/lib`), so a pattern can address nested directories
+ * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
  * @see {@link getAllFiles} - for an asynchronous version.
  */
-export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined): Generator<string> {
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir): Generator<string> {
 	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			if(!ignoreDirs?.test(subEntries.name)) {
-				yield* getAllFilesSync(res, suffix);
+			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
+				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo);
 			}
 		} else if(suffix.test(subEntries.name)) {
 			yield res;

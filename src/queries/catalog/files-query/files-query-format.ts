@@ -121,6 +121,7 @@ function guessProto(obj: object): string | undefined {
 }
 
 export const FilesQueryDefinition = {
+	title:           'Files Query',
 	executor:        executeFileQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'files'>['files'];

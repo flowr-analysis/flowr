@@ -35,6 +35,7 @@ function inspectHoLineParser(_output: ReplOutput, line: readonly string[], _conf
 }
 
 export const InspectHigherOrderQueryDefinition = {
+	title:           'Inspect Higher-Order Functions Query',
 	executor:        executeHigherOrderQuery,
 	asciiSummarizer: async(formatter, processed, queryResults, result) => {
 		const out = queryResults as QueryResults<'inspect-higher-order'>['inspect-higher-order'];

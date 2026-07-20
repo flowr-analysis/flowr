@@ -84,6 +84,7 @@ function absintQueryLineParser(output: ReplOutput, line: readonly string[], _con
 }
 
 export const AbsintQueryDefinition = {
+	title:           'Abstract Interpretation Query',
 	executor:        executeAbsintQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'absint'>['absint'];

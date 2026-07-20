@@ -3,6 +3,7 @@ import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint, supp
 import {
 	executeQueries,
 	type Query,
+	queryWikiPage,
 	type QueryResults,
 	SupportedQueries,
 	type SupportedQuery,
@@ -84,7 +85,7 @@ function printQueryDoc(output: ReplOutput, name: string): void {
 	const syntax = 'syntax' in def && typeof def.syntax === 'string' ? def.syntax : `@${name} <code | file://path>`;
 	output.stdout(`Run: ${bold(':query ' + syntax, output.formatter)}`);
 	output.stdout(`JSON: ${italic(queryTemplate(name, def.schema), output.formatter)}`);
-	const wiki = `https://github.com/flowr-analysis/flowr/wiki/Query-API#${name}-query`;
+	const wiki = `https://github.com/flowr-analysis/flowr/wiki/${encodeURIComponent(queryWikiPage(def.title).replaceAll(' ', '-'))}`;
 	output.stdout(`Docs: ${supportsHyperlinks() ? output.formatter.hyperlink(`${name} query`, wiki) : wiki}`);
 }
 

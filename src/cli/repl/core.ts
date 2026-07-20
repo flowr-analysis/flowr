@@ -51,6 +51,11 @@ export interface CommandCompletions {
 	readonly labels?:       ReadonlyMap<string, string>;
 	/** Display-only suggestions (e.g. a `<string>` type placeholder): previewed as a ghost hint but never inserted on Tab. */
 	readonly hints?:        readonly string[];
+	/**
+	 * The completer already selected these, so they must not be filtered against the typed fragment again.
+	 * Needed when a completion legitimately shares no prefix with what was typed, e.g. a glob expanding to the keys it matches.
+	 */
+	readonly preFiltered?:  boolean;
 }
 
 /** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
@@ -71,6 +76,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
 			let labels: ReadonlyMap<string, string> | undefined;
 			let hints: readonly string[] | undefined;
+			let preFiltered = false;
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
@@ -79,13 +85,14 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				const { completions: queryCompletions, argumentPart: splitArg, labels: queryLabels, hints: queryHints } = replQueryCompleter(splitLine, startingNewArg, config);
+				const { completions: queryCompletions, argumentPart: splitArg, labels: queryLabels, hints: queryHints, preFiltered: queryPreFiltered } = replQueryCompleter(splitLine, startingNewArg, config);
 				if(splitArg !== undefined) {
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
 				labels = queryLabels;
 				hints = queryHints;
+				preFiltered = queryPreFiltered ?? false;
 			} else if(cmd === signatureCommand) {
 				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
 				if(splitArg !== undefined) {
@@ -98,7 +105,7 @@ function computeCompletions(line: string, config: FlowrConfig): [string[], strin
 			}
 
 			// prefix matches when any exist, else fuzzy (subsequence) matches, so e.g. `+sg` still completes to `+specializeConfig`
-			return [matchByPrefixOrSubsequence(completions, currentArg), currentArg, labels, hints?.filter(h => h.startsWith(currentArg))];
+			return [preFiltered ? completions : matchByPrefixOrSubsequence(completions, currentArg), currentArg, labels, hints?.filter(h => h.startsWith(currentArg))];
 		}
 	}
 

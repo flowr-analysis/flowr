@@ -415,6 +415,7 @@ export const FlowrDefaultPlugins = [
 	'file:ipynb',
 	'file:namespace',
 	'file:news',
+	'file:rda',
 	'file:license',
 	'file:virtualenv',
 	'file:rproject',
@@ -458,6 +459,27 @@ function specialize(current: unknown, base: unknown, overwrite: unknown): unknow
 		return result;
 	}
 	return JSON.stringify(current) === JSON.stringify(base) ? overwrite : current;
+}
+
+/**
+ * Merge a user config onto the defaults. Unlike {@link deepMergeObject}, an array in the user config replaces the
+ * default one instead of being appended to it, so options such as `defaultPlugins` can be reduced and not just extended.
+ */
+function mergeConfigOntoDefaults(base: FlowrConfig, addon: DeepPartial<FlowrConfig>): FlowrConfig {
+	const merge = (b: unknown, a: unknown): unknown => {
+		if(a === undefined) {
+			return b;
+		}
+		if(!isPlainObject(a) || !isPlainObject(b)) {
+			return a;
+		}
+		const out: Record<string, unknown> = { ...b };
+		for(const [key, value] of Object.entries(a)) {
+			out[key] = merge(out[key], value);
+		}
+		return out;
+	};
+	return merge(base, addon) as FlowrConfig;
 }
 
 export const FlowrConfig = {
@@ -673,7 +695,7 @@ export const FlowrConfig = {
 			const validate = FlowrConfig.Schema.validate(parsed);
 			if(!validate.error) {
 				// assign default values to all config options except for the specified ones
-				return deepMergeObject(FlowrConfig.default(), parsed);
+				return mergeConfigOntoDefaults(FlowrConfig.default(), parsed);
 			} else {
 				log.error(`Failed to validate config ${jsonString}: ${validate.error.message}`);
 				return undefined;

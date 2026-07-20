@@ -5,9 +5,9 @@ import { RFunTabOffsets } from './r-fun-tab';
 import { RShellExecutor } from '../../../../r-bridge/shell-executor';
 
 /**
- * This decorates a text file and provides access to its content in the format of an {@link RObject}.
+ * This decorates a text file and provides access to its content in the format of an {@link RObjectData}.
  */
-export class FlowrRDAFile extends FlowrFile<RObject[]> {
+export class FlowrRDAFile extends FlowrFile<RObjectData[]> {
 	private readonly wrapped:  FlowrFileProvider;
 	private readonly shortcut: boolean;
 
@@ -27,10 +27,10 @@ export class FlowrRDAFile extends FlowrFile<RObject[]> {
 	/**
 	 * Loads and parses the content of the wrapped file as an RDA structure.
 	 * @see {@link parse} for details on the parsing logic.
-	 * @returns An array of top-level {@link RObject}s or `[{}]` when the
+	 * @returns An array of top-level {@link RObjectData}s or `[{}]` when the
 	 *          file contains no R objects.
 	 */
-	protected loadContent(): RObject[] {
+	protected loadContent(): RObjectData[] {
 		return new RDAParser(this.wrapped, this.shortcut).parse() ?? [{}];
 	}
 

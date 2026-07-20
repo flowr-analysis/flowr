@@ -455,27 +455,27 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 		return fFinal;
 	}
 
+	/** Resolve the file at `path`, loading it from disk through the {@link FlowrAnalyzerFilePlugin}s if unknown. */
+	public resolveFile(path: string): FlowrFileProvider | undefined {
+		const file = this.files.get(path);
+		if(file !== undefined && file !== null) {
+			return file;
+		}
+		if(this.ctx.config.project.resolveUnknownPathsOnDisk) {
+			fileLog.debug(`File ${path} not found in context, trying to load from disk.`);
+			if(fs.existsSync(path)) {
+				return this.addFile(new FlowrTextFile(path));
+			}
+		}
+		return undefined;
+	}
+
 	public resolveRequest(r: RParseRequest): { r: RParseRequestFromText, path?: string } {
 		if(r.request === 'text') {
 			return { r };
 		}
 
-		const file = this.files.get(r.content);
-		if(file === undefined && this.ctx.config.project.resolveUnknownPathsOnDisk) {
-			fileLog.debug(`File ${r.content} not found in context, trying to load from disk.`);
-			if(fs.existsSync(r.content)) {
-
-				const loadedFile = this.addFile(new FlowrTextFile(r.content));
-
-				return {
-					r: {
-						request: 'text',
-						content: loadedFile.content().toString(),
-					},
-					path: loadedFile.path()
-				};
-			}
-		}
+		const file = this.resolveFile(r.content);
 		guard(file !== undefined && file !== null, `File ${r.content} not found in context.`);
 
 		const content = file.content();

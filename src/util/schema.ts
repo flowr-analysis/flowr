@@ -67,6 +67,9 @@ export function schemaPathInfo(schema: Joi.Schema, path: readonly string[]): Sch
 	return descriptionPathInfo(schema.describe(), path);
 }
 
+/** Joi types that cannot have sub-keys, so a config path may not descend into them. */
+const ScalarSchemaTypes = new Set(['boolean', 'number', 'string', 'array', 'date', 'binary', 'symbol', 'function']);
+
 /**
  * The first path segment the schema does not accept, with the keys that ARE accepted there and the path to that
  * point -- or `undefined` when the whole path is a settable key. Used to reject typo'd config keys. A `.pattern()`
@@ -76,19 +79,23 @@ export function schemaPathInfo(schema: Joi.Schema, path: readonly string[]): Sch
 export function firstUnknownSchemaSegment(description: Joi.Description, path: readonly string[]): { readonly segment: string, readonly available: readonly string[], readonly at: readonly string[] } | undefined {
 	let node: Joi.Description | undefined = description;
 	for(let i = 0; i < path.length; i++) {
-		const pattern = patternObject(node);
-		if(pattern !== undefined) {
-			// a constrained pattern (e.g. `specializeConfig`'s ProjectKinds) rejects a key outside its enum; a
-			// free-string pattern (e.g. `versionOverrides`) accepts any key. Either way, descend into the value schema.
-			if(pattern.keyValids !== undefined && !pattern.keyValids.includes(path[i])) {
-				return { segment: path[i], available: pattern.keyValids.map(v => String(v)), at: path.slice(0, i) };
+		const explicit: Joi.Description | undefined = (node?.keys as Record<string, Joi.Description> | undefined)?.[path[i]];
+		if(explicit === undefined) {
+			const pattern = patternObject(node);
+			if(pattern !== undefined) {
+				if(pattern.keyValids !== undefined && !pattern.keyValids.includes(path[i])) {
+					return { segment: path[i], available: pattern.keyValids.map(v => String(v)), at: path.slice(0, i) };
+				}
+				node = pattern.value;
+				continue;
 			}
-			node = pattern.value;
-			continue;
 		}
 		const keys = node?.keys as Record<string, Joi.Description> | undefined;
 		if(keys === undefined) {
-			return undefined; // a free-form object or a leaf: it accepts arbitrary sub-keys, so do not reject
+			if(node?.type !== undefined && ScalarSchemaTypes.has(node.type)) {
+				return { segment: path[i], available: [], at: path.slice(0, i) };
+			}
+			return undefined;
 		}
 		const next = keys[path[i]];
 		if(next === undefined) {

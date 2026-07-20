@@ -109,6 +109,9 @@ function badConfigValue(path: readonly string[], value: unknown, formatter: Outp
 	if(info.type === 'number' && typeof value !== 'number') {
 		return expected('number');
 	}
+	if(info.type === 'string' && typeof value !== 'string') {
+		return expected('string');
+	}
 	if(info.type === 'array' && !Array.isArray(value)) {
 		return expected('list (e.g. ["a","b"])');
 	}

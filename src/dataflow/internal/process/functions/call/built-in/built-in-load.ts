@@ -7,11 +7,10 @@ import { processKnownFunctionCall } from '../known-call-handling';
 import type { InGraphReferenceType } from '../../../../../environments/identifier';
 import { Identifier, PkgName, ReferenceType } from '../../../../../environments/identifier';
 import type { RObjectData } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
-import { RDAParser, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
+import { FlowrRDAFile, SexpType } from '../../../../../../project/plugins/file-plugins/files/flowr-rda-file';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { removeRQuotes } from '../../../../../../r-bridge/retriever';
 import { findSource } from './built-in-source';
-import { FlowrTextFile } from '../../../../../../project/context/flowr-file';
 import { VertexType } from '../../../../../graph/vertex';
 import { RoleInParent } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/role';
 import { dataflowLogger } from '../../../../../logger';
@@ -95,12 +94,17 @@ export function processLoadCall<OtherInfo>(
 
 			let variables: RObjectData[] | null;
 			try {
-				variables = new RDAParser(new FlowrTextFile(filepath), true).parse();
+				const file = data.ctx.files.resolveFile(filepath);
+				variables = file instanceof FlowrRDAFile ? file.content() : null;
 			} catch(e) {
 				dataflowLogger.warn(`Failed to parse RDA file ${JSON.stringify(filepath)}: ${String(e)}`);
 				continue;
 			}
-			if(variables === null || variables.length === 0) {
+			if(variables === null) {
+				dataflowLogger.warn(`Could not read ${JSON.stringify(filepath)} as an RDA file, treating the load as unknown`);
+				continue;
+			}
+			if(variables.length === 0) {
 				return fn.information;
 			}
 

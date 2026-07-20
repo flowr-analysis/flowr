@@ -162,8 +162,22 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext {
 	 * invalidated separately (see {@link FlowrAnalyzer.updateConfig}), as the results were computed under the old config.
 	 */
 	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		const overrides = this.runtimeOverrides;
+		const effective = this._effective;
+		const effectiveOf = this._effectiveOf;
 		this.runtimeOverrides = deepMergeObject(this.runtimeOverrides ?? {}, update);
 		this._effective = undefined; // recompute on next `config` access
+		try {
+			const { error } = FlowrConfig.Schema.validate(this.config, { allowUnknown: false });
+			if(error) {
+				throw new Error(`invalid config update: ${error.message}`);
+			}
+		} catch(e) {
+			this.runtimeOverrides = overrides;
+			this._effective = effective;
+			this._effectiveOf = effectiveOf;
+			throw e;
+		}
 	}
 
 	/** The project kind the effective {@link config} is specialized for, plus the overrides it applies, or `undefined` when no specialization is in effect. */

@@ -50,7 +50,7 @@ const DefaultReplacementPatterns: Array<[RegExp, string]> = [
 	[/\d+(\.\d+)?( |\s*)?ms/g, ''],
 	[/tmp[%A-Za-z0-9-]+/g, ''],
 	[/"?(timing|searchTimeMs|processTimeMs|id|tsId)"?:\s*\d+(\.\d)?,?/g, ''],
-	[/"format":"compact".+/gmius, ''],
+	[/"format":"compact"[^\n\r]*/giu, ''],
 	[/%%\s*\d*-+/g, ''],
 	[/"[rR]": "\d+\.\d+\.\d+.*?"/g, ''],
 	[/R\s*\d+\.\d+\.\d+/g, ''],

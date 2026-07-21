@@ -199,7 +199,6 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 	if(commandsInitialized) {
 		return _commands;
 	}
-	commandsInitialized = true;
 	for(const [script, { target, description, type, options }] of Object.entries(scripts)) {
 		if(type === 'master script') {
 			(_commands as Record<string, ReplCommand | ReplCodeCommand>)[script] = {
@@ -227,6 +226,7 @@ export function getReplCommands(): Record<string, ReplCommand | ReplCodeCommand>
 			};
 		}
 	}
+	commandsInitialized = true;
 	return _commands;
 }
 
@@ -245,18 +245,20 @@ let commandNames: string[] | undefined = undefined;
 let commandMapping: Record<string, string> | undefined = undefined;
 
 function initCommandMapping() {
-	commandMapping = {};
-	commandNames = [];
+	const mapping: Record<string, string> = {};
+	const names: string[] = [];
 	for(const [command, { aliases }] of Object.entries(getReplCommands())) {
-		guard(commandMapping[command] as string | undefined === undefined, `Command ${command} is already registered!`);
-		commandMapping[command] = command;
+		guard(mapping[command] === undefined, `Command ${command} is already registered!`);
+		mapping[command] = command;
 		for(const alias of aliases) {
-			guard(commandMapping[alias] as string | undefined === undefined, `Command (alias) ${alias} is already registered!`);
-			commandMapping[alias] = command;
+			guard(mapping[alias] === undefined, `Command (alias) ${alias} is already registered!`);
+			mapping[alias] = command;
 		}
-		commandNames.push(command);
-		commandNames.push(...aliases);
+		names.push(command);
+		names.push(...aliases);
 	}
+	commandMapping = mapping;
+	commandNames = names;
 }
 
 /**

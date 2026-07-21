@@ -242,10 +242,16 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	}
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
-		const processor = getCommand(command);
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
-		if(processor) {
-			try {
+		const reportFailure = (e: unknown) => {
+			output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+			if(log.settings.minLevel < LogLevel.Fatal) {
+				console.error(e);
+			}
+		};
+		try {
+			const processor = getCommand(command);
+			if(processor) {
 				await genericWrapReplFailIfNoRequest(async() => {
 					const remainingLine = statement.slice(command.length + 2).trim();
 					if(processor.isCodeCommand) {
@@ -259,14 +265,11 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 						await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 					}
 				}, output, analyzer);
-			} catch(e){
-				output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
-				if(log.settings.minLevel < LogLevel.Fatal) {
-					console.error(e);
-				}
+			} else {
+				output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 			}
-		} else {
-			output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
+		} catch(e){
+			reportFailure(e);
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });

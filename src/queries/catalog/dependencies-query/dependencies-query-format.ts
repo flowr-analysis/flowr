@@ -21,7 +21,6 @@ import type { BrandedNamespace } from '../../../dataflow/environments/identifier
 import { Identifier } from '../../../dataflow/environments/identifier';
 import { RProject } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
-import type { PotentiallyEmptyRArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 
 export const Unknown = 'unknown';
 
@@ -40,73 +39,6 @@ export interface DependencyCategorySettings {
 	 * @param result - The current result array to which additional dependency info can be added.
 	 */
 	additionalAnalysis?: (data: BasicQueryData, ignoreDefault: boolean, functions: FunctionInfo[], queryResults: CallContextQueryResult, result: DependencyInfo[]) => AsyncOrSync<void>
-}
-
-/** packages a default R session attaches without an explicit `library()` call, so missing them is not "undeclared" */
-const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
-
-/** {@link LibraryFunctions} indexed by name, to recognise a library-load call by its called function */
-const LibraryLoadFunctionInfo = new Map(LibraryFunctions.map(f => [f.name, f]));
-
-/** the literal package name of a `library()`/`require()`-style argument (a bare symbol or a plain string constant) */
-function literalPackageName(node: RNode | undefined): string | undefined {
-	if(node?.type === RType.String) {
-		return node.content.str;
-	} else if(node?.type === RType.Symbol) {
-		return Identifier.getName(node.content);
-	}
-	return undefined;
-}
-
-/** the argument value(s) of a library-load call that (statically) name the package(s) to load, per the matching {@link FunctionInfo} */
-function libraryCallArgumentValues(args: readonly PotentiallyEmptyRArgument[], info: FunctionInfo): RNode[] {
-	const values: RNode[] = [];
-	let position = 0;
-	for(const arg of args) {
-		if(typeof arg !== 'string' && arg.value !== undefined) {
-			if(info.argIdx === 'unnamed') {
-				if(arg.name === undefined) {
-					values.push(arg.value);
-				}
-			} else if(arg.name !== undefined ? Identifier.getName(arg.name.content) === info.argName : position === info.argIdx) {
-				values.push(arg.value);
-			}
-		}
-		position++;
-	}
-	return values;
-}
-
-/**
- * The packages used by the code: attached via a `library()`-style call, or referenced via `::`/`:::`.
- * Maps each package name to the node id of one representative use site.
- *
- * This deliberately re-walks the AST instead of depending on the `library` category's result array: categories
- * run concurrently (see the executor's `Promise.all`), so another category's finished results are not available.
- * Only statically known package names are picked up (a bare symbol or string literal argument), matching the
- * `library` category's own `::`/`:::` detection in spirit but staying independent of it.
- */
-async function collectUsedPackages(data: BasicQueryData): Promise<Map<string, NodeId>> {
-	const used = new Map<string, NodeId>();
-	RProject.visitAst((await data.analyzer.normalize()).ast, node => {
-		if(node.type === RType.Symbol) {
-			const ns = Identifier.getNamespace(node.content);
-			if(ns !== undefined && !used.has(ns)) {
-				used.set(ns, node.info.id);
-			}
-		} else if(node.type === RType.FunctionCall && node.named) {
-			const info = LibraryLoadFunctionInfo.get(Identifier.getName(node.functionName.content));
-			if(info !== undefined) {
-				for(const value of libraryCallArgumentValues(node.arguments, info)) {
-					const pkg = literalPackageName(value);
-					if(pkg !== undefined && !used.has(pkg)) {
-						used.set(pkg, node.info.id);
-					}
-				}
-			}
-		}
-	});
-	return used;
 }
 
 export const DefaultDependencyCategories = {
@@ -157,44 +89,6 @@ export const DefaultDependencyCategories = {
 	'test': {
 		queryDisplayName: 'Tests',
 		functions:        TestFunctions
-	},
-	'undeclared': {
-		queryDisplayName:   'Undeclared Dependencies',
-		functions:          [],
-		/* packages that are used (via `library()`/`require()` or `::`/`:::`) but never declared as a project dependency */
-		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
-			if(ignoreDefault) {
-				return;
-			}
-			const deps = data.analyzer.inspectContext().deps;
-			const declared = new Set(deps.getDependencies().map(p => p.name));
-			for(const [pkg, nodeId] of await collectUsedPackages(data)) {
-				if(!declared.has(pkg) && !AttachedBasePackages.includes(pkg)) {
-					result.push({ nodeId, functionName: pkg, value: pkg });
-				}
-			}
-		}
-	},
-	'unused': {
-		queryDisplayName:   'Unused Dependencies',
-		functions:          [],
-		/* packages declared as a project dependency but never used (via `library()`/`require()` or `::`/`:::`) */
-		additionalAnalysis: async(data, ignoreDefault, _functions, _queryResults, result) => {
-			if(ignoreDefault) {
-				return;
-			}
-			const deps = data.analyzer.inspectContext().deps;
-			const used = await collectUsedPackages(data);
-			const nodeId = (await data.analyzer.normalize()).ast.files[0]?.root.info.id;
-			if(nodeId === undefined) {
-				return;
-			}
-			for(const pkg of deps.getDependencies()) {
-				if(!used.has(pkg.name)) {
-					result.push({ nodeId, functionName: pkg.name, value: pkg.name });
-				}
-			}
-		}
 	}
 } as const satisfies Record<string, DependencyCategorySettings>;
 export type DefaultDependencyCategoryName = keyof typeof DefaultDependencyCategories;
@@ -266,9 +160,6 @@ export const DependenciesQueryDefinition = {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {
-			if(category === 'unused') {
-				continue; // the unused-dependency detection is unreliable; omit it from the summary for now
-			}
 			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}
 		return true;

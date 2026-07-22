@@ -3,10 +3,11 @@ import type { DataflowProcessorInformation } from '../../../../../processor';
 import type { DataflowInformation } from '../../../../../info';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
+import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -74,61 +75,29 @@ function resolveDefsToEnvirResolution<OtherInfo>(
 /**
  * Binds call arguments to formal parameter names using R's matching rules: exact name, then partial (pmatch) name, then remaining unnamed args left-to-right.
  * Pass `paramNames` as the full formal parameter list (excluding `...`) so ambiguous prefixes are rejected.
+ * Thin alias for {@link RFunctionCall.matchArgumentsToParameters}, which owns the (pure) matching logic.
  */
 export function bindArgs<OtherInfo>(
 	args:       readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	paramNames: readonly string[]
 ): ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>> {
-	const bound = new Map<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>>();
-	const used = new Set<number>();
+	return RFunctionCall.matchArgsToParams(args, paramNames);
+}
 
-	/* pass 1: exact name matches */
-	for(let i = 0; i < args.length; i++) {
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		const n = arg.name.content as string;
-		if(paramNames.includes(n) && !bound.has(n)) {
-			bound.set(n, arg);
-			used.add(i);
-		}
-	}
-	/* pass 2: partial (pmatch) name matches */
-	for(let i = 0; i < args.length; i++) {
-		if(used.has(i)) {
-			continue;
-		}
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name === undefined) {
-			continue;
-		}
-		const matched = findByPrefixIfUnique(arg.name.content as string, paramNames);
-		if(matched !== undefined && !bound.has(matched)) {
-			bound.set(matched, arg);
-			used.add(i);
-		}
-	}
-	/* pass 3: remaining unnamed args fill remaining formal params left-to-right */
-	let formalIdx = 0;
-	for(let i = 0; i < args.length; i++) {
-		if(used.has(i)) {
-			continue;
-		}
-		const arg = args[i];
-		if(arg === EmptyArgument || arg.name !== undefined) {
-			continue;
-		}
-		while(formalIdx < paramNames.length && bound.has(paramNames[formalIdx])) {
-			formalIdx++;
-		}
-		if(formalIdx < paramNames.length) {
-			bound.set(paramNames[formalIdx], arg);
-			used.add(i);
-			formalIdx++;
-		}
-	}
-	return bound;
+/**
+ * The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature
+ * database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. Lets a
+ * built-in argument matcher use R's real signature (via {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf})
+ * instead of a hardcoded formal list, while staying correct -- and graph-invariant -- when no signature is available.
+ */
+export function signatureParamNames<OtherInfo>(
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	id:       Identifier,
+	fallback: readonly string[]
+): readonly string[] {
+	const sig = data.ctx.deps.signatureOf(id)?.signature;
+	const names = sig ? signatureParameterNames(sig) : [];
+	return names.length > 0 ? names : fallback;
 }
 
 /** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */

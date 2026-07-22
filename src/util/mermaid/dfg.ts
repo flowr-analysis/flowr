@@ -9,7 +9,8 @@ import {
 } from '../../dataflow/environments/identifier';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { DfEdge, type EdgeType } from '../../dataflow/graph/edge';
-import { type DataflowGraphVertexInfo, VertexType } from '../../dataflow/graph/vertex';
+import { type DataflowGraphVertexInfo, VertexType, isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import type { IEnvironment } from '../../dataflow/environments/environment';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { MermaidDefaultMarkStyle, type MermaidMarkdownMark, type MermaidMarkStyle } from './info';
@@ -33,6 +34,8 @@ export interface MermaidGraph {
 	rootGraph:           DataflowGraph
 	/** if given, the dataflow graph will only focus on the "important" parts */
 	simplified?:         boolean
+	/** show the edge-free base-R qualification (`acf` as `stats::acf`); `false` when the signature database is disabled */
+	qualifyBaseR?:       boolean
 }
 
 
@@ -40,6 +43,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 	if(subflow === undefined) {
 		return;
 	}
+	const id = Mermaid.escapeId(nodeId);
 	const subflowId = Mermaid.escapeId(`${idPrefix}flow-${nodeId}`);
 	if(mermaid.simplified) {
 		// get parent
@@ -49,7 +53,7 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
 		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" ["${Mermaid.escape(nodeLexeme)}${location}"]`);
 	} else {
-		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${nodeId}]`);
+		mermaid.nodeLines.push(`\nsubgraph "${subflowId}" [function ${id}]`);
 	}
 	const subgraph = graphToMermaidGraph(subflow.graph, {
 		graph:               mermaid.rootGraph,
@@ -58,7 +62,8 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		includeEnvironments: mermaid.includeEnvironments,
 		mark:                mermaid.mark,
 		prefix:              null,
-		simplified:          mermaid.simplified
+		simplified:          mermaid.simplified,
+		qualifyBaseR:        mermaid.qualifyBaseR
 	});
 	mermaid.nodeLines.push(...subgraph.nodeLines);
 	mermaid.edgeLines.push(...subgraph.edgeLines);
@@ -69,15 +74,15 @@ function subflowToMermaid(nodeId: NodeId, subflow: DataflowFunctionFlowInformati
 		for(const out of pool as IdentifierReference[]) {
 			if(!mermaid.mark?.has(out.nodeId)) {
 				// in/out/active for unmarked
-				mermaid.nodeLines.push(`    style ${idPrefix}${out.nodeId} stroke:${color as string},stroke-width:4px; `);
+				mermaid.nodeLines.push(`    style ${idPrefix}${Mermaid.escapeId(out.nodeId)} stroke:${color as string},stroke-width:4px; `);
 			}
 		}
 	}
 
 	mermaid.nodeLines.push('end');
-	mermaid.edgeLines.push(`${idPrefix}${nodeId} -.-|function| ${subflowId}\n`);
+	mermaid.edgeLines.push(`${idPrefix}${id} -.-|function| ${subflowId}\n`);
 	/* mark edge as present */
-	const edgeId = encodeEdge(idPrefix + nodeId, subflowId, new Set(['function']));
+	const edgeId = encodeEdge(idPrefix + id, subflowId, new Set(['function']));
 	mermaid.presentEdges.add(edgeId);
 }
 
@@ -88,10 +93,10 @@ function printArg(arg: FunctionArgument | undefined): string {
 	} else if(arg === EmptyArgument) {
 		return '[empty]';
 	} else if(FunctionArgument.isNamed(arg)) {
-		const deps = arg.cds ? ', :may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
+		const deps = arg.cds ? ', ' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(', ') : '';
 		return `${arg.name} (${arg.nodeId}${deps})`;
 	} else if(FunctionArgument.isPositional(arg)) {
-		const deps = arg.cds ? ' (:may:' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + ')' : '';
+		const deps = arg.cds ? ' (' + arg.cds.map(c => c.id + (c.when ? '+' : '-')).join(', ') + ')' : '';
 		return `${arg.nodeId}${deps}`;
 	} else {
 		return '??';
@@ -102,10 +107,24 @@ function displayFunctionArgMapping(argMapping: readonly FunctionArgument[]): str
 	for(const arg of argMapping) {
 		result.push(Mermaid.escape(printArg(arg)));
 	}
-	return result.length === 0 ? '' : `\n    (${result.join(', ')})`;
+	return result.length === 0 ? '' : `\n    arg: (${result.join(', ')})`;
 }
 function encodeEdge(from: string, to: string, types: Set<EdgeType | 'CD-True' | 'CD-False' | 'function'>): string {
 	return `${from}->${to}["${Array.from(types).join(':')}"]`;
+}
+
+/**
+ * Renders the (mermaid-escaped) node name with only the *lexeme* -- what the source actually wrote -- in bold.
+ * When the displayed name was extended by package qualification (e.g. the code wrote `acf` but we show
+ * `stats::acf`), the added `stats::` prefix stays non-bold so it is visually distinct from the written token. A
+ * namespace written in the source (`stats::acf` verbatim) is part of the lexeme and is therefore bold as a whole.
+ */
+function boldLexeme(lexeme: string, display: string): string {
+	if(display !== lexeme && display.endsWith(lexeme)) {
+		const addedPrefix = display.slice(0, display.length - lexeme.length);   // the qualification we added, e.g. `stats::`
+		return `${Mermaid.escape(addedPrefix)}**${Mermaid.escape(lexeme)}**`;
+	}
+	return `**${Mermaid.escape(display)}**`;
 }
 
 
@@ -138,13 +157,17 @@ export function printIdentifier(id: IdentifierDefinition): string {
 	return `**${id.name ? Identifier.toString(id.name) : 'undefined'}** (id: ${id.nodeId}, type: ${ReferenceTypeReverseMapping.get(id.type)},${id.cds ? ' cds: {' + id.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') + '},' : ''} def. @${id.definedAt})`;
 }
 
+function environmentLevel(env: IEnvironment | undefined): number {
+	return env === undefined || env.builtInEnv ? 0 : environmentLevel(env.parent) + 1;
+}
+
 function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	if(env === undefined) {
 		return ['??'];
 	} else if(env.builtInEnv) {
 		return ['Built-in'];
 	}
-	const lines = [...printEnvironmentToLines(env.parent), `${env.id}${'-'.repeat(40)}`];
+	const lines = [...printEnvironmentToLines(env.parent), `${environmentLevel(env)}${'-'.repeat(40)}`];
 	const longestName = Math.max(...[...env.memory.keys()].map(x => x.length));
 	for(const [name, defs] of env.memory.entries()) {
 		const printName = `${name}:`;
@@ -153,11 +176,29 @@ function printEnvironmentToLines(env: IEnvironment | undefined): string[] {
 	return lines;
 }
 
+/** label a built-in node: a package export shows as `pkg::fn` (`built-in:stats:acf` becomes `stats::acf`), everything else as its bare name */
+function builtInDisplayName(builtInId: NodeId): string {
+	const pkgFn = NodeId.toPkgFn(builtInId);
+	return pkgFn ? `${pkgFn[0]}::${pkgFn[1]}` : String(builtInId).replace('built-in:', '');
+}
+
 function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, id: NodeId, idPrefix: string, mark: ReadonlySet<NodeId> | undefined, includeOnlyIds: ReadonlySet<NodeId> | undefined): void {
 	const fCall = info.tag === VertexType.FunctionCall;
 	const { open, close } = mermaidNodeBrackets(info.tag);
 	const origId = id;
 	id = Mermaid.escapeId(id);
+
+	// a vertex with a built-in id (e.g. a base-R export attached via `linkBaseR`) has no AST node, so it would
+	// otherwise render as a bogus `?? *??-??* (id: built-in:...)` box; draw it as the gray Built-In placeholder
+	// instead -- the same node an edge to it produces, which also dedups the two renderings
+	if(NodeId.isBuiltIn(origId)) {
+		if(!mermaid.presentVertices.has(id)) {
+			mermaid.nodeLines.push(`    ${idPrefix}${id}["\`Built-In:\n${Mermaid.escape(builtInDisplayName(origId))}\`"]`);
+			mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:gray,fill:gray,stroke-width:2px,opacity:.8;`);
+			mermaid.presentVertices.add(id);
+		}
+		return;
+	}
 
 	if(info.environment && mermaid.includeEnvironments) {
 		if(info.environment.level > 0 || info.environment.current.memory.size !== 0) {
@@ -170,17 +211,27 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 	const node = mermaid.rootGraph.idMap?.get(info.id);
 	const lexeme = node?.lexeme ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0]?.lexeme : '') ?? '??';
 
+	let display = lexeme;
+	if(fCall && isFunctionCallVertex(info)) {
+		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), mermaid.qualifyBaseR === false ? undefined : info.name);
+		const qs = q !== undefined ? Identifier.toString(q) : undefined;
+		if(qs !== undefined && qs !== lexeme) {
+			display = qs;
+		}
+	}
+
 	if(mermaid.simplified) {
 		const location = node?.location?.[0] ? ` (L. ${node?.location?.[0]})` : '';
-		const escapedName = '**' + Mermaid.escape(node ? `${lexeme}` : '??') + '**' + location + (node ? `\n*${node.type}*` : '');
+		const escapedName = (node ? boldLexeme(lexeme, display) : '**??**') + location + (node ? `\n*${node.type}*` : '');
 		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\`"${close}`);
 	} else {
-		const escapedName = Mermaid.escape(node ? `[${node.type}] ${lexeme}` : '??');
-		const deps = info.cds ? ', :may:' + info.cds.map(c => c.id + (c.when ? '+' : '-')).join(',') : '';
-		const lnks = info.link?.origin ? ', :links:' + info.link.origin.join(',') : '';
-		const sources = info.source ? ', sources: ' + JSON.stringify(info.source) : '';
+		const escapedName = node ? `*${Mermaid.escape(`[${node.type}]`)}* ${boldLexeme(lexeme, display)}` : '??';
+		const deps = info.cds ? ', ' + info.cds.map(c => Mermaid.escapeId(c.id) + (c.when ? '+' : '-')).join(', ') : '';
+		const lnks = info.link?.origin ? ', links: ' + info.link.origin.map(o => Mermaid.escapeId(o)).join(', ') : '';
+		const source = info.tag === VertexType.VariableDefinition ? info.source : undefined;
+		const sources = source ? ', v: ' + source.map(s => Mermaid.escapeId(s)).join(', ') : '';
 		const n = node?.info.fullRange ?? node?.location ?? (node?.type === RType.ExpressionList ? node?.grouping?.[0].location : undefined);
-		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}${escapedName.length > 10 ? '\n      ' : ' '}(${id}${deps}${lnks}${sources})\n      *${SourceRange.format(n)}*${
+		mermaid.nodeLines.push(`    ${idPrefix}${id}${open}"\`${escapedName}\n      *${SourceRange.format(n)}* (**id: ${id}**${deps}${lnks}${sources})${
 			fCall ? displayFunctionArgMapping(info.args) : '' + (info.tag === VertexType.FunctionDefinition && info.mode && info.mode.length > 0 ? Mermaid.escape(JSON.stringify(info.mode)) : '')
 		}\`"${close}`);
 	}
@@ -191,7 +242,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 		mermaid.nodeLines.push(`    style ${idPrefix}${id} stroke:red,stroke-width:5px; `);
 	}
 	if(info.tag === VertexType.FunctionDefinition) {
-		subflowToMermaid(id, info.subflow, mermaid, idPrefix);
+		subflowToMermaid(origId, info.subflow, mermaid, idPrefix);
 	}
 	const edges = mermaid.rootGraph.outgoingEdges(NodeId.normalize(origId));
 	if(edges === undefined) {
@@ -214,7 +265,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			mermaid.presentEdges.add(edgeId);
 			const style = NodeId.isBuiltIn(target) ? '-.->' : '-->';
 			mermaid.edgeLines.push(`    ${idPrefix}${id} ${style}|"${[...edgeTypes].map(e => typeof e === 'number' ? DfEdge.typeToName(e) : e).join(', ')}${
-				'file' in edge && edge.file ? `, from: ${edge.file}` : ''
+				'file' in edge && edge.file ? `, from: ${Mermaid.escape(String(edge.file))}` : ''
 			}"| ${idPrefix}${target}`);
 			if(mermaid.mark?.has(id + '->' + target)) {
 				// who invented this syntax?!
@@ -226,7 +277,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 			if(NodeId.isBuiltIn(target)) {
 				mermaid.edgeLines.push(`    linkStyle ${mermaid.presentEdges.size - 1} stroke:gray;`);
 				if(!mermaid.presentVertices.has(target)) {
-					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${Mermaid.escape(String(originalTarget).replace('built-in:', ''))}\`"]`);
+					mermaid.nodeLines.push(`    ${idPrefix}${target}["\`Built-In:\n${Mermaid.escape(builtInDisplayName(originalTarget))}\`"]`);
 					mermaid.nodeLines.push(`    style ${idPrefix}${target} stroke:gray,fill:gray,stroke-width:2px,opacity:.8;`);
 					mermaid.presentVertices.add(target);
 				}
@@ -245,16 +296,18 @@ export interface MermaidGraphConfiguration {
 	rootGraph?:           DataflowGraph,
 	presentEdges?:        Set<string>,
 	simplified?:          boolean,
-	includeOnlyIds?:      ReadonlySet<NodeId> // If provided, only the given ids will be included in the mermaid graph
+	includeOnlyIds?:      ReadonlySet<NodeId>, // If provided, only the given ids will be included in the mermaid graph
+	/** show the edge-free base-R package qualification (`acf` as `stats::acf`); pass `false` when the signature database is disabled. Default `true`. */
+	qualifyBaseR?:        boolean
 }
 
 
 // make the passing of root ids more performant again
 function graphToMermaidGraph(
 	rootIds: ReadonlySet<NodeId>,
-	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds }: MermaidGraphConfiguration
+	{ simplified, graph, prefix = 'flowchart BT', idPrefix = '', includeEnvironments = !simplified, mark, rootGraph, presentEdges = new Set<string>(), markStyle = MermaidDefaultMarkStyle, includeOnlyIds, qualifyBaseR = true }: MermaidGraphConfiguration
 ): MermaidGraph {
-	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified };
+	const mermaid: MermaidGraph = { nodeLines: prefix === null ? [] : [prefix], edgeLines: [], presentEdges, presentVertices: new Set(), mark, rootGraph: rootGraph ?? graph, includeEnvironments, markStyle, simplified, qualifyBaseR };
 
 	for(const [id, info] of graph.vertices(true)) {
 		if(rootIds.has(id)) {
@@ -304,9 +357,9 @@ export const DataflowMermaid = {
 	/**
 	 * This is a simplified version of {@link DataflowMermaid.convert}
 	 */
-	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
+	raw(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false, qualifyBaseR = true): string {
 		graph = DataflowInformation.is(graph) ? graph.graph : graph;
-		return DataflowMermaid.convert({ graph, includeEnvironments, mark, simplified }).string;
+		return DataflowMermaid.convert({ graph, includeEnvironments, mark, simplified, qualifyBaseR }).string;
 	},
 	/**
 	 * Converts a dataflow graph to a mermaid url that visualizes the graph.
@@ -315,9 +368,10 @@ export const DataflowMermaid = {
 	 * @param includeEnvironments - whether to include the environment content in the output
 	 * @param mark                - which vertices to highlight in the visualization
 	 * @param simplified          - whether to show a simplified use of the graph with fewer details on the vertices and edges
+	 * @param qualifyBaseR         - show the edge-free base-R qualification (`stats::acf`); `false` when the signature database is disabled
 	 */
-	url(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false): string {
-		return Mermaid.codeToUrl(DataflowMermaid.raw(graph, includeEnvironments, mark, simplified));
+	url(this: void, graph: DataflowGraph | DataflowInformation, includeEnvironments?: boolean, mark?: ReadonlySet<NodeId>, simplified = false, qualifyBaseR = true): string {
+		return Mermaid.codeToUrl(DataflowMermaid.raw(graph, includeEnvironments, mark, simplified, qualifyBaseR));
 	}
 
 } as const;

@@ -177,6 +177,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				const [commentsBoth, [op]] = splitComments(children.slice(1, -1));
 				const comments = commentsBoth.map(c => c[1]);
 				const opSource = makeSourceRange(op);
+				/* every `.text` re-slices the source, so read it once */
+				const opText = op.text;
 				const lhsAsArg: RArgument<TreeSitterInfo> = {
 					type:     RType.Argument,
 					location: lhs.location as SourceRange,
@@ -195,8 +197,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						functionName: {
 							type:     RType.Symbol,
 							location: opSource,
-							lexeme:   op.text,
-							content:  op.text,
+							lexeme:   opText,
+							content:  opText,
 							info:     {
 								tsId: op.id
 							}
@@ -218,13 +220,13 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 							tsId:   node.id
 						}
 					};
-				} else if(op.text === '|>') {
+				} else if(opText === '|>') {
 					return {
 						type:     RType.Pipe,
 						location: opSource,
 						lhs:      lhsAsArg,
 						rhs,
-						lexeme:   op.text,
+						lexeme:   opText,
 						...defaultInfo(),
 						info:     {
 							fullRange:  range,
@@ -238,8 +240,8 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 						type:     RType.BinaryOp,
 						location: opSource,
 						lhs, rhs,
-						operator: op.text,
-						lexeme:   op.text,
+						operator: opText,
+						lexeme:   opText,
 						info:     {
 							fullRange:  range,
 							adToks:     comments,
@@ -521,12 +523,9 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 					operator: operator.text as '$' | '@',
 					accessed: convertTreeNode(lhs),
 					access:   [{
-						type:  RType.Argument,
-						name:  undefined,
-						value: {
-							...convertTreeNode(rhs),
-							...defaultInfo()
-						},
+						type:     RType.Argument,
+						name:     undefined,
+						value:    convertTreeNode(rhs),
 						location: rhsRange,
 						lexeme:   rhs?.text,
 						info:     {
@@ -549,28 +548,29 @@ function convertTreeNode(node: SyntaxNode | undefined): RNode<TreeSitterInfo> {
 				if(children.length === 3) {
 					defaultValue = convertTreeNode(children[2]);
 				}
+				const nameText = name.text;
 				return {
 					type: RType.Parameter,
 					name: {
 						type:     RType.Symbol,
 						location: nameRange,
-						content:  name.text,
-						lexeme:   name.text,
+						content:  nameText,
+						lexeme:   nameText,
 						info:     {
 							fullRange:  range,
 							adToks:     [],
-							fullLexeme: name.text,
+							fullLexeme: nameText,
 							tsId:       name.id
 						}
 					},
-					special:  name.text === '...',
+					special:  nameText === '...',
 					defaultValue,
 					location: nameRange,
-					lexeme:   name.text,
+					lexeme:   nameText,
 					info:     {
 						fullRange:  range,
 						adToks:     [],
-						fullLexeme: name.text,
+						fullLexeme: nameText,
 						tsId:       name.id
 					}
 				};
@@ -724,8 +724,12 @@ function findFirstNonCommentSibling(snode: SyntaxNode, knownNexts: Map<number, S
 }
 
 function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNode[]): SyntaxAndRNode[] {
+	if(comments.length === 0) {
+		return comments;
+	}
 	const remain: SyntaxAndRNode[] = [];
 	const cacheMap = new Map<number, SyntaxNode | null>();
+	const nodeById = new Map<number, SyntaxAndRNode>(nodes.map(n => [n[0].id, n]));
 	for(const [commentSyntaxNode, commentNode] of comments) {
 		let sibling: SyntaxNode | null;
 		const prev = commentSyntaxNode.previousSibling;
@@ -736,7 +740,7 @@ function linkCommentsToNextNodes(nodes: SyntaxAndRNode[], comments: SyntaxAndRNo
 			sibling = findFirstNonCommentSibling(commentSyntaxNode, cacheMap);
 		}
 		// if there is no valid sibling, we just link the comment to the first node (see normalize-expressions.ts)
-		const [, node] = (sibling ? nodes.find(([s]) => s.id === sibling.id) : undefined) ?? nodes[0] ?? [];
+		const [, node] = (sibling ? nodeById.get(sibling.id) : undefined) ?? nodes[0] ?? [];
 		if(node) {
 			node.info.adToks ??= [];
 			node.info.adToks.push(commentNode);

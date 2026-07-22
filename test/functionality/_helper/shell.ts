@@ -547,6 +547,8 @@ interface TestCaseParams {
 	flowrConfig:          FlowrConfig,
 	/** The direction of the slice, defaults to forward */
 	sliceDirection?:      SliceDirection
+	/** Continue backward slicing past a function-definition boundary, including the definition's binding and call sites */
+	includeCallees?:      boolean
 }
 
 /**
@@ -638,11 +640,12 @@ export function assertSliced(
 				context.addFiles(testConfig.addFiles);
 			}
 			return await createSlicePipeline(parser, {
-				getId:        getId(),
-				context:      context,
-				criterion:    criteria,
-				autoSelectIf: testConfig?.autoSelectIf,
-				direction:    testConfig?.sliceDirection
+				getId:          getId(),
+				context:        context,
+				criterion:      criteria,
+				autoSelectIf:   testConfig?.autoSelectIf,
+				direction:      testConfig?.sliceDirection,
+				includeCallees: testConfig?.includeCallees
 			}).allRemainingSteps();
 		}
 		function testSlice(result: PipelineOutput<typeof DEFAULT_SLICE_AND_RECONSTRUCT_PIPELINE | typeof TREE_SITTER_SLICE_AND_RECONSTRUCT_PIPELINE>, printError: boolean) {

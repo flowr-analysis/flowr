@@ -3,7 +3,7 @@ import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
 import { type Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
-import { handleReturns, sliceForCall } from './slice-call';
+import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { type REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -22,28 +22,35 @@ export const slicerLogger = log.getSubLogger({ name: 'slicer' });
 /** Options for {@link staticSlice}. */
 export interface StaticSliceOptions {
 	/** The analyzer context (environments, configuration). */
-	readonly ctx:         ReadOnlyFlowrAnalyzerContext
+	readonly ctx:             ReadOnlyFlowrAnalyzerContext
 	/** Dataflow information including the graph to traverse. */
-	readonly info:        DataflowInformation
+	readonly info:            DataflowInformation
 	/** Normalized AST, used for id resolution and nesting info. */
-	readonly ast:         NormalizedAst
+	readonly ast:             NormalizedAst
 	/** Seed node ids to start the BFS from. At least one is required. */
-	readonly ids:         readonly NodeId[]
+	readonly ids:             readonly NodeId[]
 	/** Whether to slice forward or backward. Defaults to {@link SliceDirection.Backward}. */
-	readonly direction?:  SliceDirection
+	readonly direction?:      SliceDirection
 	/**
 	 * Maximum BFS visits before the algorithm switches to over-approximation (includes everything).
 	 * Defaults to 75.
 	 */
-	readonly threshold?:  number
+	readonly threshold?:      number
 	/** Memoization cache that can be shared across multiple slices on the same graph. */
-	readonly cache?:      Map<Fingerprint, Set<NodeId>>
+	readonly cache?:          Map<Fingerprint, Set<NodeId>>
 	/**
 	 * Pre-built graph to use for BFS traversal instead of (possibly inverting) `info.graph`.
 	 * `info.graph` is still consulted for function-call resolution, so it must remain the non-inverted original.
 	 * Used by {@link staticDice} to pass a reduced-and-inverted graph in a single allocation.
 	 */
-	readonly sliceGraph?: DataflowGraph
+	readonly sliceGraph?:     DataflowGraph
+	/**
+	 * If set (and slicing backward), continue the slice past a function-definition boundary: whenever the
+	 * slice reaches a node that lives inside a function definition, also include the vertex that binds/defines
+	 * the function (e.g. `f <- function(...)`) as well as all of its call sites (and their arguments).
+	 * Defaults to `false` (slicing stops at the function-definition boundary, the historic behavior).
+	 */
+	readonly includeCallees?: boolean
 }
 
 /**
@@ -56,6 +63,11 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 	const direction = options.direction ?? SliceDirection.Backward;
 	const threshold = options.threshold ?? 75;
 	guard(ids.length > 0, 'must have at least one seed id to calculate slice');
+	// includeCallees only makes sense on the original (non-reduced) graph, backward
+	const trackCallees = (options.includeCallees ?? false) && direction === SliceDirection.Backward && sliceGraph === undefined;
+	// enclosing function definitions whose callees still need to be considered, mapped to the env to enqueue them in
+	const pendingCalleeBoundaries = new Map<NodeId, [REnvironmentInformation, string]>();
+	const resolvedCalleeBoundaries = new Set<NodeId>();
 	let graph: DataflowGraph;
 	if(sliceGraph !== undefined) {
 		graph = sliceGraph;
@@ -92,7 +104,17 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
-	while(queue.nonEmpty()) {
+	do{
+		while(queue.nonEmpty()) {
+			processNode();
+		}
+		// the queue drained: only now do we know the full body slice, so decide per boundary whether the callers
+		// can actually influence the result (i.e., the slice reaches a parameter or a captured scope variable).
+		// resolving a boundary may enqueue new nodes, hence the surrounding do-while re-enters the traversal.
+		resolveCalleeBoundaries();
+	} while(queue.nonEmpty());
+
+	function processNode(): void {
 		const current = queue.next();
 
 		const { baseEnvironment, id, onlyForSideEffects, envFingerprint: baseEnvFingerprint } = current;
@@ -100,10 +122,18 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		const currentInfo = graph.get(id, true);
 		if(currentInfo === undefined) {
 			slicerLogger.warn(`id: ${id} must be in graph but can not be found, keep in slice to be sure`);
-			continue;
+			return;
 		}
 
 		const [currentVertex, currentEdges] = currentInfo;
+
+		// includeCallees: note the enclosing function definition (if any) so its callees can be considered once the body slice is complete
+		if(trackCallees) {
+			const enclosingFnDef = findEnclosingFunctionDefinition(id, idMap);
+			if(enclosingFnDef !== undefined && !resolvedCalleeBoundaries.has(enclosingFnDef) && !pendingCalleeBoundaries.has(enclosingFnDef)) {
+				pendingCalleeBoundaries.set(enclosingFnDef, [baseEnvironment, baseEnvFingerprint]);
+			}
+		}
 
 		// we only add control dependencies iff 1) we are in different function call or 2) they have, at least, the same nesting as the slicing seed
 		if(currentVertex.cds && currentVertex.cds.length > 0) {
@@ -122,7 +152,7 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 
 			const ret = handleReturns(id, queue, currentEdges, baseEnvFingerprint, baseEnvironment);
 			if(ret) {
-				continue;
+				return;
 			}
 		}
 
@@ -146,10 +176,26 @@ export function staticSlice(options: StaticSliceOptions): Readonly<SliceResult> 
 		}
 	}
 
+	function resolveCalleeBoundaries(): void {
+		if(pendingCalleeBoundaries.size === 0) {
+			return;
+		}
+		const boundaries = [...pendingCalleeBoundaries];
+		pendingCalleeBoundaries.clear();
+		for(const [fnDefId, [env, fingerprint]] of boundaries) {
+			resolvedCalleeBoundaries.add(fnDefId);
+			// only continue past the boundary if the callers can actually influence the sliced result
+			if(sliceReachesFunctionInterface(fnDefId, info.graph, queue, idMap, ctx)) {
+				includeCalleesOfDefinition(fnDefId, info.graph, queue, env, fingerprint);
+			}
+		}
+	}
+
+	const status = queue.status();
 	if(ctx.config.solver.slicer?.autoExtend) {
-		return { ...queue.status(), slicedFor: ids, result: extendSlices(queue.status().result, idMap) };
+		return { ...status, slicedFor: ids, result: extendSlices(status.result, idMap) };
 	} else {
-		return { ...queue.status(), slicedFor: ids };
+		return { ...status, slicedFor: ids };
 	}
 }
 
@@ -168,9 +214,10 @@ export function staticDice(
 	startIds: readonly NodeId[],
 	endIds: readonly NodeId[],
 	threshold = 75,
+	includeCallees = false,
 ): Readonly<SliceResult> {
 	guard(startIds.length > 0 && endIds.length > 0, 'must have at least one start and one end id for dicing');
-	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold });
+	const backward = staticSlice({ ctx, info, ast, ids: endIds, direction: SliceDirection.Backward, threshold, includeCallees });
 	// reduce to backward result and invert edges in one pass; original info kept for sliceForCall
 	const invertedReduced = Dataflow.reduceAndInvertGraph(info.graph, backward.result, ctx.env.makeCleanEnv());
 	const forward = staticSlice({ ctx, info, ast, ids: startIds, direction: SliceDirection.Backward, threshold, sliceGraph: invertedReduced });

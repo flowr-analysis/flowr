@@ -76,7 +76,13 @@ export const slicerOptions = [
 	{ name: 'stats',             alias: 's', type: Boolean, description: 'Print stats and write them to {italic <output>.stats} (runtimes etc.)', multiple: false },
 	{ name: 'output',            alias: 'o', type: String,  description: 'File to write all the generated quads to (defaults to the commandline)', typeLabel: '{underline file}' },
 	{ name: 'no-magic-comments', alias: 'm', type: Boolean, description: 'Disable the effects of magic comments which force lines to be included.' },
+	{ name: 'inline',                        type: Boolean, description: 'Inline resolvable {italic source()} calls into the reconstruction so the slice is a single self-contained R text.' },
+	{ name: 'inline-full',       alias: 'I', type: Boolean, description: 'Inline {italic all} files into one, in flowR\'s loading order (respecting implicit sources), independent of whether they are sourced explicitly.' },
+	{ name: 'inline-banner',     alias: 'B', type: Boolean, description: 'Together with {bold --inline-full}: precede every inlined file with a banner comment naming it.' },
+	{ name: 'include-callees',               type: Boolean, description: 'If slicing backward, continue past a function-definition boundary, also including the definition\'s binding and call sites.' },
 	{ name: 'api',                           type: Boolean, description: 'Instead of human-readable output, dump a lot of json with the results of all intermediate steps.' },
+	{ name: 'config-file',                   type: String,  description: 'The name of the configuration file to use', multiple: false },
+	{ name: 'config-json',                   type: String,  description: 'The flowR configuration to use, as a JSON string', multiple: false },
 ] as const satisfies OptionDefinition[];
 
 export const summarizerOptions = [

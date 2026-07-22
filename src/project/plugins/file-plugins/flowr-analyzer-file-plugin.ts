@@ -33,7 +33,7 @@ export abstract class FlowrAnalyzerFilePlugin extends FlowrAnalyzerPlugin<FlowrF
 
 class DefaultFlowrAnalyzerFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'default-file-plugin';
-	public readonly description = 'This is the default file plugin that does nothing (but assigning default .r/.R files).';
+	public readonly description = 'Assigns the default .r/.R files, nothing else.';
 	public readonly version = new SemVer('0.0.0');
 
 	public applies(): boolean {

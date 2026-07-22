@@ -6,7 +6,7 @@ import type { ParsedQueryLine } from '../../../src/queries/query';
 import type { BaseQueryFormat } from '../../../src/queries/base-query-format';
 
 // A ReplOutput that discards all output
-const discardingReplOutput: ReplOutput = {
+export const discardingReplOutput: ReplOutput = {
 	formatter: standardReplOutput.formatter,
 	stdout:    () => {},
 	stderr:    () => {}

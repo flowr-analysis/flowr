@@ -3,6 +3,7 @@ import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from '../../d
 import { codeBlock } from '../../doc-util/doc-code';
 import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
 import type { GeneralDocContext } from '../../wiki-mk/doc-context';
+import { ProjectKind } from '../../../project/context/project-kind';
 
 
 /**
@@ -16,6 +17,10 @@ export function registerFaqs(ctx: GeneralDocContext): FaqStore {
 Tests are labeled based on the *flowR* capabilities that they test for.
 The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
 For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
+`)
+		.addFaq('How do I run *all checks* before pushing?', `
+Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
 `)
 		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
 	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
@@ -75,7 +80,17 @@ ${codeBlock('shell', ':query @linter watch://path/to/project')}
 For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
 If you want to create your own project using flowR as a library, check out the
 [${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
-		`);
+		`)
+		.addFaq('How to configure flowR *per kind of project*?', `
+Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
+This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
+${codeBlock('json', JSON.stringify({
+	specializeConfig: {
+		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
+	}
+}, null, 2))}
+Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
+`);
 
 	wikiFaq.withTopic('r.packages')
 		.addFaq('What is the R *prelude* and R *base* package?', `
@@ -100,7 +115,7 @@ or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package 
 be downloaded directly from [cran](https://cran.r-project.org/).
 `)
 		.addFaq('How does flowR know a *package\'s exports*?', `
-See the ${ctx.linkPage('wiki/Package Database', 'Package Database')} wiki page.
+See the ${ctx.linkPage('wiki/Signature Database', 'Signature Database')} wiki page.
 `)
 	;
 

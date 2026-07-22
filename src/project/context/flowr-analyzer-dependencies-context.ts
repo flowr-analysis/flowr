@@ -1,10 +1,15 @@
 import { AbstractFlowrAnalyzerContext } from './abstract-flowr-analyzer-context';
 import {
 	FlowrAnalyzerPackageVersionsPlugin,
-	type PkgDbLoadedInfo
+	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
 import type { Package } from '../plugins/package-version-plugins/package';
+import type { PackageSignatureSource } from '../sigdb/reader';
+import { Identifier } from '../../dataflow/environments/identifier';
+import type { DecodedFunction } from '../sigdb/decode';
+import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import { isSigDbEnabled } from '../../config';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -28,14 +33,44 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	getDependency(name: string): Readonly<Package> | undefined;
 
 	/**
+	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
+	 * an `rproject.toml` entry, a lockfile pin, ...). `undefined` if the dependency is unknown, if nothing
+	 * constrains it, or if the sources contradict each other -- then no version is possible at all.
+	 *
+	 * For *why* it is what it is (the individual constraints, or the version the database resolved to), take the
+	 * {@link Package} from {@link getDependency}.
+	 * @param name - The name of the dependency.
+	 */
+	inferredVersion(name: string): Range | undefined;
+
+	/**
 	 * Get all dependencies known to this context.
 	 */
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
-	 * Metadata of the package databases the version plugins currently have loaded.
+	 * Metadata of the signature databases the version plugins currently have loaded.
 	 */
-	loadedPackageDatabases(): PkgDbLoadedInfo[];
+	loadedSignatureDatabases(): SigDbLoadedInfo[];
+
+	/**
+	 * The names of known packages that export `name` (from the version plugins' signature databases). Used to
+	 * hint which `library()`/`::` might be missing for an otherwise-undefined symbol. Empty if no database is
+	 * available or the signature database is disabled.
+	 */
+	packagesExporting(name: string): readonly string[];
+
+	/** The signature sources the version plugins currently have loaded (backs the signature query). */
+	signatureSources(): readonly PackageSignatureSource[];
+
+	/**
+	 * The signature-database entry for the qualified call `id` (a `pkg::fn` {@link Identifier}) from the first
+	 * {@link signatureSources|source} that has it, resolving the package version from the project's dependency info
+	 * unless `version` overrides it. This is the easy way to obtain a function's parameters from a context: pass
+	 * `fn.signature` (or {@link signatureParameterNames}) to {@link RFunctionCall.matchArgsToParams}. `undefined`
+	 * if `id` is unqualified or no loaded source defines it.
+	 */
+	signatureOf(id: Identifier, version?: string): DecodedFunction | undefined;
 }
 
 /**
@@ -64,15 +99,76 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		this.lazyResolvers.push(resolver);
 	}
 
-	public loadedPackageDatabases(): PkgDbLoadedInfo[] {
-		if(!this.ctx.config.solver.pkgdb.enabled) {
+	public loadedSignatureDatabases(): SigDbLoadedInfo[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
 			return [];
 		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
 	}
 
-	/** Eagerly mount every version plugin's package database up front (see `solver.pkgdb.eagerlyLoad`). */
-	public eagerlyLoadPackageDatabases(): void {
+	public packagesExporting(name: string): readonly string[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		const out = new Set<string>();
+		for(const p of this.plugins) {
+			for(const pkg of p.packagesExporting(name)) {
+				out.add(pkg);
+			}
+		}
+		return [...out];
+	}
+
+	public signatureSources(): readonly PackageSignatureSource[] {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return [];
+		}
+		return this.plugins.flatMap(p => [...p.signatureSources(this.ctx.config)]);
+	}
+
+	public signatureOf(id: Identifier, version?: string): DecodedFunction | undefined {
+		const pkg = Identifier.getNamespace(id);
+		if(pkg === undefined) {
+			return undefined; // a qualified `pkg::fn` identifier is required to know which package to look in
+		}
+		const name = Identifier.getName(id);
+		const ver = version ?? this.getDependency(pkg)?.resolvedVersion;
+		for(const src of this.signatureSources()) {
+			if(!src.has(pkg)) {
+				continue; // avoids touching a package this source lacks
+			}
+			// decode only the one function (not the whole package), falling back to the source's latest version
+			const fn = src.functionByName(pkg, name, ver) ?? src.functionByName(pkg, name);
+			if(fn) {
+				return fn;
+			}
+		}
+		return undefined;
+	}
+
+	/** Whether any version plugin can resolve the base-R packages (a versioned signature source is available). */
+	public hasBaseRSource(): boolean {
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.providesBaseRPackages());
+	}
+
+	/** Cheap fingerprint of only the base-R-providing databases, so base-R-derived caches survive unrelated database changes. */
+	public baseRSourceFingerprint(): string {
+		if(!isSigDbEnabled(this.ctx.config)) {
+			return '';
+		}
+		return this.plugins.filter(p => p.providesBaseRPackages())
+			.flatMap(p => p.loadedDatabases()).map(d => d.hash).join(',');
+	}
+
+	/** Mount an additional signature database/source by path (a plain `.sigs.ndjson`, a `.br`, or a manifest). */
+	public async addDatabaseSource(source: string): Promise<void> {
+		for(const p of this.plugins) {
+			await p.addDatabaseSource(source);
+		}
+	}
+
+	/** Eagerly mount every version plugin's signature database up front (see `solver.sigdb.eagerlyLoad`). */
+	public eagerlyLoadSignatureDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();
 		}
@@ -86,6 +182,26 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public resolveStaticDependencies(): void {
 		this.applyPlugins(undefined);
 		this.staticsLoaded = true;
+	}
+
+	/** Runs the static plugins once. They fill this context and the project metadata, so both gate their reads on it. */
+	public ensureStaticsLoaded(): void {
+		if(!this.staticsLoaded) {
+			this.resolveStaticDependencies();
+		}
+	}
+
+	/**
+	 * Register a dependency declared by a project metadata file (`DESCRIPTION`, `renv.lock`, `rv.lock`). Gated by
+	 * `solver.sigdb.loadProjectDependencies`: when project-dependency loading is disabled this is a no-op, so the
+	 * declared deps never enter the context (unlike {@link addDependency}, used for on-demand signature-database
+	 * resolution).
+	 */
+	public addDeclaredDependency(pkg: Package): this {
+		if(!this.ctx.config.solver.sigdb.loadProjectDependencies) {
+			return this;
+		}
+		return this.addDependency(pkg);
 	}
 
 	public addDependency(pkg: Package): this {
@@ -118,6 +234,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolvedMisses.add(name);
 		}
 		return existing;
+	}
+
+	public inferredVersion(name: string): Range | undefined {
+		const pkg = this.getDependency(name);
+		return pkg?.hasSatisfiableVersion() ? pkg.derivedVersion : undefined;
 	}
 
 	public getDependencies(): Package[] {

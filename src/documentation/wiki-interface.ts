@@ -1,4 +1,5 @@
 import { RShell } from '../r-bridge/shell';
+import { linkToQueryOfName } from './doc-util/doc-query';
 import { FlowrGithubBaseRef, getFileContentFromRoot } from './doc-util/doc-files';
 import { getCliLongOptionOf, getReplCommand, multipleCliOptions } from './doc-util/doc-cli-option';
 import { printServerMessages } from './doc-util/doc-server-message';
@@ -6,11 +7,12 @@ import { documentAllServerMessages } from './data/server/doc-data-server-message
 import { codeBlock } from './doc-util/doc-code';
 import type { FileAnalysisRequestMessage } from '../cli/repl/server/messages/message-analysis';
 import { fileProtocol, removeRQuotes } from '../r-bridge/retriever';
-import { watchProtocol } from '../cli/repl/core';
+import { watchProtocol } from '../cli/repl/path-input';
 import { DockerName } from './doc-util/doc-docker';
 import { documentReplSession, printReplHelpAsMarkdownTable } from './doc-util/doc-repl';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { FlowrConfig, DropPathsOption, InferWorkingDirectory, VariableResolve } from '../config';
+import { ProjectKind } from '../project/context/project-kind';
 import { describeSchema } from '../util/schema';
 import { markdownFormatter } from '../util/text/ansi';
 import { defaultConfigFile } from '../cli/flowr-main-options';
@@ -149,8 +151,8 @@ the REPL will re-use previously obtained information and not re-parse the code a
 }
 
 Generally, many commands offer shortcut versions in the REPL. Many queries, for example, offer a shortened format (see the example below).
-Of special note, the ${ctx.linkPage('wiki/Query API', 'Config Query', 'Config-Query')}
-can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${ctx.linkPage('wiki/Query API', 'wiki page', 'Config-Query')} for more information).
+Of special note, the ${linkToQueryOfName('config', 'Config Query')}
+can be used to also modify the currently active configuration of _flowR_ within the REPL (see the ${linkToQueryOfName('config', 'wiki page')} for more information).
 
 ### Example: Retrieving the Dataflow Graph
 
@@ -170,6 +172,8 @@ ${await documentReplSession(parser, [{
 }], { openOutput: true })}
 
 For the slicing with ${ctx.replCmd('slicer')}, you have access to the same [magic comments](#slice-magic-comments) as with the [slice request](#message-request-slice).
+Pass \`--inline\` to splice resolvable \`source()\` calls into the reconstruction so the slice is a single self-contained R text (the same as the static slice query's \`inlineSources\` flag).
+See \`--help\` for more flags!
 
 ### Example: Interfacing with the File System
 
@@ -203,7 +207,7 @@ As _flowR_ directly transforms this AST the output focuses on being human-readab
 You can run any query supported by _flowR_ using the ${ctx.replCmd('query')} command.
 For example, to obtain the shapes of all data frames in a given piece of code, you can run:
 ${await documentReplSession(parser, [{
-	command:     ':query @df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
+	command:     ':query @absint df-shape "x <- data.frame(a = 1:10, b = 1:10)\\ny <- x$a"',
 	description: 'Retrieve the shapes of all data frames in the given code.'
 }], { openOutput: true })}
 To run the linter on a file, you can use (in this example, we just issue the \`dead-code\` linter on a small piece of code):
@@ -229,18 +233,21 @@ ${codeBlock('shell', ':query @config')}
 
 To work with the ${ctx.link(FlowrConfig)} you can use the provided helper objects alongside its methods like
 ${ctx.linkO(FlowrConfig, 'amend')}.
-The following summarizes the configuration options:
+The schema below documents every option; the ones you most likely want are:
 
-- \`ignoreSourceCalls\`: If set to \`true\`, _flowR_ will ignore source calls when analyzing the code, i.e., ignoring the inclusion of other files.
-- \`semantics\`: allows to configure the way _flowR_ handles R, although we currently only support \`semantics/environment/overwriteBuiltIns\`.
-  You may use this to overwrite _flowR_'s handling of built-in function and even completely clear the preset definitions shipped with flowR.
+- ${ctx.linkConfig('ignoreSourceCalls')}: ignore source calls when analyzing the code, i.e., ignore the inclusion of other files.
+- ${ctx.linkConfig('ignoreLoadCalls')}: ignore load calls when analyzing the code, i.e., ignore the loading of r-data files.
+- ${ctx.linkConfig('semantics.environment.overwriteBuiltIns')}: overwrite _flowR_'s handling of built-in functions, or clear the preset definitions entirely.
   See [Configure BuiltIn Semantics](#configure-builtin-semantics) for more information.
-- \`solver\`: allows to configure how _flowR_ resolves variables and their values (currently we support: ${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}), as well as if pointer analysis should be active.
-- \`engines\`: allows to configure the engines used by _flowR_ to interact with R code. See the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')} for more information.
-- \`defaultEngine\`: allows to specify the default engine to use for interacting with R code. If not set, an arbitrary engine from the specified list will be used.
-- \`abstractInterpretation\`: allows to configure how _flowR_ performs abstract interpretation, although we currently only support data frame shape inference through abstract interpretation.
-- \`defaultPlugins\`: allows to configure which plugins to load by default when creating a new ${ctx.link(FlowrAnalyzer)} instance.
-- \`repl.plugins\`: allows to configure which plugins to load in the _flowR_ REPL. Use \`flowr:default\` to reference the plugins specified by \`defaultPlugins\`.
+- ${ctx.linkConfig('solver.variables')}: how to resolve variables and their values (${Object.values(VariableResolve).map(v => `\`${v}\``).join(', ')}).
+- ${ctx.linkConfig('engines')} and ${ctx.linkConfig('defaultEngine')}: the engines used to interact with R code, see the ${ctx.linkPage('wiki/Engines', 'Engines wiki page')}.
+- ${ctx.linkConfig('project.implicitSources')}: the files a framework loads without any \`source()\` call, in the order in which they are
+  loaded. Entries are globs (e.g. \`R/*.R\`) matched against the file path ignoring capitalization; one matching no file is reported.
+- ${ctx.linkConfig('specializeConfig')}: overwrite (parts of) the configuration depending on the kind of project _flowR_ detects
+  (e.g. \`shiny-app\`), which is how a shiny app gets its implicit sources by default. What you configure directly wins.
+- ${ctx.linkConfig('project.useProjectType')}: skip that detection and force a project kind yourself, when auto-detection guesses wrong.
+- ${ctx.linkConfig('defaultPlugins')} and ${ctx.linkConfig('repl.plugins')}: the plugins to load for a new ${ctx.link(FlowrAnalyzer)} and in the REPL
+  (use \`flowr:default\` to reference the former).
 
 So you can configure _flowR_ by adding a file like the following:
 
@@ -251,6 +258,7 @@ So you can configure _flowR_ by adding a file like the following:
 ${codeBlock('json', JSON.stringify(
 		{
 			ignoreSourceCalls: true,
+			ignoreLoadCalls:   true,
 			semantics:         {
 				environment: {
 					overwriteBuiltIns: {
@@ -264,17 +272,25 @@ ${codeBlock('json', JSON.stringify(
 			repl:           {
 				quickStats:      false,
 				dfProcessorHeat: false,
+				hints:           true,
 				plugins:         ['flowr:default']
 			},
 			project: {
-				resolveUnknownPathsOnDisk: true
+				resolveUnknownPathsOnDisk: true,
+				implicitSources:           ['global.R', 'app.R']
+			},
+			linter: {
+				disabledRules: []
+			},
+			specializeConfig: {
+				[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
 			},
 			engines: [{ type: 'r-shell' }],
 			solver:  {
 				variables:         VariableResolve.Alias,
 				evalStrings:       true,
 				trackEnvironments: true,
-				pkgdb:             { enabled: true, eagerlyLoad: false, eagerlyLoadExports: false },
+				sigdb:             { enabled: true, loadProjectDependencies: true, eagerlyLoad: false, eagerlyLoadExports: false, linkBaseR: false, linkDescriptionDependencies: false },
 				resolveSource:     {
 					dropPaths:             DropPathsOption.No,
 					ignoreCapitalization:  true,

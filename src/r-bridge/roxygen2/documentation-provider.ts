@@ -38,6 +38,8 @@ const CommentRetriever: CommentRetrievers = {
 };
 
 
+const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags;
+
 /**
  * Given a normalized AST and a node ID, returns the Roxygen documentation (if any) associated with that node.
  * Please note that this does more than {@link parseRoxygenCommentsOfNode}, as it also traverses up the AST to find documentation.
@@ -52,7 +54,7 @@ export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInforma
 	} else if('doc' in node.info) {
 		return node.info.doc;
 	}
-	const retriever = CommentRetriever[node.type as RType] ?? ((c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags);
+	const retriever = CommentRetriever[node.type as RType] ?? defaultRetriever;
 	const doc = retriever(node as never, idMap);
 	if(doc) {
 		// to avoid endless recursion, we block the caching here once:

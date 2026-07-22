@@ -302,7 +302,11 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.DefineArgument:
 				return this.onDefaultFunctionCall({ call });
+			case BuiltInProcName.Load:
+				return this.onLoadCall({ call });
 			default:
 				assertUnreachable(origin);
 		}
@@ -728,4 +732,6 @@ export class SemanticCfgGuidedVisitor<
 		}
 		return { target: undefined, source: undefined };
 	}
+
+	protected onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

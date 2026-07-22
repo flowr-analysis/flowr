@@ -3,13 +3,15 @@
  * @module
  */
 import { prompt } from './prompt';
+import { handlePathLikeInput, watchProtocol } from './path-input';
 import * as readline from 'readline';
+import { installGhostHint } from './ghost-hint';
 import { tryExecuteRShellCommand } from './commands/repl-execute';
 import os from 'os';
 import path from 'path';
 import fs from 'fs';
 import { splitAtEscapeSensitive } from '../../util/text/args';
-import { ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
+import { ansiFormatter, ColorEffect, Colors, FontStyles } from '../../util/text/ansi';
 import { getCommand, getCommandNames } from './commands/repl-commands';
 import { getValidOptionsForCompletion, scripts } from '../common/scripts-info';
 import { fileProtocol } from '../../r-bridge/retriever';
@@ -18,8 +20,9 @@ import type { MergeableRecord } from '../../util/objects';
 import { log, LogLevel } from '../../util/log';
 import type { FlowrConfig } from '../../config';
 import { genericWrapReplFailIfNoRequest, SupportedQueries, type SupportedQuery } from '../../queries/query';
+import { signatureCommand, replSignatureCompleter } from './commands/repl-signature';
 import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
-import { startAndEndsWith } from '../../util/text/strings';
+import { startAndEndsWith, matchByPrefixOrSubsequence } from '../../util/text/strings';
 import type { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import { instrumentDataflowCount } from '../../dataflow/instrument/instrument-dataflow-count';
 import { exitSafe } from '../../util/proc';
@@ -44,12 +47,23 @@ export interface CommandCompletions {
 	 * This is relevant if an argument is composed of multiple parts (e.g. comma-separated lists).
 	 */
 	readonly argumentPart?: string;
+	/** What Tab displays per completion, only used while several remain: readline inserts what it displays. */
+	readonly labels?:       ReadonlyMap<string, string>;
+	/** Display-only suggestions (e.g. a `<string>` type placeholder): previewed as a ghost hint but never inserted on Tab. */
+	readonly hints?:        readonly string[];
+	/**
+	 * The completer already selected these, so they must not be filtered against the typed fragment again.
+	 * Needed when a completion legitimately shares no prefix with what was typed, e.g. a glob expanding to the keys it matches.
+	 */
+	readonly preFiltered?:  boolean;
 }
 
-/**
- * Used by the repl to provide automatic completions for a given (partial) input line
- */
-export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+/** Labels a completion with what it does, see {@link CommandCompletions#labels|labels}. */
+export function describeCompletion(insert: string, describe: string): string {
+	return `${insert}  ${ansiFormatter.format(describe, { style: FontStyles.Faint })}`;
+}
+
+function computeCompletions(line: string, config: FlowrConfig): [string[], string, ReadonlyMap<string, string>?, (readonly string[])?] {
 	const splitLine = splitAtEscapeSensitive(line);
 	// did we just type a space (and are starting a new arg right now)?
 	const startingNewArg = line.endsWith(' ');
@@ -60,6 +74,9 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 		if(commandNameColon) {
 			let completions: string[] = [];
 			let currentArg = startingNewArg ? '' : splitLine[splitLine.length - 1];
+			let labels: ReadonlyMap<string, string> | undefined;
+			let hints: readonly string[] | undefined;
+			let preFiltered = false;
 
 			const commandName = commandNameColon.slice(1);
 			const cmd = getCommand(commandName);
@@ -68,17 +85,27 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 				const options = scripts[commandName as keyof typeof scripts].options;
 				completions = completions.concat(getValidOptionsForCompletion(options, splitLine).map(o => `${o} `));
 			} else if(commandName.startsWith('query')) {
-				const { completions: queryCompletions, argumentPart: splitArg } = replQueryCompleter(splitLine, startingNewArg, config);
+				const { completions: queryCompletions, argumentPart: splitArg, labels: queryLabels, hints: queryHints, preFiltered: queryPreFiltered } = replQueryCompleter(splitLine, startingNewArg, config);
 				if(splitArg !== undefined) {
 					currentArg = splitArg;
 				}
 				completions = completions.concat(queryCompletions);
-			} else {
+				labels = queryLabels;
+				hints = queryHints;
+				preFiltered = queryPreFiltered ?? false;
+			} else if(cmd === signatureCommand) {
+				const { completions: sigCompletions, argumentPart: splitArg } = replSignatureCompleter(splitLine, startingNewArg);
+				if(splitArg !== undefined) {
+					currentArg = splitArg;
+				}
+				completions = completions.concat(sigCompletions);
+			} else if(cmd?.isCodeCommand) {
 				completions.push(fileProtocol);
 				completions.push(watchProtocol);
 			}
 
-			return [completions.filter(a => a.startsWith(currentArg)), currentArg];
+			// prefix matches when any exist, else fuzzy (subsequence) matches, so e.g. `+sg` still completes to `+specializeConfig`
+			return [preFiltered ? completions : matchByPrefixOrSubsequence(completions, currentArg), currentArg, labels, hints?.filter(h => h.startsWith(currentArg))];
 		}
 	}
 
@@ -86,9 +113,41 @@ export function replCompleter(line: string, config: FlowrConfig): [string[], str
 	return [replCompleterKeywords().filter(k => k.startsWith(line)).map(k => `${k} `), line];
 }
 
+/**
+ * Used by the repl to provide automatic completions for a given (partial) input line. Returns every matching
+ * option, so Tab shows the full menu and only completes when a single option remains (standard readline behavior).
+ */
+export function replCompleter(line: string, config: FlowrConfig): [string[], string] {
+	const [completions, fragment, labels] = computeCompletions(line, config);
+	if(labels === undefined || completions.length <= 1) {
+		return [completions, fragment];
+	}
+	return [completions.map(c => labels.get(c) ?? c), fragment];
+}
+
+/**
+ * The remaining text of the best (first) completion, i.e. what the inline ghost previews as you type; empty when
+ * there is nothing to suggest. Independent of {@link replCompleter}: the ghost hints the best match even when Tab
+ * would still offer several.
+ */
+export function completionSuggestion(line: string, config: FlowrConfig): string {
+	if(line.length === 0) {
+		return '';
+	}
+	const [completions, fragment, , hints] = computeCompletions(line, config);
+	// prefer an insertable completion; otherwise preview a display-only hint (e.g. a `<string>` type placeholder)
+	const best = completions[0] ?? hints?.[0];
+	if(best === undefined || !best.startsWith(fragment) || best.length <= fragment.length) {
+		return '';
+	} else if(best === fileProtocol || best === watchProtocol) {
+		return '';
+	}
+	return best.slice(fragment.length);
+}
+
 function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig): CommandCompletions {
 	const nonEmpty = splitLine.slice(1).map(s => s.trim()).filter(s => s.length > 0);
-	const queryShorts = Object.keys(SupportedQueries).map(q => `@${q}`).concat(['help']);
+	const queryShorts = ['help'].concat(Object.keys(SupportedQueries).map(q => `@${q}`));
 	if(nonEmpty.length === 0 || (nonEmpty.length === 1 && queryShorts.some(q => q.startsWith(nonEmpty[0]) && nonEmpty[0] !== q && !startingNewArg))) {
 		return { completions: queryShorts.map(q => `${q} `) };
 	} else {
@@ -106,13 +165,13 @@ function replQueryCompleter(splitLine: readonly string[], startingNewArg: boolea
 /**
  * Produces default readline options for the flowR REPL
  */
-export function makeDefaultReplReadline(config: FlowrConfig): readline.ReadLineOptions {
+export function makeDefaultReplReadline(config: FlowrConfig, historyFile: string | undefined = defaultHistoryFile): readline.ReadLineOptions {
 	return {
 		input:                   process.stdin,
 		output:                  process.stdout,
 		tabSize:                 4,
 		terminal:                true,
-		history:                 loadReplHistory(defaultHistoryFile),
+		history:                 historyFile ? loadReplHistory(historyFile) : [],
 		removeHistoryDuplicates: true,
 		completer:               (c: string) => replCompleter(c, config)
 	};
@@ -128,9 +187,6 @@ export function handleString(code: string) {
 		remaining: []
 	};
 }
-
-/** Path prefix that activates watch mode; use instead of {@link fileProtocol} to re-run on every file change. */
-export const watchProtocol = 'watch://';
 
 /** Convert a statement containing {@link watchProtocol} into one using {@link fileProtocol} so it can be executed. */
 export function toFileStatement(statement: string): string {
@@ -186,31 +242,34 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 	}
 	if(statement.startsWith(':')) {
 		const command = statement.slice(1).split(' ')[0].toLowerCase();
-		const processor = getCommand(command);
 		const bold = (s: string) => output.formatter.format(s, { style: FontStyles.Bold });
-		if(processor) {
-			try {
+		const reportFailure = (e: unknown) => {
+			output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
+			if(log.settings.minLevel < LogLevel.Fatal) {
+				console.error(e);
+			}
+		};
+		try {
+			const processor = getCommand(command);
+			if(processor) {
 				await genericWrapReplFailIfNoRequest(async() => {
 					const remainingLine = statement.slice(command.length + 2).trim();
 					if(processor.isCodeCommand) {
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
 							analyzer.reset();
-							analyzer.addRequest(args.rCode);
+							analyzer.addRequest(handlePathLikeInput(output, args.rCode, analyzer.flowrConfig));
 						}
 						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 					} else {
 						await processor.fn({ output, analyzer, remainingLine, allowRSessionAccess });
 					}
 				}, output, analyzer);
-			} catch(e){
-				output.stderr(`${bold(`Failed to execute command ${command}`)}: ${(e as Error)?.message}. Using the ${bold('--verbose')} flag on startup may provide additional information.\n`);
-				if(log.settings.minLevel < LogLevel.Fatal) {
-					console.error(e);
-				}
+			} else {
+				output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
 			}
-		} else {
-			output.stderr(`the command '${command}' is unknown, try ${bold(':help')} for more information\n`);
+		} catch(e){
+			reportFailure(e);
 		}
 	} else {
 		await tryExecuteRShellCommand({ output, analyzer, remainingLine: statement, allowRSessionAccess });
@@ -311,7 +370,7 @@ export interface FlowrReplOptions extends MergeableRecord {
 	readonly rl?:                  readline.Interface
 	/** Defines two methods that every function in the repl uses to output its data. */
 	readonly output?:              ReplOutput
-	/** The file to use for persisting the repl's history. Passing undefined causes history not to be saved. */
+	/** The file to use for loading and persisting the repl's history. Passing an empty string neither reads nor writes it. */
 	readonly historyFile?:         string
 	/** If true, allows the execution of arbitrary R code. This is a security risk, as it allows the execution of arbitrary R code. */
 	readonly allowRSessionAccess?: boolean
@@ -330,14 +389,18 @@ export interface FlowrReplOptions extends MergeableRecord {
 export async function repl(
 	{
 		analyzer,
-		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig)),
-		output = standardReplOutput,
 		historyFile = defaultHistoryFile,
+		rl = readline.createInterface(makeDefaultReplReadline(analyzer.flowrConfig, historyFile)),
+		output = standardReplOutput,
 		allowRSessionAccess = false
 	}: FlowrReplOptions) {
 	if(historyFile) {
 		rl.on('history', h => fs.writeFileSync(historyFile, h.join('\n'), { encoding: 'utf-8' }));
 	}
+
+	const ghostHint = installGhostHint(rl, analyzer.flowrConfig, {
+		suggest: line => completionSuggestion(line, analyzer.flowrConfig)
+	});
 
 	let sigintCount = 0;
 	rl.on('SIGINT', () => {
@@ -372,6 +435,7 @@ export async function repl(
 	while(true) {
 		await new Promise<void>((resolve, reject) => {
 			rl.question(activeWatcher !== undefined ? '' : prompt(), answer => {
+				ghostHint.clear();
 				sigintCount = 0;
 				rl.pause();
 				replProcessAnswer(analyzer, output, answer, allowRSessionAccess).then(() => {
@@ -379,6 +443,9 @@ export async function repl(
 					resolve();
 				}).catch(reject);
 			});
+			if(activeWatcher === undefined) {
+				ghostHint.show();
+			}
 		});
 	}
 }

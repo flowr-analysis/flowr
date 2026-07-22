@@ -10,8 +10,8 @@ import { jsonReplacer } from '../../src/util/json';
 import { GlobalSummaryFile } from './summary-def';
 import { TreeSitterExecutor } from '../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 
-// the tests use controlled package information; do not let the shipped CRAN export database leak in
-process.env.FLOWR_DISABLE_DEFAULT_PKGDB ??= '1';
+// the tests use controlled package information; do not let the shipped CRAN signature database leak in
+process.env.FLOWR_DISABLE_DEFAULT_SIGDB ??= '1';
 
 
 declare global {

@@ -13,7 +13,7 @@ import { FileRole } from '../../context/flowr-file';
  */
 export class FlowrAnalyzerLoadingOrderDescriptionFilePlugin extends FlowrAnalyzerLoadingOrderPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
-	public readonly description = 'This plugin determines loading order based on the Collate field in DESCRIPTION files.';
+	public readonly description = 'Orders the files by the Collate field of a DESCRIPTION file.';
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {

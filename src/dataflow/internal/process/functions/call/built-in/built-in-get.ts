@@ -71,6 +71,13 @@ export function processGet<OtherInfo>(
 		information.graph.addEdge(rootId, resolution.envirNodeId, EdgeType.Reads);
 	}
 
+	const isolatedTarget = resolution?.envirData.environment.current.builtInEnv === true;
+	const readsToDrop = isolatedTarget && firstProcessed ? new Set([firstProcessed.entryPoint]) : undefined;
+
 	/* restore the caller's (global) environment so we don't leak envState upward */
-	return { ...information, environment: data.environment };
+	return {
+		...information,
+		in:          readsToDrop ? information.in.filter(({ nodeId }) => !readsToDrop.has(nodeId)) : information.in,
+		environment: data.environment
+	};
 }

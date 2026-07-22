@@ -3,8 +3,9 @@ import { printDfGraphForCode } from './doc-util/doc-dfg';
 import { executeQueries, QueriesSchema } from '../queries/query';
 import { FlowrGithubBaseRef, FlowrGithubGroupName, FlowrWikiBaseRef, getFilePathMd } from './doc-util/doc-files';
 import {
-	explainQueries,
+	assertAllQueriesDocumented,
 	linkToQueryOfName,
+	queryPages,
 	registerQueryDocumentation,
 	showQuery,
 	sliceQueryShorthand,
@@ -33,7 +34,6 @@ import { Q } from '../search/flowr-search-builder';
 import { VertexType } from '../dataflow/graph/vertex';
 import { executeControlFlowQuery } from '../queries/catalog/control-flow-query/control-flow-query-executor';
 import { printCfgCode } from './doc-util/doc-cfg';
-import { executeDfShapeQuery } from '../queries/catalog/df-shape-query/df-shape-query-executor';
 import { documentReplSession } from './doc-util/doc-repl';
 import {
 	executeHigherOrderQuery
@@ -51,10 +51,17 @@ import { executeExceptionQuery } from '../queries/catalog/inspect-exceptions-que
 import { SliceDirection } from '../util/slice-direction';
 import { executeProvenanceQuery } from '../queries/catalog/provenance-query/provenance-query-executor';
 import { executeInputSourcesQuery } from '../queries/catalog/input-sources-query/input-sources-query-executor';
+import { executeAbsintQuery } from '../queries/catalog/absint-query/absint-query-executor';
+import type { AbsintQueryType } from '../queries/catalog/absint-query/absint-query-format';
+import { executeDiceQuery } from '../queries/catalog/dice-query/dice-query-executor';
+import { executeDataflowLensQuery } from '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor';
+import { executeSignatureQuery } from '../queries/catalog/signature-query/signature-query-executor';
+import {
+	executeGuessDepVersionsQuery
+} from '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor';
 
 
 registerQueryDocumentation('call-context', {
-	name:             'Call-Context Query',
 	type:             'active',
 	shortDescription: 'Finds all calls in a set of files that matches specified criteria.',
 	functionName:     executeCallContextQueries.name,
@@ -128,7 +135,6 @@ my_test_function()
 });
 
 registerQueryDocumentation('dataflow', {
-	name:             'Dataflow Query',
 	type:             'active',
 	shortDescription: 'Returns the dataflow graph of the given code.',
 	functionName:     executeDataflowQuery.name,
@@ -150,7 +156,6 @@ ${
 });
 
 registerQueryDocumentation('call-graph', {
-	name:             'Call-Graph Query',
 	type:             'active',
 	shortDescription: 'Returns the call graph of the given code.',
 	functionName:     executeCallGraphQuery.name,
@@ -171,7 +176,6 @@ ${
 });
 
 registerQueryDocumentation('does-call', {
-	name:             'Does-Call Query',
 	type:             'active',
 	shortDescription: 'Checks whether a function calls another function matching given constraints.',
 	functionName:     executeDoesCallQuery.name,
@@ -198,7 +202,6 @@ ${
 
 
 registerQueryDocumentation('files', {
-	name:             'Files Query',
 	type:             'active',
 	shortDescription: 'Returns the files matching the given criteria.',
 	functionName:     executeFileQuery.name,
@@ -216,7 +219,6 @@ ${
 });
 
 registerQueryDocumentation('project', {
-	name:             'Project Query',
 	type:             'active',
 	shortDescription: 'Returns information about the analyzed project',
 	functionName:     executeDataflowQuery.name,
@@ -237,7 +239,6 @@ ${
 });
 
 registerQueryDocumentation('normalized-ast', {
-	name:             'Normalized AST Query',
 	type:             'active',
 	shortDescription: 'Returns the normalized AST of the given code.',
 	functionName:     executeNormalizedAstQuery.name,
@@ -259,7 +260,6 @@ ${
 });
 
 registerQueryDocumentation('dataflow-cluster', {
-	name:             'Dataflow Cluster Query',
 	type:             'active',
 	shortDescription: 'Calculates and returns all the clusters present in the dataflow graph.',
 	functionName:     executeDataflowClusterQuery.name,
@@ -291,7 +291,6 @@ ${
 });
 
 registerQueryDocumentation('resolve-value', {
-	name:             'Resolve Value Query',
 	type:             'active',
 	shortDescription: 'Provides access to flowR\'s value tracking (which is configurable)',
 	functionName:     executeSearch.name,
@@ -315,7 +314,6 @@ ${
 });
 
 registerQueryDocumentation('inspect-higher-order', {
-	name:             'Inspect Higher-Order Functions Query',
 	type:             'active',
 	shortDescription: 'Determine whether functions are higher-order functions',
 	functionName:     executeHigherOrderQuery.name,
@@ -346,7 +344,6 @@ ${
 
 
 registerQueryDocumentation('inspect-recursion', {
-	name:             'Inspect Recursive Functions Query',
 	type:             'active',
 	shortDescription: 'Determine whether functions are recursive',
 	functionName:     executeRecursionQuery.name,
@@ -376,7 +373,6 @@ ${
 });
 
 registerQueryDocumentation('inspect-exception', {
-	name:             'Inspect Exceptions of Functions Query',
 	type:             'active',
 	shortDescription: 'Determine whether functions throw exceptions (known to flowR)',
 	functionName:     executeExceptionQuery.name,
@@ -409,7 +405,6 @@ ${
 
 
 registerQueryDocumentation('origin', {
-	name:             'Origin Query',
 	type:             'active',
 	shortDescription: 'Retrieve the origin of a variable, function call, ...',
 	functionName:     executeSearch.name,
@@ -433,7 +428,6 @@ ${
 });
 
 registerQueryDocumentation('search', {
-	name:             'Search Query',
 	type:             'active',
 	shortDescription: 'Provides access to flowR\'s search API',
 	functionName:     executeSearch.name,
@@ -455,7 +449,6 @@ ${
 });
 
 registerQueryDocumentation('happens-before', {
-	name:             'Happens-Before Query',
 	type:             'active',
 	shortDescription: 'Check whether one normalized AST node happens before another in the CFG.',
 	functionName:     executeSearch.name,
@@ -482,7 +475,6 @@ ${
 });
 
 registerQueryDocumentation('id-map', {
-	name:             'Id-Map Query',
 	type:             'active',
 	shortDescription: 'Returns the id-map of the normalized AST of the given code.',
 	functionName:     executeIdMapQuery.name,
@@ -503,7 +495,6 @@ ${
 });
 
 registerQueryDocumentation('config', {
-	name:             'Config Query',
 	type:             'active',
 	shortDescription: 'Returns the current configuration of flowR.',
 	functionName:     executeConfigQuery.name,
@@ -533,35 +524,53 @@ ${
 	])
 }
 
-One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting \`repl.quickStats=true\`
-enables quick statistics after each REPL command. Likewise, setting \`repl.dfProcessorHeat=true\` enables the dataflow processor heatmap after each REPL command.
+In the REPL you can also read a single option by its \`.\`-separated path, or several at once with a glob&mdash;\`*\` covers
+one path segment, \`**\` any number. This only reads: setting a value still names exactly one key.
+
+${
+	await documentReplSession(shell, [
+		{
+			command:     ':query @config **.enabled',
+			description: 'Read every `enabled` option, wherever it sits in the configuration.'
+		},
+		{
+			command:     ':query @config solver.*',
+			description: 'Read the direct children of `solver` (use `solver.**` for the whole subtree).'
+		}
+	])
+}
+
+One of the most useful options to change on-the-fly are probably those under \`repl\`. For example, setting ${ctx.linkConfig('repl.quickStats', true)}
+enables quick statistics after each REPL command. Likewise, ${ctx.linkConfig('repl.dfProcessorHeat', true)} enables the dataflow processor heatmap after each REPL command.
 `;
 	}
 });
 
-registerQueryDocumentation('df-shape', {
-	name:             'Dataframe Shape Inference Query',
+registerQueryDocumentation('absint', {
 	type:             'active',
-	shortDescription: 'Returns the shapes inferred for all dataframes in the code.',
-	functionName:     executeDfShapeQuery.name,
-	functionFile:     '../queries/catalog/df-shape-query/df-shape-query-format.ts',
+	shortDescription: 'Returns the abstract values inferred for every expression or at specific locations.',
+	functionName:     executeAbsintQuery.name,
+	functionFile:     '../queries/catalog/absint-query/absint-query-format.ts',
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
-		const exampleCode = 'x <- data.frame(a=1:3)\nfilter(x, FALSE)';
-		const criterion = '2@x' as SlicingCriterion;
+		const criteria: SlicingCriteria = ['1@df', '1@data.frame'];
+		const inference: AbsintQueryType = 'df-shape';
+		const exampleCode = 'df <- data.frame(id = 1:3) |>\n  filter(df, FALSE)';
 		return `
-This query infers all shapes of dataframes within the code. For example, you can use:
+This query infers all shapes of dataframes within the code using abstract interpretaion. For example, you can use:
 ${
 	await showQuery(shell, exampleCode, [{
-		type: 'df-shape'
+		type:      'absint',
+		inference: inference
 	}], { showCode: true, collapseQuery: true, ctx })
 }
 
-The query also accepts an optional slice criterion to narrow the results to a specific node. For example:
+The query optionally also accepts slice criteria to narrow the results to specific nodes. For example:
 ${
 	await showQuery(shell, exampleCode, [{
-		type:      'df-shape',
-		criterion: criterion
-	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
+		type:      'absint',
+		inference: inference,
+		criteria:  criteria
+	}], { showCode: true, collapseQuery: true, shorthand: sliceQueryShorthand(criteria, escapeNewline(exampleCode)), ctx })
 }
 `;
 	}
@@ -629,7 +638,6 @@ Now, the results no longer contain calls to \`plot\` that are not defined locall
 });
 
 registerQueryDocumentation('static-slice', {
-	name:             'Static Slice Query',
 	type:             'active',
 	shortDescription: 'Slice the dataflow graph reducing the code to just the parts relevant for the given criteria (backward and forward).',
 	functionName:     executeStaticSliceQuery.name,
@@ -637,6 +645,8 @@ registerQueryDocumentation('static-slice', {
 	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
 		const exampleCode = 'x <- 1\ny <- 2\nz <- 3\nx';
 		const criteria = ['3@z', '4@x'] as SlicingCriteria;
+		const sourceExample = 'source("library.R")\nprint(greeting)';
+		const sourceCriteria = ['2@print'] as SlicingCriteria;
 		return `
 To slice, _flowR_ needs one thing from you: a variable or a list of variables (function calls are supported to, referring to the anonymous
 return of the call) that you want to slice the dataflow graph for (additionally, you have to tell flowR if you want to have a forward slice).
@@ -677,6 +687,24 @@ ${
 	}], { showCode: false, shorthand: sliceQueryShorthand(['1@x'], escapeNewline(exampleCode), true), ctx })
 }
 
+If your program pulls in other files with \`source(...)\`, the \`inlineSources\` flag splices the reconstruction
+of each resolvable sourced file into the place of its \`source()\` call, so the slice becomes a single
+self-contained R text (cyclic or unresolvable \`source()\` calls are kept verbatim and reported via
+\`reconstruct.inlineWarnings\`). With the ${getReplCommand('query')} REPL command you append an \`i\` to the
+criteria (and may combine it with the forward \`f\` as \`fi\`), for example (with a faked \`library.R\` providing \`greeting\`):
+${
+	await showQuery(shell, sourceExample, [{
+		type:          'static-slice',
+		criteria:      sourceCriteria,
+		inlineSources: true
+	}], {
+		showCode:  false,
+		shorthand: sliceQueryShorthand(sourceCriteria, escapeNewline(sourceExample), false, true),
+		ctx,
+		files:     [{ name: 'library.R', content: 'greeting <- "hello"\nunused <- 123' }]
+	})
+}
+
 You can disable ${ctx.linkPage('wiki/Interface', 'magic comments', 'slice-magic-comments')} using the \`noMagicComments\` flag.
 This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 'message-request-slice')} message.
 		`;
@@ -684,7 +712,6 @@ This query replaces the old ${ctx.linkPage('wiki/Interface', '`request-slice`', 
 });
 
 registerQueryDocumentation('provenance', {
-	name:             'Provenance Query',
 	type:             'active',
 	shortDescription: 'Calculate the provenance of a given variable, optionally restricted to its enveloping fdef',
 	functionName:     executeProvenanceQuery.name,
@@ -711,7 +738,6 @@ ${
 });
 
 registerQueryDocumentation('input-sources', {
-	name:             'Input Sources Query',
 	type:             'active',
 	shortDescription: 'Classify the input sources of function calls',
 	functionName:     executeInputSourcesQuery.name,
@@ -742,7 +768,6 @@ ${
 });
 
 registerQueryDocumentation('dependencies', {
-	name:             'Dependencies Query',
 	type:             'active',
 	shortDescription: 'Returns all direct dependencies (in- and outputs) of a given R script',
 	functionName:     executeDependenciesQuery.name,
@@ -764,7 +789,7 @@ print("hello world!")
 		return `
 This query extracts all dependencies from an R script, using a combination of a ${linkToQueryOfName('call-context')}
 and more advanced tracking in the ${ctx.linkPage('wiki/Dataflow Graph', 'Dataflow Graph')}.
-Loaded libraries are resolved against the ${ctx.linkPage('wiki/Package Database', 'package database')}.
+Loaded libraries are resolved against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
 
 In other words, if you have a script simply reading: \`${exampleCode}\`, the following query returns the loaded library:
 ${
@@ -803,7 +828,6 @@ Here, \`resolveValue\` tells the dependency query to resolve the value of this a
 });
 
 registerQueryDocumentation('linter', {
-	name:             'Linter Query',
 	type:             'active',
 	shortDescription: 'Lints a given R script for common issues.',
 	functionName:     executeDependenciesQuery.name,
@@ -839,7 +863,6 @@ We welcome any feedback and suggestions for new rules on this (consider opening 
 });
 
 registerQueryDocumentation('control-flow', {
-	name:             'Control-Flow Query',
 	type:             'active',
 	shortDescription: 'Provides the control-flow of the program.',
 	functionName:     executeControlFlowQuery.name,
@@ -905,7 +928,6 @@ ${await printCfgCode(shell, exampleCode, { showCode: false, prefix: 'flowchart R
 });
 
 registerQueryDocumentation('location-map', {
-	name:             'Location Map Query',
 	type:             'active',
 	shortDescription: 'Returns a simple mapping of ids to their location in the source file',
 	functionName:     executeLocationMapQuery.name,
@@ -944,6 +966,184 @@ All locations are given as a ${ctx.link('SourceRange')} paired with the file id 
 	}
 });
 
+
+registerQueryDocumentation('dice', {
+	type:             'active',
+	shortDescription: 'Reduces the code to the parts that carry information from a given start point to a given end point.',
+	functionName:     executeDiceQuery.name,
+	functionFile:     '../queries/catalog/dice-query/dice-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'x <- 1\ny <- 2\nz <- x + y\nw <- z * 2\nprint(z)';
+		return `
+While the ${linkToQueryOfName('static-slice')} answers "what affects this point?" (or "what does this point affect?"),
+a _dice_ answers the two-sided question: **which parts of the program carry information from A to B?**
+It is the intersection of a forward slice seeded at \`from\` and a backward slice seeded at \`to\`,
+so only the code that lies on some dependency path between the two criteria survives.
+
+Both \`from\` and \`to\` are arrays of [slicing criteria](${FlowrWikiBaseRef}/Terminology#slicing-criterion), just like for the ${linkToQueryOfName('static-slice')}.
+Unlike that query, there is no \`direction\` property: the direction is already fixed by the \`from\`&rarr;\`to\` pairing.
+
+Consider the following code:
+${codeBlock('r', exampleCode)}
+
+Asking what connects the definition of \`x\` to the definition of \`z\` drops \`y <- 2\` (it never depends on \`x\`)
+as well as \`w <- z * 2\` and \`print(z)\` (they are not on a path _into_ the \`to\` criterion):
+
+${
+	await showQuery(shell, exampleCode, [{
+		type: 'dice',
+		from: ['1@x'] as SlicingCriteria,
+		to:   ['3@z'] as SlicingCriteria
+	}], { showCode: false, shorthand: `(1@x->3@z) "${escapeNewline(exampleCode)}"`, ctx })
+}
+
+Beyond \`from\` and \`to\`, the dice query understands the same options as the ${linkToQueryOfName('static-slice')}
+(\`noReconstruction\`, \`noMagicComments\`, \`inlineSources\`, \`inlineFull\`, and \`includeCallees\`), as both share the
+\`SliceQueryOptions\` of ${getFilePathMd('../queries/catalog/slice-query-options.ts')}.
+
+${
+	details('Multiple Criteria per Side', 'Each side accepts several criteria, which are seeded together:' + await showQuery(shell, exampleCode, [{
+		type: 'dice',
+		from: ['1@x', '2@y'] as SlicingCriteria,
+		to:   ['5@print'] as SlicingCriteria
+	}], { showCode: false, ctx }))
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('dataflow-lens', {
+	type:             'active',
+	shortDescription: 'Returns a simplified view on the dataflow graph, reduced to definitions, uses, and calls.',
+	functionName:     executeDataflowLensQuery.name,
+	functionFile:     '../queries/catalog/dataflow-lens-query/dataflow-lens-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'f <- function(a) a + 1\nx <- 1\ny <- f(x)\nprint(y)';
+		return `
+The ${linkToQueryOfName('dataflow')} hands you the complete dataflow graph, which is precise but quickly grows too large to read.
+The dataflow lens returns a _reduced_ view of that same graph, keeping only what is usually interesting when looking at it by hand:
+
+* only vertices tagged as a use, a variable definition, a function definition, or a function call (value vertices are dropped),
+* without the environment captured at each vertex (control dependencies are kept),
+* and without the vertices for plain operators and keywords (\`<-\`, \`=\`, \`+\`, \`|>\`, \`if\`, \`function\`, ...).
+
+Edges survive only if both of their endpoints do. The query takes no further arguments.
+
+${codeBlock('r', exampleCode)}
+
+${await showQuery(shell, exampleCode, [{ type: 'dataflow-lens' }], { showCode: false, ctx })}
+
+${
+	block({
+		type:    'NOTE',
+		content: `This is a presentation aid, not a semantic one: the reduced graph is not a sound basis for slicing.
+Use the ${linkToQueryOfName('dataflow')} if you need the complete graph, or the ${linkToQueryOfName('dataflow-cluster')} if you want the graph partitioned instead of shrunk.`
+	})
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('signature', {
+	type:             'active',
+	shortDescription: 'Inspects the signature database: packages, function signatures, source and documentation links.',
+	functionName:     executeSignatureQuery.name,
+	functionFile:     '../queries/catalog/signature-query/signature-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'library(dplyr)\nlead(1:10, n = 1)';
+		return `
+This query is the read-side interface to flowR's ${ctx.linkPage('wiki/Signature Database', 'signature database')}&mdash;the very same database
+that resolves \`library()\` and \`::\` calls during the dataflow analysis. It lets you ask what flowR actually _knows_ about a package
+or a function, without needing R or a network connection.
+
+What you get back depends on how specific you are:
+
+| Given | Result |
+| ----- | :----- |
+| nothing | a summary of the loaded databases |
+| \`package\` | the full package view: version, CRAN links, dependencies, exports |
+| \`package\` + \`function\` | the full function view: parameters, definition site, source and documentation links, S3 relations |
+| a glob in either (\`gg*\`, \`geom_*\`) | the set of matching packages or functions |
+
+The \`version\` property accepts an exact version, a glob (\`3.*\`), a semver range (\`>=3.0.0\`), or a release-date bound (\`<=2026\`, \`>=2021.05\`).
+Without it, the release that flowR resolved for the analyzed script is used, so the signature you see is the one the analysis actually assumed.
+
+Given a script such as:
+${codeBlock('r', exampleCode)}
+
+we can inspect the signature of the function it calls:
+
+${await showQuery(shell, exampleCode, [{ type: 'signature', package: 'dplyr', function: 'lead' }], { showCode: false, collapseResult: true, ctx })}
+
+The \`parameters\` and \`requiredParameters\` properties additionally filter by the _shape_ of a function, which is useful to find
+functions you only half-remember: \`{ package: '*', parameters: ['data', 'mapping'] }\` finds every known function taking both of these.
+
+${
+	block({
+		type:    'NOTE',
+		content: `The results depend on which database shards are mounted; with none available the query reports that no database is loaded rather than failing.
+See the ${ctx.linkPage('wiki/Signature Database')} page for the storage format, the configuration under ${ctx.linkConfig('solver.sigdb', true)}, and how to obtain further shards.
+To find out what a script _uses_, reach for the ${linkToQueryOfName('dependencies')}; to find out which versions it is compatible with, see the ${linkToQueryOfName('guess-dep-versions')}.`
+	})
+}
+		`;
+	}
+});
+
+registerQueryDocumentation('guess-dep-versions', {
+	type:             'active',
+	shortDescription: 'Guesses the version range each dependency must have, from declared constraints and actual code usage.',
+	functionName:     executeGuessDepVersionsQuery.name,
+	functionFile:     '../queries/catalog/guess-dep-versions-query/guess-dep-versions-query-executor.ts',
+	buildExplanation: async(shell: RShell, ctx: GeneralDocContext) => {
+		const exampleCode = 'library(dplyr)\nmutate(mtcars, across(everything(), round))';
+		return `
+A script rarely says which version of a package it needs, but it shows you. If it passes an argument that a function only
+gained in some release, it cannot run on anything older. This query turns that observation into a concrete version range per dependency.
+
+It combines two sources of evidence:
+
+1. what the project **declares**: a \`DESCRIPTION\` range, an \`rproject.toml\` entry, a lockfile pin, and everything these imply transitively, and
+2. what the code **does**: which package functions it calls and with which arguments, matched against the ${ctx.linkPage('wiki/Signature Database', 'signature database')}.
+
+Every resulting bound carries its provenance, so the answer explains itself: each entry lists the \`evidence\` that produced it,
+naming the function, the parameter, and the bound it implies.
+
+Two things can raise a lower bound: calling a function that did not exist yet, or passing an argument that the
+function only gained later. Consider a script calling \`dplyr::across\`:
+${codeBlock('r', exampleCode)}
+
+\`across\` was only introduced in dplyr 1.0.0, so the script cannot run on anything older. The result names the function
+that produced the bound:
+
+${await showQuery(shell, exampleCode, [{ type: 'guess-dep-versions' }], { showCode: false, collapseResult: true, ctx })}
+
+The guess can be narrowed further:
+
+* \`packages\` restricts it to the dependencies you care about,
+* \`date\` caps every guess to releases available at that point in time (\`YYYY.MM.DD\`, also \`YYYY\` or \`YYYY.MM\`),
+* \`clean\` ignores the declared constraints entirely and guesses purely from usage,
+* \`disabled\` excludes individual evidence sources by name (repl: \`--disabled\` followed by their one-letter codes shown in the legend below, e.g. \`--disabled ds\` drops \`declared\` and \`signature\`),
+* \`maxCandidates\` caps how many candidate versions are listed per dependency,
+* \`maxIterations\` bounds the two fixpoint loops (packages constrain each other, so the guess is iterated until it settles), and
+* \`explode\` additionally enumerates concrete version _combinations_ (\`order\`, \`prefer\`, and \`limit\` control which and how many).
+
+Packages can also be tied to one shared version (the base/R packages always are), and ${ctx.linkConfig('solver.versionManagement.linkedVersionGroups', true)}
+declares further groups. Such a package reports its partners in \`linkedWith\`, because its range is then no longer independent of theirs.
+
+${
+	block({
+		type:    'NOTE',
+		content: `This query needs the ${ctx.linkPage('wiki/Signature Database', 'signature database')}, and specifically a database carrying the _history_ of a package,
+since bounding a version means comparing releases. Without one it returns no guesses and says so in its \`message\`.
+See the ${linkToQueryOfName('signature')} to inspect the signatures the guess is drawn from.`
+	})
+}
+		`;
+	}
+});
+
+
 /**
  * https://github.com/flowr-analysis/flowr/wiki/Query-API
  */
@@ -953,6 +1153,13 @@ export class WikiQuery extends DocMaker<'wiki/Query API.md'> {
 	}
 
 	protected async text({ ctx, shell }: DocMakerArgs): Promise<string> {
+		assertAllQueriesDocumented();
+		for(const [file, content] of Object.entries({
+			...await queryPages(shell, ctx, 'active'),
+			...await queryPages(shell, ctx, 'virtual')
+		})) {
+			this.writeSubFile(file, content);
+		}
 		return `
 This page briefly summarizes flowR's query API, represented by the ${executeQueries.name} function in ${getFilePathMd('../queries/query.ts')}.
 Please see the ${ctx.linkPage('wiki/Interface')} wiki page for more information on how to access this API.
@@ -1029,9 +1236,7 @@ Just as an example, the following ${linkToQueryOfName('call-context')} finds all
 
 ${await showQuery(shell, exampleQueryCode, [{ type: 'call-context', callName: '^read_csv$', callTargets: CallTargets.OnlyGlobal, kind: 'input', subkind: 'csv-file' }], { showCode: false, ctx })}
 
-${await explainQueries(shell, ctx, 'active')}
-
-${await explainQueries(shell, ctx, 'virtual')}
+Every query is explained in detail on its own wiki page, linked from the overviews above.
 `;
 	}
 }

@@ -69,10 +69,9 @@ describe('repl', () => {
 	});
 
 	test('reports the loaded package database', async() => {
-		// shown in the startup banner and by :version (reads the bundled default database)
 		const output = await flowrRepl([':version', ':quit']);
 		try {
-			assert.include(output, 'package database');
+			assert.include(output, 'databases');
 		} catch(e) {
 			console.error('Output was:', output);
 			throw e;
@@ -83,8 +82,8 @@ describe('repl', () => {
 		describe('dependencies', () => {
 			test('Provide Library Load', async() => {
 				const output = await flowrRepl([':query @dependencies "library(x)"', ':quit']);
-				assert.include(output, '`library`');
-				assert.include(output, '`x`');
+				assert.include(output, 'Libraries');
+				assert.include(output, 'via library');
 			});
 		});
 	});

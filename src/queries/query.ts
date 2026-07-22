@@ -43,6 +43,7 @@ import {
 	DataflowLensQueryDefinition
 } from './catalog/dataflow-lens-query/dataflow-lens-query-format';
 import { type ProjectQuery, ProjectQueryDefinition } from './catalog/project-query/project-query-format';
+import { type SignatureQuery, SignatureQueryDefinition } from './catalog/signature-query/signature-query-format';
 import { type OriginQuery, OriginQueryDefinition } from './catalog/origin-query/origin-query-format';
 import { type LinterQuery, LinterQueryDefinition } from './catalog/linter-query/linter-query-format';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -50,7 +51,6 @@ import {
 	type ControlFlowQuery,
 	ControlFlowQueryDefinition
 } from './catalog/control-flow-query/control-flow-query-format';
-import { type DfShapeQuery, DfShapeQueryDefinition } from './catalog/df-shape-query/df-shape-query-format';
 import type { AsyncOrSync, Writable } from 'ts-essentials';
 import type { FlowrConfig } from '../config';
 import {
@@ -87,6 +87,11 @@ import type { ProvenanceQuery } from './catalog/provenance-query/provenance-quer
 import { ProvenanceQueryDefinition } from './catalog/provenance-query/provenance-query-format';
 import type { LintingResultCertainty } from '../linter/linter-format';
 import { type DiceQuery, DiceQueryDefinition } from './catalog/dice-query/dice-query-format';
+import {
+	type GuessDepVersionsQuery,
+	GuessDepVersionsQueryDefinition
+} from './catalog/guess-dep-versions-query/guess-dep-versions-query-format';
+import { AbsintQueryDefinition, type AbsintQuery } from './catalog/absint-query/absint-query-format';
 
 /**
  * These are all queries that can be executed from within flowR
@@ -100,7 +105,7 @@ export type Query = CallContextQuery
 	| ControlFlowQuery
 	| DataflowLensQuery
 	| FilesQuery
-	| DfShapeQuery
+	| AbsintQuery
 	| NormalizedAstQuery
 	| IdMapQuery
 	| DataflowClusterQuery
@@ -113,11 +118,13 @@ export type Query = CallContextQuery
 	| InspectRecursionQuery
 	| ResolveValueQuery
 	| ProjectQuery
+	| SignatureQuery
 	| OriginQuery
 	| LinterQuery
 	| ProvenanceQuery
 	| InputSourcesQuery
 	| DiceQuery
+	| GuessDepVersionsQuery
 	;
 
 export type QueryArgumentsWithType<QueryType extends BaseQueryFormat['type']> = Query & { type: QueryType };
@@ -145,6 +152,10 @@ export interface SupportedQuery<QueryType extends BaseQueryFormat['type'] = Base
 	completer?:           (splitLine: readonly string[], startingNewArg: boolean, config: FlowrConfig) => CommandCompletions;
 	/** optional query construction from an, e.g., repl line */
 	fromLine?:            (output: ReplOutput, splitLine: readonly string[], config: FlowrConfig) => ParsedQueryLine<QueryType>
+	/** optional one-line usage of the repl `@`-shorthand `fromLine` accepts, shown by `:query ?<type>` */
+	syntax?:              string
+	/** the human-readable name, e.g. `Call-Context Query`; also names its wiki page, see {@link queryWikiPage} */
+	title:                string
 	/**
 	 * Generates an ASCII summary of the query result to be printed in, e.g., the REPL.
 	 * @returns whether a summary was produced (`true` if so, `false` if not, in this case a default/generic summary will be created)
@@ -167,7 +178,7 @@ export const SupportedQueries = {
 	'dataflow':             DataflowQueryDefinition,
 	'does-call':            DoesCallQueryDefinition,
 	'dataflow-lens':        DataflowLensQueryDefinition,
-	'df-shape':             DfShapeQueryDefinition,
+	'absint':               AbsintQueryDefinition,
 	'files':                FilesQueryDefinition,
 	'id-map':               IdMapQueryDefinition,
 	'normalized-ast':       NormalizedAstQueryDefinition,
@@ -184,12 +195,19 @@ export const SupportedQueries = {
 	'inspect-recursion':    InspectRecursionQueryDefinition,
 	'resolve-value':        ResolveValueQueryDefinition,
 	'project':              ProjectQueryDefinition,
+	'signature':            SignatureQueryDefinition,
 	'origin':               OriginQueryDefinition,
 	'linter':               LinterQueryDefinition,
-	'dice':                 DiceQueryDefinition
+	'dice':                 DiceQueryDefinition,
+	'guess-dep-versions':   GuessDepVersionsQueryDefinition
 } as const satisfies SupportedQueriesType;
 
 export type SupportedQueryTypes = keyof typeof SupportedQueries;
+
+/** The wiki page documenting a query, derived from its {@link SupportedQuery.title}. */
+export function queryWikiPage(title: string): string {
+	return '[Query] ' + title.replace(/\s*Query$/, '');
+}
 export type QueryResult<Type extends Query['type']> = Promise<ReturnType<typeof SupportedQueries[Type]['executor']>>;
 
 /**
@@ -273,8 +291,9 @@ export async function executeQueries<
 			const result = await executeQueriesOfSameType(data, group);
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
-			log.warn(e);
-			results.push([type, undefined]);
+			const message = e instanceof Error ? e.message : String(e);
+			log.error(`query of type '${type}' failed: ${message}`);
+			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}
 

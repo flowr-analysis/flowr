@@ -4,8 +4,9 @@ import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files
 import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
-import { platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 import path from 'path';
+import { RprofileFilePattern } from '../file-plugins/flowr-analyzer-rprofile-file-plugin';
 
 /**
  * This is the base class for all plugins that discover files in a project for analysis.
@@ -22,8 +23,10 @@ export abstract class FlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerP
 	}
 }
 
-const discoverRSourcesRegex = /\.(r|rmd|ipynb|qmd|rnw)$/i;
-const ignorePathsWith = /(\.git|\.svn|\.hg|rv|renv|packrat|node_modules|__pycache__|\.Rproj\.user)/i;
+// `.Rprofile`/`Rprofile.site` carry no extension but are plain R sources
+const discoverRSourcesRegex = /(\.(r|rmd|ipynb|qmd|rnw)|(^|[\\/])\.?Rprofile(\.site)?)$/i;
+// matched against the posix path relative to the project root
+const ignorePathsWith = /(^|\/)(\.git|\.svn|\.hg|node_modules|__pycache__|\.Rproj\.user|(packrat|renv|rv)\/(lib|library|src|staging|sandbox|bundles)[^/]*)(\/|$)/i;
 const excludeRequestsForPaths = /vignettes?|tests?|revdep|inst|data/i;
 
 /** Configuration options for the {@link DefaultFlowrAnalyzerProjectDiscoveryPlugin}. */
@@ -44,7 +47,7 @@ export interface ProjectDiscoveryConfig {
  */
 class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDiscoveryPlugin {
 	public readonly name = 'default-project-discovery-plugin';
-	public readonly description = 'This is the default project discovery plugin that does nothing.';
+	public readonly description = 'Does nothing, the default project discovery plugin.';
 	public readonly version = new SemVer('0.0.0');
 	private readonly supportedExtensions: RegExp;
 	private readonly ignorePathsRegex:    RegExp;
@@ -73,6 +76,10 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 			const relativePath = path.relative(args.content, file);
 			if(this.supportedExtensions.test(relativePath) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(relativePath)) && !this.excludePathsRegex.test(platformDirname(relativePath))) {
 				requests.push({ content: file, request: 'file' });
+				if(RprofileFilePattern.test(platformBasename(relativePath))) {
+					// parse requests skip the file plugins, so emit a file too to have the profile tagged
+					requests.push(new FlowrTextFile(file));
+				}
 			} else {
 				requests.push(new FlowrTextFile(file));
 			}

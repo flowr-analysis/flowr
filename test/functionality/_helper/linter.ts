@@ -27,19 +27,39 @@ import type { NodeId } from '../../../src/r-bridge/lang-4.x/ast/model/processing
 import { cfgToMermaidUrl } from '../../../src/util/mermaid/cfg';
 import { DropPathsOption } from '../../../src/config';
 import { Dataflow } from '../../../src/dataflow/graph/df-helper';
-import type { PkgDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
-import { FlowrAnalyzerPackageVersionsPkgDbPlugin, PkgDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-pkgdb-plugin';
-import type { PkgDb } from '../../../src/project/plugins/package-version-plugins/pkgdb';
+import type { SigDbSource } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName } from '../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import type { PackageSignatureSource } from '../../../src/project/sigdb/reader';
+import type { LibraryExports } from '../../../src/project/sigdb/schema';
 
 /** options steering the analyzer setup of a linter test (kept separate from the linting rule config) */
-export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], pkgDb?: PkgDbSource, noPkgDb?: boolean };
+export type LinterTestSetup = { useAsFilePath?: string, addFiles?: FlowrFileProvider[], sigDb?: SigDbSource, noSigDb?: boolean };
 
-/** a minimal in-memory `latest`-scope package database exporting `exports` from `pkg` (so tests do not rely on the bundled one) */
-export function controlledPkgDb(pkg: string, exports: readonly string[]): PkgDb {
+/** a minimal in-memory signature source exporting the given `pkg -> exports` (so tests do not rely on the bundled one) */
+export function controlledSigDb(pkgs: Record<string, readonly string[]>): PackageSignatureSource;
+export function controlledSigDb(pkg: string, exports: readonly string[]): PackageSignatureSource;
+export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly string[]>, exports?: readonly string[]): PackageSignatureSource {
+	const pkgs = typeof pkgOrPkgs === 'string' ? { [pkgOrPkgs]: exports ?? [] } : pkgOrPkgs;
+	const view = (pkg: string): LibraryExports | undefined => pkg in pkgs
+		? { version: '1.0.0', exported: [...pkgs[pkg]], internal: [], deprecated: [], s3Classes: [], s4Classes: [], cran: true }
+		: undefined;
 	return {
-		format:  'flowr-pkgdb', schema:  4, scope:   'latest',
-		content: { version: 1, date: '2026-01-01', hash: 'x', generated: 0, packages: 1, versions: 1 },
-		strings: [], pkgs:    { [pkg]: ['1.0.0', [...exports]] }
+		has:               pkg => pkg in pkgs,
+		hasVersion:        (pkg, version) => pkg in pkgs && version === '1.0.0',
+		isCranVersion:     () => true,
+		lookup:            pkg => view(pkg),
+		classOwner:        () => undefined,
+		functions:         () => undefined,
+		functionByName:    () => undefined,
+		transitiveCallees: () => undefined,
+		dependencies:      () => undefined,
+		packageNames:      () => Object.keys(pkgs),
+		isBaseR:           () => false,
+		coreVersions:      () => undefined,
+		releaseDate:       () => undefined,
+		releaseDates:      () => [],
+		latestVersion:     () => undefined,
+		close:             () => { /* nothing to release */ }
 	};
 }
 
@@ -108,11 +128,11 @@ function assertLinterWithCleanup<Name extends LintingRuleNames, Result>(
 			})
 			.setParser(parser)
 			.configure('solver.resolveSource.dropPaths', DropPathsOption.All);
-		// swap in a controlled package database (or none) so tests do not depend on the bundled collection
-		if(lintingRuleConfig?.pkgDb !== undefined) {
-			builder = builder.unregisterPlugins(PkgDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsPkgDbPlugin(lintingRuleConfig.pkgDb));
-		} else if(lintingRuleConfig?.noPkgDb) {
-			builder = builder.unregisterPlugins(PkgDbPluginName);
+		// swap in a controlled signature database (or none) so tests do not depend on the bundled collection
+		if(lintingRuleConfig?.sigDb !== undefined) {
+			builder = builder.unregisterPlugins(SigDbPluginName).registerPlugins(new FlowrAnalyzerPackageVersionsSigDbPlugin(lintingRuleConfig.sigDb));
+		} else if(lintingRuleConfig?.noSigDb) {
+			builder = builder.unregisterPlugins(SigDbPluginName);
 		}
 		const analyzer = await builder.build();
 		if(lintingRuleConfig?.useAsFilePath) {

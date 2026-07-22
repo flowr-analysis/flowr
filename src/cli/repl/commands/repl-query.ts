@@ -1,30 +1,128 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, FontStyles, italic } from '../../../util/text/ansi';
+import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint, supportsHyperlinks } from '../../../util/text/ansi';
 import {
 	executeQueries,
-	QueriesSchema,
 	type Query,
+	queryWikiPage,
 	type QueryResults,
 	SupportedQueries,
 	type SupportedQuery,
-	type SupportedQueryTypes
+	type SupportedQueryTypes,
+	VirtualQuerySchema
 } from '../../../queries/query';
+import { SupportedVirtualQueries } from '../../../queries/virtual-query/virtual-queries';
 import type { FlowrAnalysisProvider, ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { jsonReplacer } from '../../../util/json';
 import type { BaseQueryResult } from '../../../queries/base-query-format';
 import { splitAtEscapeSensitive } from '../../../util/text/args';
 import { Record } from '../../../util/record';
+import { requestFromInput } from '../../../r-bridge/retriever';
+import { handlePathLikeInput } from '../path-input';
+
+/**
+ * Whether the analyzer already holds exactly `input` as its sole request, so a prior analysis (e.g. a
+ * dataflow computed via `:df#`) can be reused instead of being discarded by a reset.
+ */
+function analyzerHasTarget(analyzer: ReadonlyFlowrAnalysisProvider, input: string): boolean {
+	const requested = requestFromInput(input);
+	const current = analyzer.inspectContext().files.loadingOrder.getUnorderedRequests();
+	return current.length === 1 && current[0].request === requested.request && current[0].content === requested.content;
+}
 
 
 function printHelp(output: ReplOutput) {
 	output.stderr(`Format: ${italic(':query <query> <code>', output.formatter)}`);
 	output.stdout('Queries starting with \'@<type>\' are interpreted as a query of the given type.');
+	output.stdout(`Start with '?<type>' instead to see documentation on a query, e.g. ${bold(':query ?guess-dep-versions', output.formatter)} (a bare ${bold(':query ?', output.formatter)} lists them all).`);
 	output.stdout(`With this, ${bold(':query @config', output.formatter)} prints the result of the config query.`);
 	output.stdout(`If you want to run the linter on a project use:\n    ${bold(':query @linter file://<path>', output.formatter)} (or ${bold('watch://<path>', output.formatter)} to re-run on changes).`);
 	output.stdout(ansiInfo('Otherwise, you can also directly pass the query json. Then, the query is an array of query objects to represent multiple queries.'));
 	output.stdout(ansiInfo('The example') + italic(String.raw`:query "[{\"type\": \"call-context\", \"callName\": \"mean\" }]" mean(1:10)`, output.formatter, { color: Colors.White, effect: ColorEffect.Foreground }) + ansiInfo('would return the call context of the mean function.'));
 	output.stdout('Please have a look at the wiki for more info: https://github.com/flowr-analysis/flowr/wiki/Query-API');
+}
+
+/** one parameter of a query, as returned by Joi's loosely-typed {@link Joi.ObjectSchema.describe} */
+interface QueryParamDescription {
+	readonly type?:  string;
+	readonly flags?: { readonly presence?: string, readonly description?: string };
+	readonly allow?: readonly unknown[];
+}
+/** the described shape of a query's Joi schema (its own description plus its parameters) */
+interface QuerySchemaDescription {
+	readonly flags?: { readonly description?: string };
+	readonly keys?:  Record<string, QueryParamDescription>;
+}
+
+/** the single boundary cast for Joi's untyped {@link Joi.Description}, shared by the doc and template renderers */
+function describeSchema(schema: SupportedQuery['schema']): QuerySchemaDescription {
+	return schema.describe() as unknown as QuerySchemaDescription;
+}
+
+/** Print documentation for one query type from its Joi schema (description + each parameter), or list all when no name is given. */
+function printQueryDoc(output: ReplOutput, name: string): void {
+	if(name.length === 0) {
+		output.stdout(`Queries: ${Object.keys(SupportedQueries).sort().map(q => bold('@' + q, output.formatter)).join(', ')}`);
+		output.stdout(`Use ${bold(':query ?<type>', output.formatter)} for details on one, e.g. ${bold(':query ?guess-dep-versions', output.formatter)}.`);
+		return;
+	}
+	const def = Object.entries(SupportedQueries).find(([key]) => key === name)?.[1];
+	if(def === undefined) {
+		output.stderr(`Unknown query ${italic(name, output.formatter)}; use ${bold(':query ?', output.formatter)} to list every query.`);
+		return;
+	}
+	const desc = describeSchema(def.schema);
+	output.stdout(`${bold('@' + name, output.formatter)}${desc.flags?.description ? ` ${faint('— ' + desc.flags.description, output.formatter)}` : ''}`);
+	const params = Object.entries(desc.keys ?? {}).filter(([key]) => key !== 'type');
+	if(params.length === 0) {
+		output.stdout(faint('  (no parameters)', output.formatter));
+	}
+	for(const [key, spec] of params) {
+		const presence = spec.flags?.presence === 'required' ? 'required' : 'optional';
+		const allowed = Array.isArray(spec.allow) && spec.allow.length > 0 ? ` {${spec.allow.join('|')}}` : '';
+		output.stdout(`  ${bold(key, output.formatter)} ${faint(`(${spec.type}${allowed}, ${presence})`, output.formatter)}${spec.flags?.description ? ': ' + spec.flags.description : ''}`);
+	}
+	const syntax = 'syntax' in def && typeof def.syntax === 'string' ? def.syntax : `@${name} <code | file://path>`;
+	output.stdout(`Run: ${bold(':query ' + syntax, output.formatter)}`);
+	output.stdout(`JSON: ${italic(queryTemplate(name, def.schema), output.formatter)}`);
+	const wiki = `https://github.com/flowr-analysis/flowr/wiki/${encodeURIComponent(queryWikiPage(def.title).replaceAll(' ', '-'))}`;
+	output.stdout(`Docs: ${supportsHyperlinks() ? output.formatter.hyperlink(`${name} query`, wiki) : wiki}`);
+}
+
+/** A copy-pasteable JSON template for a query type: its `type` plus each required field as a placeholder. */
+function queryTemplate(type: string, schema: SupportedQuery['schema']): string {
+	const keys = describeSchema(schema).keys ?? {};
+	const fields = [`\\"type\\": \\"${type}\\"`];
+	for(const [key, value] of Object.entries(keys)) {
+		if(key !== 'type' && value.flags?.presence === 'required') {
+			fields.push(`\\"${key}\\": <${key}>`);
+		}
+	}
+	return `:query "[{ ${fields.join(', ')} }]" <code | file://path>`;
+}
+
+/** Validates each query against its own type's schema and, on failure, prints a template for that type. */
+export function validateQueries(output: ReplOutput, queries: readonly Query[]): boolean {
+	for(const q of queries) {
+		const type = q?.type;
+		if(typeof type !== 'string' || (!Object.hasOwn(SupportedQueries, type) && !Object.hasOwn(SupportedVirtualQueries, type))) {
+			output.stderr(`Unknown query type ${italic(JSON.stringify(type), output.formatter)}, use ${bold(':query help', output.formatter)} for the list of queries.`);
+			return false;
+		}
+		const def = Object.hasOwn(SupportedQueries, type) ? SupportedQueries[type] as SupportedQuery : undefined;
+		const { error } = (def?.schema ?? VirtualQuerySchema()).validate(q);
+		if(error) {
+			output.stderr(`Invalid ${bold('@' + type, output.formatter)} query:`);
+			for(const detail of error.details) {
+				output.stderr(`  - ${detail.message}`);
+			}
+			if(def) {
+				output.stderr(`  Template: ${italic(queryTemplate(type, def.schema), output.formatter)}`);
+			}
+			return false;
+		}
+	}
+	return true;
 }
 
 async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvider, remainingArgs: string[]): Promise<undefined | { parsedQuery: Query[], query: QueryResults, analyzer: ReadonlyFlowrAnalysisProvider }> {
@@ -36,6 +134,11 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 	if(query === 'help') {
 		printHelp(output);
+		return;
+	}
+	// `?<type>` (or `? <type>`) documents a query instead of running it; a bare `?` lists them all
+	if(query.startsWith('?')) {
+		printQueryDoc(output, query.slice(1) || (remainingArgs.shift() ?? ''));
 		return;
 	}
 
@@ -53,30 +156,12 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 			parsedQuery = [{ type: query.slice(1) as SupportedQueryTypes } as Query];
 			input = remainingArgs.join(' ').trim();
 		}
-		const validationResult = QueriesSchema().validate(parsedQuery);
-		if(validationResult.error) {
-			output.stderr(`Invalid query: "${output.formatter.format(JSON.stringify(parsedQuery), { style: FontStyles.Italic, color: Colors.Yellow, effect: ColorEffect.Foreground })}"`);
-			for(const line of validationResult.error.details) {
-				const value = line.context?.value ? JSON.stringify(line.context.value) : undefined;
-				output.stderr(` - ${line.message} ${value ? '(' + italic(value, output.formatter) + ')' : ''}`);
-				const ctx = line.context as { details?: Array<{ message: string }> } | undefined;
-				for(const detail of ctx?.details?.slice(0, ctx.details.length - 1) ?? []) {
-					if('context' in detail && 'message' in (detail.context as object)) {
-						const lines = (detail.context as { message: string }).message.split('. ');
-						for(const l of lines) {
-							output.stderr(`   - ${l.trim()}`);
-						}
-					}
-				}
-			}
+		if(!validateQueries(output, parsedQuery)) {
 			return;
 		}
 	} else if(query.startsWith('[')) {
 		parsedQuery = JSON.parse(query) as Query[];
-		const validationResult = QueriesSchema().validate(parsedQuery);
-		if(validationResult.error) {
-			output.stderr(`Invalid query: ${validationResult.error.message}`);
-			printHelp(output);
+		if(!validateQueries(output, parsedQuery)) {
 			return;
 		}
 		input = remainingArgs.join(' ').trim();
@@ -85,8 +170,12 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	}
 
 	if(input) {
-		analyzer.reset();
-		analyzer.addRequest(input);
+		input = handlePathLikeInput(output, input, analyzer.flowrConfig);
+		// reuse a prior analysis (e.g. a dataflow from :df#) when the target is unchanged
+		if(!analyzerHasTarget(analyzer, input)) {
+			analyzer.reset();
+			analyzer.addRequest(input);
+		}
 	}
 
 	return {
@@ -99,12 +188,21 @@ async function processQueryArgs(output: ReplOutput, analyzer: FlowrAnalysisProvi
 	};
 }
 
+const ConfigLineRegex = /^(@config)(?:\s+([\s\S]*))?$/;
+
 /**
  * Function for splitting the input line.
  * All input is treated as arguments, no R code is separated so that the individual queries can handle it.
+ * `@config` is passed its rest-of-line untouched, since its own `fromLine` reads a single raw token and the
+ * generic tokenizer would otherwise strip quotes out of a `+path=["a"]` value.
  * @param line - The input line
  */
 function parseArgs(line: string) {
+	const configMatch = ConfigLineRegex.exec(line);
+	if(configMatch) {
+		const [, name, rest] = configMatch;
+		return { rCode: undefined, remaining: rest === undefined ? [name] : [name, rest] };
+	}
 	const args = splitAtEscapeSensitive(line);
 	return {
 		rCode:     undefined,

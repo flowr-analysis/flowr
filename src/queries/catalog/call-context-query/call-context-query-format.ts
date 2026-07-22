@@ -147,6 +147,7 @@ const CallContextQueryLinkTo = Joi.alternatives([
 ]);
 
 export const CallContextQueryDefinition = {
+	title:           'Call-Context Query',
 	executor:        executeCallContextQueries,
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;

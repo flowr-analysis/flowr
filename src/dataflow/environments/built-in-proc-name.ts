@@ -12,6 +12,8 @@ export enum BuiltInProcName {
 	AssignmentLike = 'builtin:assign-l',
 	/** for super-assignments like `<<-` and `->>`, see {@link processAssignment} */
 	SuperAssignment = 'builtin:s-assign',
+	/** for calls like `Hmisc::getHdata(x)` that define the variable they are given while also reading it, see {@link processDefineArgument} */
+	DefineArgument = 'builtin:define-arg',
 	/** for `break` calls */
 	Break = 'builtin:break',
 	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
@@ -36,6 +38,8 @@ export enum BuiltInProcName {
 	Library = 'builtin:lib',
 	/** for `list` calls, see {@link processList} */
 	List = 'builtin:list',
+	/** for 'load' calls see {@link processLoadCall} */
+	Load = 'builtin:load',
 	/** for `local` calls, see {@link processLocal} */
 	Local = 'builtin:local',
 	/** for `::` and `:::` called as a function, see {@link processNamespaceAccess} */
@@ -72,6 +76,8 @@ export enum BuiltInProcName {
 	S7NewGeneric = 'builtin:s7-new-generic',
 	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
 	S7Dispatch = 'builtin:s7-dispatch',
+	/** for `make_constructor(class)` calls that return a class constructor function, see {@link processMakeConstructor} */
+	S7MakeConstructor = 'builtin:s7-make-constructor',
 	/** for `source` calls, see {@link processSourceCall} */
 	Source = 'builtin:source',
 	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */

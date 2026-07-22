@@ -23,7 +23,7 @@ export abstract class FlowrAnalyzerLoadingOrderPlugin extends FlowrAnalyzerPlugi
  */
 class DefaultFlowrAnalyzerLoadingOrderPlugin extends FlowrAnalyzerLoadingOrderPlugin {
 	public readonly name = 'default-loading-order-plugin';
-	public readonly description = 'This is the default loading order plugin that does nothing.';
+	public readonly description = 'Does nothing, the default loading order plugin.';
 	public readonly version = new SemVer('0.0.0');
 
 	public process(): void {

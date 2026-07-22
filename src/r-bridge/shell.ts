@@ -185,7 +185,8 @@ export class RShell implements AsyncParser<string> {
 			rVersion:              async() => await this.rVersion(),
 			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
 				return this.sendCommandWithOutput(command, addonConfig);
-			}
+			},
+			installedPackageVersions: () => this.installedPackageVersions()
 		};
 	}
 
@@ -255,6 +256,23 @@ export class RShell implements AsyncParser<string> {
 		} else {
 			this.injectLibPaths(this.options.homeLibPath);
 		}
+	}
+
+	/**
+	 * Map of every package installed on this system to its version (from `installed.packages()`), used by
+	 * `solver.sigdb.versionSelection: 'system'`. Empty when R reports nothing or fails.
+	 */
+	public async installedPackageVersions(): Promise<Map<string, string>> {
+		const versions = new Map<string, string>();
+		const result = await this.sendCommandWithOutput(
+			`local({ ip <- installed.packages()[,c("Package","Version"),drop=FALSE]; cat(paste(ip[,1], ip[,2], sep="\t"), sep=${ts2r(this.options.eol)}); cat(${ts2r(this.options.eol)}) })`);
+		for(const line of result) {
+			const tab = line.indexOf('\t');
+			if(tab > 0) {
+				versions.set(line.slice(0, tab).trim(), line.slice(tab + 1).trim());
+			}
+		}
+		return versions;
 	}
 
 	/**

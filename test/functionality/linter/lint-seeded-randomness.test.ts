@@ -1,5 +1,5 @@
 import { describe } from 'vitest';
-import { assertLinter, controlledPkgDb } from '../_helper/linter';
+import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { withTreeSitter } from '../_helper/shell';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 
@@ -23,11 +23,11 @@ describe('flowR linter', withTreeSitter(parser => {
 			assertLinter('with a (controlled) package database', parser, 'library(stats)\nrunif(1)', 'seeded-randomness',
 				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }],
 				{ consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 },
-				{ pkgDb: controlledPkgDb('stats', ['runif']) });
+				{ sigDb: controlledSigDb('stats', ['runif']) });
 			assertLinter('without any package database', parser, 'library(stats)\nrunif(1)', 'seeded-randomness',
 				[{ loc: [2, 1, 2, 8], function: 'runif', certainty: LintingResultCertainty.Certain }],
 				{ consumerCalls: 1, callsWithFunctionProducers: 0, callsWithAssignmentProducers: 0, callsWithNonConstantProducers: 0, callsWithOtherBranchProducers: 0 },
-				{ noPkgDb: true });
+				{ noSigDb: true });
 		});
 
 		describe('loops', () => {

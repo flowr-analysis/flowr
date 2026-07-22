@@ -94,7 +94,7 @@ export class FlowrAnalyzerFunctionsContext extends AbstractFlowrAnalyzerContext<
 
 	public getFunctionInfo(pkg: string, name: string, s3TypeDispatch?: string): FunctionInfo | FunctionInfo[] | undefined {
 		if(s3TypeDispatch) {
-			return this.functionInfo.get(`${name}`)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
+			return this.functionInfo.get(name)?.find(e => e.packageOrigin === pkg && e.s3TypeDispatch === s3TypeDispatch);
 		} else if(name.includes('.')){
 			const parts = name.split('.');
 			s3TypeDispatch = parts.pop();

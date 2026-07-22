@@ -74,12 +74,17 @@ export const NETWORK_FUNCTIONS = {
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: {
 			fns: [
-				'read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT',
+				// subset of default network functions provided by manually reviewed results from analysis based on crawlR, see the dirty-network-funcs-test branch in flowr-analysis/crawlr
+				'read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'BROWSE', 'RETRY', 'VERB',
 				'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'readLines', 'source', 'load', 'curl_download',
 				'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'read_xml', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get',
-				's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub', 'scan',
-				'socketConnection', 'request', 'curl',
-				'copy_to', 'source_url', 'install_bioc', 'install_bitbucket', 'install_cran', 'install_dev', 'install_git', 'install_github', 'install_gitlab', 'install_svn', 'install_url', 'install_version', 'update_packages', 'github_pull', 'pak'
+				's3read_using', 's3write_using', 'storage_download', 'AnnotationHub', 'ExperimentHub', 'scan', 'url_accessible',
+				'socketConnection', 'request', 'curl', 'curl_upload', 'curl_echo', 'multi_download', 'download_html',
+				'copy_to', 'source_url', 'source_gist', 'install_bioc', 'install_bitbucket', 'install_cran', 'install_dev', 'install_git', 'install_github', 'install_gitlab',
+				'install_svn', 'install_url', 'install_version', 'update_packages', 'github_pull', 'pak', 'new_handle',
+				'nslookup', 'url_destination', 'url_filename', 'oauth_endpoint', 'datasource', 'melt_csv',
+				'getDelegatedAzureToken', 'viewer', 'addServer', 'session', 'httpResponse', 'runGist', 'runUrl', 'vroom',
+				'create_from_github', 'use_git_remote', 'use_github_action', 'use_github_file', 'use_tidy_thanks', 'shared_drive_get', 'shared_drive_rm',
 			],
 			onlyTriggerWithArgument: /^(https?|ftps?):\/\//
 		}

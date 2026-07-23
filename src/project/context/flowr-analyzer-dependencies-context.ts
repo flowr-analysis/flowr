@@ -28,13 +28,14 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get the dependency with the given name, if it exists.
 	 *
 	 * If the static dependencies have not yet been loaded, this may trigger a resolution step.
-	 * Pass `version` to pin the resolution to that exact version (uncached; `versionOverrides` config still wins,
-	 * base-R stays tied to the assumed R version); otherwise the version comes from the declared constraints.
+	 * Pass `version` to pin the resolution to a constraint (an exact version string, or a {@link Range}; uncached;
+	 * `versionOverrides` config still wins, base-R stays tied to the assumed R version); otherwise the version
+	 * comes from the declared constraints.
 	 * @param name    - The name of the dependency to get.
-	 * @param version - Optional exact version to pin the resolution to.
+	 * @param version - Optional version constraint to pin the resolution to (exact version string or a {@link Range}).
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
-	getDependency(name: string, version?: string): Readonly<Package> | undefined;
+	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
 	/**
 	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
@@ -239,12 +240,12 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this;
 	}
 
-	public getDependency(name: string, version?: string): Package | undefined {
+	public getDependency(name: string, version?: string | Range): Package | undefined {
 		if(!this.staticsLoaded) {
 			this.resolveStaticDependencies();
 		}
 		if(version !== undefined) {
-			return this.resolvePinnedDependency(name, version);
+			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
 		const existing = this.dependencies.get(name);
 		// a package already carrying exports is complete; a version-only one is still enriched below
@@ -264,9 +265,9 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return existing;
 	}
 
-	/** Resolve `name` at an exact `version` via the plugins (uncached); falls back to the cached dependency. */
-	private resolvePinnedDependency(name: string, version: string): Package | undefined {
-		const pin = new Package({ name, derivedVersion: RRange.parse('=' + version) });
+	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
+	private resolvePinnedDependency(name: string, range: Range | undefined): Package | undefined {
+		const pin = new Package({ name, derivedVersion: range });
 		for(const resolve of this.lazyResolvers) {
 			const resolved = resolve(name, pin);
 			if(resolved) {

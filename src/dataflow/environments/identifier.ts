@@ -8,8 +8,6 @@ import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
 import type { Dataflow } from '../graph/df-helper';
 
-
-
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
 /** this is just a safe-guard type to prevent mixing up branded namespaces with normal strings */

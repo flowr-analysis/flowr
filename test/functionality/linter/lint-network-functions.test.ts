@@ -4,8 +4,6 @@ import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
 import { Identifier } from '../../../src/dataflow/environments/identifier';
 
-
-
 const urlPrefix = ['https://', 'ftp://', 'ftps://'];
 
 describe('flowR linter', withTreeSitter(parser => {

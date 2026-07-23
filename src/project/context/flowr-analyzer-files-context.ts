@@ -128,6 +128,8 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * @returns The actual path of the file if it exists, otherwise `undefined`.
 	 */
 	exists(path: string, ignoreCase: boolean): string | undefined;
+	/** The project root folder (common directory of the requested roots), or `undefined` if none was requested. */
+	root(): string | undefined;
 	/**
 	 * Until parsers support multiple request types from the virtual context system,
 	 * we resolve their contents.

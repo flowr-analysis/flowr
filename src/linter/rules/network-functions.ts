@@ -14,12 +14,7 @@ export interface NetworkFunctionsConfig extends MergeableRecord {
 	/**
 	 * The list of function names or more detailed {@link NetworkFunction} information that should be marked in the given context if their arguments match.
 	 */
-	fns:                      readonly (string | NetworkFunction)[]
-	/**
-	 * Only trigger if the function's read argument is linked to a value that matches this pattern.
-	 * This value is only used for entries in {@link fns} that are either strings, or whose {@link NetworkFunction.onlyTriggerWithArgument} value is unset.
-	 */
-	onlyTriggerWithArgument?: RegExp | string
+	fns: readonly (string | NetworkFunction)[]
 }
 export interface NetworkFunction extends MergeableRecord{
 	/**
@@ -51,7 +46,10 @@ export const NETWORK_FUNCTIONS = {
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					const val = await functionFinderUtil.requireArgumentValue(e, fnPool, d, onlyTriggerLookup.get(e.node.lexeme ?? '') ?? c.onlyTriggerWithArgument);
+					if(e.node.lexeme === undefined) {
+						continue;
+					}
+					const val = await functionFinderUtil.requireArgumentValue(e, fnPool, d, onlyTriggerLookup.get(e.node.lexeme));
 					if(val === Ternary.Never) {
 						continue;
 					}
@@ -74,7 +72,7 @@ export const NETWORK_FUNCTIONS = {
 		description:   'Marks network functions that execute network operations, such as downloading files or making HTTP requests.',
 		defaultConfig: {
 			fns: [
-				// subset of default network functions provided by manually reviewed results from analysis based on crawlR, see the dirty-network-funcs-test branch in flowr-analysis/crawlr
+				// subset of default network functions provided by manually reviewed results from analysis based on the signature database, see the dirty-network-funcs-test branch there
 				'read.table', 'read.csv', 'read.csv2', 'read.delim', 'read.delim2', 'readRDS', 'download.file', 'url', 'GET', 'POST', 'PUT', 'BROWSE', 'RETRY', 'VERB',
 				'DELETE', 'PATCH', 'HEAD', 'content', 'handle', 'get_callback', 'VERB', 'fread', 'gzcon', 'readlines', 'readLines', 'source', 'load', 'curl_download',
 				'curl_fetch_memory', 'getURL', 'getForm', 'read_html', 'read_xml', 'html_nodes', 'html_text', 'fromJSON', 'read.xlsx', 'drive_download', 'drive_get',
@@ -85,8 +83,10 @@ export const NETWORK_FUNCTIONS = {
 				'nslookup', 'url_destination', 'url_filename', 'oauth_endpoint', 'datasource', 'melt_csv',
 				'getDelegatedAzureToken', 'viewer', 'addServer', 'session', 'httpResponse', 'runGist', 'runUrl', 'vroom',
 				'create_from_github', 'use_git_remote', 'use_github_action', 'use_github_file', 'use_tidy_thanks', 'shared_drive_get', 'shared_drive_rm',
-			],
-			onlyTriggerWithArgument: /^(https?|ftps?):\/\//
+			].map(f => ({
+				name:                    f,
+				onlyTriggerWithArgument: /^(https?|ftps?):\/\//
+			}))
 		}
 	}
 } as const satisfies LintingRule<FunctionsResult, FunctionsMetadata, NetworkFunctionsConfig>;

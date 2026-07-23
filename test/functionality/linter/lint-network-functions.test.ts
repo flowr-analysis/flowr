@@ -119,7 +119,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'test.me', loc: [1, 1, 1, 41] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: [{ name: 'test.me', info: { argIdx: 1 } }] }
+			{ fns: [{ name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: { argIdx: 1 } }] }
 		);
 		assertLinter('Named argument with custom config', parser, 'test.me(foo = "http://example.com/data.csv")',
 			'network-functions',
@@ -127,7 +127,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'test.me', loc: [1, 1, 1, 44] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: [{ name: 'test.me', info: { argName: 'foo' } }] }
+			{ fns: [{ name: 'test.me', onlyTriggerWithArgument: /^(https?|ftps?):\/\//, info: { argName: 'foo' } }] }
 		);
 
 		assertLinter('Resolve value', parser, 'url <- "http://example.com/data.csv"; read.csv(url)',

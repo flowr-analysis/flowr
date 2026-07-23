@@ -101,8 +101,11 @@ export const functionFinderUtil = {
 		analyzer: ReadonlyFlowrAnalysisProvider,
 		requireValue: RegExp | string | undefined
 	): Promise<Ternary> {
-		const info = pool.get(element.node.lexeme ?? '');
 		/* if we have no additional info, we assume they always access the network */
+		if(element.node.lexeme === undefined) {
+			return Ternary.Always;
+		}
+		const info = pool.get(element.node.lexeme);
 		if(info === undefined) {
 			return Ternary.Always;
 		}

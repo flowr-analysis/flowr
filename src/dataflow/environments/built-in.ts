@@ -71,6 +71,7 @@ import { processStackEnv } from '../internal/process/functions/call/built-in/bui
 import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
 import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
 import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
+import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
@@ -239,6 +240,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.IfThenElse]:         processIfThenElse,
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
+	[BuiltInProcName.Load]:               processLoadCall,
 	[BuiltInProcName.Local]:              processLocal,
 	[BuiltInProcName.NamespaceAccess]:    processNamespaceAccess,
 	[BuiltInProcName.Pipe]:               processPipe,

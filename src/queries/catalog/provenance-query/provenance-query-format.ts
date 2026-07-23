@@ -51,6 +51,7 @@ function provenanceQueryLineParser(output: ReplOutput, line: readonly string[], 
 }
 
 export const ProvenanceQueryDefinition = {
+	title:           'Provenance Query',
 	executor:        executeProvenanceQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'provenance'>['provenance'];
@@ -65,6 +66,7 @@ export const ProvenanceQueryDefinition = {
 	},
 	fromLine:  provenanceQueryLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@provenance (<criterion>)[f] <code | file://path>',
 	schema:    Joi.object({
 		type:         Joi.string().valid('provenance').required().description('The type of the query.'),
 		criterion:    Joi.string().required().description('The slicing criterion to use.'),

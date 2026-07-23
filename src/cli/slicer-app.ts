@@ -27,7 +27,11 @@ export interface SlicerCliOptions {
 	api:                 boolean
 	'no-magic-comments': boolean
 	inline:              boolean
+	'inline-full':       boolean
+	'inline-banner':     boolean
 	'include-callees':   boolean
+	'config-file':       string | undefined
+	'config-json':       string | undefined
 }
 
 
@@ -39,6 +43,7 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"} {bold --diff}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
 		'{bold -c} {italic "5@result"} {bold --inline} {italic main.R}',
+		'{bold -c} {italic ""} {bold --inline-full} {bold --inline-banner} {italic app.R}',
 		'{bold --help}'
 	]
 });
@@ -48,7 +53,8 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
-	const config = FlowrConfig.fromFile();
+	const config = (options['config-json'] ? FlowrConfig.parse(options['config-json']) : undefined)
+		?? FlowrConfig.fromFile(options['config-file']);
 
 	await slicer.init(
 		options['input-is-text']
@@ -58,7 +64,8 @@ async function getSlice() {
 		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect),
 		undefined,
 		options.inline,
-		options['include-callees']
+		options['include-callees'],
+		options['inline-full'] ? (options['inline-banner'] ? 'banner' : true) : undefined
 	);
 
 	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];

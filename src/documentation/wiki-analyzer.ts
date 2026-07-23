@@ -286,12 +286,15 @@ However, if you want to _create_ new plugins, you should be aware of the differe
 
 Currently, flowR supports the following plugin types built-in:
 
-| Name | Class | Type | Description |
-|------|-------|------|-------------|
+| Name | Type | What it does | Class |
+|------|------|--------------|-------|
 ${
-	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(
-		([key, value]) => `| ${codeInline(key)} | ${ctx.link( `${value.name}`)} |  ${new value().type} | ${ctx.doc(`${value.name}`).replaceAll('|', '&#124;').replaceAll('\n', ' ')} |`
-	).join('\n')
+	BuiltInPlugins.sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => {
+		const plugin = new value();
+		/* the plugin states what it does in one line, the class doc is the fallback for the ones that do not */
+		const describe = plugin.description || ctx.doc(`${value.name}`);
+		return `| ${codeInline(key)} | ${codeInline(plugin.type)} | ${describe.replaceAll('|', '&#124;').replaceAll('\n', ' ').trim()} | ${ctx.link(`${value.name}`)} |`;
+	}).join('\n')
 }
 
 

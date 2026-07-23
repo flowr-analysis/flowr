@@ -55,7 +55,7 @@ export function getAllFunctionCallTargetsForSlice(dataflowGraph: DataflowGraph, 
 	return [functionCallTargets, activeEnvironment];
 }
 
-function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
+function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnvironment: REnvironmentInformation, activeEnvironmentFingerprint: Fingerprint, queue: VisitingQueue, dataflowGraph: DataflowGraph): void {
 	const valueRoot = FunctionArgument.getReference(arg);
 	if(!valueRoot) {
 		return;
@@ -65,7 +65,7 @@ function includeArgumentFunctionCallClosure(arg: FunctionArgument, activeEnviron
 		false,
 		callTargets,
 		activeEnvironment,
-		envFingerprint(activeEnvironment),
+		activeEnvironmentFingerprint,
 		queue
 	);
 }
@@ -103,8 +103,9 @@ export function sliceForCall(current: NodeToSlice, callerInfo: DataflowGraphVert
 		 * if we do not have any call to resolve this function, we have to assume that every function passed is actually called!
 		 * hence, we add a new flag and add all argument values to the queue causing directly
 		 */
+		const argEnvironmentFingerprint = envFingerprint(activeEnvironment);
 		for(const arg of callerInfo.args) {
-			includeArgumentFunctionCallClosure(arg, activeEnvironment, queue, graph);
+			includeArgumentFunctionCallClosure(arg, activeEnvironment, argEnvironmentFingerprint, queue, graph);
 		}
 		return;
 	}
@@ -203,15 +204,22 @@ export function includeCalleesOfDefinition(fnDefId: NodeId, graph: DataflowGraph
 const PotentialFollowOnReturn = EdgeType.DefinesOnCall | EdgeType.DefinedByOnCall | EdgeType.Argument;
 /** Returns true if we found at least one return edge */
 export function handleReturns(from: NodeId, queue: VisitingQueue, currentEdges: OutgoingEdges, baseEnvFingerprint: Fingerprint, baseEnvironment: REnvironmentInformation): boolean {
-	const e = Array.from(currentEdges.entries());
-	const found = e.filter(([_, edge]) => DfEdge.includesType(edge, EdgeType.Returns));
-	if(found.length === 0) {
+	let returns = false;
+	for(const edge of currentEdges.values()) {
+		if(DfEdge.includesType(edge, EdgeType.Returns)) {
+			returns = true;
+			break;
+		}
+	}
+	if(!returns) {
 		return false;
 	}
-	for(const [target] of found) {
-		queue.add(target, baseEnvironment, baseEnvFingerprint, false);
+	for(const [target, edge] of currentEdges) {
+		if(DfEdge.includesType(edge, EdgeType.Returns)) {
+			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
+		}
 	}
-	for(const [target, edge] of e) {
+	for(const [target, edge] of currentEdges) {
 		if(DfEdge.includesType(edge, EdgeType.Reads)) {
 			queue.add(target, baseEnvironment, baseEnvFingerprint, false);
 		} else if(DfEdge.includesType(edge, PotentialFollowOnReturn)) {

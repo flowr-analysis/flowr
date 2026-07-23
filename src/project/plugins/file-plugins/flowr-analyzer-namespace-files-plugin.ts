@@ -14,7 +14,7 @@ const NamespaceFilePattern = /^NAMESPACE(\.txt)?$/i;
  */
 export class FlowrAnalyzerNamespaceFilesPlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-namespace-file-plugin';
-	public readonly description = 'This plugin provides support for NAMESPACE files and extracts their content into the NAMESPACEFormat.';
+	public readonly description = 'Reads NAMESPACE files into the NAMESPACE format.';
 	public readonly version = new SemVer('0.1.0');
 	private readonly pattern: RegExp;
 

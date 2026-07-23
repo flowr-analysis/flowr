@@ -9,6 +9,7 @@ import { rAuthorInfoToReadable } from '../../../util/r-author';
 import type { RLicenseElementInfo } from '../../../util/r-license';
 import { stringifyRLicense } from '../../../util/r-license';
 import type { FileRole } from '../../../project/context/flowr-file';
+import type { ProjectKind } from '../../../project/context/project-kind';
 
 
 export interface ProjectQuery extends BaseQueryFormat {
@@ -17,23 +18,7 @@ export interface ProjectQuery extends BaseQueryFormat {
 	readonly withDf?: boolean;
 }
 
-/** The kind of project that flowR is analyzing. */
-export enum ProjectKind {
-	/** An R package (has a `DESCRIPTION` file). */
-	Package  = 'package',
-	/** A single R script. */
-	Script   = 'script',
-	/** A Shiny application (`app.R`, or `ui.R` together with `server.R`). */
-	ShinyApp = 'shiny-app',
-	/** A notebook or literate document (`.ipynb`, `.Rmd`, `.qmd`, `.rnw`). */
-	Notebook = 'notebook',
-	/** A multi-file project that is not a package. */
-	Project  = 'project',
-	/** The kind could not be determined (e.g. before the files are known). */
-	Unknown  = 'unknown'
-}
-
-/** Statistics on the project's declared dependencies, cross-referenced with the package database. */
+/** Statistics on the project's declared dependencies, cross-referenced with the signature database. */
 export interface ProjectDependencyStats {
 	/** Number of packages in the `Imports` field. */
 	readonly imports:   number;
@@ -47,9 +32,9 @@ export interface ProjectDependencyStats {
 	readonly runtime:   number;
 	/** How many of the runtime dependencies are base or recommended R packages. */
 	readonly base:      number;
-	/** How many of the non-base runtime dependencies are covered by the loaded package database(s). */
+	/** How many of the non-base runtime dependencies are covered by the loaded signature database(s). */
 	readonly covered:   number;
-	/** The first few runtime dependencies with the version the package database resolved them to, if any. */
+	/** The first few runtime dependencies with the version the signature database resolved them to, if any. */
 	readonly first:     { name: string, base: boolean, dbVersion?: string }[];
 	/** The required R version derived from the `Depends` field, if declared. */
 	readonly rVersion?: string;
@@ -70,6 +55,8 @@ export interface ProjectQueryResult extends BaseQueryResult {
 	readonly encoding?:     string;
 	/** The version of the project, if available. */
 	readonly version?:      string;
+	/** The R version the project targets, e.g. the `r_version` of an `rproject.toml`. */
+	readonly rVersion?:     string;
 	/** The classified kind of the project (e.g. package, script, shiny app). */
 	readonly kind?:         ProjectKind;
 	/** Statistics on the project's declared dependencies, if a `DESCRIPTION` file is available. */
@@ -81,6 +68,7 @@ function addSuffix(count: number, singular = '', plural = 's'): string {
 }
 
 export const ProjectQueryDefinition = {
+	title:           'Project Query',
 	executor:        executeProjectQuery,
 	asciiSummarizer: (formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'project'>['project'];
@@ -126,7 +114,7 @@ export const ProjectQueryDefinition = {
 		if(out.dependencies) {
 			const d = out.dependencies;
 			result.push(`   ╰ Dependencies: ${d.runtime} runtime (${d.imports} imports, ${d.depends} depends, ${d.linkingTo} linkingTo), ${d.suggests} suggested`);
-			result.push(`      ╰ ${d.base} base/recommended, ${d.covered}/${Math.max(d.runtime - d.base, 0)} non-base covered by the package database`);
+			result.push(`      ╰ ${d.base} base/recommended, ${d.covered}/${Math.max(d.runtime - d.base, 0)} non-base covered by the signature database`);
 			if(d.first.length > 0) {
 				const names = d.first.map(f => f.dbVersion ? `${f.name}@${f.dbVersion}` : f.name).join(', ');
 				result.push(`      ╰ e.g. ${names}${d.runtime > d.first.length ? ', ...' : ''}`);

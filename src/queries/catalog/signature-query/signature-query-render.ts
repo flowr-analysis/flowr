@@ -1,9 +1,10 @@
 import type { OutputFormatter } from '../../../util/text/ansi';
-import { bold, italic, color, Colors, FontStyles } from '../../../util/text/ansi';
+import { bold, italic, faint, color, Colors, FontStyles } from '../../../util/text/ansi';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import { cranPageUrl } from './signature-query-executor';
 import { baseRPackages } from '../../../util/r-base-packages';
 import type { SignatureFunctionView, SignaturePackageView, SignatureQueryResult } from './signature-query-format';
+import { arraysGroupBy } from '../../../util/collections/arrays';
 
 /** print an in-repl usage guide for the signature query */
 export function printSignatureHelp(output: ReplOutput): void {
@@ -11,14 +12,20 @@ export function printSignatureHelp(output: ReplOutput): void {
 	const ex = (cmd: string, desc: string): void => output.stdout(`  ${bold(cmd, f)}\n      ${italic(desc, f)}`);
 	output.stdout(bold('Signature Database Query', f) + italic('  (inspects the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
-	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]]`);
+	output.stdout(`${bold('Usage', f)}  :query @signature [<package>[@<version>][::<function>] [<function>]] [--param <name>]... [--required <n>] [--cg]`);
 	output.stdout('');
 	output.stdout(bold('Examples', f));
 	ex(':query @signature', 'summarize the loaded databases');
 	ex(':query @signature ggplot2', 'a package: version, exports, dependencies, links');
 	ex(':query @signature ggplot2::aes', 'one function (or `ggplot2 aes`, `ggplot2@3.5.0 aes`)');
 	ex(':query @signature gg* geom_*', 'glob search (versions also take ranges: >=4.0.0, 4.x)');
+	ex(':query @signature gg*@* geom_*', 'search every release in the history, not just the latest');
+	ex(':query @signature ggplot2@<=2021.05', 'select releases by date (YYYY.MM.DD: <=2026, >=2021.05)');
+	ex(':query @signature ggplot2 * --param data --param mapping', 'functions with both parameters (repeat/comma-separate --param; alone it searches all packages)');
+	ex(':query @signature stats * --required 3', 'functions with exactly 3 required parameters');
+	ex(':query @signature dplyr::lead --cg', 'a function plus its transitive call graph as a mermaid.live link');
 	output.stdout('');
+	output.stdout(`${bold('Signature', f)}  ${color('required', Colors.Yellow, f)} params (no default) are yellow, ${italic('non-forced', f)} (lazily evaluated) italic, defaults dimmed`);
 	output.stdout(italic(':query* dumps the full JSON (every function, the whole match set).', f));
 }
 
@@ -39,10 +46,19 @@ function linkLocation(file: string, line: number | undefined, url: string | unde
 	return url ? f.hyperlink(text, url) : text;
 }
 
-/** render a function signature as `name(a, b = default, ...)` with defaults dimmed */
+/** render one parameter: required (no default) in yellow, non-forced (lazily evaluated) italicised, default dimmed */
+function renderParameter(f: OutputFormatter, p: SignatureFunctionView['parameters'][number]): string {
+	if(p.name === '...') {
+		return p.name;
+	}
+	const lazy = p.forced ? {} : { style: FontStyles.Italic };
+	const name = p.default === undefined ? color(p.name, Colors.Yellow, f, lazy) : p.forced ? p.name : italic(p.name, f);
+	return p.default !== undefined ? `${name} = ${faint(p.default, f)}` : name;
+}
+
+/** render a function signature as `name(a, b = default, ...)`; see {@link renderParameter} for the per-parameter styling */
 function renderSignature(f: OutputFormatter, fn: SignatureFunctionView): string {
-	const params = fn.parameters.map(p => p.default !== undefined ? `${p.name} = ${italic(p.default, f)}` : p.name).join(', ');
-	return `${bold(fn.name, f)}(${params})`;
+	return `${bold(fn.name, f)}(${fn.parameters.map(p => renderParameter(f, p)).join(', ')})`;
 }
 
 /** render the full view of a single function into `result` */
@@ -60,6 +76,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	if(fn.docUrl) {
 		result.push(`      ╰ ${italic('docs', f)}    ${f.hyperlink(fn.docUrl, fn.docUrl)}`);
 	}
+	if(fn.s3method) {
+		result.push(`      ╰ ${italic('S3 method of', f)} ${color(`${fn.s3method.package}::${fn.s3method.generic}`, Colors.Magenta, f)} ${italic(`(class ${fn.s3method.class})`, f)}`);
+	}
 	const listLine = (label: string, items: readonly string[], max: number): void => {
 		if(!items.length) {
 			return;
@@ -69,6 +88,9 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	};
 	listLine('dispatches to', fn.s3methods ?? [], MaxList);
 	listLine('calls', fn.callees, MaxList);
+	if(fn.callGraph) {
+		result.push(`      ╰ ${italic('call graph', f)}  ${f.hyperlink('mermaid', fn.callGraph)}`);
+	}
 }
 
 /** render the full view of a single package into `result` */
@@ -126,11 +148,19 @@ export function pushPackage(result: string[], f: OutputFormatter, p: SignaturePa
 export function pushMatches(result: string[], f: OutputFormatter, out: SignatureQueryResult): void {
 	const matches = out.matches ?? [];
 	const cap = out.truncated ? italic(` (capped at ${matches.length})`, f) : '';
-	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${cap}`);
+	const scanned = out.searched !== undefined && out.searched > (out.matchCount ?? matches.length)
+		? faint(` (of ${out.searched.toLocaleString()} searched)`, f) : '';
+	const onlyLatest = out.latestOnly && out.searched !== undefined
+		? faint(' latest versions only, add ', f) + italic('@*', f) + faint(' to the package to search the history', f) : '';
+	result.push(`   ╰ ${bold(String(out.matchCount ?? matches.length), f)} function${matches.length === 1 ? '' : 's'} matched${scanned}${cap}${onlyLatest}`);
 	for(const m of matches) {
+		const matched = new Set(m.matchedParameters ?? []);
+		const params = m.parameters?.length
+			? `${italic('(', f)}${m.parameters.map(p => matched.has(p) ? color(p, Colors.Yellow, f, { style: FontStyles.Bold }) : italic(p, f)).join(italic(', ', f))}${italic(')', f)}`
+			: '';
 		const loc = m.file ? `  ${linkLocation(m.file, m.line, m.sourceUrl, f)}` : '';
 		const doc = m.docUrl ? `  ${f.hyperlink('docs', m.docUrl)}` : '';
-		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}`);
+		result.push(`      ╰ ${color(m.package, Colors.Cyan, f)}::${bold(m.name, f)}${params}${m.version ? italic(` v${m.version}`, f) : ''}${loc}${doc}`);
 	}
 }
 
@@ -156,5 +186,18 @@ export function pushSummary(result: string[], f: OutputFormatter, out: Signature
 	result.push(`   ╰ ${bold(String(out.packageCount), f)} packages across ${out.sourceCount} source${out.sourceCount === 1 ? '' : 's'}`);
 	for(const db of out.databases) {
 		result.push(`      ╰ ${color(db.scope, Colors.Cyan, f)}${db.version ? ` v${db.version}` : ''}${db.date ? italic(` (${db.date})`, f) : ''}`);
+	}
+	if(out.shards && out.shards.length > 0) {
+		const accessed = out.shards.filter(s => s.accessed).length;
+		const unpacked = out.shards.filter(s => s.unpacked).length;
+		result.push(`      ╰ ${italic('shards', f)}: ${accessed}/${out.shards.length} accessed, ${unpacked}/${out.shards.length} unpacked`);
+		const byScope = [...arraysGroupBy(out.shards, s => s.id.split('-', 1)[0])].sort(([a], [b]) => a.localeCompare(b));
+		for(const [scope, inScope] of byScope) {
+			const list = inScope.map(s => {
+				const state = s.accessed ? color('accessed', Colors.Green, f) : s.unpacked ? color('unpacked', Colors.Yellow, f) : faint('on disk', f);
+				return `${color(s.id, Colors.Cyan, f)} ${state}`;
+			}).join(', ');
+			result.push(`         ╰ ${italic(scope, f)}: ${list}`);
+		}
 	}
 }

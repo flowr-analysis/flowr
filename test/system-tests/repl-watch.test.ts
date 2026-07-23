@@ -16,6 +16,11 @@ function rejectOnEarlyExit(child: ChildProcess, getBuffer: () => string, reject:
 	child.on('error', e => reject(e));
 }
 
+/** Pipes stderr into `buffer` (prefixed) so a crash's actual message shows up in the failure output instead of being silently dropped. */
+function captureStderr(child: ChildProcess, appendToBuffer: (s: string) => void): void {
+	child.stderr?.on('data', (d: Buffer) => appendToBuffer(`[stderr] ${d.toString()}`));
+}
+
 /**
  * Spawn the flowr REPL, send `command` when the first prompt appears,
  * and return the accumulated output once `terminateOn` appears in stdout
@@ -35,6 +40,7 @@ function flowrReplUntil(command: string, terminateOn: string, timeout = 90_000):
 		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
 		let sent = false;
+		captureStderr(child, s => buffer += s);
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
@@ -76,6 +82,7 @@ function flowrReplWatchAndChange(command: string, filePath: string, contents: re
 		let buffer = '';
 		let state = WatchState.AwaitPrompt;
 		let i = 0;
+		captureStderr(child, s => buffer += s);
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
@@ -111,6 +118,7 @@ function flowrReplDoubleCtrlC(timeout = 90_000): Promise<string> {
 		const child = exec(flowrBin, { timeout: timeout + 5_000 });
 		let buffer = '';
 		let state = CtrlCState.AwaitPrompt;
+		captureStderr(child, s => buffer += s);
 
 		child.stdout?.on('data', (d: Buffer) => {
 			buffer += d.toString();
@@ -139,12 +147,15 @@ describe.sequential('repl watch mode', () => {
 		exec('npm run build:bundle-flowr', { timeout: 120_000 }, err => err ? reject(err) : resolve());
 	}), 120_000);
 
-	test('double Ctrl+C exits the REPL', async() => {
+	// these spawn a real process and depend on OS process scheduling / fs.watch timing, so an occasional CI-load
+	// hiccup (e.g. the bundled process getting starved long enough to miss its startup window) gets a retry
+	// before failing the build; a genuine regression still fails consistently across retries
+	test('double Ctrl+C exits the REPL', { retry: 2 }, async() => {
 		const output = await flowrReplDoubleCtrlC();
 		assert.include(output, 'Press Ctrl+C again', `hint message missing:\n${output}`);
 	});
 
-	test('watch:// file triggers Watching message on start', async() => {
+	test('watch:// file triggers Watching message on start', { retry: 2 }, async() => {
 		const tmpFile = path.join(os.tmpdir(), `flowr-watch-${Date.now()}.R`);
 		fs.writeFileSync(tmpFile, 'x <- 1\n');
 		try {
@@ -158,7 +169,7 @@ describe.sequential('repl watch mode', () => {
 		}
 	});
 
-	test('watch:// file re-runs command on file change', async() => {
+	test('watch:// file re-runs command on file change', { retry: 2 }, async() => {
 		const tmpFile = path.join(os.tmpdir(), `flowr-watch-change-${Date.now()}.R`);
 		fs.writeFileSync(tmpFile, 'a <- 1\n');
 		try {

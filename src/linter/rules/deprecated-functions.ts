@@ -1,8 +1,9 @@
 import type { Range } from 'semver';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
+import type { DataflowGraph } from '../../dataflow/graph/graph';
 import { FunctionArgument } from '../../dataflow/graph/graph';
-import { isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import { isNotUndefined } from '../../util/assert';
@@ -11,8 +12,13 @@ import { SourceLocation } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import { type FunctionsMetadata, functionFinderUtil } from './function-finder-util';
+import { type FunctionsMetadata } from './function-finder-util';
 import { RRange } from '../../util/r-version';
+import { Q } from '../../search/flowr-search-builder';
+import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
+import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import { Dataflow } from '../../dataflow/graph/df-helper';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -36,11 +42,14 @@ interface DeprecatedArgumentInformation {
  * Information about a deprecated function
  */
 interface DeprecatedFunctionInformation {
-	/** Mark specific arguments as deprecated */
+	/**
+	 * Mark specific arguments as deprecated
+	 * If only whenArgs is provided, and not sinceVersion, the function is only marked as deprecated, if the argument is provided.
+	 */
 	readonly whenArgs?:     DeprecatedArgumentInformation[]
 	/** Suggested replacement for this function */
 	readonly replacedBy?:   string
-	/** The version since this function is deprecated */
+	/** The version since this function is deprecated, if version is provided the entire function will be marked as deprecated, if the version range matches */
 	readonly sinceVersion?: Range
 	/** Lifecycle State {@link DeprecationState}, i.e. is the function completely removed, or are there better alternatives */
 	readonly state?:        DeprecationState
@@ -97,6 +106,12 @@ export interface DeprecatedFunctionsConfig extends MergeableRecord {
 	conditionally: Record<BrandedIdentifier, DeprecatedFunctionInformation>
 }
 
+interface PotentialFunction {
+	node:           RNode<ParentInformation>;
+	target:         BrandedIdentifier;
+	sourceLocation: SourceLocation
+}
+
 const AlwaysDeprecated = [
 	'all_equal', 'arrange_all', 'distinct_all', 'filter_all', 'group_by_all', 'summarise_all', 'mutate_all', 'select_all', 'vars', 'all_vars', 'id', 'failwith', 'select_vars', 'rename_vars', 'select_var', 'current_vars', 'bench_tbls', 'compare_tbls', 'compare_tbls2', 'eval_tbls', 'eval_tbls2', 'location', 'changes', 'combine', 'do', 'funs', 'add_count_', 'add_tally_', 'arrange1_', 'count_', 'distinct_', 'do_', 'filter_', 'funs_', 'group_by_', 'group_indices_', 'mutate_', 'tally_', 'transmute_', 'rename_', 'rename_vars_', 'select_', 'select_vars_', 'slice_', 'summarise_', 'summarize_', 'summarise_each', 'src_local', 'tbl_df', 'add_rownames', 'group_nest', 'group_split', 'with_groups', 'nest_by', 'progress_estimated', 'recode', 'sample_n', 'top_n', 'transmute', 'fct_explicit_na', 'aes_', 'aes_auto', 'annotation_logticks', 'is.Coord', 'coord_flip', 'coord_map', 'is.facet', 'fortify', 'is.ggproto', 'guide_train', 'is.ggplot', 'qplot', 'is.theme', 'gg_dep', 'liply', 'isplit2', 'list_along', 'cross', 'invoke', 'at_depth', 'prepend', 'rerun', 'splice', '`%@%`', 'rbernoulli', 'rdunif', 'when', 'update_list', 'map_raw', 'accumulate', 'reduce_right', 'flatten', 'map_dfr', 'as_vector', 'transpose', 'melt_delim', 'melt_fwf', 'melt_table', 'read_table2', 'str_interp', 'as_tibble', 'data_frame', 'tibble_', 'data_frame_', 'lst_', 'as_data_frame', 'as.tibble', 'frame_data', 'trunc_mat', 'is.tibble', 'tidy_names', 'set_tidy_names', 'repair_names', 'extract_numeric', 'complete_', 'drop_na_', 'expand_', 'crossing_', 'nesting_', 'extract_', 'fill_', 'gather_', 'nest_', 'separate_rows_', 'separate_', 'spread_', 'unite_', 'unnest_', 'extract', 'gather', 'nest_legacy', 'separate_rows', 'separate', 'spread'
 ];
@@ -105,16 +120,13 @@ const ConditionallyDeprecated = {
 	'geom_violin': { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
 } satisfies Record<BrandedIdentifier, DeprecatedFunctionInformation>;
 
-function getDeprecatedFunctionNames(config: DeprecatedFunctionsConfig): BrandedIdentifier[] {
-	return config.always.concat(
-		Object.keys(config.conditionally)
-	);
-}
-
 export const DEPRECATED_FUNCTIONS = {
-	createSearch:        (config) => functionFinderUtil.createSearch(getDeprecatedFunctionNames(config)),
+	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
+	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
+	createSearch:        (_config) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, { onlyBuiltin: true }),
 	processSearchResult: async(elements, config, data) => {
-		const dataflow = (await data.dataflow()).graph;
+		const matchesConfiguredFns = testFunctionsIgnoringPackage(config.always);
+		const graph = (await data.dataflow()).graph;
 		const idMap = (await data.normalize()).idMap;
 
 		const metadata: FunctionsMetadata = {
@@ -122,6 +134,7 @@ export const DEPRECATED_FUNCTIONS = {
 			totalFunctionDefinitions: 0
 		};
 
+		// 1. Collect all function call targets from detected function calls
 		const detectedFunctions = elements.getElements().flatMap(e => {
 			metadata.totalCalls++;
 			return enrichmentContent(e, Enrichment.CallTargets).targets.map(target => {
@@ -135,64 +148,59 @@ export const DEPRECATED_FUNCTIONS = {
 			});
 		}).filter(p => isNotUndefined(p));
 
-		const results = detectedFunctions.map(e => {
-			const info = config.conditionally[e.target];
-			if(info === undefined) {
-				// No extra info => function is always marked as deprecated
-				return [{
-					type:       'deprecated-function',
-					certainty:  LintingResultCertainty.Certain,
-					involvedId: e.node.info.id,
-					loc:        e.sourceLocation,
-					function:   e.target,
-				} satisfies DeprecatedFunctionResult];
-			} else if(info.whenArgs !== undefined) {
-				// If whenArgs is set, the function should only be deprecated if it has one of the provided args
-				return info.whenArgs.map(deprecatedArgInfo => {
-					const vertex = dataflow.getVertex(e.node.info.id);
-					if(vertex === undefined || !isFunctionCallVertex(vertex)) {
-						return undefined;
-					}
-
-					const arg = vertex.args.find((arg, idx) =>
-						FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
-						FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
-					);
-					const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
-
-					if(argNode !== undefined) {
-						return {
-							type:         'deprecated-argument',
-							certainty:    LintingResultCertainty.Certain,
-							involvedId:   argNode.info.id,
-							function:     e.target,
-							arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
-							state:        deprecatedArgInfo.state,
-							replacedBy:   deprecatedArgInfo.replacedBy,
-							sinceVersion: deprecatedArgInfo.sinceVersion,
-							loc:          SourceLocation.fromNode(argNode) ?? e.sourceLocation
-						} satisfies DeprecatedArgumentResult;
-					}
-
-				// Don't mark function as deprecated, if we didn't find any deprecated args
-				}).filter(p => isNotUndefined(p));
+		// 2. Uses hardcoded information about deprecated arguments and deprecated functions
+		const results: DeprecatedFunctionRuleResult[] = detectedFunctions.map(candidate => {
+			const info = config.conditionally[candidate.target];
+			if(isNotUndefined(info)) {
+				// Check functions from DeprecatedFunctionsConfig.conditionally
+				return deprecateFunctionConditionally(candidate, graph, idMap, info);
 			} else {
-				// Extra Info but no whenArgs => always marked as deprecated and extra info is provided
-				return [{
-					type:         'deprecated-function',
-					certainty:    LintingResultCertainty.Certain,
-					involvedId:   e.node.info.id,
-					loc:          e.sourceLocation,
-					function:     e.target,
-					state:        info.state,
-					replacedBy:   info.replacedBy,
-					sinceVersion: info.sinceVersion
-				} satisfies DeprecatedFunctionResult];
+				// Check functions from DeprecatedFunctionsConfig.always
+				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
 			}
-		}).flat();
+		}).filter(p => isNotUndefined(p)).flat();
+
+
+		// 3. If available, use sigdb to flag deprecated functions
+		const deps = data.inspectContext().deps;
+		if(deps.signatureSources().length === 0) {
+			return { results, '.meta': metadata };
+		}
+
+		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
+		// even when it is not part of the hardcoded `fns` list above
+		const alreadyFlagged = new Set(results.map(r => r.involvedId));
+		const sigdbFlagged: DeprecatedFunctionResult[] = [];
+		for(const element of elements.getElements()) {
+			const id = element.node.info.id;
+			if(alreadyFlagged.has(id)) {
+				continue;
+			}
+			const qualified = Dataflow.qualify(id, graph);
+			if(qualified === undefined) {
+				continue;
+			}
+			const fn = deps.signatureOf(qualified);
+			if(fn === undefined || !fn.props.includes('deprecated')) {
+				continue;
+			}
+			const loc = SourceLocation.fromNode(element.node);
+			if(loc === undefined) {
+				continue;
+			}
+			alreadyFlagged.add(id);
+			sigdbFlagged.push({
+				type:       'deprecated-function',
+				certainty:  LintingResultCertainty.Certain,
+				involvedId: id,
+				function:   Identifier.toString(qualified),
+				loc
+			});
+		}
 
 		return {
-			results, '.meta': metadata
+			results: results.concat(sigdbFlagged),
+			'.meta': metadata
 		};
 	},
 	prettyPrint: {
@@ -216,7 +224,8 @@ export const DEPRECATED_FUNCTIONS = {
 	info: {
 		name:          'Deprecated Functions',
 		tags:          [LintingRuleTag.Deprecated, LintingRuleTag.Smell, LintingRuleTag.Usability, LintingRuleTag.Reproducibility],
-		// ensures all deprecated functions found are actually deprecated through its limited config, but doesn't find all deprecated functions since the config is pre-crawled
+		// the hardcoded `always` and `conditionally` list ensures every reported hit is real, but the list is pre-crawled and hence
+		// incomplete; the signature-database pass above adds recall for whichever packages are resolved
 		certainty:     LintingRuleCertainty.BestEffort,
 		description:   'Marks deprecated functions that should not be used anymore.',
 		defaultConfig: {
@@ -225,3 +234,77 @@ export const DEPRECATED_FUNCTIONS = {
 		}
 	}
 } as const satisfies LintingRule<DeprecatedFunctionRuleResult, FunctionsMetadata, DeprecatedFunctionsConfig>;
+
+/**
+ * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
+ */
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
+	const results: DeprecatedFunctionRuleResult[] = [];
+
+	// If when args is provided, mark the function as deprecated (and its argument) if the respective argument is present
+	if(info.whenArgs) {
+		for(const deprecatedArgInfo of info.whenArgs) {
+			const vertex = dataflow.getVertex(candidate.node.info.id);
+			if(vertex === undefined || !isFunctionCallVertex(vertex)) {
+				continue;
+			}
+
+			const arg = vertex.args.find((arg, idx) =>
+				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
+				FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
+			);
+			const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
+
+			if(argNode === undefined) {
+				continue;
+			}
+
+			results.push({
+				type:         'deprecated-argument',
+				certainty:    LintingResultCertainty.Certain,
+				involvedId:   argNode.info.id,
+				function:     candidate.target,
+				arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,
+				state:        deprecatedArgInfo.state,
+				replacedBy:   deprecatedArgInfo.replacedBy,
+				sinceVersion: deprecatedArgInfo.sinceVersion,
+				loc:          SourceLocation.fromNode(argNode) ?? candidate.sourceLocation
+			} satisfies DeprecatedArgumentResult);
+		}
+	}
+
+	// Otherwise, check version and deprecate entire function in case of version range match
+	if(info.sinceVersion) {
+		// TODO: Version Check
+		results.push({
+			type:         'deprecated-function',
+			certainty:    LintingResultCertainty.Certain,
+			involvedId:   candidate.node.info.id,
+			loc:          candidate.sourceLocation,
+			function:     candidate.target,
+			state:        info.state,
+			replacedBy:   info.replacedBy,
+			sinceVersion: info.sinceVersion
+		} satisfies DeprecatedFunctionResult);
+	}
+
+	return results;
+}
+
+
+/**
+ * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.always} map.
+ */
+function deprecateFunctionAlways(candidate: PotentialFunction, matchesConfiguredFns: RegExp): DeprecatedFunctionResult | undefined {
+	if(!matchesConfiguredFns.test(candidate.target)) {
+		return undefined;
+	}
+
+	return {
+		type:       'deprecated-function',
+		certainty:  LintingResultCertainty.Certain,
+		involvedId: candidate.node.info.id,
+		loc:        candidate.sourceLocation,
+		function:   candidate.target,
+	} satisfies DeprecatedFunctionResult;
+}

@@ -194,7 +194,7 @@ export class FlowrAnalyzerBuilder {
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
 		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
-			context.deps.eagerlyLoadPackageDatabases();
+			context.deps.eagerlyLoadSignatureDatabases();
 		}
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,

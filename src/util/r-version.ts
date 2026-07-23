@@ -27,8 +27,15 @@ function normalizeVersion(version: string): string {
 		comparator = comparatorMatch[1].replace('==', '=');
 		version = version.slice(comparatorMatch[1].length).trim();
 	}
-	const [mainVersion, ...preReleaseParts] = version.split('-');
-	const mainVersionParts = mainVersion.split('.');
+	// R separates version components by `.` or `-` alike (`7.3-65` is `7.3.65`, and above `7.3.0`), so a numeric
+	// part is a component wherever it stands; only a non-numeric tail is a SemVer pre-release
+	const parts = version.split(/[.-]/).filter(p => p.length > 0);
+	let numeric = 0;
+	while(numeric < parts.length && /^\d+$/.test(parts[numeric])) {
+		numeric++;
+	}
+	const mainVersionParts = parts.slice(0, numeric);
+	const preReleaseParts = parts.slice(numeric);
 	if(mainVersionParts.length > 3) {
 		const newPreReleasePart = mainVersionParts.splice(3).join('.');
 		preReleaseParts.unshift(newPreReleasePart);
@@ -73,6 +80,13 @@ function makeRange(range: string, original: string) {
 	return semverRange;
 }
 
+/**
+ * A version written as its source string (e.g. `1.5-8`, `4.3.0`), as it appears in a `DESCRIPTION`, the signature
+ * database, or a bound. Distinct from a parsed {@link RVersion}: use {@link RVersion.parse}/{@link RVersion.compare}
+ * to order these. An alias for `string` that documents intent -- prefer it over a bare `string` for version values.
+ */
+export type VersionString = string;
+
 /** A parsed R package version: a comparable {@link SemVer} that also keeps its original string as `.str`. */
 export type RVersion = SemVer & { str: string };
 
@@ -102,7 +116,11 @@ export const RVersion = {
 	 * numerically, shorter versions padded with zeros (`0.4-9 < 0.4.10 < 1.0`). Negative/zero/positive for
 	 * `a` less than/equal to/greater than `b`.
 	 */
-	compare(this: void, a: string, b: string): number {
+	compare(this: void, a: string | undefined, b: string | undefined): number {
+		// an absent version sorts below any concrete one (so ascending order puts `undefined` first, descending last)
+		if(a === undefined || b === undefined) {
+			return a === b ? 0 : a === undefined ? -1 : 1;
+		}
 		const pa = a.split(/[.-]/), pb = b.split(/[.-]/);
 		for(let i = 0; i < Math.max(pa.length, pb.length); i++) {
 			const x = Number(pa[i] ?? 0) || 0, y = Number(pb[i] ?? 0) || 0;
@@ -139,6 +157,21 @@ export const RVersion = {
 		return best;
 	}
 } as const;
+
+/** release dates of R minor versions (`major.minor`); base R is stored undated in the sigdb, so this date-bounds it */
+const RReleaseDates: Readonly<Record<string, string>> = {
+	'4.5':  '2025-04-11', '4.4':  '2024-04-24', '4.3':  '2023-04-21', '4.2':  '2022-04-22',
+	'4.1':  '2021-05-18', '4.0':  '2020-04-24', '3.6':  '2019-04-26', '3.5':  '2018-04-23',
+	'3.4':  '2017-04-21', '3.3':  '2016-05-03', '3.2':  '2015-04-16', '3.1':  '2014-04-10',
+	'3.0':  '2013-04-03', '2.15': '2012-03-30', '2.14': '2011-10-31', '2.13': '2011-04-13'
+};
+
+/** the release date of an R version, matched by its `major.minor`, or `undefined` for versions older than the table */
+export function rReleaseDate(version: string): Date | undefined {
+	const m = /^(\d+)\.(\d+)/.exec(version);
+	const iso = m ? RReleaseDates[`${m[1]}.${m[2]}`] : undefined;
+	return iso ? new Date(iso) : undefined;
+}
 
 /** Helpers for R package version ranges (DESCRIPTION constraints like `>= 0.4-9`). */
 export const RRange = {

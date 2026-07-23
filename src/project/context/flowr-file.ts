@@ -35,6 +35,13 @@ export enum FileRole {
 	License     = 'license',
 	/** Files describing a project's virtual/pinned package environment, e.g., `renv.lock` or `rv.lock`. */
 	VirtualEnv  = 'virtual-env',
+	/** A project manifest that is no `DESCRIPTION`, e.g. the `rproject.toml` of an rv project. */
+	Manifest    = 'manifest',
+	/**
+	 * R sources evaluated at startup, before any project code (`.Rprofile`, `Rprofile.site`).
+	 * These commonly bootstrap a package manager, e.g. by sourcing `packrat/init.R` or `renv/activate.R`.
+	 */
+	Startup     = 'startup',
 	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files

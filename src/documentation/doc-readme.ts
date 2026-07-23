@@ -16,7 +16,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { showQuery } from './doc-util/doc-query';
+import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -206,7 +206,7 @@ ${await documentReplSession(treeSitter, [{
 
 * 📚 **dependency analysis**\\
   Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
-  An important query is the ${ctx.linkPage('wiki/Query API', 'dependencies query', 'dependencies-query')}, which shows you the library your project needs,
+  An important query is the ${linkToQueryOfName('dependencies', 'dependencies query')}, which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   
   ${prefixLines(details('Example: Dependency Analysis with flowR', `

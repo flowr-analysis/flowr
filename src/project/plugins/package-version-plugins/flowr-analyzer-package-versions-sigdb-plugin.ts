@@ -4,7 +4,7 @@ import path from 'path';
 import { Package } from './package';
 import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { NamespaceInfo } from '../file-plugins/files/flowr-namespace-file';
-import { SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
+import { availableVersionEntries, SigDatabase, SigDatabaseSet, getSharedSigSource, getSharedSigSourceSync, type PackageSignatureSource } from '../../sigdb/reader';
 import { SigDbExt, type LibraryExports } from '../../sigdb/schema';
 import { defaultSigDbPaths } from '../../sigdb/manifest';
 import { resolveSource } from '../../sigdb/decompress';
@@ -482,20 +482,12 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		return undefined;
 	}
 
-	/** the versions the source can answer for a package (dated releases, base-R core releases, and the latest), ascending */
+	/**
+	 * The versions the source can answer for a package (dated releases, base-R core releases, and the latest),
+	 * ascending. Versions that differ in writing but not in order (`1.2` and `1.2.0`) are settled by release date.
+	 */
 	private availableVersions(src: PackageSignatureSource, pkg: string): string[] {
-		const set = new Set<string>();
-		for(const r of src.releaseDates(pkg)) {
-			set.add(r.version.str);
-		}
-		for(const v of src.coreVersions(pkg) ?? []) {
-			set.add(v.str);
-		}
-		const latest = src.latestVersion(pkg);
-		if(latest) {
-			set.add(latest.str);
-		}
-		return [...set].sort((a, b) => RVersion.compare(a, b));
+		return availableVersionEntries(src, pkg).map(e => e.version);
 	}
 
 	/** build the resolved {@link Package} (namespace + version) from a source's export view */

@@ -58,6 +58,24 @@ export const enum LogLevel {
 	Fatal = 6
 }
 
+export const LogLevelNames = {
+	silly: LogLevel.Silly,
+	trace: LogLevel.Trace,
+	debug: LogLevel.Debug,
+	info:  LogLevel.Info,
+	warn:  LogLevel.Warn,
+	error: LogLevel.Error,
+	fatal: LogLevel.Fatal
+} as const;
+export type LogLevelName = keyof typeof LogLevelNames;
+
+/** Set the global minimum log level by name. */
+export function setLogLevel(level: LogLevelName): void {
+	log.updateSettings(l => {
+		l.settings.minLevel = LogLevelNames[level];
+	});
+}
+
 function getActiveLog(): FlowrLogger {
 	return new FlowrLogger({
 		// set the default minimum level as Warn, and let all apps

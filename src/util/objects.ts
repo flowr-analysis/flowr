@@ -11,6 +11,14 @@ export function isObjectOrArray(item: unknown): boolean {
 	return typeof item === 'object';
 }
 
+/**
+ * checks if `item` is a record with keys, i.e. an object that is neither `null` nor an array
+ * @see {@link isObjectOrArray} to allow arrays as well
+ */
+export function isPlainObject(item: unknown): item is Record<string, unknown> {
+	return typeof item === 'object' && item !== null && !Array.isArray(item);
+}
+
 export type MergeableRecord = Record<string, unknown>;
 export type MergeableArray = unknown[];
 export type Mergeable = MergeableRecord | MergeableArray;

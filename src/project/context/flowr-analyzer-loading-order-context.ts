@@ -117,6 +117,27 @@ export class FlowrAnalyzerLoadingOrderContext extends AbstractFlowrAnalyzerConte
 		}
 	}
 
+	/**
+	 * Move `requests` to the front of every order known so far, keeping their relative order.
+	 * Use this for files R evaluates before anything else (e.g. `.Rprofile`), as it refines the
+	 * existing orders instead of competing with them like {@link addGuess} would.
+	 */
+	public prependToOrder(requests: readonly RParseRequest[]): void {
+		if(requests.length === 0) {
+			return;
+		}
+		const front = (order: readonly RParseRequest[]) => [...requests, ...order.filter(r => !requests.includes(r))];
+		if(this.knownOrder) {
+			this.knownOrder = front(this.knownOrder);
+		}
+		for(let i = 0; i < this.guesses.length; i++) {
+			this.guesses[i] = front(this.guesses[i]);
+		}
+		if(!this.knownOrder && this.guesses.length === 0) {
+			this.addGuess(front(this.unordered));
+		}
+	}
+
 	public currentGuesses(): readonly (readonly RParseRequest[])[] {
 		return this.guesses;
 	}

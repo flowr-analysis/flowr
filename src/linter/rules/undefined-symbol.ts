@@ -8,7 +8,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { RBasePrimitives } from '../../data/r-base-primitives.generated';
+import { baseRExportOwner } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -77,13 +77,17 @@ export interface UndefinedSymbolMetadata extends MergeableRecord {
 /** calls that load a package; an unresolved one means we cannot enumerate all exports in scope */
 const LibraryLoadFunctions = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'load_all', 'use', 'p_load']);
 
-/**
- * Packages a standard R session attaches by default (`getOption("defaultPackages")` plus `base`); their
- * exports are in scope without an explicit `library()`. Non-attached base-priority packages (`tools`,
- * `parallel`, `grid`, ...) still need loading and are flagged with a hint. Hardcoded for now; making this
- * configurable (to respect `R_DEFAULT_PACKAGES`/`.Rprofile`) is left for later.
- */
+// standard packages attached by default; exports are in scope without library()
 const AttachedBasePackages = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+
+/** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */
+const ImplicitTestFrameworks = new Set(['testthat', 'tinytest', 'RUnit']);
+
+/** whether name is an export of a default-attached base package (needs no library()) */
+function isAttachedBaseName(name: string): boolean {
+	const owner = baseRExportOwner(name);
+	return owner !== undefined && AttachedBasePackages.includes(owner);
+}
 
 /** upper bound on the number of packages named in a "did you forget to load it" hint */
 const MaxHintPackages = 5;
@@ -112,6 +116,11 @@ export const UNDEFINED_SYMBOL = {
 		const installedFiles = new Set(ctx.files.getFilesByRole(FileRole.Install).map(f => f.path()));
 		const isInstalledFile = (file: string | undefined): boolean =>
 			file !== undefined && (installedFiles.has(file) || isInstalledResourceFile(file));
+
+		// test files run under their framework's attached namespace, so a bare name a test framework exports is defined there
+		const testFiles = new Set(ctx.files.getFilesByRole(FileRole.Test).map(f => f.path()));
+		const isImplicitTestExport = (name: string, file: string | undefined): boolean =>
+			file !== undefined && testFiles.has(file) && deps.packagesExporting(name).some(p => ImplicitTestFrameworks.has(p));
 
 		// a library() we could not resolve could export any of these symbols; we still report but flag the
 		// findings as low-confidence (`mayBeProvidedByUnresolvedLibrary`) so the severity can be lowered
@@ -192,10 +201,13 @@ export const UNDEFINED_SYMBOL = {
 			if(kind === 'function' && namespace === undefined && ctx.env.builtInEnvironment.memory.has(name)) {
 				return undefined;
 			}
-			// a bare base-R primitive/internal (`is.na`) or base data constant (`.Machine`) is defined but
-			// missing from the sigdb export list, so recognise it directly (covers calls and variable reads)
-			if(namespace === undefined && RBasePrimitives.has(name)) {
+			// a bare name from a default-attached base package (or a primitive) is defined without a library() call
+			if(namespace === undefined && isAttachedBaseName(name)) {
 				return undefined;
+			}
+			// a bare name a test framework exports, used in a test file where that framework's namespace is attached
+			if(namespace === undefined && isImplicitTestExport(name, element.node.info.file)) {
+				return suppress('loadedPackage');
 			}
 			// exported by a package in scope (`pkg::fn`, a loaded package, or a default-attached base package)
 			if(namespace !== undefined ? deps.getDependency(namespace)?.has(name) === true : loadedPackages.some(p => p.has(name))) {

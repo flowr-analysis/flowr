@@ -1,7 +1,7 @@
 import type { BaseQueryFormat, BaseQueryResult, BasicQueryData } from '../../base-query-format';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SupportedQuery } from '../../query';
-import { bold } from '../../../util/text/ansi';
+import { bold, faint, type OutputFormatter } from '../../../util/text/ansi';
 import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeDependenciesQuery } from './dependencies-query-executor';
@@ -118,26 +118,18 @@ export interface DependencyInfo extends Record<string, unknown>{
 	namespaceInfo?:      NamespaceInfo,
 }
 
-function printResultSection(title: string, infos: DependencyInfo[], result: string[]): void {
+function printResultSection(title: string, infos: DependencyInfo[], result: string[], formatter: OutputFormatter): void {
 	if(infos.length <= 0) {
 		return;
 	}
-	result.push(`   ╰ ${title}`);
-	const grouped = infos.reduce(function(groups: Map<string, DependencyInfo[]>, i) {
-		const key = Identifier.toString(i.functionName);
-		const array = groups.get(key);
-		if(array) {
-			array.push(i);
-		} else {
-			groups.set(key, [i]);
-		}
-		return groups;
-	}, new Map<string, DependencyInfo[]>());
-	for(const [functionName, infos] of grouped) {
-		result.push(`       ╰ \`${functionName}\``);
-		result.push(infos.map(i =>
-			`           ╰ Node Id: ${i.nodeId}${i.value !== undefined ? `, \`${i.value}\`` : ''}${i.derivedVersion !== undefined ? `, Version: \`${i.derivedVersion.format()}\`` : ''}${i.linkedIds ? `, linked: [${i.linkedIds.join(', ')}]` : ''}`
-		).join('\n'));
+	result.push(`   ${bold(title, formatter)} ${faint(`(${infos.length})`, formatter)}`);
+	// one line per dependency: the value (package/file) up front, its function + node as a faint provenance suffix
+	for(const i of infos) {
+		const fn = Identifier.getName(i.functionName);
+		const value = i.value !== undefined ? bold(i.value, formatter) : faint('<unresolved>', formatter);
+		const version = i.derivedVersion !== undefined ? ` ${faint(i.derivedVersion.format(), formatter)}` : '';
+		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
+		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
 	}
 }
 
@@ -162,12 +154,13 @@ const functionInfoSchema: Joi.ArraySchema = Joi.array().items(Joi.object({
 })).optional();
 
 export const DependenciesQueryDefinition = {
+	title:           'Dependencies Query',
 	executor:        executeDependenciesQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result, queries) => {
 		const out = queryResults as DependenciesQueryResult;
 		result.push(`Query: ${bold('dependencies', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
 		for(const [category, value] of Object.entries(getAllCategories(queries as DependenciesQuery[]))) {
-			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result);
+			printResultSection(value.queryDisplayName ?? category, out[category] ?? [], result, formatter);
 		}
 		return true;
 	},

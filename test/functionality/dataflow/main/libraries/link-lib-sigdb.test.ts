@@ -8,6 +8,7 @@ import { FlowrAnalyzerBuilder } from '../../../../../src/project/flowr-analyzer-
 import { DefaultAssumedRVersion, FlowrConfig, VersionSelection } from '../../../../../src/config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin, SigDbPluginName, sigDbLog } from '../../../../../src/project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { getOriginInDfg } from '../../../../../src/dataflow/origin/dfg-get-origin';
+import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
 import { executeCallContextQueries } from '../../../../../src/queries/catalog/call-context-query/call-context-query-executor';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
@@ -76,19 +77,17 @@ function callResolvesTo(df: Awaited<ReturnType<typeof analyze>>['df'], callName:
 	return edges !== undefined && edges.entries().some(([to, e]) => String(to) === target && DfEdge.includesType(e, EdgeType.Calls));
 }
 
-/** the edge-free qualified name of the call `callName` via {@link Identifier.toQualified} + the base-export index */
 function qualifiedName(res: Awaited<ReturnType<typeof analyze>>, callName: string): string | undefined {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
 		if(isFunctionCallVertex(v) && Identifier.getName(v.name) === callName) {
-			const q = Identifier.toQualified(getOriginInDfg(dfg, id), v.name);
+			const q = Dataflow.qualify(id, dfg);
 			return q === undefined ? undefined : Identifier.toString(q);
 		}
 	}
 	return undefined;
 }
 
-/** the `built-in:pkg:fn` proc strings of the origins that the dataflow attaches to the call `callName` */
 function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string): string[] {
 	const dfg = res.df.graph;
 	for(const [id, v] of dfg.vertices(true)) {
@@ -99,7 +98,6 @@ function originProcs(res: Awaited<ReturnType<typeof analyze>>, callName: string)
 	return [];
 }
 
-/** the node ids of calls to `callName` that a call-context query resolves to package `namespace` */
 async function callTargets(analyzer: FlowrAnalyzer, callName: string, namespace: string): Promise<NodeId[]> {
 	const out = await executeCallContextQueries({ analyzer }, [{ type: 'call-context', callName, callTargetNamespace: namespace }]);
 	return Object.values(out.kinds).flatMap(({ subkinds }) => Object.values(subkinds).flatMap(rs => rs.map(r => r.id)));
@@ -174,7 +172,7 @@ describe('Link libraries from a signature database (sigdb)', withTreeSitter(ts =
 		});
 		const { df, analyzer } = await analyze(ts, 'library(cranpkg)\ncranfn()', await buildDb(dir), off);
 		expect(hasBuiltIn(df, 'cranpkg', 'cranfn')).toBe(false);
-		expect(analyzer.inspectContext().deps.loadedPackageDatabases()).toHaveLength(0);
+		expect(analyzer.inspectContext().deps.loadedSignatureDatabases()).toHaveLength(0);
 	});
 
 	test(label('the resolved (assumed) R version is reported for analysis', ['library-loading'], ['dataflow']), async() => {

@@ -110,6 +110,11 @@ export abstract class FlowrAnalyzerPlugin<In = unknown, Out extends AsyncOrSync<
 	public processor(context: FlowrAnalyzerContext, args: In): Out {
 		const now = Date.now();
 		try {
+			// record activation before running: many plugins contribute by mutating the context and return `void`, so
+			// a return value is not a reliable signal -- a plugin activated if its processor ran for this analysis
+			if(context.config.repl.showPlugins) {
+				context.activatedPlugins.add(this.constructor.name);
+			}
 			const result = this.process(context, args);
 			const duration = Date.now() - now;
 			expensiveTrace(generalPluginLog, () => `Plugin ${this.name} (v${this.version.format()}, ${this.type}) executed in ${duration}ms.`);

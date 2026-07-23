@@ -7,7 +7,7 @@ import {
 	DefaultCranBase, FnProp, FnPropNames, ParamFlag,
 	type DepType, type LibraryExports, type PkgBlob, type PkgBlobTuple, type SigDbPkgMeta, type SigDefinitionLocation
 } from './schema';
-import { resolveVersion } from './version';
+import { resolveVersion } from './sigdb-version';
 
 /** the CRAN status of a version, used to build (or skip) its source-tarball link */
 export interface CranBlobInfo {
@@ -56,6 +56,8 @@ export interface DecodedFunction {
 	readonly props:     readonly string[];
 	readonly signature: readonly SigParameter[];
 	readonly callees:   readonly string[];
+	/** the Rd help topic (man-page name) documenting this function, when it differs from {@link name} */
+	readonly topic?:    string;
 }
 
 /**
@@ -66,9 +68,31 @@ export function signatureParameterNames(signature: readonly SigParameter[]): str
 	return signature.map(p => p.name).filter(n => n !== '...');
 }
 
+/**
+ * The transitive callees of `name`. Each local callee that is itself a function of `functions` (one package
+ * version's set) is expanded, names outside the set stay as leaves. Deduplicated and ascending.
+ */
+export function transitiveCallees(functions: readonly DecodedFunction[], name: string): string[] {
+	const local = new Map(functions.map(f => [f.name, f.callees]));
+	const reached = new Set<string>();
+	const queue = [...(local.get(name) ?? [])];
+	while(queue.length > 0) {
+		const callee = queue.pop() as string;
+		if(reached.has(callee)) {
+			continue;
+		}
+		reached.add(callee);
+		const inner = local.get(callee);
+		if(inner !== undefined) {
+			queue.push(...inner);
+		}
+	}
+	return [...reached].sort();
+}
+
 /** decode one of a blob's function records against the global string dictionary */
 export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlob>, fnIdx: number): DecodedFunction {
-	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line] = blob.fns[fnIdx];
+	const [nameIdx, sigIdx, cgIdx, bits, fileIdx, line, topicIdx] = blob.fns[fnIdx];
 	const signature = (sigIdx >= 0 ? blob.sigs[sigIdx] : []).map(p => {
 		const [n, flags, def] = Array.isArray(p) ? [p[0], p[1], p.length === 3 ? p[2] : -1] : [p, 0, -1];
 		return {
@@ -85,6 +109,7 @@ export function decodeFunction(strings: readonly string[], blob: Readonly<PkgBlo
 	}
 	return {
 		name:     strings[nameIdx],
+		...(topicIdx !== undefined && topicIdx >= 0 ? { topic: strings[topicIdx] } : {}),
 		...(fileIdx >= 0 ? { file: strings[fileIdx] } : {}),
 		line,
 		exported: Boolean(bits & FnProp.Exported),
@@ -142,6 +167,8 @@ export function deriveLibraryExports(
 	const exported: string[] = [];
 	const internal: string[] = [];
 	const deprecated: string[] = [];
+	const s3Classes: string[] = [];
+	const s4Classes: string[] = [];
 	const locations = new Map<string, SigDefinitionLocation>();
 	for(const i of idxs) {
 		const [nameIdx, , , bits, fileIdx, line] = blob.fns[i];
@@ -150,13 +177,19 @@ export function deriveLibraryExports(
 		if(bits & FnProp.Deprecated) {
 			deprecated.push(name);
 		}
+		if(bits & FnProp.S3Owner) {
+			s3Classes.push(name);
+		}
+		if(bits & FnProp.S4Owner) {
+			s4Classes.push(name);
+		}
 		if(fileIdx >= 0) {
 			locations.set(name, { file: strings[fileIdx], line });
 		}
 	}
 	const cran = !blob.noncran?.includes(ver);
 	return {
-		version: ver, exported, internal, deprecated, cran,
+		version: ver, exported, internal, deprecated, s3Classes, s4Classes, cran,
 		cranUrl: cranBlobUrl(cranBase, pkg, ver, { latest, archived: archived === 1, cran }),
 		...(locations.size > 0 ? { locations } : {})
 	};

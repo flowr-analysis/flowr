@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { toPosixPath } from '../../util/files';
 
 export const FlowrGithubGroupName = 'flowr-analysis';
 export const FlowrGithubBaseRef = `https://github.com/${FlowrGithubGroupName}`;
@@ -15,10 +16,7 @@ export const FlowrPositron = 'https://open-vsx.org/extension/code-inspect/vscode
 export const FlowrRStudioAddin = `${FlowrGithubBaseRef}/rstudio-addin-flowr`;
 export const FlowrRAdapter = `${FlowrGithubBaseRef}/flowr-r-adapter`;
 
-/** Converts backslashes to forward slashes (Windows paths). */
-export function toPosixPath(p: string): string {
-	return p.replaceAll('\\', '/');
-}
+export { toPosixPath };
 
 /**
  * Returns a markdown link to the given file path relative to the project root.

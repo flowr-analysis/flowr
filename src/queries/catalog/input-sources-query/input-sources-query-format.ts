@@ -66,6 +66,7 @@ function inputSourcesQueryLineParser(output: ReplOutput, line: readonly string[]
 }
 
 export const InputSourcesDefinition = {
+	title:           'Input Sources Query',
 	executor:        executeInputSourcesQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'input-sources'>['input-sources'];
@@ -87,6 +88,7 @@ export const InputSourcesDefinition = {
 	},
 	fromLine:  inputSourcesQueryLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@input-sources (<criterion>) <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('input-sources').required().description('The type of the query.'),
 		criterion: Joi.alternatives(Joi.string(), Joi.array().items(Joi.string())).required().description('The slicing criterion or array of criteria to use.'),

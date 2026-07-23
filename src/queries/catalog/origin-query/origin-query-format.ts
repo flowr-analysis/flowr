@@ -42,6 +42,7 @@ function originQueryLineParser(output: ReplOutput, line: readonly string[], _con
 
 
 export const OriginQueryDefinition = {
+	title:           'Origin Query',
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'origin'>['origin'];
@@ -54,6 +55,7 @@ export const OriginQueryDefinition = {
 	},
 	fromLine:  originQueryLineParser,
 	completer: criteriaQueryCompleter,
+	syntax:    '@origin (<criterion>) <code | file://path>',
 	schema:    Joi.object({
 		type:      Joi.string().valid('origin').required().description('The type of the query.'),
 		criterion: Joi.string().required().description('The slicing criteria to use'),

@@ -457,19 +457,15 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 	const exports = selectExports(getCallables(dependency.namespaceInfo), spec);
 	if(spec.namespaceOnly || isSubsetAttach(spec)){
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
-		let layer = new Environment(envInfo.current).asLibrary(pack, layerType);
-		for(const exp of exports){
-			layer = layer.define(exportDefinition(pack, exp, definedAt));
-		}
+		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
+			.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
 		return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
-	let namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace);
-	for(const exp of exports){
-		namespaceEnv = namespaceEnv.define(exportDefinition(pack, exp, definedAt));
-	}
+	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
+		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
 	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
 }
 
@@ -553,6 +549,47 @@ export function attachDeclaredDependencies(env: REnvironmentInformation, ctx: Fl
 	return built;
 }
 
+/** attach the analyzed package's own `NAMESPACE importFrom(...)` symbols (by their bare name) below the global, so a bare imported call resolves to its source package */
+export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	const own = ctx.deps.getDependency('current')?.namespaceInfo;
+	if(own === undefined || own.importedPackages.size === 0){
+		return env;
+	}
+	const layerNamespace = 'current';
+	const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+	for(const [pkg, funcs] of own.importedPackages){
+		// an explicit `importFrom(pkg, a, b)` names the symbols directly; `import(pkg)` needs the package's own export list
+		let names: readonly string[];
+		if(funcs === 'all'){
+			const imported = ctx.deps.getDependency(pkg)?.namespaceInfo;
+			if(imported === undefined){
+				continue;
+			}
+			names = getCallables(imported);
+		} else {
+			names = funcs;
+		}
+		for(const fn of names){
+			toDefine.push({
+				name:      Identifier.make(fn, layerNamespace),
+				type:      ReferenceType.Function,
+				nodeId:    NodeId.fromPkgFn(pkg, fn),
+				definedAt: NodeId.toBuiltIn(pkg)
+			});
+		}
+	}
+	if(toDefine.length === 0){
+		return env;
+	}
+	const layer = new Environment(env.current).asLibrary(layerNamespace, EnvType.Imports).defineAll(toDefine);
+	return { level: env.level, current: REnvironment.attachBelowGlobal(env.current, layer, layer) };
+}
+
+/** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */
+export function attachProject(env: REnvironmentInformation, ctx: FlowrAnalyzerContext): REnvironmentInformation {
+	return attachDeclaredDependencies(attachProjectImports(attachBaseRNamespaces(env, ctx), ctx), ctx);
+}
+
 function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: FlowrAnalyzerContext, alreadyImportedAll: Set<string>){
 	for(const imp of namespaceInfo.importedPackages){
 		const importedDependency = ctx.deps.getDependency(imp[0]);
@@ -568,16 +605,24 @@ function recImports(importsEnv: Environment, namespaceInfo: NamespaceInfo, ctx: 
 		if(alreadyImportedAll.has(importedDependency.name)){
 			continue;
 		}
+		/* collect first and define in one go, as defining one by one copies the (growing) memory every time */
+		const toDefine: (InGraphIdentifierDefinition & { name: Identifier })[] = [];
+		const queued = new Set<string>();
 		for(const func of funcToImport){
-			if(importsEnv.memory.has(Package.functionIdentifier(importedDependency.name, func))){
+			const identifier = Package.functionIdentifier(importedDependency.name, func);
+			if(importsEnv.memory.has(identifier) || queued.has(identifier)){
 				continue;
 			}
-			importsEnv = importsEnv.define({
-				name:      Identifier.make(Package.functionIdentifier(importedDependency.name, func), importsEnv.n),
+			queued.add(identifier);
+			toDefine.push({
+				name:      Identifier.make(identifier, importsEnv.n),
 				type:      ReferenceType.Function,
 				nodeId:    NodeId.fromPkgFn(importedDependency.name, func),
 				definedAt: NodeId.toBuiltIn(importedDependency.name)
 			});
+		}
+		if(toDefine.length > 0){
+			importsEnv = importsEnv.defineAll(toDefine);
 		}
 		if(imp[1] === 'all'){
 			alreadyImportedAll.add(importedDependency.name);

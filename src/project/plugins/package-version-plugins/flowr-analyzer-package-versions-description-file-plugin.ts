@@ -14,7 +14,7 @@ import { FileRole } from '../../context/flowr-file';
  */
 export class FlowrAnalyzerPackageVersionsDescriptionFilePlugin extends FlowrAnalyzerPackageVersionsPlugin {
 	public readonly name = 'flowr-analyzer-package-version-description-file-plugin';
-	public readonly description = 'This plugin extracts package versions from R DESCRIPTION files.';
+	public readonly description = 'Extracts package versions from DESCRIPTION files.';
 	public readonly version = new SemVer('0.1.0');
 
 	process(ctx: FlowrAnalyzerContext): void {

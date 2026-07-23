@@ -1,10 +1,7 @@
 import type { BasicQueryData } from '../../base-query-format';
 import type { DiceQuery, DiceQueryResult } from './dice-query-format';
 import { staticDice } from '../../../slicing/static/static-slicer';
-import { reconstructToCode } from '../../../reconstruct/reconstruct';
-import { doNotAutoSelect } from '../../../reconstruct/auto-select/auto-select-defaults';
-import { makeMagicCommentHandler } from '../../../reconstruct/auto-select/magic-comments';
-import { SlicingCriteria } from '../../../slicing/criterion/parse';
+import { reconstructSlice, resolveSliceCriteria } from '../slice-query-options';
 import { log } from '../../../util/log';
 
 /**
@@ -25,19 +22,19 @@ export async function executeDiceQuery({ analyzer }: BasicQueryData, queries: re
 			continue;
 		}
 
-		const { from, to, noReconstruction, noMagicComments } = query;
-		const startIds = SlicingCriteria.convertAll(from, ast.idMap);
-		const endIds = SlicingCriteria.convertAll(to, ast.idMap);
+		const { from, to, noReconstruction, includeCallees } = query;
+		const startIds = resolveSliceCriteria(from, ast);
+		const endIds = resolveSliceCriteria(to, ast);
 
 		const sliceStart = Date.now();
-		const slice = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds, analyzer.flowrConfig.solver.slicer?.threshold);
+		const slice = staticDice(analyzer.inspectContext(), df, ast, startIds, endIds, analyzer.flowrConfig.solver.slicer?.threshold, includeCallees);
 		const sliceEnd = Date.now();
 
 		if(noReconstruction) {
 			results[key] = { slice: { ...slice, '.meta': { timing: sliceEnd - sliceStart } } };
 		} else {
 			const reconstructStart = Date.now();
-			const reconstruct = reconstructToCode(ast, { nodes: slice.result }, noMagicComments ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect));
+			const reconstruct = reconstructSlice(ast, df.graph, slice.result, query);
 			const reconstructEnd = Date.now();
 			results[key] = {
 				slice:       { ...slice, '.meta': { timing: sliceEnd - sliceStart } },

@@ -1,12 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import zlib from 'zlib';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
 import { SigDbSchema } from '../project/sigdb/schema';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
+import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';
 import { DefaultAssumedRVersion } from '../config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
@@ -20,6 +20,22 @@ function cranDatabaseAvailable(): boolean {
 function usePackageDatabase(parser: KnownParser) {
 	const sigdb = new FlowrAnalyzerPackageVersionsSigDbPlugin('/path/to/sigs.manifest.json.br');
 	return new FlowrAnalyzerBuilder().setParser(parser).registerPlugins(sigdb).build();
+}
+
+function accessTheDatabase(source: PackageSignatureSource) {
+	const fn = source.functionByName('dplyr', 'lead', '1.1.4');
+	return {
+		exported:   fn?.exported,
+		signature:  fn?.signature.map(p => p.name),
+		localCalls: fn?.callees,
+		topic:      fn?.topic,
+		location:   [fn?.file, fn?.line],
+		transitive: source.transitiveCallees('dplyr', 'lead', '1.1.4'),
+		deps:       source.dependencies('dplyr', '1.1.4'),
+		exports:    source.lookup('dplyr')?.exported,
+		s3Classes:  source.lookup('zoo')?.s3Classes,
+		classOwner: source.classOwner('zoo')
+	};
 }
 
 /** a coarse duration in short units (`µs`/`ms`); we only ever quote estimates, never false precision */
@@ -101,9 +117,9 @@ function tierHistory(s: SigDbShardRef): string {
 	return s.tier === 'current' ? 'latest only' : 'full history';
 }
 
-/** resolve a manifest-relative source to its shipped file, preferring the compressed `.br` */
+/** resolve a manifest-relative source to its shipped file, preferring `.zst` over `.br` (whichever this Node can read) */
 function resolveShipped(baseDir: string, rel: string): string | undefined {
-	for(const candidate of [path.resolve(baseDir, rel + '.br'), path.resolve(baseDir, rel)]) {
+	for(const candidate of [rel + '.zst', rel + '.br', rel].map(c => path.resolve(baseDir, c))) {
 		if(fs.existsSync(candidate)) {
 			return candidate;
 		}
@@ -111,16 +127,16 @@ function resolveShipped(baseDir: string, rel: string): string | undefined {
 	return undefined;
 }
 
-/** time (at generation time) how long it takes to decompress one shipped `.br`, i.e. its first-touch load cost */
+/** time (at generation time) how long it takes to decompress one shipped shard, i.e. its first-touch load cost */
 function measureLoad(file: string): number | undefined {
-	if(!file.endsWith('.br')) {
+	if(!/\.(br|zst|gz)$/.test(file)) {
 		return undefined;
 	}
 	try {
 		const raw = fs.readFileSync(file);
-		const t0 = Date.now();
-		zlib.brotliDecompressSync(raw, { params: { [zlib.constants.BROTLI_DECODER_PARAM_LARGE_WINDOW]: 1 } });
-		return Date.now() - t0;
+		const t0 = process.hrtime.bigint();
+		decompressSyncFor(file, raw);
+		return Number(process.hrtime.bigint() - t0) / 1e6;
 	} catch{
 		return undefined;
 	}
@@ -135,7 +151,7 @@ function measureLoad(file: string): number | undefined {
  * without generated data).
  */
 function bundledDatabaseTable(): string | undefined {
-	const manifestPaths = defaultSigDbPaths().filter(p => /\.manifest\.json(\.br)?$/.test(p));
+	const manifestPaths = defaultSigDbPaths().filter(p => new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(p));
 	if(manifestPaths.length === 0) {
 		return undefined;
 	}
@@ -145,16 +161,11 @@ function bundledDatabaseTable(): string | undefined {
 		return load !== undefined ? `≈ ${roughDuration(load)}` : 'n/a';
 	};
 	const shardRows: string[] = [];
-	const dictRows: string[] = [];
 	const seenShards = new Set<string>();
-	const seenDicts = new Set<string>();
 	for(const manifestPath of manifestPaths) {
 		let shards: readonly SigDbShardRef[];
-		let dicts: readonly { id: string, path: string, strings: number }[];
 		try {
-			const manifest = readManifestFile(manifestPath);
-			shards = manifest.shards;
-			dicts = manifest.dicts ?? [];
+			shards = readManifestFile(manifestPath).shards;
 		} catch{
 			continue;
 		}
@@ -167,23 +178,13 @@ function bundledDatabaseTable(): string | undefined {
 			const file = resolveShipped(baseDir, s.path);
 			shardRows.push(`| \`${s.id}\` | ${shardContents(s)} | ${tierHistory(s)} | ${groupThousands(s.packages)} | ${groupThousands(s.versions)} | ${sizeOf(file)} | ${loadOf(file)} |`);
 		}
-		for(const d of dicts) {
-			// every manifest names its dict id `shared`; the files differ per scope, so dedupe (and label) by path
-			if(seenDicts.has(d.path)) {
-				continue;
-			}
-			seenDicts.add(d.path);
-			const file = resolveShipped(baseDir, d.path);
-			const label = path.basename(d.path).replace(/\.sigs\.ndjson$/, '');
-			dictRows.push(`| \`${label}\` | ${groupThousands(d.strings)} shared strings | - | - | - | ${sizeOf(file)} | ${loadOf(file)} |`);
-		}
 	}
 	if(shardRows.length === 0) {
 		return undefined;
 	}
 	return `| Shard | Contents | Versions kept | Packages | Versions | Size (\`.br\`) | Load (first touch) |
 |-------|----------|---------------|---------:|---------:|-------------:|-------------------:|
-${[...shardRows, ...dictRows].join('\n')}`;
+${shardRows.join('\n')}`;
 }
 
 /** link a built-in plugin key (e.g. `versions:sigdb`) to its registration */
@@ -192,7 +193,7 @@ function pluginLink(key: string): string {
 }
 
 /**
- * https://github.com/flowr-analysis/flowr/wiki/Package-Database
+ * https://github.com/flowr-analysis/flowr/wiki/Signature-Database
  */
 export class WikiSignatureDatabase extends DocMaker<'wiki/Signature Database.md'> {
 	constructor() {
@@ -224,6 +225,32 @@ flowR ships a database of the complete history of all exports in every version o
 After \`library(ggplot2)\`, a call to \`ggplot()\` resolves to \`ggplot2::ggplot\`. The same database
 qualifies bare names and backs various components like the ${ctx.linkPage('wiki/Query API', 'dependencies and call-context queries')} 
 as well as the ${ctx.linkPage('wiki/Linter', 'undefined symbol')} rule.
+
+## What is stored
+
+Every function is a ${ctx.link('DecodedFunction')}:
+
+| field | holds |
+|-------|-------|
+| ${ctx.link('DecodedFunction::exported')} | whether the name is a package export |
+| ${ctx.link('DecodedFunction::signature')} | the parameters, with defaults and forced or optional flags |
+| ${ctx.link('DecodedFunction::callees')} | the function's own local calls |
+| ${ctx.link('DecodedFunction::topic')} | the Rd help topic when it differs from the name |
+| ${ctx.link('DecodedFunction::file')}, ${ctx.link('DecodedFunction::line')} | source location |
+| ${ctx.link('DecodedFunction::props')} | flags like higher-order, recursive, deprecated |
+
+Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
+
+Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.link('FnProp::NoDoc')} (a documented package has no help page for this name), ${ctx.link('FnProp::S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.link('FnProp::S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call -- e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
+
+These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
+- the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.link('FnProp::NoDoc')} function
+- the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.link('FnProp::S3Method')} function, resolving its generic
+- the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
+
+Read it back like this:
+
+${ctx.code(accessTheDatabase, { dropLinesStart: 1 })}
 
 ## Configuration
 

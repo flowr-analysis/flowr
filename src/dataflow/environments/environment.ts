@@ -5,6 +5,7 @@
 import { jsonReplacer } from '../../util/json';
 import type { BuiltInMemory } from './built-in';
 import type {
+	BrandedIdentifier,
 	BrandedNamespace,
 	IdentifierDefinition,
 	InGraphIdentifierDefinition
@@ -132,30 +133,52 @@ export class Environment implements IEnvironment {
 		if(ns !== undefined && this.n !== ns) {
 			return this.defineInNamespace(definition, ns);
 		}
+		const newEnvironment = this.clone(false);
+		newEnvironment.apply(name, definition);
+		return newEnvironment;
+	}
+
+	/**
+	 * Define several identifiers at once in a more performant fashion.
+	 * @param definitions - The definitions to add.
+	 */
+	public defineAll(definitions: Iterable<IdentifierDefinition & { name: Identifier }>): Environment {
+		let env = this.clone(false);
+		for(const definition of definitions) {
+			const [name, ns] = Identifier.toArray(definition.name);
+			if(ns !== undefined && env.n !== ns) {
+				env = env.defineInNamespace(definition, ns);
+			} else {
+				env.apply(name, definition);
+			}
+		}
+		return env;
+	}
+
+	/** Only sound on an environment nobody else holds yet. */
+	private apply(name: BrandedIdentifier, definition: IdentifierDefinition & { name: Identifier }): void {
 		/* isolate the cds from the originating reference, which may still be updated in place */
 		if(definition.cds !== undefined) {
 			definition = { ...definition, cds: definition.cds.slice() };
 		}
-		const newEnvironment = this.clone(false);
 		// When there are defined indices, merge the definitions
 		if(definition.cds === undefined) {
-			newEnvironment.memory.set(name, [definition]);
+			this.memory.set(name, [definition]);
 		} else {
-			const existing = newEnvironment.memory.get(name);
+			const existing = this.memory.get(name);
 			const inGraphDefinition = definition as InGraphIdentifierDefinition;
 			if(
 				existing !== undefined &&
                 inGraphDefinition.cds === undefined
 			) {
-				newEnvironment.memory.set(name, [inGraphDefinition]);
+				this.memory.set(name, [inGraphDefinition]);
 			} else if(existing === undefined || definition.cds === undefined) {
-				newEnvironment.memory.set(name, [definition]);
+				this.memory.set(name, [definition]);
 			} else {
 				/* the array may be shared with clones, so replace instead of push */
-				newEnvironment.memory.set(name, [...existing, definition]);
+				this.memory.set(name, [...existing, definition]);
 			}
 		}
-		return newEnvironment;
 	}
 
 	private defineInNamespace(definition: IdentifierDefinition & { name: Identifier }, ns: BrandedNamespace): Environment {

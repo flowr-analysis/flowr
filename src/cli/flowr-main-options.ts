@@ -41,6 +41,11 @@ export const flowrMainOptionDefinitions = [
 		description: 'Disable ansi-escape-sequences in the output. Useful, if you want to redirect the output to a file.'
 	},
 	{
+		name:        'no-fs',
+		type:        Boolean,
+		description: 'Read nothing from the file system: ignore any flowR config file, do not load or save the repl history, and disable the on-disk signature database.'
+	},
+	{
 		name:         'port',
 		type:         Number,
 		description:  'The port to listen on, if --server is given.',

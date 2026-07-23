@@ -7,6 +7,7 @@ import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { unpackArg } from '../argument/unpack-argument';
+import { signatureParameterNames } from '../../../../../../project/sigdb/decode';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, NamedInGraphIdentifierDefinition } from '../../../../../environments/identifier';
 import { ReferenceType } from '../../../../../environments/identifier';
@@ -81,6 +82,22 @@ export function bindArgs<OtherInfo>(
 	paramNames: readonly string[]
 ): ReadonlyMap<string, PotentiallyEmptyRArgument<OtherInfo & ParentInformation>> {
 	return RFunctionCall.matchArgsToParams(args, paramNames);
+}
+
+/**
+ * The formal parameter names of the qualified call `id` (a `pkg::fn` {@link Identifier}) from the signature
+ * database (excluding `...`), or `fallback` when the database is disabled or does not carry the function. Lets a
+ * built-in argument matcher use R's real signature (via {@link ReadOnlyFlowrAnalyzerDependenciesContext#signatureOf})
+ * instead of a hardcoded formal list, while staying correct -- and graph-invariant -- when no signature is available.
+ */
+export function signatureParamNames<OtherInfo>(
+	data:     DataflowProcessorInformation<OtherInfo & ParentInformation>,
+	id:       Identifier,
+	fallback: readonly string[]
+): readonly string[] {
+	const sig = data.ctx.deps.signatureOf(id)?.signature;
+	const names = sig ? signatureParameterNames(sig) : [];
+	return names.length > 0 ? names : fallback;
 }
 
 /** Resolves a single already-found argument (e.g. from {@link bindArgs}) to an {@link EnvirResolution} when it is a symbol holding a tracked envState. */

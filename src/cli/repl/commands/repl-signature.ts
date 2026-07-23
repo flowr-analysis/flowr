@@ -23,8 +23,8 @@ function printHelp(output: ReplOutput): void {
 	const f = output.formatter;
 	output.stdout(bold('Signature Database', f) + italic('  (inspect and extend the databases that resolve library()/`::` calls)', f));
 	output.stdout('');
-	output.stdout(`  ${bold(':signature query', f)} ${italic('[<package>[@<version>][::<function>] [<function>]] [--all] [--full]', f)}`);
-	output.stdout(`      ${italic('inspect the database -- identical to :query @signature (run :signature query help for the full syntax)', f)}`);
+	output.stdout(`  ${bold(':signature query', f)} ${italic('[<package>[@<version>][::<function>] [<function>]] [--param <name>] [--required <n>]', f)}`);
+	output.stdout(`      ${italic('inspect the database -- identical to :query @signature; with no package it summarizes the loaded databases and per-shard load state (run :signature query help for the full syntax)', f)}`);
 	output.stdout(`  ${bold(':signature add', f)} ${italic('<path-to-.sigs.ndjson|.br|.manifest.json>', f)}`);
 	output.stdout(`      ${italic('mount an additional signature database/source (dictionaries + shards); takes precedence over the bundle', f)}`);
 	output.stdout(`  ${bold(':signature download', f)} ${italic('[<version>]', f)}`);

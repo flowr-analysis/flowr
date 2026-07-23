@@ -479,7 +479,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				return found ? path.join(dir, found) : undefined;
 			}
 			return undefined;
-		} catch{
+		} catch(e) {
+			fileLog.warn(`Could not resolve '${p}': ${e instanceof Error ? e.message : String(e)}`);
 			return undefined;
 		}
 	}

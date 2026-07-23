@@ -172,6 +172,8 @@ export interface FlowrConfig extends MergeableRecord {
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
+		/** Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when `false` (the default) such paths are logged and skipped. */
+		failOnInaccessiblePath?:   boolean
 		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
 		/**
@@ -517,7 +519,8 @@ export const FlowrConfig = {
 				showPlugins:         false,
 			},
 			project: {
-				resolveUnknownPathsOnDisk: true
+				resolveUnknownPathsOnDisk: true,
+				failOnInaccessiblePath:    false
 			},
 			linter: {
 				disabledRules: []
@@ -603,6 +606,7 @@ export const FlowrConfig = {
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
+			failOnInaccessiblePath:    Joi.boolean().optional().description('Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when false (the default) such paths are logged and skipped.'),
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
 			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.')

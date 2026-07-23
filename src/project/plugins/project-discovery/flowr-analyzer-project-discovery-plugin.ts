@@ -1,4 +1,5 @@
 import { FlowrAnalyzerPlugin, PluginType } from '../flowr-analyzer-plugin';
+import type { FlowrAnalyzerContext } from '../../context/flowr-analyzer-context';
 import type { RParseRequest } from '../../../r-bridge/retriever';
 import type { RProjectAnalysisRequest } from '../../context/flowr-analyzer-files-context';
 import { SemVer } from 'semver';
@@ -70,13 +71,14 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 		this.onlyTraversePaths = onlyTraversePaths;
 	}
 
-	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
+	public process(context: FlowrAnalyzerContext, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
 		if(!fs.existsSync(args.content)) {
 			return requests;
 		}
+		const failOnInaccessiblePath = context.config.project.failOnInaccessiblePath ?? false;
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
-		for(const file of getAllFilesSync(args.content, /.*/, this.ignorePathsRegex)) {
+		for(const file of getAllFilesSync(args.content, /.*/, this.ignorePathsRegex, args.content, failOnInaccessiblePath)) {
 			const relativePath = path.relative(args.content, file);
 			if(this.supportedExtensions.test(relativePath) && (!this.onlyTraversePaths || this.onlyTraversePaths.test(relativePath)) && !this.excludePathsRegex.test(platformDirname(relativePath))) {
 				requests.push({ content: file, request: 'file' });

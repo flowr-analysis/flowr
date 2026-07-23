@@ -168,26 +168,12 @@ export const Identifier = {
 		const targetInternal = Identifier.accessesInternal(target);
 		return idInternal === targetInternal;
 	},
-	// TODO wie rum soll das matchen? bei matches oben war ich under the impression dass das erste argument die *config* und das zweite der *echte wert* ist, aber es scheint andersrum -> wenn die config namespaced ist aber der echte wert nicht, soll es dann erlaubt sein? oder andersrum?
 	/**
-	 * Helper to create a regular expression that matches against an array of {@link Identifier} values.
-	 * Match behavior is in line with {@link matches}, excluding S3 behavior.
+	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
 	 */
 	regex(this: void, identifiers: readonly Identifier[]): RegExp {
-		return new RegExp(`^(${identifiers.map(i => {
-			const ns = Identifier.getNamespace(i);
-			const name = Identifier.getName(i);
-			// if the identifier isn't namespaced, we match against any value, namespaced or not
-			if(ns === undefined) {
-				return `(.+:::?)?${name}`;
-			}
-			// if our access is internal, we match against internal or non-internal
-			if(Identifier.accessesInternal(i)) {
-				return `${ns}:::?${name}`;
-			}
-			// otherwise, we match against the exact identifier
-			return Identifier.toString(i);
-		}).join('|')})$`);
+		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
+		return new RegExp(`^(${identifiers.map(i => `(${Identifier.getNamespace(i) ?? '.+'}:::?)?${Identifier.getName(i)}`).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {

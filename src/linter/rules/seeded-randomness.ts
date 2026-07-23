@@ -11,7 +11,7 @@ import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
 import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
 import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrFilter, testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
+import { FlowrFilter } from '../../search/flowr-search-filters';
 import { DefaultBuiltinConfig } from '../../dataflow/environments/default-builtin-config';
 import { type DataflowGraph, FunctionArgument } from '../../dataflow/graph/graph';
 import { CascadeAction } from '../../queries/catalog/call-context-query/cascade-action';
@@ -63,7 +63,7 @@ export const SEEDED_RANDOMNESS = {
 			args: {
 				enrichment: Enrichment.CallTargets,
 				test:       {
-					targets: testFunctionsIgnoringPackage(config.randomnessConsumers)
+					targets: Identifier.regex(config.randomnessConsumers)
 				}
 			}
 		})

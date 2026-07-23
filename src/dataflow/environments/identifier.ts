@@ -8,6 +8,8 @@ import type { Origin } from '../origin/dfg-get-origin';
 /* type-only, as the value import would cycle back through the graph helpers */
 import type { Dataflow } from '../graph/df-helper';
 
+
+
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
 /** this is just a safe-guard type to prevent mixing up branded namespaces with normal strings */
@@ -165,6 +167,27 @@ export const Identifier = {
 		}
 		const targetInternal = Identifier.accessesInternal(target);
 		return idInternal === targetInternal;
+	},
+	// TODO wie rum soll das matchen? bei matches oben war ich under the impression dass das erste argument die *config* und das zweite der *echte wert* ist, aber es scheint andersrum -> wenn die config namespaced ist aber der echte wert nicht, soll es dann erlaubt sein? oder andersrum?
+	/**
+	 * Helper to create a regular expression that matches against an array of {@link Identifier} values.
+	 * Match behavior is in line with {@link matches}, excluding S3 behavior.
+	 */
+	regex(this: void, identifiers: readonly Identifier[]): RegExp {
+		return new RegExp(`^(${identifiers.map(i => {
+			const ns = Identifier.getNamespace(i);
+			const name = Identifier.getName(i);
+			// if the identifier isn't namespaced, we match against any value, namespaced or not
+			if(ns === undefined) {
+				return `(.+:::?)?${name}`;
+			}
+			// if our access is internal, we match against internal or non-internal
+			if(Identifier.accessesInternal(i)) {
+				return `${ns}:::?${name}`;
+			}
+			// otherwise, we match against the exact identifier
+			return Identifier.toString(i);
+		}).join('|')})$`);
 	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {

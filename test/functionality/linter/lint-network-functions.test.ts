@@ -2,7 +2,9 @@ import { describe } from 'vitest';
 import { withTreeSitter } from '../_helper/shell';
 import { assertLinter, controlledSigDb } from '../_helper/linter';
 import { LintingResultCertainty } from '../../../src/linter/linter-format';
-import { NETWORK_FUNCTIONS } from '../../../src/linter/rules/network-functions';
+import { Identifier } from '../../../src/dataflow/environments/identifier';
+
+
 
 const urlPrefix = ['https://', 'ftp://', 'ftps://'];
 
@@ -14,8 +16,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			[
 				{ certainty: LintingResultCertainty.Certain, function: 'url', loc: [1, 5, 1, 29] }
 			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['url'] }
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
 		for(const prefix of urlPrefix){
 			/* @ignore-in-wiki */
@@ -24,8 +25,7 @@ describe('flowR linter', withTreeSitter(parser => {
 				[
 					{ certainty: LintingResultCertainty.Certain, function: 'read.csv', loc: [1, 1, 1, prefix.length + 27] }
 				],
-				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['read.csv'] }
+				{ totalCalls: 1, totalFunctionDefinitions: 1 }
 			);
 
 			assertLinter(`network funcion with multiple arguments: ${prefix}`, parser, `download.file("${prefix}foo.org/bar.csv", "local.csv")`,
@@ -33,65 +33,76 @@ describe('flowR linter', withTreeSitter(parser => {
 				[
 					{ certainty: LintingResultCertainty.Certain, function: 'download.file', loc: [1, 1, 1, prefix.length + 45] }
 				],
-				{ totalCalls: 1, totalFunctionDefinitions: 1 },
-				{ fns: ['download.file'] }
+				{ totalCalls: 1, totalFunctionDefinitions: 1 }
 			);
 
 		}
+
+		assertLinter('library call', parser, 'library(httr)\nPOST("http://example.com")',
+			'network-functions',
+			[
+				{ certainty: LintingResultCertainty.Certain, function: 'POST', loc: [2, 1, 2, 26] }
+			],
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
+		);
+		assertLinter('unloaded library call', parser, 'POST("http://example.com")',
+			'network-functions',
+			[],
+			{ totalCalls: 0, totalFunctionDefinitions: 0 },
+		);
+		assertLinter('mismatched library call', parser, 'httr2::GET("http://example.com")',
+			'network-functions',
+			[],
+			{ totalCalls: 0, totalFunctionDefinitions: 0 }
+		);
 		assertLinter('namespace call', parser, 'httr::GET("http://example.com")',
 			'network-functions',
 			[
 				{ certainty: LintingResultCertainty.Certain, function: 'httr::GET', loc: [1, 1, 1, 31] }
 			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['GET'] }
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
 
 		assertLinter('do not trigger without url prefix', parser, 'read.csv("www.example.com")',
 			'network-functions',
 			[],
-			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: ['read.csv'] }
+			{ totalCalls: 0, totalFunctionDefinitions: 0 }
 		);
 		assertLinter('trigger with custom url prefix', parser, 'read.csv("www.example.com")',
 			'network-functions',
 			[{ certainty: LintingResultCertainty.Certain, function: 'read.csv', loc: [1, 1, 1, 27] }],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: [{ name: 'read.csv', onlyTriggerWithArgument: /^www\./ }] }
+			{ fns: [{ name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./ }] }
 		);
 		assertLinter('do not trigger with custom url prefix', parser, 'read.csv("https://example.com")',
 			'network-functions',
 			[],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: [{ name: 'read.csv', onlyTriggerWithArgument: /^www\./ }] }
+			{ fns: [{ name: Identifier.make('read.csv', 'utils'), onlyTriggerWithArgument: /^www\./ }] }
 		);
 
 		assertLinter('do not trigger with multiple arguments', parser, 'download.file("data/local.csv", "local.csv")',
 			'network-functions',
 			[],
-			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: ['read.csv'] }
+			{ totalCalls: 0, totalFunctionDefinitions: 0 }
 		);
 
 		assertLinter('not in list test', parser, 'file("data/local.csv")',
 			'network-functions',
 			[],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
 		);
 
 		assertLinter('nor in list but prefix in string', parser, 'print("http://example.com")',
 			'network-functions',
 			[],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
 		);
 
 		assertLinter('do not trigger on known source', parser, 'source("tex.R")',
 			'network-functions',
 			[],
 			{ totalCalls: 0, totalFunctionDefinitions: 0 },
-			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
 		);
 
 		assertLinter('trigger on web source', parser, 'source("https://foo.com")',
@@ -100,7 +111,6 @@ describe('flowR linter', withTreeSitter(parser => {
 				{ certainty: LintingResultCertainty.Certain, function: 'source', loc: [1, 1, 1, 25] }
 			],
 			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: NETWORK_FUNCTIONS.info.defaultConfig.fns }
 		);
 
 
@@ -109,8 +119,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			[
 				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', loc: [1, 1, 1, 46] }
 			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['read.csv'] }
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
 
 		assertLinter('Positional argument with custom config', parser, 'test.me(x, "http://example.com/data.csv")',
@@ -135,8 +144,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			[
 				{ certainty: LintingResultCertainty.Certain, function: 'read.csv', loc: [1, 39, 1, 51] }
 			],
-			{ totalCalls: 1, totalFunctionDefinitions: 1 },
-			{ fns: ['read.csv'] }
+			{ totalCalls: 1, totalFunctionDefinitions: 1 }
 		);
 
 		describe('a call resolved via a loaded package is still flagged', () => {

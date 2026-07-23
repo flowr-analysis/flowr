@@ -25,7 +25,7 @@ export enum FlowrFilter {
 	/**
 	 * Only returns search elements whose enrichments' JSON representations match a given test regular expression.
 	 * This filter accepts {@link MatchesEnrichmentArgs}, which includes the enrichment to match for, as well as the regular expression to test the enrichment's (non-pretty-printed) JSON representation for.
-	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link testFunctionsIgnoringPackage} can be used.
+	 * To test for included function names in an enrichment like {@link Enrichment.CallTargets}, the helper function {@link matchIdentifiers} can be used.
 	 */
 	MatchesEnrichment = 'matches-enrichment',
 	/**
@@ -97,13 +97,6 @@ export interface OriginKindArgs {
 }
 export interface FilePathFilterArgs {
 	filePathRegex: string | RegExp
-}
-
-/**
- * Helper to create a regular expression that matches function names, ignoring their package.
- */
-export function testFunctionsIgnoringPackage(functions: readonly string[]): RegExp {
-	return new RegExp(`^(.+:::?)?(${functions.join('|')})$`);
 }
 
 type ValidFilterTypes<F extends FlowrFilter = FlowrFilter> = FlowrFilterName | FlowrFilterWithArgs<F, FlowrFilterArgs<F>> | RType | VertexType;

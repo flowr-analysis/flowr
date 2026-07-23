@@ -2,7 +2,7 @@ import type {
 	InspectExceptionQuery, InspectExceptionQueryResult
 } from './inspect-exception-query-format';
 import type { BasicQueryData } from '../../base-query-format';
-import { type SingleSlicingCriterion, tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
 import { VertexType } from '../../../dataflow/graph/vertex';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
@@ -13,11 +13,11 @@ import { calculateExceptionsOfFunction } from '../../../dataflow/fn/exceptions-o
  * Get the functions to consider in the call graph based on the given queries.
  */
 export async function getFunctionsToConsiderInCallGraph(
-	queries: readonly { filter?: readonly SingleSlicingCriterion[] }[],
+	queries: readonly { filter?: readonly SlicingCriterion[] }[],
 	analyzer: ReadonlyFlowrAnalysisProvider,
 	onlyDefinitions = true
 ) {
-	let filters: SingleSlicingCriterion[] | undefined = undefined;
+	let filters: SlicingCriterion[] | undefined = undefined;
 	// filter will remain undefined if at least one of the queries wants all functions
 	for(const q of queries) {
 		if(q.filter === undefined) {
@@ -34,7 +34,7 @@ export async function getFunctionsToConsiderInCallGraph(
 	const filterFor = new Set<NodeId>();
 	if(filters) {
 		for(const f of filters) {
-			const i = tryResolveSliceCriterionToId(f, ast.idMap);
+			const i = SlicingCriterion.tryParse(f, ast.idMap);
 			if(i !== undefined) {
 				filterFor.add(i);
 			}

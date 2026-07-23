@@ -3,10 +3,12 @@ import {
 	type RAnalysisRequest,
 	type ReadOnlyFlowrAnalyzerFilesContext
 } from './flowr-analyzer-files-context';
+import type { ProjectKind } from './project-kind';
 import {
 	FlowrAnalyzerDependenciesContext,
 	type ReadOnlyFlowrAnalyzerDependenciesContext
 } from './flowr-analyzer-dependencies-context';
+import type { Range } from 'semver';
 import { type FlowrAnalyzerPlugin, PluginType } from '../plugins/flowr-analyzer-plugin';
 import { FlowrAnalyzerLoadingOrderContext } from './flowr-analyzer-loading-order-context';
 import type {
@@ -23,7 +25,10 @@ import { FlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-contex
 import { arraysGroupBy } from '../../util/collections/arrays';
 import type { fileProtocol, RParseRequestFromFile, RParseRequests } from '../../r-bridge/retriever';
 import { requestFromInput } from '../../r-bridge/retriever';
-import { FlowrConfig } from '../../config';
+import { FlowrConfig, resolveAssumedRVersion } from '../../config';
+import { deepMergeObject } from '../../util/objects';
+import { setLogLevel, type LogLevelName } from '../../util/log';
+import type { DeepPartial } from 'ts-essentials';
 import type { FlowrFileProvider } from './flowr-file';
 import { FlowrInlineTextFile } from './flowr-file';
 import type { ReadOnlyFlowrAnalyzerEnvironmentContext } from './flowr-analyzer-environment-context';
@@ -43,6 +48,11 @@ import type {
 import {
 	InvalidationEventType
 } from '../cache/flowr-cache';
+import {
+	FlowrAnalyzerGasContext,
+	type ReadOnlyFlowrAnalyzerGasContext
+} from './flowr-analyzer-gas-context';
+import type { FlowrAnalyzerGasPlugin } from '../plugins/gas-plugins/flowr-analyzer-gas-plugin';
 
 /**
  * This is a read-only interface to the {@link FlowrAnalyzerContext}.
@@ -50,42 +60,44 @@ import {
  * If you are a {@link FlowrAnalyzerPlugin} and want to modify the context, you can use the {@link FlowrAnalyzerContext} directly.
  */
 export interface ReadOnlyFlowrAnalyzerContext {
-	/**
-	 * The meta context provides access to the project metadata such as name, version, and namespace.
-	 */
-	readonly meta:               ReadOnlyFlowrAnalyzerMetaContext;
-	/**
-	 * The files context provides access to the files to be analyzed and their loading order.
-	 */
-	readonly files:              ReadOnlyFlowrAnalyzerFilesContext;
-	/**
-	 * The dependencies context provides access to the identified dependencies and their versions.
-	 */
-	readonly deps:               ReadOnlyFlowrAnalyzerDependenciesContext;
-	/**
-	 * The environment context provides access to the environment information used during analysis.
-	 */
-	readonly env:                ReadOnlyFlowrAnalyzerEnvironmentContext;
-	/**
-	 * The incremental context provides potential information for the next incremental analysis run
-	 */
+	/** Project metadata such as name, version, and namespace. */
+	readonly meta:             ReadOnlyFlowrAnalyzerMetaContext;
+	/** Files to be analyzed and their loading order. */
+	readonly files:            ReadOnlyFlowrAnalyzerFilesContext;
+	/** Identified dependencies and their versions. */
+	readonly deps:             ReadOnlyFlowrAnalyzerDependenciesContext;
+	/** Environment information used during analysis. */
+	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
+	/** The incremental context provides potential information for the next incremental analysis run */
 	readonly inc:                ReadOnlyFlowrAnalyzerIncrementalAnalysisContext;
+	/** The configuration options used by the analyzer. */
+	readonly config:           FlowrConfig;
+	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */
+	readonly activatedPlugins: ReadonlySet<string>;
+	/** The project kind the effective {@link config} is specialized for and the overrides it applies, or `undefined` when no specialization is in effect. */
+	configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined;
+	/** The R version analysis assumes when resolving versioned (base-R) exports (see `solver.sigdb.assumedRVersion`). */
+	readonly resolvedRVersion: string;
+	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or an engine-detected version) rather than the fallback default. */
+	readonly rVersionKnown:    boolean;
+	/** Classify the {@link ProjectKind} of the project, see {@link ReadOnlyFlowrAnalyzerFilesContext#projectKind}. */
+	projectKind(): ProjectKind;
+	/** The versions a dependency can possibly have, see {@link ReadOnlyFlowrAnalyzerDependenciesContext#inferredVersion}. */
+	inferredVersion(name: string): Range | undefined;
 	/**
-	 * The configuration options used by the analyzer.
+	 * Resource-usage guard (gas).
+	 * Call `ctx.gas.checkGas(key)` at expensive analysis sites to obtain the current pressure level.
+	 * Returns `GasLevel.Normal` with zero overhead when gas is disabled for `key`.
+	 * @see {@link ReadOnlyFlowrAnalyzerGasContext}
 	 */
-	readonly config:             FlowrConfig;
-	/**
-	 * Run all resolution steps that can be done before the main analysis run.
-	 */
-	readonly resolvePreAnalysis: () => void;
+	readonly gas:              ReadOnlyFlowrAnalyzerGasContext;
 }
 
 /**
  * This summarizes the other context layers used by the {@link FlowrAnalyzer}.
  * Have a look at the attributes and layers listed below (e.g., {@link files} and {@link deps})
  * to get an idea of the capabilities provided by this context.
- * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods alongside the
- * {@link resolvePreAnalysis} method that conducts all the steps that can be done before the main analysis run.
+ * Besides these, this layer only orchestrates the different steps and layers, providing a collection of convenience methods.
  * In general, you do not have to worry about these details, as the {@link FlowrAnalyzerBuilder} and {@link FlowrAnalyzer} take care of them.
  *
  * To inspect, e.g., the loading order, you can do so via {@link files.loadingOrder.getLoadingOrder}. To get information on a specific library, use
@@ -98,20 +110,131 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	public readonly deps:  FlowrAnalyzerDependenciesContext;
 	public readonly env:   FlowrAnalyzerEnvironmentContext;
 	public readonly inc:   FlowrAnalyzerIncrementalAnalysisContext;
+	/** class names of plugins that activated since the last reset; only filled when `config.repl.showPlugins` is set */
+	public readonly activatedPlugins = new Set<string>();
+	public readonly gas:   FlowrAnalyzerGasContext;
 	private _analyzer:     FlowrAnalyzer | undefined;
+	/** an auto-detected R version (from the engine), recorded once at the analyzer boundary; see {@link resolvedRVersion} */
+	private _detectedR:    string | undefined;
 
-	public readonly config: FlowrConfig;
+	/** the configuration as given, i.e. before {@link FlowrConfig.specializeConfig} is applied */
+	public readonly baseConfig: FlowrConfig;
+	/** {@link baseConfig}, specialized for {@link _configKind} */
+	private _config:            FlowrConfig;
+	/** the {@link ProjectKind} {@link _config} holds, `undefined` as long as it has to be resolved */
+	private _configKind:        ProjectKind | undefined;
+	/** set while classifying, as the classification must not read the config it decides, see {@link kindToSpecializeFor} */
+	private _classifying = false;
+
+	/** accumulated runtime overrides from {@link updateConfig}, applied on top of the specialized config so they always win */
+	private runtimeOverrides: DeepPartial<FlowrConfig> | undefined;
+	/** memoized {@link config}: {@link specializedConfig} merged with {@link runtimeOverrides} */
+	private _effective:       FlowrConfig | undefined;
+	private _appliedLogLevel: LogLevelName | undefined;
+	/** the specialized object {@link _effective} was built from, for identity-based invalidation on a kind change */
+	private _effectiveOf:     FlowrConfig | undefined;
+
+	/**
+	 * {@link baseConfig} specialized for the project {@link ProjectKind}, with any {@link updateConfig|runtime
+	 * overrides} applied on top (those win over both base and specialization).
+	 */
+	public get config(): FlowrConfig {
+		const specialized = this.specializedConfig();
+		let cfg: FlowrConfig;
+		if(this.runtimeOverrides === undefined) {
+			cfg = specialized;
+		} else {
+			if(this._effective === undefined || this._effectiveOf !== specialized) {
+				// a fresh object, so neither the shared base nor the memoized specialized config is mutated
+				this._effective = deepMergeObject(specialized, this.runtimeOverrides) as FlowrConfig;
+				this._effectiveOf = specialized;
+			}
+			cfg = this._effective;
+		}
+		if(cfg.logLevel !== undefined && cfg.logLevel !== this._appliedLogLevel) {
+			this._appliedLogLevel = cfg.logLevel;
+			setLogLevel(cfg.logLevel);
+		}
+		return cfg;
+	}
+
+	/** {@link baseConfig} with the {@link FlowrConfig.specializeConfig} of the project's kind applied ({@link FlowrConfig.forKind}), resolved once per kind. */
+	private specializedConfig(): FlowrConfig {
+		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
+			return this.baseConfig;
+		}
+		const kind = this.kindToSpecializeFor();
+		if(this._configKind !== kind) {
+			this._configKind = kind;
+			this._config = FlowrConfig.forKind(this.baseConfig, kind);
+		}
+		return this._config;
+	}
+
+	/**
+	 * Apply a runtime {@link FlowrConfig} update. It is layered on top of the specialized config (so it wins over
+	 * project-kind specialization) and never mutates the shared {@link baseConfig}. The analysis cache must be
+	 * invalidated separately (see {@link FlowrAnalyzer.updateConfig}), as the results were computed under the old config.
+	 */
+	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		const overrides = this.runtimeOverrides;
+		const effective = this._effective;
+		const effectiveOf = this._effectiveOf;
+		this.runtimeOverrides = deepMergeObject(this.runtimeOverrides ?? {}, update);
+		this._effective = undefined; // recompute on next `config` access
+		try {
+			const { error } = FlowrConfig.Schema.validate(this.config, { allowUnknown: false });
+			if(error) {
+				throw new Error(`invalid config update: ${error.message}`);
+			}
+		} catch(e) {
+			this.runtimeOverrides = overrides;
+			this._effective = effective;
+			this._effectiveOf = effectiveOf;
+			throw e;
+		}
+	}
+
+	/** Discards every {@link updateConfig} override made so far, reverting {@link config} back to {@link baseConfig} (specialized for the project kind). */
+	public resetConfig(): void {
+		this.runtimeOverrides = undefined;
+		this._effective = undefined;
+		this._effectiveOf = undefined;
+	}
+
+	/** The project kind the effective {@link config} is specialized for, plus the overrides it applies, or `undefined` when no specialization is in effect. */
+	public configSpecialization(): { readonly kind: ProjectKind, readonly overwrite: DeepPartial<FlowrConfig> } | undefined {
+		if(this.baseConfig.specializeConfig === undefined || this._classifying) {
+			return undefined;
+		}
+		const kind = this.kindToSpecializeFor();
+		const overwrite = FlowrConfig.specializationFor(this.baseConfig, kind);
+		return overwrite ? { kind, overwrite } : undefined;
+	}
+
+	/** {@link projectKind}, resolved with {@link baseConfig}, as classifying the project reads the config again */
+	private kindToSpecializeFor(): ProjectKind {
+		this._classifying = true;
+		try {
+			return this.projectKind();
+		} finally {
+			this._classifying = false;
+		}
+	}
 
 	constructor(config: FlowrConfig, plugins: ReadonlyMap<PluginType, readonly FlowrAnalyzerPlugin[]>) {
-		this.config = config;
+		this.baseConfig = config;
+		this._config = config;
 		const loadingOrder = new FlowrAnalyzerLoadingOrderContext(this, plugins.get(PluginType.LoadingOrder) as FlowrAnalyzerLoadingOrderPlugin[]);
 		this.files = new FlowrAnalyzerFilesContext(this, loadingOrder, (plugins.get(PluginType.ProjectDiscovery) ?? []) as FlowrAnalyzerProjectDiscoveryPlugin[],
 			(plugins.get(PluginType.FileLoad) ?? []) as FlowrAnalyzerFilePlugin[]);
 		this.env = new FlowrAnalyzerEnvironmentContext(this);
 		this.inc = new FlowrAnalyzerIncrementalAnalysisContext(this);
 		const functions = new FlowrAnalyzerFunctionsContext(this);
-		this.deps = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
-		this.meta = new FlowrAnalyzerMetaContext();
+		this.deps  = new FlowrAnalyzerDependenciesContext(functions, (plugins.get(PluginType.DependencyIdentification) ?? []) as FlowrAnalyzerPackageVersionsPlugin[]);
+		// the plugins contributing the metadata are the ones the dependency context runs on demand
+		this.meta = new FlowrAnalyzerMetaContext(() => this.deps.ensureStaticsLoaded());
+		this.gas  = new FlowrAnalyzerGasContext(this, config.gas, (plugins.get(PluginType.Gas) ?? []) as FlowrAnalyzerGasPlugin[]);
 	}
 
 	/**
@@ -127,6 +250,34 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 		this._analyzer = analyzer;
 	}
 
+	/** Record the engine's auto-detected R version (used when `solver.sigdb.assumedRVersion` is `"auto"`). */
+	public setDetectedRVersion(version: string): void {
+		this._detectedR = version;
+	}
+
+	/** The R version analysis assumes when resolving versioned (base-R) exports (see {@link resolveAssumedRVersion}). */
+	public get resolvedRVersion(): string {
+		return resolveAssumedRVersion(this.config, this._detectedR);
+	}
+
+	/** Whether {@link resolvedRVersion} is a genuine signal (a config pin, project metadata, or engine detection) rather than the fallback default. */
+	public get rVersionKnown(): boolean {
+		const setting = this.config.solver.sigdb.assumedRVersion;
+		return (setting !== undefined && setting !== 'auto')
+			|| this.meta.getRVersion() !== undefined
+			|| (this._detectedR !== undefined && this._detectedR !== 'none' && this._detectedR !== 'unknown');
+	}
+
+	/** Classify the {@link ProjectKind} of the project (delegates to the cached {@link FlowrAnalyzerFilesContext#projectKind}). */
+	public projectKind(): ProjectKind {
+		return this.files.projectKind();
+	}
+
+	/** The versions a dependency can possibly have (delegates to {@link FlowrAnalyzerDependenciesContext#inferredVersion}). */
+	public inferredVersion(name: string): Range | undefined {
+		return this.deps.inferredVersion(name);
+	}
+
 	/** delegate request addition */
 	public addRequests(requests: readonly RAnalysisRequest[]): void {
 		this.files.addRequests(requests);
@@ -138,12 +289,6 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 
 	public addFiles(f: (string | FlowrFileProvider | RParseRequestFromFile)[]): void {
 		this.files.addFiles(f);
-	}
-
-	/** this conducts all the step that can be done before the main analysis run */
-	public resolvePreAnalysis(): void {
-		this.files.computeLoadingOrder();
-		this.deps.resolveStaticDependencies();
 	}
 
 	/**
@@ -159,6 +304,11 @@ export class FlowrAnalyzerContext implements ReadOnlyFlowrAnalyzerContext, Inval
 	 * Reset the context to its initial state, e.g., removing all files, dependencies, and loading orders.
 	 */
 	public reset(): void {
+		this.files.reset();
+		this.deps.reset();
+		this.meta.reset();
+		this.gas.reset();
+		this.activatedPlugins.clear();
 		this.receive( { type: InvalidationEventType.Full });
 	}
 

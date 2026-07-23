@@ -7,7 +7,7 @@ import { describe } from 'vitest';
 import { SourceRange } from '../../../../../src/util/range';
 
 describe.sequential('Parse Pipes', withShell(shell => {
-	assertAst(label('x |> f()', ['name-normal', 'built-in-pipe-and-pipe-bind', 'call-normal']),
+	assertAst(label('x |> f()', ['name-normal', 'pipe-and-pipe-bind', 'call-normal']),
 		shell, 'x |> f()', exprList({
 			type:     RType.Pipe,
 			location: SourceRange.from(1, 3, 1, 4),
@@ -45,7 +45,7 @@ describe.sequential('Parse Pipes', withShell(shell => {
 		}),
 		{ minRVersion: MIN_VERSION_PIPE }
 	);
-	assertAst(label('x |> f() |> g()', ['name-normal', 'built-in-pipe-and-pipe-bind', 'call-normal']),
+	assertAst(label('x |> f() |> g()', ['name-normal', 'pipe-and-pipe-bind', 'call-normal']),
 		shell, 'x |> f() |> g()', exprList({
 			type:     RType.Pipe,
 			location: SourceRange.from(1, 10, 1, 11),

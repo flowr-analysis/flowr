@@ -1,8 +1,8 @@
 import { type ILogObj, type ISettingsParam, Logger } from 'tslog';
 import { createStream, type Options } from 'rotating-file-stream';
 
-export const expensiveTrace = (log: Logger<ILogObj>, supplier: () => string): void => {
-	if(log.settings.minLevel <= LogLevel.Trace) {
+export const expensiveTrace = (log: Logger<ILogObj> | undefined, supplier: () => string): void => {
+	if(log !== undefined && log.settings.minLevel <= LogLevel.Trace) {
 		log.trace(supplier());
 	}
 };
@@ -56,6 +56,24 @@ export const enum LogLevel {
 	Warn = 4,
 	Error = 5,
 	Fatal = 6
+}
+
+export const LogLevelNames = {
+	silly: LogLevel.Silly,
+	trace: LogLevel.Trace,
+	debug: LogLevel.Debug,
+	info:  LogLevel.Info,
+	warn:  LogLevel.Warn,
+	error: LogLevel.Error,
+	fatal: LogLevel.Fatal
+} as const;
+export type LogLevelName = keyof typeof LogLevelNames;
+
+/** Set the global minimum log level by name. */
+export function setLogLevel(level: LogLevelName): void {
+	log.updateSettings(l => {
+		l.settings.minLevel = LogLevelNames[level];
+	});
 }
 
 function getActiveLog(): FlowrLogger {

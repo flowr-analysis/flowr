@@ -36,7 +36,7 @@ export function asFunction(name: string, definedAt: NodeId): IdentifierDefinitio
  * @param options - optional allows to give further options
  */
 export function argumentInCall(nodeId: NodeId, options?: { name?: string, cds?: ControlDependency[] }): FunctionArgument {
-	return { nodeId: NodeId.normalize(nodeId), type: ReferenceType.Argument, name: options?.name, cds: options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) };
+	return { nodeId: NodeId.normalize(nodeId), valueId: undefined, type: ReferenceType.Argument, name: options?.name, cds: options?.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) };
 }
 /**
  * The constant global environment with all pre-defined functions.

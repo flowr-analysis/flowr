@@ -3,7 +3,7 @@ import { type DataflowProcessorInformation, processDataflowFor } from '../../../
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { RConstant } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { DataflowGraph, FunctionArgument } from '../../../../graph/graph';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../../../environments/environment';
@@ -15,6 +15,7 @@ import {
 import { overwriteEnvironment } from '../../../../environments/overwrite';
 import { resolveByName } from '../../../../environments/resolve-by-name';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
+import { processFunctionArgument } from '../process-argument';
 import {
 	type DataflowGraphVertexAstLink,
 	type DataflowGraphVertexFunctionDefinition,
@@ -32,7 +33,7 @@ export interface ForceArguments {
 
 export interface ProcessAllArgumentInput<OtherInfo> extends ForceArguments {
 	readonly functionName:   DataflowInformation
-	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	readonly args:           readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
 	readonly data:           DataflowProcessorInformation<OtherInfo & ParentInformation>
 	readonly finalGraph:     DataflowGraph
 	readonly functionRootId: NodeId
@@ -102,10 +103,11 @@ export function convertFnArgument<OtherInfo>(this: void, arg: typeof EmptyArgume
 		return { nodeId: arg.info.id, cds: undefined, type: ReferenceType.Argument };
 	} else {
 		return {
-			nodeId: arg.info.id,
-			name:   arg.name.content,
-			cds:    undefined,
-			type:   ReferenceType.Argument
+			nodeId:  arg.info.id,
+			valueId: arg.value?.info.id,
+			name:    arg.name.content,
+			cds:     undefined,
+			type:    ReferenceType.Argument
 		};
 	}
 }
@@ -125,6 +127,7 @@ export function processAllArguments<OtherInfo>(
 	let i = -1;
 	for(const arg of args) {
 		i++;
+		data = { ...data, environment: argEnv };
 		data = patchData?.(data, i) ?? data;
 		if(arg === EmptyArgument) {
 			callArgs.push(EmptyArgument);
@@ -132,9 +135,14 @@ export function processAllArguments<OtherInfo>(
 			continue;
 		}
 
-		const processed = processDataflowFor(arg, { ...data, environment: argEnv });
+		let processed: DataflowInformation;
+		if(i === 0 && data.precomputedFirstArg?.rootId === functionRootId) {
+			processed = data.precomputedFirstArg.info;
+		} else {
+			processed = arg.type === RType.Argument ? processFunctionArgument(arg, data) : processDataflowFor(arg, data);
+		}
 		if(RArgument.isWithValue(arg) && (forceArgs === 'all' || forceArgs[i]) && !RConstant.is(arg.value)) {
-			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, argEnv);
+			forceVertexArgumentValueReferences(functionRootId, processed, processed.graph, data.environment);
 		}
 		processedArguments.push(processed);
 
@@ -148,7 +156,7 @@ export function processAllArguments<OtherInfo>(
 				const inId = ingoing.nodeId;
 				const refType = finalGraph.getVertex(inId)?.tag === VertexType.FunctionCall ? ReferenceType.Function : ReferenceType.Unknown;
 
-				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, argEnv, refType) : undefined;
+				const tryToResolve = ingoing.name ? resolveByName(ingoing.name, data.environment, refType) : undefined;
 				if(tryToResolve === undefined) {
 					remainingReadInArgs.push(ingoing);
 				} else {
@@ -174,7 +182,7 @@ export function processAllArguments<OtherInfo>(
 		if(arg.type !== RType.Argument || !arg.name) {
 			callArgs.push({ nodeId: processed.entryPoint, cds: undefined, type: ReferenceType.Argument });
 		} else {
-			callArgs.push({ nodeId: processed.entryPoint, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
+			callArgs.push({ nodeId: processed.entryPoint, valueId: arg.value?.info.id, name: arg.name.content, cds: undefined, type: ReferenceType.Argument });
 		}
 
 		finalGraph.addEdge(functionRootId, processed.entryPoint, EdgeType.Argument);

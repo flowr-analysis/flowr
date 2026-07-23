@@ -1,20 +1,19 @@
 import type { DataFrameDomain } from '../../abstract-interpretation/data-frame/dataframe-domain';
 import { DataFrameShapeInferenceVisitor, type DataFrameOperationType } from '../../abstract-interpretation/data-frame/shape-inference';
-import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/satisfiable-domain';
+import { NumericalComparator, SetComparator } from '../../abstract-interpretation/domains/value-abstract-domain';
+import { FlowrConfig } from '../../config';
+import { Identifier } from '../../dataflow/environments/identifier';
 import { CfgKind } from '../../project/cfg-kind';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
-import { Enrichment } from '../../search/search-executor/search-enrichers';
 import { Ternary } from '../../util/logic';
 import { type MergeableRecord } from '../../util/objects';
-import { SourceRange } from '../../util/range';
+import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import { Identifier } from '../../dataflow/environments/identifier';
-import { FlowrConfig } from '../../config';
 
 interface DataFrameAccessOperation {
 	nodeId:        NodeId
@@ -31,15 +30,13 @@ interface DataFrameAccess {
 
 export interface DataFrameAccessValidationResult extends LintingResult {
 	/** The type of the data frame access ("column" or "row") */
-	type:     'column' | 'row',
+	readonly type:     'column' | 'row',
 	/** The name or index of the column or row being accessed in the data frame */
-	accessed: string | number,
+	readonly accessed: string | number,
 	/** The name of the function/operation used for the access (e.g. `$`, `[`, `[[`, but also `filter`, `select`, ...) */
-	access:   string,
+	readonly access:   string,
 	/** The variable/symbol name of the accessed data frame operand (`undefined` if operand is no symbol) */
-	operand?: string,
-	/** The source range in the code where the access occurs */
-	range:    SourceRange
+	readonly operand?: string,
 }
 
 export interface DataFrameAccessValidationConfig extends MergeableRecord {
@@ -57,20 +54,22 @@ export interface DataFrameAccessValidationMetadata extends MergeableRecord {
 }
 
 export const DATA_FRAME_ACCESS_VALIDATION = {
-	createSearch:        () => Q.all().with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	createSearch:        () => Q.all(),
 	processSearchResult: async(elements, config, data) => {
-		let ctx = data.analyzer.inspectContext();
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
+		let ctx = data.inspectContext();
 		ctx = {
 			...ctx,
-			config: FlowrConfig.amend(data.analyzer.flowrConfig, flowrConfig => {
+			config: FlowrConfig.amend(data.flowrConfig, flowrConfig => {
 				if(config.readLoadedData !== undefined) {
 					(flowrConfig.abstractInterpretation.dataFrame.readLoadedData as { readExternalFiles: boolean }).readExternalFiles = config.readLoadedData;
 				}
 				return flowrConfig;
 			})
 		};
-		const cfg = await data.analyzer.controlflow(undefined, CfgKind.NoFunctionDefs);
-		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: data.dataflow.graph, normalizedAst: data.normalize, ctx });
+		const cfg = await data.controlflow(undefined, CfgKind.NoFunctionDefs);
+		const inference = new DataFrameShapeInferenceVisitor({ controlFlow: cfg, dfg: dataflow.graph, normalizedAst: normalize, ctx });
 		inference.start();
 
 		const accessOperations = getAccessOperations(elements, inference);
@@ -110,15 +109,15 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 			)
 			.map(({ nodeId, operand, ...accessed }) => ({
 				...accessed,
-				node:    data.normalize.idMap.get(nodeId),
-				operand: operand === undefined ? undefined : data.normalize.idMap.get(operand),
+				node:    normalize.idMap.get(nodeId),
+				operand: operand === undefined ? undefined : normalize.idMap.get(operand),
 			}))
 			.map(({ node, operand, ...accessed }) => ({
 				...accessed,
 				involvedId: node?.info.id,
 				access:     node?.lexeme ?? '???',
 				...(operand?.type === RType.Symbol ? { operand: Identifier.getName(operand.content) } : {}),
-				range:      SourceRange.fromNode(node) ?? SourceRange.invalid(),
+				loc:        SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 				certainty:  LintingResultCertainty.Certain
 			}));
 
@@ -127,10 +126,10 @@ export const DATA_FRAME_ACCESS_VALIDATION = {
 	prettyPrint: {
 		[LintingPrettyPrintContext.Query]: result => `Access of ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' ' +
-			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`,
+			(result.operand === undefined ? `at \`${result.access}\`` : `of \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`,
 		[LintingPrettyPrintContext.Full]: result => `Accessed ${result.type} ` +
 			(typeof result.accessed === 'string' ? `"${result.accessed}"` : result.accessed) + ' does not exist ' +
-			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceRange.format(result.range)}`
+			(result.operand === undefined ? `at \`${result.access}\`` : `in \`${result.operand}\``) + ` at ${SourceLocation.format(result.loc)}`
 	},
 	info: {
 		name:          'Dataframe Access Validation',

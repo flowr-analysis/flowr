@@ -22,6 +22,10 @@ import { CfgKind } from '../../../project/cfg-kind';
 import { getCallsInCfg } from '../../../control-flow/extract-cfg';
 import { identifyLinkToRelation } from './identify-link-to-relation';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { ArrayQueue } from '../../../util/collections/queue';
+import { baseRExportOwner } from '../../../util/r-base-packages';
+import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
 
 /* if the node is effected by nse, we have an ingoing nse edge */
 function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
@@ -40,7 +44,6 @@ function makeReport(collector: TwoLayerCollector<string, string, CallContextQuer
 			if(!Array.isArray(subkinds[subkind])) {
 				subkinds[subkind] = [];
 			}
-			subkinds[subkind] ??= [];
 			const collectIn = subkinds[subkind];
 			for(const value of values) {
 				collectIn.push(value);
@@ -60,17 +63,21 @@ function isSubCallQuery(query: CallContextQuery): query is SubCallContextQueryFo
 export type PromotedCallTest = (t: string) => boolean;
 
 /**
- *
+ * Convert a name to a predicate that checks whether an input conforms to this name.
  */
 export function promoteCallName(callName: CallNameTypes, exact = false): PromotedCallTest {
 	if(Array.isArray(callName)) {
 		const s = new Set<string>(callName);
 		return (t: string) => s.has(t);
-	} else if(exact) {
-		const s = new Set([typeof callName === 'string' ? callName : callName.source]);
-		return (t: string) => s.has(t);
+	} else if(typeof callName === 'string') {
+		if(exact) {
+			return (t: string) => t === callName;
+		} else {
+			const r = new RegExp(callName);
+			return (t: string) => r.test(t);
+		}
 	} else {
-		const r = new RegExp(callName);
+		const r = new RegExp(exact ? '^' + callName.source + '$' : callName.source);
 		return (t: string) => r.test(t);
 	}
 }
@@ -78,39 +85,55 @@ export function promoteCallName(callName: CallNameTypes, exact = false): Promote
 // when promoting queries, we convert all strings to regexes, and all string arrays to string sets
 type PromotedQuery = Omit<CallContextQuery, 'callName' | 'fileFilter' | 'linkTo'> & {
 	callName:    PromotedCallTest,
+	/** names the query matches exactly (if any), allowing map-based lookup instead of per-vertex predicate checks */
+	exactNames?: readonly string[],
+	/** position in the original query list, keeps result order stable */
+	idx:         number,
 	fileFilter?: FileFilter<PromotedCallTest>,
 	linkTo?:     PromotedLinkTo | PromotedLinkTo[]
 };
 export type PromotedLinkTo<LT = LinkTo> = Omit<LT, 'callName'> & { callName: PromotedCallTest };
+
+/** string arrays always match exactly, plain strings only if the query requests an exact match */
+function exactNamesOf(callName: CallNameTypes, exact: boolean | undefined): readonly string[] | undefined {
+	if(Array.isArray(callName)) {
+		return callName;
+	}
+	return exact && typeof callName === 'string' ? [callName] : undefined;
+}
 
 function promoteQueryCallNames(queries: readonly CallContextQuery[]): {
 	promotedQueries: PromotedQuery[],
 	requiresCfg:     boolean
 } {
 	let requiresCfg = false;
-	const promotedQueries: PromotedQuery[] = queries.map(q => {
+	const promotedQueries: PromotedQuery[] = queries.map((q, idx) => {
 		if(isSubCallQuery(q)) {
 			requiresCfg = true;
 			return {
 				...q,
 				callName:   promoteCallName(q.callName, q.callNameExact),
+				exactNames: exactNamesOf(q.callName, q.callNameExact),
+				idx,
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
 				},
-				linkTo: Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
+				linkTo: q.linkTo ? Array.isArray(q.linkTo) ? q.linkTo.map(l => ({
 					...l,
 					callName: promoteCallName(l.callName)
 				})) : {
 					...q.linkTo,
 					/* we have to add another promotion layer whenever we add something without this call name */
 					callName: promoteCallName(q.linkTo.callName)
-				}
+				} : undefined
 			} satisfies PromotedQuery;
 		} else {
 			return {
 				...q,
 				callName:   promoteCallName(q.callName, q.callNameExact),
+				exactNames: exactNamesOf(q.callName, q.callNameExact),
+				idx,
 				fileFilter: q.fileFilter && {
 					...q.fileFilter,
 					filter: promoteCallName(q.fileFilter.filter)
@@ -129,11 +152,11 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 	const aliases: Map<string, NodeId[]> = new Map();
 
 	const visited = new Set<NodeId>();
-	/* we store the current call name */
-	const queue: (readonly [string, NodeId])[] = [[recoverContent(nodeId, graph) ?? '', nodeId]];
+	/* we store the current call name alongside each id */
+	const queue = new ArrayQueue<readonly [string, NodeId]>([[recoverContent(nodeId, graph) ?? '', nodeId]]);
 
-	while(queue.length > 0) {
-		const [str, id] = queue.shift() as [string, NodeId];
+	while(!queue.isEmpty()) {
+		const [str, id] = queue.dequeue() as readonly [string, NodeId];
 		if(visited.has(id)) {
 			continue;
 		}
@@ -160,7 +183,9 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 				.map(([t]) => [recoverContent(t, graph) ?? '', t] as const)
 				.toArray();
 			/** only follow defined-by and reads */
-			queue.push(...x);
+			for(const e of x) {
+				queue.enqueue(e);
+			}
 			continue;
 		}
 
@@ -174,7 +199,7 @@ function retrieveAllCallAliases(nodeId: NodeId, graph: DataflowGraph): Map<strin
 		;
 
 		for(const call of out) {
-			queue.push([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
+			queue.enqueue([recoverContent(call, graph) ?? recoverContent(id, graph) ?? '', call]);
 		}
 	}
 
@@ -208,6 +233,30 @@ function doesFilepathMatch(file: string | undefined, filter: FileFilter<Promoted
 	return filter.filter(file);
 }
 
+/**
+ * Whether a bare (unqualified) callee named `name` could originate from `target`, resolved through the
+ * signature database: base R's export owner, then any package the loaded sources record as exporting `name`.
+ * Only meaningful once the version plugins are initialized (see {@link primeSigDbForNamespaceFilter}).
+ */
+function bareCallOwnedBy(name: string, target: string, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+	return baseRExportOwner(name) === target || deps.packagesExporting(name).includes(target);
+}
+
+/**
+ * Whether a bare-callee sigdb fallback is worth attempting for `queries`: some query filters by
+ * {@link CallContextQuery#callTargetNamespace} and a signature source is actually loaded. When so, this also
+ * forces the version plugins to initialize (the same {@link ReadOnlyFlowrAnalyzerDependenciesContext#getDependencies}
+ * priming the `undefined-symbol` linter relies on) -- otherwise `packagesExporting` answers empty until
+ * something else happens to trigger it.
+ */
+function primeSigDbForNamespaceFilter(queries: readonly PromotedQuery[], deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+	if(!queries.some(q => q.callTargetNamespace !== undefined) || deps.signatureSources().length === 0) {
+		return false;
+	}
+	deps.getDependencies();
+	return true;
+}
+
 function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 	let node = ast.idMap.get(nodeId);
 	while(node !== undefined) {
@@ -232,6 +281,7 @@ function isParameterDefaultValue(nodeId: NodeId, ast: NormalizedAst): boolean {
 export async function executeCallContextQueries({ analyzer }: BasicQueryData, queries: readonly CallContextQuery[]): Promise<CallContextQueryResult> {
 	const dataflow = await analyzer.dataflow();
 	const ast = await analyzer.normalize();
+	const deps = analyzer.inspectContext().deps;
 
 	/* omit performance page load */
 	const now = Date.now();
@@ -240,6 +290,7 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 
 	/* promote all strings to regex patterns */
 	const { promotedQueries, requiresCfg } = promoteQueryCallNames(queries);
+	const sigDbReady = primeSigDbForNamespaceFilter(promotedQueries, deps);
 
 	let cfg = undefined;
 	if(requiresCfg) {
@@ -247,6 +298,26 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 	}
 	const calls = cfg ? getCallsInCfg(cfg, dataflow.graph) : undefined;
 	const queriesWhichWantAliases = promotedQueries.filter(q => q.includeAliases);
+	/* index exact-name queries so each vertex costs one map lookup instead of a predicate check per query */
+	const nonAliasByName = new Map<string, PromotedQuery[]>();
+	const nonAliasPatterns: PromotedQuery[] = [];
+	for(const query of promotedQueries) {
+		if(query.includeAliases) {
+			continue;
+		}
+		if(query.exactNames) {
+			for(const name of query.exactNames) {
+				const present = nonAliasByName.get(name);
+				if(present) {
+					present.push(query);
+				} else {
+					nonAliasByName.set(name, [query]);
+				}
+			}
+		} else {
+			nonAliasPatterns.push(query);
+		}
+	}
 
 	for(const [nodeId, info] of dataflow.graph.verticesOfType(VertexType.FunctionCall)) {
 		/* if we have a vertex, and we check for aliased calls, we want to know if we define this as desired! */
@@ -267,7 +338,16 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 		}
 
 		const n = Identifier.getName(info.name);
-		for(const query of promotedQueries.filter(q => !q.includeAliases && q.callName(n))) {
+		const byName = nonAliasByName.get(n) ?? [];
+		let matching: readonly PromotedQuery[];
+		if(nonAliasPatterns.length === 0) {
+			matching = byName;
+		} else {
+			const patternMatches = nonAliasPatterns.filter(q => q.callName(n));
+			matching = byName.length === 0 ? patternMatches
+				: [...byName, ...patternMatches].sort((a, b) => a.idx - b.idx);
+		}
+		for(const query of matching) {
 			const file = ast.idMap.get(nodeId)?.info.file;
 			if(!doesFilepathMatch(file, query.fileFilter)) {
 				continue;
@@ -277,6 +357,14 @@ export async function executeCallContextQueries({ analyzer }: BasicQueryData, qu
 			if(query.callTargets) {
 				targets = satisfiesCallTargets(info, dataflow.graph, query.callTargets);
 				if(targets === 'no') {
+					continue;
+				}
+			}
+			if(query.callTargetNamespace !== undefined) {
+				const pkg = Identifier.getNamespace(Dataflow.qualify(nodeId, dataflow.graph) ?? info.name);
+				// a bare callee (no syntactic/resolved namespace) is not yet a mismatch -- consult the sigdb for who exports it
+				const owned = pkg === undefined ? sigDbReady && bareCallOwnedBy(n, query.callTargetNamespace, deps) : pkg === query.callTargetNamespace;
+				if(!owned) {
 					continue;
 				}
 			}

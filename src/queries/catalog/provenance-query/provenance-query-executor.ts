@@ -1,0 +1,38 @@
+import { log } from '../../../util/log';
+import type { BasicQueryData } from '../../base-query-format';
+import type { ProvenanceQuery, ProvenanceQueryResult } from './provenance-query-format';
+import { RFunctionDefinition } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
+import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+
+/**
+ * Execute a provenance query collection, {@link Dataflow.provenance}
+ */
+export async function executeProvenanceQuery({ analyzer }: BasicQueryData, queries: readonly ProvenanceQuery[]): Promise<ProvenanceQueryResult> {
+	const start = Date.now();
+	const results: ProvenanceQueryResult['results'] = {};
+	const nast = await analyzer.normalize();
+	const df = await analyzer.dataflow();
+	for(const query of queries) {
+		const key = query.criterion;
+		if(results[key]) {
+			log.warn(`Duplicate key for provenance query: ${key}, skipping...`);
+		}
+		const criterionId = SlicingCriterion.tryParse(key, nast.idMap) ?? key;
+
+		const provenanceNode = nast.idMap.get(criterionId);
+		const fdef = RFunctionDefinition.wrappingFunctionDefinition(provenanceNode, nast.idMap);
+		results[key] = Array.from(Dataflow.provenance(
+			criterionId,
+			df.graph,
+			fdef ? RNode.collectAllIds(fdef) : undefined
+		));
+	}
+	return {
+		'.meta': {
+			timing: Date.now() - start
+		},
+		results
+	};
+}

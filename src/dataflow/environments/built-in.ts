@@ -1,11 +1,13 @@
 import type { DataflowProcessorInformation } from '../processor';
 import type { DataflowInformation, ExitPoint, ExitPointType } from '../info';
-import { processKnownFunctionCall } from '../internal/process/functions/call/known-call-handling';
+import type { NseArguments } from '../internal/process/functions/call/known-call-handling';
+import { processKnownFunctionCall, markArgumentsAsNonStandardEvaluation } from '../internal/process/functions/call/known-call-handling';
 import { processAccess } from '../internal/process/functions/call/built-in/built-in-access';
 import { processIfThenElse } from '../internal/process/functions/call/built-in/built-in-if-then-else';
 import {
 	processAssignment,
-	processAssignmentLike
+	processAssignmentLike,
+	processDefineArgument
 } from '../internal/process/functions/call/built-in/built-in-assignment';
 import { processSpecialBinOp } from '../internal/process/functions/call/built-in/built-in-special-bin-op';
 import { processPipe } from '../internal/process/functions/call/built-in/built-in-pipe';
@@ -13,7 +15,8 @@ import { processForLoop } from '../internal/process/functions/call/built-in/buil
 import { processRepeatLoop } from '../internal/process/functions/call/built-in/built-in-repeat-loop';
 import { processWhileLoop } from '../internal/process/functions/call/built-in/built-in-while-loop';
 import {
-	type BrandedIdentifier, Identifier,
+	type BrandedIdentifier,
+	Identifier,
 	type IdentifierDefinition,
 	type IdentifierReference,
 	ReferenceType
@@ -25,7 +28,7 @@ import { processFunctionDefinition } from '../internal/process/functions/call/bu
 import { processExpressionList } from '../internal/process/functions/call/built-in/built-in-expression-list';
 import { processGet } from '../internal/process/functions/call/built-in/built-in-get';
 import type { AstIdMap, ParentInformation, RNodeWithParent } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { EmptyArgument, type RFunctionArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { EmptyArgument, type PotentiallyEmptyRArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { RSymbol } from '../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { type BuiltIn, NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { EdgeType } from '../graph/edge';
@@ -58,20 +61,28 @@ import { processRegisterHook } from '../internal/process/functions/call/built-in
 import { processLocal } from '../internal/process/functions/call/built-in/built-in-local';
 import { processS3Dispatch } from '../internal/process/functions/call/built-in/built-in-s-three-dispatch';
 import { processRecall } from '../internal/process/functions/call/built-in/built-in-recall';
-import { processS7NewGeneric } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
+import { processS7NewGeneric, processMakeConstructor } from '../internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import { processS7Dispatch } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
 import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { BuiltInProcName } from './built-in-proc-name';
+import { processPurrrFormula } from '../internal/process/functions/call/built-in/built-in-purrr-formula';
+import { processNewEnv } from '../internal/process/functions/call/built-in/built-in-new-env';
+import { processStackEnv } from '../internal/process/functions/call/built-in/built-in-stack-env';
+import { processAttach } from '../internal/process/functions/call/built-in/built-in-attach';
+import { processWithEnv } from '../internal/process/functions/call/built-in/built-in-with';
+import { processNamespaceAccess } from '../internal/process/functions/call/built-in/built-in-namespace-access';
+import { processLoadCall } from '../internal/process/functions/call/built-in/built-in-load';
 
 export type BuiltInIdentifierProcessor = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 ) => DataflowInformation;
 
 export type BuiltInIdentifierProcessorWithConfig<Config> = <OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: Config
@@ -94,9 +105,16 @@ export interface DefaultBuiltInProcessorConfiguration extends ForceArguments {
 	readonly returnsNthArgument?:    number | 'last',
 	readonly cfg?:                   ExitPointType,
 	readonly readAllArguments?:      boolean,
+	/**
+	 * Propagate the `out` references produced by the arguments instead of dropping them.
+	 * Set this for functions that are transparent about their arguments, like `(`.
+	 */
+	readonly keepArgumentOut?:       boolean,
 	readonly hasUnknownSideEffects?: boolean | LinkTo<RegExp | string>,
 	/** record mapping the actual function name called to the arguments that should be treated as function calls */
 	readonly treatAsFnCall?:         Record<string, readonly string[]>,
+	/** Mark the given arguments as {@link EdgeType.NonStandardEvaluation|non-standard-evaluated}, like `quote`. */
+	readonly markArgsAsNSE?:         NseArguments,
 	/**
 	 * Name that should be used for the origin (useful when needing to differentiate between
 	 * functions like 'return' that use the default builtin processor)
@@ -116,12 +134,18 @@ export type BuiltInEvalHandler = (args: BuiltInEvalHandlerArgs) => Value;
 
 function defaultBuiltInProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall }: DefaultBuiltInProcessorConfiguration
+	{ returnsNthArgument, useAsProcessor = BuiltInProcName.Default, forceArgs, readAllArguments, cfg, hasUnknownSideEffects, treatAsFnCall, markArgsAsNSE: nse, keepArgumentOut }: DefaultBuiltInProcessorConfiguration
 ): DataflowInformation {
 	const { information: res, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
+	if(nse !== undefined) {
+		markArgumentsAsNonStandardEvaluation(res.graph, rootId, processedArguments, nse);
+	}
+	if(keepArgumentOut) {
+		res.out = [...res.out, ...processedArguments.flatMap(arg => arg?.out ?? [])];
+	}
 	if(returnsNthArgument !== undefined) {
 		const arg = returnsNthArgument === 'last' ? processedArguments.at(-1) : processedArguments[returnsNthArgument];
 		if(arg !== undefined) {
@@ -182,10 +206,10 @@ function defaultBuiltInProcessor<OtherInfo>(
 
 function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
-	{ useAsProcessor = BuiltInProcName.Default, forceArgs }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs'>
+	{ useAsProcessor = BuiltInProcName.Default, forceArgs, markArgsAsNSE: nse }: Pick<DefaultBuiltInProcessorConfiguration, 'useAsProcessor' | 'forceArgs' | 'markArgsAsNSE'>
 ): DataflowInformation {
 	const { information, processedArguments } = processKnownFunctionCall({ name, args, rootId, data, forceArgs, origin: useAsProcessor });
 	const g = information.graph;
@@ -194,91 +218,10 @@ function defaultBuiltInProcessorReadallArgs<OtherInfo>(
 			g.addEdge(rootId, arg.entryPoint, EdgeType.Reads);
 		}
 	}
+	if(nse !== undefined) {
+		markArgumentsAsNonStandardEvaluation(g, rootId, processedArguments, nse);
+	}
 	return information;
-}
-
-/**
- * This contains all names of built-in function handlers and origins
- */
-export enum BuiltInProcName {
-	/** for subsetting operations, see {@link processAccess} */
-	Access              = 'builtin:access',
-	/** for the `*apply` family, see {@link processApply} */
-	Apply               = 'builtin:apply',
-	/** for assignments like `<-` and `=`, see {@link processAssignment} */
-	Assignment          = 'builtin:assignment',
-	/** for assignment like functions that may do additional work, see {@link processAssignmentLike} */
-	AssignmentLike      = 'builtin:assignment-like',
-	/** for `break` calls */
-	Break               = 'builtin:break',
-	/** the default built-in processor, see {@link defaultBuiltInProcessor} */
-	Default             = 'builtin:default',
-	/** Just a more performant variant of the default processor for built-ins that need to read all their arguments, see {@link defaultBuiltInProcessor}, this will still produce the origin `BuiltIn.Default` */
-	DefaultReadAllArgs  = 'builtin:default-read-all-args',
-	/** for `eval` calls, see {@link processEvalCall} */
-	Eval                = 'builtin:eval',
-	/** for expression lists, see {@link processExpressionList} */
-	ExpressionList      = 'builtin:expression-list',
-	/** for `for` loops, see {@link processForLoop} */
-	ForLoop             = 'builtin:for-loop',
-	/** We resolved a function call, similar to {@link BuiltInProcName#Default} */
-	Function            = 'function',
-	/** for function definitions, see {@link processFunctionDefinition} */
-	FunctionDefinition  = 'builtin:function-definition',
-	/** for `get` calls, see {@link processGet} */
-	Get                 = 'builtin:get',
-	/** for `if-then-else` constructs, see {@link processIfThenElse} */
-	IfThenElse          = 'builtin:if-then-else',
-	/** for `library` and `require` calls, see {@link processLibrary} */
-	Library             = 'builtin:library',
-	/** for `list` calls, see {@link processList} */
-	List                = 'builtin:list',
-	/** for `local` calls, see {@link processLocal} */
-	Local               = 'builtin:local',
-	/** for the pipe operators, see {@link processPipe} */
-	Pipe                = 'builtin:pipe',
-	/** for `quote`, and other substituting calls, see {@link processQuote} */
-	Quote               = 'builtin:quote',
-	/**
-	 * for `recall` calls, see {@link processRecall}
-	 */
-	Recall              = 'builtin:recall',
-	/** for `on.exìt` and other hooks, see {@link processRegisterHook} */
-	RegisterHook        = 'builtin:register-hook',
-	/** for `repeat` loops, see {@link processRepeatLoop} */
-	RepeatLoop          = 'builtin:repeat-loop',
-	/** for replacement functions like `names<-`, see {@link processReplacementFunction} */
-	Replacement         = 'builtin:replacement',
-	/** for `return` calls */
-	Return              = 'builtin:return',
-	/** for `rm` calls, see {@link processRm} */
-	Rm                  = 'builtin:rm',
-	/** for `UseMethod` calls, see {@link processS3Dispatch} */
-	S3Dispatch          = 'builtin:s3-dispatch',
-	/** for `NextMethod` calls, see {@link processS3Dispatch} */
-	S3DispatchNext      = 'builtin:s3-dispatch-next',
-	/** for `new.generic` calls, see {@link processS7NewGeneric} */
-	S7NewGeneric        = 'builtin:s7-new-generic',
-	/** for `S7_dispatch` calls (and their implicit creations), see {@link processS7Dispatch} */
-	S7Dispatch          = 'builtin:s7-dispatch',
-	/** for `source` calls, see {@link processSourceCall} */
-	Source              = 'builtin:source',
-	/** for special binary operators like `%x%`, see {@link processSpecialBinOp} */
-	SpecialBinOp        = 'builtin:special-bin-op',
-	/** for `stop` calls */
-	Stop                = 'builtin:stop',
-	/** for `stopifnot` calls, see {@link processStopIfNot} */
-	StopIfNot           = 'builtin:stopifnot',
-	/** support for `:=` in subsetting assignments, see {@link processAccess} */
-	TableAssignment     = 'table:assign',
-	/** for `try` calls, see {@link processTryCatch} */
-	Try                 = 'builtin:try',
-	/** for unnamed directly-linked function calls */
-	Unnamed             = 'unnamed',
-	/** for vector construction calls, see {@link processVector} */
-	Vector              = 'builtin:vector',
-	/** for `while` loops, see {@link processWhileLoop} */
-	WhileLoop           = 'builtin:while-loop',
 }
 
 export const BuiltInProcessorMapper = {
@@ -286,6 +229,7 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Apply]:              processApply,
 	[BuiltInProcName.Assignment]:         processAssignment,
 	[BuiltInProcName.AssignmentLike]:     processAssignmentLike,
+	[BuiltInProcName.DefineArgument]:     processDefineArgument,
 	[BuiltInProcName.Default]:            defaultBuiltInProcessor,
 	[BuiltInProcName.DefaultReadAllArgs]: defaultBuiltInProcessorReadallArgs,
 	[BuiltInProcName.Eval]:               processEvalCall,
@@ -296,8 +240,11 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.IfThenElse]:         processIfThenElse,
 	[BuiltInProcName.Library]:            processLibrary,
 	[BuiltInProcName.List]:               processList,
+	[BuiltInProcName.Load]:               processLoadCall,
 	[BuiltInProcName.Local]:              processLocal,
+	[BuiltInProcName.NamespaceAccess]:    processNamespaceAccess,
 	[BuiltInProcName.Pipe]:               processPipe,
+	[BuiltInProcName.PurrrFormula]:       processPurrrFormula,
 	[BuiltInProcName.Quote]:              processQuote,
 	[BuiltInProcName.Recall]:             processRecall,
 	[BuiltInProcName.RegisterHook]:       processRegisterHook,
@@ -306,11 +253,16 @@ export const BuiltInProcessorMapper = {
 	[BuiltInProcName.Rm]:                 processRm,
 	[BuiltInProcName.S3Dispatch]:         processS3Dispatch,
 	[BuiltInProcName.S7NewGeneric]:       processS7NewGeneric,
+	[BuiltInProcName.S7MakeConstructor]:  processMakeConstructor,
 	[BuiltInProcName.S7Dispatch]:         processS7Dispatch,
 	[BuiltInProcName.Source]:             processSourceCall,
 	[BuiltInProcName.SpecialBinOp]:       processSpecialBinOp,
 	[BuiltInProcName.StopIfNot]:          processStopIfNot,
 	[BuiltInProcName.Try]:                processTryCatch,
+	[BuiltInProcName.Attach]:             processAttach,
+	[BuiltInProcName.NewEnv]:             processNewEnv,
+	[BuiltInProcName.StackEnv]:           processStackEnv,
+	[BuiltInProcName.With]:               processWithEnv,
 	[BuiltInProcName.Vector]:             processVector,
 	[BuiltInProcName.WhileLoop]:          processWhileLoop,
 } as const satisfies Record<`builtin:${string}`, BuiltInIdentifierProcessorWithConfig<never>>;

@@ -3,10 +3,10 @@ import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-buil
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
-import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { ReferenceType } from '../../../../../src/dataflow/environments/identifier';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe.sequential('Lists with variable references', withShell(shell => {
 	describe('read-read same variable', () => {

@@ -1,18 +1,18 @@
 import { assert, beforeAll, describe, test } from 'vitest';
 import { withTreeSitter } from '../../_helper/shell';
-import { type SingleSlicingCriterion, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
-import { type Origin, getOriginInDfg, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
+import { type Origin, OriginType } from '../../../../src/dataflow/origin/dfg-get-origin';
 import { type TREE_SITTER_DATAFLOW_PIPELINE, createDataflowPipeline } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { PipelineOutput } from '../../../../src/core/steps/pipeline/pipeline';
 import { guard } from '../../../../src/util/assert';
-import { graphToMermaidUrl } from '../../../../src/util/mermaid/dfg';
-import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
 
 describe('Dataflow', withTreeSitter(ts => {
 	describe('getOriginInDfg', () => {
-		function chk(code: string, expected: Record<SingleSlicingCriterion, readonly Origin[] | undefined>): void  {
+		function chk(code: string, expected: Record<SlicingCriterion, readonly Origin[] | undefined>): void  {
 			describe(code, () => {
 				let analysis: PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE> | undefined;
 				beforeAll(async() => {
@@ -20,11 +20,11 @@ describe('Dataflow', withTreeSitter(ts => {
 						context: contextFromInput(code)
 					}).allRemainingSteps();
 				});
-				test.each(Object.keys(expected) as SingleSlicingCriterion[])('%s', (interest: SingleSlicingCriterion) => {
+				test.each(Object.keys(expected) as SlicingCriterion[])('%s', (interest: SlicingCriterion) => {
 					guard(analysis !== undefined);
 					const want = expected[interest];
-					const interestedId = slicingCriterionToId(interest, analysis.normalize.idMap);
-					const origins = getOriginInDfg(analysis.dataflow.graph, interestedId);
+					const interestedId = SlicingCriterion.parse(interest, analysis.normalize.idMap);
+					const origins = Dataflow.origin(analysis.dataflow.graph, interestedId);
 					try {
 						if(want === undefined) {
 							assert.isUndefined(origins);
@@ -33,13 +33,13 @@ describe('Dataflow', withTreeSitter(ts => {
 							origins?.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							const wantMapped = want.map(e => ({
 								...e,
-								id: slicingCriterionToId(e.id as SingleSlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
+								id: SlicingCriterion.parse(e.id as SlicingCriterion, (analysis as PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>).normalize.idMap)
 							})).sort((a, b) => String(a.id).localeCompare(String(b.id)));
 							assert.deepStrictEqual(origins, wantMapped);
 						}
 					} catch(e) {
 						const dfg = analysis.dataflow.graph;
-						console.error('dfg:', graphToMermaidUrl(dfg));
+						console.error('dfg:', Dataflow.visualize.mermaid.url(dfg));
 						throw e;
 					}
 				});
@@ -109,16 +109,16 @@ describe('Dataflow', withTreeSitter(ts => {
 			'1@x':     [wo('1@x')],
 			'3@i':     [ro('2@i')],
 			'3@x':     [wo('3@x')],
-			'3:11':    [ro('1@x'), ro('3@x')],
+			'3@[2]x':  [ro('1@x'), ro('3@x')],
 			'5@x':     [ro('1@x'), ro('3@x')],
 			'5@print': [bo(BuiltInProcName.Default, 'print', '5@print')]
 		});
 
 		chk('x <- 1\nfor(i in 1:10) {\n x <- i + x\n x <- x + 1\n}\nprint(x)', {
-			'3@x':  [wo('3@x')],
-			'3:11': [ro('1@x'), ro('4@x')],
-			'4@x':  [wo('4@x')],
-			'6@x':  [ro('1@x'), ro('4@x')]
+			'3@x':    [wo('3@x')],
+			'3@[2]x': [ro('1@x'), ro('4@x')],
+			'4@x':    [wo('4@x')],
+			'6@x':    [ro('1@x'), ro('4@x')]
 		});
 
 		chk('f <- function(x) {\nfunction() x + 2\n}\ng <- f(1)\ng()', {

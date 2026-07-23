@@ -1,6 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../../dataflow/environments/environment';
-import type { DecodedCriteria } from '../criterion/parse';
 
 
 /**
@@ -32,7 +31,7 @@ export interface SliceResult {
 	 */
 	readonly result:            ReadonlySet<NodeId>
 	/**
-	 * The mapping produced to decode the entered criteria
+	 * The ids of the nodes in the normalized ast that were used as seed ids for slicing. This is a subset of {@link result}.
 	 */
-	readonly decodedCriteria:   DecodedCriteria
+	readonly slicedFor:         readonly NodeId[]
 }

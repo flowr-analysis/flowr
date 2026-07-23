@@ -21,11 +21,17 @@ For more information on different slicing variants, refer to Section&nbsp;2.1.3 
 A slicing criterion describes the location of a single variable or several variables of interest to slice for.
 Weiser originally defined it as a combination of a line number and a set of variables of the program [(Weiser, 1984)](https://doi.org/10.1109/TSE.1984.5010248). *flowR* allows for three different formats:
 
-| format          | example      | description                                                                                                                                                     |
-|:----------------|:-------------|:----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `line@variable` | `12@product` | the classical format but only for a single variable. The example `12@product` slices for the first occurrence of a variable with the name `product` in line 12. |
-| `line:column`   | `12:5`       | a single variable or point in the program that starts at the given point.                                                                                       |
-| `$id`           | `$42`        | this criteria is probably best used internally and refers to the unique id assigned by *flowR*                                                                  |
+| format             | example         | description                                                                                                                                                                                    |
+|:-------------------|:----------------|:-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `line@variable`    | `12@product`    | the classical format but only for a single variable. The example `12@product` slices for the occurrence of a variable with the name `product` in line 12, preferring a function call over the symbol it refers to. |
+| `line@[n]variable` | `12@[2]product` | the `n`-th occurrence of the variable in that line, counted from the left (`12@[1]product` being the leftmost). Use a negative `n` to count from the right, `12@[-1]product` being the last one. |
+| `line:column`      | `12:5`          | a single variable or point in the program that *starts* at the given point.                                                                                                                     |
+| `line~column`      | `12~5`          | the innermost element that *contains* the given point, even if it starts somewhere else. Useful whenever you have a position (e.g. a cursor) rather than the start of an element.               |
+| `$id`              | `$42`           | this criteria is probably best used internally and refers to the unique id assigned by *flowR*                                                                                                  |
+
+For every format, a negative line counts from the end of the input, `-1` being the last line (e.g. `-1@product`).
+
+Additionally, every format but `$id` accepts a trailing `(file-regex)` which restricts the criterion to elements stemming from a matching file. This only matters for multi-file analyses, in which several files may well share a line 12: `12@product(tmp/.*\.R$)` picks the `product` of line 12 in a file below `tmp/`.
 
 Furthermore, slicing criteria can be joined by the use of a `;`-semicolon. `10@sum;12@product` refers to the first occurrence of `sum` in line 10 and the first occurrence of `product` in line 12 as two variables to be used for slicing.
 

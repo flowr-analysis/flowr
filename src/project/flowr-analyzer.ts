@@ -1,4 +1,5 @@
 import type { FlowrConfig } from '../config';
+import type { DeepPartial } from 'ts-essentials';
 import type { KnownParser, KnownParserInformation } from '../r-bridge/parser';
 import { executeQueries, type Queries, type QueryResults, type SupportedQueryTypes } from '../queries/query';
 import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
@@ -17,10 +18,10 @@ import type { RParseRequest, RParseRequestFromFile } from '../r-bridge/retriever
 import { isParseRequest, fileProtocol, requestFromInput } from '../r-bridge/retriever';
 import { isFilePath } from '../util/files';
 import type { FlowrFileProvider } from './context/flowr-file';
-import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
+import type { CallGraph } from '../dataflow/graph/call-graph';
 import type { InvalidationEvent } from './cache/flowr-cache';
 
 /**
@@ -153,6 +154,10 @@ export interface ReadonlyFlowrAnalysisProvider<Parser extends KnownParser = Know
 	runFull(force?: boolean): Promise<void>;
 	/** This is the config used for the analyzer */
 	flowrConfig: FlowrConfig;
+	/** Merge a runtime update into the base config and invalidate the derived config and cached analysis, so it takes effect. */
+	updateConfig(update: DeepPartial<FlowrConfig>): void;
+	/** Discard every {@link updateConfig} override made so far and invalidate the cached analysis. */
+	resetConfig(): void;
 }
 
 
@@ -214,8 +219,18 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.receive(event);
 	}
 
+	public updateConfig(update: DeepPartial<FlowrConfig>): void {
+		this.ctx.updateConfig(update);
+		// the parse/dataflow results were computed under the previous config, so they must be recomputed
+		this.cache.reset();
+	}
+
+	public resetConfig(): void {
+		this.ctx.resetConfig();
+		this.cache.reset();
+	}
+
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
-		console.log('parseStandalone');
 		const request = isParseRequest(data) ? data : requestFromInput(data);
 		if(this.parser.name === 'tree-sitter') {
 			return this.parser.parse(request, this.ctx);
@@ -326,9 +341,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	}
 
 	/**
-	 * Close the parser if it was created by this builder. This is only required if you rely on an RShell/remote engine.
+	 * Free the cached analyses (including any WASM-backed parse trees) and close the parser.
+	 * Closing is only required for an RShell/remote engine, but this also frees the cached parse trees.
 	 */
 	public close() {
+		this.cache.reset();
 		return this.parser?.close();
 	}
 }

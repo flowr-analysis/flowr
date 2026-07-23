@@ -28,18 +28,22 @@ export enum ColorEffect {
 export type FormatOptions = ColorFormatOptions | WeightFormatOptions | ColorFormatOptions & WeightFormatOptions;
 
 export interface ColorFormatOptions {
-	color:  Colors
-	effect: ColorEffect
+	color:   Colors
+	effect:  ColorEffect
+	/** use the high-intensity variant */
+	bright?: boolean
 }
 
 export interface WeightFormatOptions {
-	style: FontStyles
+	style: FontStyles | readonly FontStyles[]
 }
 
 export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
+	/** render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text) */
+	hyperlink(text: string, url: string): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -54,6 +58,10 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, _url: string): string {
+		return text;
+	}
 }();
 
 export const markdownFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -61,10 +69,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		if(options && 'style' in options) {
 			if(options.style === FontStyles.Bold) {
 				input = `**${input}**`;
-			} else if(options.style === FontStyles.Italic) {
+			} else if(options.style === FontStyles.Italic || options.style === FontStyles.Faint) {
 				input = `_${input}_`;
 			} else {
-				throw new Error(`Unsupported font style: ${options.style}`);
+				throw new Error(`Unsupported font style: ${String(options.style)}`);
 			}
 		}
 
@@ -86,6 +94,10 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 	public reset(): string {
 		return '';
 	}
+
+	public hyperlink(text: string, url: string): string {
+		return `[${text}](${url})`;
+	}
 }();
 
 /**
@@ -103,6 +115,18 @@ export function bold(s: string, f: OutputFormatter = formatter, options?: Format
 }
 
 /**
+ * Color the text in the given foreground color.
+ */
+export function color(s: string, c: Colors, f: OutputFormatter = formatter, opts?: { bright?: boolean, style?: FontStyles | readonly FontStyles[] }): string {
+	return f.format(s, { color: c, effect: ColorEffect.Foreground, ...opts });
+}
+
+/** Faint/dim ("grayed out") text. */
+export function faint(s: string, f: OutputFormatter = formatter, options?: FormatOptions): string {
+	return f.format(s, { style: FontStyles.Faint, ...options });
+}
+
+/**
  * This does not work if the {@link setFormatter|formatter} is void. Tries to format the text as informational message.
  */
 export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
@@ -111,9 +135,33 @@ export function ansiInfo(s: string, f: OutputFormatter = formatter): string {
 
 export const escape = '\x1b[';
 const colorSuffix = 'm';
+let hyperlinkSupport: boolean | undefined;
+/** best-effort, env-based OSC 8 hyperlink support (`FORCE_HYPERLINK`/`NO_HYPERLINK` override; unknown terminals are treated as unsupported) */
+export function supportsHyperlinks(): boolean {
+	if(hyperlinkSupport !== undefined) {
+		return hyperlinkSupport;
+	}
+	const env = process.env;
+	if(env.FORCE_HYPERLINK !== undefined) {
+		return (hyperlinkSupport = env.FORCE_HYPERLINK !== '' && env.FORCE_HYPERLINK !== '0');
+	}
+	if(env.NO_HYPERLINK !== undefined || !process.stdout.isTTY) {
+		return (hyperlinkSupport = false);
+	}
+	const known = Boolean(env.WT_SESSION || env.KITTY_WINDOW_ID || env.KONSOLE_VERSION || env.DOMTERM)
+		|| (env.TERM_PROGRAM !== undefined && ['iTerm.app', 'WezTerm', 'vscode', 'ghostty', 'Hyper', 'rio'].includes(env.TERM_PROGRAM))
+		|| (env.VTE_VERSION !== undefined && Number(env.VTE_VERSION) >= 5000)
+		|| (env.TERM !== undefined && /kitty|wezterm|ghostty/i.test(env.TERM));
+	return (hyperlinkSupport = known);
+}
+
 export const ansiFormatter = {
 	reset(): string {
 		return `${escape}0${colorSuffix}`;
+	},
+
+	hyperlink(text: string, url: string): string {
+		return supportsHyperlinks() ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : text;
 	},
 
 	format(input: string, options?: FormatOptions): string {
@@ -124,9 +172,15 @@ export const ansiFormatter = {
 		if(options === undefined) {
 			return '';
 		}
-		const colorString = 'color' in options ? `${options.effect + options.color}` : '';
-		const weightString = 'style' in options ? `${options.style}` : '';
-		return `${escape}${colorString}${weightString !== '' ? ';' : ''}${weightString}${colorSuffix}`;
+		const params: number[] = [];
+		if('style' in options) {
+			const styles: readonly FontStyles[] = Array.isArray(options.style) ? options.style as readonly FontStyles[] : [options.style as FontStyles];
+			params.push(...styles);
+		}
+		if('color' in options) {
+			params.push((options.bright ? options.effect + 60 : options.effect) + options.color);
+		}
+		return params.length === 0 ? '' : `${escape}${params.join(';')}${colorSuffix}`;
 	}
 };
 

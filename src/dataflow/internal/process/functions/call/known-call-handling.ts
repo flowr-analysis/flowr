@@ -4,7 +4,7 @@ import { ExitPointType } from '../../../../info';
 import { type ForceArguments, processAllArguments } from './common';
 import type { RSymbol } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { RNode } from '../../../../../r-bridge/lang-4.x/ast/model/model';
 import { type IdentifierReference, ReferenceType } from '../../../../environments/identifier';
@@ -14,13 +14,13 @@ import { EdgeType } from '../../../../graph/edge';
 import { dataflowLogger } from '../../../../logger';
 import { type FunctionOriginInformation, VertexType } from '../../../../graph/vertex';
 import { handleUnknownSideEffect } from '../../../../graph/unknown-side-effect';
-import { BuiltInProcName } from '../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 export interface ProcessKnownFunctionCallInput<OtherInfo> extends ForceArguments {
 	/** The name of the function being called. */
 	readonly name:                  RSymbol<OtherInfo & ParentInformation>
 	/** The arguments to the function call. */
-	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | RFunctionArgument<OtherInfo & ParentInformation>)[]
+	readonly args:                  readonly (RNode<OtherInfo & ParentInformation> | PotentiallyEmptyRArgument<OtherInfo & ParentInformation>)[]
 	/** The node ID to use for the function call vertex. */
 	readonly rootId:                NodeId
 	/** The dataflow processor information at the point of the function call. */
@@ -51,6 +51,42 @@ export interface ProcessKnownFunctionCallResult {
 	 * For example, together with {@link pMatch} to do custom parameter matching.
 	 */
 	readonly callArgs:           readonly FunctionArgument[]
+}
+
+/**
+ * Which arguments of a call {@link markArgumentsAsNonStandardEvaluation|are non-standardly evaluated}:
+ * every argument, all but the (data) first one, or only the first one.
+ */
+export enum NseArguments {
+	/** every argument, e.g. the operands of a formula `~` or `aes(x, y)` */
+	All         = 'all',
+	/** all but the first, e.g. `subset(data, col > 1)` where the first argument is the data object */
+	AllButFirst = 'all-but-first',
+	/** only the first, e.g. the native routine name in `.C(routine, ...)` */
+	First       = 'first'
+}
+
+/**
+ * Marks the selected arguments - and everything within them - as {@link EdgeType.NonStandardEvaluation}
+ * (as `quote` does), so their nested symbols are recognised as non-standardly evaluated too.
+ */
+export function markArgumentsAsNonStandardEvaluation(
+	graph:              DataflowGraph,
+	rootId:             NodeId,
+	processedArguments: readonly (DataflowInformation | undefined)[],
+	which:              NseArguments
+): void {
+	const end = which === NseArguments.First ? 1 : processedArguments.length;
+	for(let i = which === NseArguments.AllButFirst ? 1 : 0; i < end; i++) {
+		const arg = processedArguments[i];
+		if(arg === undefined) {
+			continue;
+		}
+		graph.addEdge(rootId, arg.entryPoint, EdgeType.NonStandardEvaluation);
+		for(const [vtx] of arg.graph.vertices(true)) {
+			graph.addEdge(rootId, vtx, EdgeType.NonStandardEvaluation);
+		}
+	}
 }
 
 /**
@@ -96,13 +132,14 @@ export function processKnownFunctionCall<OtherInfo>(
 		markNonStandardEvaluationEdges(markAsNSE, processedArguments, finalGraph, rootId);
 	}
 
+	const onlyBuiltin = data.builtInNoEnv === rootId;
 	finalGraph.addVertex({
 		tag:         VertexType.FunctionCall,
 		id:          rootId,
-		environment: data.environment,
+		environment: onlyBuiltin ? undefined : data.environment,
 		name:        functionCallName,
-		/* will be overwritten accordingly */
-		onlyBuiltin: false,
+		/* may still be overwritten by markAsOnlyBuiltIn */
+		onlyBuiltin,
 		cds:         data.cds,
 		args:        reverseOrder ? callArgs.toReversed() : callArgs,
 		origin:      origin === 'default' ? [BuiltInProcName.Function] : [origin]

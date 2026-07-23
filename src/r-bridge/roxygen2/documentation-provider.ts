@@ -38,6 +38,8 @@ const CommentRetriever: CommentRetrievers = {
 };
 
 
+const defaultRetriever = (c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags;
+
 /**
  * Given a normalized AST and a node ID, returns the Roxygen documentation (if any) associated with that node.
  * Please note that this does more than {@link parseRoxygenCommentsOfNode}, as it also traverses up the AST to find documentation.
@@ -52,7 +54,7 @@ export function getDocumentationOf(nodeId: NodeId, idMap: AstIdMap<ParentInforma
 	} else if('doc' in node.info) {
 		return node.info.doc;
 	}
-	const retriever = CommentRetriever[node.type as RType] ?? ((c: RNode<ParentInformation>, a: AstIdMap) => parseRoxygenCommentsOfNode(c, a)?.tags);
+	const retriever = CommentRetriever[node.type as RType] ?? defaultRetriever;
 	const doc = retriever(node as never, idMap);
 	if(doc) {
 		// to avoid endless recursion, we block the caching here once:
@@ -95,14 +97,23 @@ function getDocumentationOfByName(name: string, idMap: AstIdMap<ParentInformatio
 	}
 }
 
-function filterDocumentationForParams(doc: Documentation | undefined, filter: (r: RoxygenTag) => boolean): Documentation | undefined {
+function filterDocumentationForParamsInherited(doc: Documentation | undefined, filter: (r: RoxygenTag) => boolean): Documentation | undefined {
 	if(!doc) {
 		return doc;
 	}
 	if(Array.isArray(doc)) {
-		return doc.filter(filter) as readonly RoxygenTag[];
+		const ds = doc.filter(filter) as RoxygenTag[];
+		for(const d of ds) {
+			d.inherited = true;
+		}
+		return ds as readonly RoxygenTag[];
 	} else {
-		return filter(doc as RoxygenTag) ? doc : undefined;
+		const d = doc as RoxygenTag;
+		if(filter(d)) {
+			d.inherited = true;
+			return d;
+		}
+		return undefined;
 	}
 
 }
@@ -110,14 +121,14 @@ function filterDocumentationForParams(doc: Documentation | undefined, filter: (r
 function expandInheritOfTag(tag: RoxygenTag, otherTags: readonly RoxygenTag[], idMap: AstIdMap<ParentInformation & DocumentationInfo>): Documentation | undefined {
 	if(tag.type === KnownRoxygenTags.Inherit) {
 		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
-		return filterDocumentationForParams(inheritDoc, t => tag.value.components.includes(t.type));
+		return filterDocumentationForParamsInherited(inheritDoc, t => tag.value.components.includes(t.type));
 	} else if(tag.type === KnownRoxygenTags.InheritDotParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value.source, idMap);
-		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && t.value.name === '...');
+		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && t.value.name === '...');
 	} else if(tag.type === KnownRoxygenTags.InheritParams) {
 		const inheritDoc = getDocumentationOfByName(tag.value, idMap);
 		const alreadyExplainedParams = new Set(otherTags.filter(t => t.type === KnownRoxygenTags.Param).map(t => t.value.name));
-		return filterDocumentationForParams(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name));
+		return filterDocumentationForParamsInherited(inheritDoc, t => t.type === KnownRoxygenTags.Param && !alreadyExplainedParams.has(t.value.name)) as RoxygenTag | RoxygenTag[] | undefined;
 	}
 	return tag;
 }

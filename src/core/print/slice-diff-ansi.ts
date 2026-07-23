@@ -10,15 +10,16 @@ function grayOut(): string {
 
 function mergeJointRangesInSorted(loc: { location: SourceRange; selected: boolean }[]) {
 	return loc.reduce((acc, curr) => {
-		if(SourceRange.overlap(acc[acc.length - 1].location, curr.location)) {
-			return [
-				...acc.slice(0, -1), {
-					selected: curr.selected || acc[acc.length - 1].selected,
-					location: SourceRange.merge([acc[acc.length - 1].location, curr.location])
-				}];
+		const last = acc[acc.length - 1];
+		if(SourceRange.overlap(last.location, curr.location)) {
+			acc[acc.length - 1] = {
+				selected: curr.selected || last.selected,
+				location: SourceRange.merge([last.location, curr.location])
+			};
 		} else {
-			return [...acc, curr];
+			acc.push(curr);
 		}
+		return acc;
 	}, [loc[0]]);
 }
 

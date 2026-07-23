@@ -3,8 +3,9 @@ import type { DataflowFunctionFlowInformation, FunctionArgument } from './graph'
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { REnvironmentInformation } from '../environments/environment';
 import type { ControlDependency, ExitPoint } from '../info';
-import type { BuiltInProcName } from '../environments/built-in';
 import type { Identifier } from '../environments/identifier';
+import type { BuiltInProcName } from '../environments/built-in-proc-name';
+import type { Value } from '../eval/values/r-value';
 
 
 export enum VertexType {
@@ -56,27 +57,22 @@ export interface DataflowGraphVertexAstLink {
 
 /**
  * Marker vertex for a value in the dataflow of the program.
- * This does not contain the _value_ of the referenced constant
- * as this is available with the {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}
- * (or more specifically the {@link AstIdMap}).
- *
- * If you have a {@link DataflowGraph|dataflow graph} named `graph`
- * with an {@link AstIdMap} and a value vertex object with name `value` the following Code should work:
+ * For user-code constants (numbers, strings, logicals) the value is recovered by looking up the
+ * {@link DataflowGraphVertexBase#id|id} in the {@link NormalizedAst|normalized AST}:
  * @example
  * ```ts
  * const node = graph.idMap.get(value.id)
  * ```
  *
- * This then returns the corresponding node in the {@link NormalizedAst|normalized AST}, for example,
- * an {@link RNumber} or {@link RString}.
- *
- * This works similarly for {@link IdentifierReference|identifier references}
- * for which you can use the {@link IdentifierReference#nodeId|`nodeId`}.
+ * For built-in constants whose id is not in the {@link AstIdMap} (e.g. `T` resolving to `built-in:T`),
+ * the abstract {@link Value} is stored directly in the {@link DataflowGraphVertexValue#value|value} field.
  * @see {@link isValueVertex} - to check if a vertex is a value vertex
  */
 export interface DataflowGraphVertexValue extends DataflowGraphVertexBase {
 	readonly tag:          VertexType.Value
 	readonly environment?: undefined
+	/** Pre-computed abstract value; set for built-in constants (e.g. `T`, `F`) whose id is not in the AST id map */
+	readonly value?:       Value
 }
 
 /**
@@ -116,6 +112,12 @@ export interface DataflowGraphVertexFunctionCall extends DataflowGraphVertexBase
 	environment:   REnvironmentInformation | undefined
 	/** More detailed Information on this function call */
 	origin:        FunctionOriginInformation[] | 'unnamed'
+	/**
+	 * For `new.env()`-family calls: the resolved parent {@link REnvironmentInformation} that the
+	 * freshly-created environment should inherit from. Set by `processNewEnv` when the `parent`
+	 * argument can be statically resolved (tracked env variable or `emptyenv()`-family call).
+	 */
+	newEnvParent?: REnvironmentInformation
 }
 
 /** Describes the processor responsible for a function call */
@@ -131,6 +133,8 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
 	readonly environment?: undefined
 	/** Indicates whether the variable definition is a *partial* definition (e.g,. in `x[a] <- b`) */
 	readonly par?:         true;
+	/** Points to the source ids of the "value" if there is one, this is more of a best-effort flag and not guaranteed to be there */
+	readonly source?:      readonly NodeId[];
 }
 
 /**
@@ -138,28 +142,33 @@ export interface DataflowGraphVertexVariableDefinition extends DataflowGraphVert
  * @see {@link isFunctionDefinitionVertex} - to check if a vertex is a function definition vertex
  */
 export interface DataflowGraphVertexFunctionDefinition extends DataflowGraphVertexBase {
-	readonly tag: VertexType.FunctionDefinition
+	readonly tag:    VertexType.FunctionDefinition
 	/**
 	 * The static subflow of the function definition, constructed within {@link processFunctionDefinition}.
 	 * If the vertex is (for example) a function, it can have a subgraph which is used as a template for each call.
 	 * This is the `body` of the function.
 	 */
-	subflow:      DataflowFunctionFlowInformation
+	subflow:         DataflowFunctionFlowInformation
 	/**
 	 * All exit points of the function definitions.
 	 * In other words: last expressions/return calls
 	 */
-	exitPoints:   readonly ExitPoint[]
+	exitPoints:      readonly ExitPoint[]
 	/** Maps each param to whether it is read, this is an estimate! */
-	params:       Record<NodeId, boolean>
+	params:          Record<NodeId, boolean>
 	/** The environment in which the function is defined (this is only attached if the DFG deems it necessary). */
-	environment?: REnvironmentInformation
+	environment?:    REnvironmentInformation
 	/**
 	 * If the function is a (potential) S3/S4/S7 dispatch
 	 * Please note that flowR may create these flags *on use* (e.g. `s3` as otherwise any func with a `.` would be considered S3).
 	 * This is more of a convenience flag for later processing.
 	 */
-	mode?:        ('s3' | 's4' | 's7')[];
+	mode?:           ('s3' | 's4' | 's7')[];
+	/**
+	 * If this function statically returns a tracked environment, stores the envState it returns.
+	 * Set by `processFunctionDefinition` when exit points include NewEnv calls or symbols resolving to tracked envs.
+	 */
+	returnEnvState?: REnvironmentInformation
 }
 
 /**

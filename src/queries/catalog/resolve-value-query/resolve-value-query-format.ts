@@ -9,7 +9,7 @@ import { stringifyValue } from '../../../dataflow/eval/values/r-value';
 import type { ResolveResult } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 
 export interface ResolveValueQuery extends BaseQueryFormat {
@@ -41,6 +41,7 @@ function resolveValueLineParser(output: ReplOutput, line: readonly string[], _co
 }
 
 export const ResolveValueQueryDefinition = {
+	title:           'Resolve Value Query',
 	executor:        executeResolveValueQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'resolve-value'>['resolve-value'];
@@ -58,8 +59,10 @@ export const ResolveValueQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: resolveValueLineParser,
-	schema:   Joi.object({
+	fromLine:  resolveValueLineParser,
+	completer: criteriaQueryCompleter,
+	syntax:    '@resolve-value (<crit>;...) <code | file://path>',
+	schema:    Joi.object({
 		type:     Joi.string().valid('resolve-value').required().description('The type of the query.'),
 		criteria: Joi.array().items(Joi.string()).min(1).required().description('The slicing criteria to use.'),
 	}).description('The resolve value query used to get definitions of an identifier'),

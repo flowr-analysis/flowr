@@ -10,7 +10,7 @@ import { VertexType } from '../../../../graph/vertex';
 import { RType } from '../../../../../r-bridge/lang-4.x/ast/model/type';
 import { dataflowLogger } from '../../../../logger';
 import { ReferenceType } from '../../../../environments/identifier';
-import { BuiltInProcName } from '../../../../environments/built-in';
+import { BuiltInProcName } from '../../../../environments/built-in-proc-name';
 
 export const UnnamedFunctionCallPrefix = 'unnamed-fc-';
 

@@ -2,7 +2,6 @@ import { FlowrLogger } from '../util/log';
 import { codeBlock } from './doc-util/doc-code';
 import {
 	FlowrCodecovRef,
-	FlowrDockerRef,
 	FlowrGithubBaseRef,
 	FlowrSiteBaseRef,
 	FlowrWikiBaseRef,
@@ -51,15 +50,18 @@ for the latest benchmark results, see the [benchmark results](${FlowrSiteBaseRef
 
 Currently, flowR contains three testing suites: one for [functionality](#functionality-tests), 
 one for [system tests](#system-tests), and one for [performance](#performance-tests). We explain each of them in the following.
-In addition to running those tests, you can use the more generalized \`npm run checkup\`. 
+In addition to running those tests, you can use the more generalized \`npm run checkup\`.
 This command includes the construction of the docker image, the generation of the wiki pages, and the linter.
+It runs these jobs concurrently but caps the test workers so the combined run fits the machine (it splits the
+available cores across the parallel \`vitest\` jobs via \`--maxWorkers\` instead of letting each grab every core).
+Pass job ids to run a subset (e.g. \`npm run checkup -- lint tests\`) or \`--no-docker\` to skip the image build.
 
 <a id='functionality-tests'></a>
 ### 🧪 Functionality Tests
 
 The functionality tests represent conventional unit (and depending on your terminology component/api) tests.
 We use [vitest](https://vitest.dev/) as our testing framework.
-You can run the tests by issuing (some quick benchmarks may be available with \`vitest bench\`):
+You can run the tests by issuing (some quick benchmarks may be available with \`npm run test:bench\`):
 
 ${codeBlock('shell', 'npm run test')}
 
@@ -112,7 +114,7 @@ The set of currently supported capabilities and their IDs can be found in ${getF
 
 The resulting labels are used in the test report that is generated as part of the test output. 
 They group tests by the capabilities they test and allow the report to display how many tests ensure that any given capability is properly supported.
-The report can be found on the wiki's [capabilities page](${FlowrWikiBaseRef}/Capabilities).
+The report can be found on the wiki's ${ctx.linkPage('wiki/Capabilities', 'capabilities page')}.
 
 To add new labels, simply add them to the relevant section in ${getFilePathMd('../r-bridge/data/data.ts')} as part of a pull request.
 
@@ -222,7 +224,7 @@ We explain the most important workflows in the following:
     - reporting code coverage
   - running the [linter](#linting) and reporting its results
   - deploying the documentation to [GitHub Pages](${FlowrSiteBaseRef}/doc/)
-- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to [docker hub](${FlowrDockerRef}).
+- [release.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/release.yaml) is responsible for creating a new release, only to be run by repository owners. Furthermore, it adds the new docker image to ${ctx.linkPage('flowr:docker', 'docker hub')}.
 - [broken-links-and-wiki.yaml](${RemoteFlowrFilePathBaseRef}/.github/workflows/broken-links-and-wiki.yaml) repeatedly tests that all links are not dead!
  
 <a id='linting'></a>

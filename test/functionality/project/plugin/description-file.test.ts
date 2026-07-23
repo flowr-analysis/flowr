@@ -89,7 +89,6 @@ function contextWithFile(desc: string): FlowrAnalyzerContext {
 	ctx.addFile(new FlowrInlineTextFile('DESCRIPTION', desc));
 	ctx.addFile(new FlowrInlineTextFile('pete.R', 'x <- 2'));
 	ctx.addRequests([{ request: 'file', content: 'pete.R' }]);
-	ctx.resolvePreAnalysis();
 	return ctx;
 }
 
@@ -197,6 +196,20 @@ describe('DESCRIPTION-file', function() {
 				sugg?.map(n => n.name),
 				['knitr', 'rmarkdown', 'testthat', 'covr']
 			);
+		});
+	});
+
+	describe('Leading UTF-8 BOM', () => {
+		test('the first field (Package) is still parsed when the file starts with a BOM', () => {
+			// a BOM matches the continuation-line test (`\s` includes U+FEFF); without stripping it the
+			// `Package:` field would be swallowed and packageName() would come back undefined
+			const withBom = contextWithFile('﻿' + DescriptionB);
+			assert.strictEqual(getDescContent(withBom).packageName(), 'Sample');
+			// and the rest of the fields are unaffected
+			assert.includeMembers(withBom.deps.getDependencies().map(n => n.name), ['ggplot2', 'R']);
+
+			// control: the exact same content without a BOM parses identically
+			assert.strictEqual(getDescContent(contextWithFile(DescriptionB)).packageName(), 'Sample');
 		});
 	});
 });

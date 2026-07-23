@@ -1,8 +1,16 @@
-import type { Environment, REnvironmentInformation } from './environment';
+import { EnvType, type Environment, type REnvironmentInformation } from './environment';
 import { Ternary } from '../../util/logic';
-import { Identifier, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
+import { Identifier, type BrandedNamespace, type IdentifierDefinition, isReferenceType, ReferenceType } from './identifier';
 import { happensInEveryBranch } from '../info';
 import { S7DispatchSeparator } from '../internal/process/functions/call/built-in/built-in-s-seven-dispatch';
+
+/** A namespaced lookup only sees its matching layer; a bare lookup skips loaded-but-unattached namespaces (`requireNamespace`). */
+function layerSkipped(layer: Environment, ns: BrandedNamespace | undefined): boolean {
+	if(ns !== undefined) {
+		return layer.n !== ns;
+	}
+	return layer.t === EnvType.LoadedNamespace;
+}
 
 const FunctionTargetTypes = ReferenceType.Function | ReferenceType.BuiltInFunction | ReferenceType.Unknown | ReferenceType.Argument | ReferenceType.Parameter;
 const VariableTargetTypes = ReferenceType.Variable | ReferenceType.Parameter | ReferenceType.Argument | ReferenceType.Unknown;
@@ -38,19 +46,24 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
 	}
 	const [name, ns, internal] = Identifier.toArray(id);
 	let current: Environment = environment.current;
+	/* `current` can already be the built-in environment itself (e.g. `get(x, envir=baseenv())`);
+	 * it has no parent to walk to, so resolve directly instead of entering the loop below. */
+	if(current.builtInEnv) {
+		return current.memory.get(name);
+	}
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	const wantedType = TargetTypePredicate[target];
 	do{
-		if(ns && current.n !== ns) {
+		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
 		}
 		let definition: IdentifierDefinition[] | undefined;
 		if(target === ReferenceType.S3MethodPrefix || target === ReferenceType.S7MethodPrefix) {
 			// S3 method prefixes only resolve to functions, S3s must not match the exported criteria!
-			const infix = target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator;
+			const prefix = name + (target === ReferenceType.S3MethodPrefix ? '.' : S7DispatchSeparator);
 			definition = current.memory.entries()
-				.filter(([defName]) => defName.startsWith(name + infix))
+				.filter(([defName]) => defName.startsWith(prefix))
 				.flatMap(([, defs]) => defs)
 				.toArray();
 		} else {
@@ -87,15 +100,29 @@ export function resolveByName(id: Identifier, environment: REnvironmentInformati
  */
 export function resolveByNameAnyType(id: Identifier, environment: REnvironmentInformation): IdentifierDefinition[] | undefined {
 	let current: Environment = environment.current;
-	const g = current.cache?.get(id);
-	if(g !== undefined) {
-		return g;
+	/* only cache plain names: namespaced ids are arrays (no stable map key) and must not answer plain lookups */
+	const cacheable = typeof id === 'string';
+	if(cacheable) {
+		const g = current.cache?.get(id);
+		if(g !== undefined) {
+			return g;
+		}
 	}
 	const [name, ns, internal] = Identifier.toArray(id);
 
+	/* `current` can already be the built-in environment itself */
+	if(current.builtInEnv) {
+		const ret = current.memory.get(name);
+		if(ret && cacheable) {
+			current.cache ??= new Map();
+			current.cache.set(id, ret);
+		}
+		return ret;
+	}
+
 	let definitions: IdentifierDefinition[] | undefined = undefined;
 	do{
-		if(ns && current.n !== ns) {
+		if(layerSkipped(current, ns)) {
 			current = current.parent;
 			continue;
 		}
@@ -105,8 +132,10 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 				definition = definition.filter(({ name }) => name === undefined || !Identifier.accessesInternal(name));
 			}
 			if(definition.every(d => happensInEveryBranch(d.cds))) {
-				environment.current.cache ??= new Map();
-				environment.current.cache?.set(name, definition);
+				if(cacheable) {
+					environment.current.cache ??= new Map();
+					environment.current.cache.set(id, definition);
+				}
 				return definition;
 			} else if(definition.length > 0) {
 				if(definitions) {
@@ -126,9 +155,9 @@ export function resolveByNameAnyType(id: Identifier, environment: REnvironmentIn
 	} else {
 		ret = builtIns;
 	}
-	if(ret) {
+	if(ret && cacheable) {
 		environment.current.cache ??= new Map();
-		environment.current.cache?.set(id, ret);
+		environment.current.cache.set(id, ret);
 	}
 	return ret;
 }

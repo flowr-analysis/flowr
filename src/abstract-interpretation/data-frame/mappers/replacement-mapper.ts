@@ -1,5 +1,4 @@
 import { VariableResolve } from '../../../config';
-import { BuiltInProcName } from '../../../dataflow/environments/built-in';
 import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { isFunctionCallVertex } from '../../../dataflow/graph/vertex';
@@ -7,7 +6,7 @@ import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import type { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
 import type { RAccess, RIndexAccess, RNamedAccess } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-access';
-import type { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { RArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { EmptyArgument } from '../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -18,6 +17,7 @@ import type { DataFrameOperations, DataFrameShapeInferenceVisitor } from '../sha
 import { isStringBasedAccess } from './access-mapper';
 import { isDataFrameArgument, isRNull } from './arguments';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { BuiltInProcName } from '../../../dataflow/environments/built-in-proc-name';
 
 /** Mapper for mapping the supported data frame replacement functions to mapper functions */
 const DataFrameReplacementFunctionMapper = {
@@ -158,7 +158,7 @@ function mapDataFrameIndexColRowAssignment(
 	info: ResolveInfo
 ): DataFrameOperations {
 	const dataFrame = access.accessed;
-	const args = access.access;
+	const args = access.access.filter(arg => RArgument.isEmpty(arg) || RArgument.isUnnamed(arg));
 
 	if(!isDataFrameArgument(dataFrame, inference) || args.every(arg => arg === EmptyArgument)) {
 		return;

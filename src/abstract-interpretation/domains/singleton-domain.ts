@@ -1,8 +1,7 @@
 import { Ternary } from '../../util/logic';
-import { AbstractDomain, domainElementToString } from './abstract-domain';
-import { Bottom, BottomSymbol, Top, TopSymbol } from './lattice';
-import type { SatisfiableDomain } from './satisfiable-domain';
-/* eslint-disable @typescript-eslint/unified-signatures */
+import { AbstractDomain } from './abstract-domain';
+import { Bottom, Top } from './lattice';
+import type { ValueDomain } from './value-abstract-domain';
 
 /** The type of the actual values of the singleton domain as single value */
 type SingletonValue<T> = T;
@@ -20,105 +19,73 @@ type SingletonLift<T> = SingletonValue<T> | SingletonTop | SingletonBottom;
  * @template Value - Type of the constraint in the abstract domain (Top, Bottom, or an actual value)
  */
 export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T>>
-	extends AbstractDomain<T, SingletonValue<T>, SingletonTop, SingletonBottom, Value>
-	implements SatisfiableDomain<T> {
+	extends AbstractDomain<SingletonValue<T>, SingletonTop, SingletonBottom, Value>
+	implements ValueDomain<T> {
 
-	public create(value: SingletonLift<T>): this;
-	public create(value: SingletonLift<T>): SingletonDomain<T> {
-		return new SingletonDomain(value);
+	public create(value: SingletonLift<T>): this {
+		return new SingletonDomain(value) as this;
+	}
+
+	public from(...values: T[]): this {
+		if(values.length === 0) {
+			return this.bottom();
+		} else if(values.length > 1) {
+			return this.top();
+		}
+		return this.create(values[0]);
 	}
 
 	public static top<T>(): SingletonDomain<T, SingletonTop> {
-		return new SingletonDomain(Top);
+		return new this(Top);
 	}
 
 	public static bottom<T>(): SingletonDomain<T, SingletonBottom> {
-		return new SingletonDomain(Bottom);
+		return new this(Bottom);
 	}
 
-	public static abstract<T>(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
-		if(concrete === Top || concrete.size > 1) {
-			return SingletonDomain.top();
-		} else if(concrete.size === 0) {
-			return SingletonDomain.bottom();
+	public static from<T>(...values: T[]): SingletonDomain<T> {
+		if(values.length === 0) {
+			return this.bottom();
+		} else if(values.length > 1) {
+			return this.top();
 		}
-		return new SingletonDomain([...concrete][0]);
+		return new this(values[0]);
 	}
 
-	public top(): this & SingletonDomain<T, SingletonTop>;
-	public top(): SingletonDomain<T, SingletonTop> {
-		return SingletonDomain.top();
+	public top(): this & SingletonDomain<T, SingletonTop> {
+		return this.create(Top) as this & SingletonDomain<T, SingletonTop>;
 	}
 
-	public bottom(): this & SingletonDomain<T, SingletonBottom>;
-	public bottom(): SingletonDomain<T, SingletonBottom> {
-		return SingletonDomain.bottom();
+	public bottom(): this & SingletonDomain<T, SingletonBottom> {
+		return this.create(Bottom) as this & SingletonDomain<T, SingletonBottom>;
 	}
 
-	public equals(other: this): boolean {
+	protected equalsValue(this: SingletonDomain<T, SingletonValue<T>>, other: SingletonDomain<T, SingletonValue<T>>): boolean {
 		return this.value === other.value;
 	}
 
-	public leq(other: this): boolean {
-		return this.value === Bottom || other.value === Top || (this.isValue() && other.isValue() && this.value <= other.value);
+	protected leqValue(this: SingletonDomain<T, SingletonValue<T>>, other: SingletonDomain<T, SingletonValue<T>>): boolean {
+		return this.value <= other.value;
 	}
 
-	public join(other: SingletonLift<T>): this;
-	public join(other: this): this;
-	public join(other: this | SingletonLift<T>): this {
-		const otherValue = other instanceof SingletonDomain ? other.value : other;
-
-		if(this.value === Bottom) {
-			return this.create(otherValue);
-		} else if(otherValue === Bottom) {
-			return this.create(this.value);
-		} else if(this.value !== otherValue) {
-			return this.top();
-		} else {
-			return this.create(this.value);
-		}
+	protected joinValue(this: this & SingletonDomain<T, SingletonValue<T>>, other: this & SingletonDomain<T, SingletonValue<T>>): this {
+		return this.equals(other) ? this.create(this.value) : this.top();
 	}
 
-	public meet(other: SingletonLift<T>): this;
-	public meet(other: this): this;
-	public meet(other: this | SingletonLift<T>): this {
-		const otherValue = other instanceof SingletonDomain ? other.value : other;
-
-		if(this.value === Top) {
-			return this.create(otherValue);
-		} else if(otherValue === Top) {
-			return this.create(this.value);
-		} else if(this.value !== otherValue) {
-			return this.bottom();
-		} else {
-			return this.create(this.value);
-		}
+	protected meetValue(this: this & SingletonDomain<T, SingletonValue<T>>, other: this & SingletonDomain<T, SingletonValue<T>>): this {
+		return this.equals(other) ? this.create(this.value) : this.bottom();
 	}
 
-	public widen(other: this): this {
-		return this.join(other);  // Using join for widening as the lattice is finite
+	protected widenValue(this: this & SingletonDomain<T, SingletonValue<T>>, other: this & SingletonDomain<T, SingletonValue<T>>): this {
+		return this.joinValue(other);  // Using join for widening as the lattice is finite
 	}
 
-	public narrow(other: this): this {
-		return this.meet(other);  // Using meet for narrowing as the lattice is finite
-	}
-
-	public concretize(): ReadonlySet<T> |  typeof Top {
-		if(this.value === Top) {
-			return Top;
-		} else if(this.value === Bottom) {
-			return new Set();
-		}
-		return new Set([this.value as T]);
-	}
-
-	public abstract(concrete: ReadonlySet<T> | typeof Top): this;
-	public abstract(concrete: ReadonlySet<T> | typeof Top): SingletonDomain<T> {
-		return SingletonDomain.abstract(concrete);
+	protected narrowValue(this: this & SingletonDomain<T, SingletonValue<T>>, other: this & SingletonDomain<T, SingletonValue<T>>): this {
+		return this.meetValue(other);  // Using meet for narrowing as the lattice is finite
 	}
 
 	public satisfies(value: T): Ternary {
-		if(this.isValue() && this.value === value) {
+		if(this.equals(this.from(value))) {
 			return Ternary.Always;
 		} else if(this.isTop()) {
 			return Ternary.Maybe;
@@ -126,33 +93,23 @@ export class SingletonDomain<T, Value extends SingletonLift<T> = SingletonLift<T
 		return Ternary.Never;
 	}
 
-	public toJson(): unknown {
-		if(this.value === Top) {
-			return Top.description;
-		} else if(this.value === Bottom) {
-			return Bottom.description;
-		}
+	protected jsonify(): unknown {
 		return this.value;
 	}
 
-	public toString(): string {
-		if(this.value === Top) {
-			return TopSymbol;
-		} else if(this.value === Bottom) {
-			return BottomSymbol;
-		}
-		return domainElementToString(this.value);
+	protected stringify(): string {
+		return AbstractDomain.toString(this.value);
 	}
 
-	public isTop(): this is SingletonDomain<T, SingletonTop> {
+	public isTop(): this is this & SingletonDomain<T, SingletonTop> {
 		return this.value === Top;
 	}
 
-	public isBottom(): this is SingletonDomain<T, SingletonBottom> {
+	public isBottom(): this is this & SingletonDomain<T, SingletonBottom> {
 		return this.value === Bottom;
 	}
 
-	public isValue(): this is SingletonDomain<T, SingletonValue<T>> {
+	public isValue(): this is this & SingletonDomain<T, SingletonValue<T>> {
 		return this.value !== Top && this.value !== Bottom;
 	}
 }

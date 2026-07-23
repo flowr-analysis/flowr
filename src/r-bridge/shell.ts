@@ -141,11 +141,12 @@ export function getDefaultRShellOptions(config?: RShellEngineConfig): RShellOpti
  * (leaving this as a legacy mode :D)
  */
 export class RShell implements AsyncParser<string> {
+
 	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
 	public readonly incremental = false;
-	private session:         RShellSession;
+	private _session:        RShellSession | undefined = undefined;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;
 	// should never be more than one, but let's be sure
@@ -154,9 +155,25 @@ export class RShell implements AsyncParser<string> {
 	public constructor(config?: RShellEngineConfig, options?: Partial<RShellOptions>) {
 		this.options = { ...getDefaultRShellOptions(config), ...options };
 		this.log = log.getSubLogger({ name: this.options.sessionName });
+		// the underlying R process is spawned lazily on first use (see the `session` getter),
+		// so merely constructing an RShell does not pay the cost of starting R.
+	}
 
-		this.session = new RShellSession(this.options, this.log);
-		this.revive();
+	/**
+	 * The underlying R session, spawned on first access. Use {@link hasSession} to check whether
+	 * the R process has actually been started without triggering a spawn (e.g. in {@link close}).
+	 */
+	private get session(): RShellSession {
+		if(this._session === undefined) {
+			this._session = new RShellSession(this.options, this.log);
+			this.revive();
+		}
+		return this._session;
+	}
+
+	/** Whether the underlying R process has already been spawned. */
+	public hasSession(): boolean {
+		return this._session !== undefined;
 	}
 
 	public parse(request: RParseRequest): Promise<string> {
@@ -169,20 +186,21 @@ export class RShell implements AsyncParser<string> {
 			rVersion:              async() => await this.rVersion(),
 			sendCommandWithOutput: (command: string, addonConfig?: Partial<OutputCollectorConfiguration>) => {
 				return this.sendCommandWithOutput(command, addonConfig);
-			}
+			},
+			installedPackageVersions: () => this.installedPackageVersions()
 		};
 	}
 
 	private revive() {
-		if(this.options.revive === RShellReviveOptions.Never) {
+		if(this.options.revive === RShellReviveOptions.Never || this._session === undefined) {
 			return;
 		}
 
-		this.session.onExit((code, signal) => {
+		this._session.onExit((code, signal) => {
 			if(this.options.revive === RShellReviveOptions.Always || (this.options.revive === RShellReviveOptions.OnError && code !== 0)) {
 				this.log.warn(`R session exited with code ${code}, reviving!`);
 				this.options.onRevive(code, signal);
-				this.session = new RShellSession(this.options, this.log);
+				this._session = new RShellSession(this.options, this.log);
 				this.revive();
 			}
 		});
@@ -239,6 +257,23 @@ export class RShell implements AsyncParser<string> {
 		} else {
 			this.injectLibPaths(this.options.homeLibPath);
 		}
+	}
+
+	/**
+	 * Map of every package installed on this system to its version (from `installed.packages()`), used by
+	 * `solver.sigdb.versionSelection: 'system'`. Empty when R reports nothing or fails.
+	 */
+	public async installedPackageVersions(): Promise<Map<string, string>> {
+		const versions = new Map<string, string>();
+		const result = await this.sendCommandWithOutput(
+			`local({ ip <- installed.packages()[,c("Package","Version"),drop=FALSE]; cat(paste(ip[,1], ip[,2], sep="\t"), sep=${ts2r(this.options.eol)}); cat(${ts2r(this.options.eol)}) })`);
+		for(const line of result) {
+			const tab = line.indexOf('\t');
+			if(tab > 0) {
+				versions.set(line.slice(0, tab).trim(), line.slice(tab + 1).trim());
+			}
+		}
+		return versions;
 	}
 
 	/**
@@ -315,7 +350,11 @@ export class RShell implements AsyncParser<string> {
 	 * @returns true if the operation succeeds, false otherwise
 	 */
 	public close(): boolean {
-		return this.session.end([...this.tempDirs]);
+		// if R was never spawned there is nothing to close - and we must not spawn it just to close it
+		if(this._session === undefined) {
+			return true;
+		}
+		return this._session.end([...this.tempDirs]);
 	}
 
 	private _sendCommand(command: string): void {

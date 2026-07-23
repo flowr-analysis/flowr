@@ -2,7 +2,7 @@
  * Processes a list of expressions joining their dataflow graphs accordingly.
  * @module
  */
-import type { ControlDependency, DataflowInformation, ExitPoint } from '../../../../../info';
+import type { ControlDependency, DataflowInformation, ExitPoint, KillReference } from '../../../../../info';
 import { addNonDefaultExitPoints, alwaysExits, ExitPointType, happensInEveryBranch } from '../../../../../info';
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
 import { linkFunctionCalls } from '../../../../linker';
@@ -17,15 +17,18 @@ import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { EdgeType } from '../../../../../graph/edge';
 import { type DataflowGraphVertexInfo, VertexType } from '../../../../../graph/vertex';
 import { popLocalEnvironment } from '../../../../../environments/scoping';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { dataflowLogger } from '../../../../../logger';
 import { expensiveTrace } from '../../../../../../util/log';
 import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
+import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
 
@@ -53,12 +56,21 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 	}
 
 	const rid = read.nodeId;
+	const isFunc = read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction;
 	for(const target of probableTarget) {
 		const tid = target.nodeId;
-		if(NodeId.isBuiltIn(target.definedAt) && (read.type === ReferenceType.Function || read.type === ReferenceType.BuiltInFunction)) {
+		if(NodeId.isBuiltIn(target.definedAt) && isFunc) {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads | EdgeType.Calls);
 		} else {
 			nextGraph.addEdge(rid, tid, EdgeType.Reads);
+		}
+		if(target.type === ReferenceType.BuiltInConstant) {
+			nextGraph.addVertex({
+				tag:   VertexType.Value,
+				id:    tid,
+				cds:   undefined,
+				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+			}, environments, false);
 		}
 	}
 }
@@ -81,6 +93,10 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
 
 			let hasUpdate = false;
 			while(!current?.builtInEnv) {
+				// a package attached inside the body (library()) must propagate to the caller, like R attaching globally
+				if(current.t !== undefined) {
+					hasUpdate = true;
+				}
 				for(const definitions of current.memory.values()) {
 					for(const def of definitions) {
 						if(!NodeId.isBuiltIn(def.definedAt)) {
@@ -116,7 +132,7 @@ function updateSideEffectsForCalledFunctions(calledEnvs: {
  */
 export function processExpressionList<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -131,7 +147,9 @@ export function processExpressionList<OtherInfo>(
 	const remainingRead = new Map<string, IdentifierReference[]>();
 
 	const nextGraph = new DataflowGraph(data.completeAst.idMap);
-	let out: IdentifierReference[] = [];
+	const out: IdentifierReference[] = [];
+	/* lazily created - `rm` is rare, so rm-free lists never allocate this */
+	let killed: KillReference[] | undefined;
 	const exitPoints: ExitPoint[] = [];
 	const activeCdsAtStart: ControlDependency[] | undefined = data.cds;
 	const invertExitCds: ControlDependency[] = [];
@@ -158,13 +176,14 @@ export function processExpressionList<OtherInfo>(
 			processed.unknownReferences = makeAllMaybe(processed.unknownReferences, nextGraph, processed.environment, false);
 		}
 
-		out = out.concat(processed.out);
+		out.push(...processed.out);
 
 		// all inputs that have not been written until now are read!
-		for(const ls of [processed.in, processed.unknownReferences]) {
-			for(const read of ls) {
-				linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
-			}
+		for(const read of processed.in) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
+		}
+		for(const read of processed.unknownReferences) {
+			linkReadNameToWriteIfPossible(read, environment, listEnvironments, remainingRead, nextGraph);
 		}
 
 		const calledEnvs = linkFunctionCalls(nextGraph, data.completeAst.idMap, processed.graph);
@@ -180,6 +199,16 @@ export function processExpressionList<OtherInfo>(
 		environment = exitPoints.length > 0 ? overwriteEnvironment(environment, processed.environment) : processed.environment;
 		// if the called function has global redefinitions, we have to keep them within our environment
 		environment = updateSideEffectsForCalledFunctions(calledEnvs, environment, nextGraph, processed.out);
+
+		// removals are already reflected in the threaded environment; we only bubble them (net of later writes)
+		if(killed && processed.out.length > 0) {
+			killed = cancelRevivedKills(killed, processed.out);
+		}
+		if(processed.kill?.length) {
+			// if we may have already exited (break/next), the removal only happens maybe
+			const kills = exitPoints.length > 0 ? makeKillsMaybe(processed.kill, invertExitCds) : processed.kill;
+			(killed ??= []).push(...kills);
+		}
 
 		for(const { nodeId } of processed.out) {
 			listEnvironments.add(nodeId);
@@ -204,7 +233,12 @@ export function processExpressionList<OtherInfo>(
 		});
 	}
 
-	const ingoing = remainingRead.values().toArray().flat();
+	const ingoing: IdentifierReference[] = [];
+	for(const refs of remainingRead.values()) {
+		for(const ref of refs) {
+			ingoing.push(ref);
+		}
+	}
 
 	const rootNode = data.completeAst.idMap.get(rootId);
 	const withGroup = rootNode?.grouping;
@@ -242,5 +276,6 @@ export function processExpressionList<OtherInfo>(
 		entryPoint:        meId,
 		exitPoints:        exitPoints,
 		hooks:             processedExpressions.flatMap(p => p?.hooks ?? []),
+		kill:              killed,
 	};
 }

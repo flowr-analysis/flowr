@@ -165,13 +165,13 @@ export type RoxygenOtherTag = RoxygenTagAuthor | RoxygenUnknownTag | RoxygenDocT
 /**
  * All known Roxygen tag types.
  */
-export type RoxygenTag = RoxygenCrossrefTag
+export type RoxygenTag = (RoxygenCrossrefTag
 	| RoxygenNamespaceTag
 	| RoxygenFormattingTag
 	| RoxygenDatasetDocumentationTag
 	| RoxygenFunctionDocumentationTag
 	| RoxygenReusingDocumentationTag
-    | RoxygenOtherTag;
+    | RoxygenOtherTag) & { inherited?: boolean };
 
 /**
  * A roxygen comment block, consisting of multiple {@link RoxygenTag|roxygen tags}.

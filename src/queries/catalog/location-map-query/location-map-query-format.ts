@@ -6,16 +6,16 @@ import Joi from 'joi';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { SourceRange } from '../../../util/range';
-import type { SingleSlicingCriterion } from '../../../slicing/criterion/parse';
+import type { SlicingCriterion } from '../../../slicing/criterion/parse';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
 import type { ParsedQueryLine, SupportedQuery } from '../../query';
-import { sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
+import { criteriaQueryCompleter, sliceCriteriaParser } from '../../../cli/repl/parser/slice-query-parser';
 
 export interface LocationMapQuery extends BaseQueryFormat {
 	readonly type: 'location-map';
 	/** Optional list of ids to filter the results by. If not provided, all ids will be included. */
-	readonly ids?: readonly SingleSlicingCriterion[];
+	readonly ids?: readonly SlicingCriterion[];
 }
 
 export type FileId = number & { readonly __fileId?: unique symbol };
@@ -40,6 +40,7 @@ function locationMapLineParser(_output: ReplOutput, line: readonly string[], _co
 }
 
 export const LocationMapQueryDefinition = {
+	title:           'Location Map Query',
 	executor:        executeLocationMapQuery,
 	asciiSummarizer: (formatter: OutputFormatter, _analyzer: unknown, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as LocationMapQueryResult;
@@ -51,8 +52,10 @@ export const LocationMapQueryDefinition = {
 		result.push(`   ╰ Id List: {${summarizeIdsIfTooLong(formatter, [...Object.keys(out.map.ids)])}}`);
 		return true;
 	},
-	fromLine: locationMapLineParser,
-	schema:   Joi.object({
+	fromLine:  locationMapLineParser,
+	completer: criteriaQueryCompleter,
+	syntax:    '@location-map [(<crit>;...)] <code | file://path>',
+	schema:    Joi.object({
 		type: Joi.string().valid('location-map').required().description('The type of the query.'),
 		ids:  Joi.array().items(Joi.string()).optional().description('Optional list of ids to filter the results by.')
 	}).description('The location map query retrieves the location of every id in the ast.'),

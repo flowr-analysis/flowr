@@ -4,7 +4,7 @@ import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfigurati
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { getOriginInDfg, type Origin } from '../dataflow/origin/dfg-get-origin';
+import { type Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -21,11 +21,12 @@ import { DfEdge, EdgeType } from '../dataflow/graph/edge';
 import { assertUnreachable, guard } from '../util/assert';
 import type { NoInfo, RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { RSymbol } from '../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RExpressionList } from '../r-bridge/lang-4.x/ast/model/nodes/r-expression-list';
 import { EmptyArgument } from '../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
 import { RNull } from '../r-bridge/lang-4.x/convert-values';
+import { Dataflow } from '../dataflow/graph/df-helper';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 export interface SemanticCfgGuidedVisitorConfiguration<
 	OtherInfo = NoInfo,
@@ -238,23 +239,10 @@ export class SemanticCfgGuidedVisitor<
 			case BuiltInProcName.Vector:
 				return this.onVectorCall({ call });
 			case BuiltInProcName.Assignment:
+			case BuiltInProcName.SuperAssignment:
 			case BuiltInProcName.AssignmentLike:
-			case BuiltInProcName.TableAssignment: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = [...targetOut.entries()].filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id);
-							if(source.length === 1) {
-								return this.onAssignmentCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onAssignmentCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.TableAssignment:
+				return this.onAssignmentCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.SpecialBinOp:
 				if(call.args.length !== 2) {
 					return this.onSpecialBinaryOpCall({ call });
@@ -273,22 +261,8 @@ export class SemanticCfgGuidedVisitor<
 				return this.onRepeatLoopCall({ call, body: call.args[0] });
 			case BuiltInProcName.WhileLoop:
 				return this.onWhileLoopCall({ call, condition: call.args[0], body: call.args[1] });
-			case BuiltInProcName.Replacement: {
-				const outgoing = this.config.dfg.outgoingEdges(call.id);
-				if(outgoing) {
-					const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
-					if(target.length === 1) {
-						const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
-						if(targetOut) {
-							const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
-							if(source.length === 1) {
-								return this.onReplacementCall({ call, target: target[0][0], source: source[0][0] });
-							}
-						}
-					}
-				}
-				return this.onReplacementCall({ call, target: undefined, source: undefined });
-			}
+			case BuiltInProcName.Replacement:
+				return this.onReplacementCall({ call, ...this.getSourceAndTarget(call) });
 			case BuiltInProcName.Library:
 				return this.onLibraryCall({ call });
 			case BuiltInProcName.Try:
@@ -317,11 +291,22 @@ export class SemanticCfgGuidedVisitor<
 				return this.onUnnamedCall({ call });
 			case BuiltInProcName.Recall:
 				return this.onRecallCall({ call });
+			case BuiltInProcName.PurrrFormula:
+				return this.onPurrFormulaCall({ call });
+			case BuiltInProcName.NamespaceAccess:
+			case BuiltInProcName.NewEnv:
+			case BuiltInProcName.StackEnv:
+			case BuiltInProcName.With:
+			case BuiltInProcName.Attach:
 			case BuiltInProcName.Default:
 			case BuiltInProcName.DefaultReadAllArgs:
 			case BuiltInProcName.Function:
 			case BuiltInProcName.FunctionDefinition:
+			case BuiltInProcName.S7MakeConstructor:
+			case BuiltInProcName.DefineArgument:
 				return this.onDefaultFunctionCall({ call });
+			case BuiltInProcName.Load:
+				return this.onLoadCall({ call });
 			default:
 				assertUnreachable(origin);
 		}
@@ -338,7 +323,7 @@ export class SemanticCfgGuidedVisitor<
 	 * A helper function to request the {@link getOriginInDfg|origins} of the given node.
 	 */
 	protected getOrigins(id: NodeId): Origin[] | undefined {
-		return getOriginInDfg(this.config.dfg, id);
+		return Dataflow.origin(this.config.dfg, id);
 	}
 
 	/**
@@ -725,4 +710,28 @@ export class SemanticCfgGuidedVisitor<
 	 * @protected
 	 */
 	protected onRecallCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	/**
+	 * This event triggers for any purr formula as in `map(df, ~ .x + 1)`
+	 */
+	protected onPurrFormulaCall(_data: { call: DataflowGraphVertexFunctionCall }) {}
+
+	protected getSourceAndTarget(call: DataflowGraphVertexFunctionCall): { target: NodeId | undefined, source: NodeId | undefined } {
+		const outgoing = this.config.dfg.outgoingEdges(call.id);
+		if(outgoing !== undefined) {
+			const target = outgoing.entries().filter(([, e]) => DfEdge.includesType(e, EdgeType.Returns)).toArray();
+			if(target.length === 1) {
+				const targetOut = this.config.dfg.outgoingEdges(target[0][0]);
+				if(targetOut !== undefined) {
+					const source = targetOut.entries().filter(([t, e]) => DfEdge.includesType(e, EdgeType.DefinedBy) && t !== call.id).toArray();
+					if(source.length === 1) {
+						return { target: target[0][0], source: source[0][0] };
+					}
+				}
+			}
+		}
+		return { target: undefined, source: undefined };
+	}
+
+	protected onLoadCall(_param: { call: DataflowGraphVertexFunctionCall }) {}
 }

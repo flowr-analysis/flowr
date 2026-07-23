@@ -12,7 +12,7 @@ import { patchFunctionCall } from '../common';
 import { unpackNonameArg } from '../argument/unpack-argument';
 import { dataflowLogger } from '../../../../../logger';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { define } from '../../../../../environments/define';
@@ -22,8 +22,9 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { IdentifierDefinition } from '../../../../../environments/identifier';
 import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { applyCdsToAllInGraphButConstants, applyCdToReferences } from '../../../../../environments/reference-to-maybe';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 
 /**
@@ -35,7 +36,7 @@ import type { REnvironmentInformation } from '../../../../../environments/enviro
  */
 export function processForLoop<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>
 ): DataflowInformation {
@@ -89,13 +90,13 @@ export function processForLoop<OtherInfo>(
 
 	for(const write of writtenVariable) {
 		nextGraph.addEdge(write.nodeId, vector.entryPoint, EdgeType.DefinedBy);
-		nextGraph.setDefinitionOfVertex(write);
+		nextGraph.setDefinitionOfVertex(write, [vector.entryPoint]);
 	}
 
 	applyCdToReferences(body.out, cd);
 	const outgoing = variable.out.concat(writtenVariable, body.out);
 
-	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out);
+	linkCircularRedefinitionsWithinALoop(nextGraph, nameIdShares, body.out, body.environment);
 
 	reapplyLoopExitPoints(body.exitPoints, body.in.concat(body.out, body.unknownReferences), nextGraph);
 
@@ -112,6 +113,10 @@ export function processForLoop<OtherInfo>(
 	// as the for-loop always evaluates its condition
 	nextGraph.addEdge(name.info.id, vector.entryPoint, EdgeType.Reads);
 
+	// the body may never execute, so a removal within it only happens maybe; apply it as the merge cannot represent it
+	const loopKill = body.kill?.length ? makeKillsMaybe(body.kill, cd) : undefined;
+	const loopEnvironment = appendEnvironment(origEnv, outEnvironment);
+
 	return {
 		unknownReferences: [],
 		// we only want those not bound by a local variable
@@ -121,7 +126,8 @@ export function processForLoop<OtherInfo>(
 		entryPoint:        name.info.id,
 		exitPoints:        filterOutLoopExitPoints(body.exitPoints),
 		// if we can not be sure that the for-loop runs once, we have to merge back the original environment, as the body may never execute
-		environment:       appendEnvironment(origEnv, outEnvironment),
+		environment:       loopKill ? applyKills(loopEnvironment, loopKill) : loopEnvironment,
 		hooks:             variable.hooks.concat(vector.hooks, body.hooks),
+		kill:              loopKill,
 	};
 }

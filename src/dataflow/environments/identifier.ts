@@ -1,7 +1,12 @@
 import type { BuiltInIdentifierConstant, BuiltInIdentifierDefinition } from './built-in';
-import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlDependency } from '../info';
 import { startAndEndsWith } from '../../util/text/strings';
+import { baseRExportOwner } from '../../util/r-base-packages';
+import type { REnvironmentInformation } from './environment';
+import type { Origin } from '../origin/dfg-get-origin';
+/* type-only, as the value import would cycle back through the graph helpers */
+import type { Dataflow } from '../graph/df-helper';
 
 /** this is just a safe-guard type to prevent mixing up branded identifiers with normal strings */
 export type BrandedIdentifier = string & { __brand?: 'identifier' };
@@ -35,9 +40,10 @@ const dotDotDotAccess = /^\.\.\d+$/;
  * ```
  */
 export const Identifier = {
+	name: 'Identifier',
 	/**
-	 * Create an identifier from its name and optional namespace.
-	 * Please note that for `internal` to count, a namespace must be provided!
+	 * Creates an identifier. Strips surrounding backticks from the name.
+	 * Prefer {@link Identifier.from} for static config entries where namespace is always present and name has no backticks.
 	 */
 	make(this: void, name: BrandedIdentifier, namespace?: BrandedNamespace, internal: boolean = false): Identifier {
 		if(startAndEndsWith(name, '`')) {
@@ -48,6 +54,34 @@ export const Identifier = {
 		} else {
 			return name;
 		}
+	},
+	/**
+	 * Fast-path factory: returns the tuple as-is with no allocation or runtime checks.
+	 * Use for static built-in config entries where name is a compile-time constant with no backticks.
+	 * @example
+	 * ```ts
+	 * Identifier.from(['map', 'purrr'])       // ['map', 'purrr']
+	 * Identifier.from(['map', 'purrr', true]) // ['map', 'purrr', true]
+	 * ```
+	 */
+	from(this: void, arr: [BrandedIdentifier, BrandedNamespace] | [BrandedIdentifier, BrandedNamespace, boolean]): Identifier {
+		return arr;
+	},
+	/**
+	 * Verify whether an unknown element has a valid identifier shape!
+	 */
+	is(this: void, id: unknown): id is Identifier {
+		if(typeof id === 'string') {
+			return true;
+		}
+		if(Array.isArray(id)) {
+			if(id.length === 2) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string';
+			} else if(id.length === 3) {
+				return typeof id[0] === 'string' && typeof id[1] === 'string' && typeof id[2] === 'boolean';
+			}
+		}
+		return false;
 	},
 	/**
 	 * Parse an identifier from its string representation,
@@ -172,8 +206,91 @@ export const Identifier = {
 		} else {
 			return [id, undefined, undefined];
 		}
+	},
+	/**
+	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
+	 * resolves to an export of a loaded package (the signature-database info attached by `library()`/`use()`);
+	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 *
+	 * Pass the call's `name` to additionally get *edge-free* base-R qualification: a bare base call is qualified
+	 * from the base package that exports it (`sd` yields `stats::sd`, `plot` yields `base::plot`) via the
+	 * precomputed {@link baseRExportOwner} store -- no loaded database, no graph edges. This is suppressed when
+	 * the call resolves to a user definition or is already namespaced, so a local `sd()` is never `stats::sd`.
+	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
+	 */
+	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier): Identifier | undefined {
+		let sawUserDefinition = false;
+		for(const origin of origins ?? []) {
+			// an attached package export carries the target builtin id `built-in:pkg:func` in `proc`
+			if('proc' in origin) {
+				const pkgFn = NodeId.toPkgFn(origin.proc);   // [pkg, func], or undefined for a bare/processor-level builtin
+				if(pkgFn) {
+					return Identifier.make(pkgFn[1], pkgFn[0]);
+				}
+			} else {
+				sawUserDefinition = true;   // a function-call/variable origin: resolves to a user definition
+			}
+		}
+		// only qualify a bare base call: never override a user definition, nor an explicitly namespaced call
+		if(name !== undefined && !sawUserDefinition && Identifier.getNamespace(name) === undefined) {
+			const bare = Identifier.getName(name);
+			const owner = baseRExportOwner(bare);
+			if(owner !== undefined) {
+				return Identifier.make(bare, owner as BrandedNamespace);
+			}
+		}
+		return undefined;
 	}
 } as const;
+
+/**
+ * Well-known R package names used in {@link DefaultBuiltinConfig}.
+ * Using a const enum keeps the string values inlined at compile time.
+ */
+export const enum PkgName {
+	/* R built-in / recommended packages */
+	Base        = 'base',
+	Compiler    = 'compiler',
+	Graphics    = 'graphics',
+	GrDevices   = 'grDevices',
+	Methods     = 'methods',
+	Stats       = 'stats',
+	Utils       = 'utils',
+	/* CRAN / third-party */
+	AssertThat   = 'assertthat',
+	Box          = 'box',
+	Cli          = 'cli',
+	DataTable    = 'data.table',
+	Devtools     = 'devtools',
+	Dplyr        = 'dplyr',
+	Fs           = 'fs',
+	Functools    = 'functools',
+	GgPlot2      = 'ggplot2',
+	Hmisc        = 'Hmisc',
+	Import       = 'import',
+	Inferference = 'inferference',
+	Janitor      = 'janitor',
+	Lattice      = 'lattice',
+	Magick       = 'magick',
+	Magrittr     = 'magrittr',
+	Msgr         = 'msgr',
+	PkgLoad      = 'pkgload',
+	Plyr         = 'plyr',
+	Purrr        = 'purrr',
+	Ragg         = 'ragg',
+	RasterPdf    = 'rasterpdf',
+	Remotes      = 'remotes',
+	Rlang        = 'rlang',
+	RmethodsS3   = 'R.methodsS3',
+	Roo          = 'R.oo',
+	Rutils       = 'R.utils',
+	S7           = 'S7',
+	Soda         = 'SoDA',
+	Testthat     = 'testthat',
+	TidyR        = 'tidyr',
+	TinyPlot     = 'tinyplot',
+	TryCatchLog  = 'tryCatchLog',
+}
 
 /**
  * Each reference has exactly one reference type, stored as the respective number.
@@ -269,18 +386,35 @@ export interface IdentifierReference {
  * @see {@link IdentifierReference}
  */
 export interface InGraphIdentifierDefinition extends IdentifierReference {
-	readonly type:      InGraphReferenceType
+	readonly type:             InGraphReferenceType
 	/**
 	 * The assignment node which ultimately defined this identifier
 	 * (the arrow operator for e.g. `x <- 3`, or `assign` call in `assign("x", 3)`)
 	 */
-	readonly definedAt: NodeId
+	readonly definedAt:        NodeId
 	/**
 	 * For value tracking, this contains all nodeIds of constant values that may be made available to this identifier
 	 * For example, in `x <- 3; y <- x`, the definition of `y` will have the value `3` in its value set
 	 */
-	readonly value?:    NodeId[]
+	readonly value?:           NodeId[]
+	/**
+	 * If this variable holds an R environment (created by `new.env()` etc.),
+	 * this tracks the current known state of that environment.
+	 * Use this to resolve variables assigned via `assign(name, val, envir=<this var>)`.
+	 */
+	readonly envState?:        REnvironmentInformation
+	/**
+	 * If this is a function that returns a tracked environment, stores the envState
+	 * that the function returns (best-effort: only set when statically detectable).
+	 */
+	readonly returnsEnvState?: REnvironmentInformation
 }
+
+/**
+ * A narrowed variant of {@link InGraphIdentifierDefinition} that is guaranteed to have a non-undefined `name`.
+ * Prefer this over the inline intersection `InGraphIdentifierDefinition & { name: Identifier }`.
+ */
+export type NamedInGraphIdentifierDefinition = InGraphIdentifierDefinition & { readonly name: Identifier };
 
 /**
  * Stores the definition of an identifier within an {@link IEnvironment}.

@@ -139,7 +139,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 
@@ -215,12 +214,6 @@ jobs:
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
 
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::xmlparsedata
-
       - name: "📦 Install Dependencies"
         if: steps.get-version.outputs.makeRelease == 'true'
         run: npm ci
@@ -279,12 +272,6 @@ jobs:
         uses: r-lib/actions/setup-r@v2
         with:
           r-version: ${{ env.ACTION_R_VERSION }}
-
-      - name: "📦 Install R Packages"
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          extra-packages: |
-            any::xmlparsedata
 
       - name: "⏱️ Run the performance benchmarks"
         run: bash .github/workflows/scripts/run-flowr-command.sh performance-test -- 1 1 "${{ matrix.name }}" "${{ matrix.parser }}"
@@ -454,7 +441,6 @@ jobs:
         uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
-            any::xmlparsedata
             any::dplyr
             any::readr
 

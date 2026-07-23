@@ -1,29 +1,28 @@
 import type { DataflowGraph, UnknownSideEffect } from '../../dataflow/graph/graph';
-import { graphToMermaid } from '../../util/mermaid/dfg';
 import type { DEFAULT_DATAFLOW_PIPELINE } from '../../core/steps/pipeline/default-pipelines';
 import { createDataflowPipeline } from '../../core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { resolveDataflowGraph } from '../../dataflow/graph/resolve-graph';
-import { diffOfDataflowGraphs } from '../../dataflow/graph/diff-dataflow-graph';
 import { guard } from '../../util/assert';
 import type { PipelineOutput } from '../../core/steps/pipeline/pipeline';
 import { printAsMs } from '../../util/text/time';
 import type { KnownParser } from '../../r-bridge/parser';
 import { FlowrWikiBaseRef } from './doc-files';
+import type { GeneralDocContext } from '../wiki-mk/doc-context';
 import { codeBlock } from './doc-code';
 import type { GraphDifferenceReport } from '../../util/diff-graph';
 import { contextFromInput } from '../../project/context/flowr-analyzer-context';
 import type { MermaidMarkdownMark } from '../../util/mermaid/info';
-import { computeCallGraph } from '../../dataflow/graph/call-graph';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import { CallGraph } from '../../dataflow/graph/call-graph';
 
 
 /**
  * Visualizes the dataflow graph as a mermaid graph inside a markdown code block.
- * Please use this only for documentation purposes, for programmatic usage use {@link graphToMermaid} directly.
+ * Please use this only for documentation purposes, for programmatic usage use {@link DataflowMermaid.convert} directly.
  */
 export function printDfGraph(graph: DataflowGraph, mark?: ReadonlySet<MermaidMarkdownMark>, simplified = false) {
 	return `
-${codeBlock('mermaid', graphToMermaid({
+${codeBlock('mermaid', Dataflow.visualize.mermaid.convert({
 	graph,
 	prefix: 'flowchart LR',
 	mark,
@@ -32,6 +31,9 @@ ${codeBlock('mermaid', graphToMermaid({
 	`;
 }
 
+/**
+ * Options for {@link printDfGraphForCode}.
+ */
 export interface PrintDataflowGraphOptions {
 	readonly mark?:               ReadonlySet<MermaidMarkdownMark>;
 	readonly showCode?:           boolean;
@@ -40,8 +42,8 @@ export interface PrintDataflowGraphOptions {
 	readonly switchCodeAndGraph?: boolean;
 	readonly simplified?:         boolean;
 	readonly callGraph?:          boolean;
+	readonly ctx?:                GeneralDocContext;
 }
-
 
 /**
  * Visualizes a side effect for documentation purposes.
@@ -62,7 +64,7 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, opt
  * This function returns a markdown string containing the dataflow graph as a mermaid code block,
  * along with the R code itself in a collapsible section.
  */
-export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
+export async function printDfGraphForCode(parser: KnownParser, code: string, { callGraph = false, simplified = false, mark, showCode = true, codeOpen = false, exposeResult, switchCodeAndGraph = false, ctx }: PrintDataflowGraphOptions = {}): Promise<string | [string, PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>]> {
 	const now = performance.now();
 	const result = await createDataflowPipeline(parser, {
 		context: contextFromInput(code)
@@ -73,8 +75,9 @@ export async function printDfGraphForCode(parser: KnownParser, code: string, { c
 		guard(showCode, 'can not switch code and graph if code is not shown');
 	}
 
-	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the [${parser.name}](${FlowrWikiBaseRef}/Engines) engine) within the generation environment.`;
-	const graph = callGraph ? computeCallGraph(result.dataflow.graph) : result.dataflow.graph;
+	const sigDbNote = `No ${ctx ? ctx.linkPage('wiki/Signature Database', 'signature database') : `[signature database](${FlowrWikiBaseRef}/Signature-Database)`} is mounted for these generated graphs, so \`library()\` calls attach no package exports; base-R names are still qualified via the generated base-package store (e.g. \`acf\` as \`stats::acf\`).`;
+	const metaInfo = `The analysis required _${printAsMs(duration)}_ (including parse and normalize, using the ${ctx ? ctx.linkPage('wiki/Engines', parser.name) : `[${parser.name}](${FlowrWikiBaseRef}/Engines)`} engine) within the generation environment. ${sigDbNote}`;
+	const graph = callGraph ? CallGraph.compute(result.dataflow.graph) : result.dataflow.graph;
 	const dfGraph = printDfGraph(graph, mark, simplified);
 	const simplyText = simplified ? '(simplified) ' : '';
 	const graphName = callGraph ? 'Call Graph' : 'Dataflow Graph';
@@ -114,8 +117,8 @@ export async function verifyExpectedSubgraph(parser: KnownParser, code: string, 
 	}).allRemainingSteps();
 
 	expectedSubgraph.setIdMap(info.normalize.idMap);
-	expectedSubgraph = resolveDataflowGraph(expectedSubgraph, context);
-	const report: GraphDifferenceReport = diffOfDataflowGraphs(
+	expectedSubgraph = Dataflow.resolveGraphCriteria(expectedSubgraph, context);
+	const report: GraphDifferenceReport = Dataflow.diffGraphs(
 		{ name: 'expected', graph: expectedSubgraph },
 		{ name: 'got',      graph: info.dataflow.graph },
 		{

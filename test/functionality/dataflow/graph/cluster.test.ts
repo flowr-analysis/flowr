@@ -1,15 +1,15 @@
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { type DataflowGraphCluster, type DataflowGraphClusters, findAllClusters } from '../../../../src/dataflow/cluster';
-import { type SlicingCriteria, slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion, type SlicingCriteria } from '../../../../src/slicing/criterion/parse';
 import { PipelineExecutor } from '../../../../src/core/pipeline-executor';
 import { DEFAULT_DATAFLOW_PIPELINE } from '../../../../src/core/steps/pipeline/default-pipelines';
 import { deterministicCountingIdGenerator } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/decorate';
 import { withShell } from '../../_helper/shell';
 import type { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import { dataflowGraphToMermaidUrl } from '../../../../src/core/print/dataflow-printer';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { assert, describe, test } from 'vitest';
 import { contextFromInput } from '../../../../src/project/context/flowr-analyzer-context';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 describe('Graph Clustering', () => {
 	describe('Simple Graph Tests', () => {
@@ -50,7 +50,7 @@ describe('Graph Clustering', () => {
 					} : c;
 					return {
 						startNode: '',
-						members:   members.map(s => slicingCriterionToId(s, graph.idMap ?? info.normalize.idMap)),
+						members:   members.map(s => SlicingCriterion.parse(s, graph.idMap ?? info.normalize.idMap)),
 						hasUnknownSideEffects
 					};
 				});
@@ -58,7 +58,7 @@ describe('Graph Clustering', () => {
 				try {
 					compareClusters(actual, resolved);
 				} catch(e) {
-					console.log(dataflowGraphToMermaidUrl(info.dataflow));
+					console.log(Dataflow.visualize.mermaid.url(info.dataflow));
 					throw e;
 				}
 			});
@@ -90,7 +90,7 @@ describe('Graph Clustering', () => {
 					['1@if', '1@x', '1@y', '1@<-', '1@k', '2@print', '2@y']
 				]);
 				check('unrelated nested conditional', 'if(x) {\nif(y) y <- k }\nprint(y)', [
-					['1@if', '1@x', '$9', '2@if', '2@y', '2:7', '2@<-', '2@k', '3@print', '3@y']
+					['1@if', '1@x', '$9', '2@if', '2@y', '2@[2]y', '2@<-', '2@k', '3@print', '3@y']
 				]);
 			});
 			describe('loops', () => {
@@ -101,10 +101,10 @@ describe('Graph Clustering', () => {
 		});
 		describe('inter-procedural', () => {
 			check('contain call target', 'y <- 42\nf <- function(x) { x * y }\nf(2)\nf(3)', [
-				['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '2:15', '$11', '2:20', '2:22', '2:24', '3:1', '3:3', '4:1', '4:3']
+				['1:1', '1:3', '1:6', '2:1', '2:3', '2:6', '2@[1]x', '$11', '2@[2]x', '2:22', '2:24', '3:1', '3:3', '4:1', '4:3']
 			]);
 			check('some odd ducklings', 'y <- 42\nz <- 5\nf <- function(x) { x * y }\nf(2)\nprint(z)\nf(3)\nu', [
-				['1:1', '1:3', '1:6', '3:1', '3:3', '3:6', '3:15', '$14', '3:20', '3:22', '3:24', '4:1', '4:3', '6:1', '6:3'], /* call as before */
+				['1:1', '1:3', '1:6', '3:1', '3:3', '3:6', '3@[1]x', '$14', '3@[2]x', '3:22', '3:24', '4:1', '4:3', '6:1', '6:3'], /* call as before */
 				['2:1', '2:3', '2:6', '5:1', '5:7'], /* print & z */
 				['7:1'] /* u */
 			]);
@@ -151,8 +151,8 @@ cat(product)
 						'4@w', '4@<-', '4@vw',
 						'5@N', '5@<-', '5@vN',
 						'7@for', '7@i', '7@N', '$28',
-						'8@sum', '8:10', '8@<-', '8@+', '8@*', '8@i', '8@w',
-						'9@product', '9:14', '9@<-', '9@*', '9@i',
+						'8@sum', '8@[2]sum', '8@<-', '8@+', '8@*', '8@i', '8@w',
+						'9@product', '9@[2]product', '9@<-', '9@*', '9@i',
 						'12@cat', '12@sum',
 						'13@cat', '13@product'
 					]
@@ -167,7 +167,7 @@ cat(product)
 					['1@f', '1@<-', '1@function', '1@vf', '2@f', '3@f', '4@f']
 				]);
 				check('maintain clusters on dependent function calls', 'f <- function(x) x\nk <- f(vi)\nf(k)', [
-					['1@f', '1@<-', '1@function', '1@x', '1:18', '2@k', '2@<-', '2@f', '2@vi', '3@f', '3@k']
+					['1@f', '1@<-', '1@function', '1@x', '1@[2]x', '2@k', '2@<-', '2@f', '2@vi', '3@f', '3@k']
 				]);
 			});
 		});

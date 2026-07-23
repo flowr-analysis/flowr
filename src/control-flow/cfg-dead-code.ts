@@ -1,5 +1,5 @@
 /* currently this does not do work on function definitions */
-import type { ControlFlowGraph, ControlFlowInformation } from './control-flow-graph';
+import type { ControlFlowInformation } from './control-flow-graph';
 import { CfgVertex, CfgEdge } from './control-flow-graph';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { Ternary } from '../util/logic';
@@ -22,7 +22,6 @@ class CfgConditionalDeadCodeRemoval extends SemanticCfgGuidedVisitor {
 	private readonly cachedConditions: CachedValues<Ternary> = new Map();
 	private readonly cachedStatements: CachedValues<boolean> = new Map();
 	private readonly inTry:            Set<NodeId> = new Set<NodeId>();
-	private invertedCfg:               ControlFlowGraph | undefined;
 
 	private getValue(id: NodeId): Ternary {
 		const has = this.cachedConditions.get(id);

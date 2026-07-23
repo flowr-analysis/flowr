@@ -33,15 +33,20 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
 
 /**
  * Retrieves all files in the given directory recursively (synchronously)
+ * @param dir        - Directory path to start the search from
+ * @param suffix     - Suffix of the files to be retrieved, tested against the file name
+ * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
+ *                     (e.g. `packrat/lib`), so a pattern can address nested directories
+ * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
  * @see {@link getAllFiles} - for an asynchronous version.
  */
-export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined): Generator<string> {
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir): Generator<string> {
 	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			if(!ignoreDirs?.test(subEntries.name)) {
-				yield* getAllFilesSync(res, suffix);
+			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
+				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo);
 			}
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
@@ -126,7 +131,7 @@ export async function readLineByLine(filePath: string, onLine: (line: Buffer, li
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer;
+	let line: Buffer | null;
 
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
@@ -154,7 +159,7 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 	}
 	const reader = new LineByLine(filePath);
 
-	let line: false | Buffer;
+	let line: Buffer | null;
 
 	let counter = 0;
 	// eslint-disable-next-line no-cond-assign
@@ -175,6 +180,43 @@ export function readLineByLineSync(filePath: string, onLine: (line: Buffer, line
 export function getParentDirectory(directory: string): string{
 	// apparently this is somehow the best way to do it in node, what
 	return directory.split(path.sep).slice(0, -1).join(path.sep);
+}
+
+/**
+ * A path with backslashes rewritten to forward slashes, i.e. POSIX form. R accepts these on every OS, so this is
+ * also how a filesystem path is made safe to interpolate into an R string literal (where a raw `\` would escape).
+ */
+export function toPosixPath(p: string): string {
+	return p.replaceAll('\\', '/');
+}
+
+/**
+ * The directory all given paths share, e.g. `/a` for `/a/b.R` and `/a/c/d.R`; `undefined` if they share none.
+ */
+export function commonDirectory(paths: readonly string[]): string | undefined {
+	if(paths.length === 0) {
+		return undefined;
+	}
+	const split = paths.map(p => path.resolve(p).split(path.sep));
+	const common: string[] = [];
+	for(let i = 0; i < split[0].length; i++) {
+		if(!split.every(s => s[i] === split[0][i])) {
+			break;
+		}
+		common.push(split[0][i]);
+	}
+	if(common.length === 0) {
+		return undefined;
+	}
+	return common.length === 1 && common[0] === '' ? path.sep : common.join(path.sep);
+}
+
+/**
+ * The path of `filePath` seen from `root` (`s.R` instead of `/tmp/s.R`), or unchanged if it lies outside of `root`.
+ */
+export function relativeTo(root: string, filePath: string): string {
+	const relative = toPosixPath(path.relative(root, filePath));
+	return relative.length > 0 && !relative.startsWith('..') ? relative : filePath;
 }
 
 /**

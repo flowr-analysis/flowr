@@ -1,9 +1,9 @@
 import {
 	FlowrDockerRef,
 	FlowrGithubBaseRef,
-	FlowrNpmRef, FlowrPositron, FlowrSiteBaseRef,
+	FlowrPositron, FlowrSiteBaseRef,
 	FlowrVsCode,
-	FlowrWikiBaseRef, getFileContentFromRoot,
+	getFileContentFromRoot,
 	linkFlowRSourceFile
 } from './doc-util/doc-files';
 import { codeBlock } from './doc-util/doc-code';
@@ -16,7 +16,7 @@ import { documentReplSession } from './doc-util/doc-repl';
 import { fileNameForGenHeader } from './doc-util/doc-auto-gen';
 import { prefixLines } from './doc-util/doc-general';
 import { printDfGraphForCode } from './doc-util/doc-dfg';
-import { showQuery } from './doc-util/doc-query';
+import { linkToQueryOfName, showQuery } from './doc-util/doc-query';
 import { NewIssueUrl } from './doc-util/doc-issue';
 import { joinWithLast } from '../util/text/strings';
 import type { DocMakerArgs } from './wiki-mk/doc-maker';
@@ -24,8 +24,19 @@ import { DocMaker } from './wiki-mk/doc-maker';
 
 const PublicationsMain: { header: string, description: string, doi: string, bibtex: string }[] = [
 	{
+		header:      'Supporting the Comprehension of Data Analysis Scripts (FSE \'25, Tool)',
+		description: 'This refers to an updated tool demonstration of the framework. Preprint available at <a href="https://doi.org/10.48550/arXiv.2604.15963" target="_blank">arXiv:2604.15963</a>.',
+		doi:         'https://doi.org/10.1145/3803437.3806402',
+		bibtex:      String.raw`@article{10.1145/3803437.3806402,
+	author = {Sihler, Florian and Gerstl, Oliver and Pfrenger, Lars and Schubert, Julian and Tichy, Matthias},
+	title = {Supporting the Comprehension of Data Analysis Scripts},
+	year = {2026},
+	doi = {10.1145/3803437.3806402}
+}`
+	},
+	{
 		header:      'Statically Analyzing the Dataflow of R Programs (OOPSLA \'25)',
-		description: 'Please cite this paper if you are using flowR in your research.',
+		description: '**Please cite this paper if you are using flowR in your research.**',
 		doi:         'https://doi.org/10.1145/3763087',
 		bibtex:      String.raw`@article{10.1145/3763087,
 	author = {Sihler, Florian and Tichy, Matthias},
@@ -48,7 +59,7 @@ const PublicationsMain: { header: string, description: string, doi: string, bibt
 	},
 	{
 		header:      'flowR: A Static Program Slicer for R (ASE \'24, Tool)',
-		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}">VS Code Extension</a>.`,
+		description: `This refers to the tool-demonstration of the <a href="${FlowrVsCode}" target="_blank">VS Code Extension</a>.`,
 		doi:         'https://doi.org/10.1145/3691620.3695359',
 		bibtex:      `@inproceedings{DBLP:conf/kbse/SihlerT24,
   author       = {Florian Sihler and
@@ -143,14 +154,14 @@ export class DocReadme extends DocMaker<'README.md'> {
 [![DOI](https://zenodo.org/badge/624819038.svg)](https://zenodo.org/doi/10.5281/zenodo.13319290)
 
 _flowR_ is a sophisticated, static [dataflow analyzer](https://en.wikipedia.org/wiki/Data-flow_analysis) for the [R programming language](https://www.r-project.org/),
-available for [VSCode](${FlowrVsCode}), [Positron](${FlowrPositron}), [RStudio](${FlowrGithubBaseRef}/rstudio-addin-flowr),
-and [Docker](${FlowrDockerRef}).
+available for ${ctx.linkPage('flowr:vscode', 'VSCode')}, ${ctx.linkPage('flowr:positron', 'Positron')}, ${ctx.linkPage('flowr:rstudio-addin', 'RStudio')},
+and ${ctx.linkPage('flowr:docker', 'Docker')}.
 It offers a wide variety of features, for example:
 
 * 🐞 **code linting**\\
-   Analyze your R scripts for common issues and potential bugs (see the [wiki page](${FlowrGithubBaseRef}/flowr/wiki/Linter) for more information on the currently supported linters).
+   Analyze your R scripts for common issues and potential bugs (see the ${ctx.linkPage('wiki/Linter', 'wiki page')} for more information on the currently supported linters).
 
-	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl) or the [Visual Studio Code extension](${FlowrVsCode}) (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
+	${prefixLines(details('Example: Linting code with flowR', `To lint your code, you can use the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} or the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')} (see [vscode-flowr#283](https://github.com/flowr-analysis/vscode-flowr/pull/283)).
 	
 ${await(async() => {
 	const code = 'read.csv("/root/x.txt")';
@@ -174,8 +185,8 @@ ${res}
    for the computation of the point of interest.
 
 ${prefixLines(details('Example: Slicing with flowR', `
-The simplest way to retrieve slices is with flowR's [Visual Studio Code extension](${FlowrVsCode}). 
-However, you can slice using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl) as well.
+The simplest way to retrieve slices is with flowR's ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}.
+However, you can slice using the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')} as well.
 This can help you if you want to reuse specific parts of an existing analysis within another context or if you want to understand
 what is happening in the code.
 
@@ -195,11 +206,11 @@ ${await documentReplSession(treeSitter, [{
 
 * 📚 **dependency analysis**\\
   Given your analysis project, flowR offers a plethora of so-called ${ctx.linkPage('wiki/Query API', 'queries')} to get more information about your code.
-  An important query is the [dependencies query](${FlowrWikiBaseRef}/Query-API#dependencies-query), which shows you the library your project needs,
+  An important query is the ${linkToQueryOfName('dependencies', 'dependencies query')}, which shows you the library your project needs,
   the data files it reads, the scripts it sources, and the data it outputs.
   
   ${prefixLines(details('Example: Dependency Analysis with flowR', `
-The following showcases the dependency view of the [Visual Studio Code extension](${FlowrVsCode}):
+The following showcases the dependency view of the ${ctx.linkPage('flowr:vscode', 'Visual Studio Code extension')}:
 
 ![Dependency Analysis](https://raw.githubusercontent.com/flowr-analysis/vscode-flowr/refs/heads/main/media/dependencies.png)
   
@@ -211,7 +222,7 @@ The following showcases the dependency view of the [Visual Studio Code extension
   and consult the ${ctx.linkPage('wiki/Dataflow Graph', 'wiki pages')} for more details on the ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graphs')} as well as ${ctx.linkPage('wiki/Dataflow Graph', 'call graphs', 'perspectives-cg')}.
 
 ${prefixLines(details('Example: Generating a dataflow graph with flowR', `
-You can investigate flowR's analyses using the [REPL](${FlowrWikiBaseRef}/Interface#using-the-repl).
+You can investigate flowR's analyses using the ${ctx.linkPage('wiki/Interface', 'REPL', 'using-the-repl')}.
 Commands like ${getReplCommand('dataflow*')} allow you to view a ${ctx.linkPage('wiki/Dataflow Graph', 'dataflow graph')} for a given R script.
 
 Let's have a look at the following example:
@@ -231,11 +242,11 @@ ${await printDfGraphForCode(treeSitter, getFileContentFromRoot('test/testfiles/e
 
 If you want to use flowR and the features it provides, feel free to check out the:
 
-- [Visual Studio Code](${FlowrVsCode})/[Positron](${FlowrPositron}): provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
-- [RStudio Addin](${FlowrGithubBaseRef}/rstudio-addin-flowr): integrates flowR into [RStudio](https://posit.co/downloads/)
-- [R package](${FlowrGithubBaseRef}/flowr-r-adapter): use flowR in your R scripts
-- [Docker image](${FlowrDockerRef}): run flowR in a container, this also includes [flowR's server](${FlowrWikiBaseRef}/Interface#communicating-with-the-server)
-- [NPM package](${FlowrNpmRef}): include flowR in your TypeScript and JavaScript projects
+- ${ctx.linkPage('flowr:vscode', 'Visual Studio Code')}/${ctx.linkPage('flowr:positron', 'Positron')}: provides access to flowR directly in VS Code and Positron (or [vscode.dev](https://vscode.dev/))
+- ${ctx.linkPage('flowr:rstudio-addin', 'RStudio Addin')}: integrates flowR into [RStudio](https://posit.co/downloads/)
+- ${ctx.linkPage('flowr:radapter', 'R package')}: use flowR in your R scripts
+- ${ctx.linkPage('flowr:docker', 'Docker image')}: run flowR in a container, this also includes ${ctx.linkPage('wiki/Interface', "flowR's server", 'communicating-with-the-server')}
+- ${ctx.linkPage('flowr:npm', 'NPM package')}: include flowR in your TypeScript and JavaScript projects
  
 
 If you are already using flowR and want to give feedback, please consider filling out our [feedback form](https://docs.google.com/forms/d/e/1FAIpQLScKFhgnh9LGVU7QzqLvFwZe1oiv_5jNhkIO-G-zND0ppqsMxQ/viewform).
@@ -293,7 +304,8 @@ We welcome every contribution! Please check out the ${ctx.linkPage('wiki/Onboard
 
 *flowr* is actively developed by [Florian Sihler](https://eagleoutice.github.io/portfolio/) and (since October 1st 2025) [Oliver Gerstl](https://www.linkedin.com/in/oliver-gerstl) under the
 [GPLv3 License](LICENSE).\\
-It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector").
+It is partially supported by the German Research Foundation (DFG) under the grant [504226141](https://gepris.dfg.de/gepris/projekt/504226141) ("CodeInspector")
+and received an unrestricted gift from [Posit](https://posit.co/), the open-source data science company. 
 
 ----
 
@@ -301,7 +313,7 @@ It is partially supported by the German Research Foundation (DFG) under the gran
 
 Please notice that this file was generated automatically using the file ${fileNameForGenHeader(module.filename)} as a source.\\
 If you want to make changes please edit the source file (the CI will take care of the rest).
-In fact, many files in the [wiki](${FlowrWikiBaseRef}) are generated, so make sure to check for the source file if you want to make changes.
+In fact, many files in the ${ctx.linkPage('flowr:wiki', 'wiki')} are generated, so make sure to check for the source file if you want to make changes.
 
 `.trim();
 	}

@@ -1,21 +1,18 @@
 import { assert, describe, test } from 'vitest';
 import { mapProblematicNodesToIds, withTreeSitter } from '../../_helper/shell';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../../../../src/dataflow/graph/call-graph';
-import { getSubCallGraph } from '../../../../src/dataflow/graph/call-graph';
 import { label } from '../../_helper/label';
 import { FlowrAnalyzerBuilder } from '../../../../src/project/flowr-analyzer-builder';
 import { requestFromInput } from '../../../../src/r-bridge/retriever';
-import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
-import { resolveDataflowGraph } from '../../../../src/dataflow/graph/resolve-graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../_helper/dataflow/environment-builder';
-import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in';
 import { ExitPointType } from '../../../../src/dataflow/info';
-import type { SingleSlicingCriterion } from '../../../../src/slicing/criterion/parse';
-import { slicingCriterionToId } from '../../../../src/slicing/criterion/parse';
+import { SlicingCriterion } from '../../../../src/slicing/criterion/parse';
 import type { DataflowGraph } from '../../../../src/dataflow/graph/graph';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
+import { BuiltInProcName } from '../../../../src/dataflow/environments/built-in-proc-name';
+import { CallGraph } from '../../../../src/dataflow/graph/call-graph';
 
 describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 	function checkSubCallGraph(testName: string, code: string, entries: NodeId[], expectedGraph: CallGraph | DataflowGraph): void {
@@ -25,10 +22,10 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 			analyzer.addRequest(requestFromInput(code));
 			const cg = await analyzer.callGraph();
 			const idMap = (await analyzer.normalize()).idMap;
-			const resolvedEntries = entries.map(e => slicingCriterionToId(e as SingleSlicingCriterion, idMap));
-			const subCg = getSubCallGraph(cg, new Set(resolvedEntries));
-			const expectedResolved = resolveDataflowGraph(expectedGraph, analyzer.inspectContext(), idMap);
-			const diff = diffOfDataflowGraphs({
+			const resolvedEntries = entries.map(e => SlicingCriterion.parse(e as SlicingCriterion, idMap));
+			const subCg = CallGraph.computeSubCallGraph(cg, new Set(resolvedEntries));
+			const expectedResolved = Dataflow.resolveGraphCriteria(expectedGraph, analyzer.inspectContext(), idMap);
+			const diff = Dataflow.diffGraphs({
 				graph: subCg,
 				name:  'Got'
 			}, {
@@ -70,11 +67,11 @@ describe('Call Graph Sub-Extraction', withTreeSitter(ts => {
 				environment:       defaultEnv().pushEnv().defineParameter('x', '1@x', '1@x')
 			}, { readParams: [[1, true]] })
 			.calls('1@function', [11, '2@return'])
-			.calls(11, [10, NodeId.toBuiltIn('expression-list')])
+			.calls(11, [10, NodeId.mapBuiltInProc(BuiltInProcName.ExpressionList)])
 			.call('2@return', 'return', [argumentInCall('2@return')], { onlyBuiltIn: true, omitArgs: true, origin: [BuiltInProcName.Return] })
 			.calls('2@return', NodeId.toBuiltIn('return')).calls('2@return', '2@+')
 			.call('2@+', '+', [argumentInCall('2@x'), argumentInCall('2@1')], { onlyBuiltIn: true, omitArgs: true })
-			.calls('2@+', NodeId.toBuiltIn('default'))
+			.calls('2@+', NodeId.mapBuiltInProc(BuiltInProcName.Default))
 			.calls(12, 8)
 	);
 }));

@@ -4,9 +4,9 @@ import Joi from 'joi';
 import type { QueryResults, SupportedQuery } from '../../query';
 import type { DataflowGraphClusters } from '../../../dataflow/cluster';
 import { executeDataflowClusterQuery } from './cluster-query-executor';
-import { graphToMermaidUrl } from '../../../util/mermaid/dfg';
 import { summarizeIdsIfTooLong } from '../../query-print';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 
 /**
  * Calculates and returns all clusters encountered in the dataflow graph.
@@ -21,6 +21,7 @@ export interface DataflowClusterQueryResult extends BaseQueryResult {
 }
 
 export const ClusterQueryDefinition = {
+	title:           'Dataflow Cluster Query',
 	executor:        executeDataflowClusterQuery,
 	asciiSummarizer: async(formatter, analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'dataflow-cluster'>['dataflow-cluster'];
@@ -31,7 +32,7 @@ export const ClusterQueryDefinition = {
 			let suffix = '';
 			if(formatter === markdownFormatter) {
 				suffix = `([marked](${
-					graphToMermaidUrl((await analyzer.dataflow()).graph, false, new Set(cluster.members))
+					Dataflow.visualize.mermaid.url((await analyzer.dataflow()).graph, false, new Set(cluster.members))
 				}))`;
 			}
 			result.push(`      ╰ ${unknownSideEffects} {${summarizeIdsIfTooLong(formatter, cluster.members)}} ${suffix}`);

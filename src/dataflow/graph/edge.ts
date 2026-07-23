@@ -47,9 +47,9 @@ export const enum EdgeTypeName {
 	DefinedBy             = 'defined-by',
 	Calls                 = 'calls',
 	Returns               = 'returns',
-	DefinesOnCall         = 'defines-on-call',
-	DefinedByOnCall       = 'defined-by-on-call',
-	Argument              = 'argument',
+	DefinesOnCall         = 'def-on-call',
+	DefinedByOnCall       = 'def-by-on-call',
+	Argument              = 'arg',
 	SideEffectOnCall      = 'side-effect-on-call',
 	NonStandardEvaluation = 'non-standard-evaluation'
 }
@@ -74,6 +74,7 @@ type DfEdgeLike = { types: number };
  * Helper Functions to work with {@link DfEdge} and {@link EdgeType}.
  */
 export const DfEdge = {
+	name: 'DfEdge',
 	/**
 	 * Takes joint edge types and returns their human-readable names.
 	 */

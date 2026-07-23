@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { exitSafe } from '../util/proc';
 import path from 'path';
 import seedrandom from 'seedrandom';
 import { guard } from '../util/assert';
@@ -39,7 +40,7 @@ const options = processCommandLineArgs<BenchmarkCliOptions>('benchmark', [], {
 
 if(options.input.length === 0) {
 	console.error('No input files given. Nothing to do. See \'--help\' if this is an error.');
-	process.exit(0);
+	exitSafe(0);
 }
 
 const numberRegex = /^\d+$/;

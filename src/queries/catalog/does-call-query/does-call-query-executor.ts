@@ -2,10 +2,12 @@ import type { CallsConstraint, DoesCallQuery, DoesCallQueryResult, FindAllCallsR
 import type { BasicQueryData } from '../../base-query-format';
 import { log } from '../../../util/log';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import type { CallGraph } from '../../../dataflow/graph/call-graph';
 import type { DataflowGraphVertexFunctionCall } from '../../../dataflow/graph/vertex';
-import { tryResolveSliceCriterionToId } from '../../../slicing/criterion/parse';
 import { Identifier } from '../../../dataflow/environments/identifier';
+import { SlicingCriterion } from '../../../slicing/criterion/parse';
+import type { CallGraph } from '../../../dataflow/graph/call-graph';
+import type { ReadOnlyFlowrAnalyzerDependenciesContext } from '../../../project/context/flowr-analyzer-dependencies-context';
+import { transitiveLibraryCallees } from '../call-graph-query/expand-library-internals';
 
 /**
  * Execute does call queries on the given analyzer.
@@ -14,6 +16,7 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 	const start = Date.now();
 	const cg = await analyzer.callGraph();
 	const idMap = (await analyzer.normalize()).idMap;
+	const deps = analyzer.inspectContext().deps;
 	const results: Record<string, FindAllCallsResult | false> = {};
 	for(const query of queries) {
 		const id = query.queryId ?? JSON.stringify(query);
@@ -21,13 +24,13 @@ export async function executeDoesCallQuery({ analyzer }: BasicQueryData, queries
 			log.warn(`Duplicate query id '${id}' in does-call queries, SKIP.`);
 			continue;
 		}
-		const nodeId = tryResolveSliceCriterionToId(query.call, idMap);
+		const nodeId = SlicingCriterion.tryParse(query.call, idMap);
 		if(!nodeId) {
 			results[id] = false;
 			continue;
 		}
 		const c = makeCallMatcher(query.calls);
-		results[id] = findCallersMatchingConstraints(cg, nodeId, c);
+		results[id] = findCallersMatchingConstraints(cg, nodeId, c, query.expandLibraryInternals ? deps : undefined);
 	}
 	return {
 		'.meta': {
@@ -73,7 +76,7 @@ function makeCallMatcher(constraint: CallsConstraint): CheckCallMatch {
 	}
 }
 
-function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraints: CheckCallMatch): FindAllCallsResult | false {
+function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraints: CheckCallMatch, expandDeps?: ReadOnlyFlowrAnalyzerDependenciesContext): FindAllCallsResult | false {
 	const visited = new Set<NodeId>();
 	const toVisit: NodeId[] = [start];
 	while(toVisit.length > 0) {
@@ -85,6 +88,9 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 		if(NodeId.isBuiltIn(cur)) {
 			const name = NodeId.fromBuiltIn(cur);
 			if(constraints({ id: cur, name } as Required<DataflowGraphVertexFunctionCall>, cg)) {
+				return { call: start };
+			}
+			if(expandDeps && matchesExpandedLibraryInternals(cur, constraints, cg, expandDeps)) {
 				return { call: start };
 			}
 			continue;
@@ -103,4 +109,13 @@ function findCallersMatchingConstraints(cg: CallGraph, start: NodeId, constraint
 		}
 	}
 	return false;
+}
+
+/** whether `constraints` matches any internal callee of the library/built-in leaf call `cur`, expanded via the signature database */
+function matchesExpandedLibraryInternals(cur: NodeId, constraints: CheckCallMatch, cg: CallGraph, deps: ReadOnlyFlowrAnalyzerDependenciesContext): boolean {
+	const expansion = transitiveLibraryCallees(cur, deps);
+	if(expansion === undefined) {
+		return false;
+	}
+	return expansion.callees.some(name => constraints({ id: cur, name }, cg));
 }

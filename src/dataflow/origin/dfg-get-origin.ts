@@ -85,13 +85,13 @@ export type Origin = SimpleOrigin | FunctionCallOrigin | BuiltInFunctionOrigin;
  * }
  * print(x)
  * ```
- * Requesting the origin of `x` in the `print(x)` node yields two {@link SimpleOriginOrigin|variable origins} for both
+ * Requesting the origin of `x` in the `print(x)` node yields two {@link SimpleOrigin|variable origins} for both
  * definitions of `x`.
  * Similarly, requesting the origin of `print` returns a {@link BuiltInFunctionOrigin|`BuiltInFunctionOrigin`}.
  *
  * This returns undefined only if there is no dataflow correspondence (e.g. in case of unevaluated non-standard eval).
  */
-export function getOriginInDfg(dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
+export function getOriginInDfg(this: void, dfg: DataflowGraph, id: NodeId): Origin[] | undefined {
 	const vtx = dfg.getVertex(id);
 	switch(vtx?.tag) {
 		case undefined:

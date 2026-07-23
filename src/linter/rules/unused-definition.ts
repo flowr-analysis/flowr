@@ -6,16 +6,23 @@ import { LintingRuleTag } from '../linter-tags';
 import { isNotUndefined } from '../../util/assert';
 import { isFunctionDefinitionVertex, isVariableDefinitionVertex, VertexType } from '../../dataflow/graph/vertex';
 import { DfEdge, EdgeType } from '../../dataflow/graph/edge';
-import { FlowrFilterCombinator } from '../../search/flowr-search-filters';
+import { F } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { DataflowGraph } from '../../dataflow/graph/graph';
-import type { NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { AstIdMap, NormalizedAst, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { RoleInParent } from '../../r-bridge/lang-4.x/ast/model/processing/role';
+import { FileRole } from '../../project/context/flowr-file';
+import { getExportedNames } from '../../project/plugins/file-plugins/files/flowr-namespace-file';
+import { Identifier } from '../../dataflow/environments/identifier';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
+import { removeRQuotes } from '../../r-bridge/retriever';
+import { RFunctionCall } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RFunctionDefinition } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-definition';
 
 export interface UnusedDefinitionResult extends LintingResult {
-	variableName?: string,
-	loc:           SourceLocation
+	variableName?: string
 }
 
 export interface UnusedDefinitionConfig extends MergeableRecord {
@@ -23,6 +30,137 @@ export interface UnusedDefinitionConfig extends MergeableRecord {
 	 * Whether to include (potentially anonymous) function definitions in the search (e.g., should we report uncalled anonymous functions?).
 	 */
 	includeFunctionDefinitions: boolean
+	/**
+	 * Whether to suppress definitions that the analyzed project exports via its `NAMESPACE` (the package's public API).
+	 * flowR cannot observe external callers, so exported names would otherwise be reported as (uncertain) false positives.
+	 */
+	excludeExportedDefinitions: boolean
+}
+
+/**
+ * The dots parameter is a special parameter and must never be reported as an unused definition.
+ */
+const DotsParameter = '...';
+
+/**
+ * Common base/standard-library S3 generics. A definition named `generic.class` where `generic` is one of these
+ * is an S3 method dispatched indirectly (e.g. `print(x)` on an object of class `class`), so it is used even
+ * without a direct textual call.
+ */
+const KnownS3Generics = new Set<string>([
+	'print', 'format', 'summary', 'plot', 'coef', 'vcov', 'residuals', 'fitted', 'predict',
+	'as.character', 'as.data.frame', 'as.list', 'as.matrix', 'as.vector', 'as.numeric',
+	'length', 'dim', 'dimnames', 'names', 'str', 'toString', 'all.equal', 'aggregate',
+	'update', 'anova', 'confint', 'logLik', 'AIC', 'BIC', 'deviance', 'df.residual',
+	'model.matrix', 'terms', 'weights', 'simulate', 'lines', 'points', 'head', 'tail',
+	'merge', 'rbind', 'cbind', 'split', 'window', 'subset', 'sort', 'rev', 'unique',
+	'mean', 'median', 'quantile', 'range', 'diff', 't'
+]);
+
+/**
+ * R package lifecycle hooks called automatically by R's package machinery.
+ * These functions are invoked by the package system, so they are used even without textual callers.
+ */
+const PackageHookFunctions = new Set<string>([
+	'.onLoad', '.onAttach', '.onUnload', '.onDetach', '.Last.lib', '.First.lib'
+]);
+
+interface PackageInfo {
+	/** all names the project exports via its `NAMESPACE` (functions, symbols, patterns, S3 methods as `generic.class`) */
+	readonly exported:   ReadonlySet<string>
+	/** S3 generics the project's `NAMESPACE` declares methods for (via `S3method(generic, class)`) */
+	readonly s3Generics: ReadonlySet<string>
+}
+
+/** Gathers the analyzed project's own `NAMESPACE` exports and declared S3 generics (empty when it is not a package). */
+function collectPackageInfo(data: ReadonlyFlowrAnalysisProvider): PackageInfo {
+	const exported = new Set<string>();
+	const s3Generics = new Set<string>();
+	for(const ns of data.inspectContext().files.getFilesByRole(FileRole.Namespace)) {
+		const info = ns.content().current;
+		for(const name of getExportedNames(info)) {
+			exported.add(name);
+		}
+		for(const generic of info.exportS3Generics.keys()) {
+			s3Generics.add(generic);
+		}
+	}
+	return { exported, s3Generics };
+}
+
+/** Collects the names of every function call in the graph, so we can tell whether an S3 generic is dispatched anywhere. */
+function collectCalledNames(dfg: DataflowGraph): ReadonlySet<string> {
+	const names = new Set<string>();
+	for(const [, vertex] of dfg.verticesOfType(VertexType.FunctionCall)) {
+		names.add(Identifier.getName(vertex.name));
+	}
+	return names;
+}
+
+/** Checks if a function body is a single call to UseMethod. */
+function isUseMethodOnlyBody(node: RNode<ParentInformation>): boolean {
+	// Direct call to UseMethod
+	if(RFunctionCall.isNamed(node) && Identifier.getName(node.functionName.content) === 'UseMethod') {
+		return true;
+	}
+
+	const nodeWithChildren = node as Record<string, unknown>;
+	if(Array.isArray(nodeWithChildren.children) && nodeWithChildren.children.length === 1) {
+		const child = nodeWithChildren.children[0] as RNode<ParentInformation> | undefined;
+		if(child && RFunctionCall.isNamed(child) && Identifier.getName(child.functionName.content) === 'UseMethod') {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/** Collects the parameter IDs of S3 generic functions (functions whose body is just UseMethod). */
+function collectS3GenericParameterIds(ast: NormalizedAst): ReadonlySet<NodeId> {
+	const paramIds = new Set<NodeId>();
+	for(const [, node] of ast.idMap) {
+		if(!RFunctionDefinition.is(node)) {
+			continue;
+		}
+		if(isUseMethodOnlyBody(node.body)) {
+			for(const param of node.parameters) {
+				paramIds.add(param.name.info.id);
+			}
+		}
+	}
+	return paramIds;
+}
+
+/**
+ * A definition is treated as used (and hence not reported) if it is the dots parameter, a package lifecycle hook,
+ * an S3 method for a dispatched generic, or - when {@link UnusedDefinitionConfig#excludeExportedDefinitions} is set -
+ * a package export.
+ */
+function isConsideredUsed(lexeme: string | undefined, config: UnusedDefinitionConfig, pkg: PackageInfo, called: ReadonlySet<string>): boolean {
+	if(lexeme === undefined) {
+		return false;
+	}
+	// non-syntactic definition names (e.g. S3 methods like `"[.irts"`) carry their R quotes in the lexeme
+	const name = removeRQuotes(lexeme);
+	// the dots are a special parameter and must never be reported
+	if(name === DotsParameter) {
+		return true;
+	}
+	// package lifecycle hooks are called by R's package machinery
+	if(PackageHookFunctions.has(name)) {
+		return true;
+	}
+	const dot = name.indexOf('.');
+	if(dot > 0) {
+		const generic = name.slice(0, dot);
+		if(KnownS3Generics.has(generic) || pkg.s3Generics.has(generic) || called.has(generic)) {
+			return true;
+		}
+	}
+	if(config.excludeExportedDefinitions && pkg.exported.has(name)) {
+		return true;
+	}
+	return false;
 }
 
 export interface UnusedDefinitionMetadata extends MergeableRecord {
@@ -89,19 +227,48 @@ function onlyKeepSupersetOfUnused(
 	});
 }
 
+/** Whether the node sits inside a promise, i.e. an argument default value or a `delayedAssign` body, which may never run. */
+function isWithinPromise(node: RNode<ParentInformation>, idMap: AstIdMap): boolean {
+	let child = node;
+	let parentId = node.info.parent;
+	while(parentId !== undefined) {
+		const parent = idMap.get(parentId);
+		if(parent === undefined) {
+			return false;
+		}
+		if(parent.type === RType.Parameter && parent.defaultValue?.info.id === child.info.id) {
+			return true;
+		}
+		if(parent.type === RType.FunctionCall && parent.named && Identifier.getName(parent.functionName.content) === 'delayedAssign') {
+			return true;
+		}
+		child = parent;
+		parentId = parent.info.parent;
+	}
+	return false;
+}
+
 export const UNUSED_DEFINITION = {
 	/* this can be done better once we have types */
 	createSearch: config => Q.all().filter(
-		config.includeFunctionDefinitions ? FlowrFilterCombinator.is(VertexType.VariableDefinition).or(VertexType.FunctionDefinition) : VertexType.VariableDefinition),
-	processSearchResult: (elements, config, data): { results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata } => {
+		config.includeFunctionDefinitions ? F.or(VertexType.VariableDefinition, VertexType.FunctionDefinition) : VertexType.VariableDefinition),
+	processSearchResult: async(elements, config, data): Promise<{ results: UnusedDefinitionResult[], '.meta': UnusedDefinitionMetadata }> => {
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
+		const packageInfo = collectPackageInfo(data);
+		const calledNames = collectCalledNames(dataflow.graph);
+		const s3GenericParams = collectS3GenericParameterIds(normalize);
 		const metadata: UnusedDefinitionMetadata = {
 			totalConsidered: 0
 		};
 		return {
 			results: onlyKeepSupersetOfUnused(elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
+				if(isWithinPromise(element.node, normalize.idMap)) {
+					return [];
+				}
 
-				const dfgVertex = data.dataflow.graph.getVertex(element.node.info.id);
+				const dfgVertex = dataflow.graph.getVertex(element.node.info.id);
 				if(!dfgVertex || (
 					!isVariableDefinitionVertex(dfgVertex)
 					&& isFunctionDefinitionVertex(dfgVertex) && !config.includeFunctionDefinitions
@@ -109,7 +276,15 @@ export const UNUSED_DEFINITION = {
 					return undefined;
 				}
 
-				const ingoingEdges = data.dataflow.graph.ingoingEdges(dfgVertex.id);
+				if(s3GenericParams.has(element.node.info.id)) {
+					return undefined;
+				}
+
+				if(isConsideredUsed(element.node.lexeme, config, packageInfo, calledNames)) {
+					return undefined;
+				}
+
+				const ingoingEdges = dataflow.graph.ingoingEdges(dfgVertex.id);
 
 				const interestedIn = isVariableDefinitionVertex(dfgVertex) ? InterestingEdgesVariable : InterestingEdgesFunction;
 				const ingoingInteresting = ingoingEdges?.values().some(e => DfEdge.includesType(e, interestedIn));
@@ -125,7 +300,7 @@ export const UNUSED_DEFINITION = {
 					variableName,
 					involvedId: element.node.info.id,
 					loc:        SourceLocation.fromNode(element.node) ?? SourceLocation.invalid(),
-					quickFix:   buildQuickFix(element.node, data.dataflow.graph, data.normalize)
+					quickFix:   buildQuickFix(element.node, dataflow.graph, normalize)
 				}] satisfies UnusedDefinitionResult[];
 			}).filter(isNotUndefined)),
 			'.meta': metadata
@@ -142,7 +317,8 @@ export const UNUSED_DEFINITION = {
 		// our limited analysis causes unused definitions involving complex reflection etc. not to be included in our result, but unused definitions are correctly validated
 		certainty:     LintingRuleCertainty.BestEffort,
 		defaultConfig: {
-			includeFunctionDefinitions: true
+			includeFunctionDefinitions: true,
+			excludeExportedDefinitions: true
 		}
 	}
 } as const satisfies LintingRule<UnusedDefinitionResult, UnusedDefinitionMetadata, UnusedDefinitionConfig>;

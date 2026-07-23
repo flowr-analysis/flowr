@@ -1,5 +1,5 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { type DataflowInformation, initializeCleanDataflowInformation } from '../../../../../info';
+import { DataflowInformation } from '../../../../../info';
 import { DropPathsOption, type FlowrLaxSourcingOptions, InferWorkingDirectory } from '../../../../../../config';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { removeRQuotes, type RParseRequest, type RParseRequestFromText } from '../../../../../../r-bridge/retriever';
@@ -11,7 +11,7 @@ import {
 } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -24,14 +24,15 @@ import { normalize, normalizeTreeSitter } from '../../../../../../r-bridge/lang-
 import { RShellExecutor } from '../../../../../../r-bridge/shell-executor';
 import { guard, isNotUndefined } from '../../../../../../util/assert';
 import path from 'path';
+import { GasFeatureKey, GasLevel, GasWikiRef } from '../../../../../../gas';
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { handleUnknownSideEffect } from '../../../../../graph/unknown-side-effect';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../../../../../project/context/flowr-analyzer-context';
 import type { RProjectFile } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-project';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { EdgeType } from '../../../../../graph/edge';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /**
  * Infers working directories based on the given option and reference chain
@@ -152,7 +153,7 @@ export function findSource(
  */
 export function processSourceCall<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: {
@@ -168,7 +169,7 @@ export function processSourceCall<OtherInfo>(
 	}
 	const information = config.includeFunctionCall ?
 		processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.Source }).information
-		: initializeCleanDataflowInformation(rootId, data);
+		: DataflowInformation.initialize(rootId, data);
 
 	const sourceFileArgument = args[0];
 
@@ -196,6 +197,7 @@ export function processSourceCall<OtherInfo>(
 		if(filepath !== undefined && filepath.length > 0) {
 			let result = information;
 			const origCds = data.cds?.slice() ?? [];
+			const maybe = !data.ctx.config.solver.resolveSource?.assumeFilesExist || filepath.length > 1;
 			for(const f of filepath) {
 				// check if the sourced file has already been dataflow analyzed, and if so, skip it
 				const limit = data.ctx.config.solver.resolveSource?.repeatedSourceLimit ?? 0;
@@ -211,7 +213,7 @@ export function processSourceCall<OtherInfo>(
 				result = sourceRequest(rootId, {
 					request: 'file',
 					content: f
-				}, data, result, true, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + f, name.location));
+				}, data, result, maybe, sourcedDeterministicCountingIdGenerator((findCount > 0 ? findCount + '::' : '') + data.ctx.files.relativePath(f), name.location));
 			}
 			return result;
 		}
@@ -245,6 +247,23 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 			return information;
 		} else {
 			guard(textRequest !== undefined, `Expected text request to be defined for sourced file ${JSON.stringify(request)}`);
+		}
+		if(textRequest.path) {
+			const dotIdx = textRequest.path.lastIndexOf('.');
+			const ext = dotIdx >= 0 ? textRequest.path.slice(dotIdx).toLowerCase() : '';
+			if(ext !== '' && ext !== '.r') {
+				expensiveTrace(dataflowLogger, () => `Skipping source of non-R file ${JSON.stringify(textRequest.path)}`);
+				handleUnknownSideEffect(information.graph, information.environment, rootId);
+				return information;
+			}
+		}
+		const gasLevel = data.ctx.gas.checkGas(GasFeatureKey.Source);
+		if(gasLevel >= GasLevel.Critical) {
+			dataflowLogger.warn(`Skipping source of ${JSON.stringify(request)} due to resource pressure (gas: critical). See ${GasWikiRef}`);
+			handleUnknownSideEffect(information.graph, information.environment, rootId);
+			return information;
+		} else if(gasLevel >= GasLevel.Problematic) {
+			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
 		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
 		const normalized = (typeof parsed !== 'string' ?

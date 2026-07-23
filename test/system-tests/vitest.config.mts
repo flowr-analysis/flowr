@@ -9,10 +9,11 @@ export default defineConfig({
 			concurrent: true,
 			setupFiles: 'parallel'
 		},
-		reporters: process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
-		isolate:   false,
-		pool:      'threads',
-		deps:      {
+		reporters:   process.env.GITHUB_ACTIONS ? ['default', 'github-actions'] : ['dot'],
+		isolate:     false,
+		pool:        'threads',
+		environment: 'node',
+		deps:        {
 			optimizer: {
 				ssr: {
 					enabled: true

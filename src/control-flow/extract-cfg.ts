@@ -30,11 +30,11 @@ import { type CfgSimplificationPassName, simplifyControlFlowInformation } from '
 import { guard } from '../util/assert';
 import type { RProject } from '../r-bridge/lang-4.x/ast/model/nodes/r-project';
 import type { ReadOnlyFlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
-import { BuiltInProcName } from '../dataflow/environments/built-in';
 import type { RIfThenElse } from '../r-bridge/lang-4.x/ast/model/nodes/r-if-then-else';
 import type { StatefulFoldFunctions } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { foldAstStateful } from '../r-bridge/lang-4.x/ast/model/processing/stateful-fold';
 import { RLoopConstructs } from '../r-bridge/lang-4.x/ast/model/model';
+import { BuiltInProcName } from '../dataflow/environments/built-in-proc-name';
 
 type CfgDownState = [loop: boolean, fn: boolean];
 
@@ -671,9 +671,15 @@ function cfgExprList(node: RExpressionList<ParentInformation>, _grouping: unknow
 			}
 		}
 		result.graph.mergeWith(expression.graph);
-		result.breaks.push(...expression.breaks);
-		result.nexts.push(...expression.nexts);
-		result.returns.push(...expression.returns);
+		for(const b of expression.breaks) {
+			result.breaks.push(b);
+		}
+		for(const n of expression.nexts) {
+			result.nexts.push(n);
+		}
+		for(const r of expression.returns) {
+			result.returns.push(r);
+		}
 		result.exitPoints = expression.exitPoints;
 	}
 

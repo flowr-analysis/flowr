@@ -7,12 +7,12 @@ import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
-import { getOriginInDfg, OriginType } from '../../dataflow/origin/dfg-get-origin';
-import { type NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
 import { type CfgSimplificationPassName, cfgFindAllReachable, DefaultCfgSimplificationOrder } from '../../control-flow/cfg-simplification';
-import type { AsyncOrSync, AsyncOrSyncType } from 'ts-essentials';
+import type { AsyncOrSync, DeepWritable } from 'ts-essentials';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import { promoteCallName } from '../../queries/catalog/call-context-query/call-context-query-executor';
 import { CfgKind } from '../../project/cfg-kind';
@@ -20,6 +20,10 @@ import {
 	identifyLinkToLastCallRelationSync
 } from '../../queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { Identifier } from '../../dataflow/environments/identifier';
+import { Dataflow } from '../../dataflow/graph/df-helper';
+import type { KnownRoxygenTags, RoxygenTag } from '../../r-bridge/roxygen2/roxygen-ast';
+import { getDocumentationOf } from '../../r-bridge/roxygen2/documentation-provider';
+import { FlowrSearchBuilder } from '../flowr-search-builder';
 
 
 export interface EnrichmentData<ElementContent extends MergeableRecord, ElementArguments = undefined, SearchContent extends MergeableRecord = never, SearchArguments = ElementArguments> {
@@ -46,6 +50,7 @@ export enum Enrichment {
 	CallTargets = 'call-targets',
 	LastCall = 'last-call',
 	CfgInformation = 'cfg-information',
+	Roxygen = 'roxygen',
 	QueryData = 'query-data'
 }
 
@@ -92,11 +97,15 @@ export interface CfgInformationArguments extends MergeableRecord {
 	checkReachable?:       boolean
 }
 
+export interface RoxygenElementContent extends MergeableRecord {
+	documentation: readonly RoxygenTag[]
+	tags:          { [T in KnownRoxygenTags]?: readonly (RoxygenTag & { type: T })[] }
+}
+
 export interface QueryDataElementContent extends MergeableRecord {
 	/** The name of the query that this element originated from. To get each query's data, see {@link QueryDataSearchContent}. */
 	query: Query['type']
 }
-
 export interface QueryDataSearchContent extends MergeableRecord {
 	queries: { [QueryType in Query['type']]: Awaited<QueryResult<QueryType>> }
 }
@@ -114,7 +123,7 @@ export const Enrichments = {
 			const n = await analyzer.normalize();
 			const callVertex = df.graph.getVertex(e.node.info.id);
 			if(callVertex?.tag === VertexType.FunctionCall) {
-				const origins = getOriginInDfg(df.graph, callVertex.id);
+				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
 					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
@@ -123,9 +132,11 @@ export const Enrichments = {
 						origins.map(o => {
 							switch(o.type) {
 								case OriginType.FunctionCallOrigin:
-									return {
-										node: n.idMap.get(o.id) as RNodeWithParent,
-									} satisfies FlowrSearchElement<ParentInformation>;
+									// a built-in target (e.g. a materialized package export from `library()`) has no
+									// user-code node, so surface it as a built-in string target (see `onlyBuiltin` below)
+									return NodeId.isBuiltIn(o.id)
+										? recoverName(o.id, n.idMap) ?? String(o.id)
+										: { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
 								case OriginType.BuiltInFunctionOrigin:
 									return Identifier.toString(o.fn.name);
 								default:
@@ -139,7 +150,8 @@ export const Enrichments = {
 				}
 			}
 
-			// if there is a call target that is not built-in (ie a custom function), we don't want to include it here
+			// keep only calls whose targets are all built-in; library/package exports arrive as string
+			// targets and count as built-in, a target with a `node` is user code and disqualifies the call
 			if(args?.onlyBuiltin && content.targets.some(t => typeof t !== 'string')) {
 				content.targets = [];
 			}
@@ -193,8 +205,8 @@ export const Enrichments = {
 				...args
 			};
 
-			// short-circuit if we already have a cfg stored
-			if(!args.forceRefresh && prev?.simpleCfg) {
+			// short-circuit if we already have a cfg stored (and the reachability info if requested)
+			if(!args.forceRefresh && prev?.cfg && (!args.checkReachable || prev.reachableNodes)) {
 				return prev;
 			}
 
@@ -207,7 +219,28 @@ export const Enrichments = {
 			}
 			return content;
 		}
-	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, AsyncOrSyncType<CfgInformationSearchContent>>,
+	} satisfies EnrichmentData<CfgInformationElementContent, CfgInformationArguments, CfgInformationSearchContent>,
+	[Enrichment.Roxygen]: {
+		enrichElement: async(e, _search, analyzer, _args, prev) => {
+			const content = (prev ?? {
+				documentation: [],
+				tags:          {}
+			}) as DeepWritable<RoxygenElementContent>;
+
+			const normalize = await analyzer.normalize();
+			const roxygen = getDocumentationOf(e.node.info.id, normalize.idMap);
+			if(roxygen !== undefined) {
+				const comments = (Array.isArray(roxygen) ? roxygen : [roxygen]) as RoxygenTag[];
+				content.documentation.push(...comments);
+				for(const comment of comments) {
+					content.tags[comment.type] ??= [];
+					(content.tags[comment.type] as RoxygenTag[]).push(comment);
+				}
+			}
+
+			return content;
+		}
+	} satisfies EnrichmentData<RoxygenElementContent>,
 	[Enrichment.QueryData]: {
 		// the query data enrichment is just a "pass-through" that passes the query data to the underlying search
 		enrichElement: (_e, _search, _data, args, prev) => (args ?? prev) as QueryDataElementContent,

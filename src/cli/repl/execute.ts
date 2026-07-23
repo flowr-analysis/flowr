@@ -3,6 +3,7 @@ import type { Readable, Writable } from 'stream';
 import readline from 'readline';
 import { guard } from '../../util/assert';
 import { log } from '../../util/log';
+import { exitSafe } from '../../util/proc';
 
 type Stdio = [stdin: Writable | null, stdout: Readable | null, stderr: Readable | null, extra: Writable | Readable | null | undefined, extra: Writable | Readable | null | undefined];
 export type StdioProcessor = (stdio: Stdio) => void;
@@ -54,14 +55,14 @@ export async function waitOnScript(module: string, args: readonly string[], io?:
 		if(code) {
 			console.error(`Script ${module} exited with code ${String(code)} and signal ${JSON.stringify(signal)}`);
 			if(exitOnError) {
-				process.exit(code);
+				exitSafe(code);
 			}
 		}
 	});
 	child.on('error', err => {
 		console.error(`Script ${module} signaled error ${JSON.stringify(err)}`);
 		if(exitOnError) {
-			process.exit(1);
+			exitSafe(1);
 		}
 	});
 

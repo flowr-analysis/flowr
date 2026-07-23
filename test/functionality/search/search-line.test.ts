@@ -9,7 +9,7 @@ import { Mapper } from '../../../src/search/search-executor/search-mappers';
 import { CallTargets } from '../../../src/queries/catalog/call-context-query/identify-link-to-last-call-relation';
 import { DefaultCfgSimplificationOrder } from '../../../src/control-flow/cfg-simplification';
 import { RType } from '../../../src/r-bridge/lang-4.x/ast/model/type';
-import { BuiltInProcName } from '../../../src/dataflow/environments/built-in';
+import { BuiltInProcName } from '../../../src/dataflow/environments/built-in-proc-name';
 
 describe('flowR search', withTreeSitter(parser => {
 	assertSearch('simple search for first', parser, 'x <- 1\nprint(x)', ['1@x'],
@@ -19,7 +19,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.varInLine('x', 1).first().first(),
 		Q.varInLine('x', 1).last()
 	);
-	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1:6'],
+	assertSearch('simple search for second hit', parser, 'x <- x * x\nprint(x)', ['1@[2]x'],
 		Q.varInLine('x', 1).select(1),
 		Q.var('x').select(1),
 		Q.var('x').index(1),
@@ -27,7 +27,7 @@ describe('flowR search', withTreeSitter(parser => {
 		Q.var('x').take(2).last(),
 		Q.var('x').take(2).tail()
 	);
-	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1:6', '2@x'],
+	assertSearch('multiple hits', parser, 'x <- x * x\nprint(x)', ['1@[2]x', '2@x'],
 		Q.var('x').select(1).merge(Q.varInLine('x', 2).filter(FlowrFilter.DropEmptyArguments).first()),
 		Q.var('x').filter(FlowrFilter.DropEmptyArguments).select(1, 3),
 		Q.var('x').take(2).last().merge(Q.var('x').filter(FlowrFilter.DropEmptyArguments).last()),
@@ -44,19 +44,25 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('call-targets (none)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /print/
+					test:       {
+						targets: /print/
+					}
 				} })
 			);
 			assertSearch('call-targets (other)', parser, "cat('hello')\nprint('world')", [],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /library/
+					test:       {
+						targets: /library/
+					}
 				} })
 			);
 			assertSearch('call-targets (match)', parser, "cat('hello')\nprint('world')", ['2@print'],
 				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CallTargets,
-					test:       /print/
+					test:       {
+						targets: /print/
+					}
 				} })
 			);
 		});
@@ -71,7 +77,7 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.Assignment, keepNonFunctionCalls: true } })
 			);
 			assertSearch('regex assignment', parser, 'x <- 2\ncat(x)', ['1@<-'],
-				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assignment/ } })
+				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: /:assign/ } })
 			);
 			assertSearch('for loop', parser, "for (i in 1:10) { cat('hi') }", ['1@for'],
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
@@ -80,6 +86,74 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().filter({ name: FlowrFilter.OriginKind, args: { origin: BuiltInProcName.ForLoop } })
 			);
 		});
+		describe('file path', () => {
+			assertSearch('filter by file path with RegExp', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => result.length > 0 && result.every(r => r.node.info.file?.endsWith('a.R')),
+				Q.all().filter({ name: FlowrFilter.FilePathFilter, args: { filePathRegex: /a\.R$/ } })
+			);
+			assertSearch('excludes non-matching file paths', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				(result) => !result.some(r => r.node.info.file?.endsWith('b.R')),
+				Q.all('a\\.R$')
+			);
+			assertSearch('non-matching file path returns empty', parser,
+				[
+					{ request: 'file', content: 'test/testfiles/parse-multiple/a.R' },
+					{ request: 'file', content: 'test/testfiles/parse-multiple/b.R' }
+				],
+				[],
+				Q.all('nonexistent\\.R$')
+			);
+			assertSearch('inline code matches empty file path regex', parser,
+				'x <- 1',
+				(result) => result.length > 0,
+				Q.all('^$')
+			);
+		});
+	});
+
+	describe('Fuzzy loc', () => {
+		assertSearch('variable at interior column', parser, 'x <- abcd', (result) => result.length >= 1 && result.some(r => r.node.lexeme === 'abcd'),
+			Q.locFuzzy(1, 6),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9)
+		);
+		assertSearch('string literal interior', parser, 'x <- "hello"', (result) => result.some(r => r.node.lexeme === '"hello"'),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('backtick identifier', parser, 'x <- `my var`', (result) => result.some(r => r.node.lexeme === '`my var`'),
+			Q.locFuzzy(1, 7),
+			Q.locFuzzy(1, 8),
+			Q.locFuzzy(1, 9),
+			Q.locFuzzy(1, 10)
+		);
+		assertSearch('position outside range', parser, 'x <- abcd', [],
+			Q.locFuzzy(1, 15)
+		);
+		assertSearch('comment position (no nodes)', parser, '# comment amazing\nx <- 1', [],
+			Q.locFuzzy(1, 3),
+			Q.locFuzzy(1, 5)
+		);
+		assertSearch('multiline: if expression envelopes variable (default returns all)', parser, 'if(x) { abcd }',
+			(result) => result.length >= 2, // at least if and abcd or other enveloping nodes
+			Q.locFuzzy(1, 11)
+		);
+		assertSearch('multiline: if expression with innermostOnly', parser, 'if(x) { abcd }', (result) => result.some(r => r.node.lexeme === 'abcd') && result.length === 1,
+			Q.locFuzzy(1, 11, true)
+		);
+		assertSearch('complex nesting with innermostOnly', parser, 'if(x) { y <- func(z) }', (result) => result.some(r => r.node.lexeme === 'z') && result.length === 1,
+			Q.locFuzzy(1, 19, true)
+		);
 	});
 
 	describe('From Query', () => {
@@ -136,6 +210,20 @@ describe('flowR search', withTreeSitter(parser => {
 				Q.all().with(Enrichment.CallTargets).map(Mapper.Enrichment, Enrichment.CallTargets).select(0),
 				Q.all().to(Enrichment.CallTargets).select(0),
 			);
+			assertSearch('local multiple', parser, 'f1 <- function() {}\nf2 <- function() {}\n f1(); f2()', ['1@function'],
+				Q.all().with(Enrichment.CallTargets).filter({ name: FlowrFilter.MatchesEnrichment, args: {
+					enrichment: Enrichment.CallTargets,
+					test:       {
+						targets: {
+							node: {
+								info: {
+									id: 4
+								}
+							}
+						}
+					}
+				} }).map(Mapper.Enrichment, Enrichment.CallTargets)
+			);
 			assertSearchEnrichment('global', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'some', Q.all().with(Enrichment.CallTargets));
 			assertSearchEnrichment('global specific', parser, 'cat("hello")', [{ [Enrichment.CallTargets]: { targets: ['cat'] } }], 'every', Q.all().with(Enrichment.CallTargets).select(1));
 			// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
@@ -158,25 +246,33 @@ describe('flowR search', withTreeSitter(parser => {
 			assertSearch('reachable always', parser, 'if(TRUE) 1 else 2', ['1@if', '1@TRUE', '1@1', '$2', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":true/
+					test:       {
+						isReachable: true
+					}
 				}
 			}));
 			assertSearch('reachable never', parser, 'if(FALSE) 1 else 2', ['1@if', '1@FALSE', '1@2', '$4', '$6'], Q.all().with(Enrichment.CfgInformation, cfgArgs).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":true/
+					test:       {
+						isReachable: /true/
+					}
 				}
 			}));
 			assertSearch('reachable no dead code', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":false/
+					test:       {
+						isReachable: false
+					}
 				}
 			}));
 			assertSearch('reachable no reachable', parser, 'if(FALSE) 1 else 2', [], Q.all().with(Enrichment.CfgInformation).filter({
 				name: FlowrFilter.MatchesEnrichment, args: {
 					enrichment: Enrichment.CfgInformation,
-					test:       /"isReachable":false/
+					test:       {
+						isReachable: /false/
+					}
 				}
 			}));
 		});

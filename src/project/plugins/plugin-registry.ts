@@ -4,21 +4,50 @@ import {
 	FlowrAnalyzerPackageVersionsDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-package-versions-description-file-plugin';
 import {
+	FlowrAnalyzerPackageVersionsSigDbPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
+import {
+	FlowrAnalyzerPackageVersionsPackratPlugin,
+	FlowrAnalyzerPackageVersionsRenvPlugin,
+	FlowrAnalyzerPackageVersionsRvPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-lockfile-plugin';
+import {
+	FlowrAnalyzerPackageVersionsSessionInfoPlugin
+} from './package-version-plugins/flowr-analyzer-package-versions-session-info-plugin';
+import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from './loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderImplicitSourcesPlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-implicit-sources-plugin';
 import { FlowrAnalyzerRmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-rmd-file-plugin';
 import { FlowrAnalyzerQmdFilePlugin } from './file-plugins/notebooks/flowr-analyzer-qmd-file-plugin';
 import { guard } from '../../util/assert';
 import { FlowrAnalyzerJupyterFilePlugin } from './file-plugins/notebooks/flowr-analyzer-jupyter-file-plugin';
 import { FlowrAnalyzerNamespaceFilesPlugin } from './file-plugins/flowr-analyzer-namespace-files-plugin';
+import { FlowrAnalyzerPackageVersionsNamespaceFilePlugin } from './package-version-plugins/flowr-analyzer-package-versions-namespace-file-plugin';
 import { FlowrAnalyzerNewsFilePlugin } from './file-plugins/flowr-analyzer-news-file-plugin';
+import { FlowrAnalyzerRdaFilePlugin } from './file-plugins/flowr-analyzer-rda-file-plugin';
 import { FlowrAnalyzerMetaVignetteFilesPlugin } from './file-plugins/flowr-analyzer-vignette-file-plugin';
 import { FlowrAnalyzerMetaTestFilesPlugin } from './file-plugins/flowr-analyzer-test-file-plugin';
+import { FlowrAnalyzerMetaInstFilesPlugin } from './file-plugins/flowr-analyzer-inst-file-plugin';
 import { FlowrAnalyzerLicenseFilePlugin } from './file-plugins/flowr-analyzer-license-file-plugin';
+import { FlowrAnalyzerVirtualEnvFilePlugin } from './file-plugins/flowr-analyzer-virtualenv-file-plugin';
+import { FlowrAnalyzerRProjectFilePlugin } from './file-plugins/flowr-analyzer-rproject-file-plugin';
+import { FlowrAnalyzerMetaRProjectFilePlugin } from './package-version-plugins/flowr-analyzer-meta-rproject-file-plugin';
 import {
 	FlowrAnalyzerMetaDescriptionFilePlugin
 } from './package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-analyzer-sweave-file-plugin';
+import {
+	FlowrAnalyzerGitignoreProjectDiscoveryPlugin,
+	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
+	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
+} from './project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
+import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-rprofile-file-plugin';
+import {
+	FlowrAnalyzerLoadingOrderRprofilePlugin
+} from './loading-order-plugins/flowr-analyzer-loading-order-rprofile-plugin';
 
 /**
  * The built-in Flowr Analyzer plugins that are always available.
@@ -26,17 +55,34 @@ import { FlowrAnalyzerSweaveFilePlugin } from './file-plugins/notebooks/flowr-an
 export const BuiltInPlugins = [
 	['file:description', FlowrAnalyzerDescriptionFilePlugin],
 	['versions:description', FlowrAnalyzerPackageVersionsDescriptionFilePlugin],
+	['versions:sigdb', FlowrAnalyzerPackageVersionsSigDbPlugin],
+	['versions:renv', FlowrAnalyzerPackageVersionsRenvPlugin],
+	['versions:rv', FlowrAnalyzerPackageVersionsRvPlugin],
+	['versions:packrat', FlowrAnalyzerPackageVersionsPackratPlugin],
+	['versions:session-info', FlowrAnalyzerPackageVersionsSessionInfoPlugin],
 	['loading-order:description', FlowrAnalyzerLoadingOrderDescriptionFilePlugin],
+	['loading-order:implicit-sources', FlowrAnalyzerLoadingOrderImplicitSourcesPlugin],
+	['loading-order:rprofile', FlowrAnalyzerLoadingOrderRprofilePlugin],
 	['meta:description', FlowrAnalyzerMetaDescriptionFilePlugin],
-	['files:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
-	['files:test', FlowrAnalyzerMetaTestFilesPlugin],
+	['meta:rproject', FlowrAnalyzerMetaRProjectFilePlugin],
+	['file-roles:vignette', FlowrAnalyzerMetaVignetteFilesPlugin],
+	['file-roles:test', FlowrAnalyzerMetaTestFilesPlugin],
+	['file-roles:inst', FlowrAnalyzerMetaInstFilesPlugin],
 	['file:rmd', FlowrAnalyzerRmdFilePlugin],
 	['file:qmd', FlowrAnalyzerQmdFilePlugin],
 	['file:rnw', FlowrAnalyzerSweaveFilePlugin],
 	['file:ipynb', FlowrAnalyzerJupyterFilePlugin],
 	['file:namespace', FlowrAnalyzerNamespaceFilesPlugin],
+	['versions:namespace', FlowrAnalyzerPackageVersionsNamespaceFilePlugin],
 	['file:news', FlowrAnalyzerNewsFilePlugin],
-	['file:license', FlowrAnalyzerLicenseFilePlugin]
+	['file:rda', FlowrAnalyzerRdaFilePlugin],
+	['file:license', FlowrAnalyzerLicenseFilePlugin],
+	['file:virtualenv', FlowrAnalyzerVirtualEnvFilePlugin],
+	['file:rproject', FlowrAnalyzerRProjectFilePlugin],
+	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
+	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
+	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
+	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

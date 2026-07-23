@@ -4,7 +4,7 @@ import type { RNumberValue } from '../../../r-bridge/lang-4.x/convert-values';
 import { isRNumberValue, unliftRValue } from '../../../util/r-value';
 import type { BuiltInEvalHandlerArgs } from '../../environments/built-in';
 import { BuiltInEvalHandlerMapper } from '../../environments/built-in';
-import { getOriginInDfg, OriginType } from '../../origin/dfg-get-origin';
+import { OriginType } from '../../origin/dfg-get-origin';
 import { intervalFrom } from '../values/intervals/interval-constants';
 import { ValueLogicalFalse, ValueLogicalTrue } from '../values/logical/logical-constants';
 import { type Lift, Top, type Value, type ValueNumber, type ValueVector } from '../values/r-value';
@@ -15,6 +15,7 @@ import { resolveIdToValue } from './alias-tracking';
 import { liftScalar } from '../values/scalar/scalar-constants';
 import { Identifier } from '../../environments/identifier';
 import { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Dataflow } from '../../graph/df-helper';
 
 /**
  * Helper function used by {@link resolveIdToValue}, please use that instead, if
@@ -35,7 +36,7 @@ export function resolveNode({ resolve, node, ctx, blocked, environment, graph, i
 	} else if(nt === RType.FunctionDefinition) {
 		return { type: 'function-definition' };
 	} else if((nt === RType.FunctionCall || nt === RType.BinaryOp || nt === RType.UnaryOp) && graph) {
-		const origin = getOriginInDfg(graph, node.info.id)?.[0];
+		const origin = Dataflow.origin(graph, node.info.id)?.[0];
 		if(origin === undefined || origin.type !== OriginType.BuiltInFunctionOrigin) {
 			return Top;
 		}

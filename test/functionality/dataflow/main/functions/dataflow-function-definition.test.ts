@@ -2,7 +2,6 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import {
@@ -13,6 +12,7 @@ import { ReferenceType } from '../../../../../src/dataflow/environments/identifi
 import { describe } from 'vitest';
 import { ExitPointType } from '../../../../../src/dataflow/info';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe.sequential('Function Definition', withShell(shell => {
 	describe('Only functions', () => {
@@ -193,7 +193,7 @@ describe.sequential('Function Definition', withShell(shell => {
 		);
 		assertDataflow(label('global define with <<- in function, read after', ['normal-definition', 'name-normal', 'numbers', ...OperatorDatabase['<<-'].capabilities, 'semicolons', 'side-effects-in-function-call']), shell, 'function() { x <<- 3; }; x',  emptyGraph()
 			.use('7', 'x')
-			.call('4', '<<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [NodeId.toBuiltIn('<<-'), 3], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+			.call('4', '<<-', [argumentInCall('2'), argumentInCall('3')], { returns: ['2'], reads: [NodeId.toBuiltIn('<<-'), 3], onlyBuiltIn: true, environment: defaultEnv().pushEnv(), origin: [BuiltInProcName.SuperAssignment] }, false)
 			.calls('4', NodeId.toBuiltIn('<<-'))
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv() }, false)
 			.calls('5', NodeId.toBuiltIn('{'))
@@ -210,7 +210,7 @@ describe.sequential('Function Definition', withShell(shell => {
 		);
 		assertDataflow(label('global define with ->> in function, read after', ['normal-definition', 'numbers', ...OperatorDatabase['->>'].capabilities, 'semicolons', 'name-normal', 'side-effects-in-function-call']), shell, 'function() { 3 ->> x; }; x', emptyGraph()
 			.use('7', 'x')
-			.call('4', '->>', [argumentInCall('2'), argumentInCall('3')], { returns: ['3'], reads: [NodeId.toBuiltIn('->>'), 2], onlyBuiltIn: true, environment: defaultEnv().pushEnv() }, false)
+			.call('4', '->>', [argumentInCall('2'), argumentInCall('3')], { returns: ['3'], reads: [NodeId.toBuiltIn('->>'), 2], onlyBuiltIn: true, environment: defaultEnv().pushEnv(), origin: [BuiltInProcName.SuperAssignment] }, false)
 			.calls('4', NodeId.toBuiltIn('->>'))
 			.call('5', '{', [argumentInCall('4')], { returns: ['4'], reads: [NodeId.toBuiltIn('{')], environment: defaultEnv().pushEnv() }, false)
 			.calls('5', NodeId.toBuiltIn('{'))
@@ -691,7 +691,7 @@ print(x)`, emptyGraph()
 				.calls('8', NodeId.toBuiltIn('+'))
 				.argument('8', '7')
 				.argument('9', '8')
-				.call('9', '<<-', [argumentInCall('5'), argumentInCall('8')], { returns: ['5'], reads: [NodeId.toBuiltIn('<<-'), 8], onlyBuiltIn: true, environment: defaultEnv().pushEnv().pushEnv() }, false)
+				.call('9', '<<-', [argumentInCall('5'), argumentInCall('8')], { returns: ['5'], reads: [NodeId.toBuiltIn('<<-'), 8], onlyBuiltIn: true, environment: defaultEnv().pushEnv().pushEnv(), origin: [BuiltInProcName.SuperAssignment] }, false)
 				.calls('9', NodeId.toBuiltIn('<<-'))
 				.argument('9', '5')
 				.argument('11', '9')
@@ -885,7 +885,7 @@ f(3)`, emptyGraph()
 				.calls('8', NodeId.toBuiltIn('<-'))
 				.argument('8', ['7', '0'])
 				.argument('16', '15')
-				.call('16', '<<-', [argumentInCall('14'), argumentInCall('15')], { returns: ['14'], reads: [NodeId.toBuiltIn('<<-'), 15], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('g', '10', '11') }, false)
+				.call('16', '<<-', [argumentInCall('14'), argumentInCall('15')], { returns: ['14'], reads: [NodeId.toBuiltIn('<<-'), 15], onlyBuiltIn: true, environment: defaultEnv().pushEnv().defineParameter('g', '10', '11'), origin: [BuiltInProcName.SuperAssignment] }, false)
 				.calls('16', NodeId.toBuiltIn('<<-'))
 				.argument('16', '14')
 				.argument('17', '16')
@@ -985,9 +985,9 @@ function() {
 }`,  emptyGraph()
 				.defineVariable('2@x')
 				.defineVariable('4@x')
-				.use('4:13')
-				.reads('4:13', '2@x')
-				.reads('4:13', '4@x')
+				.use('4@[2]x')
+				.reads('4@[2]x', '2@x')
+				.reads('4@[2]x', '4@x')
 				.overwriteRootIds([]),
 			{
 				expectIsSubgraph:      true,
@@ -996,17 +996,33 @@ function() {
 		);
 		assertDataflow(label('Nested Closure Factory', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
 			shell, `function() { function() { function() { function() {
-	x <- 0; 
+	x <- 0;
 	f <- function() {
       x <<- x + 1
 	}
 }}}}`,  emptyGraph()
 				.defineVariable('2@x')
 				.defineVariable('4@x')
-				.use('4:13')
-				.reads('4:13', '2@x')
-				.reads('4:13', '4@x')
+				.use('4@[2]x')
+				.reads('4@[2]x', '2@x')
+				.reads('4@[2]x', '4@x')
 				.overwriteRootIds([]),
+			{
+				expectIsSubgraph:      true,
+				resolveIdsAsCriterion: true
+			}
+		);
+		assertDataflow(label('Super assignment to outer definition', ['name-normal', ...OperatorDatabase['<<-'].capabilities, 'normal-definition', 'implicit-return', 'newlines', 'numbers', 'call-normal']),
+			shell, `f <- function() {
+   x <- 42
+   function() {
+      x <<- 2
+   }
+}
+
+print(f()())
+print(x)`,  emptyGraph()
+				.reads('4@x', '2@x'),
 			{
 				expectIsSubgraph:      true,
 				resolveIdsAsCriterion: true

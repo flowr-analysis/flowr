@@ -10,7 +10,7 @@ export type TailOfArray<T extends unknown[]> = T extends [infer _, ...infer Rest
  * Returns the union of types in an array, but the first one, uses U as a fallback if the array is empty.
  */
 export type TailTypesOrUndefined<T extends AnyArray, U = undefined> = T extends [] ?
-	U : T extends [unknown] ? U :Tail<T>[number];
+	U : T extends [unknown] ? U : Tail<T>[number];
 
 /**
  * Returns the union of types in an array, but the first and the second one, uses U as a fallback if the array is empty.
@@ -75,6 +75,13 @@ export function partitionArray<T>(arr: readonly T[], predicate: (elem: T) => boo
 }
 
 /**
+ * {@link partitionArray} for a mutable array.
+ */
+export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
+	return partitionArray(arr, predicate);
+}
+
+/**
  * Generate all permutations of the given array using Heap's algorithm (with its non-recursive variant).
  * @param arr - The array to permute
  * @see getUniqueCombinationsOfSize
@@ -99,23 +106,6 @@ export function *allPermutations<T>(arr: T[]): Generator<T[], void, void>  {
 			yield arr.slice();
 		}
 	}
-}
-
-/**
- * Returns a tuple of two arrays, where the first one contains all elements for which the predicate returned true,
- * and the second one contains all elements for which the predicate returned false.
- */
-export function partition<T>(arr: T[], predicate: (elem: T) => boolean): [T[], T[]] {
-	const left: T[] = [];
-	const right: T[] = [];
-	for(const elem of arr) {
-		if(predicate(elem)) {
-			left.push(elem);
-		} else {
-			right.push(elem);
-		}
-	}
-	return [left, right];
 }
 
 /**
@@ -250,6 +240,13 @@ export function uniqueArrayMerge<T>(left: readonly T[], right: readonly T[]): T[
 		result.add(elem);
 	}
 	return Array.from(result);
+}
+
+/**
+ * Returns a duplicate-free array.
+ */
+export function uniqueArray<T>(a: Iterable<T>): T[] {
+	return Array.from(new Set(a));
 }
 
 /**

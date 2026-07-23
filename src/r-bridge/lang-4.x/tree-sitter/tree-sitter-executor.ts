@@ -9,7 +9,7 @@ import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analy
 import type { FlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
 import { computeReparseInfo } from '../../../project/incremental/incremental-parse/incremental-parse';
 
-export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@eagleoutice/tree-sitter-r/tree-sitter-r.wasm';
+export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
 
 const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
@@ -108,10 +108,18 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 	}
 
 	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
-		const query = typeof source === 'string' ? this.createQuery(source) : source;
-		return tree
-			.flatMap(t => query.matches(t.rootNode))
-			.flatMap(m => m.captures);
+		// a Query is WASM-backed, so free it if we created it (a caller-supplied Query stays theirs)
+		const ownQuery = typeof source === 'string';
+		const query = ownQuery ? this.createQuery(source) : source;
+		try {
+			return tree
+				.flatMap(t => query.matches(t.rootNode))
+				.flatMap(m => m.captures);
+		} finally {
+			if(ownQuery) {
+				query.delete();
+			}
+		}
 	}
 
 	public close(): void {

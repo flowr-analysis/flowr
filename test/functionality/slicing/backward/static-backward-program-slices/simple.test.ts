@@ -180,7 +180,7 @@ cat("Product:", product, "\\n")
 `;
 
 		assertSliced(label('Sum lhs in for', capabilities),
-			shell, code, ['8:3'],
+			shell, code, ['8@[1]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -190,7 +190,7 @@ for(i in 1:(N-1)) sum <- sum + i + w`, {
 		);
 
 		assertSliced(label('Sum rhs in for', capabilities),
-			shell, code, ['8:10'],
+			shell, code, ['8@[2]sum'],
 			`sum <- 0
 w <- 7
 N <- 10
@@ -198,14 +198,14 @@ for(i in 1:(N-1)) sum <- sum + i + w`
 		);
 
 		assertSliced(label('Product lhs in for', capabilities),
-			shell, code, ['9:3'],
+			shell, code, ['9@[1]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
 		);
 
 		assertSliced(label('Product rhs in for', capabilities),
-			shell, code, ['9:14'],
+			shell, code, ['9@[2]product'],
 			`product <- 1
 N <- 10
 for(i in 1:(N-1)) product <- product * i`
@@ -231,6 +231,18 @@ product`
 		assertSliced(label('Top by name', capabilities),
 			shell, code, ['2@sum'],
 			'sum <- 0'
+		);
+	});
+
+	describe('With extend', () => {
+		assertSliced(label('No extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nx'
+		);
+		assertSliced(label('Enable extend'),
+			shell, 'x <- 2\nprint(x + 3)', ['2@x'],
+			'x <- 2\nprint(x + 3)',
+			{ extendSlice: true }
 		);
 	});
 }));

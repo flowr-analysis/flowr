@@ -1,8 +1,8 @@
 import { assertUnreachable, isNotUndefined } from '../../util/assert';
 import { Bottom, Top } from '../domains/lattice';
 import { PosIntervalDomain, PosIntervalTop } from '../domains/positive-interval-domain';
-import type { ArrayRangeValue } from '../domains/set-range-domain';
-import { DataFrameDomain } from './dataframe-domain';
+import type { SetRangeValue } from '../domains/set-range-domain';
+import type { DataFrameDomain } from './dataframe-domain';
 
 /**
  * Represents the different types of resulting constraints that are inferred by abstract data frame operations.
@@ -110,7 +110,7 @@ function applyCreateSemantics(
 	const colsValue = colnames !== undefined ? [colnames.length, colnames.length] as const : PosIntervalTop;
 	const rowsValue = Array.isArray(rows) ? rows : typeof rows === 'number' ? [rows, rows] as const : PosIntervalTop;
 
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames.create(colnamesValue),
 		cols:     value.cols.create(colsValue),
 		rows:     value.rows.create(rowsValue)
@@ -129,13 +129,13 @@ function applyAccessColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.union(setRange(columns)),
 			cols:     value.cols,
 			rows:     value.rows
 		});
 	} else if(columns?.every(col => typeof col === 'number')) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames,
 			cols:     columns.reduce((current, col) => current.max([col, col]), value.cols),
 			rows:     value.rows
@@ -149,7 +149,7 @@ function applyAccessRowsSemantics(
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames,
 			cols:     value.cols,
 			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
@@ -163,19 +163,19 @@ function applyAssignColsSemantics(
 	{ columns }: { columns: string[] | number[] | undefined }
 ): DataFrameDomain {
 	if(columns?.every(col => typeof col === 'string')) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.union(setRange(columns)),
 			cols:     value.cols.add([0, columns.length]).max([columns.length, columns.length]),
 			rows:     value.rows
 		});
 	} else if(columns?.every(col => typeof col === 'number')) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.widenUp(),
 			cols:     columns.reduce((current, col) => current.max([col, col]), value.cols),
 			rows:     value.rows
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames.widenUp(),
 		cols:     value.cols.widenUp(),
 		rows:     value.rows
@@ -187,13 +187,13 @@ function applyAssignRowsSemantics(
 	{ rows }: { rows: number[] | undefined }
 ): DataFrameDomain {
 	if(rows !== undefined) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames,
 			cols:     value.cols,
 			rows:     rows.reduce((current, row) => current.max([row, row]), value.rows)
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     value.rows.widenUp()
@@ -206,15 +206,15 @@ function applySetColNamesSemantics(
 	options?: { partial?: boolean }
 ): DataFrameDomain {
 	if(options?.partial) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.widenDown().union(setRange(colnames)),
 			cols:     value.cols,
 			rows:     value.rows
 		});
 	}
-	const allColNames = colnames?.every(isNotUndefined) && value.cols.value !== Bottom && colnames.length >= value.cols.value[1];
+	const allColNames = colnames?.every(isNotUndefined) && value.cols.isValue() && colnames.length >= value.cols.upper;
 
-	return new DataFrameDomain({
+	return value.create({
 		colnames: allColNames ? value.colnames.create(setRange(colnames)) : value.colnames.create(setRange(colnames)).widenUp(),
 		cols:     value.cols,
 		rows:     value.rows
@@ -225,7 +225,7 @@ function applyAddColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	return new DataFrameDomain({
+	return value.create({
 		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.widenUp(),
 		cols:     colnames !== undefined ? value.cols.add([colnames.length, colnames.length]) : value.cols.widenUp(),
 		rows:     value.rows
@@ -236,15 +236,14 @@ function applyAddRowsSemantics(
 	value: DataFrameDomain,
 	{ rows }: { rows: number | undefined }
 ): DataFrameDomain {
-	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
-		return new DataFrameDomain({
-			...value,
+	if(value.cols.isValue() && value.cols.lower === 0) {
+		return value.create({
 			colnames: value.colnames.top(),
 			cols:     rows !== undefined ? value.cols.add([1, 1]) : value.cols.top(),
 			rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.widenUp()
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     rows !== undefined ? value.rows.add([rows, rows]) : value.rows.widenUp()
@@ -257,13 +256,13 @@ function applyRemoveColsSemantics(
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
 			cols:     colnames !== undefined ? value.cols.subtract([colnames.length, 0]) : value.cols.widenDown(),
 			rows:     value.rows
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: colnames !== undefined ? value.colnames.subtract(setRange(colnames)) : value.colnames.widenDown(),
 		cols:     colnames !== undefined ? value.cols.subtract([colnames.length, colnames.length]) : value.cols.widenDown(),
 		rows:     value.rows
@@ -276,13 +275,13 @@ function applyRemoveRowsSemantics(
 	options?: { maybe?: boolean }
 ): DataFrameDomain {
 	if(options?.maybe) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames,
 			cols:     value.cols,
 			rows:     rows !== undefined ? value.rows.subtract([rows, 0]) : value.rows.widenDown()
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     rows !== undefined ? value.rows.subtract([rows, rows]) : value.rows.widenDown()
@@ -293,7 +292,7 @@ function applyConcatColsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames.union(other.colnames),
 		cols:     value.cols.add(other.cols),
 		rows:     value.rows
@@ -304,15 +303,14 @@ function applyConcatRowsSemantics(
 	value: DataFrameDomain,
 	{ other }: { other: DataFrameDomain }
 ): DataFrameDomain {
-	if(value.cols.value !== Bottom && value.cols.value[0] === 0) {
-		return new DataFrameDomain({
-			...value,
+	if(value.cols.value !== Bottom && value.cols.lower === 0) {
+		return value.create({
 			colnames: value.colnames.join(other.colnames),
 			cols:     value.cols.join(other.cols),
 			rows:     value.rows.add(other.rows)
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     value.rows.add(other.rows)
@@ -325,19 +323,19 @@ function applySubsetColsSemantics(
 	options?: { duplicateCols?: boolean, renamedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.duplicateCols) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.top(),
 			cols:     colnames !== undefined ? value.cols.create([colnames.length, colnames.length]) : value.cols.top(),
 			rows:     value.rows
 		});
 	} else if(options?.renamedCols) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.top(),
 			cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.widenDown(),
 			rows:     value.rows
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: colnames !== undefined ? value.colnames.intersect(setRange(colnames)) : value.colnames.widenDown(),
 		cols:     colnames !== undefined ? value.cols.min([colnames.length, colnames.length]) : value.cols.widenDown(),
 		rows:     value.rows
@@ -350,13 +348,13 @@ function applySubsetRowsSemantics(
 	options?: { duplicateRows?: boolean }
 ): DataFrameDomain {
 	if(options?.duplicateRows) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames,
 			cols:     value.cols,
 			rows:     rows !== undefined ? value.rows.create([rows, rows]) : value.rows.top()
 		});
 	}
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     rows !== undefined ? value.rows.min([rows, rows]) : value.rows.widenDown()
@@ -367,7 +365,7 @@ function applyFilterRowsSemantics(
 	value: DataFrameDomain,
 	{ condition }: { condition: boolean | undefined }
 ): DataFrameDomain {
-	return new DataFrameDomain({
+	return value.create({
 		colnames: value.colnames,
 		cols:     value.cols,
 		rows:     condition ? value.rows : condition === false ? value.rows.create([0, 0]) : value.rows.widenDown()
@@ -378,7 +376,7 @@ function applyMutateColsSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	return new DataFrameDomain({
+	return value.create({
 		colnames: colnames !== undefined ? value.colnames.union(setRange(colnames)) : value.colnames.widenUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).max([colnames.length, colnames.length]) : value.cols.widenUp(),
 		rows:     value.rows
@@ -391,7 +389,7 @@ function applyGroupBySemantics(
 	options?: { mutatedCols?: boolean }
 ): DataFrameDomain {
 	if(options?.mutatedCols) {
-		return new DataFrameDomain({
+		return value.create({
 			colnames: value.colnames.union(setRange(by)),
 			cols:     value.cols.add([0, by.length]),
 			rows:     value.rows
@@ -405,7 +403,7 @@ function applySummarizeSemantics(
 	value: DataFrameDomain,
 	{ colnames }: { colnames: (string | undefined)[] | undefined }
 ): DataFrameDomain {
-	return new DataFrameDomain({
+	return value.create({
 		colnames: colnames !== undefined ? value.colnames.join(setRange([])).union(setRange(colnames)) : value.colnames.widenUp(),
 		cols:     colnames !== undefined ? value.cols.add([0, colnames.length]).min([colnames.length, +Infinity]) : value.cols.widenUp(),
 		rows:     value.rows.min([1, +Infinity]).max([0, 1])
@@ -419,19 +417,17 @@ function applyJoinSemantics(
 ): DataFrameDomain {
 	// Merge two intervals by creating the maximum of the lower bounds and adding the upper bounds
 	const mergeInterval = (interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
-		if(interval1.value === Bottom || interval2.value === Bottom) {
-			return interval1.bottom();
-		} else {
-			return new PosIntervalDomain([Math.max(interval1.value[0], interval2.value[0]), interval1.value[1] + interval2.value[1]]);
+		if(interval1.isValue() && interval2.isValue()) {
+			return new PosIntervalDomain([Math.max(interval1.lower, interval2.lower), interval1.upper + interval2.upper]);
 		}
+		return interval1.bottom();
 	};
 	// Creating the Cartesian product of two intervals by keeping the lower bound and multiplying the upper bounds
 	const productInterval = (lower: PosIntervalDomain, interval1: PosIntervalDomain, interval2: PosIntervalDomain): PosIntervalDomain => {
-		if(lower.value === Bottom || interval1.value === Bottom || interval2.value === Bottom) {
-			return lower.bottom();
-		} else {
-			return new PosIntervalDomain([lower.value[0], interval1.value[1] * interval2.value[1]]);
+		if(lower.isValue() && interval1.isValue() && interval2.isValue()) {
+			return new PosIntervalDomain([lower.lower, interval1.upper * interval2.upper]);
 		}
+		return lower.bottom();
 	};
 	let duplicateCols: string[] | undefined;  // columns that may be renamed due to occurring in both data frames
 	let productRows: boolean;  // whether the resulting rows may be a Cartesian product of the rows of the data frames
@@ -463,10 +459,10 @@ function applyJoinSemantics(
 			rows = value.rows.max(other.rows).widenDown();
 			break;
 		case 'left':
-			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.value[1]] : Bottom);
+			rows = value.rows.max(other.rows.isValue() ? [0, other.rows.upper] : Bottom);
 			break;
 		case 'right':
-			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.value[1]] : Bottom);
+			rows = other.rows.max(value.rows.isValue() ? [0, value.rows.upper] : Bottom);
 			break;
 		case 'full':
 			rows = mergeInterval(value.rows, other.rows);
@@ -474,8 +470,7 @@ function applyJoinSemantics(
 		default:
 			assertUnreachable(joinType);
 	}
-	return new DataFrameDomain({
-		...value,
+	return value.create({
 		colnames: duplicateCols === undefined ? value.colnames.top() : duplicateCols.length > 0 ? value.colnames.union(other.colnames).subtract(setRange(duplicateCols)).widenUp() : value.colnames.union(other.colnames),
 		cols:     by !== undefined ? value.cols.add(other.cols).subtract([by.length, by.length]) : mergeInterval(value.cols, other.cols),
 		rows:     productRows ? productInterval(rows, value.rows, other.rows) : rows
@@ -498,8 +493,8 @@ function applyUnknownSemantics(
 	return value.top();
 }
 
-function setRange(colnames: (string | undefined)[] | undefined): ArrayRangeValue<string> {
+function setRange(colnames: (string | undefined)[] | undefined): SetRangeValue<string> {
 	const names = colnames?.filter(isNotUndefined) ?? [];
 
-	return { min: names, range: names.length === colnames?.length ? [] : Top };
+	return { must: new Set(names), may: names.length === colnames?.length ? new Set() : Top };
 }

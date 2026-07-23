@@ -11,6 +11,8 @@ import {
 } from './dependencies-query-format';
 import type { CallContextQuery, CallContextQueryResult } from '../call-context-query/call-context-query-format';
 import { type DataflowGraphVertexFunctionCall, VertexType } from '../../../dataflow/graph/vertex';
+import { Identifier } from '../../../dataflow/environments/identifier';
+import { Dataflow } from '../../../dataflow/graph/df-helper';
 import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { BasicQueryData } from '../../base-query-format';
@@ -29,6 +31,7 @@ import type { ReadOnlyFlowrAnalyzerContext } from '../../../project/context/flow
 import type { NormalizedAst } from '../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { log } from '../../../util/log';
 import { RNode } from '../../../r-bridge/lang-4.x/ast/model/model';
+import { FunctionArgument } from '../../../dataflow/graph/graph';
 
 
 /**
@@ -73,7 +76,7 @@ export async function executeDependenciesQuery({
 		}
 	}
 
-	const queryResults = functions.values().toArray().flat().length === 0 ? { kinds: {}, '.meta': { timing: 0 } } :
+	const queryResults = !functions.values().toArray().some(f => f.length > 0) ? { kinds: {}, '.meta': { timing: 0 } } :
 		await executeQueriesOfSameType<CallContextQuery>(data, functions.entries().flatMap(makeCallContextQuery).toArray());
 	const g = getAllCategories(queries);
 	const enabled = query.enabledCategories;
@@ -132,6 +135,15 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 			const vertex = dfg.getVertex(id) as DataflowGraphVertexFunctionCall;
 			const info = functionMap.get(name) as FunctionInfo;
 
+			const functionName = Dataflow.qualify(id, dfg, false) ?? vertex.name;
+
+			if(info.package !== undefined) {
+				const callNamespace = Identifier.getNamespace(functionName);
+				if(callNamespace !== undefined && callNamespace !== info.package) {
+					continue;
+				}
+			}
+
 			const args = getArgumentStringValue(vars, dfg, vertex, info.argIdx, info.argName, info.resolveValue, ictx);
 			const linkedArgs = collectValuesFromLinks(args, { dataflow, config, ctx: ictx }, linkedIds as (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined);
 			const linked = dropInfoOnLinkedIds(linkedIds);
@@ -156,6 +168,26 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				return false;
 			}
 
+			function ignoreOnArgSet() {
+				if(info.ignoreIf !== 'arg-set') {
+					return;
+				}
+
+				const hasArg = (name?: string, index?: number | 'unnamed') => vertex.args.some((arg, idx) =>
+					FunctionArgument.isNamed(arg) && arg.name === name ||
+					FunctionArgument.isPositional(arg) && idx === index
+				);
+
+				if(hasArg(info.argName, info.argIdx)) {
+					return false;
+				}
+
+				const margs = info.additionalArgs?.argSet;
+				guard(margs, 'Need additional argument argSet when checking for arg-set');
+
+				return hasArg(margs.argName, margs.argIdx);
+			}
+
 			const foundValues = linkedArgs ?? args;
 			if(!foundValues) {
 				if(info.ignoreIf === 'arg-missing') {
@@ -165,7 +197,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 				}
 				const record = compactRecord({
 					nodeId:           id,
-					functionName:     vertex.name,
+					functionName,
 					lexemeOfArgument: undefined,
 					linkedIds:        linked?.length ? linked : undefined,
 					value:            info.defaultValue ?? defaultValue
@@ -186,18 +218,22 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 					// all modes are write-only, so we can ignore this
 					continue;
 				}
-			} else if(ignoreOnArgVal()) {
+			} else if(ignoreOnArgVal() || ignoreOnArgSet()) {
 				continue;
 			}
 			for(const [arg, values] of foundValues.entries()) {
 				for(const value of values) {
-					const dep = value ? d.getDependency(value) ?? undefined : undefined;
+					let resolvedValue = value;
+					if(info.stringReplacements && resolvedValue !== undefined && Object.hasOwn(info.stringReplacements, resolvedValue)) {
+						resolvedValue = info.stringReplacements[resolvedValue];
+					}
+					const dep = resolvedValue ? d.getDependency(resolvedValue) ?? undefined : undefined;
 					finalResults.push(compactRecord({
 						nodeId:             id,
-						functionName:       vertex.name,
+						functionName,
 						lexemeOfArgument:   getLexeme(value, arg),
 						linkedIds:          linked?.length ? linked : undefined,
-						value:              value ?? info.defaultValue ?? defaultValue,
+						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
 						derivedVersion:     dep?.derivedVersion,
 						namespaceInfo:      dep?.namespaceInfo
@@ -221,12 +257,12 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 	}
 }
 
-function collectValuesFromLinks(args: Map<NodeId, Set<string|undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string|undefined>> | undefined {
+function collectValuesFromLinks(args: Map<NodeId, Set<string | undefined>> | undefined, data: { dataflow: DataflowInformation, config: FlowrConfig, ctx: ReadOnlyFlowrAnalyzerContext }, linkedIds: readonly (NodeId | { id: NodeId, info: DependencyInfoLinkAttachedInfo })[] | undefined): Map<NodeId, Set<string | undefined>> | undefined {
 	if(!linkedIds || linkedIds.length === 0) {
 		return undefined;
 	}
 	const hasAtLeastAValue = args !== undefined && args.values().flatMap(x => Array.from(x)).toArray().some(v => v !== Unknown && v !== undefined);
-	const map = new Map<NodeId, Set<string|undefined>>();
+	const map = new Map<NodeId, Set<string | undefined>>();
 	for(const linkedId of linkedIds) {
 		if(typeof linkedId !== 'object' || !linkedId.info) {
 			continue;

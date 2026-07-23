@@ -5,22 +5,28 @@ import { type Node, Parser } from 'commonmark';
 import type { GrayMatterFile } from 'gray-matter';
 import matter from 'gray-matter';
 import { log } from '../../../../util/log';
+import type { FlowrAnalyzerContext } from '../../../context/flowr-analyzer-context';
+import { findSource } from '../../../../dataflow/internal/process/functions/call/built-in/built-in-source';
 
 /**
  * This decorates a text file and parses its contents as a R Markdown file.
- * Finnaly, it provides access to the single cells, and all cells fused together as one R file.
+ * Finally, it provides access to the single cells, and all cells fused together as one R file.
  */
-export class FlowrRMarkdownFile extends FlowrFile {
-	private data?:            RmdInfo;
+export class FlowrRMarkdownFile extends FlowrFile<string> {
+	private data?:       RmdInfo;
+	private mergedCode?: string;
+
 	private readonly wrapped: FlowrFileProvider<string>;
+	private readonly context: FlowrAnalyzerContext;
 
 	/**
 	 * Prefer the static {@link FlowrRMarkdownFile.from} method
 	 * @param file - the file to load as R Markdown
 	 */
-	constructor(file: FlowrFileProvider<string>) {
+	constructor(file: FlowrFileProvider<string>, ctx: FlowrAnalyzerContext) {
 		super(file.path(), file.roles ? [...file.roles, FileRole.Source] : [FileRole.Source]);
 		this.wrapped = file;
+		this.context = ctx;
 	}
 
 	/**
@@ -30,8 +36,15 @@ export class FlowrRMarkdownFile extends FlowrFile {
 		if(!this.data) {
 			this.loadContent();
 		}
-		guard(this.data);
+		guard(this.data !== undefined);
 		return this.data;
+	}
+
+	get executableCells(): CodeBlock[] {
+		return this.rmd.blocks.filter(b => {
+			const opt = b.options.get('eval');
+			return opt !== 'F' && opt !== 'FALSE';
+		});
 	}
 
 	/**
@@ -39,26 +52,68 @@ export class FlowrRMarkdownFile extends FlowrFile {
 	 * @returns RmdInfo
 	 */
 	protected loadContent(): string {
-		this.data = parseRMarkdownFile(this.wrapped.content());
-		return this.data.content;
+		const raw = this.wrapped.content();
+		this.data = parseRMarkdownFile(raw);
+		this.postProcessCodeBlocks();
+		this.mergedCode = restoreBlocksWithoutMd(this.data.blocks, countNewlines(raw));
+		guard(this.mergedCode !== undefined);
+		return this.mergedCode;
 	}
 
-	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile): FlowrRMarkdownFile {
-		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file);
+	/**
+ 	* Postprocess blocks with options like child='other.Rmd'
+  */
+	private postProcessCodeBlocks() {
+		guard(this.data !== undefined);
+
+		for(const block of this.data.blocks) {
+			const childOpt = block.options.get('child');
+			if(childOpt === undefined) {
+				continue;
+			}
+
+			const childPath = findSource(this.context.config.solver.resolveSource, childOpt, {
+				ctx:            this.context,
+				referenceChain: [this.path()]
+			});
+
+			if(childPath === undefined) {
+				continue;
+			}
+
+			if(childPath.length > 1) {
+				log.warn(`Found more than one path for child '${childOpt}' in rmd file '${this.path()}'. Only using the first path: '${childPath[0]}'`);
+			}
+
+			this.context.files.resolveRequest({
+				request: 'file',
+				content: childPath[0]
+			});
+
+			const rawChildFile = this.context.files.getFileByPath(childPath[0]) as FlowrFileProvider<string>;
+			if(rawChildFile !== undefined) {
+				block.code = FlowrRMarkdownFile.from(rawChildFile, this.context).content();
+			} else {
+				log.warn(`Child file '${childPath[0]}' of '${this.path()}' did not load as RMD.`);
+			}
+		}
+	}
+
+	public static from(file: FlowrFileProvider<string> | FlowrRMarkdownFile, ctx: FlowrAnalyzerContext): FlowrRMarkdownFile {
+		return file instanceof FlowrRMarkdownFile ? file : new FlowrRMarkdownFile(file, ctx);
 	}
 }
+
+export type CodeBlockOptions = Map<string, string>;
 
 export interface CodeBlock {
-	options: string,
-	code:    string,
+	options:  CodeBlockOptions,
+	code:     string,
+	header:   string,
+	startpos: { line: number, col: number }
 }
 
-export type CodeBlockEx = CodeBlock & {
-	startpos: { line: number, col: number }
-};
-
 export interface RmdInfo {
-	content: string
 	blocks:  CodeBlock[]
 	options: object
 }
@@ -85,7 +140,7 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 
 	// Parse Codeblocks
 	const walker = ast.walker();
-	const blocks: CodeBlockEx[] = [];
+	const blocks: CodeBlock[] = [];
 	let e;
 	while((e = walker.next())) {
 		const node = e.node;
@@ -93,21 +148,27 @@ export function parseRMarkdownFile(raw: string): RmdInfo {
 			continue;
 		}
 
+		const options = parseCodeBlockOptions(node.info, node.literal);
+		const engineOpt = options.get('engine');
+		if(engineOpt !== undefined && engineOpt.trim().toLowerCase() !== 'r') {
+			continue;
+		}
+
 		blocks.push({
 			code:     node.literal,
-			options:  parseCodeBlockOptions(node.info, node.literal),
+			options:  options,
+			header:   node.info,
 			startpos: { line: node.sourcepos[0][0] + 1, col: 0 }
 		});
 	}
 
 	return {
-		content: restoreBlocksWithoutMd(blocks, countNewlines(raw)),
-		// eslint-disable-next-line unused-imports/no-unused-vars
-		blocks:  blocks.map(({ startpos, ...block }) => block),
+		blocks:  blocks,
 		options: frontmatter?.data ?? {}
 	};
 }
 
+// We need the [\s,] part, otherwise {rust} would also match
 const RTagRegex = /{[rR](?:[\s,][^}]*)?}/;
 
 /**
@@ -125,13 +186,12 @@ function countNewlines(str: string): number {
 /**
  * Restores an Rmd file from code blocks, filling non-code lines with empty lines
  */
-export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number): string {
+export function restoreBlocksWithoutMd(blocks: readonly CodeBlock[], totalLines: number): string {
 	let line = 1;
 	let output = '';
 
 	const goToLine = (n: number) => {
-		const diff = n - line;
-		guard(diff >= 0);
+		const diff = Math.max(n - line, 0);
 		line += diff;
 		output += '\n'.repeat(diff);
 	};
@@ -148,13 +208,15 @@ export function restoreBlocksWithoutMd(blocks: CodeBlockEx[], totalLines: number
 	return output;
 }
 
+const OptionsRegex = /([\w_.-]*)\s*[:=]\s*["']?([^,"']*)/g;
+
 /**
  * Parses the options of an R code block from its header and content
  */
-export function parseCodeBlockOptions(header: string, content: string): string {
+export function parseCodeBlockOptions(header: string, content: string): CodeBlockOptions {
 	let opts = header.length === 3 // '{r}' => header.length=3 (no options in header)
 		? ''
-		: header.substring(3, header.length-1).trim();
+		: header.substring(3, header.length - 1).trim();
 
 	const lines = content.split('\n');
 	for(const line of lines) {
@@ -162,10 +224,17 @@ export function parseCodeBlockOptions(header: string, content: string): string {
 			break;
 		}
 
-		const opt = line.substring(3);
+		const opt = line.substring(2).trim();
 
 		opts += opts.length === 0 ? opt : `, ${opt}`;
 	}
 
-	return opts;
+	const parsedOptions = new Map<string, string>();
+	for(const match of opts.matchAll(OptionsRegex)) {
+		if(match[1] && match[2] !== undefined) { // key must not be empty, but value can be empty string for example
+			parsedOptions.set(match[1], match[2]);
+		}
+	}
+
+	return parsedOptions;
 }

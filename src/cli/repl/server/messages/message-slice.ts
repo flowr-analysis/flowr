@@ -6,7 +6,7 @@ import type {
 	DEFAULT_DATAFLOW_PIPELINE,
 	DEFAULT_SLICING_PIPELINE
 } from '../../../../core/steps/pipeline/default-pipelines';
-import { SliceDirection } from '../../../../core/steps/all/static-slicing/00-slice';
+import { SliceDirection } from '../../../../util/slice-direction';
 
 /**
  * Can only be sent after you have sent the {@link FileAnalysisRequestMessage}.
@@ -40,7 +40,7 @@ export const requestSliceMessage: MessageDefinition<SliceRequestMessage> = {
 
 
 /**
- * Similar to {@link FileAnalysisResponseMessage} this only contains the results of
+ * Similar to {@link FileAnalysisResponseMessageJson} this only contains the results of
  * the slice steps.
  */
 export interface SliceResponseMessage extends IdMessageBase {

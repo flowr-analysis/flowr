@@ -12,23 +12,20 @@ import { printAsMs } from '../../../util/text/time';
 import Joi from 'joi';
 import { executeStaticSliceQuery } from './static-slice-query-executor';
 import { summarizeIdsIfTooLong } from '../../query-print';
-import { SliceDirection } from '../../../core/steps/all/static-slicing/00-slice';
 import type { NodeId } from '../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { FlowrConfig } from '../../../config';
-import { sliceCriteriaParser, sliceDirectionParser } from '../../../cli/repl/parser/slice-query-parser';
+import { StaticSliceFlags, criteriaQueryCompleter, describeSliceFlags, queryLineCode, sliceCriteriaParser, sliceDirectionParser, sliceQueryOptionsParser, warnAboutSliceFlags } from '../../../cli/repl/parser/slice-query-parser';
+import { type SliceQueryOptions, SliceQueryOptionsSchema } from '../slice-query-options';
+import { SliceDirection } from '../../../util/slice-direction';
 
-/** Calculates and returns all clusters encountered in the dataflow graph. */
-export interface StaticSliceQuery extends BaseQueryFormat {
-	readonly type:              'static-slice';
+/** Calculates and returns the static backward or forward slice from the given criteria */
+export interface StaticSliceQuery extends BaseQueryFormat, SliceQueryOptions {
+	readonly type:       'static-slice';
 	/** The slicing criteria to use */
-	readonly criteria:          SlicingCriteria,
-	/** do not reconstruct the slice into readable code */
-	readonly noReconstruction?: boolean;
-	/** Should the magic comments (force-including lines within the slice) be ignored? */
-	readonly noMagicComments?:  boolean
+	readonly criteria:   SlicingCriteria,
 	/** The direction to slice in. Defaults to backward slicing if unset. */
-	readonly direction?:        SliceDirection
+	readonly direction?: SliceDirection
 }
 
 export interface StaticSliceQueryResult extends BaseQueryResult {
@@ -45,24 +42,41 @@ export interface StaticSliceQueryResult extends BaseQueryResult {
 	>
 }
 
+const SliceCriterionHelp = [
+	'Each criterion picks one element of the program, separate multiple ones with ";":',
+	'  <line>@<name>       <name> in line <line>, preferring a call over the symbol (e.g. 2@x)',
+	'  <line>@[<n>]<name>  the n-th occurrence of <name> in line <line> (e.g. 2@[2]x, 2@[-1]x)',
+	'  <line>:<col>        the element starting at line <line>, column <col> (e.g. 2:5)',
+	'  <line>~<col>        the innermost element containing line <line>, column <col> (e.g. 2~5)',
+	'  $<id>               the normalized node with the id <id> (e.g. $42)',
+	'A negative <line> counts from the end; a trailing (file-regex) restricts to a file (e.g. 2@x(tmp/.*)).',
+	`Append flags after the ")": ${describeSliceFlags(StaticSliceFlags)}.`,
+	'Example: :query @static-slice (2@x;3:1)fc'
+].join('\n');
+
 function sliceQueryLineParser(output: ReplOutput, line: readonly string[], _config: FlowrConfig): ParsedQueryLine<'static-slice'> {
 	const criteria = sliceCriteriaParser(line[0]);
 	const direction = sliceDirectionParser(line[0]);
-	if(!criteria || criteria.length == 0) {
+	const options = sliceQueryOptionsParser(line[0]);
+	if(!criteria || criteria.length === 0) {
 		output.stderr(output.formatter.format('Invalid static-slice query format, slicing criteria must be given in the form "(criterion1;criterion2;...)"',
 			{ color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		output.stderr(SliceCriterionHelp);
 		return { query: [] };
 	}
+	warnAboutSliceFlags(output, line[0], StaticSliceFlags);
 
 	return { query: [
 		{
 			type:      'static-slice',
 			criteria:  criteria,
 			direction: direction,
-		}], rCode: line[1] } ;
+			...options
+		}], rCode: queryLineCode(line) } ;
 }
 
 export const StaticSliceQueryDefinition = {
+	title:           'Static Slice Query',
 	executor:        executeStaticSliceQuery,
 	asciiSummarizer: (formatter, _analyzer, queryResults, result) => {
 		const out = queryResults as QueryResults<'static-slice'>['static-slice'];
@@ -99,13 +113,14 @@ export const StaticSliceQueryDefinition = {
 		}
 		return true;
 	},
-	fromLine: sliceQueryLineParser,
-	schema:   Joi.object({
-		type:             Joi.string().valid('static-slice').required().description('The type of the query.'),
-		criteria:         Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
-		noReconstruction: Joi.boolean().optional().description('Do not reconstruct the slice into readable code.'),
-		noMagicComments:  Joi.boolean().optional().description('Should the magic comments (force-including lines within the slice) be ignored?'),
-		direction:        Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.')
+	fromLine:  sliceQueryLineParser,
+	completer: criteriaQueryCompleter,
+	syntax:    '@static-slice (<crit>;...)[fiIcB] <code | file://path>',
+	schema:    Joi.object({
+		type:      Joi.string().valid('static-slice').required().description('The type of the query.'),
+		criteria:  Joi.array().items(Joi.string()).min(0).required().description('The slicing criteria to use.'),
+		direction: Joi.string().valid(...Object.values(SliceDirection)).optional().description('The direction to slice in. Defaults to backward slicing if unset.'),
+		...SliceQueryOptionsSchema
 	}).description('Slice query used to slice the dataflow graph'),
 	flattenInvolvedNodes: (queryResults: BaseQueryResult) => {
 		const flattened: NodeId[] = [];

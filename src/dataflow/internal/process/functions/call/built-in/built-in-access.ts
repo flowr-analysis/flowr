@@ -4,7 +4,7 @@ import { processKnownFunctionCall, type ProcessKnownFunctionCallResult } from '.
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
@@ -12,11 +12,14 @@ import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { markAsAssignment } from './built-in-assignment';
-import { Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
+import { unpackArg } from '../argument/unpack-argument';
+import { resolveSymbolToEnvir } from './built-in-envir-utils';
+import { resolveNodeToStackEnv } from './built-in-stack-env';
 
 interface TableAssignmentProcessorMarker {
 	definitionRootNodes: NodeId[]
@@ -24,7 +27,7 @@ interface TableAssignmentProcessorMarker {
 
 function tableAssignmentProcessor<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	outInfo: TableAssignmentProcessorMarker
@@ -46,7 +49,7 @@ function tableAssignmentProcessor<OtherInfo>(
  */
 export function processAccess<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: { treatIndicesAsString: boolean } & ForceArguments
@@ -82,6 +85,23 @@ export function processAccess<OtherInfo>(
 		}
 		/* we include the read edges to the constant arguments as well so that they are included if necessary */
 	}
+
+	/* for $ access on a tracked env variable or a stack env (globalenv()/.GlobalEnv), add Reads edges to the field definition */
+	if(config.treatIndicesAsString && Identifier.getName(name.content) === '$'
+			&& head !== EmptyArgument && head.value !== undefined
+			&& args.length >= 2 && args[1] !== EmptyArgument) {
+		const envState = resolveNodeToStackEnv(head.value, data)
+			?? (head.value.type === RType.Symbol ? resolveSymbolToEnvir(head.value.content, head.value.info.id, data)?.envDef.envState : undefined);
+		if(envState) {
+			const fieldNode = unpackArg(args[1]);
+			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
+			const fieldDefs = fieldName ? envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
+			for(const fd of fieldDefs ?? []) {
+				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
+			}
+		}
+	}
+
 	return {
 		...info,
 		/*
@@ -120,7 +140,7 @@ export function processAccess<OtherInfo>(
 function processNumberBasedAccess<OtherInfo>(
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	config: ForceArguments,
 	head: RArgument<OtherInfo & ParentInformation>,
@@ -157,7 +177,7 @@ function processNumberBasedAccess<OtherInfo>(
 /**
  * Converts symbol arguments to string arguments within the specified range.
  */
-export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
+export function symbolArgumentsToStrings<OtherInfo>(args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[], firstIndexInclusive = 1, lastIndexInclusive = args.length - 1) {
 	const newArgs = args.slice();
 	// if the argument is a symbol, we convert it to a string for this perspective
 	for(let i = firstIndexInclusive; i <= lastIndexInclusive; i++) {
@@ -191,7 +211,7 @@ export function symbolArgumentsToStrings<OtherInfo>(args: readonly RFunctionArgu
  * ```
  */
 function processStringBasedAccess<OtherInfo>(
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	name: RSymbol<OtherInfo & ParentInformation>,
 	rootId: NodeId,

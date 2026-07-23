@@ -1,4 +1,5 @@
-import type { RAstNodeBase, Location, NoInfo, RNode } from '../model';
+import type { RAstNodeBase, Location, NoInfo } from '../model';
+import { RNode } from '../model';
 import { RType } from '../type';
 import type { RExpressionList } from './r-expression-list';
 
@@ -18,6 +19,7 @@ export interface RIfThenElse<Info = NoInfo> extends RAstNodeBase<Info>, Location
  * Helper for working with {@link RIfThenElse} AST nodes.
  */
 export const RIfThenElse = {
+	...RNode,
 	name: 'RIfThenElse',
 	/**
 	 * Type guard for {@link RIfThenElse} nodes.

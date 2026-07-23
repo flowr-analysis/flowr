@@ -11,35 +11,53 @@ import type { REnvironmentInformation } from './environments/environment';
 import type { RNode } from '../r-bridge/lang-4.x/ast/model/model';
 import type { KnownParserType, Parser } from '../r-bridge/parser';
 import type { FlowrAnalyzerContext } from '../project/context/flowr-analyzer-context';
+import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface DataflowProcessorInformation<OtherInfo> {
-	readonly parser:         Parser<KnownParserType>
+	readonly parser:               Parser<KnownParserType>
 	/**
 	 * Initial and frozen ast-information
 	 */
-	readonly completeAst:    NormalizedAst<OtherInfo>
+	readonly completeAst:          NormalizedAst<OtherInfo>
 	/**
 	 * Correctly contains pushed local scopes introduced by `function` scopes.
 	 * Will by default *not* contain any symbol-bindings introduced along the way; they have to be decorated when moving up the tree.
 	 */
-	readonly environment:    REnvironmentInformation
+	readonly environment:          REnvironmentInformation
 	/**
 	 * Other processors to be called by the given functions
 	 */
-	readonly processors:     DataflowProcessors<OtherInfo>
+	readonly processors:           DataflowProcessors<OtherInfo>
 	/**
 	 * The chain of file paths that lead to this inclusion.
 	 * The most recent (last) entry is expected to always be the current one.
 	 */
-	readonly referenceChain: (string | undefined)[]
+	readonly referenceChain:       (string | undefined)[]
 	/**
 	 * The chain of control-flow {@link NodeId}s that lead to the current node (e.g., of known ifs).
 	 */
-	readonly cds:            ControlDependency[] | undefined
+	readonly cds:                  ControlDependency[] | undefined
 	/**
 	 * The flowr context used for environment seeding, files, and precision control, ...
 	 */
-	readonly ctx:            FlowrAnalyzerContext
+	readonly ctx:                  FlowrAnalyzerContext
+	/**
+	 * If set, the function call with this id is known to resolve to built-ins only,
+	 * so its vertex needs no environment snapshot (it would be discarded by markAsOnlyBuiltIn anyway).
+	 */
+	readonly builtInNoEnv?:        NodeId
+	/**
+	 * Escape hatch for hot recursive paths.
+	 * When set and its `rootId` matches the function call currently being processed by {@link processAllArguments},
+	 * its `info` is used as the already-processed first argument instead of processing that argument again.
+	 */
+	readonly precomputedFirstArg?: { readonly rootId: NodeId, readonly info: DataflowInformation }
+	/**
+	 * Companion to {@link precomputedFirstArg}: when set and its `nodeId` matches the node
+	 * {@link processFunctionArgument} is about to process as an argument's value, its `info` is used instead of
+	 * processing (and recursing into) that node again. This allows to separate arg wrappers from their content!
+	 */
+	readonly precomputedValue?:    { readonly nodeId: NodeId, readonly info: DataflowInformation }
 }
 
 export type DataflowProcessor<OtherInfo, NodeType extends RNodeWithParent<OtherInfo>> = (node: NodeType, data: DataflowProcessorInformation<OtherInfo>) => DataflowInformation;

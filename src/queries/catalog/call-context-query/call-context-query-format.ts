@@ -27,9 +27,9 @@ export interface FileFilter<FilterType> {
 
 export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> extends BaseQueryFormat {
 	readonly type:                   'call-context';
-	/** Regex regarding the function name, please note that strings will be interpreted as regular expressions too! */
+	/** The function name to match: a string (interpreted as a regex unless {@link callNameExact} is set), a RegExp, or an array of strings (always matched exactly). */
 	readonly callName:               RegexType;
-	/** Should we automatically add the `^` and `$` anchors to the regex to make it an exact match? */
+	/** For a string {@link callName}, match it literally instead of as a regex. For a RegExp, add `^` and `$` anchors. Arrays always match exactly, regardless of this flag. */
 	readonly callNameExact?:         boolean;
 	/** kind may be a step or anything that you attach to the call, this can be used to group calls together (e.g., linking `ggplot` to `visualize`). Defaults to `.` */
 	readonly kind?:                  string;
@@ -40,6 +40,8 @@ export interface DefaultCallContextQueryFormat<RegexType extends CallNameTypes> 
 	 * Request this specifically to gain all call targets we can resolve.
 	 */
 	readonly callTargets?:           CallTargets;
+	/** Only keep calls that resolve to (or are explicitly qualified with) this package, e.g. `bar` to find `bar::foo` / `foo()` after `library(bar)`. */
+	readonly callTargetNamespace?:   string;
 	/** Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results? */
 	readonly includeAliases?:        boolean;
 	/** Should we ignore default values for parameters in the results? */
@@ -95,7 +97,7 @@ export interface LinkToNestedCall<CallName extends CallNameTypes = CallNameTypes
 export type LinkTo<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> = (LinkToLastCall<CallName> | LinkToNestedCall<CallName>) & { attachLinkInfo?: AttachLinkInfo };
 
 export interface SubCallContextQueryFormat<CallName extends CallNameTypes = CallNameTypes, AttachLinkInfo = NoInfo> extends DefaultCallContextQueryFormat<CallName> {
-	readonly linkTo: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
+	readonly linkTo?: LinkTo<CallName, AttachLinkInfo> | LinkTo<CallName, AttachLinkInfo>[];
 }
 
 export interface CallContextQuerySubKindResult {
@@ -145,11 +147,14 @@ const CallContextQueryLinkTo = Joi.alternatives([
 ]);
 
 export const CallContextQueryDefinition = {
+	title:           'Call-Context Query',
 	executor:        executeCallContextQueries,
 	asciiSummarizer: async(formatter: OutputFormatter, analyzer: ReadonlyFlowrAnalysisProvider, queryResults: BaseQueryResult, result: string[]) => {
 		const out = queryResults as CallContextQueryResult;
-		result.push(`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`);
-		result.push(asciiCallContext(formatter, out, (await analyzer.normalize()).idMap));
+		result.push(
+			`Query: ${bold('call-context', formatter)} (${printAsMs(out['.meta'].timing, 0)})`,
+			asciiCallContext(formatter, out, (await analyzer.normalize()).idMap)
+		);
 		return true;
 	},
 	schema: Joi.object({
@@ -159,6 +164,7 @@ export const CallContextQueryDefinition = {
 		kind:                  Joi.string().optional().description('The kind of the call, this can be used to group calls together (e.g., linking `plot` to `visualize`). Defaults to `.`'),
 		subkind:               Joi.string().optional().description('The subkind of the call, this can be used to uniquely identify the respective call type when grouping the output (e.g., the normalized name, linking `ggplot` to `plot`). Defaults to `.`'),
 		callTargets:           Joi.string().valid(...Object.values(CallTargets)).optional().description('Call targets the function may have. This defaults to `any`. Request this specifically to gain all call targets we can resolve.'),
+		callTargetNamespace:   Joi.string().optional().description('Only keep calls that resolve to (or are explicitly qualified with) this package (e.g. `bar` to find `bar::foo`).'),
 		ignoreParameterValues: Joi.boolean().optional().description('Should we ignore default values for parameters in the results?'),
 		includeAliases:        Joi.boolean().optional().description('Consider a case like `f <- function_of_interest`, do you want uses of `f` to be included in the results?'),
 		fileFilter:            Joi.object({

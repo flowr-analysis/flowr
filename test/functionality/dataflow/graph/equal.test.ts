@@ -2,17 +2,17 @@ import { emptyGraph } from '../../../../src/dataflow/graph/dataflowgraph-builder
 import { type DataflowGraphJson, DataflowGraph } from '../../../../src/dataflow/graph/graph';
 import { diffGraphsToMermaidUrl } from '../../../../src/util/mermaid/dfg';
 import type { GenericDiffConfiguration } from '../../../../src/util/diff';
-import { diffOfDataflowGraphs } from '../../../../src/dataflow/graph/diff-dataflow-graph';
 import { jsonReplacer } from '../../../../src/util/json';
 import { argumentInCall } from '../../_helper/dataflow/environment-builder';
 import { describe, assert, test } from 'vitest';
 import type { GraphDifferenceReport } from '../../../../src/util/diff-graph';
 import { NodeId } from '../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { Dataflow } from '../../../../src/dataflow/graph/df-helper';
 
 function check(cmp: (x: boolean) => void, a: DataflowGraph, b: DataflowGraph, text: string, config?: GenericDiffConfiguration) {
 	let res: GraphDifferenceReport | undefined = undefined;
 	try {
-		res = diffOfDataflowGraphs({
+		res = Dataflow.diffGraphs({
 			name:  'left (a)',
 			graph: a
 		}, {

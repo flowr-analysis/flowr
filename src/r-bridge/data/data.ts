@@ -102,10 +102,48 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
 						},
 						{
-							name:        'Dynamic Environment Resolution',
-							id:          'dynamic-environment-resolution',
-							supported:   'not',
-							description: '_For example, using `new.env` and friends_'
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+								}
+							]
 						},
 						{
 							name:        'Environment Sharing',
@@ -123,7 +161,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							name:        'Search Path',
 							id:          'search-path',
 							supported:   'partially',
-							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Currently, _flowR_ does not support dynamic modifications with `attach`, `search`, or `fn_env` and tests are definitely missing. Yet, theoretically, the tooling is all there."
+							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Attached packages and `attach`ed environments are placed below `.GlobalEnv` (so global bindings shadow package exports, matching R), attaching inside/through function calls propagates to the caller, and re-attaching is a no-op. Not yet handled: dynamic `search`/`fn_env` manipulation."
 						},
 						{
 							name:        'Namespaces',
@@ -146,7 +184,7 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 						{
 							name:        'Library Loading',
 							id:          'library-loading',
-							supported:   'not',
+							supported:   'partially',
 							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
 						},
 						{
@@ -537,9 +575,9 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 								},
 								{
 									name:        'Pipe and Pipe-Bind',
-									id:          'built-in-pipe-and-pipe-bind',
+									id:          'pipe-and-pipe-bind',
 									supported:   'partially',
-									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._ We have not enough tests and do not support pipe-bind.'
+									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; Similarly support the other pipe binds'
 								},
 								{
 									name:        'Sequencing',
@@ -767,6 +805,26 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							],
 							supported:   'partially',
 							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name:         'Class-Based Dependency Attribution',
+							id:           'oop-class-dependency-attribution',
+							supported:    'partially',
+							description:  '_Attribute the use of a class to the package that owns it (registers a method for it and exports a same-named constructor), so a class use implies a dependency for library detection and version guessing (backed by the signature database\'s class-ownership map)._',
+							capabilities: [
+								{
+									name:        'S3 class ownership',
+									id:          'class-owner-s3',
+									supported:   'partially',
+									description: '_The signature database records which package owns each S3 class. A class use is attributed to the owning package -- both from a project\'s NAMESPACE `S3method(generic, class)` registrations (e.g. `S3method("as.irts","zoo")` marks `zoo` used) and from class-name string literals in plain code (`inherits(x, "zoo")`, `methods::is`, `new`, `structure(..., class=)`), marking the owner used and bounding its version below by the same-named constructor\'s export history. Class names that come from a variable or a `c(...)` vector, and method-definition names like `print.zoo`, are not yet resolved._'
+								},
+								{
+									name:        'S4 class ownership',
+									id:          'class-owner-s4',
+									supported:   'partially',
+									description: '_A project\'s `importClassesFrom`/`importMethodsFrom` NAMESPACE directives are tracked, so the source package is attached and marked used like a plain `importFrom`. S4 class ownership itself (`exportClasses`, `setClass`) is not yet recorded in the signature database, so a bare S4 class use is not attributed to its owning package._'
+								}
+							]
 						}
 					]
 				}

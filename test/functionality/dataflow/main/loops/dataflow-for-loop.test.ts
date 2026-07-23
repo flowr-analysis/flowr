@@ -2,11 +2,11 @@ import { assertDataflow, withShell } from '../../../_helper/shell';
 import { emptyGraph } from '../../../../../src/dataflow/graph/dataflowgraph-builder';
 import { argumentInCall, defaultEnv } from '../../../_helper/dataflow/environment-builder';
 import { label } from '../../../_helper/label';
-import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in';
 import { OperatorDatabase } from '../../../../../src/r-bridge/lang-4.x/ast/model/operators';
 import { EmptyArgument } from '../../../../../src/r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { describe } from 'vitest';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';
+import { BuiltInProcName } from '../../../../../src/dataflow/environments/built-in-proc-name';
 
 describe.sequential('for', withShell(shell => {
 	assertDataflow(label('Single-vector for Loop', ['for-loop', 'name-normal', 'numbers']),
@@ -138,7 +138,7 @@ x`, emptyGraph()
 
 	assertDataflow(label('Simple Circular Redefinition', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']),
 		shell, 'for(i in 1:10) x <- x + 1',
-		emptyGraph().defineVariable('1@x', 'x', { cds: [{ id: 10, when: true }] }).use('1:21', 'x', { cds: [{ id: 10, when: true }] }).reads('1:21', '1@x'),
+		emptyGraph().defineVariable('1@x', 'x', { cds: [{ id: 10, when: true }] }).use('1@[2]x', 'x', { cds: [{ id: 10, when: true }] }).reads('1@[2]x', '1@x'),
 		{ expectIsSubgraph: true, resolveIdsAsCriterion: true }
 	);
 	assertDataflow(label('double redefinition within loop', ['name-normal', ...OperatorDatabase['<-'].capabilities, 'numbers', 'newlines', 'for-loop', 'semicolons']), shell, 'x <- 9\nfor(i in 1:10) { x <- x;\nx <- x }\n x', emptyGraph()

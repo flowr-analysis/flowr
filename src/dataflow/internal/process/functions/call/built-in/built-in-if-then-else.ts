@@ -1,11 +1,11 @@
 import { type DataflowProcessorInformation, processDataflowFor } from '../../../../../processor';
-import { alwaysExits, type DataflowInformation } from '../../../../../info';
+import { alwaysExits, type DataflowInformation, type KillReference } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import { convertFnArguments, patchFunctionCall } from '../common';
 import { unpackArg } from '../argument/unpack-argument';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import type { RFunctionArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { EdgeType } from '../../../../../graph/edge';
@@ -15,10 +15,11 @@ import { type REnvironmentInformation } from '../../../../../environments/enviro
 import { valueSetGuard } from '../../../../../eval/values/general';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
+import { applyKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
-import { invertArgumentMap, pMatch } from '../../../../linker';
-import { BuiltInProcName } from '../../../../../environments/built-in';
+import { pMatch } from '../../../../linker';
 import { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 /** `if(<cond>) <then> else <else>` built-in function configuration, make sure to not reuse indices */
 export interface IfThenElseConfig {
@@ -32,7 +33,7 @@ export interface IfThenElseConfig {
 	}
 }
 
-function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly RFunctionArgument<OtherInfo & ParentInformation>[]) {
+function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[]) {
 	let condArg: RNode<OtherInfo & ParentInformation> | undefined;
 	let thenArg: RNode<OtherInfo & ParentInformation> | undefined;
 	let otherwiseArg: RNode<OtherInfo & ParentInformation> | undefined;
@@ -44,7 +45,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
 			[config.args.no]:   'no',
 			'...':              '...'
 		};
-		const argMaps = invertArgumentMap(pMatch(convertFnArguments(args), params));
+		const argMaps = pMatch(convertFnArguments(args), params);
 		condArg = unpackArg(RArgument.getWithId(args, argMaps.get('cond')?.[0]));
 		thenArg = unpackArg(RArgument.getWithId(args, argMaps.get('yes')?.[0]));
 		otherwiseArg = unpackArg(RArgument.getWithId(args, argMaps.get('no')?.[0]));
@@ -61,7 +62,7 @@ function getArguments<OtherInfo>(config: IfThenElseConfig | undefined, args: rea
  */
 export function processIfThenElse<OtherInfo>(
 	name:   RSymbol<OtherInfo & ParentInformation>,
-	args:   readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args:   readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data:   DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config?: IfThenElseConfig
@@ -153,6 +154,14 @@ export function processIfThenElse<OtherInfo>(
 			(makeOtherwiseMaybe ? makeAllMaybe(otherwise?.out, nextGraph, finalEnvironment, true, cdFalse) : otherwise?.out ?? []),
 		);
 
+	// a branch-local removal only happens maybe; apply it here since the branch-environment merge cannot represent it
+	let killed: KillReference[] | undefined;
+	if(then?.kill?.length || otherwise?.kill?.length) {
+		killed = (makeThenMaybe ? makeKillsMaybe(then?.kill, cdTrue) : then?.kill ?? [])
+			.concat(makeOtherwiseMaybe ? makeKillsMaybe(otherwise?.kill, cdFalse) : otherwise?.kill ?? []);
+		finalEnvironment = applyKills(finalEnvironment, killed);
+	}
+
 	patchFunctionCall({
 		nextGraph,
 		rootId,
@@ -177,5 +186,6 @@ export function processIfThenElse<OtherInfo>(
 		environment:       finalEnvironment,
 		graph:             nextGraph,
 		hooks:             cond.hooks.concat(then?.hooks ?? [], otherwise?.hooks ?? []),
+		kill:              killed,
 	};
 }

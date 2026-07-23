@@ -22,7 +22,6 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 
 	for(let i = 0; i < inputString.length;  i++) {
 		const c = inputString[i];
-		const sub = inputString.slice(i);
 
 		if(escaped) {
 			escaped = false;
@@ -37,7 +36,7 @@ export function splitAtEscapeSensitive(inputString: string, escapeQuote = true, 
 			}
 		} else if(!inQuotes
 				&& current !== ''
-				&& (split instanceof RegExp ? split.test(sub) : inputString.slice(i, i + split.length) === split)
+				&& (split instanceof RegExp ? split.test(inputString.slice(i)) : inputString.slice(i, i + split.length) === split)
 		) {
 			args.push(current);
 			current = '';

@@ -3,45 +3,50 @@ import type { FlowrSearchElement, FlowrSearchElements } from '../search/flowr-se
 import type { MergeableRecord } from '../util/objects';
 import type { GeneratorNames } from '../search/search-executor/search-generators';
 import type { TransformerNames } from '../search/search-executor/search-transformer';
-import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { LintingRuleConfig, LintingRuleMetadata, LintingRuleNames, LintingRuleResult } from './linter-rules';
 import type { AsyncOrSync, DeepPartial, DeepReadonly } from 'ts-essentials';
 import type { LintingRuleTag } from './linter-tags';
 import type { SourceLocation } from '../util/range';
-import type { DataflowInformation } from '../dataflow/info';
-import type { ControlFlowInformation } from '../control-flow/control-flow-graph';
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { isNotUndefined } from '../util/assert';
 
 export interface LinterRuleInformation<Config extends MergeableRecord = never> {
 	/** Human-Readable name of the linting rule. */
-	readonly name:          string;
+	readonly name:             string;
 	/**
 	 * The default config for this linting rule.
 	 * This config is combined with the user config when executing the rule.
 	 */
-	readonly defaultConfig: NoInfer<DeepReadonly<Config>>;
+	readonly defaultConfig:    NoInfer<DeepReadonly<Config>>;
 	/**
 	 * A short list of tags that describe and categorize the linting rule.
 	 */
-	readonly tags:          readonly LintingRuleTag[];
+	readonly tags:             readonly LintingRuleTag[];
 	/**
 	 * The linting rule's certainty in terms of the rule's calculations' precision and recall.
 	 */
-	readonly certainty:     LintingRuleCertainty;
+	readonly certainty:        LintingRuleCertainty;
 	/**
 	 * A short description of the linting rule.
 	 * This is used to display the rule in the UI and to provide a brief overview of what the rule does.
 	 */
-	readonly description:   string;
+	readonly description:      string;
+	/**
+	 * Whether the rule runs when a linter query does not explicitly list any rules.
+	 * Defaults to `true` when omitted. Set to `false` for noisy or heuristic rules
+	 * that should only run when requested explicitly (an explicit rule list overrides this flag).
+	 * @see {@link executeLinterQuery} - reads this flag to pick the default rule set
+	 */
+	readonly activeByDefault?: boolean;
 }
 
 /**
  * The base interface for a linting rule, which contains all of its relevant settings.
  * The registry of valid linting rules is stored in {@link LintingRules}.
  */
-export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
+export interface LintingRule<Result extends LintingResult, Metadata extends MergeableRecord = never, Config extends MergeableRecord = never, Info = ParentInformation, Elements extends FlowrSearchElement<Info>[] = FlowrSearchElement<Info>[]> {
 	/**
 	 * Creates a flowR search that will then be executed and whose results will be passed to {@link processSearchResult}.
 	 * In the future, additional optimizations and transformations may be applied to the search between this function and {@link processSearchResult}.
@@ -51,9 +56,9 @@ export interface LintingRule<Result extends LintingResult, Metadata extends Merg
 	 * Processes the search results of the search created through {@link createSearch}.
 	 * This function is expected to return the linting results from this rule for the given search, ie usually the given script file.
 	 */
-	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: { normalize: NormalizedAst, dataflow: DataflowInformation, cfg: ControlFlowInformation, analyzer: ReadonlyFlowrAnalysisProvider }) => AsyncOrSync<{
-		results: Result[],
-		'.meta': Metadata
+	readonly processSearchResult: (elements: FlowrSearchElements<Info, Elements>, config: Config, data: ReadonlyFlowrAnalysisProvider) => AsyncOrSync<{
+		results:  Result[],
+		'.meta'?: Metadata
 	}>
 	/**
 	 * A set of functions used to pretty-print the given linting result.
@@ -106,6 +111,10 @@ export interface LintingResult {
 	 * The node ID or IDs involved in this linting result, if applicable.
 	 */
 	readonly involvedId: NodeId | NodeId[] | undefined
+	/**
+	 * The source location where this linting result occurs
+	 */
+	readonly loc:        SourceLocation;
 }
 
 

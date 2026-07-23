@@ -24,12 +24,12 @@ import {
 	VertexType
 } from '../graph/vertex';
 import { resolveByName } from '../environments/resolve-by-name';
-import { BuiltInProcName } from '../environments/built-in';
 import type { REnvironmentInformation } from '../environments/environment';
 import { findByPrefixIfUnique } from '../../util/prefix';
 import type { ExitPoint } from '../info';
 import { negateControlDependency, doesExitPointPropagateCalls } from '../info';
 import { UnnamedFunctionCallPrefix } from './process/functions/call/unnamed-call-handling';
+import { BuiltInProcName } from '../environments/built-in-proc-name';
 
 export type NameIdMap = DefaultMap<Identifier, IdentifierReference[]>;
 
@@ -153,39 +153,36 @@ export function linkArgumentsOnCall(args: readonly FunctionArgument[], params: r
 }
 
 /**
- * Returns all argument ids that map to the given target parameter id.
- */
-export function getAllIdsWithTarget<Targets extends NodeId>(maps: Map<NodeId, Targets>, target: Targets): NodeId[] {
-	return maps.entries().filter(([, v]) => v === target).map(([k]) => k).toArray();
-}
-
-/**
- * Inverts the argument to parameter map to a parameter to argument map.
- */
-export function invertArgumentMap<Targets extends NodeId>(maps: Map<NodeId, Targets>): Map<Targets, NodeId[]> {
-	const inverted = new Map<Targets, NodeId[]>();
-	for(const [arg, param] of maps.entries()) {
-		const existing = inverted.get(param);
-		if(existing) {
-			existing.push(arg);
-		} else {
-			inverted.set(param, [arg]);
-		}
-	}
-	return inverted;
-}
-
-/**
  * Links the given arguments to the given parameters within the given graph by name only.
+ * @example
+ * ```ts
+ * const parameterSpec = {
+ *   'paramName':         'paramId',
+ *   'anotherParamName':  'anotherParamId',
+ *   // we recommend to always add '...' to your specification
+ *   // this way you can collect all arguments that could not be matched!
+ *   '...':               '...'
+ * } as const;
+ *
+ * const match = pMatch(convertFnArguments(args), parameterSpec);
+ * const addParam = match.get('paramId');
+ * ```
  * @note
  * To obtain the arguments from a {@link RFunctionCall}[], either use {@link processAllArguments} (also available via {@link processKnownFunctionCall})
  * or convert them with {@link convertFnArguments}.
- * You can use {@link getAllIdsWithTarget} to get all argument ids that map to a given parameter.
  */
-export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<NodeId, Targets> {
+export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[], params: Record<string, Targets>): Map<Targets, NodeId[]> {
 	const nameArgMap = new Map<string, IdentifierReference>(args.filter(FunctionArgument.isNamed).map(a => [a.name, a] as const));
 
-	const maps = new Map<NodeId, Targets>();
+	const maps = new Map<Targets, NodeId[]>();
+	function addToMaps(key: Targets, value: NodeId): void {
+		const e = maps.get(key);
+		if(e) {
+			e.push(value);
+		} else {
+			maps.set(key, [value]);
+		}
+	}
 
 	const sid = params['...'];
 	const paramNames = Object.keys(params);
@@ -198,10 +195,10 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 		const pmatchName = findByPrefixIfUnique(name, paramNames) ?? name;
 		const param = params[pmatchName];
 		if(param) {
-			maps.set(argId, param);
+			addToMaps(param, argId);
 			matchedParameters.add(name);
 		} else if(sid) {
-			maps.set(argId, sid);
+			addToMaps(sid, argId);
 		}
 	}
 
@@ -216,13 +213,13 @@ export function pMatch<Targets extends NodeId>(args: readonly FunctionArgument[]
 		const aid = arg.nodeId;
 		if(remainingParameter.length <= i) {
 			if(sid) {
-				maps.set(aid, sid);
+				addToMaps(sid, aid);
 			}
 			continue;
 		}
 		const param = params[remainingParameter[i]];
 		if(param) {
-			maps.set(aid, param);
+			addToMaps(param, aid);
 		}
 	}
 	return maps;
@@ -342,7 +339,7 @@ function linkFunctionCall(
 		}
 	}
 
-	const [functionDefs] = getAllLinkedFunctionDefinitions(new Set(functionDefinitionReadIds), graph);
+	const [functionDefs] = getAllLinkedFunctionDefinitions(functionDefinitionReadIds, graph);
 
 	const propagateExitPoints: ExitPoint[] = [];
 	for(const def of functionDefs.values()) {
@@ -477,23 +474,28 @@ export function getAllLinkedFunctionDefinitions(
 			continue;
 		}
 
+		const outgoing = dataflowGraph.outgoingEdges(cid);
+		if(!outgoing) {
+			continue;
+		}
+
+		const isSkipType = vertex.tag === VertexType.FunctionCall || (vertex.tag === VertexType.VariableDefinition && vertex.par);
 		let hasReturnEdge = false;
-		const outgoing = dataflowGraph.outgoingEdges(cid) ?? [];
+		let followTargets: NodeId[] | undefined;
+
 		for(const [target, e] of outgoing) {
 			if(DfEdge.includesType(e, EdgeType.Returns)) {
 				hasReturnEdge = true;
 				if(!visited.has(target)) {
 					potential.push(target);
 				}
+			} else if(!isSkipType && !hasReturnEdge && DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
+				(followTargets ??= []).push(target);
 			}
 		}
 
-		if(vertex.tag === VertexType.FunctionCall || hasReturnEdge || (vertex.tag === VertexType.VariableDefinition && vertex.par)) {
-			continue;
-		}
-
-		for(const [target, e] of outgoing) {
-			if(DfEdge.includesType(e, LinkedFnFollowBits) && !visited.has(target)) {
+		if(!hasReturnEdge && followTargets) {
+			for(const target of followTargets) {
 				potential.push(target);
 			}
 		}
@@ -547,10 +549,31 @@ export function linkInputs(referencesToLinkAgainstEnvironment: readonly Identifi
  * }
  * ```
  * `x_2` must get a read marker to `x_1` as `x_1` is the active redefinition in the second loop iteration.
+ *
+ * When `environment` is supplied the function uses it to discover ALL definitions that are still live at the
+ * loop exit, so sequential overwrites contribute a single candidate while if-else branches contribute one
+ * candidate per branch.
  */
-export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[]): void {
-	// first, we preprocess out so that only the last definition of a given identifier survives
-	// this implicitly assumes that the outgoing references are ordered
+export function linkCircularRedefinitionsWithinALoop(graph: DataflowGraph, openIns: NameIdMap, outgoing: readonly IdentifierReference[], environment?: REnvironmentInformation): void {
+	if(environment !== undefined) {
+		const outgoingIds = new Set(outgoing.map(o => o.nodeId));
+		for(const [name, targets] of openIns.entries()) {
+			const liveDefs = environment.current.memory.get(Identifier.getName(name));
+			if(liveDefs === undefined) {
+				continue;
+			}
+			for(const def of liveDefs) {
+				if(outgoingIds.has(def.nodeId)) {
+					for(const target of targets) {
+						graph.addEdge(target.nodeId, def.nodeId, EdgeType.Reads);
+					}
+				}
+			}
+		}
+		return;
+	}
+
+	// fallback: keep only the last definition per identifier (used when no environment is available)
 	const lastOutgoing = new Map<Identifier, IdentifierReference>();
 	for(const out of outgoing) {
 		const on = out.name;

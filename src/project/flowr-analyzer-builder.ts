@@ -8,7 +8,6 @@ import type { NormalizeRequiredInput } from '../core/steps/all/core/10-normalize
 import { guard } from '../util/assert';
 import { FlowrAnalyzerContext } from './context/flowr-analyzer-context';
 import { FlowrAnalyzerCache } from './cache/flowr-analyzer-cache';
-import { FlowrAnalyzerPluginDefaults } from './plugins/flowr-analyzer-plugin-defaults';
 import type { BuiltInFlowrPluginName, PluginToRegister } from './plugins/plugin-registry';
 import { makePlugin } from './plugins/plugin-registry';
 import type { AutocompletablePaths } from '../util/objects';
@@ -37,22 +36,24 @@ import type { AutocompletablePaths } from '../util/objects';
  * @see https://github.com/flowr-analysis/flowr/wiki/Analyzer
  */
 export class FlowrAnalyzerBuilder {
-	private flowrConfig:      DeepWritable<FlowrConfig> = FlowrConfig.default();
-	private parser?:          KnownParser;
-	private input?:           Omit<NormalizeRequiredInput, 'context'>;
-	private readonly plugins: Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private flowrConfig:                 DeepWritable<FlowrConfig> = FlowrConfig.default();
+	private parser?:                     KnownParser;
+	private input?:                      Omit<NormalizeRequiredInput, 'context'>;
+	private readonly plugins:            Map<PluginType, FlowrAnalyzerPlugin[]> = new Map();
+	private readonly withDefaultPlugins: boolean;
 
 	/**
 	 * Creates a new builder for the {@link FlowrAnalyzer}.
-	 * By default, the standard set of plugins as returned by {@link FlowrAnalyzerPluginDefaults} are registered.
+	 * By default, the standard set of plugins as returned by {@link FlowrConfig#defaultPlugins} are registered.
 	 * @param withDefaultPlugins - Whether to register the default plugins upon creation. Default is `true`.
-	 * @see {@link FlowrAnalyzerPluginDefaults} - for the default plugin set.
+	 * @see {@link FlowrDefaultPlugins} - for the default plugin set.
 	 * @see {@link FlowrAnalyzerBuilder#registerPlugins} - to add more plugins.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} - to remove plugins.
 	 */
 	constructor(withDefaultPlugins: boolean = true) {
+		this.withDefaultPlugins = withDefaultPlugins;
 		if(withDefaultPlugins) {
-			this.registerPlugins(...FlowrAnalyzerPluginDefaults());
+			this.registerPlugins(...this.flowrConfig.defaultPlugins);
 		}
 	}
 
@@ -71,9 +72,16 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Overwrite the configuration used by the resulting analyzer.
+	 * This also unloads all default plugins and reloads them as set in the new config
+	 * if the withDefaultPlugins flag was set in the constructor
 	 * @param config - The new configuration.
 	 */
 	public setConfig(config: FlowrConfig): this {
+		if(this.withDefaultPlugins) {
+			this.unregisterPlugins(...this.flowrConfig.defaultPlugins.map(p => Array.isArray(p) ? p[0] : p));
+			this.registerPlugins(...config.defaultPlugins);
+		}
+
 		this.flowrConfig = config;
 		return this;
 	}
@@ -124,7 +132,7 @@ export class FlowrAnalyzerBuilder {
 
 	/**
 	 * Register one or multiple additional plugins.
-	 * For the default plugin set, please refer to {@link FlowrAnalyzerPluginDefaults}, they can be registered
+	 * For the default plugin set, please refer to {@link FlowrDefaultPlugins}, they can be registered
 	 * by passing `true` to the {@link FlowrAnalyzerBuilder} constructor.
 	 * @param plugin - One or multiple plugins to register.
 	 * @see {@link FlowrAnalyzerBuilder#unregisterPlugins} to remove plugins.
@@ -165,7 +173,16 @@ export class FlowrAnalyzerBuilder {
 			const engines = await retrieveEngineInstances(this.flowrConfig, true);
 			this.parser = engines.engines[engines.default] as KnownParser;
 		}
-		return this.buildSync();
+		const analyzer = this.buildSync();
+		// when the assumed R version is auto (the default), detect the engine's R version once and record it, so
+		// versioned (base-R) resolution and `:version` reflect the installed R (or the default when it reports none)
+		const assumed = this.flowrConfig.solver.sigdb.assumedRVersion;
+		if(assumed === undefined || assumed === 'auto') {
+			try {
+				analyzer.context().setDetectedRVersion(await this.parser.rVersion());
+			} catch{ /* leave undetected: resolveAssumedRVersion falls back to the default assumed version */ }
+		}
+		return analyzer;
 	}
 
 	/**
@@ -176,21 +193,19 @@ export class FlowrAnalyzerBuilder {
 		guard(this.parser !== undefined, 'No parser set, please use the setParser or setEngine method to set a parser before building the analyzer');
 
 		const context = new FlowrAnalyzerContext(this.flowrConfig, this.plugins);
+		if(this.flowrConfig.solver.sigdb.enabled && this.flowrConfig.solver.sigdb.eagerlyLoad) {
+			context.deps.eagerlyLoadSignatureDatabases();
+		}
 		const cache = FlowrAnalyzerCache.create({
 			parser: this.parser,
 			context,
 			...(this.input ?? {})
 		});
 
-		const analyzer = new FlowrAnalyzer(
+		return new FlowrAnalyzer(
 			this.parser,
 			context,
 			cache
 		);
-
-		// we do it here to save time later if the analyzer is to be duplicated
-		context.resolvePreAnalysis();
-
-		return analyzer;
 	}
 }

@@ -7,7 +7,7 @@ import { sliceDiffAnsi } from '../core/print/slice-diff-ansi';
 import { jsonReplacer } from '../util/json';
 import { processCommandLineArgs } from './common/script';
 import { BenchmarkSlicer } from '../benchmark/slicer';
-import type { SingleSlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
+import type { SlicingCriterion, SlicingCriteria } from '../slicing/criterion/parse';
 import type { ReconstructionResult } from '../reconstruct/reconstruct';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { stats2string } from '../benchmark/stats/print';
@@ -26,6 +26,12 @@ export interface SlicerCliOptions {
 	stats:               boolean
 	api:                 boolean
 	'no-magic-comments': boolean
+	inline:              boolean
+	'inline-full':       boolean
+	'inline-banner':     boolean
+	'include-callees':   boolean
+	'config-file':       string | undefined
+	'config-json':       string | undefined
 }
 
 
@@ -36,6 +42,8 @@ const options = processCommandLineArgs<SlicerCliOptions>('slicer', ['input', 'cr
 		// why double escaped :C
 		'{bold -c} {italic "3@a"} {bold -r} {italic "a <- 3\\\\nb <- 4\\\\nprint(a)"} {bold --diff}',
 		'{bold -i} {italic example.R} {bold --stats} {bold --criterion} {italic "8:3;3:1;12@product"}',
+		'{bold -c} {italic "5@result"} {bold --inline} {italic main.R}',
+		'{bold -c} {italic ""} {bold --inline-full} {bold --inline-banner} {italic app.R}',
 		'{bold --help}'
 	]
 });
@@ -45,17 +53,22 @@ async function getSlice() {
 	guard(options.input !== undefined, 'input must be given');
 	guard(options.criterion !== undefined, 'a slicing criterion must be given');
 
-	const config = FlowrConfig.fromFile();
+	const config = (options['config-json'] ? FlowrConfig.parse(options['config-json']) : undefined)
+		?? FlowrConfig.fromFile(options['config-file']);
 
 	await slicer.init(
 		options['input-is-text']
 			? { request: 'text', content: options.input.replaceAll('\\n', '\n') }
 			: { request: 'file', content: options.input },
 		config,
-		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect)
+		options['no-magic-comments'] ? doNotAutoSelect : makeMagicCommentHandler(doNotAutoSelect),
+		undefined,
+		options.inline,
+		options['include-callees'],
+		options['inline-full'] ? (options['inline-banner'] ? 'banner' : true) : undefined
 	);
 
-	let mappedSlices: { criterion: SingleSlicingCriterion, id: NodeId }[] = [];
+	let mappedSlices: { criterion: SlicingCriterion, id: NodeId }[] = [];
 	let reconstruct: ReconstructionResult | undefined = undefined;
 
 	const doSlicing = options.criterion.trim() !== '';
@@ -101,8 +114,7 @@ async function getSlice() {
 		if(doSlicing && options.diff) {
 			let originalCode = options.input;
 			if(!options['input-is-text']) {
-				const request = { request: 'file', content: options.input };
-				originalCode = request.request === 'text' ? request.content : fs.readFileSync(request.content).toString();
+				originalCode = fs.readFileSync(options.input).toString();
 			}
 			console.log(sliceDiffAnsi((slice as SliceResult).result, normalize, new Set(mappedSlices.map(({ id }) => id)), originalCode));
 		}

@@ -3,7 +3,7 @@ import type { DataflowInformation } from '../../../../../info';
 import { processKnownFunctionCall } from '../known-call-handling';
 import {
 	EmptyArgument,
-	type RFunctionArgument
+	type PotentiallyEmptyRArgument
 } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import type { ParentInformation } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
@@ -26,8 +26,8 @@ import { valueSetGuard } from '../../../../../eval/values/general';
 import { isValue } from '../../../../../eval/values/r-value';
 import { expensiveTrace } from '../../../../../../util/log';
 import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
-import { BuiltInProcName } from '../../../../../environments/built-in';
 import { RString } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
 
 export interface BuiltInApplyConfiguration extends MergeableRecord {
 	/** the 0-based index of the argument which is the actual function passed, defaults to 1 */
@@ -48,7 +48,7 @@ export interface BuiltInApplyConfiguration extends MergeableRecord {
  */
 export function processApply<OtherInfo>(
 	name: RSymbol<OtherInfo & ParentInformation>,
-	args: readonly RFunctionArgument<OtherInfo & ParentInformation>[],
+	args: readonly PotentiallyEmptyRArgument<OtherInfo & ParentInformation>[],
 	rootId: NodeId,
 	data: DataflowProcessorInformation<OtherInfo & ParentInformation>,
 	config: BuiltInApplyConfiguration
@@ -133,10 +133,11 @@ export function processApply<OtherInfo>(
 		const counterpart = args[i];
 		if(arg && counterpart !== EmptyArgument) {
 			return {
-				name:   counterpart.name?.content,
-				cds:    data.cds,
-				type:   ReferenceType.Argument,
-				nodeId: arg.entryPoint
+				name:    counterpart.name?.content,
+				valueId: counterpart.value?.info.id,
+				cds:     data.cds,
+				type:    ReferenceType.Argument,
+				nodeId:  arg.entryPoint
 			};
 		} else {
 			return EmptyArgument;

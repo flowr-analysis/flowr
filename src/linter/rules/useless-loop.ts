@@ -1,15 +1,14 @@
 import { loopyFunctions, onlyLoopsOnce } from '../../control-flow/useless-loop';
-import type { BuiltInProcName } from '../../dataflow/environments/built-in';
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import { Q } from '../../search/flowr-search-builder';
 import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
+import type { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 export interface UselessLoopResult extends LintingResult {
-	name: string,
-	loc:  SourceLocation
+	name: string
 }
 
 export interface UselessLoopConfig extends MergeableRecord {
@@ -23,7 +22,10 @@ export interface UselessLoopMetadata extends MergeableRecord {
 
 export const USELESS_LOOP = {
 	createSearch:        () => Q.all().filter(VertexType.FunctionCall),
-	processSearchResult: (elements, useLessLoopConfig, { analyzer, dataflow, normalize, cfg }) => {
+	processSearchResult: async(elements, useLessLoopConfig, data) => {
+		const normalize = await data.normalize();
+		const dataflow = await data.dataflow();
+		const cfg = await data.controlflow();
 		const results = elements.getElements().filter(e => {
 			const vertex = dataflow.graph.getVertex(e.node.info.id);
 			return vertex
@@ -31,7 +33,7 @@ export const USELESS_LOOP = {
 				&& vertex.origin !== 'unnamed'
 				&& useLessLoopConfig.loopyFunctions.has(vertex.origin[0]);
 		}).filter(loop =>
-			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, analyzer.inspectContext())
+			onlyLoopsOnce(loop.node.info.id, dataflow.graph, cfg, normalize, data.inspectContext())
 		).map(res => ({
 			certainty:  LintingResultCertainty.Certain,
 			name:       res.node.lexeme as string,

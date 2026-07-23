@@ -55,7 +55,7 @@ describe('Benchmark Slicer', () => {
 				numberOfEdges:               5,  // the defined-by edge and the arguments, the built-in edge
 				numberOfCalls:               1,  // `<-`
 				numberOfFunctionDefinitions: 0,   // no definitions
-				sizeOfObject:                196,
+				sizeOfObject:                205,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 1, `sliced only once ${statInfo}`);
@@ -122,24 +122,24 @@ cat(d)`
 				numberOfEdges:               38,
 				numberOfCalls:               9,
 				numberOfFunctionDefinitions: 0,
-				sizeOfObject:                1666,
+				sizeOfObject:                1677,
 			}, statInfo);
 
 			assert.strictEqual(stats.perSliceMeasurements.numberOfSlices, 3, `sliced three times ${statInfo}`);
 
 			assert.deepStrictEqual(stats.perSliceMeasurements.sliceSize, {
 				// only one entry
-				lines:                             { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
-				nonEmptyLines:                     { min: 2,  max: 5,  median: 3,  mean: (2+3+5)/3,          std: 1.247219128924647,  total: 10 },
+				lines:                             { min: 2,  max: 5,  median: 3,  mean: (2 + 3 + 5) / 3,          std: 1.247219128924647,  total: 10 },
+				nonEmptyLines:                     { min: 2,  max: 5,  median: 3,  mean: (2 + 3 + 5) / 3,          std: 1.247219128924647,  total: 10 },
 				characters:                        { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
 				charactersNoComments:              { min: 17, max: 41, median: 24, mean: 27.333333333333332, std: 10.077477638553981, total: 82 },
 				nonWhitespaceCharacters:           { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
 				nonWhitespaceCharactersNoComments: { min: 14, max: 27, median: 18, mean: 19.666666666666668, std: 5.436502143433363,  total: 59 },
 				tokens:                            { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
 				tokensNoComments:                  { min: 13, max: 35, median: 19, mean: 22.333333333333332, std: 9.285592184789413,  total: 67 },
-				normalizedTokens:                  { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
-				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8+11+19)/3,        std: 4.642796092394707,  total: 38 },
-				dataflowNodes:                     { min: 5,  max: 16, median: 8,  mean: (5+8+16)/3,         std: 4.642796092394707,  total: 29 },
+				normalizedTokens:                  { min: 8,  max: 19, median: 11, mean: (8 + 11 + 19) / 3,        std: 4.642796092394707,  total: 38 },
+				normalizedTokensNoComments:        { min: 8,  max: 19, median: 11, mean: (8 + 11 + 19) / 3,        std: 4.642796092394707,  total: 38 },
+				dataflowNodes:                     { min: 5,  max: 16, median: 8,  mean: (5 + 8 + 16) / 3,         std: 4.642796092394707,  total: 29 },
 				linesWithAutoSelected:             { min: 0,  max: 0,  median: 0,  mean: 0,                  std: 0,                  total: 0  }
 			}, statInfo);
 
@@ -147,7 +147,7 @@ cat(d)`
 				min:    1,
 				max:    2,
 				median: 1,
-				mean:   (1+2+1)/3,
+				mean:   (1 + 2 + 1) / 3,
 				std:    0.4714045207910317,
 				total:  4
 			}, statInfo);

@@ -513,7 +513,6 @@ to gracefully prepare for changes in the next major release.
 * A new \`ggplot_build()\` S3 method for <ggplot_built> classes was added, which
   returns input unaltered (@teunbrand, #5800).
 	`));
-	ctx.resolvePreAnalysis();
 
 	test('Parse the News!', () => {
 		const files = ctx.files.getFilesByRole(FileRole.News);

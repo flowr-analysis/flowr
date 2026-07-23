@@ -7,7 +7,7 @@ const OutputRedirects = [
 
 export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'base', name: 'save',        argName: 'file',               resolveValue: true },
-	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true },
+	{ package: 'base', name: 'save.image',  argIdx: 1, argName: 'file',    resolveValue: true, defaultValue: '.RData' },
 	{ package: 'base', name: 'write',       argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dput',        argIdx: 1, argName: 'file',    resolveValue: true },
 	{ package: 'base', name: 'dump',        argIdx: 1, argName: 'file',    resolveValue: true },
@@ -115,5 +115,30 @@ export const WriteFunctions: FunctionInfo[] = [
 	{ package: 'rpolars', name: 'write_csv', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_ndjson', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
 	{ package: 'rpolars', name: 'write_parquet', argIdx: 0, argName: 'file', resolveValue: true, ignoreIf: 'arg-missing' },
-	{ package: 'magick',  name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'data.table', name: 'fwrite', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'writexl', name: 'write_xlsx', argIdx: 1, argName: 'path', resolveValue: true },
+	{ package: 'openxlsx', name: 'write.xlsx', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'vroom', name: 'vroom_write', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'vroom', name: 'vroom_write_lines', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'rio', name: 'export', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'rio', name: 'export_list', argIdx: 1, argName: 'file', resolveValue: true },
+	{ package: 'magick', name: 'image_write', argIdx: 1, argName: 'path', resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'compiler', name: 'cmpfile', argIdx: 1, argName: 'outfile', resolveValue: true },
+	/* image / raster */
+	{ package: 'jpeg',       name: 'writeJPEG',  argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'png',        name: 'writePNG',   argIdx: 1, argName: 'target',    resolveValue: true, ignoreIf: 'arg-missing' },
+	{ package: 'tiff',       name: 'writeTIFF',  argIdx: 1, argName: 'where',     resolveValue: true },
+	{ package: 'imager',     name: 'make.video', argIdx: 1, argName: 'file',      resolveValue: true },
+	{ package: 'OpenImageR', name: 'writeImage', argIdx: 1, argName: 'file_name', resolveValue: true },
+	{ package: 'EBImage',    name: 'writeImage', argIdx: 1, argName: 'files',     resolveValue: true },
+	{ package: 'gifski',     name: 'gifski',     argIdx: 1, argName: 'gif_file',  resolveValue: true },
+	{ package: 'gifski',     name: 'save_gif',   argIdx: 1, argName: 'gif_file',  resolveValue: true },
+	{ package: 'svglite',    name: 'svglite',    argIdx: 0, argName: 'file',      resolveValue: true },
+	/* audio / video */
+	{ package: 'av',      name: 'av_encode_video',      argIdx: 1, argName: 'output',   resolveValue: true },
+	{ package: 'av',      name: 'av_audio_convert',     argIdx: 1, argName: 'output',   resolveValue: true },
+	{ package: 'av',      name: 'av_capture_graphics',  argIdx: 1, argName: 'output',   resolveValue: true },
+	{ package: 'tuneR',   name: 'writeWave',             argIdx: 1, argName: 'filename', resolveValue: true },
+	{ package: 'seewave', name: 'savewav',               argName: 'filename', resolveValue: true, defaultValue: '<wave-name>' },
+	{ package: 'audio',   name: 'save.wave',             argIdx: 1, argName: 'where',    resolveValue: true }
 ] as const;

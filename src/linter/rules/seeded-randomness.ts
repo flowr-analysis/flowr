@@ -28,11 +28,10 @@ import { asValue } from '../../dataflow/eval/values/r-value';
 import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 import type { ControlDependency } from '../../dataflow/info';
 import { happensInEveryBranchSet } from '../../dataflow/info';
-import { BuiltInProcName } from '../../dataflow/environments/built-in';
+import { BuiltInProcName } from '../../dataflow/environments/built-in-proc-name';
 
 export interface SeededRandomnessResult extends LintingResult {
 	function: string
-	loc:      SourceLocation
 }
 
 export interface SeededRandomnessConfig extends MergeableRecord {
@@ -63,14 +62,17 @@ export const SEEDED_RANDOMNESS = {
 			name: FlowrFilter.MatchesEnrichment,
 			args: {
 				enrichment: Enrichment.CallTargets,
-				test:       testFunctionsIgnoringPackage(config.randomnessConsumers)
+				test:       {
+					targets: testFunctionsIgnoringPackage(config.randomnessConsumers)
+				}
 			}
 		})
 		.with(Enrichment.LastCall, [
 			{ callName: config.randomnessProducers.filter(p => p.type === 'function').map(p => p.name) },
 			{ callName: getDefaultAssignments().flatMap(b => b.names).map(Identifier.getName), cascadeIf: () => CascadeAction.Continue }
 		]),
-	processSearchResult: (elements, config, { dataflow, analyzer }) => {
+	processSearchResult: async(elements, config, data) => {
+		const dataflow = await data.dataflow();
 		const assignmentProducers = new Set<string>(config.randomnessProducers.filter(p => p.type === 'assignment').map(p => p.name));
 		const assignmentArgIndexes = new Map<string, number>(getDefaultAssignments().flatMap(a => a.names.map(n => ([Identifier.getName(n), a.config?.swapSourceAndTarget ? 1 : 0]))));
 		const metadata: SeededRandomnessMeta = {
@@ -104,7 +106,7 @@ export const SEEDED_RANDOMNESS = {
 
 					// function calls are already taken care of through the LastCall enrichment itself
 					for(const f of func ?? []) {
-						if(isConstantArgument(dataflow.graph, f, 0, analyzer.inspectContext())) {
+						if(isConstantArgument(dataflow.graph, f, 0, data.inspectContext())) {
 							const fCds = new Set(f.cds).difference(cds);
 							metadata.callsWithFunctionProducers++;
 							if(fCds.size <= 0 || happensInEveryBranchSet(fCds)){
@@ -125,7 +127,7 @@ export const SEEDED_RANDOMNESS = {
 						const dest = FunctionArgument.getReference(a.args[argIdx]);
 						if(dest !== undefined && assignmentProducers.has(recoverName(dest, dataflow.graph.idMap) as string)) {
 							// we either have arg index 0 or 1 for the assignmentProducers destination, so we select the assignment value as 1-argIdx here
-							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, analyzer.inspectContext())) {
+							if(isConstantArgument(dataflow.graph, a, 1 - argIdx, data.inspectContext())) {
 								const aCds = new Set(a.cds).difference(cds);
 								if(aCds.size <= 0 || happensInEveryBranchSet(aCds)) {
 									metadata.callsWithAssignmentProducers++;
@@ -162,7 +164,14 @@ export const SEEDED_RANDOMNESS = {
 	info: {
 		defaultConfig: {
 			randomnessProducers: [{ type: 'function', name: 'set.seed' }, { type: 'assignment', name: '.Random.seed' }],
-			randomnessConsumers: ['jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp', 'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel', 'some', 'rbernoulli', 'rdunif', 'generateSeedVectors'],
+			randomnessConsumers: [
+				'jitter', 'sample', 'sample.int', 'arima.sim', 'kmeans', 'princomp', 'rcauchy', 'rchisq', 'rexp',
+				'rgamma', 'rgeom', 'rlnorm', 'rlogis', 'rmultinom', 'rnbinom', 'rnorm', 'rpois', 'runif', 'pointLabel',
+				'some', 'rbernoulli', 'rdunif', 'generateSeedVectors',
+				'rbeta', 'rf', 'rhyper', 'rweibull', 'rt', 'rvonmises', 'rwilcox', 'rxor', 'rhyper', 'rmvnorm',
+				'rsignrank', 'randomForest',
+				'permuted', 'permute', 'shuffle', 'shuffleSet', 'data_shuffle', 'sample_frac', 'sample_n', 'slice_sample',
+			],
 		},
 		tags:        [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility],
 		// only finds proper randomness producers and consumers due to its config, but will not find all producers/consumers since not all existing deprecated functions will be in the config

@@ -15,7 +15,7 @@ export const BottomSymbol = '⊥';
  * @template Value - Type of a lattice element representing a value (may exclude `Top` and `Bot`)
  * @template Top   - Type of the Top element (greatest element) of the complete lattice
  * @template Bot   - Type of the Bottom element (least element) of the complete lattice
- * @template Lift  - Type of the lattice elements (defaults to `Value` or `Top` or `Bot`)
+ * @template Lift  - Type of the current element in the lattice (defaults to `Value | Top | Bot`)
  */
 export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value | Top | Bot> {
 	/**
@@ -51,17 +51,17 @@ export interface Lattice<Value, Top, Bot, Lift extends Value | Top | Bot = Value
 	/**
 	 * Joins the current abstract value with another abstract value by creating the least upper bound (LUB) in the lattice.
 	 */
-	join(other: this): this;
+	join(other: this | Value | Top | Bot): this;
 
 	/**
 	 * Meets the current abstract value with another abstract value by creating the greatest lower bound (GLB) in the lattice.
 	 */
-	meet(other: this): this;
+	meet(other: this | Value | Top | Bot): this;
 
 	/**
 	 * Converts the lattice into a JSON serializable value.
 	 */
-	toJson(): unknown;
+	toJSON(): unknown;
 
 	/**
 	 * Converts the lattice into a human-readable string.

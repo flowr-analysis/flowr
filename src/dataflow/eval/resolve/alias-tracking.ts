@@ -14,7 +14,7 @@ import { DfEdge, EdgeType } from '../../graph/edge';
 import type { DataflowGraph } from '../../graph/graph';
 import { onReplacementOperator, type ReplacementOperatorHandlerArgs } from '../../graph/unknown-replacement';
 import { onUnknownSideEffect } from '../../graph/unknown-side-effect';
-import { VertexType } from '../../graph/vertex';
+import { isValueVertex, VertexType } from '../../graph/vertex';
 import { valueFromRNodeConstant, valueFromTsValue } from '../values/general';
 import { Bottom, isTop, type Lift, Top, type Value, type ValueSet } from '../values/r-value';
 import { setFrom } from '../values/sets/set-constants';
@@ -215,6 +215,7 @@ export function trackAliasInEnvironments(identifier: Identifier | undefined, env
 	}
 
 	const defs = resolveByNameAnyType(identifier, environment);
+
 	if(defs === undefined) {
 		return Top;
 	}
@@ -380,6 +381,11 @@ export function trackAliasesInGraph(id: NodeId, graph: DataflowGraph, ctx: ReadO
 
 	const values: Set<Value> = new Set<Value>();
 	for(const id of resultIds) {
+		const vertex = graph.getVertex(id);
+		if(isValueVertex(vertex) && vertex.value !== undefined) {
+			values.add(vertex.value);
+			continue;
+		}
 		const node = idMap.get(id);
 		if(node !== undefined) {
 			if(node.info.role === RoleInParent.ParameterDefaultValue || RNode.iterateParents(node, idMap).some(p => p.info.role === RoleInParent.ParameterDefaultValue)) {

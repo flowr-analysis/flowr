@@ -47,14 +47,104 @@ export interface NamedJsonEntry {
 type ParsedDataRow = [line1: number, col1: number, line2: number, col2: number, id: number, parent: number, token: string, terminal: boolean, text: string];
 
 /**
+ * R's `getParseData` escapes the lexeme `text` with `encodeString`, whose escaping is locale-dependent: under a
+ * non-UTF-8 locale (a common CI setup) non-ASCII bytes come out as octal (`\303\264`) or hex (`\xc3`) escapes that
+ * are not valid JSON. Valid JSON escapes (`\n`, `\"`, `\uXXXX`, ...) are left untouched.
+ */
+function jsonSafeRParseData(data: string): string {
+	let out = '';
+	for(let i = 0; i < data.length;) {
+		if(data[i] !== '\\') {
+			out += data[i++];
+			continue;
+		}
+		const next = data[i + 1];
+		if(next !== undefined && (next === '\\' || next === '"' || next === '/' || next === 'b' || next === 'f' || next === 'n' || next === 'r' || next === 't' || next === 'u')) {
+			out += data[i] + next;
+			i += 2;
+			continue;
+		}
+		if(next !== undefined && next >= '0' && next <= '7') {
+			const run = readByteRun(data, i, collectOctal);
+			out += bytesToUtf8Json(run.bytes);
+			i = run.next;
+			continue;
+		}
+		if(next === 'x') {
+			const run = readByteRun(data, i, collectHex);
+			out += bytesToUtf8Json(run.bytes);
+			i = run.next;
+			continue;
+		}
+		if(next === undefined) {
+			out += data[i];
+			i += 1;
+		} else {
+			out += `\\u${next.charCodeAt(0).toString(16).padStart(4, '0')}`;
+			i += 2;
+		}
+	}
+	return out;
+}
+
+/** Reads a run of consecutive `\NNN` octal (or `\xNN` hex) escapes starting at `start` (which points at a `\`). */
+function readByteRun(data: string, start: number, collect: (data: string, pos: number) => { value: number, next: number } | undefined): { bytes: number[], next: number } {
+	const bytes: number[] = [];
+	let pos = start;
+	for(;;) {
+		const read = collect(data, pos);
+		if(read === undefined) {
+			break;
+		}
+		bytes.push(read.value & 0xff);
+		pos = read.next;
+	}
+	return { bytes, next: pos };
+}
+
+function collectOctal(data: string, pos: number): { value: number, next: number } | undefined {
+	if(data[pos] !== '\\' || !(data[pos + 1] >= '0' && data[pos + 1] <= '7')) {
+		return undefined;
+	}
+	let oct = '', j = pos + 1;
+	while(j < data.length && oct.length < 3 && data[j] >= '0' && data[j] <= '7') {
+		oct += data[j++];
+	}
+	return { value: parseInt(oct, 8), next: j };
+}
+
+function collectHex(data: string, pos: number): { value: number, next: number } | undefined {
+	if(data[pos] !== '\\' || data[pos + 1] !== 'x' || !/[0-9a-fA-F]/.test(data[pos + 2] ?? '')) {
+		return undefined;
+	}
+	let hex = '', j = pos + 2;
+	while(j < data.length && hex.length < 2 && /[0-9a-fA-F]/.test(data[j])) {
+		hex += data[j++];
+	}
+	return { value: parseInt(hex, 16), next: j };
+}
+
+/** Decodes raw bytes as UTF-8 and re-escapes the result for a JSON string context. */
+function bytesToUtf8Json(bytes: number[]): string {
+	const decoded = Buffer.from(bytes).toString('utf-8');
+	// JSON.stringify gives a valid JSON string literal; strip its surrounding quotes to splice back inline
+	return JSON.stringify(decoded).slice(1, -1);
+}
+
+/**
  * Takes the raw {@link RShell} output and extracts the csv information contained
  */
 export function prepareParsedData(data: string): CsvEntry[] {
 	let json: unknown;
 	try {
 		json = JSON.parse(`[${data.trim()}]`);
-	} catch(e) {
-		throw new Error(`Failed to parse data [${data}]: ${(e as Error)?.message}`);
+	} catch{
+		// the fast path failed, most likely because a non-UTF-8 R locale produced octal/hex string escapes
+		try {
+			json = JSON.parse(`[${jsonSafeRParseData(data.trim())}]`);
+		} catch(e) {
+			throw new Error(`Failed to parse data [${data}]: ${(e as Error)?.message}`);
+		}
 	}
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`);
 

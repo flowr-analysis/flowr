@@ -2,9 +2,11 @@ import { internalPrinter, StepOutputFormat } from '../../../print/print';
 import { type IPipelineStep, PipelineStepStage } from '../../pipeline-step';
 import type { DeepReadonly } from 'ts-essentials';
 import type { SliceResult } from '../../../../slicing/static/slicer-types';
-import { reconstructToCode } from '../../../../reconstruct/reconstruct';
+import { reconstructToCode, type InlineFull } from '../../../../reconstruct/reconstruct';
 import type { NormalizedAst } from '../../../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { AutoSelectPredicate } from '../../../../reconstruct/auto-select/auto-select-defaults';
+import type { DataflowInformation } from '../../../../dataflow/info';
+import { SourceInlineMap } from '../../../../reconstruct/inline/source-inline-map';
 
 export interface ReconstructRequiredInput {
 	autoSelectIf?:     AutoSelectPredicate
@@ -16,12 +18,27 @@ export interface ReconstructRequiredInput {
 	 * Either you can set this to `'all'` to reconstruct all files or provide an array of file indices in the files context to reconstruct only those files.
 	 */
 	reconstructFiles?: 'all' | number[]
+	/**
+	 * Inline resolvable `source()` calls into the reconstruction so the result is a single self-contained R text.
+	 * Cyclic and unresolvable `source()` calls are kept verbatim and reported via `reconstruct.inlineWarnings`.
+	 */
+	inlineSources?:    boolean
+	/**
+	 * Inline *every* file into the reconstruction, in flowR's loading order (which respects implicit sources).
+	 * Overrides {@link inlineSources} and {@link reconstructFiles}.
+	 */
+	inlineFull?:       InlineFull
 }
 
-function processor(results: { normalize?: NormalizedAst, slice?: SliceResult }, input: Partial<ReconstructRequiredInput>) {
-	return reconstructToCode(results.normalize as NormalizedAst, {
+function processor(results: { normalize?: NormalizedAst, slice?: SliceResult, dataflow?: DataflowInformation }, input: Partial<ReconstructRequiredInput>) {
+	const normalize = results.normalize as NormalizedAst;
+	const inline = input.inlineSources || input.inlineFull;
+	return reconstructToCode(normalize, {
 		nodes:            (results.slice as SliceResult).result,
-		reconstructFiles: input.reconstructFiles
+		reconstructFiles: input.reconstructFiles,
+		inlineSources:    input.inlineSources,
+		inlineFull:       input.inlineFull,
+		sourceMap:        inline ? SourceInlineMap.build(normalize, (results.dataflow as DataflowInformation).graph) : undefined
 	}, input.autoSelectIf);
 }
 

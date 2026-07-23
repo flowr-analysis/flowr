@@ -4,7 +4,7 @@ import type {
 	PrintHierarchyArguments,
 	TypeElementKind
 } from '../doc-util/doc-types';
-import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder } from '../doc-util/doc-types';
+import { visualizeMermaidClassDiagram, printCodeOfElement, printHierarchy, shortLinkFile, shortLink, getDocumentationForType, getTypesFromFolder, printCodeOfFile } from '../doc-util/doc-types';
 import path from 'path';
 import { guard } from '../../util/assert';
 import { autoGenHeader } from '../doc-util/doc-auto-gen';
@@ -21,7 +21,9 @@ import {
 } from '../doc-util/doc-files';
 import type { scripts } from '../../cli/common/scripts-info';
 import type { ScriptOptions } from '../doc-util/doc-cli-option';
-import { getReplCommand, getCliLongOptionOf } from '../doc-util/doc-cli-option';
+import { getReplCommand, getCliLongOptionOf, getConfigOption } from '../doc-util/doc-cli-option';
+import type { FlowrConfig } from '../../config';
+import type { AutocompletablePaths } from '../../util/objects';
 import type { ReplCommandNames } from '../../cli/repl/commands/repl-commands';
 
 /**
@@ -121,8 +123,8 @@ export interface GeneralDocContext {
 	 * ```
 	 *
 	 * Creates a (markdown) link to the `myMethod` member of the `MyClass` class in the code base.
-	 * @see {@link GeneralWikiContext#link|link} - for the underlying impl.
-	 * @see {@link GeneralWikiContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
+	 * @see {@link GeneralDocContext#link|link} - for the underlying impl.
+	 * @see {@link GeneralDocContext#linkO|linkO} - to link using an object reference instead of a class and member name (e.g. for helper objects).
 	 */
 	linkM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, fmt?: LinkFormat & { hideClass?: boolean }, filter?: ElementFilter): string;
 	/**
@@ -139,7 +141,7 @@ export interface GeneralDocContext {
 	 * ```
 	 * Creates a (markdown) link to the `registerPluginMaker` function in the code base
 	 * using the file path as link name.
-	 * @see {@link GeneralWikiContext#link|link} - to create a link with a custom name/using the type name by default.
+	 * @see {@link GeneralDocContext#link|link} - to create a link with a custom name/using the type name by default.
 	 * @see {@link linkFile}  - for the underlying impl.
 	 */
 	linkFile(element: ElementIdOrRef): string;
@@ -162,13 +164,33 @@ export interface GeneralDocContext {
 	doc(element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string;
 
 	/**
-	 * Returns the code snippet for a code element as markdown string.
+	 * Returns the documentation for a member of a class as Markdown string.
+	 * This is a convenience method around {@link GeneralDocContext#doc|doc}.
+	 * @example
+	 * ```ts
+	 * docM(MyClass, 'myMethod')
+	 * ```
+	 *
+	 * Creates the documentation for the `myMethod` member of the `MyClass` class in the code base.
+	 * @see {@link GeneralDocContext#doc|doc}   - for the underlying impl.
+	 * @see {@link GeneralDocContext#docO|docO} - to get documentation using an object reference instead of a class and member name.
+	 */
+	docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the documentation for a type/element definition which is retrieved from an object reference.
+	 * This is similar to {@link GeneralDocContext#doc}, but it uses an object reference to identify the element.
+	 */
+	docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string;
+
+	/**
+	 * Returns the code snippet for a code element as Markdown string.
 	 * @param element - The element to create a code snippet for, the name can be qualified with `::` to specify the class.
 	 * @param fmt     - Formatting options for the code snippet (see {@link FnElementInfo})
 	 * @param filter  - An optional filter to further specify the element to get the code for, in case multiple elements with the same name exist.
 	 * @example
 	 * ```ts
-	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2  })
+	 * code(exampleFn.name, { dropLinesStart: 1, dropLinesEnd: 2 })
 	 * ```
 	 *
 	 * Creates a code snippet for the `exampleFn` function in the code base,
@@ -192,6 +214,20 @@ export interface GeneralDocContext {
 	 * @see {@link printCodeOfElement} - for the underlying impl.
 	 */
 	code(element: ElementIdOrRef, fmt?: Omit<FnElementInfo, 'info' | 'program'>, filter?: ElementFilter): string;
+
+	/**
+	 * Returns the code snippet for a code file as markdown string.
+	 * @param path - The path to the file to create a code snippet for.
+	 * @param fmt  - Formatting options for the code snippet (see {@link FnElementInfo})
+	 * @example
+	 * ```ts
+	 * code('src/path/to/file.ts', { skipImports: true })
+	 * ```
+	 *
+	 * Creates a code snippet for the source file `src/path/to/file.ts`,
+	 * dropping the lines with import statements of the source code.
+	 */
+	codeFile(path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string;
 
 	/**
 	 * Returns the hierarchy (e.g., class inheritance) for a code element as markdown string,
@@ -276,6 +312,19 @@ export interface GeneralDocContext {
 	 * @see {@link getReplCommand} - for the underlying impl.
 	 */
 	replCmd(commandName: ReplCommandNames, quote?: boolean, showStar?: boolean): string
+
+	/**
+	 * Generates a link to a flowR configuration option, resolving its schema type and description as a hover tooltip.
+	 * @example
+	 * ```ts
+	 * linkConfig('solver.sigdb.enabled')
+	 * ```
+	 * Returns a link to the configuration section of the Interface wiki page, showing `solver.sigdb.enabled` with its documentation on hover.
+	 * @param path  - The `.`-separated configuration path (autocompletes to valid config keys only).
+	 * @param quote - Whether to render the path as inline code. Default is `false`.
+	 * @see {@link getConfigOption} - for the underlying impl.
+	 */
+	linkConfig<K extends AutocompletablePaths<FlowrConfig>>(path: K, quote?: boolean): string
 }
 
 /**
@@ -301,6 +350,15 @@ export function makeDocContextForTypes(
 	return {
 		doc(this: void, element: ElementIdOrRef, filter?: Omit<ElementFilter, 'file'>): string {
 			return getDocumentationForType(getNameFromElementIdOrRef(element), info, '', filter);
+		},
+		docM<T extends NamedPrototype>(cls: T, element: ProtoKeys<T> | StaticKeys<T>, filter?: Omit<ElementFilter, 'file'>): string {
+			const className = cls.prototype.constructor.name;
+			const fullName = `${className}::${String(element)}`;
+			return this.doc(fullName, filter);
+		},
+		docO<T extends object & { name: string }>(obj: T, element: keyof T, filter?: Omit<ElementFilter, 'file'>): string {
+			const fullName = `${obj.name}::${String(element)}`;
+			return this.doc(fullName, filter);
 		},
 		link(this: void, element: ElementIdOrRef, fmt?: LinkFormat, filter?: ElementFilter): string {
 			guard(filter?.file === undefined, 'filtering for files is not yet supported for link');
@@ -333,6 +391,12 @@ export function makeDocContextForTypes(
 				program, info,
 				...fmt,
 			}, getNameFromElementIdOrRef(element));
+		},
+		codeFile(this: void, path: string, fmt?: Omit<FnElementInfo, 'info' | 'program'>): string {
+			return printCodeOfFile({
+				program, info,
+				...fmt,
+			}, path);
 		},
 		async header(this: void, filename: string, purpose: string): Promise<string> {
 			const rVersion = (await shell?.usedRVersion())?.format();
@@ -369,6 +433,9 @@ export function makeDocContextForTypes(
 		},
 		replCmd(this: void, commandName: ReplCommandNames | string, quote = true, showStar = false): string {
 			return getReplCommand(commandName, quote, showStar);
+		},
+		linkConfig(this: void, path: AutocompletablePaths<FlowrConfig>, quote = false): string {
+			return getConfigOption(path, quote);
 		}
 	};
 }

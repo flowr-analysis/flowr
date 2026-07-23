@@ -68,7 +68,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 	const rReason = r === 'none' ? ' (no R interpreter available)'
 		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
 			: '';
-	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
+	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`, true) : flowr;
 	const rows: [string, string, boolean?][] = [];
 	const pluginLines: string[] = [];
 	if(!engineOnly) {

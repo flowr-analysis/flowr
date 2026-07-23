@@ -188,6 +188,24 @@ export interface FlowrConfig extends MergeableRecord {
 		 * {@link FlowrConfig.specializeConfig}.
 		 */
 		implicitSources?:          string[]
+		/** Scoping options for the default project discovery. */
+		discovery?: {
+			/** Collect every file below the project root (greedy) instead of only the files the detected {@link ProjectKind} needs (default `false`). */
+			full?:    boolean
+			/** Per-{@link ProjectKind} include/exclude glob overrides layered on the default scoping. */
+			perKind?: Partial<Record<ProjectKind, { include?: string[]; exclude?: string[] }>>
+		}
+		/** Overrides for the signals flowR uses to classify the {@link ProjectKind}; unset fields keep the built-in defaults. */
+		classification?: {
+			/** DESCRIPTION `Type:` values that mark a shiny app (default `shiny`, `shiny-app`, `shinyapp`). */
+			shinyDescriptionTypes?: string[]
+			/** File names a shiny app is assembled from (default `app.R`, `ui.R`, `server.R`, `global.R`). */
+			shinyEntryFiles?:       string[]
+			/** Regex source evidencing shiny usage in an entry file. */
+			shinyUsagePattern?:     string
+			/** File extensions marking a notebook (default `ipynb`, `rmd`, `qmd`, `rnw`). */
+			notebookExtensions?:    string[]
+		}
 	}
 	/** Linter configuration, usually specialized per {@link ProjectKind} via {@link FlowrConfig.specializeConfig}. */
 	readonly linter: {
@@ -609,7 +627,20 @@ export const FlowrConfig = {
 			failOnInaccessiblePath:    Joi.boolean().optional().description('Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when false (the default) such paths are logged and skipped.'),
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
-			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.')
+			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			discovery:                 Joi.object({
+				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
+				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
+					include: Joi.array().items(Joi.string()).optional(),
+					exclude: Joi.array().items(Joi.string()).optional()
+				})).optional().description('Per-kind include/exclude glob overrides layered on the default scoping.')
+			}).optional().description('Scoping options for the default project discovery.'),
+			classification: Joi.object({
+				shinyDescriptionTypes: Joi.array().items(Joi.string()).optional().description('DESCRIPTION Type: values that mark a shiny app.'),
+				shinyEntryFiles:       Joi.array().items(Joi.string()).optional().description('File names a shiny app is assembled from.'),
+				shinyUsagePattern:     Joi.string().optional().description('Regex source evidencing shiny usage in an entry file.'),
+				notebookExtensions:    Joi.array().items(Joi.string()).optional().description('File extensions marking a notebook.')
+			}).optional().description('Overrides for the signals flowR uses to classify the project kind.')
 		}).description('Project specific configuration options.'),
 		linter: Joi.object({
 			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')

@@ -262,6 +262,7 @@ export const Identifier = {
 				return Identifier.make(bare, owner as BrandedNamespace);
 			}
 		}
+		// TODO selbst wenn der identifier schon qualified ist, wird hier undefined zurückgegeben :( is das so gewollt?
 		return undefined;
 	}
 } as const;

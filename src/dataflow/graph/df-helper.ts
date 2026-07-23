@@ -1,4 +1,4 @@
-import { DataflowGraph } from './graph';
+import { DataflowGraph, UnknownSideEffect } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
@@ -118,10 +118,9 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;
@@ -151,10 +150,9 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;

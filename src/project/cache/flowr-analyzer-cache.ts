@@ -1,5 +1,5 @@
 import type { KnownParser, ParseStepOutput } from '../../r-bridge/parser';
-import { type InvalidationEvent, InvalidationEventType, FlowrCache } from './flowr-cache';
+import { FlowrCache, type InvalidationEvent, InvalidationEventType } from './flowr-cache';
 import {
 	createDataflowPipeline,
 	type DEFAULT_DATAFLOW_PIPELINE,
@@ -63,9 +63,20 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		return new FlowrAnalyzerCache<Parser>(data);
 	}
 
+	/** Free the current parse trees: tree-sitter trees live on the WASM heap, which the GC does not reclaim. */
+	private disposeParse() {
+		const files = (this.peekParse() as unknown as { files?: readonly { parsed?: { delete?: () => void } }[] } | undefined)?.files;
+		for(const file of files ?? []) {
+			file.parsed?.delete?.();
+		}
+	}
+
 	public override receive(event: InvalidationEvent): void {
 		super.receive(event);
 		const type = event.type;
+		if(type === InvalidationEventType.Full){
+			this.disposeParse();
+		}
 		switch(type) {
 			case InvalidationEventType.Full:
 			case InvalidationEventType.SingleFileInvalidate:

@@ -172,7 +172,7 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 	private files:                     Map<FilePath, FlowrFileProvider> = new Map<FilePath, FlowrFileProvider>();
 	private inlineFiles:               FlowrFileProvider[] = [];
 	private readonly fileLoaders:      readonly FlowrAnalyzerFilePlugin[];
-	private readonly context:         FlowrAnalyzerContext;
+	private readonly context:          FlowrAnalyzerContext;
 	/** these are all the paths of files that have been considered by the dataflow graph (even if not added) */
 	private readonly consideredFiles:  string[] = [];
 	/** User-registered project discovery plugins; if non-empty, they replace the default. */

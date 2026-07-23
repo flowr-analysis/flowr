@@ -69,7 +69,7 @@ export interface ReadOnlyFlowrAnalyzerContext {
 	/** Environment information used during analysis. */
 	readonly env:              ReadOnlyFlowrAnalyzerEnvironmentContext;
 	/** The incremental context provides potential information for the next incremental analysis run */
-	readonly inc:                ReadOnlyFlowrAnalyzerIncrementalAnalysisContext;
+	readonly inc:              ReadOnlyFlowrAnalyzerIncrementalAnalysisContext;
 	/** The configuration options used by the analyzer. */
 	readonly config:           FlowrConfig;
 	/** class names of plugins that activated (produced a result) since the last reset; only filled when `config.repl.showPlugins` is set */

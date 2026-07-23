@@ -239,7 +239,7 @@ function hyperlinkLocations(pretty: string, formatter: OutputFormatter): string 
 	return pretty.replace(locationPattern, (match, path: string, position: string) => {
 		const [line, col] = position.split('-')[0].split('.');
 		const url = `file://${path}:${line}${col ? `:${col}` : ''}`;
-		return formatter.hyperlink(match, url);
+		return formatter.hyperlink(match, url, true);
 	});
 }
 

@@ -37,13 +37,13 @@ const baseSet = new Set(baseRPackages());
 
 /** a package name linked to its CRAN page (unless it is base R / the `R` language pseudo-package) */
 function linkPackage(name: string, f: OutputFormatter): string {
-	return name === 'R' || baseSet.has(name) ? name : f.hyperlink(name, cranPageUrl(name));
+	return name === 'R' || baseSet.has(name) ? name : f.hyperlink(name, cranPageUrl(name), true);
 }
 
 /** a `file:line` location, linked to its source when a url is known */
 function linkLocation(file: string, line: number | undefined, url: string | undefined, f: OutputFormatter): string {
 	const text = `${file}${line !== undefined ? `:${line}` : ''}`;
-	return url ? f.hyperlink(text, url) : text;
+	return url ? f.hyperlink(text, url, true) : text;
 }
 
 /** render one parameter: required (no default) in yellow, non-forced (lazily evaluated) italicised, default dimmed */
@@ -89,7 +89,7 @@ export function pushFunction(result: string[], f: OutputFormatter, fn: Signature
 	listLine('dispatches to', fn.s3methods ?? [], MaxList);
 	listLine('calls', fn.callees, MaxList);
 	if(fn.callGraph) {
-		result.push(`      ╰ ${italic('call graph', f)}  ${f.hyperlink('mermaid', fn.callGraph)}`);
+		result.push(`      ╰ ${italic('call graph', f)}  ${f.hyperlink('mermaid', fn.callGraph, true)}`);
 	}
 }
 
@@ -170,7 +170,7 @@ export function pushPackages(result: string[], f: OutputFormatter, out: Signatur
 	const cap = out.truncated ? italic(` (capped at ${packages.length})`, f) : '';
 	result.push(`   ╰ ${bold(String(packages.length), f)} package${packages.length === 1 ? '' : 's'} matched${cap}`);
 	for(const pm of packages) {
-		const name = pm.cranPage ? f.hyperlink(color(pm.name, Colors.Cyan, f), pm.cranPage) : color(pm.name, Colors.Cyan, f);
+		const name = pm.cranPage ? f.hyperlink(color(pm.name, Colors.Cyan, f), pm.cranPage, true) : color(pm.name, Colors.Cyan, f);
 		const kind = pm.base ? italic(' base R', f) : pm.cran ? italic(' CRAN', f) : '';
 		const vers = pm.versions ? `: ${pm.versions.join(', ')}` : pm.latest ? ` ${color('v' + pm.latest, Colors.Green, f)}` : '';
 		result.push(`      ╰ ${name}${vers}${kind}`);

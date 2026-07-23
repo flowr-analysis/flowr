@@ -5,6 +5,7 @@ import { SemVer } from 'semver';
 import { type FlowrFile, FlowrTextFile } from '../../context/flowr-file';
 import { getAllFilesSync } from '../../../util/files';
 import { platformBasename, platformDirname } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
+import fs from 'fs';
 import path from 'path';
 import { RprofileFilePattern } from '../file-plugins/flowr-analyzer-rprofile-file-plugin';
 
@@ -71,6 +72,9 @@ class DefaultFlowrAnalyzerProjectDiscoveryPlugin extends FlowrAnalyzerProjectDis
 
 	public process(_context: unknown, args: RProjectAnalysisRequest): (RParseRequest | FlowrFile<string>)[] {
 		const requests: (RParseRequest | FlowrFile<string>)[] = [];
+		if(!fs.existsSync(args.content)) {
+			return requests;
+		}
 		/* the dummy approach of collecting all files, group R and Rmd files, and be done with it */
 		for(const file of getAllFilesSync(args.content, /.*/, this.ignorePathsRegex)) {
 			const relativePath = path.relative(args.content, file);

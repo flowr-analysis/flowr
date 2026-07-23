@@ -152,6 +152,11 @@ export interface ReadOnlyFlowrAnalyzerFilesContext {
 	 * {@link ProjectKind.Unknown}. The result is cached and invalidated whenever the files change.
 	 */
 	projectKind(): ProjectKind;
+	/**
+	 * The root paths that were requested for analysis: the folder for a project request, or the containing
+	 * folder for a single-file request. Useful to report back which inputs did not resolve to anything.
+	 */
+	getRequestedRoots(): readonly string[];
 }
 
 /**
@@ -238,6 +243,10 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 
 	public projectKind(): ProjectKind {
 		return this.projectKindCache ??= this.ctx.config.project.useProjectType ?? this.classifyProject();
+	}
+
+	public getRequestedRoots(): readonly string[] {
+		return this.requestedRoots;
 	}
 
 	private classifyProject(): ProjectKind {

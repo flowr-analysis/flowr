@@ -208,31 +208,38 @@ export const Identifier = {
 		}
 	},
 	/**
-	 * The qualified identifier of a call from its dataflow {@link Origin}s (via `getOriginInDfg`), if it
-	 * resolves to an export of a loaded package (the signature-database info attached by `library()`/`use()`);
-	 * `undefined` otherwise. With `purrr` loaded, `map()` yields `Identifier.make('map', 'purrr')`.
+	 * The package-qualified identifier of a call, resolved in order of decreasing certainty:
+	 * 1. a package export the {@link Origin|origins} resolve to (`map()` with `purrr` loaded yields `purrr::map`),
+	 * 2. an already-namespaced `name` returned unchanged (an explicit `pkg::fn` call),
+	 * 3. with `qualifyBaseR`, a bare base-R call qualified from its exporting package via {@link baseRExportOwner}
+	 *    (`sd` yields `stats::sd`), needing no loaded database or graph edge and skipped when the call resolves to
+	 *    a user definition, so a local `sd()` stays bare.
 	 *
-	 * Pass the call's `name` to additionally get *edge-free* base-R qualification: a bare base call is qualified
-	 * from the base package that exports it (`sd` yields `stats::sd`, `plot` yields `base::plot`) via the
-	 * precomputed {@link baseRExportOwner} store -- no loaded database, no graph edges. This is suppressed when
-	 * the call resolves to a user definition or is already namespaced, so a local `sd()` is never `stats::sd`.
+	 * Returns `undefined` when none apply. Steps 2 and 3 need the call's `name`.
+	 * @param qualifyBaseR - whether to also qualify a bare base-R call from its exporting package (default `true`)
 	 * @see {@link Dataflow.qualify} - the compact form, if you have the call's id and its graph
 	 */
-	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier): Identifier | undefined {
+	toQualified(this: void, origins: readonly Origin[] | undefined, name?: Identifier, qualifyBaseR = true): Identifier | undefined {
 		let sawUserDefinition = false;
 		for(const origin of origins ?? []) {
-			// an attached package export carries the target builtin id `built-in:pkg:func` in `proc`
 			if('proc' in origin) {
-				const pkgFn = NodeId.toPkgFn(origin.proc);   // [pkg, func], or undefined for a bare/processor-level builtin
+				const pkgFn = NodeId.toPkgFn(origin.proc);
 				if(pkgFn) {
 					return Identifier.make(pkgFn[1], pkgFn[0]);
+				} else if(Identifier.getNamespace(origin.fn.name) !== undefined) {
+					return origin.fn.name;
 				}
 			} else {
-				sawUserDefinition = true;   // a function-call/variable origin: resolves to a user definition
+				sawUserDefinition = true;
 			}
 		}
-		// only qualify a bare base call: never override a user definition, nor an explicitly namespaced call
-		if(name !== undefined && !sawUserDefinition && Identifier.getNamespace(name) === undefined) {
+		if(name === undefined) {
+			return undefined;
+		}
+		if(Identifier.getNamespace(name) !== undefined) {
+			return name;
+		}
+		if(qualifyBaseR && !sawUserDefinition) {
 			const bare = Identifier.getName(name);
 			const owner = baseRExportOwner(bare);
 			if(owner !== undefined) {

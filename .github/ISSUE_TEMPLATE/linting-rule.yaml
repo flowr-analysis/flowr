@@ -37,6 +37,7 @@ body:
         - Software Has License
         - Software Has Tests
         - Stop without call.=False argument
+        - Syntactically Valid
         - Undefined Symbol
         - Unused Definitions
         - Useless Loops

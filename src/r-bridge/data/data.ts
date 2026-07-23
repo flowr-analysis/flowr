@@ -298,6 +298,12 @@ ${await printDfGraphForCode(parser, code, { simplified: true })}
 							description: '_Support functions like `setwd` which have an impact on the subsequent program._'
 						},
 						{
+							name:        'Working Directory',
+							id:          'working-directory',
+							supported:   'partially',
+							description: '_Track the effective working directory across `setwd` (control-flow- and location-sensitive) to resolve relative file paths. Interprocedural, sourced, and loop cases are treated as unbounded rather than guessed._'
+						},
+						{
 							name:         'Index Access',
 							id:           'index-access',
 							capabilities: [

@@ -246,8 +246,23 @@ async function mainServer(useWebSocket: boolean) {
 }
 
 
-if(options.server) {
-	void mainServer(options.ws);
-} else {
-	void mainRepl();
+async function main() {
+	try {
+		if(options.server) {
+			await mainServer(options.ws);
+		} else {
+			await mainRepl();
+		}
+	} catch(e) {
+		const err = e as Error;
+		console.error(formatter.format(`flowR failed to start: ${err.message}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		if(options.verbose) {
+			console.error(err.stack);
+		} else {
+			console.error(italic('Run again with --verbose for the full stack trace.'));
+		}
+		exitSafe(1);
+	}
 }
+
+void main();

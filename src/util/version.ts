@@ -68,7 +68,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 	const rReason = r === 'none' ? ' (no R interpreter available)'
 		: r === 'unknown' ? (engine === 'tree-sitter' ? ' (not queried, using the tree-sitter engine)' : ' (could not be determined)')
 			: '';
-	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`) : flowr;
+	const flowrValue = versionRegex.test(flowr) ? output.formatter.hyperlink(flowr, `https://github.com/flowr-analysis/flowr/releases/tag/v${flowr}`, true) : flowr;
 	const rows: [string, string, boolean?][] = [];
 	const pluginLines: string[] = [];
 	if(!engineOnly) {
@@ -87,7 +87,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const sigDbUrl = sigDbRemoteRelease()?.url;
 		const describe = (d: typeof dbs[number]) => {
 			const entry = `${d.scope} (v${d.version}, ${d.date}${d.format ? `, ${d.format}` : ''})`;
-			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl) : entry;
+			return sigDbUrl ? output.formatter.hyperlink(entry, sigDbUrl, true) : entry;
 		};
 		rows.push(['databases', dbs.length === 0 ? 'none' : dbs.map(describe).join(', '), dbs.length === 0]);
 		// the registered plugins, grouped by prefix; collected here and printed after the table (below) so the
@@ -117,7 +117,7 @@ export async function printVersionInformation(output: ReplOutput, input: KnownPa
 		const labelWidth = Math.max(...[...byPrefix.keys()].map(p => p.length));
 		const header = `registered plugins (${names.length})`;
 		const hint = trace ? ' (faint = did not activate)' : ' (set +repl.showPlugins=true to track activation)';
-		pluginLines.push(`${bold(osc8 ? output.formatter.hyperlink(header, wiki) : header, output.formatter)}:${dim(hint)}`);
+		pluginLines.push(`${bold(output.formatter.hyperlink(header, wiki, true), output.formatter)}:${dim(hint)}`);
 		for(const [prefix, suffixes] of [...byPrefix].sort((a, b) => a[0].localeCompare(b[0]))) {
 			pluginLines.push(`  ${bold(prefix, output.formatter)}:${' '.repeat(labelWidth - prefix.length)} ${[...suffixes].sort((a, b) => a.localeCompare(b)).map(s => render(`${prefix}:${s}`, s)).join(', ')}`);
 		}

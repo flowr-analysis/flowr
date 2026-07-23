@@ -1,4 +1,4 @@
-import { FunctionArgument, type OutgoingEdges } from './graph';
+import { FunctionArgument, type OutgoingEdges, UnknownSideEffect } from './graph';
 import { type GenericDifferenceInformation, setDifference } from '../../util/diff';
 import { jsonReplacer } from '../../util/json';
 import { arrayEqual } from '../../util/collections/arrays';
@@ -62,8 +62,8 @@ function diffOutgoingEdges(ctx: GraphDiffContext): void {
 function diffRootVertices(ctx: GraphDiffContext): void {
 	setDifference(ctx.left.rootIds(), ctx.right.rootIds(), { ...ctx, position: `${ctx.position}Root vertices differ in graphs. ` });
 	setDifference(
-		new Set([...ctx.left.unknownSideEffects].map(n => typeof n === 'object' ? n.id : n)),
-		new Set([...ctx.right.unknownSideEffects].map(n => typeof n === 'object' ? n.id : n)),
+		new Set(ctx.left.unknownSideEffects.values().map(UnknownSideEffect.id)),
+		new Set(ctx.right.unknownSideEffects.values().map(UnknownSideEffect.id)),
 		{ ...ctx, position: `${ctx.position}Unknown side effects differ in graphs. ` });
 }
 

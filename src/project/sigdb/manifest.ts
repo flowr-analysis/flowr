@@ -8,6 +8,7 @@ import path from 'node:path';
 import { SigDbExt, type SigDbPkgMeta, type SigDbShard, type SigDbTier } from './schema';
 import type { ByteRange, SigDbIndexWire, SigShardIndexWire } from './index-format';
 import { CompressedExtPattern, compressedExtOf, decompressSyncFor, readableExtsPreferred, stripCompressedExt, writeCodecs } from './codec';
+import { sigDbCacheDir } from './decompress';
 
 export const SigDbManifestMagic = 'flowr-sigdb-manifest';
 export const SigDbManifestSchema = 2;
@@ -97,6 +98,20 @@ const SigDbScopeOrder: readonly SigDbScope[] = ['full', 'current', 'base'];
 /** layouts a bundled sigdb may sit in, relative to a search root -- the root itself (e.g. a `$FLOWR_SIGDB_DIR` data mount), then the dev `src`, build `dist` and data-dir layouts */
 const SigDbSubDirs = ['', 'data/sigdb', 'src/data/sigdb', 'dist/src/data/sigdb'];
 
+function sigDbBundleDirs(): string[] {
+	if(typeof fs?.readdirSync !== 'function') {
+		return [];
+	}
+	try {
+		const bundles = path.join(sigDbCacheDir(undefined, false), 'bundles');
+		return fs.readdirSync(bundles, { withFileTypes: true })
+			.filter(e => e.isDirectory())
+			.map(e => path.join(bundles, e.name));
+	} catch{
+		return [];
+	}
+}
+
 /** roots to search for a bundled sigdb; extendable via `$FLOWR_SIGDB_DIR` (path-delimiter separated) */
 function sigDbSearchRoots(extra?: readonly string[]): string[] {
 	const roots = [...(extra ?? [])];
@@ -125,23 +140,36 @@ export function defaultSigDbPath(scope?: SigDbScope, searchRoots?: readonly stri
 		return undefined;
 	}
 	const scopes = scope ? [scope] : SigDbScopeOrder;
-	for(const root of sigDbSearchRoots(searchRoots)) {
-		for(let dir = root, i = 0; i < 10; i++) {
-			for(const sub of SigDbSubDirs) {
-				for(const s of scopes) {
-					for(const suffix of ['', ...readableExtsPreferred()]) {
-						const candidate = path.join(dir, sub, `${s}.manifest.json${suffix}`);
-						if(fs.existsSync(candidate)) {
-							return candidate;
-						}
+	const probe = (dir: string): string | undefined => {
+		for(const sub of SigDbSubDirs) {
+			for(const s of scopes) {
+				for(const suffix of ['', ...readableExtsPreferred()]) {
+					const candidate = path.join(dir, sub, `${s}.manifest.json${suffix}`);
+					if(fs.existsSync(candidate)) {
+						return candidate;
 					}
 				}
+			}
+		}
+		return undefined;
+	};
+	for(const root of sigDbSearchRoots(searchRoots)) {
+		for(let dir = root, i = 0; i < 10; i++) {
+			const hit = probe(dir);
+			if(hit !== undefined) {
+				return hit;
 			}
 			const parent = path.dirname(dir);
 			if(parent === dir) {
 				break;
 			}
 			dir = parent;
+		}
+	}
+	for(const bundle of sigDbBundleDirs()) {
+		const hit = probe(bundle);
+		if(hit !== undefined) {
+			return hit;
 		}
 	}
 	return undefined;
@@ -171,30 +199,36 @@ export function defaultSigDbPaths(searchRoots?: readonly string[]): string[] {
 			into.set(key, file);
 		}
 	};
-	for(const root of sigDbSearchRoots(searchRoots)) {
-		for(let dir = root, i = 0; i < 10; i++) {
-			for(const sub of SigDbSubDirs) {
-				let entries: string[];
-				try {
-					entries = fs.readdirSync(path.join(dir, sub));
-				} catch{
-					continue;   // directory does not exist on this root
-				}
-				for(const file of entries) {
-					const full = path.join(dir, sub, file);
-					if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
-						keep(manifests, stripCompressedExt(file), full, path.join(dir, sub));
-					} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
-						keep(standalones, stripCompressedExt(file), full, path.join(dir, sub));
-					}
+	const scanDir = (base: string): void => {
+		for(const sub of SigDbSubDirs) {
+			let entries: string[];
+			try {
+				entries = fs.readdirSync(path.join(base, sub));
+			} catch{
+				continue;   // directory does not exist on this root
+			}
+			for(const file of entries) {
+				const full = path.join(base, sub, file);
+				if(new RegExp(`\\.manifest\\.json${CompressedExtPattern}$`).test(file)) {
+					keep(manifests, stripCompressedExt(file), full, path.join(base, sub));
+				} else if(new RegExp(`${SigDbExt.replace(/\./g, '\\.')}${CompressedExtPattern}$`).test(file) && !file.includes('.dict' + SigDbExt)) {
+					keep(standalones, stripCompressedExt(file), full, path.join(base, sub));
 				}
 			}
+		}
+	};
+	for(const root of sigDbSearchRoots(searchRoots)) {
+		for(let dir = root, i = 0; i < 10; i++) {
+			scanDir(dir);
 			const parent = path.dirname(dir);
 			if(parent === dir) {
 				break;
 			}
 			dir = parent;
 		}
+	}
+	for(const bundle of sigDbBundleDirs()) {
+		scanDir(bundle);
 	}
 	// a standalone bundle is a `.sigs.ndjson` that is not a shard of a discovered manifest (`<manifest>.<shard>...`)
 	const prefixes = [...manifests.keys()].map(k => k.replace(/\.manifest\.json$/, ''));

@@ -213,7 +213,7 @@ function vertexToMermaid(info: DataflowGraphVertexInfo, mermaid: MermaidGraph, i
 
 	let display = lexeme;
 	if(fCall && isFunctionCallVertex(info)) {
-		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), mermaid.qualifyBaseR === false ? undefined : info.name);
+		const q = Identifier.toQualified(getOriginInDfg(mermaid.rootGraph, origId), info.name, mermaid.qualifyBaseR !== false);
 		const qs = q !== undefined ? Identifier.toString(q) : undefined;
 		if(qs !== undefined && qs !== lexeme) {
 			display = qs;

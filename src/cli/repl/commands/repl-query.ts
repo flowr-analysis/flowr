@@ -1,5 +1,5 @@
 import type { ReplCodeCommand, ReplOutput } from './repl-main';
-import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint, supportsHyperlinks } from '../../../util/text/ansi';
+import { ansiFormatter, ansiInfo, bold, ColorEffect, Colors, italic, faint } from '../../../util/text/ansi';
 import {
 	executeQueries,
 	type Query,
@@ -86,7 +86,7 @@ function printQueryDoc(output: ReplOutput, name: string): void {
 	output.stdout(`Run: ${bold(':query ' + syntax, output.formatter)}`);
 	output.stdout(`JSON: ${italic(queryTemplate(name, def.schema), output.formatter)}`);
 	const wiki = `https://github.com/flowr-analysis/flowr/wiki/${encodeURIComponent(queryWikiPage(def.title).replaceAll(' ', '-'))}`;
-	output.stdout(`Docs: ${supportsHyperlinks() ? output.formatter.hyperlink(`${name} query`, wiki) : wiki}`);
+	output.stdout(`Docs: ${output.formatter.hyperlink(`${name} query`, wiki)}`);
 }
 
 /** A copy-pasteable JSON template for a query type: its `type` plus each required field as a placeholder. */

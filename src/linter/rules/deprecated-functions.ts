@@ -42,7 +42,7 @@ interface DeprecatedFunctionInformation {
 	readonly replacedBy?:   string
 	/** The version since this function is deprecated */
 	readonly sinceVersion?: Range
-	/** The state of deprecation {@link DeprecationState}, i.e. is the function completely removed, or are there better alternatives */
+	/** Lifecycle State {@link DeprecationState}, i.e. is the function completely removed, or are there better alternatives */
 	readonly state?:        DeprecationState
 }
 
@@ -107,7 +107,7 @@ const ConditionallyDeprecated = {
 
 function getDeprecatedFunctionNames(config: DeprecatedFunctionsConfig): BrandedIdentifier[] {
 	return config.always.concat(
-		Object.entries(config.conditionally).map(([k, _]) => k)
+		Object.keys(config.conditionally)
 	);
 }
 

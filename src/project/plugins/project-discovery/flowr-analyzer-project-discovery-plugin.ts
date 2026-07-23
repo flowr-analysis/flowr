@@ -10,7 +10,7 @@ import fs from 'fs';
 import path from 'path';
 import { classifyProjectKind, resolveClassifyOptions, type ContentReader } from '../../context/classify-project-kind';
 import { globMatcher } from '../../../util/glob';
-import { RprofileFilePattern } from '../file-plugins/flowr-analyzer-rprofile-file-plugin';
+import { RprofileFilePattern, RenvironFilePattern } from '../file-plugins/flowr-analyzer-rprofile-file-plugin';
 
 /**
  * This is the base class for all plugins that discover files in a project for analysis.
@@ -136,7 +136,8 @@ const metadataFilePatterns = [
 	/^(renv|rv|packrat)\.lock$/i,
 	/^rproject\.toml$/i,
 	/license(\.md|\.txt)?$/i,
-	RprofileFilePattern
+	RprofileFilePattern,
+	RenvironFilePattern
 ];
 const testOrVignetteDir = /(^|\/)(tests?|vignettes?)(\/|$)/i;
 
@@ -156,9 +157,9 @@ function keptByDefault(rel: string): boolean {
 	return discoverRSourcesRegex.test(rel) || metadataFilePatterns.some(p => p.test(base)) || testOrVignetteDir.test(rel);
 }
 
-/** whether root-relative `rel` is kept; an explicit `perKind` exclude wins over everything */
-function keep(rel: string, rules: KeepRules): boolean {
-	if(noiseFiles.test(rel) || rules.exclude.some(m => m(rel))) {
+/** whether root-relative `rel` is kept; an explicit `ignore` or `perKind` exclude wins over everything */
+function keep(rel: string, rules: KeepRules, ignore: readonly ((p: string) => boolean)[]): boolean {
+	if(noiseFiles.test(rel) || ignore.some(m => m(rel)) || rules.exclude.some(m => m(rel))) {
 		return false;
 	}
 	return keptByDefault(rel) || rules.include.some(m => m(rel));
@@ -224,6 +225,7 @@ export class FlowrAnalyzerDefaultProjectDiscoveryPlugin extends FlowrAnalyzerPro
 		}
 		const kind = classifyProjectKind({ names, entries, descriptionTypes, descriptionCount }, opts);
 		const rules = resolveRules(discovery?.perKind?.[kind]);
-		return collectRequests(files.filter(f => keep(path.relative(root, f), rules)), root);
+		const ignore = (discovery?.ignore ?? []).map(globMatcher);
+		return collectRequests(files.filter(f => keep(path.relative(root, f), rules, ignore)), root);
 	}
 }

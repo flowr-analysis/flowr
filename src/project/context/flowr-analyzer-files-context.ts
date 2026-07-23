@@ -53,6 +53,7 @@ export type RoleBasedFiles = {
 	[FileRole.License]:     FlowrFileProvider[];
 	[FileRole.VirtualEnv]:  FlowrFileProvider[];
 	[FileRole.Startup]:     FlowrFileProvider[];
+	[FileRole.Environment]: FlowrFileProvider[];
 	[FileRole.Source]:      FlowrFileProvider[];
 	[FileRole.Data]:        FlowrFileProvider[];
 	[FileRole.Other]:       FlowrFileProvider[];

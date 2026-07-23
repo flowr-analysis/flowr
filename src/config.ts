@@ -194,6 +194,8 @@ export interface FlowrConfig extends MergeableRecord {
 			full?:    boolean
 			/** Per-{@link ProjectKind} include/exclude glob overrides layered on the default scoping. */
 			perKind?: Partial<Record<ProjectKind, { include?: string[]; exclude?: string[] }>>
+			/** Case-insensitive globs that drop matching files from the intelligent discovery, regardless of kind (e.g. `.Renviron` to ignore environment files). */
+			ignore?:  string[]
 		}
 		/** Overrides for the signals flowR uses to classify the {@link ProjectKind}; unset fields keep the built-in defaults. */
 		classification?: {
@@ -633,7 +635,8 @@ export const FlowrConfig = {
 				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
 					include: Joi.array().items(Joi.string()).optional(),
 					exclude: Joi.array().items(Joi.string()).optional()
-				})).optional().description('Per-kind include/exclude glob overrides layered on the default scoping.')
+				})).optional().description('Per-kind include/exclude glob overrides layered on the default scoping.'),
+				ignore: Joi.array().items(Joi.string()).optional().description('Case-insensitive globs that drop matching files from the intelligent discovery, regardless of kind (e.g. .Renviron to ignore environment files).')
 			}).optional().description('Scoping options for the default project discovery.'),
 			classification: Joi.object({
 				shinyDescriptionTypes: Joi.array().items(Joi.string()).optional().description('DESCRIPTION Type: values that mark a shiny app.'),

@@ -147,10 +147,11 @@ const pickManifest = (files: readonly string[]): string | undefined =>
 export interface SigDbDownloadOptions {
 	/** GitHub `owner/repo` (default `flowr-analysis/flowr`) */
 	readonly repo?:       string
-	/** release version, i.e. tag `sigdb-v<version>` (default the running flowR version) */
+	/** release version, i.e. tag `sigdb-v<version>` (default the running flowR version); ignored when the committed `sigdb.remote.json` is present, whose `tag` then drives the download */
 	readonly version?:    string
 	/** progress callback (one line per asset) */
 	readonly onProgress?: (msg: string) => void
+	readonly force?:      boolean
 }
 
 export interface SigDbDownloadResult {
@@ -175,7 +176,7 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
 	if(pointerPath) {
 		const remote = readPointer(pointerPath);
 		const repo = opts.repo ?? remote.repo ?? DefaultRepo;
-		const tag = opts.version ? `sigdb-v${opts.version}` : remote.tag;
+		const tag = remote.tag;
 		const dir = path.join(sigDbCacheDir(), 'bundles', tag);
 		fs.mkdirSync(dir, { recursive: true });
 		// one variant per logical shard/dictionary -- the best this runtime can decompress (never both codecs)
@@ -185,7 +186,7 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
 		for(const name of picked) {
 			const meta = remote.shards[name];
 			const dest = path.join(dir, name);
-			if(fs.existsSync(dest) && sha256File(dest) === meta.sha256) {
+			if(!opts.force && fs.existsSync(dest) && sha256File(dest) === meta.sha256) {
 				progress(`have ${name}`);
 			} else {
 				progress(`downloading ${name} (${(meta.bytes / 1e6).toFixed(1)} MB)`);
@@ -217,7 +218,7 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
 	for(const name of selectDownloadVariants(byName.keys())) {
 		const a = byName.get(name) as ReleaseAsset;
 		const dest = path.join(dir, name);
-		if(fs.existsSync(dest) && fs.statSync(dest).size === a.size) {
+		if(!opts.force && fs.existsSync(dest) && fs.statSync(dest).size === a.size) {
 			progress(`have ${name}`);
 		} else {
 			progress(`downloading ${name} (${(a.size / 1e6).toFixed(1)} MB)`);
@@ -233,13 +234,12 @@ export async function downloadFullSigDb(opts: SigDbDownloadOptions = {}): Promis
  * pointer is committed. Lets a caller mount an already-synced bundle via `solver.sigdb.additionalPaths` without
  * hitting the network.
  */
-export function syncedSigDbDir(opts: { version?: string } = {}): string | undefined {
+export function syncedSigDbDir(): string | undefined {
 	const pointerPath = findRemotePointer();
 	if(!pointerPath) {
 		return undefined;
 	}
-	const tag = opts.version ? `sigdb-v${opts.version}` : readPointer(pointerPath).tag;
-	return path.join(sigDbCacheDir(), 'bundles', tag);
+	return path.join(sigDbCacheDir(), 'bundles', readPointer(pointerPath).tag);
 }
 
 /** the GitHub release (`{repo, tag, url}`) the committed pointer downloads from, or `undefined` when no pointer is committed */
@@ -257,16 +257,36 @@ export function sigDbRemoteRelease(): { repo: string, tag: string, url: string }
 	}
 }
 
-/** Startup check: `true` when a committed link file lists shards whose cached copies are missing or hash-mismatched */
-export function sigDbNeedsSync(opts: { version?: string } = {}): boolean {
+/** Fast presence check (existence + byte size only, no hashing) for the shards the committed pointer selects for this runtime; `false` when no pointer is committed or any selected shard is missing/wrong-size. */
+export function sigDbCacheComplete(): boolean {
 	const pointerPath = findRemotePointer();
 	if(!pointerPath) {
 		return false;
 	}
 	try {
 		const remote = readPointer(pointerPath);
-		const tag = opts.version ? `sigdb-v${opts.version}` : remote.tag;
-		const dir = path.join(sigDbCacheDir(), 'bundles', tag);
+		const dir = path.join(sigDbCacheDir(undefined, false), 'bundles', remote.tag);
+		return selectDownloadVariants(Object.keys(remote.shards)).every(name => {
+			try {
+				return fs.statSync(path.join(dir, name)).size === remote.shards[name].bytes;
+			} catch{
+				return false;
+			}
+		});
+	} catch{
+		return false;
+	}
+}
+
+/** Startup check: `true` when a committed link file lists shards whose cached copies are missing or hash-mismatched */
+export function sigDbNeedsSync(): boolean {
+	const pointerPath = findRemotePointer();
+	if(!pointerPath) {
+		return false;
+	}
+	try {
+		const remote = readPointer(pointerPath);
+		const dir = path.join(sigDbCacheDir(), 'bundles', remote.tag);
 		return Object.entries(remote.shards).some(([name, meta]) => {
 			const dest = path.join(dir, name);
 			return !fs.existsSync(dest) || sha256File(dest) !== meta.sha256;

@@ -5,6 +5,7 @@ import { type MergeableRecord,
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { log, LogLevelNames, setLogLevel, type LogLevelName } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
@@ -794,6 +795,32 @@ export const FlowrConfig = {
 	},
 } as const;
 
+/** Path to the user-global `flowr.json`, read as a fallback when no project config is found. */
+export function globalConfigFilePath(): string {
+	const base = process.env.FLOWR_CONFIG_HOME
+		?? (process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'flowr') : undefined)
+		?? (process.env.APPDATA ? path.join(process.env.APPDATA, 'flowr') : undefined)
+		?? path.join(os.homedir?.() || os.tmpdir(), '.config', 'flowr');
+	return path.join(base, 'flowr.json');
+}
+
+/** Persist `dbPath` into `solver.sigdb.additionalPaths` in the global config (creating it, preserving the user's raw JSON); idempotent, returns the file written. */
+export function persistSigDbPathToGlobalConfig(dbPath: string): string {
+	const file = globalConfigFilePath();
+	let raw: object = {};
+	try {
+		raw = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) as object : {};
+	} catch(e) {
+		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
+	}
+	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const paths = Array.isArray(current) ? current as string[] : [];
+	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
+	return file;
+}
+
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {
 	if(configFile !== undefined) {
 		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
@@ -818,6 +845,15 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 			// move up to parent directory
 			searchPath = getParentDirectory(searchPath);
 		} while(fs.existsSync(searchPath));
+	}
+
+	const global = globalConfigFilePath();
+	if(fs.existsSync(global)) {
+		const ret = FlowrConfig.parse(fs.readFileSync(global, { encoding: 'utf-8' }));
+		if(ret) {
+			log.info(`Using global config ${global}`);
+			return ret;
+		}
 	}
 
 	log.info('Using default config');

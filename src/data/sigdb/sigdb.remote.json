@@ -1,6 +1,6 @@
 {
 	"format": "flowr-sigdb-remote",
-	"schema": 1,
+	"schema": 2,
 	"tag": "v2.12.3",
 	"repo": "flowr-analysis/flowr",
 	"shards": {

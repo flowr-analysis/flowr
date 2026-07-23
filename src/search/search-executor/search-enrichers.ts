@@ -165,7 +165,6 @@ export const Enrichments = {
 			if(prev) {
 				content.targets.push(...prev.targets);
 			}
-			console.log(content);
 			return content;
 
 			function qualifyIdentifier(origins: readonly Origin[] | undefined, name?: Identifier) {

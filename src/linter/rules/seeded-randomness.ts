@@ -57,7 +57,10 @@ export interface SeededRandomnessMeta extends MergeableRecord {
 
 export const SEEDED_RANDOMNESS = {
 	createSearch: (config) => Q.all().filter(VertexType.FunctionCall)
-		.with(Enrichment.CallTargets, { onlyBuiltin: true })
+		.with(Enrichment.CallTargets, {
+			onlyBuiltin:  true,
+			qualifyNames: false // we don't use qualified names for this rule yet
+		})
 		.filter({
 			name: FlowrFilter.MatchesEnrichment,
 			args: {

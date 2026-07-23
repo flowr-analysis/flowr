@@ -11,7 +11,10 @@ import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectCon
 export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
-	createSearch:        (_config: FunctionsToDetectConfig) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	createSearch: (_config: FunctionsToDetectConfig) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
+		onlyBuiltin:  true,
+		qualifyNames: false // we don't use qualified names for this rule yet
+	}),
 	processSearchResult: async(elements, config, data) => {
 		const matchesConfiguredFns = Identifier.regex(config.fns);
 		const hardcoded = await functionFinderUtil.processSearchResult(elements, config, data, es =>

@@ -80,6 +80,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		}
 
 		if(request.filePath === undefined) {
+			log.info('[incremental] case 1 (no filePath): full parse');
 			return this.parser.parse(sourceCode);
 		}
 
@@ -91,13 +92,16 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 
 		if(!reparseInfo) {
 			// incremental parsing not possible
+			log.info(`[incremental] case 2 (${request.filePath}): full reparse (incremental not possible)`);
 			return this.parser.parse(sourceCode);
 		}
 
 		if(!reparseInfo.editRegion) {
+			log.info(`[incremental] case 3 (${request.filePath}): unchanged, reused previous tree (no parse)`);
 			return reparseInfo.previousTree;
 		}
 
+		log.info(`[incremental] case 4 (${request.filePath}): incremental reparse, edit region: ${JSON.stringify(reparseInfo.editRegion)}`);
 		const previousTree = reparseInfo.previousTree;
 		previousTree.edit(reparseInfo.editRegion);
 		return this.parser.parse(sourceCode, previousTree);

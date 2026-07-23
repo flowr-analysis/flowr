@@ -257,8 +257,15 @@ async function executeStatement(output: ReplOutput, statement: string, analyzer:
 					if(processor.isCodeCommand) {
 						const args = processor.argsParser(remainingLine);
 						if(args.rCode) {
-							analyzer.reset();
-							analyzer.addRequest(handlePathLikeInput(output, args.rCode, analyzer.flowrConfig));
+							const rawPath = args.rCode.startsWith(fileProtocol)
+								? args.rCode.substring(fileProtocol.length)
+								: undefined;
+							const alreadyKnown = rawPath !== undefined
+								&& analyzer.context().files.getFileByPath(rawPath) !== undefined;
+							if(!alreadyKnown) {
+								analyzer.reset();
+								analyzer.addRequest(handlePathLikeInput(output, args.rCode, analyzer.flowrConfig));
+							}
 						}
 						await processor.fn({ output, analyzer, remainingArgs: args.remaining });
 					} else {
@@ -323,6 +330,7 @@ async function replProcessStatement(output: ReplOutput, statement: string, analy
 		if(watchPath) {
 			try {
 				activeWatcher = startWatching(watchPath, output, () => {
+					analyzer.context().files.getFileByPath(watchPath)?.invalidate();
 					void executeStatement(output, effective, analyzer, allowRSessionAccess);
 				});
 				activeWatcher.unref();

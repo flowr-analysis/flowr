@@ -191,6 +191,10 @@ function(x) {
 		'undefined-symbol', 'UndefinedSymbolConfig', 'UNDEFINED_SYMBOL', 'lint-undefined-symbol',
 		'undefined_helper(42)', tagTypes);
 
+	rule(knownParser,
+		'syntactically-valid', 'SyntacticallyValidConfig', 'SYNTACTICALLY_VALID', 'lint-syntactically-valid',
+		'x <- c(1, 2', tagTypes);
+
 	function rule(parser: KnownParser, name: LintingRuleNames, configType: string, ruleType: string, testfile: string, example: string, types: TypeElementInSource[]) {
 		const rule = LintingRules[name];
 

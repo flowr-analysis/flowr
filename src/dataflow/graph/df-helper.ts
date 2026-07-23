@@ -70,7 +70,7 @@ export const Dataflow = {
 	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
 		// only look the vertex up when its name is actually needed (base-R qualification)
 		const vertex = qualifyBaseR ? graph.getVertex(id) : undefined;
-		// TODO selbst wenn der identifier schon qualified ist, wird hier undefined zurückgegeben :( is das so gewollt?
+		// TODO selbst wenn der identifier schon qualified ist, wird hier undefined zurückgegeben :( is das so gewollt? -> nein, issue aufmachen
 		return Identifier.toQualified(
 			getOriginInDfg(graph, id),
 			isFunctionCallVertex(vertex) ? vertex.name : undefined

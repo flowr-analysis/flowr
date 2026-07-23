@@ -49,7 +49,7 @@ export const NETWORK_FUNCTIONS = {
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					// TODO das gibt manchmal undefined zurück und ich verstehe noch nicht so ganz wieso :( benutze ich das richtig?
+					// TODO das gibt manchmal undefined zurück wegen issue -> fallback hier angeben mit ??
 					const identifier = Dataflow.qualify(e.node.info.id, df.graph);
 					if(identifier === undefined) {
 						continue;

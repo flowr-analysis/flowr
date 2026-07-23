@@ -115,7 +115,7 @@ export interface QueryDataSearchContent extends MergeableRecord {
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
 export const Enrichments = {
-	// TODO the call targets enrichment doesn't explicitly make anything qualified, so our regex check in network functions fails :(
+	// TODO the call targets enrichment doesn't explicitly make anything qualified -> recover names here w yes/no config (but enabled by default)
 	[Enrichment.CallTargets]: {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			// we don't resolve aliases here yet!

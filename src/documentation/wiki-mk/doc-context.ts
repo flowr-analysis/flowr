@@ -141,7 +141,7 @@ export interface GeneralDocContext {
 	 * linkE<typeof FnProp>('FnProp', 'NoDoc')
 	 * ```
 	 */
-	linkE<E>(enumName: string, element: keyof E & string, fmt?: LinkFormat, filter?: ElementFilter): string;
+	linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
@@ -384,8 +384,8 @@ export function makeDocContextForTypes(
 			const fullName = `${obj.name}::${String(element)}`;
 			return this.link(fullName, fmt, filter);
 		},
-		linkE<E>(enumName: string, element: keyof E & string, fmt?: LinkFormat, filter?: ElementFilter): string {
-			return this.link(`${enumName}::${element}`, fmt, filter);
+		linkE<E>(enumName: string, element: keyof E, fmt?: LinkFormat, filter?: ElementFilter): string {
+			return this.link(`${enumName}::${String(element)}`, fmt, filter);
 		},
 		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);

@@ -49,8 +49,7 @@ export const NETWORK_FUNCTIONS = {
 			async(es) => {
 				const res: (FlowrSearchElement<ParentInformation> & { certainty: LintingResultCertainty })[] = [];
 				for(const e of es) {
-					// TODO das gibt manchmal undefined zurück wegen issue -> fallback hier angeben mit ??
-					const identifier = Dataflow.qualify(e.node.info.id, df.graph);
+					const identifier = Dataflow.qualify(e.node.info.id, df.graph, true) ?? (e.node.lexeme !== undefined ? Identifier.parse(e.node.lexeme) : undefined);
 					if(identifier === undefined) {
 						continue;
 					}

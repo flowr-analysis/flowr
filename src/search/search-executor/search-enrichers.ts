@@ -7,7 +7,7 @@ import { type MergeableRecord, deepMergeObject } from '../../util/objects';
 import { VertexType } from '../../dataflow/graph/vertex';
 import type { LinkToLastCall } from '../../queries/catalog/call-context-query/call-context-query-format';
 import { guard, isNotUndefined } from '../../util/assert';
-import { OriginType } from '../../dataflow/origin/dfg-get-origin';
+import { type Origin, OriginType } from '../../dataflow/origin/dfg-get-origin';
 import { NodeId, recoverName } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { ControlFlowInformation } from '../../control-flow/control-flow-graph';
 import type { Query, QueryResult } from '../../queries/query';
@@ -58,6 +58,7 @@ export interface CallTargetsContent extends MergeableRecord {
 	/**
 	 * The call targets of the function call.
 	 * For identifier call targets, the identifier is the name of the library function being called.
+	 * If the `qualifyNames` argument is unset or `true`, the returned call targets will always be stringified fully-qualified identifiers.
 	 */
 	targets: (FlowrSearchElement<ParentInformation> | string)[];
 }
@@ -115,7 +116,6 @@ export interface QueryDataSearchContent extends MergeableRecord {
  * See {@link FlowrSearchBuilder.with} for more information on how to apply enrichments.
  */
 export const Enrichments = {
-	// TODO the call targets enrichment doesn't explicitly make anything qualified -> recover names here w yes/no config (but enabled by default)
 	[Enrichment.CallTargets]: {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			// we don't resolve aliases here yet!
@@ -126,32 +126,37 @@ export const Enrichments = {
 			if(callVertex?.tag === VertexType.FunctionCall) {
 				const origins = Dataflow.origin(df.graph, callVertex.id);
 				if(!origins || origins.length === 0) {
-					content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
+					const name = recoverName(callVertex.id, n.idMap);
+					// we don't have origin information here, so pass undefined
+					content.targets = [qualifyIdentifier(undefined, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 				} else {
 					// find call targets in user code (which have ids!)
-					content.targets = content.targets.concat(
-						origins.map(o => {
-							switch(o.type) {
-								case OriginType.FunctionCallOrigin:
+					content.targets = origins.map(o => {
+						switch(o.type) {
+							case OriginType.FunctionCallOrigin: {
+								if(NodeId.isBuiltIn(o.id)) {
 									// a built-in target (e.g. a materialized package export from `library()`) has no
-									// user-code node, so surface it as a built-in string target (see `onlyBuiltin` below)
-									return NodeId.isBuiltIn(o.id)
-										? recoverName(o.id, n.idMap) ?? String(o.id)
-										: { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
-								case OriginType.BuiltInFunctionOrigin:
-									return Identifier.toString(o.fn.name);
-								default:
-									return undefined;
+									// user-code node, so surface it as a built-in identifier (see `onlyBuiltin` below)
+									const name = recoverName(o.id, n.idMap);
+									return qualifyIdentifier([o], name) ?? String(o.id);
+								} else {
+									return { node: n.idMap.get(o.id) as RNodeWithParent } satisfies FlowrSearchElement<ParentInformation>;
+								}
 							}
-						}).filter(isNotUndefined)
-					);
+							case OriginType.BuiltInFunctionOrigin:
+								return qualifyIdentifier([o], o.fn.name);
+							default:
+								return undefined;
+						}
+					}).filter(isNotUndefined);
 					if(content.targets.length === 0) {
-						content.targets = [recoverName(callVertex.id, n.idMap)] as (FlowrSearchElement<ParentInformation> | string)[];
+						const name = recoverName(callVertex.id, n.idMap);
+						content.targets = [qualifyIdentifier(origins, name)] as (FlowrSearchElement<ParentInformation> | string)[];
 					}
 				}
 			}
 
-			// keep only calls whose targets are all built-in; library/package exports arrive as string
+			// keep only calls whose targets are all built-in; library/package exports arrive as an identifier
 			// targets and count as built-in, a target with a `node` is user code and disqualifies the call
 			if(args?.onlyBuiltin && content.targets.some(t => typeof t !== 'string')) {
 				content.targets = [];
@@ -160,11 +165,22 @@ export const Enrichments = {
 			if(prev) {
 				content.targets.push(...prev.targets);
 			}
+			console.log(content);
 			return content;
+
+			function qualifyIdentifier(origins: readonly Origin[] | undefined, name?: Identifier) {
+				if(args?.qualifyNames === undefined || args.qualifyNames) {
+					const qualified = Identifier.toQualified(origins, name);
+					if(qualified !== undefined) {
+						return Identifier.toString(qualified);
+					}
+				}
+				return name as string;
+			}
 		},
 		// as built-in call target enrichments are not nodes, we don't return them as part of the mapper!
 		mapper: ({ targets }) => targets.map(t => t as FlowrSearchElement<ParentInformation>).filter(t => t.node !== undefined)
-	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean }>,
+	} satisfies EnrichmentData<CallTargetsContent, { onlyBuiltin?: boolean, qualifyNames?: boolean }>,
 	[Enrichment.LastCall]: {
 		enrichElement: async(e, _s, analyzer, args, prev) => {
 			guard(args && args.length, `${Enrichment.LastCall} enrichment requires at least one argument`);

@@ -104,8 +104,7 @@ export const functionFinderUtil = {
 		requireValue: RegExp | string | undefined
 	): Promise<Ternary> {
 		const dataflow = await analyzer.dataflow();
-		// TODO das gibt manchmal undefined zurück wegen issue -> fallback hier angeben mit ??
-		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph);
+		const identifier = Dataflow.qualify(element.node.info.id, dataflow.graph, true) ?? (element.node.lexeme !== undefined ? Identifier.parse(element.node.lexeme) : undefined);
 		/* if we have no additional info, we assume they always access the network */
 		if(identifier === undefined) {
 			return Ternary.Always;

@@ -4,12 +4,15 @@ import type { DocMakerArgs } from './wiki-mk/doc-maker';
 import { DocMaker } from './wiki-mk/doc-maker';
 import { RemoteFlowrFilePathBaseRef } from './doc-util/doc-files';
 import { SigDatabase, SigDatabaseSet, type PackageSignatureSource } from '../project/sigdb/reader';
-import { SigDbSchema } from '../project/sigdb/schema';
+// FnProp is a const enum referenced only via `typeof` (for linkE's member typing); a type-only import would break `typeof`
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { FnProp, SigDbSchema } from '../project/sigdb/schema';
 import { defaultSigDbPath, defaultSigDbPaths, readManifestFile, type SigDbShardRef } from '../project/sigdb/manifest';
 import { CompressedExtPattern, decompressSyncFor } from '../project/sigdb/codec';
 import { DefaultAssumedRVersion } from '../config';
 import { FlowrAnalyzerPackageVersionsSigDbPlugin } from '../project/plugins/package-version-plugins/flowr-analyzer-package-versions-sigdb-plugin';
 import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+import { FlowrAnalyzerDependenciesContext } from '../project/context/flowr-analyzer-dependencies-context';
 import type { KnownParser } from '../r-bridge/parser';
 
 function cranDatabaseAvailable(): boolean {
@@ -241,16 +244,21 @@ Every function is a ${ctx.link('DecodedFunction')}:
 
 Per version the source also answers declared dependencies (${ctx.link('ResolvedDependency')}), release dates, the plain export view (${ctx.link('LibraryExports')}), and the versions it carries (${ctx.link('AvailableVersion')}).
 
-Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.link('FnProp::NoDoc')} (a documented package has no help page for this name), ${ctx.link('FnProp::S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.link('FnProp::S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call -- e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
+Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} (a documented package has no help page for this name), ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} (a registered S3 method, from the package NAMESPACE or base R's method table), and ${ctx.linkE<typeof FnProp>('FnProp', 'S3Owner')} (an exported constructor for an S3 class this package OWNS: it also registers at least one S3 method for that class). The owned classes of a version are ${ctx.link('LibraryExports::s3Classes')}, and ${ctx.linkM(SigDatabase, 'classOwner')} answers, for a class name, which package owns it (backed by a reverse index built once). This lets ${ctx.linkPage('wiki/Query API', 'version guessing')} mark a package used when the analyzed project's own NAMESPACE registers an S3 method for a class it owns, even with no direct call -- e.g. tseries's \`S3method("as.irts","zoo")\` marks \`zoo\` used.
 
 These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
-- the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.link('FnProp::NoDoc')} function
-- the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.link('FnProp::S3Method')} function, resolving its generic
+- the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} function
+- the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} function, resolving its generic
 - the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
 
 Read it back like this:
 
 ${ctx.code(accessTheDatabase, { dropLinesStart: 1 })}
+
+To check what a project can resolve against without touching the raw sources, a ${ctx.linkPage('wiki/Analyzer', 'context')} exposes
+${ctx.linkM(FlowrAnalyzerDependenciesContext, 'hasSignatureDatabase')} (a cheap presence check) and
+${ctx.linkM(FlowrAnalyzerDependenciesContext, 'availableSignatureDatabases')} (the identifying names of the loaded databases), alongside the
+richer ${ctx.linkM(FlowrAnalyzerDependenciesContext, 'loadedSignatureDatabases')} metadata.
 
 ## Configuration
 
@@ -273,16 +281,18 @@ So \`library(stats)\` attaches that release's exports, and a bare \`sd()\` quali
 without attaching the base namespaces to the graph. Set ${ctx.linkConfig('solver.sigdb.linkBaseR')} to also link them as
 dataflow edges.
 
-**No** signature shards are committed: the \`base.*\` floor (self-contained base-R signatures, a few hundred KB), the
+Signature shards are not committed to the repository because of their size (the \`current.*\` and \`history.*\` scopes
+span tens of megabytes): the \`base.*\` floor (self-contained base-R signatures, a few hundred KB), the
 \`current.*\` scope (every package's latest version) and \`history.*\` (every older version) all live as assets on the
 free ${ctx.linkConfig('solver.sigdb.downloadRepo')} GitHub release. The only committed file is a tiny **link file**,
 \`src/data/sigdb/sigdb.remote.json\`, which records the release tag and each shard's sha256 and size, so
-\`:signature download\` builds the direct release-CDN URL (no API rate limit), verifies every shard by content hash,
+${ctx.replCmd('signature')} download builds the direct release-CDN URL, verifies every shard by content hash,
 and skips any already cached. Because the link file is versioned, a \`git pull\` that updates it re-syncs only the
 shards whose hash changed &mdash; and with ${ctx.linkConfig('solver.sigdb.autoSync')} that check runs on startup and re-downloads in the
 background; \`npm run build\` bakes the shards in as well. The richest downloaded scope is used (order \`full\` >
 \`current\` > \`base\`), so once fetched \`library(stats)\` resolves. Any path in ${ctx.linkConfig('solver.sigdb.additionalPaths')} (or
 \`$FLOWR_SIGDB_DIR\`) is searched alongside the default, so a downloaded bundle stays mounted on every start.
+
 ${databases ? `
 ## Bundled Databases
 
@@ -301,7 +311,7 @@ shared dictionary that its shards depend on, so it is decompressed the first tim
 The flowR Docker images ship this dictionary already decompressed, so a container reads it in place and skips
 that step (the load column above is the cost a plain npm install pays).
 
-Every shard, dictionary, and manifest is published in both brotli (\`.br\`) and zstd (\`.zst\`, faster to decompress) compression, and flowR uses whichever the runtime supports: \`.zst\` when the Node version exposes [zstd](https://nodejs.org/api/zlib.html#zstd) (Node &ge; 22.15), otherwise \`.br\`. \`:signature download\` fetches only that one variant per file, and \`:version\` reports the format each loaded database resolved to.
+Every shard, dictionary, and manifest is published in both brotli (\`.br\`) and zstd (\`.zst\`, faster to decompress) compression, and flowR uses whichever the runtime supports: \`.zst\` when the Node version exposes [zstd](https://nodejs.org/api/zlib.html#zstd) (Node &ge; 22.15), otherwise \`.br\`. ${ctx.replCmd('signature')} download fetches only that one variant per file, and ${ctx.replCmd('version')} reports the format each loaded database resolved to.
 ` : ''}
 ## Format
 

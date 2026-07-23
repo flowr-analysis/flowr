@@ -133,6 +133,16 @@ export interface GeneralDocContext {
 	 */
 	linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string;
 	/**
+	 * Generate a hyperlink to an enum member. Enums have no runtime prototype ({@link GeneralDocContext#linkM|linkM})
+	 * nor `name` ({@link GeneralDocContext#linkO|linkO}), so pass the enum type as the explicit type argument -- the
+	 * member is then checked against its keys -- together with the enum's name.
+	 * @example
+	 * ```ts
+	 * linkE<typeof FnProp>('FnProp', 'NoDoc')
+	 * ```
+	 */
+	linkE<E>(enumName: string, element: keyof E & string, fmt?: LinkFormat, filter?: ElementFilter): string;
+	/**
 	 * Generate a hyperlink to a type/element definition in the code base which is displayed using the file path as name
 	 * @param element - The element to create a link for, the name can be qualified with `::` to specify the class.
 	 * @example
@@ -373,6 +383,9 @@ export function makeDocContextForTypes(
 		linkO<T extends object &  { name: string }>(obj: T, element: keyof T, fmt?: LinkFormat, filter?: ElementFilter): string {
 			const fullName = `${obj.name}::${String(element)}`;
 			return this.link(fullName, fmt, filter);
+		},
+		linkE<E>(enumName: string, element: keyof E & string, fmt?: LinkFormat, filter?: ElementFilter): string {
+			return this.link(`${enumName}::${element}`, fmt, filter);
 		},
 		linkFile(this: void, element: ElementIdOrRef): string {
 			return shortLinkFile(getNameFromElementIdOrRef(element), info);

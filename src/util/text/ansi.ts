@@ -42,8 +42,12 @@ export interface OutputFormatter {
 	format(input: string, options?: FormatOptions): string
 	getFormatString(options?: FormatOptions): string
 	reset(): string
-	/** render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text) */
-	hyperlink(text: string, url: string): string
+	/**
+	 * Render `text` as a link to `url` in whatever form this output supports (OSC 8, markdown, or plain text).
+	 * When a live hyperlink cannot be rendered, the raw `url` is shown so the target is not lost; pass
+	 * `force` to always emit just the short `text` label instead.
+	 */
+	hyperlink(text: string, url: string, force?: boolean): string
 }
 
 export const voidFormatter: OutputFormatter = new class implements OutputFormatter {
@@ -59,8 +63,8 @@ export const voidFormatter: OutputFormatter = new class implements OutputFormatt
 		return '';
 	}
 
-	public hyperlink(text: string, _url: string): string {
-		return text;
+	public hyperlink(text: string, url: string, force = false): string {
+		return force ? text : url;
 	}
 }();
 
@@ -95,7 +99,7 @@ export const markdownFormatter: OutputFormatter = new class implements OutputFor
 		return '';
 	}
 
-	public hyperlink(text: string, url: string): string {
+	public hyperlink(text: string, url: string, _force = false): string {
 		return `[${text}](${url})`;
 	}
 }();
@@ -160,8 +164,11 @@ export const ansiFormatter = {
 		return `${escape}0${colorSuffix}`;
 	},
 
-	hyperlink(text: string, url: string): string {
-		return supportsHyperlinks() ? `\x1b]8;;${url}\x07${text}\x1b]8;;\x07` : text;
+	hyperlink(text: string, url: string, force = false): string {
+		if(supportsHyperlinks()) {
+			return `\x1b]8;;${url}\x07${text}\x1b]8;;\x07`;
+		}
+		return force ? text : url;
 	},
 
 	format(input: string, options?: FormatOptions): string {

@@ -13,7 +13,7 @@ import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/
 import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { standaloneSourceFile } from './internal/process/functions/call/built-in/built-in-source';
 import { attachProject } from './internal/process/functions/call/built-in/built-in-library';
-import type { DataflowGraph } from './graph/graph';
+import { type DataflowGraph, UnknownSideEffect } from './graph/graph';
 import { extractCfgQuick, getCallsInCfg } from '../control-flow/extract-cfg';
 import { EdgeType } from './graph/edge';
 import { identifyLinkToLastCallRelationSync
@@ -89,7 +89,7 @@ function resolveLinkToSideEffects(ast: NormalizedAst, graph: DataflowGraph, ctx:
 	const killedRegexes = new Set<string>();
 	const handled = new Set<NodeId>();
 	for(const s of graph.unknownSideEffects) {
-		if(typeof s !== 'object') {
+		if(!UnknownSideEffect.isLinked(s)) {
 			continue;
 		}
 		if(cf === undefined) {

@@ -10,7 +10,7 @@ import {
 	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
 	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
 } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
-import type { FlowrAnalyzerProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
+import { FlowrAnalyzerFullProjectDiscoveryPlugin, type FlowrAnalyzerProjectDiscoveryPlugin } from '../../../../src/project/plugins/project-discovery/flowr-analyzer-project-discovery-plugin';
 import { isParseRequest } from '../../../../src/r-bridge/retriever';
 import type { FlowrFile } from '../../../../src/project/context/flowr-file';
 
@@ -45,6 +45,10 @@ function discovered(plugin: FlowrAnalyzerProjectDiscoveryPlugin, root: string): 
 		.sort();
 }
 
+// the ignore plugins wrap the greedy discovery here so these tests exercise only the ignore semantics, not the
+// intelligent default's file scoping (covered separately in intelligent-discovery.test.ts)
+const greedy = () => new FlowrAnalyzerFullProjectDiscoveryPlugin();
+
 describe('Ignore-file project discovery', () => {
 	const files = {
 		'R/main.R':      'x <- 1',
@@ -57,31 +61,31 @@ describe('Ignore-file project discovery', () => {
 	};
 
 	test('.Rbuildignore drops matching files and whole directories', () => {
-		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(), project(files));
+		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(greedy()), project(files));
 		assert.notInclude(got, 'tests/big.R', 'a directory matched by ^tests$ is dropped entirely');
 		assert.notInclude(got, 'notes.md');
 		assert.includeMembers(got, ['R/main.R', 'R/helper.R', 'scratch.R']);
 	});
 
 	test('.gitignore alone leaves the .Rbuildignore entries alone', () => {
-		const got = discovered(new FlowrAnalyzerGitignoreProjectDiscoveryPlugin(), project(files));
+		const got = discovered(new FlowrAnalyzerGitignoreProjectDiscoveryPlugin(greedy()), project(files));
 		assert.notInclude(got, 'scratch.R');
 		assert.includeMembers(got, ['tests/big.R', 'notes.md']);
 	});
 
 	test('the combined plugin respects both files', () => {
-		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(), project(files));
+		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(undefined, greedy()), project(files));
 		assert.sameMembers(got, ['R/main.R', 'R/helper.R', '.Rbuildignore', '.gitignore']);
 	});
 
 	test('without any ignore file everything is kept', () => {
-		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(), project({ 'R/main.R': 'x <- 1' }));
+		const got = discovered(new FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin(undefined, greedy()), project({ 'R/main.R': 'x <- 1' }));
 		assert.sameMembers(got, ['R/main.R']);
 	});
 
 	test('an invalid .Rbuildignore pattern is skipped, the valid ones still apply', () => {
 		const root = project({ 'R/main.R': 'x <- 1', 'notes.md': '#', '.Rbuildignore': '^([unclosed\n^.*\\.md$\n' });
-		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(), root);
+		const got = discovered(new FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin(greedy()), root);
 		assert.notInclude(got, 'notes.md');
 		assert.include(got, 'R/main.R');
 	});

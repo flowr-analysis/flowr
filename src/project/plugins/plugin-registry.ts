@@ -44,6 +44,10 @@ import {
 	FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin,
 	FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin
 } from './project-discovery/flowr-analyzer-ignore-file-project-discovery-plugin';
+import {
+	FlowrAnalyzerDefaultProjectDiscoveryPlugin,
+	FlowrAnalyzerFullProjectDiscoveryPlugin
+} from './project-discovery/flowr-analyzer-project-discovery-plugin';
 import { FlowrAnalyzerRprofileFilePlugin } from './file-plugins/flowr-analyzer-rprofile-file-plugin';
 import {
 	FlowrAnalyzerLoadingOrderRprofilePlugin
@@ -82,7 +86,9 @@ export const BuiltInPlugins = [
 	['file:rprofile', FlowrAnalyzerRprofileFilePlugin],
 	['project-discovery:gitignore', FlowrAnalyzerGitignoreProjectDiscoveryPlugin],
 	['project-discovery:rbuildignore', FlowrAnalyzerRbuildignoreProjectDiscoveryPlugin],
-	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin]
+	['project-discovery:ignore-files', FlowrAnalyzerIgnoreFileProjectDiscoveryPlugin],
+	['project-discovery:default', FlowrAnalyzerDefaultProjectDiscoveryPlugin],
+	['project-discovery:full', FlowrAnalyzerFullProjectDiscoveryPlugin]
 ] as const satisfies [string, PluginProducer][];
 
 export type BuiltInFlowrPluginName = typeof BuiltInPlugins[number][0];

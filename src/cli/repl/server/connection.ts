@@ -4,9 +4,10 @@ import {
 	type FileAnalysisRequestMessage,
 	type FileAnalysisResponseMessageCompact,
 	type FileAnalysisResponseMessageJson,
-	type FileAnalysisResponseMessageNQuads
-	, requestAnalysisMessage } from './messages/message-analysis';
-import { type SliceRequestMessage, type SliceResponseMessage, requestSliceMessage } from './messages/message-slice';
+	type FileAnalysisResponseMessageNQuads,
+	requestAnalysisMessage
+} from './messages/message-analysis';
+import { requestSliceMessage, type SliceRequestMessage, type SliceResponseMessage } from './messages/message-slice';
 import type { FlowrErrorMessage } from './messages/message-error';
 import type { IdMessageBase } from './messages/all-messages';
 import type { Socket } from './net';
@@ -15,18 +16,22 @@ import type { ILogObj, Logger } from 'tslog';
 import {
 	type ExecuteEndMessage,
 	type ExecuteIntermediateResponseMessage,
-	type ExecuteRequestMessage
-	, requestExecuteReplExpressionMessage } from './messages/message-repl';
+	type ExecuteRequestMessage,
+	requestExecuteReplExpressionMessage
+} from './messages/message-repl';
 import { replProcessAnswer } from '../core';
 import { LogLevel } from '../../../util/log';
 import { cfg2quads } from '../../../control-flow/extract-cfg';
-import { type QuadSerializationConfiguration, defaultQuadIdGenerator } from '../../../util/quads';
+import { defaultQuadIdGenerator, type QuadSerializationConfiguration } from '../../../util/quads';
 import { printStepResult, StepOutputFormat } from '../../../core/print/print';
 import { PARSE_WITH_R_SHELL_STEP } from '../../../core/steps/all/core/00-parse';
 import { NORMALIZE } from '../../../core/steps/all/core/10-normalize';
 import { STATIC_DATAFLOW } from '../../../core/steps/all/core/20-dataflow';
 import { ansiFormatter, voidFormatter } from '../../../util/text/ansi';
-import { type TREE_SITTER_DATAFLOW_PIPELINE, DEFAULT_SLICING_PIPELINE } from '../../../core/steps/pipeline/default-pipelines';
+import {
+	DEFAULT_SLICING_PIPELINE,
+	type TREE_SITTER_DATAFLOW_PIPELINE
+} from '../../../core/steps/pipeline/default-pipelines';
 import type { PipelineOutput, PipelinePerStepMetaInformation } from '../../../core/steps/pipeline/pipeline';
 import type { DeepPartial } from 'ts-essentials';
 import { DataflowGraph } from '../../../dataflow/graph/graph';

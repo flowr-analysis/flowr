@@ -388,6 +388,11 @@ class RShellSession {
 		this.onExit(() => {
 			this.end();
 		});
+		this.bareSession.on('error', (err: NodeJS.ErrnoException) => {
+			log.error(`Failed to start R ("${options.pathToRExecutable}"): ${err.message}. `
+				+ 'Make sure R is installed and on PATH (point flowR to it with --r-path), '
+				+ 'or skip R entirely with --engine.r-shell.disabled / --default-engine tree-sitter.');
+		});
 		this.options = options;
 		// initialize the session
 		this.writeLine(initCommand(options.eol));

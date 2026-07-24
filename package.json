@@ -1,6 +1,6 @@
 {
   "name": "@eagleoutice/flowr",
-  "version": "2.13.1",
+  "version": "2.13.2",
   "description": "Static Dataflow Analyzer and Program Slicer for the R Programming Language",
   "types": "dist/src/index.d.ts",
   "repository": {
@@ -15,7 +15,7 @@
     "setup:dev": "git lfs fetch && npm ci && git config --local core.hooksPath .githooks/ && git push --dry-run",
     "main": "npm run build:bundle-flowr && node dist/src/cli/flowr.min.js",
     "flowr": "npm run main --",
-    "flowr:dev": "npm run gen:base-packages && npm run main-dev --",
+    "flowr:dev": "npm run sync:sigdb && npm run gen:base-packages && npm run main-dev --",
     "main-dev": "node -r ts-node/register --watch src/cli/flowr.ts",
     "publish-library": "cp .npmignore package.json README.md LICENSE dist/src/ && cd dist/src && npm publish --access public",
     "release": "npx release-it --ci",
@@ -29,7 +29,8 @@
     "wiki:watch": "node -r ts-node/register --watch src/cli/wiki.ts --keep-alive",
     "build": "npm run gen:base-packages && tsc --project . && npm run build:copy-data",
     "gen:base-packages": "ts-node --transpile-only scripts/gen-base-packages.ts",
-    "sync:sigdb": "ts-node --transpile-only scripts/sigdb-remote.ts",
+    "sync:sigdb": "ts-node --transpile-only scripts/sigdb-sync.ts",
+    "gen:sigdb-remote": "ts-node --transpile-only scripts/sigdb-remote.ts",
     "publish:sigdb": "ts-node scripts/publish-sigdb.ts",
     "build:copy-data": "ts-node --transpile-only scripts/sigdb-copy.ts",
     "build-dev": "npm run build && npm run build:copy-wasm",
@@ -48,7 +49,7 @@
     "test-full": "npm run test:coverage -- --no-watch -- --make-summary --test-installation",
     "performance-test": "func() { cd test/performance/ && bash run-all-suites.sh $1 $2 $3 $4; cd ../../; }; func",
     "test:performance": "npm run performance-test --",
-    "test:docker": "func() { for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; docker build -t flowr-docker-test -f \"$df\" . || return 1; echo \"=== smoke-testing $df ===\"; docker run --rm flowr-docker-test --version || return 1; done; }; func",
+    "test:docker": "func() { b() { docker build ${1:+--network=$1} -t flowr-docker-test -f \"$2\" .; }; r() { docker run --rm ${1:+--network=$1} flowr-docker-test --version; }; for df in scripts/Dockerfile scripts/Dockerfile-NoR; do echo \"=== building $df ===\"; b '' \"$df\" || { echo '(retrying with --network=host: bridge networking unavailable)'; b host \"$df\"; } || return 1; echo \"=== smoke-testing $df ===\"; r '' || r host || return 1; done; }; func",
     "detect-circular-deps": "npx madge  --extensions ts,tsx --circular src/",
     "checkup": "ts-node scripts/checkup-parallel.ts"
   },
@@ -241,5 +242,11 @@
     "web-tree-sitter": "^0.24.7",
     "ws": "^8.18.0",
     "xpath-ts2": "^1.4.2"
+  },
+  "allowScripts": {
+    "@davisvaughan/tree-sitter-r@1.2.0": true,
+    "core-js-pure@3.40.0": true,
+    "esbuild@0.28.1": true,
+    "plantuml-pipe@1.6.0": true
   }
 }

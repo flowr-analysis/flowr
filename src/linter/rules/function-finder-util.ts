@@ -11,7 +11,7 @@ import { getArgumentStringValue } from '../../dataflow/eval/resolve/resolve-argu
 import { isFunctionCallVertex, VertexType } from '../../dataflow/graph/vertex';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { Unknown } from '../../queries/catalog/dependencies-query/dependencies-query-format';
-import type { BrandedIdentifier } from '../../dataflow/environments/identifier';
+import type { BrandedIdentifier, Identifier } from '../../dataflow/environments/identifier';
 import { Ternary } from '../../util/logic';
 import type { ReadonlyFlowrAnalysisProvider } from '../../project/flowr-analyzer';
 import type { AsyncOrSync } from 'ts-essentials';
@@ -29,7 +29,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	/**
 	 * The list of function names that should be marked in the given context.
 	 */
-	fns: readonly string[]
+	fns: readonly Identifier[]
 }
 
 

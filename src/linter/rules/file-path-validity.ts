@@ -1,4 +1,4 @@
-import { type LintingResult, type LintingRule, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
+import { type LintingResult, type LintingRule, type LintQuickFixReplacement, LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import type { MergeableRecord } from '../../util/objects';
 import { isUrl, fileUrlToPath } from '../../util/text/strings';
 import { Q } from '../../search/flowr-search-builder';
@@ -10,6 +10,13 @@ import { happensBefore } from '../../control-flow/happens-before';
 import type { FunctionInfo } from '../../queries/catalog/dependencies-query/function-info/function-info';
 import { LintingRuleTag } from '../linter-tags';
 import { Enrichment } from '../../search/search-executor/search-enrichers';
+import { WorkingDirectory } from '../../dataflow/eval/resolve/resolve-working-directory';
+import { DropPathsOption, type FlowrLaxSourcingOptions } from '../../config';
+import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
+import { EmptyArgument } from '../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
+import { RString } from '../../r-bridge/lang-4.x/ast/model/nodes/r-string';
+import type { AstIdMap } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
+import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 
 export interface FilePathValidityResult extends LintingResult {
 	filePath: string
@@ -70,6 +77,10 @@ export const FILE_PATH_VALIDITY = {
 			totalValid:              0
 		};
 		const results = elements.enrichmentContent(Enrichment.QueryData).queries['dependencies'];
+		const ctx = data.inspectContext();
+		const dfg = (await data.dataflow()).graph;
+		const resolveSource = data.flowrConfig.solver.resolveSource;
+		const wdRootsFor = WorkingDirectory.rootsResolver(dfg, cfg, ctx);
 		const findings = await Promise.all(elements.getElements().map(async element => {
 			const matchingRead = results.read.find(r => r.nodeId === element.node.info.id);
 			if(!matchingRead) {
@@ -140,21 +151,26 @@ export const FILE_PATH_VALIDITY = {
 				return [];
 			}
 
-			// check if the file exists!
-			const paths = findSource(data.flowrConfig.solver.resolveSource, matchingRead.value as string, {
-				referenceChain: element.node.info.file ? [element.node.info.file] : [],
-				ctx:            data.inspectContext()
-			});
+			// check if the file exists, resolving relative paths against the effective working directory
+			const value = matchingRead.value as string;
+			const referenceChain = element.node.info.file ? [element.node.info.file] : [];
+			const wdRoots = wdRootsFor(element.node.info.id, element.node.info.file);
+			const withWd = { ...resolveSource, searchPath: [...(resolveSource?.searchPath ?? []), ...wdRoots] } as FlowrLaxSourcingOptions;
+			const paths = findSource(withWd, value, { referenceChain, ctx });
 			if(paths && paths.length) {
 				metadata.totalValid++;
 				return [];
 			}
 
+			// a lax retry (drop leading dirs, ignore case) may surface a near match to offer as a quick fix
+			const near = findSource({ ...withWd, ignoreCapitalization: true, dropPaths: DropPathsOption.All }, value, { referenceChain, ctx });
+			const quickFix = dfg.idMap && near && near.length ? buildDidYouMeanFix(dfg.idMap, matchingRead.nodeId, value, near[0]) : undefined;
 			return [{
 				involvedId: matchingRead.nodeId,
 				loc,
-				filePath:   matchingRead.value as string,
-				certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain
+				filePath:   value,
+				certainty:  writesBefore && writesBefore.length && writesBefore.every(w => w === Ternary.Maybe) ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+				...(quickFix ? { quickFix } : {})
 			}];
 		}));
 		return {
@@ -167,7 +183,7 @@ export const FILE_PATH_VALIDITY = {
 		description:   'Checks whether file paths used in read and write operations are valid and point to existing files.',
 		// checks all found paths for whether they're valid to ensure correctness, but doesn't handle non-constant paths so not all will be returned
 		certainty:     LintingRuleCertainty.BestEffort,
-		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug],
+		tags:          [LintingRuleTag.Robustness, LintingRuleTag.Reproducibility, LintingRuleTag.Bug, LintingRuleTag.QuickFix],
 		defaultConfig: {
 			additionalReadFunctions:  [],
 			additionalWriteFunctions: [],
@@ -187,4 +203,32 @@ function samePath(a: string, b: string, ignoreCapitalization: boolean | undefine
 		b = b.toLowerCase();
 	}
 	return a === b;
+}
+
+/** the string-literal path argument of a call whose resolved value is `value`, for anchoring a quick fix */
+function pathArgStringNode(idMap: AstIdMap, callId: NodeId, value: string): RString | undefined {
+	const call = idMap.get(callId);
+	if(call?.type !== RType.FunctionCall) {
+		return undefined;
+	}
+	for(const arg of call.arguments) {
+		if(arg !== EmptyArgument && arg.value && RString.is(arg.value) && arg.value.content.str === value) {
+			return arg.value;
+		}
+	}
+	return undefined;
+}
+
+/** rewrite the read path to `found`, an existing file surfaced by the lax retry */
+function buildDidYouMeanFix(idMap: AstIdMap, callId: NodeId, value: string, found: string): LintQuickFixReplacement[] | undefined {
+	const str = pathArgStringNode(idMap, callId, value);
+	if(!str) {
+		return undefined;
+	}
+	return [{
+		type:        'replace',
+		loc:         SourceLocation.fromNode(str) ?? SourceLocation.invalid(),
+		description: `Replace with existing path \`${found}\``,
+		replacement: str.content.quotes + found + str.content.quotes
+	}];
 }

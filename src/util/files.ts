@@ -14,17 +14,27 @@ export interface Table {
 
 /**
  * Retrieves all files in the given directory recursively
- * @param dir    - Directory path to start the search from
- * @param suffix - Suffix of the files to be retrieved
+ * @param dir          - Directory path to start the search from
+ * @param suffix       - Suffix of the files to be retrieved
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
  * Based on {@link https://stackoverflow.com/a/45130990}
  * @see {@link getAllFilesSync} for a synchronous version.
  */
-export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<string> {
-	const entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
+export async function* getAllFiles(dir: string, suffix = /.*/, throwOnError = false): AsyncGenerator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = await fsPromise.readdir(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		if(throwOnError) {
+			throw e;
+		}
+		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		return;
+	}
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
-			yield* getAllFiles(res, suffix);
+			yield* getAllFiles(res, suffix, throwOnError);
 		} else if(suffix.test(subEntries.name)) {
 			yield res;
 		}
@@ -38,15 +48,25 @@ export async function* getAllFiles(dir: string, suffix = /.*/): AsyncGenerator<s
  * @param ignoreDirs - Directories to skip, tested against the posix path relative to `dir`
  *                     (e.g. `packrat/lib`), so a pattern can address nested directories
  * @param relativeTo - The path to which the returned paths are relative (used for `ignoreDirs`), defaults to `dir`
+ * @param throwOnError - If `true`, a directory that cannot be read aborts the traversal; otherwise it is logged and skipped (the default)
  * @see {@link getAllFiles} - for an asynchronous version.
  */
-export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir): Generator<string> {
-	const entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+export function* getAllFilesSync(dir: string, suffix = /.*/, ignoreDirs: RegExp | undefined = undefined, relativeTo: string = dir, throwOnError = false): Generator<string> {
+	let entries: fs.Dirent[];
+	try {
+		entries = fs.readdirSync(dir, { withFileTypes: true, recursive: false });
+	} catch(e) {
+		if(throwOnError) {
+			throw e;
+		}
+		log.warn(`Skipping '${dir}' during file discovery: ${e instanceof Error ? e.message : String(e)}`);
+		return;
+	}
 	for(const subEntries of entries) {
 		const res = path.resolve(dir, subEntries.name);
 		if(subEntries.isDirectory()) {
 			if(!ignoreDirs?.test(toPosixPath(path.relative(relativeTo, res)))) {
-				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo);
+				yield* getAllFilesSync(res, suffix, ignoreDirs, relativeTo, throwOnError);
 			}
 		} else if(suffix.test(subEntries.name)) {
 			yield res;

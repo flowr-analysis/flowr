@@ -222,10 +222,10 @@ describe('edge-free base-R qualification (linkBaseR off: no namespaces, no dataf
 		expect(qualifiedName(fn, 'acf')).toBeUndefined();
 	});
 
-	test(label('an explicitly namespaced call is left as written (not re-qualified)', ['library-loading'], ['dataflow']), async() => {
+	test(label('an explicitly namespaced call is returned as written (already qualified)', ['library-loading'], ['dataflow']), async() => {
 		const dir = sigTmpDir('link-sigdb-');
 		const res = await analyze(ts, 'utils::arima(x)', await buildDb(dir));
-		expect(qualifiedName(res, 'arima')).toBeUndefined();   // toQualified yields nothing; the caller keeps utils::arima
+		expect(qualifiedName(res, 'arima')).toBe('utils::arima');
 	});
 
 	test(label('a call-context query with callTargetNamespace finds a bare base call (its real consumer)', ['library-loading'], ['dataflow']), async() => {

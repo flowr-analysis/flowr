@@ -406,7 +406,7 @@ export const GuessDepVersionsQueryDefinition = {
 				const reasons = [evs.some(e => !e.parameter) ? 'new' : undefined, params.length > 0 ? `params: [${formatParams(params)}]` : undefined].filter(Boolean).join(', ');
 				const name = Identifier.getName(Identifier.parse(fn));
 				const url = rdrrDocUrl(dep.package, name, { base: dep.base, cran: !dep.base });
-				const label = (url ? formatter.hyperlink(name, url) : name) + (reasons ? ` (${reasons})` : '');
+				const label = (url ? formatter.hyperlink(name, url, true) : name) + (reasons ? ` (${reasons})` : '');
 				const redundant = !(geVer !== undefined && geVer === tightestGe) && !(leVer !== undefined && leVer === tightestLe);
 				return { bounds: [ge, le].filter(Boolean).join(' '), label, redundant, geVer, leVer };
 			}).sort((a, b) => RVersion.compare(b.geVer, a.geVer) || RVersion.compare(b.leVer, a.leVer));

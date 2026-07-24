@@ -31,7 +31,7 @@ export interface FunctionsToDetectConfig extends MergeableRecord {
 	/**
 	 * The list of function names that should be marked in the given context.
 	 */
-	fns: readonly string[]
+	fns: readonly Identifier[]
 }
 
 

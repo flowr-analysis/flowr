@@ -5,6 +5,7 @@ import { type MergeableRecord,
 } from './util/objects';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { log, LogLevelNames, setLogLevel, type LogLevelName } from './util/log';
 import { getParentDirectory } from './util/files';
 import Joi from 'joi';
@@ -171,6 +172,8 @@ export interface FlowrConfig extends MergeableRecord {
 	readonly project: {
 		/** Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files */
 		resolveUnknownPathsOnDisk: boolean
+		/** Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when `false` (the default) such paths are logged and skipped. */
+		failOnInaccessiblePath?:   boolean
 		/** Overwrite the {@link ProjectKind} flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong. */
 		useProjectType?:           ProjectKind
 		/**
@@ -185,6 +188,26 @@ export interface FlowrConfig extends MergeableRecord {
 		 * {@link FlowrConfig.specializeConfig}.
 		 */
 		implicitSources?:          string[]
+		/** Scoping options for the default project discovery. */
+		discovery?: {
+			/** Collect every file below the project root (greedy) instead of only the files the detected {@link ProjectKind} needs (default `false`). */
+			full?:    boolean
+			/** Per-{@link ProjectKind} include/exclude glob overrides layered on the default scoping. */
+			perKind?: Partial<Record<ProjectKind, { include?: string[]; exclude?: string[] }>>
+			/** Case-insensitive globs that drop matching files from the intelligent discovery, regardless of kind (e.g. `.Renviron` to ignore environment files). */
+			ignore?:  string[]
+		}
+		/** Overrides for the signals flowR uses to classify the {@link ProjectKind}; unset fields keep the built-in defaults. */
+		classification?: {
+			/** DESCRIPTION `Type:` values that mark a shiny app (default `shiny`, `shiny-app`, `shinyapp`). */
+			shinyDescriptionTypes?: string[]
+			/** File names a shiny app is assembled from (default `app.R`, `ui.R`, `server.R`, `global.R`). */
+			shinyEntryFiles?:       string[]
+			/** Regex source evidencing shiny usage in an entry file. */
+			shinyUsagePattern?:     string
+			/** File extensions marking a notebook (default `ipynb`, `rmd`, `qmd`, `rnw`). */
+			notebookExtensions?:    string[]
+		}
 	}
 	/** Linter configuration, usually specialized per {@link ProjectKind} via {@link FlowrConfig.specializeConfig}. */
 	readonly linter: {
@@ -516,7 +539,8 @@ export const FlowrConfig = {
 				showPlugins:         false,
 			},
 			project: {
-				resolveUnknownPathsOnDisk: true
+				resolveUnknownPathsOnDisk: true,
+				failOnInaccessiblePath:    false
 			},
 			linter: {
 				disabledRules: []
@@ -602,9 +626,24 @@ export const FlowrConfig = {
 		}).description('Configuration options for the REPL.'),
 		project: Joi.object({
 			resolveUnknownPathsOnDisk: Joi.boolean().optional().description('Whether to resolve unknown paths loaded by the r project disk when trying to source/analyze files.'),
+			failOnInaccessiblePath:    Joi.boolean().optional().description('Whether a directory that cannot be traversed during file discovery (e.g. due to permissions) aborts the analysis; when false (the default) such paths are logged and skipped.'),
 			basePackages:              Joi.array().items(Joi.string()).optional().description('The packages considered part of R itself (base and recommended); if unset, flowR uses its built-in list.'),
 			implicitSources:           Joi.array().items(Joi.string()).optional().description('Files a framework loads on its own, without any source() call (e.g. global.R in a shiny app), in the order they are loaded; flowR orders the matching project files accordingly and analyzes them as one program. Entries are case-insensitive globs matched against the file path, a plain name matches any file with that name, and entries matching no project file are warned about. Usually set per project kind via specializeConfig.'),
-			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.')
+			useProjectType:            Joi.string().valid(...Object.values(ProjectKind)).optional().description('Overwrite the project kind flowR would otherwise infer from the analyzed files, e.g. when auto-detection guesses wrong.'),
+			discovery:                 Joi.object({
+				full:    Joi.boolean().optional().description('Collect every file below the project root (greedy) instead of only the files the detected project kind needs (default false).'),
+				perKind: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
+					include: Joi.array().items(Joi.string()).optional(),
+					exclude: Joi.array().items(Joi.string()).optional()
+				})).optional().description('Per-kind include/exclude glob overrides layered on the default scoping.'),
+				ignore: Joi.array().items(Joi.string()).optional().description('Case-insensitive globs that drop matching files from the intelligent discovery, regardless of kind (e.g. .Renviron to ignore environment files).')
+			}).optional().description('Scoping options for the default project discovery.'),
+			classification: Joi.object({
+				shinyDescriptionTypes: Joi.array().items(Joi.string()).optional().description('DESCRIPTION Type: values that mark a shiny app.'),
+				shinyEntryFiles:       Joi.array().items(Joi.string()).optional().description('File names a shiny app is assembled from.'),
+				shinyUsagePattern:     Joi.string().optional().description('Regex source evidencing shiny usage in an entry file.'),
+				notebookExtensions:    Joi.array().items(Joi.string()).optional().description('File extensions marking a notebook.')
+			}).optional().description('Overrides for the signals flowR uses to classify the project kind.')
 		}).description('Project specific configuration options.'),
 		linter: Joi.object({
 			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
@@ -794,6 +833,32 @@ export const FlowrConfig = {
 	},
 } as const;
 
+/** Path to the user-global `flowr.json`, read as a fallback when no project config is found. */
+export function globalConfigFilePath(): string {
+	const base = process.env.FLOWR_CONFIG_HOME
+		?? (process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, 'flowr') : undefined)
+		?? (process.env.APPDATA ? path.join(process.env.APPDATA, 'flowr') : undefined)
+		?? path.join(os.homedir?.() || os.tmpdir(), '.config', 'flowr');
+	return path.join(base, 'flowr.json');
+}
+
+/** Persist `dbPath` into `solver.sigdb.additionalPaths` in the global config (creating it, preserving the user's raw JSON); idempotent, returns the file written. */
+export function persistSigDbPathToGlobalConfig(dbPath: string): string {
+	const file = globalConfigFilePath();
+	let raw: object = {};
+	try {
+		raw = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf-8')) as object : {};
+	} catch(e) {
+		log.warn(`Could not read global config ${file}, recreating it: ${(e as Error).message}`);
+	}
+	const current: unknown = objectPath.get(raw, 'solver.sigdb.additionalPaths');
+	const paths = Array.isArray(current) ? current as string[] : [];
+	objectPath.set(raw, 'solver.sigdb.additionalPaths', [...new Set([...paths, dbPath])]);
+	fs.mkdirSync(path.dirname(file), { recursive: true });
+	fs.writeFileSync(file, JSON.stringify(raw, null, '\t') + '\n');
+	return file;
+}
+
 function loadConfigFromFile(configFile: string | undefined, workingDirectory: string): FlowrConfig {
 	if(configFile !== undefined) {
 		if(path.isAbsolute(configFile) && fs.existsSync(configFile)) {
@@ -818,6 +883,15 @@ function loadConfigFromFile(configFile: string | undefined, workingDirectory: st
 			// move up to parent directory
 			searchPath = getParentDirectory(searchPath);
 		} while(fs.existsSync(searchPath));
+	}
+
+	const global = globalConfigFilePath();
+	if(fs.existsSync(global)) {
+		const ret = FlowrConfig.parse(fs.readFileSync(global, { encoding: 'utf-8' }));
+		if(ret) {
+			log.info(`Using global config ${global}`);
+			return ret;
+		}
 	}
 
 	log.info('Using default config');

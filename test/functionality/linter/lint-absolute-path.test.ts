@@ -53,6 +53,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			}]
 		}], { totalConsidered: 1, totalUnknown: 0 }, {
 			useAsFilePath: '/home/me',
+			useAsWd:       '@script',
 			include:       {
 				allStrings: true
 			}
@@ -70,6 +71,7 @@ describe('flowR linter', withTreeSitter(parser => {
 			}]
 		}], { totalConsidered: 1, totalUnknown: 0 }, {
 			useAsFilePath: '/home/me',
+			useAsWd:       '@script',
 			include:       {
 				allStrings: true
 			}

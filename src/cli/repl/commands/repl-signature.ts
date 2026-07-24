@@ -5,6 +5,7 @@ import { executeQueries } from '../../../queries/query';
 import { SignatureQueryDefinition } from '../../../queries/catalog/signature-query/signature-query-format';
 import { asciiSummaryOfQueryResult } from '../../../queries/query-print';
 import { downloadFullSigDb } from '../../../project/sigdb/sigdb-download';
+import { persistSigDbPathToGlobalConfig } from '../../../config';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { signatureQueryCompleter } from '../../../queries/catalog/signature-query/signature-query-executor';
 import type { CommandCompletions } from '../core';
@@ -74,7 +75,12 @@ async function runDownload(output: ReplOutput, analyzer: ReplAnalyzer, rest: rea
 		if(manifest) {
 			await analyzer.context().deps.addDatabaseSource(manifest);
 			analyzer.reset();
-			output.stdout(`Mounted ${bold(manifest, f)} (will be available on next startup from the cache).`);
+			output.stdout(`Mounted ${bold(manifest, f)}.`);
+		}
+		try {
+			output.stdout(`Recorded in ${bold(persistSigDbPathToGlobalConfig(dir), f)}; loads automatically on the next startup.`);
+		} catch(e) {
+			output.stderr(italic(`Could not update global config (${(e as Error).message}); add ${dir} to solver.sigdb.additionalPaths manually.`, f));
 		}
 	} catch(e) {
 		output.stderr(`Download failed: ${(e as Error).message}`);

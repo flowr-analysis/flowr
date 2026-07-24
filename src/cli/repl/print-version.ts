@@ -38,7 +38,7 @@ function sigDbSummaryString(): string {
 	if(entries.length === 0) {
 		return it('no sigdb');
 	}
-	const link = (text: string, file: string): string => it(formatter.hyperlink(text, pathToFileURL(file).href));
+	const link = (text: string, file: string): string => it(formatter.hyperlink(text, pathToFileURL(file).href, true));
 	// if every ref shares the same date, print it once
 	const shared = entries.every(e => e.date !== undefined && e.date === entries[0].date) ? entries[0].date : undefined;
 	const refs = entries.map(e => link(shared === undefined && e.date !== undefined ? `${e.label} ${e.date}` : e.label, e.file));

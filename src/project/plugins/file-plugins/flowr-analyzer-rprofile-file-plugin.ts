@@ -8,26 +8,40 @@ import { platformBasename } from '../../../dataflow/internal/process/functions/c
 
 /** `Rprofile.site` is the site-wide, `.Rprofile` the user/project profile. */
 export const RprofileFilePattern = /^(\.Rprofile|Rprofile\.site)$/i;
+/** `.Renviron` is the user/project environment file, `Renviron.site` the site-wide one. */
+export const RenvironFilePattern = /^(\.Renviron|Renviron\.site)$/i;
 
-/** {@link FlowrAnalyzerLoadingOrderRprofilePlugin} moves the tagged files to the front of the loading order. */
+/**
+ * Marks R startup files: profiles (`.Rprofile`, `Rprofile.site`) are R source, so they get
+ * {@link FileRole.Startup} and {@link FileRole.Source}; environment files (`.Renviron`, `Renviron.site`) hold
+ * `KEY=value` definitions rather than R code, so they only get {@link FileRole.Environment}.
+ * The {@link FlowrAnalyzerLoadingOrderRprofilePlugin} moves the profile files to the front of the loading order.
+ */
 export class FlowrAnalyzerRprofileFilePlugin extends FlowrAnalyzerFilePlugin {
 	public readonly name = 'flowr-analyzer-rprofile-file-plugin';
-	public readonly description = 'Marks R startup profiles (.Rprofile, Rprofile.site).';
-	public readonly version = new SemVer('0.1.0');
-	private readonly pathPattern: RegExp;
+	public readonly description = 'Marks R startup files (.Rprofile, Rprofile.site, .Renviron, Renviron.site).';
+	public readonly version = new SemVer('0.2.0');
+	private readonly profilePattern: RegExp;
+	private readonly environPattern: RegExp;
 
-	constructor(pathPattern: RegExp = RprofileFilePattern) {
+	constructor(profilePattern: RegExp = RprofileFilePattern, environPattern: RegExp = RenvironFilePattern) {
 		super();
-		this.pathPattern = pathPattern;
+		this.profilePattern = profilePattern;
+		this.environPattern = environPattern;
 	}
 
 	public applies(file: PathLike): boolean {
-		return this.pathPattern.test(platformBasename(file.toString()));
+		const base = platformBasename(file.toString());
+		return this.profilePattern.test(base) || this.environPattern.test(base);
 	}
 
 	public process(_ctx: FlowrAnalyzerContext, file: FlowrFileProvider): [FlowrFileProvider, true] {
-		file.assignRole(FileRole.Startup);
-		file.assignRole(FileRole.Source);
+		if(this.environPattern.test(platformBasename(file.path()))) {
+			file.assignRole(FileRole.Environment);
+		} else {
+			file.assignRole(FileRole.Startup);
+			file.assignRole(FileRole.Source);
+		}
 		return [file, true];
 	}
 }

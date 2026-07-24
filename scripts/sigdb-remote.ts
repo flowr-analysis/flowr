@@ -1,6 +1,6 @@
 // Regenerate the committed link file `src/data/sigdb/sigdb.remote.json`: the release tag + repo + each
 // downloadable shard's sha256 + size, which the runtime uses to fetch and verify them.
-//   npm run sync:sigdb [-- --tag=sigdb-v2.11.2 --repo=flowr-analysis/flowr]
+//   npm run gen:sigdb-remote -- --tag=sigdb-v2.11.2 [--repo=flowr-analysis/flowr]
 
 import fs from 'node:fs';
 import path from 'node:path';

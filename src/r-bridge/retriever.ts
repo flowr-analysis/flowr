@@ -8,6 +8,7 @@ import { ErrorMarker } from './init';
 import { ts2r } from './lang-4.x/convert-values';
 import { type NormalizedAst, deterministicCountingIdGenerator } from './lang-4.x/ast/model/processing/decorate';
 import { RawRType } from './lang-4.x/ast/model/type';
+import { log } from '../util/log';
 import fs from 'fs';
 import path from 'path';
 
@@ -108,11 +109,15 @@ export function requestProviderFromFile(): RParseRequestProvider {
 				}
 				// walk the directory and find the first match
 				const dir = path.dirname(p);
+				if(!fs.existsSync(dir)) {
+					return undefined;
+				}
 				const file = path.basename(p);
 				const files = fs.readdirSync(dir);
 				const found = files.find(f => f.toLowerCase() === file.toLowerCase());
 				return found ? path.join(dir, found) : undefined;
-			} catch{
+			} catch(e) {
+				log.warn(`Could not resolve '${p}': ${e instanceof Error ? e.message : String(e)}`);
 				return undefined;
 			}
 		},

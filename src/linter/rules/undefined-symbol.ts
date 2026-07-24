@@ -1,4 +1,5 @@
 import { VertexType, isFunctionCallVertex } from '../../dataflow/graph/vertex';
+import { UnknownSideEffect } from '../../dataflow/graph/graph';
 import { getOriginInDfg } from '../../dataflow/origin/dfg-get-origin';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
@@ -124,14 +125,14 @@ export const UNDEFINED_SYMBOL = {
 
 		// a library() we could not resolve could export any of these symbols; we still report but flag the
 		// findings as low-confidence (`mayBeProvidedByUnresolvedLibrary`) so the severity can be lowered
-		const unknownIds = new Set<string>();
+		const unknownIds = new Set<NodeId>();
 		for(const e of graph.unknownSideEffects) {
-			unknownIds.add(String(typeof e === 'object' ? e.id : e));
+			unknownIds.add(UnknownSideEffect.id(e));
 		}
 		let unresolvedLibraryInScope = false;
 		if(unknownIds.size > 0) {
 			for(const [id, v] of graph.verticesOfType(VertexType.FunctionCall)) {
-				if(LibraryLoadFunctions.has(Identifier.getName(v.name)) && unknownIds.has(String(id))) {
+				if(LibraryLoadFunctions.has(Identifier.getName(v.name)) && unknownIds.has(id)) {
 					unresolvedLibraryInScope = true;
 					break;
 				}

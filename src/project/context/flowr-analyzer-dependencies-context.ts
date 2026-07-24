@@ -3,13 +3,14 @@ import {
 	FlowrAnalyzerPackageVersionsPlugin,
 	type SigDbLoadedInfo
 } from '../plugins/package-version-plugins/flowr-analyzer-package-versions-plugin';
-import type { Package } from '../plugins/package-version-plugins/package';
+import { Package } from '../plugins/package-version-plugins/package';
 import type { PackageSignatureSource } from '../sigdb/reader';
 import { Identifier } from '../../dataflow/environments/identifier';
 import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
 import { isSigDbEnabled } from '../../config';
+import { RRange } from '../../util/r-version';
 
 /**
  * Read-only interface to the {@link FlowrAnalyzerDependenciesContext} for inspecting dependencies without modifying them.
@@ -27,10 +28,14 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Get the dependency with the given name, if it exists.
 	 *
 	 * If the static dependencies have not yet been loaded, this may trigger a resolution step.
-	 * @param name - The name of the dependency to get.
+	 * Pass `version` to pin the resolution to a constraint (an exact version string, or a {@link Range}; uncached;
+	 * `versionOverrides` config still wins, base-R stays tied to the assumed R version); otherwise the version
+	 * comes from the declared constraints.
+	 * @param name    - The name of the dependency to get.
+	 * @param version - Optional version constraint to pin the resolution to (exact version string or a {@link Range}).
 	 * @returns The dependency with the given name, or undefined if it does not exist.
 	 */
-	getDependency(name: string): Readonly<Package> | undefined;
+	getDependency(name: string, version?: string | Range): Readonly<Package> | undefined;
 
 	/**
 	 * The versions a dependency can possibly have, combining everything declared for it (a `DESCRIPTION` range,
@@ -52,6 +57,19 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	 * Metadata of the signature databases the version plugins currently have loaded.
 	 */
 	loadedSignatureDatabases(): SigDbLoadedInfo[];
+
+	/**
+	 * The identifying names (scopes, e.g. `base`/`current`/`history`) of the signature databases currently
+	 * available, deduplicated. A simple view over {@link loadedSignatureDatabases} for checking what a project
+	 * can resolve against; empty when the signature database is disabled or none is loaded.
+	 */
+	availableSignatureDatabases(): readonly string[];
+
+	/**
+	 * Whether at least one signature database is available (i.e., {@link availableSignatureDatabases} is non-empty).
+	 * Cheaper than materializing the list when only the presence matters.
+	 */
+	hasSignatureDatabase(): boolean;
 
 	/**
 	 * The names of known packages that export `name` (from the version plugins' signature databases). Used to
@@ -104,6 +122,14 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			return [];
 		}
 		return this.plugins.flatMap(p => p.loadedDatabases());
+	}
+
+	public availableSignatureDatabases(): readonly string[] {
+		return [...new Set(this.loadedSignatureDatabases().map(d => d.scope))];
+	}
+
+	public hasSignatureDatabase(): boolean {
+		return isSigDbEnabled(this.ctx.config) && this.plugins.some(p => p.loadedDatabases().length > 0);
 	}
 
 	public packagesExporting(name: string): readonly string[] {
@@ -214,9 +240,12 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 		return this;
 	}
 
-	public getDependency(name: string): Package | undefined {
+	public getDependency(name: string, version?: string | Range): Package | undefined {
 		if(!this.staticsLoaded) {
 			this.resolveStaticDependencies();
+		}
+		if(version !== undefined) {
+			return this.resolvePinnedDependency(name, typeof version === 'string' ? RRange.parse('=' + version) : version);
 		}
 		const existing = this.dependencies.get(name);
 		// a package already carrying exports is complete; a version-only one is still enriched below
@@ -234,6 +263,18 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolvedMisses.add(name);
 		}
 		return existing;
+	}
+
+	/** Resolve `name` constrained to `range` via the plugins (uncached); falls back to the cached dependency. */
+	private resolvePinnedDependency(name: string, range: Range | undefined): Package | undefined {
+		const pin = new Package({ name, derivedVersion: range });
+		for(const resolve of this.lazyResolvers) {
+			const resolved = resolve(name, pin);
+			if(resolved) {
+				return resolved;
+			}
+		}
+		return this.getDependency(name);
 	}
 
 	public inferredVersion(name: string): Range | undefined {

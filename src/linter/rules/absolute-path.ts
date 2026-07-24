@@ -34,7 +34,7 @@ export interface AbsoluteFilePathResult extends LintingResult {
 	filePath: string,
 }
 
-type SupportedWd = '@script' | '@home' | string;
+type SupportedWd = '@script' | '@home' | '@project' | string;
 
 export interface AbsoluteFilePathConfig extends MergeableRecord {
 	/** Include paths that are built by functions, e.g., `file.path()` */
@@ -52,8 +52,8 @@ export interface AbsoluteFilePathConfig extends MergeableRecord {
 	 */
 	additionalPathFunctions: FunctionInfo[]
 	/**
-	 * Which path should be considered to be the origin for relative paths.
-	 * This is only relevant with quickfixes. In the future we may be sensitive to setwd etc.
+	 * Which path the relative-path quick fix is built against: `@project` (project root, falling back to the
+	 * script when there is no root), `@script`, `@home`, or a literal directory.
 	 */
 	useAsWd:                 SupportedWd
 	/** Automatically ignore URLs (http/https/ftp) so they are not reported as absolute paths. */
@@ -65,13 +65,13 @@ export interface AbsoluteFilePathMetadata extends MergeableRecord {
 	totalUnknown:    number
 }
 
-function inferWd(file: string | undefined, wd: SupportedWd): string | undefined {
+function inferWd(file: string | undefined, wd: SupportedWd, ctx: ReadOnlyFlowrAnalyzerContext): string | undefined {
 	if(wd === '@script') {
-		// we can use the script path as the working directory
 		return file;
 	} else if(wd === '@home') {
-		// we can use the home directory as the working directory
 		return process.env.HOME || process.env.USERPROFILE || '';
+	} else if(wd === '@project') {
+		return ctx.files.root() ?? file;
 	} else {
 		return wd;
 	}
@@ -161,11 +161,12 @@ export const ABSOLUTE_PATH = {
 		const regex = config.absolutePathRegex ? new RegExp(config.absolutePathRegex) : undefined;
 		const normalize = await data.normalize();
 		const dataflow = await data.dataflow();
+		const ctx = data.inspectContext();
 		return {
 			results: elements.getElements().flatMap(element => {
 				metadata.totalConsidered++;
 				const node = element.node;
-				const wd = inferWd(node.info.file, config.useAsWd);
+				const wd = inferWd(node.info.file, config.useAsWd, ctx);
 				if(RString.is(node)) {
 					const resolved = resolvePathForAbsoluteCheck(node.content.str, config.ignoreUrls);
 					if(resolved !== undefined && resolved.length >= 3 && isAbsolutePath(resolved, regex)) {
@@ -245,7 +246,7 @@ export const ABSOLUTE_PATH = {
 			},
 			additionalPathFunctions: [],
 			absolutePathRegex:       undefined,
-			useAsWd:                 '@script',
+			useAsWd:                 '@project',
 			ignoreUrls:              true
 		}
 	}

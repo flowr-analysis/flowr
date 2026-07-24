@@ -674,6 +674,9 @@ export async function executeSignatureQuery({ analyzer }: BasicQueryData, querie
 				return { ...meta(), message: versionNotFoundMessage(q.package, `no release of '${q.package}' matches '${q.version}'.`, avail, owning[0].isBaseR(q.package)) };
 			}
 		}
+		if(found.matchCount === 0 && q.function !== undefined && !hasGlob(q.function)) {
+			return { ...meta(), ...found, message: `No function named exactly '${q.function}'. Try a wildcard like '*${q.function}*'.` };
+		}
 		return { ...meta(), ...found };
 	}
 

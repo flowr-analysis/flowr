@@ -30,9 +30,16 @@ describe('Rprofile-file', function() {
 		assert.sameMembers(ctx.files.getFilesByRole(FileRole.Source).map(f => f.path()), ['.Rprofile', 'Rprofile.site']);
 	});
 
+	test('.Renviron and Renviron.site are tagged Environment but not Source', () => {
+		const ctx = ctxWith('.Renviron', 'Renviron.site');
+		assert.sameMembers(ctx.files.getFilesByRole(FileRole.Environment).map(f => f.path()), ['.Renviron', 'Renviron.site']);
+		assert.lengthOf(ctx.files.getFilesByRole(FileRole.Source), 0);
+	});
+
 	test('unrelated files are not tagged', () => {
 		const ctx = ctxWith('script.R', 'profile.R', 'DESCRIPTION');
 		assert.lengthOf(ctx.files.getFilesByRole(FileRole.Startup), 0);
+		assert.lengthOf(ctx.files.getFilesByRole(FileRole.Environment), 0);
 	});
 
 	describe('within a discovered project', () => {
@@ -41,12 +48,19 @@ describe('Rprofile-file', function() {
 			root = fs.mkdtempSync(path.join(os.tmpdir(), 'flowr-rprofile-'));
 			fs.mkdirSync(path.join(root, 'R'));
 			fs.writeFileSync(path.join(root, '.Rprofile'), 'options(stringsAsFactors = FALSE)');
+			fs.writeFileSync(path.join(root, '.Renviron'), 'API_KEY=secret');
 			fs.writeFileSync(path.join(root, 'R', 'main.R'), 'x <- 1');
 		});
 		afterAll(() => fs.rmSync(root, { recursive: true, force: true }));
 
-		async function analyze() {
-			const analyzer = await new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor()).build();
+		async function analyze(ignore?: string[]) {
+			const builder = new FlowrAnalyzerBuilder().setParser(new TreeSitterExecutor());
+			if(ignore) {
+				builder.amendConfig(c => {
+					c.project.discovery = { ignore };
+				});
+			}
+			const analyzer = await builder.build();
 			/* seed another file first so the profile is not already in front */
 			analyzer.addRequest({ request: 'file', content: path.join(root, 'R', 'main.R') });
 			analyzer.addRequest({ request: 'project', content: root });
@@ -56,6 +70,16 @@ describe('Rprofile-file', function() {
 		test('a discovered .Rprofile is tagged, though parse requests skip the file plugins', async() => {
 			const ctx = await analyze();
 			assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Startup).map(f => path.basename(f.path())), ['.Rprofile']);
+		});
+
+		test('a discovered .Renviron is tagged Environment', async() => {
+			const ctx = await analyze();
+			assert.deepStrictEqual(ctx.files.getFilesByRole(FileRole.Environment).map(f => path.basename(f.path())), ['.Renviron']);
+		});
+
+		test('project.discovery.ignore drops the .Renviron from discovery', async() => {
+			const ctx = await analyze(['.Renviron']);
+			assert.lengthOf(ctx.files.getFilesByRole(FileRole.Environment), 0);
 		});
 
 		test('a discovered .Rprofile is loaded first', async() => {

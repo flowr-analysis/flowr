@@ -244,8 +244,9 @@ export const DEPRECATED_FUNCTIONS = {
  */
 function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, context: ReadOnlyFlowrAnalyzerContext, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
+	const derivedVersion = context.deps.getDependency(info.package)?.deriveVersion();
 
-	// If when args is provided, mark the function as deprecated (and its argument) if the respective argument is present
+	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
 		for(const deprecatedArgInfo of info.whenArgs) {
 			const vertex = dataflow.getVertex(candidate.node.info.id);
@@ -254,6 +255,7 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 			}
 
 			// Check if function call has deprecated argument
+			// TODO: Use pMatch
 			const arg = vertex.args.find((arg, idx) =>
 				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
 				FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
@@ -263,23 +265,22 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 				continue;
 			}
 
-			// Check if the argument is deprecated in the used package version (if set)
+			// If `sinceVersion` is set, check package version before marking argument as deprecated
 			let certainty = LintingResultCertainty.Certain;
 			if(deprecatedArgInfo.sinceVersion) {
-				const derivedVersion = context.deps.getDependency(info.package)?.derivedVersion;
-				if(derivedVersion === undefined) {
-					// If the version can't be resolved, mark as uncertain
+				if(derivedVersion == undefined) {
 					certainty = LintingResultCertainty.Uncertain;
-				} else {
-					// Don't mark as deprecated if the version constraint is not satisfied
-					if(!deprecatedArgInfo.sinceVersion.intersects(derivedVersion)) {
-						continue;
-					}
+				} else if(!deprecatedArgInfo.sinceVersion.intersects(derivedVersion)) {
+					continue;
 				}
 			}
 
-			// TODO: ifValue check
+			// If `ifValue` is set, check argument value before marking argument as deprecate
+			if(deprecatedArgInfo.ifValue) {
+				// TODO: do
+			}
 
+			// If all checks passed, mark as deprecated
 			results.push({
 				type:         'deprecated-argument',
 				certainty:    certainty,
@@ -294,19 +295,21 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 		}
 	}
 
-	// Otherwise, check version and deprecate entire function in case of version range match
+	// Deprecated Function: If `sinceVersion` is set, check package version before marking as deprecated
 	if(info.sinceVersion) {
-		// TODO: Version Check
-		results.push({
-			type:         'deprecated-function',
-			certainty:    LintingResultCertainty.Certain,
-			involvedId:   candidate.node.info.id,
-			loc:          candidate.sourceLocation,
-			function:     candidate.target,
-			state:        info.state,
-			replacedBy:   info.replacedBy,
-			sinceVersion: info.sinceVersion
-		} satisfies DeprecatedFunctionResult);
+		const isDeprecatedVersion = derivedVersion ? info.sinceVersion.intersects(derivedVersion) : undefined;
+		if(isDeprecatedVersion === true || isDeprecatedVersion === undefined) {
+			results.push({
+				type:         'deprecated-function',
+				certainty:    isDeprecatedVersion === undefined ? LintingResultCertainty.Uncertain : LintingResultCertainty.Certain,
+				involvedId:   candidate.node.info.id,
+				loc:          candidate.sourceLocation,
+				function:     candidate.target,
+				state:        info.state,
+				replacedBy:   info.replacedBy,
+				sinceVersion: info.sinceVersion
+			} satisfies DeprecatedFunctionResult);
+		}
 	}
 
 	return results;

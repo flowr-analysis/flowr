@@ -122,46 +122,108 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			);
 		});
 
-		describe('only detect deprecated args when present and version constraint is satisfied', async() => {
+		describe('only detect deprecated fn/args when present and version constraint is satisfied', async() => {
 			const b = new SigDbBuilder();
-			b.addVersion('testPkg', '1.0.0', ver([expFn('testFn')]));
+			b.addVersion('testPkg', '2.0.0', ver([expFn('testFn')]));
 			const db = await writeAndOpen(sigTmpDir('dep-lint'), b.build({ date: '2026-05-23', generated: 0 }));
 
-			assertLinter('unresolved version should make result uncertain', parser, 'testFn(badArg=5)',
-				'deprecated-functions',
-				[{
-					type:         'deprecated-argument',
-					certainty:    LintingResultCertainty.Uncertain,
-					arg:          'badArg',
-					replacedBy:   'foo',
-					function:     'testFn',
-					state:        DeprecationState.Deprecated,
-					sinceVersion: RRange.parse('>=2.0.0'),
-					loc:          [1, 8, 1, 13]
-				}],
-				{ hardcoded: 1, sigdb: 0 },
-				{ always: [], conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=2.0.0') }] } } }
-			);
+			describe('deprecated arg', () => {
+				assertLinter('unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn(badArg=5)',
+					'deprecated-functions',
+					[{
+						type:         'deprecated-argument',
+						certainty:    LintingResultCertainty.Uncertain,
+						arg:          'badArg',
+						replacedBy:   'foo',
+						function:     'testFn',
+						state:        DeprecationState.Deprecated,
+						sinceVersion: RRange.parse('>=1.0.0'),
+						loc:          [2, 8, 2, 13]
+					}],
+					{ hardcoded: 1, sigdb: 0 },
+					{ always: [], conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } } }
+				);
 
-			assertLinter('version resolved and constraint satisfied', parser, 'testFn(badArg=5)',
-				'deprecated-functions',
-				[{
-					type:         'deprecated-argument',
-					certainty:    LintingResultCertainty.Certain,
-					arg:          'badArg',
-					replacedBy:   'foo',
-					function:     'testFn',
-					state:        DeprecationState.Deprecated,
-					sinceVersion: RRange.parse('>=2.0.0'),
-					loc:          [1, 8, 1, 13]
-				}],
-				{ hardcoded: 1, sigdb: 0 },
-				{
-					always:        [],
-					conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=2.0.0') }] } },
-					sigDb:         db
-				}
-			);
+				assertLinter('version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
+					'deprecated-functions',
+					[{
+						type:         'deprecated-argument',
+						certainty:    LintingResultCertainty.Certain,
+						arg:          'badArg',
+						replacedBy:   'foo',
+						function:     'testFn',
+						state:        DeprecationState.Deprecated,
+						sinceVersion: RRange.parse('>=1.0.0'),
+						loc:          [2, 8, 2, 13]
+					}],
+					{ hardcoded: 1, sigdb: 0 },
+					{
+						always:        [],
+						conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=1.0.0') }] } },
+						sigDb:         db
+					}
+				);
+
+				assertLinter('version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn(badArg=5)',
+					'deprecated-functions',
+					[],
+					{ hardcoded: 0, sigdb: 0 },
+					{
+						always:        [],
+						conditionally: { 'testFn': { package: 'testPkg', whenArgs: [{ argName: 'badArg', state: DeprecationState.Deprecated, replacedBy: 'foo', sinceVersion: RRange.parse('>=3.0.0') }] } },
+						sigDb:         db
+					}
+				);
+			});
+
+			describe('deprecated function', () => {
+				describe('deprecated arg', () => {
+					assertLinter('unresolved version should make result uncertain', parser, 'library(testPkg)\ntestFn()',
+						'deprecated-functions',
+						[{
+							type:         'deprecated-function',
+							certainty:    LintingResultCertainty.Uncertain,
+							function:     'testFn',
+							state:        DeprecationState.Defunct,
+							sinceVersion: RRange.parse('>=1.0.0'),
+							replacedBy:   undefined,
+							loc:          [2, 1, 2, 8]
+						}],
+						{ hardcoded: 1, sigdb: 0 },
+						{ always: [], conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } } }
+					);
+
+					assertLinter('version resolved and constraint satisfied', parser, 'library(testPkg)\ntestFn()',
+						'deprecated-functions',
+						[{
+							type:         'deprecated-function',
+							certainty:    LintingResultCertainty.Certain,
+							function:     'testFn',
+							state:        DeprecationState.Defunct,
+							sinceVersion: RRange.parse('>=1.0.0'),
+							replacedBy:   undefined,
+							loc:          [2, 1, 2, 8]
+						}],
+						{ hardcoded: 1, sigdb: 0 },
+						{
+							always:        [],
+							conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>=1.0.0'), state: DeprecationState.Defunct } },
+							sigDb:         db
+						}
+					);
+
+					assertLinter('version resolved and constraint not satisfied', parser, 'library(testPkg)\ntestFn()',
+						'deprecated-functions',
+						[],
+						{ hardcoded: 1, sigdb: 0 },
+						{
+							always:        [],
+							conditionally: { 'testFn': { package: 'testPkg', sinceVersion: RRange.parse('>= 3.0.0'), state: DeprecationState.Defunct } },
+							sigDb:         db
+						}
+					);
+				});
+			});
 		});
 
 		describe('a call the signature database marks deprecated is flagged even outside the hardcoded list', () => {

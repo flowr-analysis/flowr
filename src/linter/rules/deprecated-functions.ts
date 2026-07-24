@@ -18,7 +18,9 @@ import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters'
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Dataflow } from '../../dataflow/graph/df-helper';
-import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
+import type { FlowrAnalyzer } from '../../project/flowr-analyzer';
+import { hasArgumentValue } from './function-finder-util';
+import { Ternary } from '../../util/logic';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
@@ -157,7 +159,7 @@ export const DEPRECATED_FUNCTIONS = {
 			const info = config.conditionally[candidate.target];
 			if(isNotUndefined(info)) {
 				// Check functions from DeprecatedFunctionsConfig.conditionally
-				return deprecateFunctionConditionally(candidate, graph, idMap, data.inspectContext(), info);
+				return deprecateFunctionConditionally(candidate, graph, idMap, data, info);
 			} else {
 				// Check functions from DeprecatedFunctionsConfig.always
 				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
@@ -242,20 +244,20 @@ export const DEPRECATED_FUNCTIONS = {
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, context: ReadOnlyFlowrAnalyzerContext, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, analyzer: FlowrAnalyzer, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
-	const derivedVersion = context.deps.getDependency(info.package)?.deriveVersion();
+	const derivedVersion = analyzer.inspectContext().deps.getDependency(info.package)?.deriveVersion();
 
 	// Deprecated Argument: If `whenArgs` is provided, only mark deprecated arguments
 	if(info.whenArgs) {
+		const vertex = dataflow.getVertex(candidate.node.info.id);
+		if(vertex === undefined || !isFunctionCallVertex(vertex)) {
+			return results;
+		}
+
 		for(const deprecatedArgInfo of info.whenArgs) {
-			const vertex = dataflow.getVertex(candidate.node.info.id);
-			if(vertex === undefined || !isFunctionCallVertex(vertex)) {
-				continue;
-			}
 
 			// Check if function call has deprecated argument
-			// TODO: Use pMatch
 			const arg = vertex.args.find((arg, idx) =>
 				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
 				FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
@@ -277,7 +279,12 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 
 			// If `ifValue` is set, check argument value before marking argument as deprecate
 			if(deprecatedArgInfo.ifValue) {
-				// TODO: do
+				const hasArg = hasArgumentValue(deprecatedArgInfo.ifValue, vertex, analyzer, dataflow, true, deprecatedArgInfo.argName, deprecatedArgInfo.argIdx);
+				if(hasArg === Ternary.Never) {
+					continue;
+				} else if(hasArg === Ternary.Maybe) {
+					certainty = LintingResultCertainty.Uncertain;
+				}
 			}
 
 			// If all checks passed, mark as deprecated

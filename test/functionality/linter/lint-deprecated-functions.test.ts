@@ -97,6 +97,31 @@ dplyr::all_equal(first, second)`, 'deprecated-functions',
 			);
 		});
 
+		describe('only detect deprecated arg when value is set', () => {
+			assertLinter('deprecated arg but value not set', parser, 'testFn(badArg="hehe")',
+				'deprecated-functions',
+				[],
+				{ hardcoded: 0, sigdb: 0 },
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
+			);
+
+			assertLinter('deprecated arg present', parser, 'testFn(badArg="not hehe")',
+				'deprecated-functions',
+				[{
+					type:         'deprecated-argument',
+					certainty:    LintingResultCertainty.Certain,
+					arg:          'badArg',
+					replacedBy:   undefined,
+					function:     'testFn',
+					state:        DeprecationState.Deprecated,
+					sinceVersion: undefined,
+					loc:          [1, 8, 1, 13]
+				}],
+				{ hardcoded: 1, sigdb: 0 },
+				{ always: [], conditionally: { 'testFn': { whenArgs: [{ argName: 'badArg', ifValue: 'not hehe', state: DeprecationState.Deprecated }] } } }
+			);
+		});
+
 		describe('only detect deprecated args when present', () => {
 			assertLinter('deprecated arg but not present', parser, 'testFn()',
 				'deprecated-functions',

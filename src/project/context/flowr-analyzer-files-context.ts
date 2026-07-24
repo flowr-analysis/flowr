@@ -236,7 +236,8 @@ export class FlowrAnalyzerFilesContext extends AbstractFlowrAnalyzerContext<RPro
 				this.reset();
 				break;
 			case InvalidationEventType.SingleFileInvalidate:
-				// nothing to do
+				// only the content of a known file changed, so the file set stays valid -> nothing to do.
+				// revisit once we add dedicated FileAdded / FileRemoved events.
 				break;
 			default:
 				assertUnreachable(type);

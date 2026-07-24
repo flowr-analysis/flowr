@@ -29,9 +29,15 @@ type AnalyzerPipeline<Parser extends KnownParser> = Parser extends TreeSitterExe
         typeof TREE_SITTER_DATAFLOW_PIPELINE : typeof DEFAULT_DATAFLOW_PIPELINE;
 type AnalyzerPipelineExecutor<Parser extends KnownParser> = PipelineExecutor<AnalyzerPipeline<Parser>>;
 
-/* for whatever reason moving the ternary in with `AnalyzerPipeline` just breaks the type system */
+/* for whatever reason, moving the ternary in with `AnalyzerPipeline` just breaks the type system */
 export type AnalyzerCacheType<Parser extends KnownParser> = Parser extends TreeSitterExecutor ? Partial<PipelineOutput<typeof TREE_SITTER_DATAFLOW_PIPELINE>>
 	: Partial<PipelineOutput<typeof DEFAULT_DATAFLOW_PIPELINE>>;
+
+function isTreeSitterParse(parse: unknown): parse is ParseStepOutput<Tree> {
+	return typeof parse === 'object' && parse !== null && 'files' in parse
+		&& (parse as ParseStepOutput<unknown>).files.every(
+			f => typeof f.parsed === 'object' && f.parsed !== null && 'rootNode' in f.parsed);
+}
 
 /**
  * This provides the full analyzer caching layer, please avoid using this directly
@@ -119,10 +125,8 @@ export class FlowrAnalyzerCache<Parser extends KnownParser> extends FlowrCache<A
 		}
 
 		const parse = this.peekParse();
-		if(parse !== undefined) {
-			this.args.context.inc.storeOldParseResults(
-				parse as ParseStepOutput<Tree> // cast needed because of TypeScript's limited narrowing capabilities
-			);
+		if(isTreeSitterParse(parse)) {
+			this.args.context.inc.storeOldParseResults(parse);
 		}
 	}
 

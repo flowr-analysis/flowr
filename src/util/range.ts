@@ -240,21 +240,44 @@ export const SourceRange = {
 	 * @see {@link SourceRange.nodesContaining} which this usually narrows down
 	 */
 	innermostNodes<OtherInfo>(this: void, nodes: readonly RNodeWithParent<OtherInfo>[], treatChildAsInner = true): RNodeWithParent<OtherInfo>[] {
-		if(nodes.length <= 1) {
-			return [...nodes];
-		}
-		return nodes.filter(node => {
+		const result: RNodeWithParent<OtherInfo>[] = [];
+
+		for(const node of nodes) {
 			const range = SourceRange.fromNode(node);
-			return range !== undefined && !nodes.some(other => {
+			if(!range) {
+				continue;
+			}
+
+			let inner = false;
+
+			for(const other of nodes) {
 				if(other === node) {
-					return false;
-				} else if(treatChildAsInner && other.info.parent === node.info.id) {
-					return true;
+					continue;
 				}
+
 				const otherRange = SourceRange.fromNode(other);
-				return otherRange !== undefined && SourceRange.isStrictSubsetOf(otherRange, range);
-			});
-		});
+				if(!otherRange) {
+					continue;
+				}
+
+				if(SourceRange.isStrictSubsetOf(otherRange, range) ||
+					(
+						treatChildAsInner &&
+						other.info.parent === node.info.id &&
+						SourceRange.equals(otherRange, range)
+					)
+				) {
+					inner = true;
+					break;
+				}
+			}
+
+			if(!inner) {
+				result.push(node);
+			}
+		}
+
+		return result;
 	}
 } as const;
 

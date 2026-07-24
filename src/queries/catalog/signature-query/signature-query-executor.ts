@@ -176,13 +176,13 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	}
 	const exports = src.lookup(pkg, version) ?? src.lookup(pkg);
 	const view = decodedToView(pkg, fn, exports?.version, { cran: exports?.cran ?? false, base: src.isBaseR(pkg) });
-	// an S3 generic's methods are the same-package `<generic>.<class>` functions that are themselves registered
-	// S3 methods; the reverse links a registered method back to the generic it dispatches for
+	// an S3 generic's methods are the `<generic>.<class>` functions that resolve back to it (see s3MethodParts);
+	// the reverse links a method to the generic it dispatches for
 	const methods = (fns ?? [])
-		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && isS3Method(f))
+		.filter(f => f.name !== fn.name && f.name.startsWith(fn.name + '.') && s3MethodParts(src, pkg, fns, f)?.generic === fn.name)
 		.map(f => f.name)
 		.sort();
-	const s3method = isS3Method(fn) ? s3MethodParts(src, pkg, fns, fn.name) : undefined;
+	const s3method = s3MethodParts(src, pkg, fns, fn);
 	return {
 		...view,
 		...(methods.length > 0 ? { s3generic: true, s3methods: methods } : {}),
@@ -190,28 +190,62 @@ export function signatureFunctionInfo(src: PackageSignatureSource, pkg: string, 
 	};
 }
 
-/** whether a function is a registered S3 method (the `s3-method` property, set from its NAMESPACE at build time) */
-function isS3Method(fn: DecodedFunction): boolean {
-	return fn.props.includes('s3-method');
+/** whether `fn` is an S3 generic: its body dispatches via `UseMethod`, so `<name>.<class>` functions can be its methods */
+function dispatchesGeneric(fn: DecodedFunction): boolean {
+	return fn.callees.includes('UseMethod');
+}
+
+/** the function named `generic`, resolved in `pkg` first, then base R, with the package it was found in */
+function resolveGeneric(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, generic: string): { fn: DecodedFunction, package: string } | undefined {
+	const local = fns?.find(f => f.name === generic);
+	if(local) {
+		return { fn: local, package: pkg };
+	}
+	for(const base of baseRPackages()) {
+		if(base !== pkg) {
+			const fn = src.functionByName(base, generic);
+			if(fn) {
+				return { fn, package: base };
+			}
+		}
+	}
+	return undefined;
+}
+
+/** whether `cls` is a class a loaded package registers S3 methods for (the method's own package, or base R) */
+function isKnownS3Class(src: PackageSignatureSource, pkg: string, cls: string): boolean {
+	if(src.lookup(pkg)?.s3Classes.includes(cls)) {
+		return true;
+	}
+	for(const base of baseRPackages()) {
+		if(base !== pkg && src.lookup(base)?.s3Classes.includes(cls)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /**
- * The generic and dispatch class of a registered S3 method named `generic.class`: the longest dotted prefix that
- * names a function in the same package or base R is the generic, the remainder is the class, and the owning package
- * is returned too (`print.rema` gives `print` in `base`, class `rema`). Only ever called for names flagged
- * {@link isS3Method}, so ordinary dotted names like `data.frame` never reach here and are not mistaken for methods.
+ * The generic and dispatch class of an S3 method named `generic.class`, or `undefined` when `fn` is not a method.
+ * The longest dotted prefix that names the generic wins (`as.data.frame.matrix` splits at `as.data.frame`, not `as`).
+ *
+ * A split is accepted when the crawled `s3-method` property is set -- authoritative, present for CRAN methods and
+ * for base methods whose generic lives in the same package. When it is absent (a base method for a generic owned by
+ * ANOTHER package, e.g. `print.acf`: the `print` generic is in `base`, so `stats` never recorded the flag) the split
+ * is confirmed against the live database instead: the prefix must name a *dispatching* generic (`UseMethod` in its
+ * callees) AND the suffix must name a *registered* S3 class. Both guards are required -- the generic check alone
+ * would take `data.frame` (`data` is no generic); the class check alone would take `t.test` (`t` dispatches, but
+ * `test` is no class).
  */
-function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, name: string): { generic: string, class: string, package: string } | undefined {
-	const bases = baseRPackages();
+function s3MethodParts(src: PackageSignatureSource, pkg: string, fns: readonly DecodedFunction[] | undefined, fn: DecodedFunction): { generic: string, class: string, package: string } | undefined {
+	const name = fn.name;
+	const flagged = fn.props.includes('s3-method');
 	for(let dot = name.lastIndexOf('.'); dot > 0; dot = name.lastIndexOf('.', dot - 1)) {
 		const generic = name.slice(0, dot);
-		if(fns?.some(f => f.name === generic)) {
-			return { generic, class: name.slice(dot + 1), package: pkg };
-		}
-		for(const base of bases) {
-			if(base !== pkg && src.functionByName(base, generic) !== undefined) {
-				return { generic, class: name.slice(dot + 1), package: base };
-			}
+		const cls = name.slice(dot + 1);
+		const g = resolveGeneric(src, pkg, fns, generic);
+		if(g && (flagged || (dispatchesGeneric(g.fn) && isKnownS3Class(src, pkg, cls)))) {
+			return { generic, class: cls, package: g.package };
 		}
 	}
 	return undefined;

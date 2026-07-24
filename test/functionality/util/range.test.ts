@@ -1,6 +1,10 @@
 import { SourceRange } from '../../../src/util/range';
 import { allPermutations } from '../../../src/util/collections/arrays';
 import { describe, assert, test } from 'vitest';
+import { SlicingCriterion } from '../../../src/slicing/criterion/parse';
+import { FlowrAnalyzerBuilder } from '../../../src/project/flowr-analyzer-builder';
+import { withTreeSitter } from '../_helper/shell';
+import { isNotUndefined } from '../../../src/util/assert';
 
 describe('Range', () => {
 	describe('SourceRange.from', () => {
@@ -238,4 +242,30 @@ describe('Range', () => {
 			);
 		});
 	});
+
+	describe('innermost', withTreeSitter(ts => {
+		function check(code: string, provide: readonly SlicingCriterion[], expect: readonly SlicingCriterion[], treatChildAsInner = true) {
+			test(code, async() => {
+				const a = await new FlowrAnalyzerBuilder().setParser(ts).build();
+				a.addRequest(code);
+				const nast = await a.normalize();
+				const [provNodes, expectNodes] = [provide, expect].map(e =>
+					e.map(p => nast.idMap.get(SlicingCriterion.parse(p, nast.idMap)))
+						.filter(isNotUndefined)
+				);
+				const received = SourceRange.innermostNodes(provNodes, treatChildAsInner).map(n => n.info.id).sort();
+				const expected = expectNodes.map(n => n.info.id).sort();
+				assert.deepStrictEqual(received, expected);
+			});
+		}
+
+		check('f(x <- 2)', ['1@f', '1@<-'], ['1@<-']);
+		check('f(x <- 2)', ['1@f', '1@<-'], ['1@<-'], false);
+		check('f(x <- 2)', ['1@f', '1@<-', '1@x'], ['1@x']);
+		check('f(x <- 2)', ['1@f', '1@<-', '1@x'], ['1@x'], false);
+		check(`result <- data %>%
+    filter(age > 30)`, ['1@<-', '1@%>%', '2@filter'], ['1@%>%', '2@filter']);
+		check(`result <- data %>%
+    filter(age > 30)`, ['1@<-', '1@%>%', '2@filter'], ['1@%>%', '2@filter'], false);
+	}));
 });

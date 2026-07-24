@@ -1,0 +1,930 @@
+import type { FlowrCapabilities } from './types';
+import { FlowrGithubBaseRef } from '../../documentation/doc-util/doc-files';
+import { codeBlock } from '../../documentation/doc-util/doc-code';
+import { printDfGraphForCode } from '../../documentation/doc-util/doc-dfg';
+
+const Joiner = '/';
+const AdvancedR = (subname: string) => 'Advanced R' + Joiner + subname;
+const RLang = (subname: string) => 'R Definition' + Joiner + subname;
+const Issue = (num: number) => `${FlowrGithubBaseRef}/flowr/issues/${num}`;
+const LinkTo = (id: string, label = id) => `[${label}](#${id})`;
+
+export const flowrCapabilities = {
+	name:         'Capabilities of flowR',
+	description:  'This is an evolving representation of what started with #636 to formulate capabilities in a structured format.',
+	version:      '0.0.2',
+	capabilities: [
+		{
+			name:        'Names and Identifiers',
+			id:          'names-and-identifiers',
+			description: 'The recognition of syntactical and non-syntactical names, including their resolutions to corresponding definitions.',
+			example:     async parser => {
+				const code = '"f" <- function(x) { get("x") } \n`y x` <- 2\nprint(`y x` + f(3))';
+				return `
+Consider the following R code:
+${codeBlock('r', code)}
+Identifiers of interest are:
+
+- The symbols \`x\` (${LinkTo('name-normal')}), \`f\` (${LinkTo('name-quoted')}), and \`\` \`y x\` \`\` (${LinkTo('name-escaped')}).
+- The function calls \`<-\`, \`function\`, \`{\`, \`get\`, \`+\`, and \`print\` (${LinkTo('function-calls')}, all given with ${LinkTo('name-normal')}).
+  Especially \`{\` is identified as a ${LinkTo('grouping')} of the ${LinkTo('function-definitions', 'function-definitions\'')} body.
+- The quoted name created by a function call \`get\` (${LinkTo('name-created')}).
+
+Besides the parameter \`x\`, which is resolved in its ${LinkTo('lexicographic-scope')}, the other identifiers are resolved in the ${LinkTo('global-scope')}.
+
+${await printDfGraphForCode(parser, code, { simplified: true })}
+			`;
+			},
+			capabilities: [
+				{
+					name:         'Form',
+					id:           'form',
+					capabilities: [
+						{
+							name:        'Normal',
+							id:          'name-normal',
+							supported:   'fully',
+							description: '_Recognize symbol uses like `a`, `plot`, ..._  (i.e., "normal variables or function calls").',
+							url:         [
+								{ name: AdvancedR('Bindings'), href: 'https://adv-r.hadley.nz/names-values.html#binding-basics' },
+								{ name: RLang('Identifiers'), href: 'https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Identifiers-1' }
+							]
+						},
+						{
+							name:        'Quoted',
+							id:          'name-quoted',
+							supported:   'fully',
+							description: "_Recognize `\"a\"`, `'plot'`, ..._ In general, R allows to envelop names in quotations to allow for special characters such as spaces in variable names. However, this only works in the context of definitions. To access these names as variables, one has to either use function such as `get` or escape the name with backticks.",
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
+						},
+						{
+							name:        'Escaped',
+							id:          'name-escaped',
+							supported:   'fully',
+							description: '_Recognize `` `a` ``, `` `plot` ``, ..._',
+							url:         [
+								{ name: AdvancedR('Non-Syntactic Names'), href: 'https://adv-r.hadley.nz/names-values.html#non-syntactic' }
+							]
+						},
+						{
+							name:        'Created',
+							id:          'name-created',
+							supported:   'partially',
+							description: '_Recognize functions which resolve strings as identifiers, such as `get`, ..._',
+							url:         [
+								{ name: 'flowr#633', href: Issue(633) }
+							]
+						}
+					]
+				},
+				{
+					name:         'Resolution',
+					id:           'resolution',
+					capabilities: [
+						{
+							name:        'Global Scope',
+							id:          'global-scope',
+							supported:   'fully',
+							description: '_For example, tracking a big table of current identifier bindings_'
+						},
+						{
+							name:        'Lexicographic Scope',
+							id:          'lexicographic-scope',
+							supported:   'fully',
+							description: '_For example, support function definition scopes_'
+						},
+						{
+							name:        'Closures',
+							id:          'closures',
+							supported:   'partially',
+							description: '_Handling [function factories](https://adv-r.hadley.nz/function-factories.html) and friends._ Currently, we do not have enough tests to be sure.'
+						},
+						{
+							name:         'Dynamic Environment Resolution',
+							id:           'dynamic-environment-resolution',
+							supported:    'partially',
+							description:  '_For example, using `new.env` and friends. Supports `new.env`/`new.environment`/`rlang::new_environment`, `assign`/`get`/`local` with `envir=`, dollar-sign access (`e$x`), `attach`, `with`/`within`, and env-variable aliasing (`alias <- e`). Static parent-argument resolution (`parent = e`, `parent = emptyenv()`) is supported._',
+							capabilities: [
+								{
+									name:        'Environment in Conditionals',
+									id:          'environment-in-conditionals',
+									supported:   'partially',
+									description: '_Tracking environment assignments and reads across if-then-else branches. flowR propagates envState through branch merging, but cross-branch name resolution inside the env is not guaranteed._'
+								},
+								{
+									name:        'Environment in Loops',
+									id:          'environment-in-loops',
+									supported:   'partially',
+									description: '_Tracking environment assignments inside loop constructs (for, while, repeat). The env variable is correctly attributed in each iteration body, but dynamic key generation (e.g., `paste0`) prevents static name resolution._'
+								},
+								{
+									name:        'Environment Parent',
+									id:          'environment-parent',
+									supported:   'partially',
+									description: '_Specifying a parent for a newly-created environment (`new.env(parent = e)`, `new.env(parent = emptyenv())`). Tracked-env-variable parents and `emptyenv()`/`NULL` are resolved statically; dynamic or unknown parents fall back to the default (`parent.frame()`)._'
+								},
+								{
+									name:        'Environment Alias',
+									id:          'environment-alias',
+									supported:   'partially',
+									description: '_Aliasing a tracked environment variable (`alias <- e`). The `envState` snapshot at assignment time is propagated, so assigns made BEFORE the alias are visible through it. Assigns made AFTER the alias to the original variable are not reflected._'
+								},
+								{
+									name:        'With / Within',
+									id:          'environment-with',
+									supported:   'partially',
+									description: '_Evaluating an expression inside a named environment with `with(data, expr)` or `within(data, expr)`. When `data` is a tracked env variable, reads of names defined in that env resolve correctly. Writes inside `expr` are ephemeral (not persisted back to the env)._'
+								},
+								{
+									name:        'Dynamic Variable Removal',
+									id:          'dynamic-variable-removal',
+									supported:   'partially',
+									description: '_Support for `rm(list=..., envir=sys.frame(N))` removing variables from a specific call frame. Currently handles negative and zero offsets from within depth-1 functions._'
+								}
+							]
+						},
+						{
+							name:        'Environment Sharing',
+							id:          'environment-sharing',
+							supported:   'not',
+							description: '_Handling side-effects by environments which are not copied when modified_'
+						},
+						{
+							name:        'Search Type',
+							id:          'search-type',
+							supported:   'fully',
+							description: '_Separating the resolution for functions and symbols._'
+						},
+						{
+							name:        'Search Path',
+							id:          'search-path',
+							supported:   'partially',
+							description: "_Handling [R's search path](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Search-path) as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#search-path)._ Attached packages and `attach`ed environments are placed below `.GlobalEnv` (so global bindings shadow package exports, matching R), attaching inside/through function calls propagates to the caller, and re-attaching is a no-op. Not yet handled: dynamic `search`/`fn_env` manipulation."
+						},
+						{
+							name:        'Namespaces',
+							id:          'namespaces',
+							supported:   'partially',
+							description: "_Handling R's namespaces as explained in [Advanced R](https://adv-r.hadley.nz/environments.html#namespaces)_"
+						},
+						{
+							name:        'Accessing Exported Names',
+							id:          'accessing-exported-names',
+							supported:   'partially',
+							description: '_Resolving calls with `::` to their origin._ Accessing external files is allowed, although the name of packages etc. is not resolved correctly.'
+						},
+						{
+							name:        'Accessing Internal Names',
+							id:          'accessing-internal-names',
+							supported:   'partially',
+							description: '_Similar to `::` but for internal names._'
+						},
+						{
+							name:        'Library Loading',
+							id:          'library-loading',
+							supported:   'partially',
+							description: '_Resolve libraries identified with `library`, `require`, `attachNamespace`, ... and attach them to the search path_'
+						},
+						{
+							name:        'Dynamic Scope Changes',
+							id:          'dynamic-scope-changes',
+							supported:   'partially',
+							description: '_Manually changing scopes like [`local`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/eval)_'
+						},
+						{
+							name:        'Anonymous Bindings',
+							id:          'anonymous-bindings',
+							supported:   'fully',
+							description: '_Support for [`Recall`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/Recall)_'
+						}
+					]
+				}
+			]
+		},
+		{
+			name:         'Expressions',
+			id:           'expressions',
+			capabilities: [
+				{
+					name:         'Function Calls',
+					id:           'function-calls',
+					capabilities: [
+						{
+							name:        'Grouping',
+							id:          'grouping',
+							supported:   'fully',
+							description: '_Recognize groups done with `(`, `{`, ... (more precisely, their default mapping to the primitive implementations)._'
+						},
+						{
+							name:         'Normal Call',
+							id:           'call-normal',
+							supported:    'fully',
+							description:  '_Recognize and resolve calls like `f(x)`, `foo::bar(x, y)`, ..._',
+							capabilities: [
+								{
+									name:        'Unnamed Arguments',
+									id:          'unnamed-arguments',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `f(3)`, `foo::bar(3, c(1,2))`, ..._'
+								},
+								{
+									name:        'Empty Arguments',
+									id:          'empty-arguments',
+									supported:   'fully',
+									description: '_Essentially a special form of an unnamed argument as in `foo::bar(3, ,42)`, ..._'
+								},
+								{
+									name:        'Named Arguments',
+									id:          'named-arguments',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `f(x = 3)`, `foo::bar(x = 3, y = 4)`, ..._'
+								},
+								{
+									name:        'String Arguments',
+									id:          'string-arguments',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `f(\'x\' = 3)`, `foo::bar(\'x\' = 3, "y" = 4)`, ..._'
+								},
+								{
+									name:        'Resolve Arguments',
+									id:          'resolve-arguments',
+									supported:   'fully',
+									description: '_Correctly bind arguments (including [`pmatch`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/pmatch))._ Currently, we do not have a correct implementation for `pmatch`. Furthermore, more tests would be nice.'
+								},
+								{
+									name:        'Side-Effects in Argument',
+									id:          'side-effects-in-argument',
+									supported:   'partially',
+									description: '_Handle side-effects of arguments (e.g., `f(x <- 3)`, `f(x = y <- 3)`, ...)._ We have not enough tests to be sure'
+								},
+								{
+									name:        'Side-Effects in Function Call',
+									id:          'side-effects-in-function-call',
+									supported:   'partially',
+									description: '_Handle side-effects of function calls (e.g., `setXTo(3)`, ...) for example achieved with the super assignment._ We need more tests and handlings. Furthermore, we do not detect side effects with external files, network, logging, etc.'
+								}
+							]
+						},
+						{
+							name:        'Recursion',
+							id:          'recursion',
+							supported:   'fully',
+							description: '_Recognize and resolve recursive calls like `f(3)` inside the definition of `f`, ..._'
+						},
+						{
+							name:        'Anonymous Calls',
+							id:          'call-anonymous',
+							supported:   'fully',
+							description: '_Recognize and resolve calls like `(function(x) x)(3)`, `factory(0)()`, ..._'
+						},
+						{
+							name:        'Infix Calls',
+							id:          'infix-calls',
+							supported:   'fully',
+							description: '_Recognize and resolve calls like `x + y`, `x %>% f(y)`, ..._'
+						},
+						{
+							name:        'Redefinition of Built-In Functions/primitives',
+							id:          'redefinition-of-built-in-functions-primitives',
+							supported:   'partially',
+							description: '_Handle cases like `print <- function(x) x`, `` `for` <- function(a,b,c) a``, ..._ Currently, we can not handle all of them there are no tests. Still wip as part of desugaring'
+						},
+						{
+							name:        'Functions with global side effects',
+							id:          'functions-with-global-side-effects',
+							supported:   'partially',
+							description: '_Support functions like `setwd` which have an impact on the subsequent program._'
+						},
+						{
+							name:        'Working Directory',
+							id:          'working-directory',
+							supported:   'partially',
+							description: '_Track the effective working directory across `setwd` (control-flow- and location-sensitive) to resolve relative file paths. Interprocedural, sourced, and loop cases are treated as unbounded rather than guessed._'
+						},
+						{
+							name:         'Index Access',
+							id:           'index-access',
+							capabilities: [
+								{
+									name:        'Single Bracket Access',
+									id:          'single-bracket-access',
+									supported:   'fully',
+									description: '_Detect calls like `x[i]`, `x[i, ,b]`, `x[3][y]`, ... This does not include the real separation of cells, which is handled extra._'
+								},
+								{
+									name:        'Double Bracket Access',
+									id:          'double-bracket-access',
+									supported:   'fully',
+									description: '_Detect calls like `x[[i]]`, `x[[i, b]]`, ... Similar to single bracket._'
+								},
+								{
+									name:        'Dollar Access',
+									id:          'dollar-access',
+									supported:   'fully',
+									description: '_Detect calls like `x$y`, `x$"y"`, `x$y$z`, ..._'
+								},
+								{
+									name:        'Slot Access',
+									id:          'slot-access',
+									supported:   'fully',
+									description: '_Detect calls like `x@y`, `x@y@z`, ..._'
+								},
+								{
+									name:        'Access with Argument-Names',
+									id:          'access-with-argument-names',
+									supported:   'fully',
+									description: '_Detect calls like `x[i = 3]`, `x[[i=]]`, ..._'
+								},
+								{
+									name:        'Access with Empty',
+									id:          'access-with-empty',
+									supported:   'fully',
+									description: '_Detect calls like `x[]`, `x[2,,42]`, ..._'
+								},
+								{
+									name:        'Subsetting (Multiple Indices)',
+									id:          'subsetting-multiple',
+									supported:   'fully',
+									description: '_Detect calls like `x[i > 3]`, `x[c(1,3)]`, ..._'
+								}
+							]
+						},
+						{
+							name:         'Operators',
+							id:           'operators',
+							capabilities: [
+								{
+									name:        'Unary Operator',
+									id:          'unary-operator',
+									supported:   'fully',
+									description: '_Recognize and resolve calls like `+3`, `-3`, ..._'
+								},
+								{
+									name:         'Binary Operator',
+									id:           'binary-operator',
+									supported:    'fully',
+									description:  '_Recognize and resolve calls like `3 + 4`, `3 * 4`, ..._',
+									capabilities: [
+										{
+											name:        'Special Operator',
+											id:          'special-operator',
+											supported:   'fully',
+											description: '_Recognize and resolve calls like `3 %in% 4`, `3 %*% 4`, ..._'
+										},
+										{
+											name:        'Model Formula',
+											id:          'model-formula',
+											supported:   'partially',
+											description: '_Recognize and resolve calls like `y ~ x`, `y ~ x + z`, ... including their implicit redefinitions of some functions._ Currently, we do not handle their redefinition and only treat model formulas as normal binary operators'
+										},
+										{
+											name:         'Assignments and Bindings',
+											id:           'assignments-and-bindings',
+											capabilities: [
+												{
+													name:        'Local Left Assignment',
+													id:          'local-left-assignment',
+													supported:   'fully',
+													description: '_Handle `x <- 3`, `x$y <- 3`, ..._'
+												},
+												{
+													name:        'Local Right Assignment',
+													id:          'local-right-assignment',
+													supported:   'fully',
+													description: '_Handle `3 -> x`, `3 -> x$y`, ..._'
+												},
+												{
+													name:        'Local Equal Assignment',
+													id:          'local-equal-assignment',
+													supported:   'fully',
+													description: '_Handle `x = 3`, `x$y := 3`, ..._'
+												},
+												{
+													name:        'Local Table Assignment',
+													id:          'local-table-assignment',
+													supported:   'fully',
+													description: '_Handle `x[,a:=3,]`, ..._'
+												},
+												{
+													name:        'Super Left Assignment',
+													id:          'super-left-assignment',
+													supported:   'fully',
+													description: '_Handle `x <<- 42`, `x$y <<- 42`, ..._'
+												},
+												{
+													name:        'Super Right Assignment',
+													id:          'super-right-assignment',
+													supported:   'fully',
+													description: '_Handle `42 ->> x`, `42 ->> x$y`, ..._'
+												},
+												{
+													name:        'Return Value of Assignments',
+													id:          'return-value-of-assignments',
+													supported:   'fully',
+													description: '_Handle `x <- 3` returning `3`, e.g., in `x <- y <- 3`_'
+												},
+												{
+													name:        'Assignment Functions',
+													id:          'assignment-functions',
+													supported:   'partially',
+													description: '_Handle `assign(x, 3)`, `delayedAssign(x, 3)`, ..._ Currently we can not handle all of them and tests are rare.'
+												},
+												{
+													name:        'Range Assignment',
+													id:          'range-assignment',
+													supported:   'fully',
+													description: '_Handle `x[1:3] <- 3`, `x$y[1:3] <- 3`, ..._'
+												},
+												{
+													name:        'Replacement Functions',
+													id:          'replacement-functions',
+													supported:   'partially',
+													description: '_Handle `x[i] <- 3`, `x$y <- 3`, ... as `` `[<-`(x, 3) ``, ..._ Currently work in progress as part of the desugaring but still untested.'
+												},
+												{
+													name:        'Locked Bindings',
+													id:          'locked-bindings',
+													supported:   'not',
+													description: '_Handle `lockBinding(x, 3)`, ..._'
+												}
+											]
+										}
+									]
+								}
+							]
+						},
+						{
+							name:         'Control-Flow',
+							id:           'control-flow',
+							capabilities: [
+								{
+									name:        'if',
+									id:          'if',
+									supported:   'fully',
+									description: '_Handle `if (x) y else z`, `if (x) y`, ..._'
+								},
+								{
+									name:        'for loop',
+									id:          'for-loop',
+									supported:   'fully',
+									description: '_Handle `for (i in 1:3) print(i)`, ..._'
+								},
+								{
+									name:        'while loop',
+									id:          'while-loop',
+									supported:   'fully',
+									description: '_Handle `while (x) b`, ..._'
+								},
+								{
+									name:        'repeat loop',
+									id:          'repeat-loop',
+									supported:   'fully',
+									description: '_Handle `repeat {b; if (x) break}`, ..._'
+								},
+								{
+									name:        'break',
+									id:          'break',
+									supported:   'fully',
+									description: '_Handle `break` (including `break()`) ..._'
+								},
+								{
+									name:        'next',
+									id:          'next',
+									supported:   'fully',
+									description: '_Handle `next` (including `next()`) ..._'
+								},
+								{
+									name:        'switch',
+									id:          'switch',
+									supported:   'fully',
+									description: '_Handle `switch(3, "a", "b", "c")`, ..._'
+								},
+								{
+									name:        'return',
+									id:          'return',
+									supported:   'fully',
+									description: '_Handle `return(3)`, ... in function definitions_'
+								},
+								{
+									name:        'Exceptions and Errors',
+									id:          'exceptions-and-errors',
+									supported:   'partially',
+									description: '_Handle `try`, `stop`, ..._'
+								}
+							]
+						},
+						{
+							name:         'Function Definitions',
+							id:           'function-definitions',
+							capabilities: [
+								{
+									name:        'Normal',
+									id:          'normal-definition',
+									supported:   'fully',
+									description: '_Handle `function() 3`, ..._'
+								},
+								{
+									name:         'Formals',
+									id:           'formals',
+									capabilities: [
+										{
+											name:        'Named',
+											id:          'formals-named',
+											supported:   'fully',
+											description: '_Handle `function(x) x`, ..._'
+										},
+										{
+											name:        'Default',
+											id:          'formals-default',
+											supported:   'fully',
+											description: '_Handle `function(x = 3) x`, ..._'
+										},
+										{
+											name:        'Dot-Dot-Dot',
+											id:          'formals-dot-dot-dot',
+											supported:   'fully',
+											description: '_Handle `function(...) 3`, ..._'
+										},
+										{
+											name:        'Promises',
+											id:          'formals-promises',
+											supported:   'partially',
+											description: '_Handle `function(x = y) { y <- 3; x }`, `function(x = { x <- 3; x}) { x * x }`, ..._ We _try_ to identify promises correctly but this is really rudimentary.'
+										}
+									]
+								},
+								{
+									name:        'Implicit Return',
+									id:          'implicit-return',
+									supported:   'fully',
+									description: '_Handle the return of `function() 3`, ..._'
+								},
+								{
+									name:        'Lambda Syntax',
+									id:          'lambda-syntax',
+									supported:   'fully',
+									description: '_Support `\\(x) x`, ..._'
+								}
+							]
+						},
+						{
+							name:         'Important Built-Ins',
+							id:           'important-built-ins',
+							capabilities: [
+								{
+									name:        'Non-Strict Logical Operators',
+									id:          'non-strict-logical-operators',
+									supported:   'fully',
+									description: '_Handle `&&`, `||`, ..._'
+								},
+								{
+									name:        'Pipe and Pipe-Bind',
+									id:          'pipe-and-pipe-bind',
+									supported:   'partially',
+									description: '_Handle the [new (4.1) pipe and pipe-bind syntax](https://www.r-bloggers.com/2021/05/the-new-r-pipe/): `|>`, and `=>`._; Similarly support the other pipe binds'
+								},
+								{
+									name:        'Sequencing',
+									id:          'built-in-sequencing',
+									supported:   'not',
+									description: '_Handle `:`, `seq`, ... by gathering value information using abstract interpretation._'
+								},
+								{
+									name:        'Internal and Primitive Functions',
+									id:          'built-in-internal-and-primitive-functions',
+									supported:   'partially',
+									description: '_Handle `.Internal`, `.Primitive`, ..._ In general we can not handle them as they refer to non-R code. We currently do not support them when used with the function.'
+								},
+								{
+									name:        'Options',
+									id:          'built-in-options',
+									supported:   'not',
+									description: '_Handle `options`, `getOption`, ..._ Currently, we do not support the function at all.'
+								},
+								{
+									name:        'Help',
+									id:          'built-in-help',
+									supported:   'partially',
+									description: '_Handle `help`, `?`, ..._ We do not support the function in a sensible way but just ignore it (although this does not happen resolved).'
+								},
+								{
+									name:         'Reflection / "Computing on the Language"',
+									id:           'reflection-"computing-on-the-language"',
+									capabilities: [
+										{
+											name:        'Get Function Structure',
+											id:          'get-function-structure',
+											supported:   'not',
+											description: '_Handle `body`, `formals`, `environment` to access the respective parts of a function._ We do not support the functions at all.'
+										},
+										{
+											name:        'Modify Function Structure',
+											id:          'modify-function-structure',
+											supported:   'not',
+											description: '_Handle `body<-`, `formals<-`, `environment<-` to modify the respective parts of a function._ We do not support the functions at all.'
+										},
+										{
+											name:        'Quoting',
+											id:          'built-in-quoting',
+											supported:   'partially',
+											description: '_Handle `quote`, `substitute`, `bquote`, ..._ We partially ignore some of them but most likely not all.'
+										},
+										{
+											name:        'Evaluation',
+											id:          'built-in-evaluation',
+											supported:   'partially',
+											description: '_Handle `eval`, `evalq`, `eval.parent`, ..._ We do not handle them at all.'
+										},
+										{
+											name:        'Parsing',
+											id:          'built-in-parsing',
+											supported:   'not',
+											description: '_Handle `parse`, `deparse`, ..._ We handle them as unknown function calls, but not specifically besides that.'
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					name:         'Literal Values',
+					id:           'literal-values',
+					capabilities: [
+						{
+							name:        'Numbers',
+							id:          'numbers',
+							supported:   'fully',
+							description: '_Recognize numbers like `3`, `3.14`, `NA`, float-hex, ..._'
+						},
+						{
+							name:         'Strings',
+							id:           'strings',
+							supported:    'fully',
+							description:  "_Recognize strings like `\"a\"`, `'b'`, ..._",
+							capabilities: [
+								{
+									name:        'Raw Strings',
+									id:          'raw-strings',
+									supported:   'fully',
+									description: '_Recognize raw strings like `r"(a)"`, ..._'
+								}
+							]
+						},
+						{
+							name:        'Logical',
+							id:          'logical',
+							supported:   'fully',
+							description: '_Recognize the logicals `TRUE` and `FALSE`, ..._'
+						},
+						{
+							name:        'NULL',
+							id:          'null',
+							supported:   'fully',
+							description: '_Recognize `NULL`_'
+						},
+						{
+							name:        'Inf and NaN',
+							id:          'inf-and-nan',
+							supported:   'fully',
+							description: '_Recognize `Inf` and `NaN`_'
+						}
+					]
+				}
+			]
+		},
+		{
+			name:         'Non-Standard Evaluations/Semantics',
+			id:           'non-standard-evaluations-semantics',
+			capabilities: [
+				{
+					name:        'Recycling',
+					id:          'recycling',
+					supported:   'not',
+					description: '_Handle recycling of vectors as explained in [Advanced R](https://adv-r.hadley.nz/vectors-chap.html)._ We do not support recycling.'
+				},
+				{
+					name:        'Vectorized Operator or Functions',
+					id:          'vectorized-operator-or-functions',
+					supported:   'not',
+					description: '_Handle vectorized operations as explained in [Advanced R](https://adv-r.hadley.nz/perf-improve.html?q=vectorised#vectorise)._ We do not support vectorized operations.'
+				},
+				{
+					name:        'Hooks',
+					id:          'hooks',
+					supported:   'partially',
+					description: '_Handle hooks like [`userhooks`](https://stat.ethz.ch/R-manual/R-devel/library/base/html/userhooks.html) and [`on.exit`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/on.exit)._ We do not support hooks.'
+				},
+				{
+					name:        'Precedence',
+					id:          'precedence',
+					supported:   'fully',
+					description: '_Handle the precedence of operators as explained in the [Documentation](https://rdrr.io/r/base/Syntax.html)._ We handle the precedence of operators (implicitly with the parser).'
+				},
+				{
+					name:         'Attributes',
+					id:           'attributes',
+					capabilities: [
+						{
+							name:        'User-Defined',
+							id:          'user-defined',
+							supported:   'not',
+							description: '_Handle [attributes](https://cran.r-project.org/doc/manuals/r-release/R-lang.html#Attributes) like `attr`, `attributes`, ..._ We do not support attributes.'
+						},
+						{
+							name:        'Built-In',
+							id:          'built-in',
+							supported:   'not',
+							description: '_Handle built-in attributes like `dim`, ..._ We do not support them.'
+						}
+					]
+				}
+			]
+		},
+		{
+			name:         'Types',
+			id:           'types',
+			capabilities: [
+				{
+					name:        'Primitive',
+					id:          'types-primitive',
+					supported:   'not',
+					description: '_Recognize and resolve primitive types like `numeric`, `character`, ..._ We do not support typing currently.'
+				},
+				{
+					name:        'Non-Primitive',
+					id:          'types-non-primitive',
+					supported:   'not',
+					description: '_Recognize and resolve non-primitive/composite types._ We do not support typing currently.'
+				},
+				{
+					name:        'Inference',
+					id:          'types-inference',
+					supported:   'not',
+					description: '_Infer types from the code._ We do not support typing currently.'
+				},
+				{
+					name:        'Coercion',
+					id:          'types-coercion',
+					supported:   'not',
+					description: '_Handle coercion of types._ We do not support typing currently.'
+				},
+				{
+					name:         'Object-Oriented Programming',
+					id:           'object-oriented-programming',
+					capabilities: [
+						{
+							name: 'S3',
+							id:   'oop-s3',
+							url:  [
+								{ name: AdvancedR('S3'), href: 'https://adv-r.hadley.nz/s3.html' }
+							],
+							supported:   'partially',
+							description: '_Handle S3 classes and methods as one unit (with attributes etc.). Including Dispatch and Inheritance._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name: 'S4',
+							id:   'oop-s4',
+							url:  [
+								{ name: AdvancedR('S4'), href: 'https://adv-r.hadley.nz/s4.html' }
+							],
+							supported:   'partially',
+							description: '_Handle S4 classes and methods as one unit. Including Dispatch and Inheritance_ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name: 'R6',
+							id:   'oop-r6',
+							url:  [
+								{ name: AdvancedR('R6'), href: 'https://adv-r.hadley.nz/r6.html' }
+							],
+							supported:   'not',
+							description: '_Handle R6 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Access Control, Finalizers, and Introspection._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name: 'R7/S7',
+							id:   'oop-r7-s7',
+							url:  [
+								{ name: 'R7', href: 'https://www.r-bloggers.com/2022/12/what-is-r7-a-new-oop-system-for-r/' },
+								{ name: 'S7', href: 'https://cran.r-project.org/web/packages/S7/index.html' }
+							],
+							supported:   'partially',
+							description: '_Handle R7 classes and methods as one unit. Including Dispatch and Inheritance, as well as its Reference Semantics, Validators, ..._ We do not support typing currently and do not handle objects of these classes "as units."'
+						},
+						{
+							name:         'Class-Based Dependency Attribution',
+							id:           'oop-class-dependency-attribution',
+							supported:    'partially',
+							description:  '_Attribute the use of a class to the package that owns it (registers a method for it and exports a same-named constructor), so a class use implies a dependency for library detection and version guessing (backed by the signature database\'s class-ownership map)._',
+							capabilities: [
+								{
+									name:        'S3 class ownership',
+									id:          'class-owner-s3',
+									supported:   'partially',
+									description: '_The signature database records which package owns each S3 class. A class use is attributed to the owning package -- both from a project\'s NAMESPACE `S3method(generic, class)` registrations (e.g. `S3method("as.irts","zoo")` marks `zoo` used) and from class-name string literals in plain code (`inherits(x, "zoo")`, `methods::is`, `new`, `structure(..., class=)`), marking the owner used and bounding its version below by the same-named constructor\'s export history. Class names that come from a variable or a `c(...)` vector, and method-definition names like `print.zoo`, are not yet resolved._'
+								},
+								{
+									name:        'S4 class ownership',
+									id:          'class-owner-s4',
+									supported:   'partially',
+									description: '_A project\'s `importClassesFrom`/`importMethodsFrom` NAMESPACE directives are tracked, so the source package is attached and marked used like a plain `importFrom`. S4 class ownership itself (`exportClasses`, `setClass`) is not yet recorded in the signature database, so a bare S4 class use is not attributed to its owning package._'
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			name:         'Structure',
+			id:           'structure',
+			capabilities: [
+				{
+					name:        'Comments',
+					id:          'comments',
+					supported:   'fully',
+					description: '_Recognize comments like `# this is a comment`, ... and line-directives_'
+				},
+				{
+					name:        'Semicolons',
+					id:          'semicolons',
+					supported:   'fully',
+					description: '_Recognize and resolve semicolons like `a; b; c`, ..._'
+				},
+				{
+					name:        'Newlines',
+					id:          'newlines',
+					supported:   'fully',
+					description: '_Recognize and resolve newlines like `a\nb\nc`, ..._'
+				}
+			]
+		},
+		{
+			name:         'System, I/O, FFI, and Other Files',
+			id:           'system-i-o-ffi-and-other-files',
+			capabilities: [
+				{
+					name:        'Sourcing External Files',
+					id:          'sourcing-external-files',
+					supported:   'partially',
+					description: '_Handle `source`, `sys.source`, ..._ We are currently working on supporting the inclusion of external files. Currently we can handle `source`.'
+				},
+				{
+					name:        'Handling Binary Riles',
+					id:          'handling-binary-riles',
+					supported:   'not',
+					description: '_Handle files dumped with, e.g., [`save`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/save), ... due to their frequent usage._ We do not support binary files.'
+				},
+				{
+					name:        'I/O',
+					id:          'i-o',
+					supported:   'not',
+					description: '_Handle `read.csv`, `write.csv`, ..._ We do not support I/O for the time being but treat them as unknown function calls.'
+				},
+				{
+					name:        'Foreign Function Interface',
+					id:          'foreign-function-interface',
+					supported:   'not',
+					description: '_Handle `.Fortran`, `C`,..._ We do not support FFI but treat them as unknown function calls.'
+				},
+				{
+					name:        'System Calls',
+					id:          'system-calls',
+					supported:   'not',
+					description: '_Handle [`system`](https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/system), `system.*`, ..._ We do not support system calls but treat them as unknown function calls.'
+				},
+				{
+					name:        'R-Markdown files',
+					id:          'file:rmd',
+					supported:   'fully',
+					description: 'Support R-Markdown files as R sources.'
+				},
+				{
+					name:        'Jupyter Notebook',
+					id:          'file:ipynb',
+					supported:   'partially',
+					description: 'Support Jupyter Notebooks as R sources.'
+				},
+				{
+					name:        'Quarto',
+					id:          'file:qmd',
+					supported:   'partially',
+					description: 'Support Quarto files as R sources.'
+				},
+				{
+					name:        'Sweave',
+					id:          'file:rnw',
+					supported:   'partially',
+					description: 'Support for Sweave files as R sources.'
+				}
+			]
+		},
+		{
+			name:        'Pre-Processors/external Tooling',
+			id:          'pre-processors-external-tooling',
+			supported:   'fully',
+			description: '_Handle pre-processors like `knitr`, `rmarkdown`, `roxygen2` ..._ We do not support pre-processors for the time being (being unable to handle things like `@importFrom`)'
+		}
+	]
+} as const satisfies FlowrCapabilities;

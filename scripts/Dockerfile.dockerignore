@@ -1,0 +1,10 @@
+node_modules/
+.nyc_output/
+coverage/
+doc/
+wiki/
+statistics-out/
+*.gz
+*.log
+# keep the packaged databases regardless of the *.gz / *.log filters above
+!src/data/pkgdb/**

@@ -1,0 +1,131 @@
+import { FaqStore } from './wiki-faq-store';
+import { FlowrGithubBaseRef, FlowrGithubGroupName, getFilePathMd } from '../../doc-util/doc-files';
+import { codeBlock } from '../../doc-util/doc-code';
+import { recommendedVsCodeTask, recommendedZedConfig } from './recommended-configs';
+import type { GeneralDocContext } from '../../wiki-mk/doc-context';
+import { ProjectKind } from '../../../project/context/project-kind';
+
+
+/**
+ *
+ */
+export function registerFaqs(ctx: GeneralDocContext): FaqStore {
+	const wikiFaq = new FaqStore();
+
+	wikiFaq.withTopic('flowr.development')
+		.addFaq('What are *test labels*?', `
+Tests are labeled based on the *flowR* capabilities that they test for.
+The list of supported capabilities can be found on the ${ctx.linkPage('wiki/Capabilities', 'Capabilities')} wiki page.
+For more extensive information on test labels, see the ${ctx.linkPage('wiki/Linting and Testing', 'test labels wiki section', 'test-labels')}.
+`)
+		.addFaq('How do I run *all checks* before pushing?', `
+Run \`npm run checkup\`: it runs the linter, the functionality and system tests, the wiki generation, and the docker image build + smoke test concurrently, then prints one pass/fail summary.
+Run a subset with the job ids (e.g. \`npm run checkup -- lint tests\`) or skip the container build with \`npm run checkup -- --no-docker\`.
+`)
+		.addFaq('How to get a REPL with debug-info/*hot-reload*?', `
+	To enter the development repl, execute \`npm run main-dev\` in contrast to \`npm run flowr\`
+	this will use an unminified build (keeping debug info) and also watches the source files for changes.
+	In case of a change, this mode automatically recompiles.
+	Please note, that this may have negative performance implications (so do not use this for e.g., benchmarking).
+`)
+		.addFaq('How to generate *mermaid diagrams*?', `
+There are several ways to generate mermaid diagrams based on the input data that you want to use.
+- From the AST (abstract syntax tree): ${getFilePathMd('../util/mermaid/ast.ts')}
+- From the CFG (control flow graph): ${getFilePathMd('../util/mermaid/cfg.ts')}
+- From the DFG (dataflow graph): ${getFilePathMd('../util/mermaid/dfg.ts')}
+`)
+		.addFaq('How to create *new wiki* pages?', `
+To create an automatically generated wiki page, you can follow these steps:
+- Create a new file in \`src/documentation\` with a name like \`wiki-thename.ts\`.
+- Register your new wiki page in the \`src/cli/wiki.ts\` file to have it executed by the wiki generation tool.
+
+You can test your page by piping the wiki generation script to a file. For example, you can run the following command:
+${codeBlock('shell', 'npm run wiki')}
+Alternatively use the following to generate a specific wiki page:
+${codeBlock('shell', 'npm run wiki -- --filter=Dataflow')}
+Or, activate the watch mode to automatically regenerate the wiki on changes:
+${codeBlock('shell', 'npm run wiki:watch')}
+
+`)
+		.addFaq('Why can\'t I pass *arguments* when running flowR *with npm*?', `
+With \`npm\` you have to pass arguments in a specific way. The \`--\` operator is used to separate the \`npm\` arguments from the script arguments. For example, if you want to run \`flowR\` with the \`--help\` argument, you can use the following command:
+${codeBlock('shell', 'npm run flowR -- --help')}
+`)
+		.addFaq('How to do *logging* in flowR?', `
+Check out the ${ctx.linkPage('wiki/Linting and Testing', 'Logging Section in the Linting and Testing wiki page', 'logging')} for more information on how to do logging in *flowR*.
+`)
+		.addFaq('How to run *tests* with *verbose* logging?', `
+Use the dedicated npm script to run all tests with trace-level log output:
+${codeBlock('shell', 'npm run test:verbose')}
+Alternatively, set the \`FLOWR_VERBOSE\` environment variable directly:
+${codeBlock('shell', 'FLOWR_VERBOSE=true npm run test')}
+Both forms accept the usual vitest filters (e.g. \`npm run test:verbose -- cli/server\`).
+`)
+
+		.addFaq('How to add a *linting rule*?', `
+To add a new linting rule, see ${ctx.linkPage('wiki/Create Linting Rules')}.
+`)
+	;
+
+	wikiFaq.withTopic('flowr.use')
+		.addFaq('How to *watch* a file for changes in the REPL?', `
+Replace the \`file://\` prefix with \`watch://\` when passing a path to any REPL command.
+flowR will run the command immediately and then re-run it every time the file (or any file inside the specified folder) changes.
+Press Ctrl+C or enter any other command to leave watch mode.
+${codeBlock('shell', ':df watch://path/to/analysis.R')}
+For a folder, flowR uses the same project discovery as with \`file://\`:
+${codeBlock('shell', ':query @linter watch://path/to/project')}
+`)
+		.addFaq('How to *query* an R project?', `
+For this you can use flowR's ${ctx.linkPage('wiki/Query API', 'Query API')}.
+If you want to create your own project using flowR as a library, check out the
+[${FlowrGithubGroupName}/sample-analyzer-project-query](${FlowrGithubBaseRef}/sample-analyzer-project-query) repository for an example project setup.
+		`)
+		.addFaq('How to configure flowR *per kind of project*?', `
+Use ${ctx.linkConfig('specializeConfig')}: it overwrites (parts of) the configuration depending on the kind of project flowR detects (e.g. \`${ProjectKind.ShinyApp}\`).
+This is how a shiny app gets its ${ctx.linkConfig('project.implicitSources')} out of the box, as shiny loads these files without any \`source()\` call:
+${codeBlock('json', JSON.stringify({
+	specializeConfig: {
+		[ProjectKind.ShinyApp]: { project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] } }
+	}
+}, null, 2))}
+Anything you configure directly wins over the value the project kind defaults to, so setting \`project.implicitSources\` yourself overrides the list above.
+`);
+
+	wikiFaq.withTopic('r.packages')
+		.addFaq('What is the R *prelude* and R *base* package?', `
+The base package contains lots of base functions like \`source\` for example.
+The R prelude includes the base package along with several other packages.
+Packages that were loaded by the prelude can be called without prefixing the
+function call with the package name and the \`::\` operator.
+
+The packages loaded by the R prelude can be seen in the \`attached base packages\`
+sections in the output of \`sessionInfo()\`.
+`)
+		.addFaq('How to get *documentation* for a function or package?', `
+There are a couple of ways to get documentation for a function or package.
+
+🖥️ Firstly, if you have already installed the package the function originated from you can simply run \`?<package name>::<function name>\` in an R session to print the
+relevant documentation. If you don't know the origin of the package, you can use
+\`??<function name>\` in an R shell to fuzzy find all documentations containing
+\`<function name>\` or something similar.
+
+🌐 Secondly, if you don't have or don't want to install the package you can simply google the fully qualified name of the function. Good sources include [rdrr.io](https://rdrr.io/)
+or [rdocumentation.org](https://rdocumentation.org/). Additionally, the package documentation PDF can also
+be downloaded directly from [cran](https://cran.r-project.org/).
+`)
+		.addFaq('How does flowR know a *package\'s exports*?', `
+See the ${ctx.linkPage('wiki/Signature Database', 'Signature Database')} wiki page.
+`)
+	;
+
+	wikiFaq.withTopic('editor.configs')
+		.addFaq('How can I make eslint and ZED work together?', `Use this project config (\`.zed/settings.json\`) to disable all formatters except eslint:
+			${codeBlock('json', JSON.stringify(recommendedZedConfig, null, 2))}`);
+
+	wikiFaq.withTopic('editor.configs')
+		.addFaq('How can I launch the flowr repl form vs code?', `You can use the following launch task (\`.vscode/launch.json\`):
+			${codeBlock('json', JSON.stringify(recommendedVsCodeTask, null, 2))}`);
+
+	return wikiFaq;
+}

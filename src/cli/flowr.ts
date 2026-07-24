@@ -1,0 +1,268 @@
+/**
+ * The main script to run flowR.
+ *
+ * If started with arguments, it may be used to run a single of the flowR scripts.
+ * Otherwise, it will start a REPL that can call these scripts and return their results repeatedly.
+ */
+import type { DeepReadonly } from 'ts-essentials';
+import type { Server } from './repl/server/net';
+import { flowrVersion, printVersionInformation } from '../util/version';
+import commandLineUsage from 'command-line-usage';
+import { log, LogLevel } from '../util/log';
+import {
+	ansiFormatter,
+	ColorEffect,
+	Colors,
+	FontStyles,
+	formatter,
+	italic,
+	setFormatter,
+	voidFormatter
+} from '../util/text/ansi';
+import commandLineArgs from 'command-line-args';
+import {
+	type EngineConfig,
+	FlowrConfig,
+	type KnownEngines,
+} from '../config';
+import { guard } from '../util/assert';
+import { type ScriptInformation, scripts } from './common/scripts-info';
+import { waitOnScript } from './repl/execute';
+import { standardReplOutput } from './repl/commands/repl-main';
+import { repl, replProcessAnswer } from './repl/core';
+import { exitSafe } from '../util/proc';
+import { printVersionRepl } from './repl/print-version';
+import { defaultConfigFile, flowrMainOptionDefinitions, getScriptArguments, getScriptsText } from './flowr-main-options';
+import type { KnownParser } from '../r-bridge/parser';
+import fs from 'fs';
+import path from 'path';
+import { retrieveEngineInstances } from '../engines';
+import { FlowrAnalyzerBuilder } from '../project/flowr-analyzer-builder';
+
+export const toolName = 'flowr';
+
+export interface FlowrCliOptions {
+	'config-file':      string
+	'config-json':      string
+	'no-ansi':          boolean
+	'no-fs':            boolean
+	'r-path':           string | undefined
+	'r-session-access': boolean
+	execute:            string | undefined
+	help:               boolean
+	port:               number
+	script:             string | undefined
+	server:             boolean
+	verbose:            boolean
+	version:            boolean
+	ws:                 boolean
+	'default-engine':   string
+
+	'engine.r-shell.disabled': boolean
+	'engine.r-shell.r-path':   string | undefined
+
+	'engine.tree-sitter.disabled':              boolean
+	'engine.tree-sitter.wasm-path':             string | undefined
+	'engine.tree-sitter.tree-sitter-wasm-path': string | undefined
+	'engine.tree-sitter.lax':                   boolean
+}
+
+export const optionHelp = [
+	{
+		header:  `flowR (version ${flowrVersion().toString()})`,
+		content: 'A static dataflow analyzer and program slicer for R programs'
+	},
+	{
+		header:  'Synopsis',
+		content: [
+			`$ ${toolName} {bold --help}`,
+			`$ ${toolName} {bold --version}`,
+			`$ ${toolName} {bold --server}`,
+			`$ ${toolName} {bold --execute} {italic ":parse 2 - 4"}`,
+			`$ ${toolName} {bold slicer} {bold --help}`,
+		]
+	},
+	{
+		header:     'Options',
+		optionList: flowrMainOptionDefinitions
+	}
+];
+
+const options = commandLineArgs(flowrMainOptionDefinitions) as FlowrCliOptions;
+
+log.updateSettings(l => l.settings.minLevel = options.verbose ? LogLevel.Trace : LogLevel.Error);
+log.info('running with options', options);
+
+if(options['no-ansi'] || (process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '')) {
+	log.info('disabling ansi colors');
+	setFormatter(voidFormatter);
+}
+
+function createConfig(): FlowrConfig {
+	let config: FlowrConfig | undefined;
+
+	if(options['config-json']) {
+		const passedConfig = FlowrConfig.parse(options['config-json']);
+		if(passedConfig) {
+			log.info(`Using passed config ${JSON.stringify(passedConfig)}`);
+			config = passedConfig;
+		}
+	}
+	if(config == undefined) {
+		if(options['no-fs']) {
+			config = FlowrConfig.default();
+		} else {
+			if(options['config-file']) {
+				// validate it exists
+				if(!fs.existsSync(path.resolve(options['config-file']))) {
+					log.error(`Config file '${options['config-file']}' does not exist`);
+					process.exit(1);
+				}
+			}
+			config = FlowrConfig.fromFile(options['config-file'] ?? defaultConfigFile);
+		}
+	}
+
+
+	// for all options that we manually supply that have a config equivalent, set them in the config
+	config = FlowrConfig.amend(config, c => {
+		(c.engines as EngineConfig[]) ??= [];
+
+		if(!options['engine.r-shell.disabled']) {
+			c.engines.push({ type: 'r-shell', rPath: options['r-path'] || options['engine.r-shell.r-path'] });
+		}
+
+		if(!options['engine.tree-sitter.disabled']) {
+			c.engines.push({
+				type:               'tree-sitter',
+				wasmPath:           options['engine.tree-sitter.wasm-path'],
+				treeSitterWasmPath: options['engine.tree-sitter.tree-sitter-wasm-path'],
+				lax:                options['engine.tree-sitter.lax']
+			});
+		}
+
+		if(options['default-engine']) {
+			(c.defaultEngine as string) = options['default-engine'] as EngineConfig['type'];
+		}
+
+		if(options['no-fs']) {
+			(c.solver.sigdb as { enabled: boolean }).enabled = false;
+		}
+
+		return c;
+	});
+
+	return config;
+}
+
+function hookSignalHandlers(engines: { engines: KnownEngines; default: keyof KnownEngines }) {
+	const end = () => {
+		if(options.execute === undefined) {
+			console.log(`\n${italic('Exiting...')}`);
+		}
+		Object.values(engines.engines).forEach(e => e?.close());
+		exitSafe(0);
+	};
+
+	process.on('SIGINT', end);
+	process.on('SIGTERM', end);
+}
+
+function getReplPlugins(config: FlowrConfig) {
+	const plugins = config.repl.plugins.filter(p => p !== 'flowr:default');
+	if(plugins.length !== config.repl.plugins.length) {
+		return plugins.concat(config.defaultPlugins);
+	} else {
+		return plugins;
+	}
+}
+
+async function mainRepl() {
+	const config = createConfig();
+
+	if(options.script) {
+		const script = (scripts as DeepReadonly<Record<string, ScriptInformation>>)[options.script];
+		guard(script !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
+		const target = script.target as string | undefined;
+		guard(target !== undefined, `Unknown script target "${options.script}", pick one of ${getScriptsText()}.`);
+		console.log(`Running script '${formatter.format(options.script, { style: FontStyles.Bold })}'`);
+		log.debug(`Script maps to "${target}"`);
+		await waitOnScript(`${__dirname}/${target}`, getScriptArguments(options.script, process.argv), undefined, true);
+		return exitSafe(0);
+	}
+
+	if(options.help) {
+		console.log(commandLineUsage(optionHelp));
+		return exitSafe(0);
+	}
+
+	const engines = await retrieveEngineInstances(config);
+	const defaultEngine = engines.engines[engines.default] as KnownParser;
+
+	if(options.version) {
+		const enginesList = Object.values(engines.engines);
+		if(enginesList.length > 0) {
+			await printVersionInformation(standardReplOutput, enginesList[0]);
+			for(const engine of enginesList.slice(1)) {
+				console.log('');
+				await printVersionInformation(standardReplOutput, engine, true);
+			}
+		}
+		for(const engine of enginesList) {
+			engine?.close();
+		}
+		return exitSafe(0);
+	}
+	hookSignalHandlers(engines);
+
+	const analyzer = new FlowrAnalyzerBuilder(false)
+		.setParser(defaultEngine)
+		.setConfig(config)
+		.registerPlugins(...getReplPlugins(config))
+		.buildSync();
+
+	const allowRSessionAccess = options['r-session-access'] ?? false;
+	if(options.execute) {
+		await replProcessAnswer(analyzer, standardReplOutput, options.execute, allowRSessionAccess);
+	} else {
+		await printVersionRepl(defaultEngine);
+		const w = (x: string) => ansiFormatter.format(x, { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Italic });
+		console.log(w('use ') + ansiFormatter.format(':help', { color: Colors.White, effect: ColorEffect.Foreground, style: FontStyles.Bold })  + w(' to get a list of available commands.'));
+		await repl({ analyzer, allowRSessionAccess, ...(options['no-fs'] ? { historyFile: '' } : {}) });
+	}
+	exitSafe(0);
+}
+
+async function mainServer(useWebSocket: boolean) {
+	const config = createConfig();
+	const engines = await retrieveEngineInstances(config);
+	hookSignalHandlers(engines);
+	// the server stack (incl. the `ws` websocket library) is only loaded when actually running a server,
+	// so the common one-shot analysis path does not pay for evaluating it
+	const { FlowRServer } = await import('./repl/server/server');
+	const { NetServer, WebSocketServerWrapper } = await import('./repl/server/net');
+	const backend: Server = useWebSocket ? new WebSocketServerWrapper() : new NetServer();
+	await new FlowRServer(engines.engines, engines.default, options['r-session-access'], config, backend).start(options.port);
+}
+
+
+async function main() {
+	try {
+		if(options.server) {
+			await mainServer(options.ws);
+		} else {
+			await mainRepl();
+		}
+	} catch(e) {
+		const err = e as Error;
+		console.error(formatter.format(`flowR failed to start: ${err.message}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+		if(options.verbose) {
+			console.error(err.stack);
+		} else {
+			console.error(italic('Run again with --verbose for the full stack trace.'));
+		}
+		exitSafe(1);
+	}
+}
+
+void main();

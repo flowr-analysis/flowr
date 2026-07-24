@@ -12,16 +12,18 @@ import { SourceLocation } from '../../util/range';
 import type { LintingResult, LintingRule } from '../linter-format';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
-import { type FunctionsMetadata } from './function-finder-util';
 import { RRange } from '../../util/r-version';
 import { Q } from '../../search/flowr-search-builder';
 import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import type { RNode } from '../../r-bridge/lang-4.x/ast/model/model';
 import type { AstIdMap, ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
 import { Dataflow } from '../../dataflow/graph/df-helper';
+import type { ReadOnlyFlowrAnalyzerContext } from '../../project/context/flowr-analyzer-context';
 
 /**
  * Information about an argument of a function that should be flagged as deprecated if it is called with this argument
+ *
+ * Used in {@link DeprecatedFunctionInformation} to mark a function argument as deprecate under certain conditions
  */
 interface DeprecatedArgumentInformation {
 	/** Index of the argument */
@@ -40,6 +42,8 @@ interface DeprecatedArgumentInformation {
 
 /**
  * Information about a deprecated function
+ *
+ * Used in {@link DeprecatedFunctionsConfig.conditionally} to mark a function as deprecate under certain conditions
  */
 interface DeprecatedFunctionInformation {
 	/**
@@ -53,6 +57,8 @@ interface DeprecatedFunctionInformation {
 	readonly sinceVersion?: Range
 	/** Lifecycle State {@link DeprecationState}, i.e. is the function completely removed, or are there better alternatives */
 	readonly state?:        DeprecationState
+	/** The package this function comes from */
+	readonly package:       string
 }
 
 /**
@@ -112,12 +118,17 @@ interface PotentialFunction {
 	sourceLocation: SourceLocation
 }
 
+interface Metadata extends MergeableRecord {
+	sigdb:     number,
+	hardcoded: number
+}
+
 const AlwaysDeprecated = [
 	'all_equal', 'arrange_all', 'distinct_all', 'filter_all', 'group_by_all', 'summarise_all', 'mutate_all', 'select_all', 'vars', 'all_vars', 'id', 'failwith', 'select_vars', 'rename_vars', 'select_var', 'current_vars', 'bench_tbls', 'compare_tbls', 'compare_tbls2', 'eval_tbls', 'eval_tbls2', 'location', 'changes', 'combine', 'do', 'funs', 'add_count_', 'add_tally_', 'arrange1_', 'count_', 'distinct_', 'do_', 'filter_', 'funs_', 'group_by_', 'group_indices_', 'mutate_', 'tally_', 'transmute_', 'rename_', 'rename_vars_', 'select_', 'select_vars_', 'slice_', 'summarise_', 'summarize_', 'summarise_each', 'src_local', 'tbl_df', 'add_rownames', 'group_nest', 'group_split', 'with_groups', 'nest_by', 'progress_estimated', 'recode', 'sample_n', 'top_n', 'transmute', 'fct_explicit_na', 'aes_', 'aes_auto', 'annotation_logticks', 'is.Coord', 'coord_flip', 'coord_map', 'is.facet', 'fortify', 'is.ggproto', 'guide_train', 'is.ggplot', 'qplot', 'is.theme', 'gg_dep', 'liply', 'isplit2', 'list_along', 'cross', 'invoke', 'at_depth', 'prepend', 'rerun', 'splice', '`%@%`', 'rbernoulli', 'rdunif', 'when', 'update_list', 'map_raw', 'accumulate', 'reduce_right', 'flatten', 'map_dfr', 'as_vector', 'transpose', 'melt_delim', 'melt_fwf', 'melt_table', 'read_table2', 'str_interp', 'as_tibble', 'data_frame', 'tibble_', 'data_frame_', 'lst_', 'as_data_frame', 'as.tibble', 'frame_data', 'trunc_mat', 'is.tibble', 'tidy_names', 'set_tidy_names', 'repair_names', 'extract_numeric', 'complete_', 'drop_na_', 'expand_', 'crossing_', 'nesting_', 'extract_', 'fill_', 'gather_', 'nest_', 'separate_rows_', 'separate_', 'spread_', 'unite_', 'unnest_', 'extract', 'gather', 'nest_legacy', 'separate_rows', 'separate', 'spread'
 ];
 
 const ConditionallyDeprecated = {
-	'geom_violin': { whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
+	'geom_violin': { package: 'ggplot2', whenArgs: [{ argName: 'draw_quantiles', state: DeprecationState.Deprecated, replacedBy: 'quantile.linetype', sinceVersion: RRange.parse('>= 4.0.0') }] },
 } satisfies Record<BrandedIdentifier, DeprecatedFunctionInformation>;
 
 export const DEPRECATED_FUNCTIONS = {
@@ -129,16 +140,9 @@ export const DEPRECATED_FUNCTIONS = {
 		const graph = (await data.dataflow()).graph;
 		const idMap = (await data.normalize()).idMap;
 
-		const metadata: FunctionsMetadata = {
-			totalCalls:               0,
-			totalFunctionDefinitions: 0
-		};
-
 		// 1. Collect all function call targets from detected function calls
 		const detectedFunctions = elements.getElements().flatMap(e => {
-			metadata.totalCalls++;
 			return enrichmentContent(e, Enrichment.CallTargets).targets.map(target => {
-				metadata.totalFunctionDefinitions++;
 				const sourceLocation = SourceLocation.fromNode(e.node);
 				if(sourceLocation !== undefined) {
 					return {
@@ -153,7 +157,7 @@ export const DEPRECATED_FUNCTIONS = {
 			const info = config.conditionally[candidate.target];
 			if(isNotUndefined(info)) {
 				// Check functions from DeprecatedFunctionsConfig.conditionally
-				return deprecateFunctionConditionally(candidate, graph, idMap, info);
+				return deprecateFunctionConditionally(candidate, graph, idMap, data.inspectContext(), info);
 			} else {
 				// Check functions from DeprecatedFunctionsConfig.always
 				return deprecateFunctionAlways(candidate, matchesConfiguredFns);
@@ -164,7 +168,7 @@ export const DEPRECATED_FUNCTIONS = {
 		// 3. If available, use sigdb to flag deprecated functions
 		const deps = data.inspectContext().deps;
 		if(deps.signatureSources().length === 0) {
-			return { results, '.meta': metadata };
+			return { results, '.meta': { hardcoded: results.length, sigdb: 0 } };
 		}
 
 		// sigdb-driven detection: flag any resolved call whose signature-database entry marks it deprecated,
@@ -200,7 +204,7 @@ export const DEPRECATED_FUNCTIONS = {
 
 		return {
 			results: results.concat(sigdbFlagged),
-			'.meta': metadata
+			'.meta': { hardcoded: results.length, sigdb: sigdbFlagged.length }
 		};
 	},
 	prettyPrint: {
@@ -233,12 +237,12 @@ export const DEPRECATED_FUNCTIONS = {
 			conditionally: ConditionallyDeprecated
 		}
 	}
-} as const satisfies LintingRule<DeprecatedFunctionRuleResult, FunctionsMetadata, DeprecatedFunctionsConfig>;
+} as const satisfies LintingRule<DeprecatedFunctionRuleResult, Metadata, DeprecatedFunctionsConfig>;
 
 /**
  * This function is applied to function candidates that have an entry in the {@link DeprecatedFunctionsConfig.conditionally} map.
  */
-function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
+function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: DataflowGraph, idMap: AstIdMap, context: ReadOnlyFlowrAnalyzerContext, info: DeprecatedFunctionInformation): DeprecatedFunctionRuleResult[] {
 	const results: DeprecatedFunctionRuleResult[] = [];
 
 	// If when args is provided, mark the function as deprecated (and its argument) if the respective argument is present
@@ -249,19 +253,36 @@ function deprecateFunctionConditionally(candidate: PotentialFunction, dataflow: 
 				continue;
 			}
 
+			// Check if function call has deprecated argument
 			const arg = vertex.args.find((arg, idx) =>
 				FunctionArgument.isNamed(arg) && arg.name === deprecatedArgInfo.argName ||
 				FunctionArgument.isPositional(arg) && idx === deprecatedArgInfo.argIdx
 			);
 			const argNode = arg === undefined || arg === EmptyArgument ? undefined : idMap.get(arg.nodeId);
-
 			if(argNode === undefined) {
 				continue;
 			}
 
+			// Check if the argument is deprecated in the used package version (if set)
+			let certainty = LintingResultCertainty.Certain;
+			if(deprecatedArgInfo.sinceVersion) {
+				const derivedVersion = context.deps.getDependency(info.package)?.derivedVersion;
+				if(derivedVersion === undefined) {
+					// If the version can't be resolved, mark as uncertain
+					certainty = LintingResultCertainty.Uncertain;
+				} else {
+					// Don't mark as deprecated if the version constraint is not satisfied
+					if(!deprecatedArgInfo.sinceVersion.intersects(derivedVersion)) {
+						continue;
+					}
+				}
+			}
+
+			// TODO: ifValue check
+
 			results.push({
 				type:         'deprecated-argument',
-				certainty:    LintingResultCertainty.Certain,
+				certainty:    certainty,
 				involvedId:   argNode.info.id,
 				function:     candidate.target,
 				arg:          (deprecatedArgInfo.argName ?? deprecatedArgInfo.argIdx) as string | number,

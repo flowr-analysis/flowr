@@ -126,7 +126,7 @@ Promise<ParseStepOutput<T>> {
 					parsed,
 					filePath:      r.path,
 					'.parse-meta': typeof parsed === 'object' && 'rootNode' in parsed ? {
-						tokenCount: parsed.rootNode.descendantCount,
+						tokenCount: parsed.rootNode?.descendantCount ?? 0,
 					} : undefined
 				};
 			})

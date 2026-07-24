@@ -111,7 +111,7 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.getLanguage().query(source);
 	}
 
-	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
+	public query(source: Query | string, ...tree: readonly Parser.Tree[]): QueryCapture[] {
 		// a Query is WASM-backed, so free it if we created it (a caller-supplied Query stays theirs)
 		const ownQuery = typeof source === 'string';
 		const query = ownQuery ? this.createQuery(source) : source;

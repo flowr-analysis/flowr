@@ -1,4 +1,4 @@
-import { DataflowGraph } from './graph';
+import { DataflowGraph, UnknownSideEffect } from './graph';
 import { DfEdge, EdgeType } from './edge';
 import { emptyGraph } from './dataflowgraph-builder';
 import { getOriginInDfg } from '../origin/dfg-get-origin';
@@ -57,7 +57,8 @@ export const Dataflow = {
 	origin: getOriginInDfg,
 	/**
 	 * The qualified identifier of the call with the given id, or `undefined` if it does not resolve to a package
-	 * export (with `purrr` loaded, a `map()` call yields `Identifier.make('map', 'purrr')`).
+	 * export and is not itself already namespaced (with `purrr` loaded, a `map()` call yields
+	 * `Identifier.make('map', 'purrr')`; an explicit `pkg::fn()` call yields `pkg::fn` unchanged).
 	 *
 	 * This is the compact form of {@link Identifier.toQualified}, reconstructing both the
 	 * {@link Dataflow.origin|origins} and the call's name from the graph.
@@ -65,14 +66,14 @@ export const Dataflow = {
 	 * @param graph        - The graph the call is part of
 	 * @param qualifyBaseR - Whether to also qualify a bare base-R call from the package exporting it
 	 *                       (`sd` yields `stats::sd`), which needs neither a loaded database nor graph edges.
-	 *                       Set this to `false` to only qualify what the origins resolve to.
+	 *                       Set this to `false` to only qualify what the origins resolve to (or what is already namespaced).
 	 */
 	qualify(this: void, id: NodeId, graph: DataflowGraph, qualifyBaseR = true): Identifier | undefined {
-		// only look the vertex up when its name is actually needed (base-R qualification)
-		const vertex = qualifyBaseR ? graph.getVertex(id) : undefined;
+		const vertex = graph.getVertex(id);
 		return Identifier.toQualified(
 			getOriginInDfg(graph, id),
-			isFunctionCallVertex(vertex) ? vertex.name : undefined
+			isFunctionCallVertex(vertex) ? vertex.name : undefined,
+			qualifyBaseR
 		);
 	},
 	/**
@@ -118,10 +119,9 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;
@@ -151,10 +151,9 @@ export const Dataflow = {
 			}
 		}
 		for(const u of graph.unknownSideEffects) {
-			if(typeof u === 'object' && select.has(u.id)) {
-				df.markIdForUnknownSideEffects(u.id, u.linkTo);
-			} else if(select.has(u as NodeId)) {
-				df.markIdForUnknownSideEffects(u as NodeId);
+			const id = UnknownSideEffect.id(u);
+			if(select.has(id)) {
+				df.markIdForUnknownSideEffects(id, UnknownSideEffect.linkTo(u));
 			}
 		}
 		return df as G;

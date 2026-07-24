@@ -202,6 +202,34 @@ export interface DataflowGraphJson {
  */
 export type UnknownSideEffect = NodeId | { id: NodeId, linkTo: LinkTo<RegExp> };
 
+/** A {@link UnknownSideEffect} that carries a {@link LinkTo} target. */
+export type LinkedUnknownSideEffect = { id: NodeId, linkTo: LinkTo<RegExp> };
+
+/**
+ * Helpers for the {@link UnknownSideEffect} union, which is either a plain {@link NodeId} or a
+ * `{ id, linkTo }` object. Use these instead of hand-rolling `typeof x === 'object' ? x.id : x`
+ * checks so the object/non-object discrimination lives in one place.
+ */
+export const UnknownSideEffect = {
+	name: 'UnknownSideEffect',
+	/** Whether the effect carries a {@link LinkTo} target (i.e., is the object variant). */
+	isLinked(this: void, effect: UnknownSideEffect): effect is LinkedUnknownSideEffect {
+		return typeof effect === 'object';
+	},
+	/** The affected node id, regardless of whether the effect is plain or linked. */
+	id(this: void, effect: UnknownSideEffect): NodeId {
+		return typeof effect === 'object' ? effect.id : effect;
+	},
+	/** The {@link LinkTo} target of the effect, or `undefined` if it is a plain (unlinked) one. */
+	linkTo(this: void, effect: UnknownSideEffect): LinkTo<RegExp> | undefined {
+		return typeof effect === 'object' ? effect.linkTo : undefined;
+	},
+	/** Both {@link id} and {@link linkTo} in one pass (a single discrimination); use when you need both. */
+	split(this: void, effect: UnknownSideEffect): { id: NodeId, linkTo: LinkTo<RegExp> | undefined } {
+		return typeof effect === 'object' ? effect : { id: effect, linkTo: undefined };
+	}
+} as const;
+
 /**
  * The dataflow graph holds the dataflow information found within the given AST.
  * We differentiate the directed edges in {@link EdgeType} and the vertices indicated by {@link DataflowGraphVertexArgument}.

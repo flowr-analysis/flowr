@@ -63,13 +63,16 @@ export function resolveSource(baseDir: string, relPath: string): string {
  * back to the OS temp dir (so it works in a read-only Docker image where only `/tmp` is writable -- mount a
  * volume at the cache dir to persist it).
  */
-export function sigDbCacheDir(override?: string): string {
+export function sigDbCacheDir(override?: string, create = true): string {
 	const base = override
 		?? process.env.FLOWR_SIGDB_CACHE ?? process.env.FLOWR_CACHE_DIR
 		?? (process.env.XDG_CACHE_HOME ? path.join(process.env.XDG_CACHE_HOME, 'flowr') : undefined)
 		?? (process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'flowr', 'cache') : undefined)
 		?? path.join(os.homedir?.() || os.tmpdir(), '.cache', 'flowr');
 	const dir = path.join(base, 'sigdb');
+	if(!create) {
+		return dir;
+	}
 	try {
 		fs.mkdirSync(dir, { recursive: true });
 		return dir;

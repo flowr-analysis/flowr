@@ -60,6 +60,7 @@ import {
 import type { ReadonlyFlowrAnalysisProvider } from '../project/flowr-analyzer';
 import { log } from '../util/log';
 import type { ReplOutput } from '../cli/repl/commands/repl-main';
+import fs from 'fs';
 import type { CommandCompletions } from '../cli/repl/core';
 import type { FilesQuery } from './catalog/files-query/files-query-format';
 import { FilesQueryDefinition } from './catalog/files-query/files-query-format';
@@ -292,7 +293,7 @@ export async function executeQueries<
 			results.push([type, result] as [Base, Awaited<QueryResult<Base>>]);
 		} catch(e) {
 			const message = e instanceof Error ? e.message : String(e);
-			log.error(`query of type '${type}' failed: ${message}`);
+			log.error(`query of type '${type}' failed: ${message.split('\n')[0]}`);
 			results.push([type, { '.meta': { timing: 0 }, error: message } as never]);
 		}
 	}
@@ -358,7 +359,13 @@ export async function genericWrapReplFailIfNoRequest<T>(
 	try {
 		return await fn();
 	} catch(e) {
-		if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
+		const files = analyzer.inspectContext().files;
+		if(files.loadingOrder.getUnorderedRequests().length === 0) {
+			const missing = files.getRequestedRoots().filter(p => !fs.existsSync(p));
+			if(missing.length > 0) {
+				output.stderr(output.formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground }));
+				return;
+			}
 			output.stderr(
 				output.formatter.format('No requests to analyze were found.', { color: Colors.Red, style: FontStyles.Bold, effect: ColorEffect.Foreground  })
 		        + '\nIf you consider this an error, please report a bug: '

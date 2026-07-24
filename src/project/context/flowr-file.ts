@@ -45,6 +45,11 @@ export enum FileRole {
 	 */
 	Startup     = 'startup',
 	/**
+	 * Environment-variable definitions read at startup (`.Renviron`, `Renviron.site`). These are `KEY=value`
+	 * files, not R source, so they are labeled but not parsed as R.
+	 */
+	Environment = 'environment',
+	/**
 	 * Catch-all for any file that provides usable R source code to incorporate into the analysis.
 	 * Please note, that the loading order/inclusion and even potential relevance of these source files
 	 * is determined by the loading order plugins (cf. {@link PluginType.LoadingOrder})

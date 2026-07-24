@@ -23,6 +23,7 @@ import type { ReplOutput } from '../../../cli/repl/commands/repl-main';
 import type { CommandCompletions } from '../../../cli/repl/core';
 import { fileProtocol } from '../../../r-bridge/retriever';
 import { getGuardIssueUrl, isNotUndefined } from '../../../util/assert';
+import fs from 'fs';
 import { type LintResultsByRule, LinterOutputFormat } from '../../../linter/linter-output';
 
 export interface LinterQuery extends BaseQueryFormat {
@@ -140,7 +141,13 @@ export const LinterQueryDefinition = {
 		const allDidFail = Object.values(out.results).every(LintingResults.isError);
 		if(allDidFail) {
 			result.push('All linting rules failed to execute.');
-			if(analyzer.inspectContext().files.loadingOrder.getUnorderedRequests().length === 0) {
+			const files = analyzer.inspectContext().files;
+			if(files.loadingOrder.getUnorderedRequests().length === 0) {
+				const missing = files.getRequestedRoots().filter(p => !fs.existsSync(p));
+				if(missing.length > 0) {
+					result.push(formatter.format(`Path does not exist: ${missing.map(p => `'${p}'`).join(', ')}`, { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold }));
+					return true;
+				}
 				result.push(
 					formatter.format('No requests to lint for were found in the analysis.', { color: Colors.Red, effect: ColorEffect.Foreground, style: FontStyles.Bold })
 				);
@@ -239,7 +246,7 @@ function hyperlinkLocations(pretty: string, formatter: OutputFormatter): string 
 	return pretty.replace(locationPattern, (match, path: string, position: string) => {
 		const [line, col] = position.split('-')[0].split('.');
 		const url = `file://${path}:${line}${col ? `:${col}` : ''}`;
-		return formatter.hyperlink(match, url);
+		return formatter.hyperlink(match, url, true);
 	});
 }
 

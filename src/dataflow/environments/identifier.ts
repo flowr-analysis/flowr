@@ -166,6 +166,13 @@ export const Identifier = {
 		const targetInternal = Identifier.accessesInternal(target);
 		return idInternal === targetInternal;
 	},
+	/**
+	 * Helper to create a regular expression that matches against an array of {@link Identifier} values. If both the passed identifier and the matched identifier are namespaced, their namespaces are expected to match. If either is not namespaced, the namespace is ignored on both.
+	 */
+	regex(this: void, ...identifiers: readonly Identifier[]): RegExp {
+		// if the passed identifier is not namespaced, we match against *any* namespace. if it is namespaced, we match against the correct namespace or no namespace
+		return new RegExp(`^(${identifiers.map(i => `(${Identifier.getNamespace(i) ?? '.+'}:::?)?${Identifier.getName(i)}`).join('|')})$`);
+	},
 	/** Special identifier for the `...` argument */
 	dotdotdot(this: void): BrandedIdentifier {
 		return '...' as BrandedIdentifier;

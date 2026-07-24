@@ -3,7 +3,6 @@ import { Dataflow } from '../../dataflow/graph/df-helper';
 import { Identifier } from '../../dataflow/environments/identifier';
 import { Q } from '../../search/flowr-search-builder';
 import { Enrichment, enrichmentContent } from '../../search/search-executor/search-enrichers';
-import { testFunctionsIgnoringPackage } from '../../search/flowr-search-filters';
 import { SourceLocation } from '../../util/range';
 import { LintingRuleCertainty, LintingResultCertainty, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';
@@ -12,9 +11,12 @@ import { type FunctionsMetadata, type FunctionsResult, type FunctionsToDetectCon
 export const DEPRECATED_FUNCTIONS = {
 	// unlike functionFinderUtil.createSearch(config.fns), this does not pre-filter to the hardcoded list: the
 	// sigdb-driven pass below needs every resolved call, so the `fns` filtering happens in processSearchResult instead
-	createSearch:        (_config: FunctionsToDetectConfig) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, { onlyBuiltin: true }),
+	createSearch: (_config: FunctionsToDetectConfig) => Q.all().filter(VertexType.FunctionCall).with(Enrichment.CallTargets, {
+		onlyBuiltin:  true,
+		qualifyNames: false // we don't use qualified names for this rule yet
+	}),
 	processSearchResult: async(elements, config, data) => {
-		const matchesConfiguredFns = testFunctionsIgnoringPackage(config.fns);
+		const matchesConfiguredFns = Identifier.regex(...config.fns);
 		const hardcoded = await functionFinderUtil.processSearchResult(elements, config, data, es =>
 			es.filter(e => enrichmentContent(e, Enrichment.CallTargets)?.targets
 				.some(t => typeof t === 'string' && matchesConfiguredFns.test(t))));

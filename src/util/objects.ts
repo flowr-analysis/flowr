@@ -215,9 +215,9 @@ export function looselyCompareObjects(obj: Record<string, unknown>, expected: Re
 
 		if(Array.isArray(realValue)) {
 			const match = typeof expectedValue === 'object' ? expectedValue instanceof RegExp ?
-			// if we expect a regular expression but an array is supplied, test each value
+				// if we expect a regular expression but an array is supplied, test each value
 				(value: unknown) => expectedValue.test(typeof value === 'string' ? value : String(value)) :
-			// if we expect an object that is not a regular expression, match against our expected structure
+				// if we expect an object that is not a regular expression, match against our expected structure
 				(value: unknown) => looselyCompareObjects(value as Record<string, unknown>, expectedValue as Record<string, unknown>, arrayMatch, logger) :
 				// in any other case (primitives!), match against the exact value
 				(value: unknown) => expectedValue === value;

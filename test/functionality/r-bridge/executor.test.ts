@@ -4,6 +4,8 @@ import { RShellExecutor } from '../../../src/r-bridge/shell-executor';
 import { describe, assert, expect, test } from 'vitest';
 import { TreeSitterExecutor } from '../../../src/r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import { requestFromInput } from '../../../src/r-bridge/retriever';
+import { FlowrAnalyzerContext } from '../../../src/project/context/flowr-analyzer-context';
+import { FlowrConfig } from '../../../src/config';
 
 describe('RShellExecutor', function() {
 	test('R version', () => {
@@ -27,7 +29,8 @@ describe('RShellExecutor', function() {
 describe('TreeSitterExecutor', () => {
 	test('query() frees the WASM-backed query it compiles from a string', () => {
 		const ts = new TreeSitterExecutor();
-		const tree = ts.parse(requestFromInput('x <- 1'));
+		const ctx = new FlowrAnalyzerContext(FlowrConfig.default(), new Map());
+		const tree = ts.parse(requestFromInput('x <- 1'), ctx);
 		let freed = 0;
 		const original = ts.createQuery.bind(ts);
 		ts.createQuery = (source: string) => {

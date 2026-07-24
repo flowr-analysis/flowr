@@ -265,7 +265,7 @@ export function sourceRequest<OtherInfo>(rootId: NodeId, request: RParseRequest 
 		} else if(gasLevel >= GasLevel.Problematic) {
 			dataflowLogger.warn(`Approaching resource limits for source of ${JSON.stringify(request)} (gas: problematic). See ${GasWikiRef}`);
 		}
-		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r);
+		const parsed = (!data.parser.async ? data.parser : new RShellExecutor()).parse(textRequest.r, data.ctx);
 		const normalized = (typeof parsed !== 'string' ?
 			normalizeTreeSitter({ files: [{ parsed, filePath: textRequest.path }] }, getId, data.ctx.config)
 			: normalize({ files: [{ parsed, filePath: textRequest.path }] }, getId)) as NormalizedAst<OtherInfo & ParentInformation>;

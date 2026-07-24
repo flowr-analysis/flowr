@@ -22,6 +22,7 @@ import type { Tree } from 'web-tree-sitter';
 import { normalizeTreeSitterTreeToAst } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-normalize';
 import { TreeSitterExecutor } from '../r-bridge/lang-4.x/tree-sitter/tree-sitter-executor';
 import type { CallGraph } from '../dataflow/graph/call-graph';
+import type { InvalidationEvent } from './cache/flowr-cache';
 
 /**
  * Extends the {@link ReadonlyFlowrAnalysisProvider} with methods that allow modifying the analyzer state.
@@ -50,6 +51,11 @@ export interface FlowrAnalysisProvider<Parser extends KnownParser = KnownParser>
 	 * Reset the analyzer state, including the context and the cache.
 	 */
 	reset(): void;
+
+	/**
+	 * Receive cache invalidation events from the cache and propagate them to the context and other relevant components.
+	 */
+	receive(event: InvalidationEvent): void
 }
 
 /**
@@ -208,6 +214,11 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 		this.cache.reset();
 	}
 
+	public receive(event: InvalidationEvent): void {
+		this.ctx.receive(event);
+		this.cache.receive(event);
+	}
+
 	public updateConfig(update: DeepPartial<FlowrConfig>): void {
 		this.ctx.updateConfig(update);
 		// the parse/dataflow results were computed under the previous config, so they must be recomputed
@@ -222,10 +233,10 @@ export class FlowrAnalyzer<Parser extends KnownParser = KnownParser> implements 
 	public parseStandalone(data: `${typeof fileProtocol}${string}` | string | RParseRequest): Tree {
 		const request = isParseRequest(data) ? data : requestFromInput(data);
 		if(this.parser.name === 'tree-sitter') {
-			return this.parser.parse(request);
+			return this.parser.parse(request, this.ctx);
 		} else {
 			const ts = new TreeSitterExecutor();
-			return ts.parse(request);
+			return ts.parse(request, this.ctx);
 		}
 	}
 

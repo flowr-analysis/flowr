@@ -145,6 +145,7 @@ export class RShell implements AsyncParser<string> {
 	public readonly name = 'r-shell';
 	public readonly async = true;
 	public readonly options: Readonly<RShellOptions>;
+	public readonly incremental = false;
 	private _session:        RShellSession | undefined = undefined;
 	private readonly log:    Logger<ILogObj>;
 	private versionCache:    SemVer | null = null;

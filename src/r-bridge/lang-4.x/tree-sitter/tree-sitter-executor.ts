@@ -6,6 +6,8 @@ import type { TreeSitterEngineConfig } from '../../../config';
 import { log } from '../../../util/log';
 import fs from 'fs';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
+import type { FlowrAnalyzerContext } from '../../../project/context/flowr-analyzer-context';
+import { computeReparseInfo } from '../../../project/incremental/incremental-parse/incremental-parse';
 
 export const DEFAULT_TREE_SITTER_R_WASM_PATH = './node_modules/@davisvaughan/tree-sitter-r/tree-sitter-r.wasm';
 export const DEFAULT_TREE_SITTER_WASM_PATH = './node_modules/web-tree-sitter/tree-sitter.wasm';
@@ -16,9 +18,9 @@ const wasmLog = log.getSubLogger({ name: 'tree-sitter-wasm' });
  * Synchronous and (way) faster alternative to the {@link RShell} using tree-sitter.
  */
 export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
-
 	public readonly name = 'tree-sitter';
 	private readonly parser: Parser;
+	public readonly incremental = true;
 	private static language: Parser.Language;
 
 	/**
@@ -69,21 +71,47 @@ export class TreeSitterExecutor implements SyncParser<Parser.Tree> {
 		return this.parser.getLanguage().version;
 	}
 
-	public parse(request: RParseRequest): Parser.Tree {
+	public parse(request: RParseRequest & { filePath?: string }, ctx: FlowrAnalyzerContext): Parser.Tree {
 		let sourceCode: string;
 		if(request.request === 'file') {
 			sourceCode = fs.readFileSync(request.content, 'utf8');
 		} else {
 			sourceCode = request.content;
 		}
-		return this.parser.parse(sourceCode);
+
+		if(request.filePath === undefined) {
+			log.info('[incremental] case 1 (no filePath): full parse');
+			return this.parser.parse(sourceCode);
+		}
+
+		const reparseInfo = computeReparseInfo(ctx, request.filePath);
+		// `computeReparseInfo` needs the stored old content to compute the edit against the
+		// previous tree. Once that snapshot has been consumed, drop it so a later invalidation
+		// can record a fresh old-content baseline for the next stored tree.
+		ctx.inc.deleteOldContentOf(request.filePath);
+
+		if(!reparseInfo) {
+			// incremental parsing not possible
+			log.info(`[incremental] case 2 (${request.filePath}): full reparse (incremental not possible)`);
+			return this.parser.parse(sourceCode);
+		}
+
+		if(!reparseInfo.editRegion) {
+			log.info(`[incremental] case 3 (${request.filePath}): unchanged, reused previous tree (no parse)`);
+			return reparseInfo.previousTree;
+		}
+
+		log.info(`[incremental] case 4 (${request.filePath}): incremental reparse, edit region: ${JSON.stringify(reparseInfo.editRegion)}`);
+		const previousTree = reparseInfo.previousTree;
+		previousTree.edit(reparseInfo.editRegion);
+		return this.parser.parse(sourceCode, previousTree);
 	}
 
 	public createQuery(source: string): Query {
 		return this.parser.getLanguage().query(source);
 	}
 
-	public query(source: Query | string, ...tree: Parser.Tree[]): QueryCapture[] {
+	public query(source: Query | string, ...tree: readonly Parser.Tree[]): QueryCapture[] {
 		// a Query is WASM-backed, so free it if we created it (a caller-supplied Query stays theirs)
 		const ownQuery = typeof source === 'string';
 		const query = ownQuery ? this.createQuery(source) : source;

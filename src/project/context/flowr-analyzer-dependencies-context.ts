@@ -9,6 +9,9 @@ import { Identifier } from '../../dataflow/environments/identifier';
 import type { DecodedFunction } from '../sigdb/decode';
 import type { Range } from 'semver';
 import type { FlowrAnalyzerFunctionsContext, ReadOnlyFlowrAnalyzerFunctionsContext } from './flowr-analyzer-functions-context';
+import type { InvalidationEvent, InvalidationEventReceiver } from '../cache/flowr-cache';
+import { InvalidationEventType } from '../cache/flowr-cache';
+import { assertUnreachable } from '../../util/assert';
 import { isSigDbEnabled } from '../../config';
 import { RRange } from '../../util/r-version';
 
@@ -94,7 +97,7 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 /**
  * Manages the project's dependencies, their versions, and their interplay with {@link FlowrAnalyzerPackageVersionsPlugin}s.
  */
-export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext {
+export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerContext<undefined, void, FlowrAnalyzerPackageVersionsPlugin> implements ReadOnlyFlowrAnalyzerDependenciesContext, InvalidationEventReceiver {
 	public readonly name = 'flowr-analyzer-dependencies-context';
 
 	public readonly functionsContext: FlowrAnalyzerFunctionsContext;
@@ -197,6 +200,20 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 	public eagerlyLoadSignatureDatabases(): void {
 		for(const p of this.plugins) {
 			p.preloadDatabasesSync();
+		}
+	}
+
+	receive(event: InvalidationEvent): void {
+		const type = event.type;
+		switch(type) {
+			case InvalidationEventType.Full:
+				this.reset();
+				break;
+			case InvalidationEventType.SingleFileInvalidate:
+				// nothing to do
+				break;
+			default:
+				assertUnreachable(type);
 		}
 	}
 

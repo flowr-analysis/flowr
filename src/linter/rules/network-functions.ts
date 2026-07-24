@@ -1,7 +1,7 @@
 import { LintingResultCertainty, type LintingRule, LintingRuleCertainty } from '../linter-format';
-import { functionFinderUtil, type FunctionsMetadata, type FunctionsResult } from './function-finder-util';
+import type { FunctionsToDetectConfig,  FunctionsMetadata,  FunctionsResult } from './function-finder-util';
+import { functionFinderUtil } from './function-finder-util';
 import { LintingRuleTag } from '../linter-tags';
-import type { MergeableRecord } from '../../util/objects';
 import { ReadFunctions } from '../../queries/catalog/dependencies-query/function-info/read-functions';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -9,9 +9,7 @@ import { Ternary } from '../../util/logic';
 import { SourceFunctions } from '../../queries/catalog/dependencies-query/function-info/source-functions';
 import { WriteFunctions } from '../../queries/catalog/dependencies-query/function-info/write-functions';
 
-export interface NetworkFunctionsConfig extends MergeableRecord {
-	/** The list of function names that should be marked in the given context if their arguments match. */
-	fns:                      readonly string[]
+export interface NetworkFunctionsConfig extends FunctionsToDetectConfig {
 	/** only trigger if the function's read argument is linked to a value that matches this pattern */
 	onlyTriggerWithArgument?: RegExp | string
 }

@@ -64,6 +64,8 @@ export function controlledSigDb(pkgOrPkgs: string | Record<string, readonly stri
 }
 
 
+type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
+
 /**
  * Asserts correct linting results while ignoring each linting result's {@link LintingRuleResult.involvedId}.
  */
@@ -72,7 +74,7 @@ export function assertLinter<Name extends LintingRuleNames>(
 	parser: KnownParser,
 	code: string,
 	ruleName: Name,
-	expected: Omit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
+	expected: DistributiveOmit<LintingRuleResult<Name>, 'involvedId'>[] | ((df: DataflowInformation, ast: NormalizedAst) => Omit<LintingRuleResult<Name>, 'involvedId'>[]),
 	expectedMetadata?: LintingRuleMetadata<Name>,
 	lintingRuleConfig?: DeepPartial<LintingRuleConfig<Name>> & LinterTestSetup
 ) {

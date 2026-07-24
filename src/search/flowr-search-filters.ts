@@ -9,7 +9,6 @@ import type { BuiltInProcName } from '../dataflow/environments/built-in-proc-nam
 import type { RoleInParent } from '../r-bridge/lang-4.x/ast/model/processing/role';
 import { looselyCompareObjects } from '../util/objects';
 import { searchLogger } from './search-executor/search-generators';
-import type { Identifier } from '../dataflow/environments/identifier';
 
 export type FlowrFilterName = keyof typeof FlowrFilters;
 interface FlowrFilterWithArgs<Filter extends FlowrFilterName, Args extends FlowrFilterArgs<Filter>> {

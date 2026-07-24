@@ -16,7 +16,7 @@ export const DEPRECATED_FUNCTIONS = {
 		qualifyNames: false // we don't use qualified names for this rule yet
 	}),
 	processSearchResult: async(elements, config, data) => {
-		const matchesConfiguredFns = Identifier.regex(config.fns);
+		const matchesConfiguredFns = Identifier.regex(...config.fns);
 		const hardcoded = await functionFinderUtil.processSearchResult(elements, config, data, es =>
 			es.filter(e => enrichmentContent(e, Enrichment.CallTargets)?.targets
 				.some(t => typeof t === 'string' && matchesConfiguredFns.test(t))));

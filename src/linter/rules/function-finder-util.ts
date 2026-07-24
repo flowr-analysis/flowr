@@ -48,7 +48,7 @@ export const functionFinderUtil = {
 					args: {
 						enrichment: Enrichment.CallTargets,
 						test:       {
-							targets: Identifier.regex(functions)
+							targets: Identifier.regex(...functions)
 						}
 					}
 				})

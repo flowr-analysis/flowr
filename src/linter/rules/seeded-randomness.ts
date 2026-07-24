@@ -66,7 +66,7 @@ export const SEEDED_RANDOMNESS = {
 			args: {
 				enrichment: Enrichment.CallTargets,
 				test:       {
-					targets: Identifier.regex(config.randomnessConsumers)
+					targets: Identifier.regex(...config.randomnessConsumers)
 				}
 			}
 		})

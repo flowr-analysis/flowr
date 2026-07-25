@@ -54,6 +54,12 @@ export interface ReadOnlyFlowrAnalyzerDependenciesContext {
 	getDependencies(): readonly Readonly<Package>[];
 
 	/**
+	 * Every package name the project *declares* (`Depends`/`Imports`/`Suggests`/`LinkingTo`/`Enhances`), whether or
+	 * not it became a loadable dependency here. `Suggests` do not, yet they still name packages the project may install.
+	 */
+	declaredPackageNames(): readonly string[];
+
+	/**
 	 * Metadata of the signature databases the version plugins currently have loaded.
 	 */
 	loadedSignatureDatabases(): SigDbLoadedInfo[];
@@ -287,5 +293,11 @@ export class FlowrAnalyzerDependenciesContext extends AbstractFlowrAnalyzerConte
 			this.resolveStaticDependencies();
 		}
 		return Array.from(this.dependencies.values());
+	}
+
+	public declaredPackageNames(): string[] {
+		this.ensureStaticsLoaded();
+		const declared: readonly (readonly Package[] | undefined)[] = Object.values(this.ctx.meta.getDeclaredPackages());
+		return [...new Set(declared.flatMap(group => group?.map(p => p.name) ?? []))];
 	}
 }

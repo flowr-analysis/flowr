@@ -106,6 +106,14 @@ export class FlowrDescriptionFile extends FlowrFile<DeepReadonly<DCF>> {
 	}
 
 	/**
+	 * Returns the parsed enhanced packages from the 'Enhances' field in the DESCRIPTION file.
+	 */
+	public enhances(): Package[] | undefined {
+		const enhances = this.content().get('Enhances');
+		return enhances ? parsePackagesWithVersions(enhances, 'package') : undefined;
+	}
+
+	/**
 	 * Returns the 'Collate' field from the DESCRIPTION file.
 	 */
 	public collate(): readonly string[] | undefined {

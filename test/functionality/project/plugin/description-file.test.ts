@@ -10,6 +10,9 @@ import {
 import {
 	FlowrAnalyzerLoadingOrderDescriptionFilePlugin
 } from '../../../../src/project/plugins/loading-order-plugins/flowr-analyzer-loading-order-description-file-plugin';
+import {
+	FlowrAnalyzerMetaDescriptionFilePlugin
+} from '../../../../src/project/plugins/package-version-plugins/flowr-analyzer-meta-description-file-plugin';
 import { FileRole, FlowrInlineTextFile } from '../../../../src/project/context/flowr-file';
 import { AuthorRole } from '../../../../src/util/r-author';
 import type { FlowrDescriptionFile } from '../../../../src/project/plugins/file-plugins/files/flowr-description-file';
@@ -82,6 +85,7 @@ function contextWithFile(desc: string): FlowrAnalyzerContext {
 		arraysGroupBy([
 			new FlowrAnalyzerDescriptionFilePlugin(),
 			new FlowrAnalyzerPackageVersionsDescriptionFilePlugin(),
+			new FlowrAnalyzerMetaDescriptionFilePlugin(),
 			new FlowrAnalyzerLoadingOrderDescriptionFilePlugin()
 		], p => p.type)
 	);
@@ -147,6 +151,13 @@ describe('DESCRIPTION-file', function() {
 				sugg?.map(n => n.name),
 				['sf', 'tibble', 'testthat', 'svglite', 'xml2', 'vdiffr']
 			);
+		});
+		test('Enhances Retrieval', () => {
+			assert.deepStrictEqual(getDescContent(ctx).enhances()?.map(n => n.name), ['something']);
+		});
+		test('Declared package names span every dependency field', () => {
+			// `Suggests`/`Enhances` do not become loadable dependencies, but they still name packages the project declares
+			assert.includeMembers(ctx.deps.declaredPackageNames(), ['R', 'dplyr', 'ggplot2', 'testthat', 'vdiffr', 'something']);
 		});
 		test('Collate Parsing', () => {
 			const collate = getDescContent(ctx).collate();

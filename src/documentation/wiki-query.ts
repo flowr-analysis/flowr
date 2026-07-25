@@ -749,6 +749,11 @@ f <- function(x) {
 	print(x)
 }`.trim();
 		const criterion: SlicingCriterion = '3@print';
+		const shinyCode = `
+server <- function(input, output, session) {
+	system(paste("convert", input$file))
+}`.trim();
+		const shinyCriterion: SlicingCriterion = '2@system';
 		return `
 Given a [slicing criterion](${FlowrWikiBaseRef}/Terminology#slicing-criterion) to
 something like a function call, flowR classifies the types of all input sources (e.g., arguments).
@@ -763,6 +768,39 @@ ${
 		criterion
 	}], { showCode: false, shorthand: sliceQueryShorthand([criterion], escapeNewline(exampleCode)), ctx })
 }
+
+Some objects are handed to the code by a framework rather than defined in it, like the \`input\` of a shiny
+server function. The ${ctx.link('InputClassifierConfig::linkedObjects')} configuration lists them, so that reads
+of such an object (and of its fields) classify as user input instead of stopping at a ${ctx.link('InputType::Parameter')}:
+${codeBlock('r', shinyCode)}
+
+${
+	await showQuery(shell, shinyCode, [{
+		type:      'input-sources',
+		criterion: shinyCriterion
+	}], { showCode: false, shorthand: sliceQueryShorthand([shinyCriterion], escapeNewline(shinyCode)), ctx })
+}
+
+Every ${ctx.link('LinkedInputObject')} names the object, the ${ctx.link('InputType')} to use for it, and optionally
+the parameters the binding function has to declare as well (${ctx.link('LinkedInputObject::withParams')}) - shiny's
+\`input\` only counts as such if the function also takes an \`output\`, so that an ordinary function with a
+parameter named \`input\` is left alone. Where the framework is handed the function instead of the code naming it,
+a ${ctx.link('LinkedInputEntryPoint')} is exact: it says which object goes to which parameter *by position*, just
+like R does, so \`shinyApp(ui, function(i, o, s))\` works no matter what those parameters are called.
+With ${ctx.link('LinkedInputObject::declaredBy')} a read even links back to its definition - the \`textInput("n", …)\`
+behind an \`input$n\` shows up as ${ctx.link('InputSource::declaredAt')}.
+
+You do not have to pass any of this per query: the ${ctx.linkConfig('inputSources', true)} section of flowR's
+${ctx.linkPage('wiki/Interface', 'configuration file')} carries the same shape and is *added* to what flowR already
+knows, so your framework joins shiny instead of replacing it (and \`specializeConfig\` can scope it to one
+${ctx.link('ProjectKind')}). Functions may be written as plain \`fn\` or namespaced \`pkg::fn\` strings; a bare call
+only counts as the namespaced one while that package is attached, exactly as R would resolve it.
+
+${codeBlock('json', JSON.stringify({ inputSources: {
+	user:              ['myframework::read_form'],
+	linkedObjects:     [{ name: 'ctx', type: 'user', declaredBy: { calls: ['myframework::field'], argName: 'id', argIdx: 0 } }],
+	linkedEntryPoints: [{ call: 'myframework::serve', argName: 'handler', argIdx: 0, params: ['ctx', null] }]
+} }, undefined, 2))}
 `;
 	}
 });

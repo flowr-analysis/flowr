@@ -9,7 +9,7 @@ import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { FileRole } from '../../project/context/flowr-file';
 import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
-import { baseRExportOwner } from '../../util/r-base-packages';
+import { AttachedBasePackages, baseRExportOwner } from '../../util/r-base-packages';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import type { FlowrSearchElement } from '../../search/flowr-search';
 import type { ParentInformation } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
@@ -79,7 +79,6 @@ export interface UndefinedSymbolMetadata extends MergeableRecord {
 const LibraryLoadFunctions = new Set(['library', 'require', 'requireNamespace', 'loadNamespace', 'attachNamespace', 'load_all', 'use', 'p_load']);
 
 // standard packages attached by default; exports are in scope without library()
-const AttachedBasePackages = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
 
 /** test frameworks whose namespace a test file runs under implicitly (e.g. `tests/testthat/test-*.R` sees testthat's exports without a `library()`) */
 const ImplicitTestFrameworks = new Set(['testthat', 'tinytest', 'RUnit']);

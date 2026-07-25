@@ -484,16 +484,32 @@ function searchPositionOf(this: void, env: Environment, name: string): number | 
 }
 
 /**
+ * The packages attached below the global environment, i.e. those whose exports R resolves without a namespace.
+ * Base is always among them, as it backs the built-in environment even when it is no layer of its own.
+ */
+function attachedPackagesOf(this: void, env: Environment): Set<string> {
+	const attached = new Set<string>([PkgName.Base]);
+	for(let e = findGlobalEnvironment(env).parent; !e.builtInEnv; e = e.parent) {
+		if(e.t !== EnvType.Imports && e.n !== undefined) {
+			attached.add(e.n);
+		}
+	}
+	return attached;
+}
+
+/**
  * Helpers for navigating and manipulating {@link REnvironmentInformation|environments} around the global environment and attached-package search path.
  */
 export const REnvironment = {
-	name:           'REnvironment',
+	name:             'REnvironment',
 	/** Walks up to the global environment (`.GlobalEnv`); see {@link findGlobalEnvironment}. */
-	findGlobal:     findGlobalEnvironment,
+	findGlobal:       findGlobalEnvironment,
 	/** Attaches a package block at a `search()` position, below the global by default; see {@link attachPackageAt}. */
-	attachAt:       attachPackageAt,
+	attachAt:         attachPackageAt,
 	/** The `search()` position of a named entry; see {@link searchPositionOf}. */
-	searchPosition: searchPositionOf,
+	searchPosition:   searchPositionOf,
+	/** The packages on the search path; see {@link attachedPackagesOf}. */
+	attachedPackages: attachedPackagesOf,
 } as const;
 
 /** Splits a package block (a contiguous run of attached-package layers, see {@link EnvType}) into its layers and the env below them. */

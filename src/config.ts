@@ -19,6 +19,8 @@ import { ProjectKind } from './project/context/project-kind';
 import objectPath from 'object-path';
 import type { BuiltInFlowrPluginArgs, BuiltInFlowrPluginName } from './project/plugins/plugin-registry';
 import { type FlowrGasConfig, GasWikiRef } from './gas';
+import type { InputClassifierConfig } from './queries/catalog/input-sources-query/simple-input-classifier';
+import { InputType } from './queries/catalog/input-sources-query/input-types';
 
 export enum VariableResolve {
 	/** Don't resolve constants at all */
@@ -214,6 +216,13 @@ export interface FlowrConfig extends MergeableRecord {
 		/** Rule names excluded from the *default* rule set (a rule requested explicitly still runs). */
 		readonly disabledRules: string[]
 	}
+	/**
+	 * Teaches the {@link InputSourcesQuery|input-sources} analysis (and with it the `problematic-inputs` linter)
+	 * about further frameworks. Everything here is *added* to what flowR already knows, so a shiny app keeps its
+	 * `input` even when you declare your own. Usually set per {@link ProjectKind} via {@link specializeConfig}.
+	 * @see {@link InputClassifierConfig} - for what the entries mean
+	 */
+	readonly inputSources?:     DeepWritable<InputClassifierConfig<string[]>>
 	/**
 	 * Overwrite (parts of) this configuration depending on the {@link ProjectKind} flowR detects for the project,
 	 * e.g. to give a shiny app its implicit sources. An entry may `inherit` another kind's overwrite (merged first,
@@ -549,7 +558,8 @@ export const FlowrConfig = {
 				[ProjectKind.Package]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.Project]:  { solver: { resolveSource: { assumeFilesExist: true } } },
 				[ProjectKind.ShinyApp]: {
-					project: { implicitSources: ['global.R', 'ui.R', 'server.R', 'app.R'] },
+					/* shiny evaluates global.R before the supporting files in R/, and the app itself last */
+					project: { implicitSources: ['global.R', 'R/*.R', 'ui.R', 'server.R', 'app.R'] },
 					solver:  { resolveSource: { assumeFilesExist: true } }
 				},
 				[ProjectKind.Script]:   { inherit: ProjectKind.Unknown },
@@ -648,6 +658,12 @@ export const FlowrConfig = {
 		linter: Joi.object({
 			disabledRules: Joi.array().items(Joi.string()).description('Linting rule names excluded from the default rule set (a rule requested explicitly via a linter query still runs). Usually set per project kind via specializeConfig.')
 		}).description('Linter configuration options.'),
+		inputSources: Joi.object({
+			pure:              Joi.array().items(Joi.string()).optional().description('Functions that only pass the constantness of their arguments on.'),
+			...Object.fromEntries(Object.values(InputType).map(t => [t, Joi.array().items(Joi.string()).optional().description(`Functions whose result is a '${t}' input.`)])),
+			linkedObjects:     Joi.array().items(Joi.object()).optional().description('Objects a framework provides without a definition in the code, e.g. shiny\'s input.'),
+			linkedEntryPoints: Joi.array().items(Joi.object()).optional().description('Calls that hand a function to a framework, which binds its objects to the parameters by position.')
+		}).optional().description('Further frameworks the input-sources analysis should know about; entries are added to flowR\'s defaults.'),
 		specializeConfig: Joi.object().pattern(Joi.string().valid(...Object.values(ProjectKind)), Joi.object({
 			inherit: Joi.string().valid(...Object.values(ProjectKind)).optional().description('Inherit another kind\'s overwrite first (merged before this entry\'s own keys, which win).')
 		}).unknown(true)).optional()

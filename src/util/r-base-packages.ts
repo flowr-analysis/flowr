@@ -2,6 +2,9 @@ import { RBasePackageStore } from '../data/r-base-packages.generated';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
 import { RVersion } from './r-version';
 
+/** the base packages R attaches to the search path on startup, so their exports are usable without a `library` call */
+export const AttachedBasePackages: readonly string[] = ['base', 'stats', 'graphics', 'grDevices', 'utils', 'datasets', 'methods'];
+
 /** clamp `rVersion` to the newest R release the store knows about (so a future R version stays answerable) */
 function effective(rVersion: string): string {
 	return RVersion.compare(rVersion, RBasePackageStore.newestRVersion) > 0 ? RBasePackageStore.newestRVersion : rVersion;

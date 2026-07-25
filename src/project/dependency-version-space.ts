@@ -98,7 +98,7 @@ export interface SurvivingEntries {
 	readonly preSignature:        TimelineEntry[];
 	/** the memoized function resolver used for the signature pass (shared so evidence reuses the decodes) */
 	readonly getFn:               FnResolver;
-	/** the combined, satisfiable declared range (`inferredVersion`), or `undefined` if none/contradictory */
+	/** the combined, satisfiable declared range (`inferredRange`), or `undefined` if none/contradictory */
 	readonly declaredRange:       Range | undefined;
 	/** the raw declared version constraints */
 	readonly declaredConstraints: readonly string[];
@@ -911,7 +911,7 @@ export function survivingEntries(space: VersionSpace, name: string, transitive: 
 	const { deps, disabled } = space;
 	// packageKey: sigdb package (R reuses base, others use themselves)
 	const { key: packageKey, src, getFn, timeline, usage, signatureOk } = space.resolve(name);
-	const declaredRange = disabled.has('declared') ? undefined : deps.inferredVersion(name);
+	const declaredRange = disabled.has('declared') ? undefined : deps.inferredRange(name);
 	const declaredConstraints = disabled.has('declared') ? [] : (deps.getDependency(name)?.versionConstraints.map(c => c.raw) ?? []);
 	const effectiveTransitive = disabled.has('transitive') ? [] : transitive;
 	// contradiction is a constraint property, not an empty database

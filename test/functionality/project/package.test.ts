@@ -11,7 +11,7 @@ describe('DESCRIPTION-file', function() {
 			p1.addInfo({ versionConstraints: [new Range('>=1.5')] });
 			p1.addInfo({ versionConstraints: [new Range('<=2.2.5')] });
 
-			assert.isTrue(p1.derivedVersion?.test('1.7.0'));
+			assert.isTrue(p1.derivedRange?.test('1.7.0'));
 		});
 	});
 });

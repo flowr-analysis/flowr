@@ -28,7 +28,7 @@ export function cleanupSigTmpDirs(): void {
 	}
 }
 
-/** write a built database into `dir` and open it back as a real {@link SigDatabase} */
+/** write a built database into `dir` and open it back, for the tests that exercise the on-disk format itself */
 export async function writeAndOpen(dir: string, db: SigDb, name = 'db'): Promise<SigDatabase> {
 	await writeSignatureDb(path.join(dir, name), db);
 	return SigDatabase.open(path.join(dir, `${name}${SigDbExt}`));

@@ -235,7 +235,7 @@ function getResults(queries: readonly DependenciesQuery[], { dataflow, config, n
 						linkedIds:          linked?.length ? linked : undefined,
 						value:              resolvedValue ?? info.defaultValue ?? defaultValue,
 						versionConstraints: dep?.versionConstraints,
-						derivedVersion:     dep?.derivedVersion,
+						derivedRange:       dep?.derivedRange,
 						namespaceInfo:      dep?.namespaceInfo
 					} as DependencyInfo));
 				}

@@ -59,7 +59,7 @@ export const DefaultDependencyCategories = {
 							functionName:       RNode.lexeme(node).includes(':::') ? ':::' : '::',
 							value:              ns,
 							versionConstraints: dep?.versionConstraints,
-							derivedVersion:     dep?.derivedVersion,
+							derivedRange:       dep?.derivedRange,
 							namespaceInfo:      dep?.namespaceInfo
 						});
 					}
@@ -113,8 +113,8 @@ export interface DependencyInfo extends Record<string, unknown>{
 	lexemeOfArgument?:   string;
 	/** The library name, file, source, destination etc. being sourced, read from, or written to. */
 	value?:              string
-	versionConstraints?: Range[],
-	derivedVersion?:     Range,
+	versionConstraints?: readonly Range[],
+	derivedRange?:       Range,
 	namespaceInfo?:      NamespaceInfo,
 }
 
@@ -127,7 +127,7 @@ function printResultSection(title: string, infos: DependencyInfo[], result: stri
 	for(const i of infos) {
 		const fn = Identifier.getName(i.functionName);
 		const value = i.value !== undefined ? bold(i.value, formatter) : faint('<unresolved>', formatter);
-		const version = i.derivedVersion !== undefined ? ` ${faint(i.derivedVersion.format(), formatter)}` : '';
+		const version = i.derivedRange !== undefined ? ` ${faint(i.derivedRange.format(), formatter)}` : '';
 		const linked = i.linkedIds ? `, linked ${i.linkedIds.join(', ')}` : '';
 		result.push(`     ${value}${version} ${faint(`via ${fn} (node ${i.nodeId}${linked})`, formatter)}`);
 	}

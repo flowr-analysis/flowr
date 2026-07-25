@@ -108,7 +108,7 @@ describe('DESCRIPTION-file', function() {
 		test('Library-Versions-Plugin', () => {
 			assert.isTrue(
 				ctx.deps.getDependency('dplyr')
-					?.derivedVersion
+					?.derivedRange
 					?.test('1.4.0')
 			);
 		});
@@ -175,8 +175,8 @@ describe('DESCRIPTION-file', function() {
 			assert.includeMembers(deps.map(n => n.name), ['methods', 'utils', 'ggplot2', 'rlang', 'R']);
 			const rDep = ctx.deps.getDependency('R');
 			assert.isDefined(rDep);
-			assert.isTrue(rDep?.derivedVersion?.test('3.5.0'));
-			assert.isFalse(rDep?.derivedVersion?.test('3.4.0'));
+			assert.isTrue(rDep?.derivedRange?.test('3.5.0'));
+			assert.isFalse(rDep?.derivedRange?.test('3.4.0'));
 		});
 		test('License parsing', () => {
 			const license = getDescContent(ctx).license();

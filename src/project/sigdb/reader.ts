@@ -327,6 +327,9 @@ export interface OpenSyncFromOptions extends SigDbOpenOptions, OpenSyncOptions {
  * to one package blob on demand. `open()` additionally decompresses a `.br`/`.gz` source into a
  * hash-keyed cache and reuses it on later startups. Implements {@link PackageSignatureSource}.
  */
+/** the {@link SigDatabase.fd} of a database that has no file behind it (see {@link SigDatabase.fromMemory}) */
+const NoFile = -1;
+
 export class SigDatabase implements PackageSignatureSource {
 	private closed = false;
 	/** parsed blobs by blob index so repeated lookups skip the re-read + JSON.parse; FIFO-bounded to cap memory */
@@ -345,6 +348,18 @@ export class SigDatabase implements PackageSignatureSource {
 		this.index = index;
 		this.content = content;
 		this.cranBase = cranBase;
+	}
+
+	/**
+	 * Use an already-built {@link SigDb} directly, without writing or reading a file: its blobs simply start out in
+	 * the cache. It holds exactly what a bundle carries, so every query answers as it would from disk; the
+	 * {@link SigDbBuilder} plus this is all a test needs.
+	 */
+	public static fromMemory(db: SigDb): SigDatabase {
+		const index: SigDbIndex = { byteCount: 0, dict: [0, 0], blobs: [], pkgs: db.pkgs, meta: db.meta };
+		const source = new SigDatabase(NoFile, db.strings, index, db.content, db.cranBase ?? DefaultCranBase);
+		db.blobs.forEach((blob, i) => source.blobCache.set(i, blob));
+		return source;
 	}
 
 	/**
@@ -411,6 +426,9 @@ export class SigDatabase implements PackageSignatureSource {
 		const cached = this.blobCache.get(blobIdx);
 		if(cached !== undefined) {
 			return cached;
+		}
+		if(this.fd === NoFile) {
+			return undefined;   // an in-memory database starts out with every blob cached
 		}
 		const blob = this.readBlobAt(this.index.blobs[blobIdx]);
 		if(this.blobCache.size >= SigDatabase.BlobCacheCap) {
@@ -560,7 +578,9 @@ export class SigDatabase implements PackageSignatureSource {
 			this.closed = true;
 			this.blobCache.clear();
 			this.classIndex = undefined;
-			fs.closeSync(this.fd);
+			if(this.fd !== NoFile) {
+				fs.closeSync(this.fd);
+			}
 		}
 	}
 }

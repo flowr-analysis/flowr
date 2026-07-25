@@ -14,9 +14,9 @@ function contextWith(...packages: Package[]): FlowrAnalyzerContext {
 const range = (comparator: string | undefined, version: string) =>
 	Package.parsePkgVersionRange(comparator, version) as NonNullable<ReturnType<typeof Package.parsePkgVersionRange>>;
 
-describe('Inferred dependency version', () => {
+describe('Inferred dependency range', () => {
 	test('a declared range is what the dependency can be', () => {
-		const inferred = contextWith(new Package({ name: 'cli', versionConstraints: [range('>= ', '3.0.0')] })).inferredVersion('cli');
+		const inferred = contextWith(new Package({ name: 'cli', versionConstraints: [range('>= ', '3.0.0')] })).inferredRange('cli');
 		assert.strictEqual(inferred?.raw, '>= 3.0.0');
 	});
 
@@ -24,7 +24,7 @@ describe('Inferred dependency version', () => {
 		const inferred = contextWith(
 			new Package({ name: 'ggplot2', versionConstraints: [range('>= ', '3.0.0')] }),
 			new Package({ name: 'ggplot2', versionConstraints: [range(undefined, '3.5.1')] })
-		).inferredVersion('ggplot2');
+		).inferredRange('ggplot2');
 		assert.isDefined(inferred);
 		assert.isTrue(inferred?.test('3.5.1'), 'the pinned version must satisfy the combined range');
 		assert.isFalse(inferred?.test('3.0.0'), 'a version outside the pin must not');
@@ -33,16 +33,16 @@ describe('Inferred dependency version', () => {
 	test('contradicting sources leave no possible version', () => {
 		const ctx = contextWith(new Package({ name: 'x', versionConstraints: [range('>= ', '2.0.0')] }));
 		assert.doesNotThrow(() => ctx.deps.addDependency(new Package({ name: 'x', versionConstraints: [range(undefined, '1.5.0')] })));
-		assert.isUndefined(ctx.inferredVersion('x'), 'a range nothing can satisfy must not be handed out');
+		assert.isUndefined(ctx.inferredRange('x'), 'a range nothing can satisfy must not be handed out');
 		// the individual constraints stay available on the package itself
 		assert.strictEqual(ctx.deps.getDependency('x')?.versionConstraints.length, 2);
 	});
 
-	test('an unknown dependency has no inferred version', () => {
-		assert.isUndefined(contextWith().inferredVersion('nope'));
+	test('an unknown dependency has no inferred range', () => {
+		assert.isUndefined(contextWith().inferredRange('nope'));
 	});
 
-	test('a dependency nothing constrains has no inferred version', () => {
-		assert.isUndefined(contextWith(new Package({ name: 'plain' })).inferredVersion('plain'));
+	test('a dependency nothing constrains has no inferred range', () => {
+		assert.isUndefined(contextWith(new Package({ name: 'plain' })).inferredRange('plain'));
 	});
 });

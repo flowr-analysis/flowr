@@ -1,10 +1,8 @@
-import { afterAll, describe, expect, test } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { withTreeSitter } from '../../../_helper/shell';
-import { sigTmpDir, cleanupSigTmpDirs, writeAndOpen, sigdbAnalyzer } from '../../../_helper/sigdb';
-
-afterAll(cleanupSigTmpDirs);
+import { sigdbAnalyzer } from '../../../_helper/sigdb';
 import { FlowrInlineTextFile } from '../../../../../src/project/context/flowr-file';
-import type { SigDatabase } from '../../../../../src/project/sigdb/reader';
+import { SigDatabase } from '../../../../../src/project/sigdb/reader';
 import { SigDbBuilder } from '../../../../../src/project/sigdb/build';
 import { FnProp } from '../../../../../src/project/sigdb/schema';
 import { executeLintingRule } from '../../../../../src/linter/linter-executor';
@@ -16,7 +14,7 @@ import { Identifier } from '../../../../../src/dataflow/environments/identifier'
  * A two-library database with real per-function detail: signatures (parameters with defaults/missing),
  * call graphs, and definition locations (file + line) -- everything a consumer needs to reason about a call.
  */
-async function buildLibs(dir: string): Promise<SigDatabase> {
+function buildLibs(): SigDatabase {
 	const b = new SigDbBuilder();
 	b.addPackage('greeter', { latest: '1.0.0', downloads: 9 });
 	b.addVersion('greeter', '1.0.0', { cran:      true, functions: [
@@ -29,7 +27,7 @@ async function buildLibs(dir: string): Promise<SigDatabase> {
 	b.addVersion('mather', '2.0.0', { cran:      true, functions: [
 		{ name: 'add', props: FnProp.Exported, params: [{ name: 'a' }, { name: 'b', default: '0' }], callees: [], file: 'R/add.R', line: 5 }
 	] });
-	return writeAndOpen(dir, b.build({ date: '2026-05-23', generated: 0 }));
+	return SigDatabase.fromMemory(b.build({ date: '2026-05-23', generated: 0 }));
 }
 
 describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts => {
@@ -42,8 +40,7 @@ describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts =>
 	}
 
 	test('undefined-symbol linter resolves the library + cross-file calls and flags only the truly undefined one', async() => {
-		const dir = sigTmpDir('sigdb-mf-');
-		const analyzer = await analyzeProject(await buildLibs(dir));
+		const analyzer = await analyzeProject(buildLibs());
 		const result = LintingResults.unpackSuccess(await executeLintingRule('undefined-symbol', analyzer, { checkVariables: false }));
 		const flagged = result.results.map(r => r.name);
 		expect(flagged).toContain('notdefined');       // genuinely undefined -> flagged
@@ -52,9 +49,8 @@ describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts =>
 		expect(flagged).not.toContain('helper_add');    // resolved from the cross-file definition
 	});
 
-	test('the sigdb yields the definition location of a library function', async() => {
-		const dir = sigTmpDir('sigdb-mf-');
-		const db = await buildLibs(dir);
+	test('the sigdb yields the definition location of a library function', () => {
+		const db = buildLibs();
 		// via the rich per-function view...
 		const greet = (db.functions('greeter') ?? []).find(f => f.name === 'greet');
 		expect(greet?.file).toBe('R/greet.R');
@@ -66,8 +62,7 @@ describe('sigdb system: multi-file, multi-library project', withTreeSitter(ts =>
 	});
 
 	test('a call in the project can be matched against the signature the sigdb records for its definition', async() => {
-		const dir = sigTmpDir('sigdb-mf-');
-		const db = await buildLibs(dir);
+		const db = buildLibs();
 		const analyzer = await analyzeProject(db);
 		const dfg = (await analyzer.dataflow()).graph;
 

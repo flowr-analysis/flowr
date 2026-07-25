@@ -396,7 +396,7 @@ export class FlowrAnalyzerPackageVersionsSigDbPlugin extends FlowrAnalyzerPackag
 		const sigdb = this.analyzerCtx?.config.solver.sigdb;
 		const override = sigdb?.versionOverrides?.[name];
 		const selection = sigdb?.versionSelection ?? VersionSelection.Newest;
-		const range = existing?.derivedVersion;
+		const range = existing?.derivedRange;
 		let fallback: LibraryExports | undefined;
 		for(const src of this.loadSources()) {
 			if(!src.has(name)) {

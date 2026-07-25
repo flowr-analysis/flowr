@@ -165,7 +165,7 @@ function renderVertices(dfg: DataflowGraph, g: graphlib.Graph, canvas: AsciiCanv
 		const tag = dfg.getVertex(NodeId.normalize(nodeId))?.tag;
 		let e = '+';
 		if(tag && tag in type2Edge) {
-			e = type2Edge[tag as VertexType];
+			e = type2Edge[tag];
 		}
 		canvas.drawText(x - 1, y - 1, `${e}${'-'.repeat(label.length)}${e}`);
 		canvas.drawText(x - 1 + Math.round(label.length / 2 - nodeId.length / 2), y - 1, `<${nodeId}>`);

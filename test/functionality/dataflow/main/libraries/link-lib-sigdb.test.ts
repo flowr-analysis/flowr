@@ -12,7 +12,7 @@ import { Dataflow } from '../../../../../src/dataflow/graph/df-helper';
 import { baseRExportOwner } from '../../../../../src/util/r-base-packages';
 import { executeCallContextQueries } from '../../../../../src/queries/catalog/call-context-query/call-context-query-executor';
 import type { FlowrAnalyzer } from '../../../../../src/project/flowr-analyzer';
-import { type SigDatabase, type PackageSignatureSource } from '../../../../../src/project/sigdb/reader';
+import type { SigDatabase, PackageSignatureSource } from '../../../../../src/project/sigdb/reader';
 import { SigDbBuilder, writeSignatureDb } from '../../../../../src/project/sigdb/build';
 import { SigDbExt, FnProp, DepType } from '../../../../../src/project/sigdb/schema';
 import { NodeId } from '../../../../../src/r-bridge/lang-4.x/ast/model/processing/node-id';

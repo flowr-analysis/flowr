@@ -138,7 +138,7 @@ export type PluginToRegister<T extends BuiltInFlowrPluginName | string> =
  */
 export function makePlugin<T extends BuiltInFlowrPluginName | string>(toRegister: PluginToRegister<T>): FlowrAnalyzerPlugin {
 	if(toRegister instanceof Object && 'process' in toRegister) {
-		return toRegister as FlowrAnalyzerPlugin;
+		return toRegister;
 	}
 	if(Array.isArray(toRegister)) {
 		const [name, args] = toRegister;

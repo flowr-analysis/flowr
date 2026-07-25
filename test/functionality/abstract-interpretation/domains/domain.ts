@@ -1,5 +1,5 @@
 import { assert, test } from 'vitest';
-import { type AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
+import type { AnyAbstractDomain } from '../../../../src/abstract-interpretation/domains/abstract-domain';
 
 /**
  * The type of an object containing the expected results for the operations on abstract values of an abstract domain.

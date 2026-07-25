@@ -56,7 +56,7 @@ export type BuiltInDefinitions<Keys extends (keyof typeof BuiltInProcessorMapper
 export function getDefaultBuiltInDefinitions(): BuiltIns {
 	const builtIns = new BuiltIns();
 	for(const definition of DefaultBuiltinConfig) {
-		builtIns.registerBuiltInDefinition(definition as BuiltInDefinition);
+		builtIns.registerBuiltInDefinition(definition);
 	}
 	return builtIns;
 }

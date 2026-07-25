@@ -28,7 +28,7 @@ export function instrumentDataflowCount(countMap: Map<RType, number>, reset: (ma
 				const prev = countMap.get(key) ?? 0;
 				countMap.set(key, prev + 1);
 				return processor(...args);
-			}) as never;
+			});
 		}
 		return instrumented;
 	};

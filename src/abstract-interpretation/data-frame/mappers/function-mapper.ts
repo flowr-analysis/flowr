@@ -1,5 +1,5 @@
 import { VariableResolve } from '../../../config';
-import { type ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
+import type { ResolveInfo } from '../../../dataflow/eval/resolve/alias-tracking';
 import type { DataflowGraph } from '../../../dataflow/graph/graph';
 import { toUnnamedArgument } from '../../../dataflow/internal/process/functions/call/argument/make-argument';
 import { findSource } from '../../../dataflow/internal/process/functions/call/built-in/built-in-source';
@@ -1011,7 +1011,6 @@ function mapDataFrameSubset(
 				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
-			operand = undefined;
 		}
 	}
 	return result;
@@ -1115,7 +1114,6 @@ function mapDataFrameSelect(
 			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
-		operand = undefined;
 	}
 	return result;
 }
@@ -1182,7 +1180,6 @@ function mapDataFrameMutate(
 			colnames:  deletedCols,
 			options:   { maybe: true }
 		});
-		operand = undefined;
 	}
 	return result;
 }

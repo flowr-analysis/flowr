@@ -15,7 +15,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
 import { EmptyArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
-import { type NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
+import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import {
 	Identifier,
@@ -646,7 +646,7 @@ function processAssignmentToSymbol<OtherInfo>(config: AssignmentToSymbolParamete
 	// we drop the first arg which we use to pass along arguments :D
 	const readFromSourceWritten = sourceArg.out.slice(1);
 	const readTargets: IdentifierReference[] = [
-		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function } as IdentifierReference
+		{ nodeId: rootId, name: nameOfAssignmentFunction, cds: data.cds, type: ReferenceType.Function }
 	];
 	readTargets.push(...sourceArg.unknownReferences);
 	readTargets.push(...sourceArg.in);

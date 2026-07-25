@@ -174,7 +174,7 @@ export const FILE_PATH_VALIDITY = {
 			}];
 		}));
 		return {
-			results: findings.flat() as FilePathValidityResult[],
+			results: findings.flat(),
 			'.meta': metadata
 		};
 	},

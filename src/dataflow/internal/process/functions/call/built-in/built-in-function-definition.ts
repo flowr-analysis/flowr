@@ -35,7 +35,7 @@ import { overwriteEnvironment } from '../../../../../environments/overwrite';
 import { isFunctionCallVertex, VertexType } from '../../../../../graph/vertex';
 import { createFreshEnvState } from './built-in-new-env';
 import { popLocalEnvironment, pushLocalEnvironment } from '../../../../../environments/scoping';
-import { type REnvironmentInformation } from '../../../../../environments/environment';
+import type { REnvironmentInformation } from '../../../../../environments/environment';
 import { resolveByName } from '../../../../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../../../../graph/edge';
 import { expensiveTrace } from '../../../../../../util/log';

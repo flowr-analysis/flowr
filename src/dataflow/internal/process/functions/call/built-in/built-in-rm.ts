@@ -115,7 +115,7 @@ function collectRmTargets<OtherInfo>(
 			collectDotArg(targets, arg.value);
 			continue;
 		}
-		const formal = findByPrefixIfUnique(arg.name.content as string, RmNamedFormals);
+		const formal = findByPrefixIfUnique(arg.name.content, RmNamedFormals);
 		if(formal === 'list') {
 			collectListArg(targets, arg.value, data);
 		} else if(formal === undefined) {

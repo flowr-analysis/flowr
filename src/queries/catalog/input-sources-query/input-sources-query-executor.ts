@@ -9,7 +9,7 @@ import type { InputClassifierConfig, InputClassifierFunctionIdentifiers, InputSo
 import { classifyInput } from './simple-input-classifier';
 import type { ReadonlyFlowrAnalysisProvider } from '../../../project/flowr-analyzer';
 import { runSearch } from '../../../search/flowr-search-executor';
-import { type FlowrSearchLike } from '../../../search/flowr-search-builder';
+import type { FlowrSearchLike } from '../../../search/flowr-search-builder';
 import { Record } from '../../../util/record';
 
 /**
@@ -45,12 +45,12 @@ export async function executeInputSourcesQuery({ analyzer }: BasicQueryData, que
 		}
 	}
 
-	return ({
+	return {
 		'.meta': {
 			timing: Date.now() - start
 		},
 		results
-	} as unknown) as InputSourcesQueryResult;
+	};
 }
 
 async function resolveSearches(analyzer: ReadonlyFlowrAnalysisProvider, config: InputClassifierConfig): Promise<InputClassifierConfig<InputClassifierFunctionIdentifiers>> {

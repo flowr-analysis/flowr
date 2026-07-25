@@ -410,7 +410,7 @@ function cfgFunctionCall(call: RFunctionCall<ParentInformation>, name: ControlFl
 	if(call.named && call.functionName.content === 'ifelse' && args.length > 1) {
 		// special built-in handling for ifelse as it is an expression that does not short-circuit
 		return cfgIfThenElse(
-			call as RNodeWithParent,
+			call,
 			args[0] === EmptyArgument ? emptyControlFlowInformation() : args[0],
 			args[1] === EmptyArgument ? emptyControlFlowInformation() : args[1],
 			args[2] === EmptyArgument ? emptyControlFlowInformation() : args[2]

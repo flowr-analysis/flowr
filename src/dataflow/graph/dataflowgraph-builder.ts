@@ -6,7 +6,7 @@ import {
 	DataflowGraph,
 	FunctionArgument
 } from './graph';
-import { type IEnvironment, type REnvironmentInformation } from '../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../environments/environment';
 import { type DataflowGraphVertexFunctionDefinition,
 	type DataflowGraphVertexArgument,
 	type DataflowGraphVertexAstLink,
@@ -83,7 +83,7 @@ export class DataflowGraphBuilder<
 				in:                subflow.in.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
 				unknownReferences: subflow.unknownReferences.map(o => ({ ...o, nodeId: NodeId.normalize(o.nodeId), cds: o.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) })),
 				hooks:             subflow.hooks ?? [],
-			} as DataflowFunctionFlowInformation,
+			},
 			mode:       info?.mode,
 			exitPoints: exitPoints.map(e => typeof e === 'object' ? ({ ...e, nodeId: NodeId.normalize(e.nodeId), cds: e.cds?.map(c => ({ ...c, id: NodeId.normalize(c.id) })) }) :
 				({ nodeId: NodeId.normalize(e), type: ExitPointType.Default, cds: undefined })

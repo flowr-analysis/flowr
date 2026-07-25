@@ -158,6 +158,8 @@ function mapDataFrameIndexColRowAccess(
 					colnames:  columns?.map(col => typeof col === 'string' ? col : undefined)
 				});
 			}
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
+			operand = undefined;
 		}
 	}
 	return result;

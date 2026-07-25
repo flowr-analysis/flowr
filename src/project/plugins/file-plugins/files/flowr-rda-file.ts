@@ -2267,10 +2267,12 @@ export class RDAParser{
 					this.skipInteger();
 					type = this.assertInteger(this.inInteger());
 				}
+				/* eslint-disable no-useless-assignment -- mirrors the read path */
 				switch(type) {
-					case SexpType.AltLangSxp:
-					case SexpType.AttrListSxp: hasAttr = true; break;
+					case SexpType.AltLangSxp: type = SexpType.LangSxp; hasAttr = true; break;
+					case SexpType.AttrListSxp: type = SexpType.ListSxp; hasAttr = true; break;
 				}
+				/* eslint-enable no-useless-assignment */
 
 				this.currentDepth++;
 				if(hasAttr) {

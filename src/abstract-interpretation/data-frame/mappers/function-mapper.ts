@@ -1011,6 +1011,8 @@ function mapDataFrameSubset(
 				colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 				...(duplicateCols || mixedAccess ? { options: { duplicateCols: true } } : {})
 			});
+			// eslint-disable-next-line no-useless-assignment -- ends the chain
+			operand = undefined;
 		}
 	}
 	return result;
@@ -1114,6 +1116,8 @@ function mapDataFrameSelect(
 			colnames:  selectedCols?.map(col => typeof col === 'string' ? col : undefined),
 			...(renamedCols ? { options: { renamedCols: true } } : {})
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
+		operand = undefined;
 	}
 	return result;
 }
@@ -1180,6 +1184,8 @@ function mapDataFrameMutate(
 			colnames:  deletedCols,
 			options:   { maybe: true }
 		});
+		// eslint-disable-next-line no-useless-assignment -- ends the chain
+		operand = undefined;
 	}
 	return result;
 }

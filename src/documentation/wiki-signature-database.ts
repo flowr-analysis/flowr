@@ -248,6 +248,7 @@ Beyond the flags above, ${ctx.link('DecodedFunction::props')} also carry ${ctx.l
 
 These are derived on demand by the ${ctx.linkPage('wiki/Query API', 'signature query')}, not stored:
 - the rdrr.io documentation link ${ctx.link('SignatureFunctionView::docUrl')} (base R \`/r/<pkg>/<topic>\`, CRAN \`/cran/<pkg>/man/<topic>\`), omitted for a ${ctx.linkE<typeof FnProp>('FnProp', 'NoDoc')} function
+- ${ctx.link('SignatureFunctionView::sourceUrl')} and ${ctx.link('SignatureFunctionView::manUrl')}: the definition and its \`.Rd\` help page at the queried version, on \`github.com/cran/<pkg>\` (CRAN) or \`github.com/wch/r-source\` (base R)
 - the S3 method to generic backlink ${ctx.link('SignatureFunctionView::s3method')}, for a ${ctx.linkE<typeof FnProp>('FnProp', 'S3Method')} function, resolving its generic
 - the transitive call graph ${ctx.linkM(SigDatabase, 'transitiveCallees')}, expanding the stored local callees inside one version
 

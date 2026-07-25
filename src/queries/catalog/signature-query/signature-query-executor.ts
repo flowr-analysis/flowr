@@ -111,7 +111,26 @@ export function cranMirrorSourceUrl(pkg: string, version: string | undefined, fi
 	return `${cranMirrorRepoUrl(pkg)}/blob/${ref}/${file}${anchor}`;
 }
 
-/** function/topic names that map cleanly to an rdrr.io man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
+/** read-only GitHub mirror of R's own SVN; base packages live under `src/library/<pkg>` */
+const RSourceMirror = 'https://github.com/wch/r-source';
+
+/**
+ * The mirror ref holding an R version. The mirror carries no tags, only a `R-<major>-<minor>-branch` per release
+ * series, so a link is exact to the minor release and points at its latest patch; `trunk` stands in when the version
+ * is unknown.
+ */
+export function rSourceRef(version: string | undefined): string {
+	const series = /^(\d+)\.(\d+)/.exec(version ?? '');
+	return series ? `R-${series[1]}-${series[2]}-branch` : 'trunk';
+}
+
+/** deep-link a base-R definition into the R sources mirror at the release series of `version` */
+export function rSourceUrl(pkg: string, version: string | undefined, file: string, line?: number): string {
+	const anchor = line !== undefined && line >= 0 ? `#L${line}` : '';
+	return `${RSourceMirror}/blob/${rSourceRef(version)}/src/library/${encodeURIComponent(pkg)}/${file}${anchor}`;
+}
+
+/** function/topic names that map cleanly to a man page (skip operators like `+.gg`, `[.data.frame`; Rd topics allow hyphens, e.g. `dplyr-package`) */
 const RdrrTopicName = /^[A-Za-z.][A-Za-z0-9._-]*$/;
 /** best-effort rdrr.io documentation link: `/r/<pkg>/<fn>` for base R, `/cran/<pkg>/man/<fn>` for CRAN */
 export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran: boolean }): string | undefined {
@@ -127,19 +146,51 @@ export function rdrrDocUrl(pkg: string, fn: string, opts: { base: boolean, cran:
 	return undefined;
 }
 
-/** the doc link for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
-function docUrlFor(pkg: string, fn: DecodedFunction, base: boolean, cran: boolean): string | undefined {
-	return fn.props.includes('no-doc') ? undefined : rdrrDocUrl(pkg, fn.topic ?? fn.name, { base, cran });
+/**
+ * The `.Rd` help source of a topic *at the queried version*, on the same mirrors the source links use. rdrr.io only
+ * serves a package's current release, so {@link rdrrDocUrl} silently answers for the wrong version whenever an older
+ * one was asked for; this link cannot drift.
+ */
+export function manPageUrl(pkg: string, topic: string, version: string | undefined, opts: { base: boolean, cran: boolean }): string | undefined {
+	if(!RdrrTopicName.test(topic)) {
+		return undefined;
+	}
+	if(opts.base) {
+		return rSourceUrl(pkg, version, `man/${topic}.Rd`);
+	}
+	return opts.cran ? cranMirrorSourceUrl(pkg, version, `man/${topic}.Rd`) : undefined;
 }
 
-/** the trailing fields shared by every function view: definition location, CRAN-mirror source link, and rdrr.io doc link */
+/** the doc links for a function: its help topic (else its name), or none when it is proven undocumented (`no-doc`) */
+function docUrlsFor(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
+	if(fn.props.includes('no-doc')) {
+		return {};
+	}
+	const topic = fn.topic ?? fn.name;
+	const doc = rdrrDocUrl(pkg, topic, { base, cran });
+	const man = manPageUrl(pkg, topic, version, { base, cran });
+	return { ...(doc ? { docUrl: doc } : {}), ...(man ? { manUrl: man } : {}) };
+}
+
+/** the source link of a definition: the CRAN mirror at its version tag, or the R sources mirror for a base package */
+function sourceUrlFor(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean): string | undefined {
+	if(!fn.file) {
+		return undefined;
+	}
+	if(base) {
+		return rSourceUrl(pkg, version, fn.file, fn.line);
+	}
+	return cran ? cranMirrorSourceUrl(pkg, version, fn.file, fn.line) : undefined;
+}
+
+/** the trailing fields shared by every function view: definition location, source link, and documentation links */
 function locationFields(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean) {
-	const doc = docUrlFor(pkg, fn, base, cran);
+	const source = sourceUrlFor(pkg, fn, version, base, cran);
 	return {
 		...(fn.file ? { file: fn.file } : {}),
 		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {})
+		...(source ? { sourceUrl: source } : {}),
+		...docUrlsFor(pkg, fn, version, base, cran)
 	};
 }
 
@@ -425,16 +476,12 @@ function matchedParamPreview(fn: DecodedFunction, q: SignatureQuery): { preview:
 
 /** a compact view for a wildcard search hit (signature/call-graph omitted; the JSON dump carries those per name) */
 function compactMatch(pkg: string, fn: DecodedFunction, version: string | undefined, base: boolean, cran: boolean, params?: { preview: string[], matched: string[] }): SignatureMatchView {
-	const doc = docUrlFor(pkg, fn, base, cran);
 	return {
 		package:  pkg,
 		name:     fn.name,
 		exported: fn.exported,
 		...(version !== undefined ? { version } : {}),
-		...(fn.file ? { file: fn.file } : {}),
-		...(fn.line >= 0 ? { line: fn.line } : {}),
-		...(cran && !base && fn.file ? { sourceUrl: cranMirrorSourceUrl(pkg, version, fn.file, fn.line) } : {}),
-		...(doc ? { docUrl: doc } : {}),
+		...locationFields(pkg, fn, version, base, cran),
 		...(params && params.preview.length > 0 ? { parameters: params.preview } : {}),
 		...(params && params.matched.length > 0 ? { matchedParameters: params.matched } : {})
 	};

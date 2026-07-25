@@ -11,7 +11,7 @@ import { executeQueries } from '../../../../src/queries/query';
 import { asciiSummaryOfQueryResult } from '../../../../src/queries/query-print';
 import { ansiFormatter } from '../../../../src/util/text/ansi';
 import { SignatureQueryDefinition, type SignatureQuery } from '../../../../src/queries/catalog/signature-query/signature-query-format';
-import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, signatureQueryCompleter } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
+import { signatureFunctionInfo, signaturePackageInfo, cranMirrorSourceUrl, rSourceRef, signatureQueryCompleter } from '../../../../src/queries/catalog/signature-query/signature-query-executor';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -154,10 +154,17 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 			expect(info?.sourceUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/R/foo.R#L5');
 		});
 
-		test('a base-R function has a location and no CRAN-mirror source link', () => {
+		test('a base-R function links into the R sources mirror at its release branch', () => {
 			const info = signatureFunctionInfo(db, 'base', 'paste2');
 			expect(info?.file).toBe('R/paste.R');
-			expect(info?.sourceUrl).toBeUndefined();
+			expect(info?.sourceUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/R/paste.R#L10');
+			expect(info?.manUrl).toBe('https://github.com/wch/r-source/blob/R-4-5-branch/src/library/base/man/paste2.Rd');
+		});
+
+		test('a CRAN function links its help source at the queried version, unlike the rdrr.io link', () => {
+			const info = signatureFunctionInfo(db, 'mypkg', 'foo');
+			expect(info?.manUrl).toBe('https://github.com/cran/mypkg/blob/1.0.0/man/foo.Rd');
+			expect(info?.docUrl).toBe('https://rdrr.io/cran/mypkg/man/foo.html');
 		});
 
 		test('an S3 generic lists its same-package dispatch targets by name', () => {
@@ -192,6 +199,17 @@ describe.sequential('SigDb Query', withTreeSitter(parser => {
 		});
 		test('falls back to HEAD without a version and omits the anchor without a line', () => {
 			expect(cranMirrorSourceUrl('pkg', undefined, 'R/a.R')).toBe('https://github.com/cran/pkg/blob/HEAD/R/a.R');
+		});
+	});
+
+	describe('rSourceRef', () => {
+		test('an R version maps to its release-series branch, the mirror carrying no per-patch tag', () => {
+			expect(rSourceRef('4.3.1')).toBe('R-4-3-branch');
+			expect(rSourceRef('3.6')).toBe('R-3-6-branch');
+		});
+		test('an unknown or unparseable version falls back to trunk', () => {
+			expect(rSourceRef(undefined)).toBe('trunk');
+			expect(rSourceRef('devel')).toBe('trunk');
 		});
 	});
 

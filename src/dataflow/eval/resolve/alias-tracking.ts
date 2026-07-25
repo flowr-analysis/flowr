@@ -7,7 +7,7 @@ import { RType } from '../../../r-bridge/lang-4.x/ast/model/type';
 import { VisitingQueue } from '../../../slicing/static/visiting-queue';
 import { guard } from '../../../util/assert';
 import type { BuiltInIdentifierConstant } from '../../environments/built-in';
-import { type IEnvironment, type REnvironmentInformation } from '../../environments/environment';
+import type { IEnvironment, REnvironmentInformation } from '../../environments/environment';
 import { Identifier, ReferenceType } from '../../environments/identifier';
 import { resolveByName, resolveByNameAnyType } from '../../environments/resolve-by-name';
 import { DfEdge, EdgeType } from '../../graph/edge';

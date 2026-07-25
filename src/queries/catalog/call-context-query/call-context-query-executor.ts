@@ -37,7 +37,7 @@ function isQuoted(node: NodeId, graph: DataflowGraph): boolean {
 }
 
 function makeReport(collector: TwoLayerCollector<string, string, CallContextQuerySubKindResult>): CallContextQueryKindResult {
-	const result: CallContextQueryKindResult = {} as unknown as CallContextQueryKindResult;
+	const result: CallContextQueryKindResult = {};
 	for(const [kind, collected] of collector.store) {
 		const subkinds = {} as CallContextQueryKindResult[string]['subkinds'];
 		for(const [subkind, values] of collected) {

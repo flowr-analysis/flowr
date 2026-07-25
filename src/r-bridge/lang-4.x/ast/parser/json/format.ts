@@ -143,7 +143,7 @@ export function prepareParsedData(data: string): CsvEntry[] {
 		try {
 			json = JSON.parse(`[${jsonSafeRParseData(data.trim())}]`);
 		} catch(e) {
-			throw new Error(`Failed to parse data [${data}]: ${(e as Error)?.message}`);
+			throw new Error(`Failed to parse data [${data}]: ${(e as Error)?.message}`, { cause: e });
 		}
 	}
 	guard(Array.isArray(json), () => `Expected ${data} to be an array but was not`);

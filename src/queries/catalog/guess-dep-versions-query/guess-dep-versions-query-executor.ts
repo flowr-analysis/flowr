@@ -49,7 +49,7 @@ class EvidenceCollector {
 			return;
 		}
 		this.seen.add(key);
-		this.list.push(compactRecord({ ...c }) as GuessVersionEvidence);
+		this.list.push(compactRecord({ ...c }));
 	};
 }
 
@@ -153,7 +153,7 @@ function guessPackage(name: string, cap: number, surviving: SurvivingEntries, ev
 		linkedWith:     linkedWith && linkedWith.length > 0 ? linkedWith : undefined,
 		coupledWith:    coupledWith && coupledWith.length > 0 ? coupledWith : undefined,
 		used
-	}) as GuessedDependency;
+	});
 }
 
 /**
@@ -293,5 +293,5 @@ export async function executeGuessDepVersionsQuery(
 		linkedGroups:     linkedGroups.length > 0 ? linkedGroups : undefined,
 		assignments,
 		message
-	}) as GuessDepVersionsQueryResult;
+	});
 }

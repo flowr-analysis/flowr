@@ -10,7 +10,7 @@ import { RType } from '../../r-bridge/lang-4.x/ast/model/type';
 import type { FlowrSearchElements } from '../../search/flowr-search';
 import { Q } from '../../search/flowr-search-builder';
 import { Ternary } from '../../util/logic';
-import { type MergeableRecord } from '../../util/objects';
+import type { MergeableRecord } from '../../util/objects';
 import { SourceLocation } from '../../util/range';
 import { LintingPrettyPrintContext, LintingResultCertainty, LintingRuleCertainty, type LintingResult, type LintingRule } from '../linter-format';
 import { LintingRuleTag } from '../linter-tags';

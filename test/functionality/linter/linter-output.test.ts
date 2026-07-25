@@ -69,7 +69,7 @@ describe('Linter output', () => {
 		});
 
 		test('a rule that threw is reported as an error, not swallowed', () => {
-			const sarif = sarifOf({ 'undefined-symbol': { error: new Error('boom') } } as unknown as LinterQueryResult['results']);
+			const sarif = sarifOf({ 'undefined-symbol': { error: new Error('boom') } });
 			const [result] = sarif.runs[0].results;
 			assert.strictEqual(result.level, 'error');
 			assert.include(result.message.text, 'boom');
@@ -114,7 +114,7 @@ describe('Linter output', () => {
 		test('a newline in a message is escaped, as it would end the command', () => {
 			const out = githubOf({
 				'undefined-symbol': { error: new Error('a\nb\rc%d') }
-			} as unknown as LinterQueryResult['results']);
+			});
 			assert.include(out, 'a%0Ab%0Dc%25d');
 			assert.strictEqual(out.split('\n').length, 1, 'the annotation stays on one line');
 		});

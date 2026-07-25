@@ -4,7 +4,7 @@ import { DataflowAwareCfgGuidedVisitor, type DataflowCfgGuidedVisitorConfigurati
 import type { NormalizedAst, ParentInformation } from '../r-bridge/lang-4.x/ast/model/processing/decorate';
 import type { SyntaxCfgGuidedVisitorConfiguration } from './syntax-cfg-guided-visitor';
 import type { NodeId } from '../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type Origin } from '../dataflow/origin/dfg-get-origin';
+import type { Origin } from '../dataflow/origin/dfg-get-origin';
 import type {
 	DataflowGraphVertexFunctionCall,
 	DataflowGraphVertexFunctionDefinition,
@@ -96,7 +96,7 @@ export class SemanticCfgGuidedVisitor<
 						node:   astNode as RSymbol<OtherInfo & ParentInformation, typeof RNull>
 					});
 				} else {
-					return this.onSymbolConstant({ vertex: val, node: astNode as RSymbol<OtherInfo & ParentInformation> });
+					return this.onSymbolConstant({ vertex: val, node: astNode });
 				}
 
 		}

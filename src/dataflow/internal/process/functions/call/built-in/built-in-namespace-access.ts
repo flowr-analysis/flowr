@@ -8,7 +8,7 @@ import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/node
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { dataflowLogger } from '../../../../../logger';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
-import { type BrandedIdentifier, type BrandedNamespace, Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import { DataflowGraph } from '../../../../../graph/graph';
 import { VertexType } from '../../../../../graph/vertex';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -53,7 +53,7 @@ export function processNamespaceAccess<OtherInfo>(
 		return processKnownFunctionCall({ name, args, rootId, data, origin: BuiltInProcName.NamespaceAccess }).information;
 	}
 
-	const id = Identifier.make(symbolName as BrandedIdentifier, namespace as BrandedNamespace, config.internal);
+	const id = Identifier.make(symbolName, namespace, config.internal);
 
 	return {
 		unknownReferences: [{ nodeId: rootId, name: id, cds: data.cds, type: ReferenceType.Unknown }],

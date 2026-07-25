@@ -326,7 +326,7 @@ We use tags to categorize linting rules for users. The following tags are availa
 | Tag/Badge&emsp;&emsp; | Description |
 | --- | :-- |
 ${Object.entries(LintingRuleTag).map(([name, tag]) => {
-	return `| <a id="${tag}"></a> ${(makeTagBadge(tag as LintingRuleTag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
+	return `| <a id="${tag}"></a> ${(makeTagBadge(tag, tagTypes.info))} | ${getDocumentationForType('LintingRuleTag::' + name, tagTypes.info).replaceAll('\n', ' ')} (rule${getAllLintingRulesWithTag(tag).length === 1 ? '' : 's'}: ${
 		joinWithLast(getAllLintingRulesWithTag(tag).map(l => linkToRule(l))) || '_none_'
 	}) | `;
 }).join('\n')}
@@ -357,7 +357,7 @@ ${Object.entries(LintingResultCertainty).map(([name, certainty]) =>
 
 async function getRulesPages(knownParser: KnownParser, tagTypes: TypeReport): Promise<Record<string, string>> {
 	const rules = registerRules(knownParser, tagTypes.info, 'long');
-	const result: Record<string, string> = {} as Record<string, string>;
+	const result: Record<string, string> = {};
 
 	for(const [name, rule] of rules) {
 		const filepath = path.join('wiki', `${getPageNameForLintingRule(name)}.md`);

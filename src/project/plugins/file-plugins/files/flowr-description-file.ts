@@ -186,7 +186,7 @@ function emplaceDCF(key: string, val: string, result: Map<string, string[]>) {
 	if(!key) {
 		return;
 	}
-	let values: string[] = [];
+	let values: string[];
 	if(key.includes('@')) {
 		values = [val.trim()];
 	} else {

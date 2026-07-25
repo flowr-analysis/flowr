@@ -159,9 +159,9 @@ export class FlowrFilterCombinator {
 			} else {
 				return new this(value as BooleanNodeOrCombinator);
 			}
-		} else if(ValidRTypes.has(value as RType)) {
+		} else if(ValidRTypes.has(value)) {
 			return new this({ type: 'r-type', value: value as RType });
-		} else if(ValidVertexTypes.has(value as VertexType)) {
+		} else if(ValidVertexTypes.has(value)) {
 			return new this({ type: 'vertex-type', value: value as VertexType });
 		} else {
 			throw new Error(`Invalid filter value: ${value}`);
@@ -315,7 +315,7 @@ export function evalFilter<Filter extends FlowrFilter>(filter: FlowrFilterExpres
 		const args = ('args' in filter ? filter.args : undefined) as unknown as never;
 		return handler(data.element, args, data.data);
 	} else {
-		const tree = FlowrFilterCombinator.is(filter as FlowrFilterExpression);
+		const tree = FlowrFilterCombinator.is(filter);
 		return evalTree(tree.get(), data);
 	}
 }

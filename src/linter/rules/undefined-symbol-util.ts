@@ -124,7 +124,9 @@ export function collectScopeDefinedNames(graph: DataflowGraph): ScopeDefinedName
 		if(!unconditional) {
 			continue;
 		}
-		(byScope.get(scope) ?? byScope.set(scope, new Set()).get(scope) as Set<string>).add(name);
+		const names = byScope.get(scope) ?? new Set<string>();
+		names.add(name);
+		byScope.set(scope, names);
 	}
 	return byScope;
 }

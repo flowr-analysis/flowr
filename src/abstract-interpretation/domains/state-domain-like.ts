@@ -1,5 +1,5 @@
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
-import { type AnyAbstractDomain } from './abstract-domain';
+import type { AnyAbstractDomain } from './abstract-domain';
 
 /**
  * An interface for state-like domains that store abstract values for AST nodes.

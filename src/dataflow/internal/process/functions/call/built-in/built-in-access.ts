@@ -13,7 +13,7 @@ import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EdgeType } from '../../../../../graph/edge';
 import type { ForceArguments } from '../common';
 import { markAsAssignment } from './built-in-assignment';
-import { type BrandedIdentifier, Identifier, ReferenceType } from '../../../../../environments/identifier';
+import { Identifier, ReferenceType } from '../../../../../environments/identifier';
 import type { RArgument } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-argument';
 import { makeAllMaybe, makeReferenceMaybe } from '../../../../../environments/reference-to-maybe';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
@@ -95,7 +95,7 @@ export function processAccess<OtherInfo>(
 		if(envState) {
 			const fieldNode = unpackArg(args[1]);
 			const fieldName = fieldNode?.type === RType.String ? fieldNode.content.str : fieldNode?.lexeme;
-			const fieldDefs = fieldName ? envState.current.memory.get(fieldName as BrandedIdentifier) : undefined;
+			const fieldDefs = fieldName ? envState.current.memory.get(fieldName) : undefined;
 			for(const fd of fieldDefs ?? []) {
 				info.graph.addEdge(name.info.id, fd.nodeId, EdgeType.Reads);
 			}

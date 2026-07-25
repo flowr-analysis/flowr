@@ -1,11 +1,11 @@
 import { assertUnreachable, guard } from '../../util/assert';
 import { log } from '../../util/log';
 import type { SliceResult } from './slicer-types';
-import { type Fingerprint } from './fingerprint';
+import type { Fingerprint } from './fingerprint';
 import { VisitingQueue } from './visiting-queue';
 import { findEnclosingFunctionDefinition, handleReturns, includeCalleesOfDefinition, sliceForCall, sliceReachesFunctionInterface } from './slice-call';
 import type { AstIdMap, NormalizedAst } from '../../r-bridge/lang-4.x/ast/model/processing/decorate';
-import { type REnvironmentInformation } from '../../dataflow/environments/environment';
+import type { REnvironmentInformation } from '../../dataflow/environments/environment';
 import type { NodeId } from '../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { VertexType } from '../../dataflow/graph/vertex';
 import { shouldTraverseEdge, TraverseEdge } from '../../dataflow/graph/edge';

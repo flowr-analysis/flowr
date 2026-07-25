@@ -129,7 +129,7 @@ function stackEnvirResolution<OtherInfo>(
 ): EnvirResolution<OtherInfo> {
 	// no holder variable: envDef is only a carrier for envState/nodeId
 	const envDef = {
-		name:      lexeme as Identifier,
+		name:      lexeme,
 		nodeId,
 		type:      ReferenceType.Variable,
 		definedAt: nodeId,
@@ -151,7 +151,7 @@ export function resolveEnvirArg<OtherInfo>(
 		if(arg === EmptyArgument || arg.name === undefined) {
 			continue;
 		}
-		if(findByPrefixIfUnique(arg.name.content as string, allParamNames) === argName) {
+		if(findByPrefixIfUnique(arg.name.content, allParamNames) === argName) {
 			return resolveArgToEnvir(arg, data);
 		}
 	}

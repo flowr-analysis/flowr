@@ -27,7 +27,6 @@ import type { Writable } from 'ts-essentials';
 import { makeAllMaybe } from '../../../../../environments/reference-to-maybe';
 import { cancelRevivedKills, makeKillsMaybe } from '../../../../../environments/apply-kill';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import type { BuiltInIdentifierConstant } from '../../../../../environments/built-in';
 import { valueFromTsValue } from '../../../../../eval/values/general';
 
 
@@ -69,7 +68,7 @@ function linkReadNameToWriteIfPossible(read: IdentifierReference, environments: 
 				tag:   VertexType.Value,
 				id:    tid,
 				cds:   undefined,
-				value: valueFromTsValue((target as BuiltInIdentifierConstant).value)
+				value: valueFromTsValue((target).value)
 			}, environments, false);
 		}
 	}

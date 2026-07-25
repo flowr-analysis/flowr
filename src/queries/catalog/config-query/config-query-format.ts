@@ -178,7 +178,7 @@ function* configUpdateLeaves(update: object, prefix: readonly string[] = []): Ge
  * update is validated exactly like a `:config +key=value` line and never merges junk or a mistyped value.
  */
 export function validateConfigUpdate(update: DeepPartial<FlowrConfig>, formatter: OutputFormatter = voidFormatter): string | undefined {
-	for(const [path, value] of configUpdateLeaves(update as object)) {
+	for(const [path, value] of configUpdateLeaves(update)) {
 		const err = unknownConfigKey(path, formatter) ?? badConfigValue(path, value, formatter);
 		if(err !== undefined) {
 			return err;

@@ -755,7 +755,7 @@ export const FlowrConfig = {
 	// eslint-disable-next-line @typescript-eslint/no-invalid-void-type
 	amend(this: void, config: FlowrConfig, amendmentFunc: (config: DeepWritable<FlowrConfig>) => FlowrConfig | void): FlowrConfig {
 		const newConfig = FlowrConfig.clone(config);
-		return amendmentFunc(newConfig as DeepWritable<FlowrConfig>) ?? newConfig;
+		return amendmentFunc(newConfig) ?? newConfig;
 	},
 	/**
 	 * Clones the given flowr config object.

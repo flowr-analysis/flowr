@@ -87,7 +87,7 @@ print(f()())`, '4@x', SourceRange.from(4, 7, 4, 13)]
 							loc:          SourceLocation.fromNode(node) ?? SourceLocation.invalid(),
 							quickFix:     removableRange ? [{
 								type:        'remove',
-								loc:         removableRange as SourceLocation,
+								loc:         removableRange,
 								description: `Remove unused definition of \`${node.lexeme}\``
 							}] : undefined
 						};

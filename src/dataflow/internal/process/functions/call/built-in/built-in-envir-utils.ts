@@ -13,8 +13,13 @@ import type { Identifier, IdentifierDefinition, InGraphIdentifierDefinition, Nam
 import { ReferenceType } from '../../../../../environments/identifier';
 import { define } from '../../../../../environments/define';
 import type { REnvironmentInformation } from '../../../../../environments/environment';
+import { DefaultAttachPosition, REnvironment } from '../../../../../environments/environment';
 import { findByPrefixIfUnique } from '../../../../../../util/prefix';
 import { resolveNodeToStackEnv } from './built-in-stack-env';
+import { resolveIdToValue } from '../../../../../eval/resolve/alias-tracking';
+import { valueSetGuard } from '../../../../../eval/values/general';
+import type { Value } from '../../../../../eval/values/r-value';
+import { dataflowLogger } from '../../../../../logger';
 
 /** A tracked env is a real stack environment (not a private custom env) when its current layer is the global or the built-in/base env. */
 function isStackEnvState(envState: REnvironmentInformation): boolean {
@@ -205,4 +210,56 @@ export function routeWrittenToCustomEnv(
 		{ current: result.environment.current.removeAll(namesToRemove), level: result.environment.level }
 	);
 	return { ...result, environment: newEnvironment };
+}
+
+/** A `search()` position must be an integer and may never displace the global environment (R rejects `pos = 1`). */
+function clampAttachPosition(pos: number): number | undefined {
+	return Number.isFinite(pos) ? Math.max(DefaultAttachPosition, Math.trunc(pos)) : undefined;
+}
+
+/** The number a value denotes, directly or as the single point of an interval (how a numeric literal resolves). */
+function scalarNumber(value: Value): number | undefined {
+	if(value.type === 'number') {
+		return 'num' in value.value ? value.value.num : undefined;
+	}
+	if(value.type === 'interval' && value.startInclusive && value.endInclusive
+		&& value.start.type === 'number' && 'num' in value.start.value
+		&& value.end.type === 'number' && 'num' in value.end.value
+		&& value.start.value.num === value.end.value.num) {
+		return value.start.value.num;
+	}
+	return undefined;
+}
+
+/**
+ * The `search()` position the `pos` argument of a `library()` call requests, either given as a number or as the name of
+ * an existing entry (`pos = "package:base"`). Returns `undefined` when there is no such argument, its value is unknown
+ * or ambiguous, or it names an entry that is not on the search path; callers then attach at {@link DefaultAttachPosition}
+ * (as R does, which warns in the last case).
+ */
+export function resolveAttachPosition<OtherInfo>(
+	posId: NodeId | undefined,
+	data:  DataflowProcessorInformation<OtherInfo & ParentInformation>
+): number | undefined {
+	if(posId === undefined) {
+		return undefined;
+	}
+	const values = valueSetGuard(resolveIdToValue(posId, { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx }));
+	if(values?.type !== 'set' || values.elements.length !== 1) {
+		return undefined;
+	}
+	const element = values.elements[0];
+	const asNumber = scalarNumber(element);
+	if(asNumber !== undefined) {
+		return clampAttachPosition(asNumber);
+	}
+	if(element.type === 'string' && 'str' in element.value) {
+		const found = REnvironment.searchPosition(data.environment.current, element.value.str);
+		if(found === undefined) {
+			dataflowLogger.warn(`search-path entry '${element.value.str}' does not exist, attaching at the default position`);
+			return undefined;
+		}
+		return clampAttachPosition(found);
+	}
+	return undefined;
 }

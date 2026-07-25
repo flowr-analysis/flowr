@@ -32,6 +32,7 @@ import type { Lift, TernaryLogical } from '../../../../../eval/values/r-value';
 import { VertexType } from '../../../../../graph/vertex';
 import type { RNode } from '../../../../../../r-bridge/lang-4.x/ast/model/model';
 import { baseRPackages } from '../../../../../../util/r-base-packages';
+import { resolveAttachPosition } from './built-in-envir-utils';
 
 /** Controls how {@link processLibrary} brings a package into scope. */
 export interface LibraryProcessorConfig {
@@ -54,6 +55,8 @@ interface AttachSpec {
 	readonly exclude?:       ReadonlySet<string>;
 	/** attach every export (`import::from` `.all`, `box::use(pkg[...])`) */
 	readonly all?:           boolean;
+	/** `library(pkg, pos = 3)`: the `search()` position to attach at, {@link DefaultAttachPosition} if unset */
+	readonly pos?:           number;
 }
 
 /**
@@ -74,15 +77,19 @@ export function processLibrary<OtherInfo>(
 		return processUse(name, args, rootId, data);
 	}
 	/* parse the import selection before the library flow rewrites `args` below */
-	const spec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
+	const parsedSpec: AttachSpec = config.fromImports ? parseFromSpec(args) : { namespaceOnly: config.namespaceOnly };
 	const params = {
 		'package':        'pkg',
-		'character.only': 'char'
+		'character.only': 'char',
+		/* last, so the positional fallback keeps its previous order */
+		'pos':            'pos'
 	};
 	const resolveArgs = { environment: data.environment, idMap: data.completeAst.idMap, resolve: data.ctx.config.solver.variables, ctx: data.ctx };
 	const argMaps = pMatch(convertFnArguments(args), params);
 	const packageId = Array.from(new Set(argMaps.get('pkg')));
 	const charId = Array.from(new Set(argMaps.get('char')));
+	/* `import::from` has no `pos`; its extra arguments name exports */
+	const spec: AttachSpec = { ...parsedSpec, pos: config.fromImports ? undefined : resolveAttachPosition(argMaps.get('pos')?.[0], data) };
 
 	let namesToLoad = packageId.map(v => RArgument.getValue<OtherInfo & ParentInformation>(args, v)) as RNode<OtherInfo & ParentInformation>[];
 	//check if library name provided
@@ -192,7 +199,7 @@ export function processLibrary<OtherInfo>(
 			// `p::fn` can still link back to this call. requireNamespace/loadNamespace are recorded too, since
 			// they equally make `p::fn` valid.
 			if(info.environment.level >= 0){
-				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, data.cds);
+				info.environment = recordUnresolvedLibraryLoad(info.environment, p, rootId, spec.pos, data.cds);
 			}
 		}
 	}
@@ -362,7 +369,7 @@ const libraryLoadMarker = ' library-load' as BrandedIdentifier;
  * `definedAt` is the load call. This lets an explicit `pack::fn` link back via {@link loadNodesForNamespace}
  * even without a signature database.
  */
-function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: string, rootId: NodeId, cds?: readonly ControlDependency[]): REnvironmentInformation {
+function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: string, rootId: NodeId, pos?: number, cds?: readonly ControlDependency[]): REnvironmentInformation {
 	const layer = new Environment(envInfo.current).asLibrary(pack, EnvType.LoadedNamespace).define({
 		name:      Identifier.make(libraryLoadMarker, pack),
 		type:      ReferenceType.Function,
@@ -370,7 +377,7 @@ function recordUnresolvedLibraryLoad(envInfo: REnvironmentInformation, pack: str
 		definedAt: rootId,
 		cds:       cds?.slice()
 	});
-	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
+	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, pos) };
 }
 
 /**
@@ -445,7 +452,8 @@ function isSubsetAttach(spec: AttachSpec): boolean {
 }
 
 /**
- * Attaches `dependency`'s exports below the global environment (see {@link attachPackageBelowGlobal}) and returns the
+ * Attaches `dependency`'s exports at `spec`'s {@link AttachSpec#pos|search position} (below the global environment by
+ * default, see {@link REnvironment.attachAt|attachPackageAt}) and returns the
  * enriched environment (the graph is untouched). Used by `library()`, `import::from`, `box::use`, `requireNamespace`,
  * and the transitive side-effect propagation.
  */
@@ -459,14 +467,14 @@ export function attachDependencyToEnvironment(dependency: Package, envInfo: REnv
 		const layerType = spec.namespaceOnly ? EnvType.LoadedNamespace : EnvType.Namespace;
 		const layer = new Environment(envInfo.current).asLibrary(pack, layerType)
 			.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
-		return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, layer, layer) };
+		return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, layer, layer, spec.pos) };
 	}
 	// full attach: imports layer at the bottom, namespace (exports) layer on top
 	let importsEnv = new Environment(envInfo.current).asLibrary(pack, EnvType.Imports);
 	importsEnv = recImports(importsEnv, dependency.namespaceInfo, ctx, new Set());
 	const namespaceEnv = new Environment(importsEnv).asLibrary(pack, EnvType.Namespace)
 		.defineAll(exports.map(exp => exportDefinition(pack, exp, definedAt)));
-	return { level: envInfo.level, current: REnvironment.attachBelowGlobal(envInfo.current, namespaceEnv, importsEnv) };
+	return { level: envInfo.level, current: REnvironment.attachAt(envInfo.current, namespaceEnv, importsEnv, spec.pos) };
 }
 
 /** A namespace-only load is subsumed by any layer for `pack`; a full attach ignores a mere {@link EnvType.LoadedNamespace}. */
@@ -582,7 +590,7 @@ export function attachProjectImports(env: REnvironmentInformation, ctx: FlowrAna
 		return env;
 	}
 	const layer = new Environment(env.current).asLibrary(layerNamespace, EnvType.Imports).defineAll(toDefine);
-	return { level: env.level, current: REnvironment.attachBelowGlobal(env.current, layer, layer) };
+	return { level: env.level, current: REnvironment.attachAt(env.current, layer, layer) };
 }
 
 /** attach every project-level environment layer in order: base R namespaces, the project's own `importFrom` symbols, then its declared dependencies */

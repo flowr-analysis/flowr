@@ -6,7 +6,7 @@ import type { PotentiallyEmptyRArgument } from '../../../../../../r-bridge/lang-
 import type { RSymbol } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-symbol';
 import type { NodeId } from '../../../../../../r-bridge/lang-4.x/ast/model/processing/node-id';
 import { BuiltInProcName } from '../../../../../environments/built-in-proc-name';
-import { EnvType, REnvironment, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
+import { EnvType, REnvironment, SearchPathPackagePrefix, type Environment, type REnvironmentInformation } from '../../../../../environments/environment';
 import { isFunctionCallVertex } from '../../../../../graph/vertex';
 import { RType } from '../../../../../../r-bridge/lang-4.x/ast/model/type';
 import { EmptyArgument, RFunctionCall } from '../../../../../../r-bridge/lang-4.x/ast/model/nodes/r-function-call';
@@ -86,8 +86,8 @@ function asSearchPathEnv(name: string, data: StackEnvContext): REnvironmentInfor
 	if(fixed !== undefined) {
 		return fixed;
 	}
-	if(name.startsWith('package:')) {
-		const pkg = name.slice('package:'.length);
+	if(name.startsWith(SearchPathPackagePrefix)) {
+		const pkg = name.slice(SearchPathPackagePrefix.length);
 		for(let env: Environment | undefined = REnvironment.findGlobal(data.environment.current).parent; env !== undefined && !env.builtInEnv; env = env.parent) {
 			if(env.n === pkg && env.t === EnvType.Namespace) {
 				return { current: env, level: 0 };

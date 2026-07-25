@@ -169,13 +169,22 @@ export function availableVersionEntries(src: PackageSignatureSource, pkg: string
 }
 
 /**
- * The reverse index `class -> owning package` over every package's latest version. S3 ownership (a same-named
- * constructor plus a registered method) is a stronger signal than an S4 `exportClasses`, so S3-owned classes are
- * indexed first and an S4 class only claims a name no S3 owner already took.
+ * The reverse index `class -> owning package` over `candidates`, at each one's latest version. S3 ownership (a
+ * same-named constructor plus a registered method) is a stronger signal than an S4 `exportClasses`, so S3-owned
+ * classes are indexed first and an S4 class only claims a name no S3 owner already took.
+ *
+ * Restricting the candidates is the targeted counterpart of {@link PackageSignatureSource.classOwner}: class names
+ * collide heavily across CRAN, so a whole-database answer is decided by database order, and deriving one means
+ * reading every package in the database.
  */
-function buildClassOwnerIndex(src: PackageSignatureSource): Map<string, string> {
+export function classOwnerIndexFor(src: PackageSignatureSource, candidates: Iterable<string>): Map<string, string> {
 	const index = new Map<string, string>();
-	const libs = src.packageNames().map(pkg => ({ pkg, lib: src.lookup(pkg) }));
+	const libs: { pkg: string, lib: LibraryExports | undefined }[] = [];
+	for(const pkg of candidates) {
+		if(src.has(pkg)) {
+			libs.push({ pkg, lib: src.lookup(pkg) });
+		}
+	}
 	for(const pick of [(l: LibraryExports | undefined) => l?.s3Classes, (l: LibraryExports | undefined) => l?.s4Classes]) {
 		for(const { pkg, lib } of libs) {
 			for(const cls of pick(lib) ?? []) {
@@ -461,7 +470,7 @@ export class SigDatabase implements PackageSignatureSource {
 		if(version !== undefined) {
 			return classOwnerAtVersion(this, className, version);
 		}
-		this.classIndex ??= buildClassOwnerIndex(this);
+		this.classIndex ??= classOwnerIndexFor(this, this.packageNames());
 		return this.classIndex.get(className);
 	}
 
@@ -846,7 +855,7 @@ export class SigDatabaseSet implements PackageSignatureSource {
 		if(version !== undefined) {
 			return classOwnerAtVersion(this, className, version);
 		}
-		this.classIndex ??= buildClassOwnerIndex(this);
+		this.classIndex ??= classOwnerIndexFor(this, this.packageNames());
 		return this.classIndex.get(className);
 	}
 

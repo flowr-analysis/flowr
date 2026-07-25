@@ -9,7 +9,7 @@ import { minVersion, type Range } from 'semver';
 import { RRange, RVersion, rReleaseDate, type VersionString } from '../util/r-version';
 import { findByPrefixIfUnique } from '../util/prefix';
 import { RBasePrimitives } from '../data/r-base-primitives.generated';
-import { availableVersionEntries, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
+import { availableVersionEntries, classOwnerIndexFor, sourceForPackage, type PackageSignatureSource } from './sigdb/reader';
 import type { DecodedFunction } from './sigdb/decode';
 import { matchArgumentsToSignature } from './sigdb/signature-match';
 import { parseDateWindow } from './sigdb/sigdb-version';
@@ -21,6 +21,9 @@ import { RType } from '../r-bridge/lang-4.x/ast/model/type';
 import { S7SyntheticFunArgSuffix } from '../dataflow/internal/process/functions/call/built-in/built-in-s-seven-new-generic';
 import type { ReadOnlyFlowrAnalyzerDependenciesContext } from './context/flowr-analyzer-dependencies-context';
 import type { ReadonlyFlowrAnalysisProvider } from './flowr-analyzer';
+
+/** the pseudo-package standing for the analyzed project itself, never one of its own dependencies */
+export const ProjectPackage = 'current';
 
 /** where a single bound on a dependency's version came from */
 export type ConstraintSource = 'declared' | 'transitive' | 'signature' | 'date' | 'base-r' | 'available' | 'indirect';
@@ -149,7 +152,7 @@ function makeFnResolver(src: PackageSignatureSource | undefined, name: string): 
  * directives, flattened across every generic), deduplicated.
  */
 function projectS3Classes(deps: ReadOnlyFlowrAnalyzerDependenciesContext): Set<string> {
-	const generics = deps.getDependency('current')?.namespaceInfo?.exportS3Generics;
+	const generics = deps.getDependency(ProjectPackage)?.namespaceInfo?.exportS3Generics;
 	return new Set([...(generics?.values() ?? [])].flat());
 }
 
@@ -206,6 +209,14 @@ function collectCodeClassUses(graph: DataflowGraph): Set<string> {
  * Mark the package that OWNS a used S3/S4 class as used, from the project's NAMESPACE `S3method`/`exportClasses`
  * registrations and from class-name literals in the code. The same-named constructor is recorded as a synthetic
  * use so the version is bounded by its function-export history, not by the pre-NAMESPACE-biased `s3Classes` set.
+ *
+ * The owner is looked for among the packages already in play (called or declared). A NAMESPACE registration is
+ * deliberate wiring, so it may still introduce a package from outside that set, but only for a project that declares
+ * no dependencies at all. Class names collide heavily across CRAN: with declared dependencies present, the
+ * whole-database {@link PackageSignatureSource.classOwner} answer is decided by database order (attributing `POSIXlt`
+ * or `function` to whichever unrelated package comes first), so it is a collision far more often than a hidden
+ * dependency, and it costs reading every package in the database. A class-name literal in code is weaker still and
+ * may only ever refine a package already in play.
  */
 function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnlyFlowrAnalyzerDependenciesContext, graph: DataflowGraph): void {
 	const namespaceClasses = projectS3Classes(deps);
@@ -214,18 +225,17 @@ function addClassOwnershipUsage(usage: Map<string, PackageUsage>, deps: ReadOnly
 		return;
 	}
 	const sources = deps.signatureSources();
-	// a class-name literal in code is weak (names collide across CRAN): it may only refine an existing dependency,
-	// never introduce one; a NAMESPACE registration is deliberate wiring, so it may introduce the owner
-	const anchored = new Set<string>([...usage.keys(), ...deps.getDependencies().map(d => d.name)]);
+	const declared = deps.declaredPackageNames();
+	// `current` is the analyzed project itself, not a dependency (see `defaultTargets`)
+	const anchored = new Set<string>([...usage.keys(), ...deps.getDependencies().map(d => d.name), ...declared].filter(n => n !== ProjectPackage));
+	const owners = sources.map(src => classOwnerIndexFor(src, anchored));
+	const mayIntroduce = declared.length === 0;
 
-	const attribute = (cls: string, mayIntroduce: boolean): void => {
-		for(const src of sources) {
-			const owner = src.classOwner(cls);
+	const attribute = (cls: string, fromNamespace: boolean): void => {
+		for(const [i, src] of sources.entries()) {
+			const owner = owners[i].get(cls) ?? (fromNamespace && mayIntroduce ? src.classOwner(cls) : undefined);
 			if(owner === undefined) {
 				continue;
-			}
-			if(!mayIntroduce && !anchored.has(owner)) {
-				return;
 			}
 			let pkgUsage = usage.get(owner);
 			if(pkgUsage === undefined) {
@@ -647,7 +657,7 @@ export function orderedCandidatesOf(src: PackageSignatureSource | undefined, nam
 
 /** the default explosion targets: every declared and used dependency (excluding `current`, the analyzed package's own namespace) */
 export function defaultTargets(deps: ReadOnlyFlowrAnalyzerDependenciesContext, usage: ReadonlyMap<string, PackageUsage>): string[] {
-	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== 'current');
+	return [...new Set([...deps.getDependencies().map(d => d.name), ...usage.keys()])].filter(name => name !== ProjectPackage);
 }
 
 /** lazily yield concrete version assignments (one version per package) in odometer order over the per-package lists */

@@ -89,6 +89,25 @@ describe('Guess dependency versions query', withTreeSitter(ts => {
 		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
 	});
 
+	test('a class owned by a declared but never called dependency is resolved without scanning the database', async() => {
+		// `dbpkg` also owns the class, and comes first in the database; the declared `zoo` is the answer that is in play
+		const analyzer = await buildGuessAnalyzer(ts, {
+			code:     'x <- 1',
+			declared: { zoo: '*' },
+			packages: {
+				dbpkg: { versions: { '1.0': { date: '2019-01-01', fns: { zoo: [] }, s3Classes: ['zoo'] } } },
+				zoo:   { versions: { '1.0': { date: '2020-01-01', fns: { zoo: [], 'print.zoo': [] }, s3Classes: ['zoo'] } } }
+			}
+		});
+		analyzer.context().deps.addDependency(new Package({
+			name:          'current',
+			namespaceInfo: FlowrNamespaceFile.from(new FlowrInlineTextFile('NAMESPACE', 'S3method(as.irts,zoo)')).content().current
+		}));
+		const res = await executeQueries({ analyzer }, [{ type: 'guess-dep-versions' as const }]);
+		expect(guessed(res['guess-dep-versions'], 'zoo')?.used).toBe(true);
+		expect(guessed(res['guess-dep-versions'], 'dbpkg')).toBeUndefined();
+	});
+
 	test('an S3 method registered for a class NOT owned by any package does not mark anything used', async() => {
 		const analyzer = await buildGuessAnalyzer(ts, {
 			code:     'x <- 1',
